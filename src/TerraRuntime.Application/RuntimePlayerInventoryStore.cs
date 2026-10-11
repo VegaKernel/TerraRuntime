@@ -33,7 +33,9 @@ internal readonly record struct RuntimePlayerInventoryItem(
     public bool IsCanonical =>
         IsEmpty
             ? ItemType.IsNone && Stack <= 0 && Prefix == VanillaPrefixIds.None && ItemFlags == 0
-            : VanillaDefinitionCatalog.IsValidKnownStack(ItemType, Stack) &&
+            : (VanillaCoinFacts.TryGetValue(ItemType,out _)
+                ? VanillaCoinFacts.IsValidRetainedStack(ItemType,Stack)
+                : VanillaDefinitionCatalog.IsValidKnownStack(ItemType, Stack)) &&
               !ItemType.IsNone &&
               VanillaItemIds.TryCreate(ItemType.Value, out ItemTypeId canonical) &&
               canonical == ItemType &&

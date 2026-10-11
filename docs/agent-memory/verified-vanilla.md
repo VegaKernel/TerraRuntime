@@ -1,5 +1,11 @@
 # Verified vanilla facts
 
+## Restock/Sort source custody checkpoint, 2026-10-11
+
+Official configured 1.4.5.8 GetItem may retain entire19998/29997 platinum stacks; nominal9999 is a merge capacity, not a universal retained bound. The wire-facing retained bound is32767; the39996 source offer is unrepresentable and is refused. Storage/Wallet retain their existing validated prefix domains; the cursor transform keeps its existing coin prefixNone restriction. BuyItem availability clamps at9999999999 copper. Main Sort/Restock retains the captured locale ordering, favorite/coin/ammo exclusions and source packet order. An initially-Air coin slot53 can receive and then clear through Left before synchronization, emitting only58 then138; a forged Stone cursor does not become that source operation.
+
+Genuine closed cursor cycles can emit no gesture frames and leave full219 physical images and final packets identical while private funding differs. Those ambiguous images must refuse. Exact bounded memoization128 limits remembered states, not the search, with all work charged to the existing global64 scheduler. Prepared zero-value physical coin provenance is generation-bound, absent from raw ingress and cleared on echo/reuse. Final local source/runtime/Native/live acceptance is recorded in `.cache/restock-sort-production-root-final-verification-v1.json`; full1563215/1563216 has zero failures/errors and one known skip. These results establish the represented component scope, not natural whole Main/UI or full vanilla parity.
+
 ## Bulk and multi-bank custody — accepted local checkpoint, 2026-10-11
 
 The shipping graph now includes source-backed DepositAll, LootAll, QuickStack(false), shift transfers and represented reduced multi-bank cursor chains. The retained journal captures original 219-slot custody before ordinary debits, certifies its current overlay separately, and completes through the existing global 64-step-per-tick scheduler and command queue. Ambiguous custody is rejected before economic fallback; immediate ordinary receive behavior, observers and Bank4 profile mirroring are preserved. No new production dependency or queue was added.

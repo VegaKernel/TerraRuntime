@@ -44,7 +44,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         if (!TryCopyInventory(connection, image) || !image.AsSpan().SequenceEqual(before)) return false;
         var changes = mutations.ToArray();
         long[]? afterCoinFunding = null;
-        if (coin && (fundedCoinCredit <= 0 || fundedCoinCredit > CoinValue(incoming with { Stack = checked((short)accepted) }) ||
+        if (coin && (fundedCoinCredit < 0 || fundedCoinCredit > CoinValue(incoming with { Stack = checked((short)accepted) }) ||
             !TryPlanCoinFunding(connection, image, changes, fundedCoinCredit, out afterCoinFunding))) return false;
         preparation = new(this, connection, Serial, image, changes, afterCoinFunding);
         return true;

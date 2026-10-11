@@ -17,10 +17,13 @@ public static class VanillaCoinFacts
     public const long PlatinumValue = 1_000_000;
 
     // Lower denominations convert upward at the vanilla 100-coin boundary. Platinum is terminal and uses the
-    // modern 9999 stack ceiling. Purchase accounting rejects larger client-supplied stacks instead of treating
-    // packet-5's signed-short capacity as legitimate money.
+    // nominal 9999 stack ceiling. These limits govern capacity and denomination conversion;
+    // source GetItem can retain a larger positive-wire stack after SortCoins overflow.
     public const short LowerDenominationMaximumStack = 100;
     public const short PlatinumMaximumStack = 9_999;
+
+    // Original Utils.CoinsCombineStacks saturates only the purchase-availability check.
+    public const long MaximumCombinedPurchaseCopper = 9_999_999_999;
 
     public static bool TryGetValue(ItemTypeId itemType, out long value)
     {
@@ -51,6 +54,13 @@ public static class VanillaCoinFacts
         value = 0;
         return false;
     }
+
+    /// <summary>
+    /// Positive source-retained coin tuples, including GetItem's whole oversized world stack.
+    /// This representation check grants no money provenance and does not change nominal capacity.
+    /// </summary>
+    public static bool IsValidRetainedStack(ItemTypeId itemType, int stack)
+        => TryGetValue(itemType, out _) && stack > 0 && stack <= short.MaxValue;
 
     public static bool IsValidStack(ItemTypeId itemType, short stack)
     {

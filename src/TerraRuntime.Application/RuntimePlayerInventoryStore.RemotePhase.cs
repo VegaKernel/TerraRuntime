@@ -56,7 +56,9 @@ internal sealed partial class RuntimePlayerInventoryStore
     }
 
     private static bool IsValidOwnedQuantityMaximum(ItemTypeId type, int maximum) =>
-        maximum >= 0 && VanillaWorldItemAllocationCatalog1458.TryGet(type.Value, out var facts) && maximum <= facts.MaximumStack;
+        maximum >= 0 && (VanillaCoinFacts.TryGetValue(type,out _)
+            ? maximum == 0 || VanillaCoinFacts.IsValidRetainedStack(type,maximum)
+            : VanillaWorldItemAllocationCatalog1458.TryGet(type.Value,out var facts) && maximum <= facts.MaximumStack);
 
     internal static bool AreValidOwnedQuantities(ReadOnlySpan<OwnedInventoryQuantity1458> caps, ReadOnlySpan<RuntimePlayerInventoryItem> inventory)
     {

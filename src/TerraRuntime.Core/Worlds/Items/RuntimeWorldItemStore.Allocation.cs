@@ -202,6 +202,7 @@ public sealed partial class RuntimeWorldItemStore
             state.Update = default;
             state.FundedQuantity = 0;
             state.FundedCoinValue = 0;
+            state.OwnedCoinPhysical = false;
             // Ordinary TryRemove preserves the slot's generation/revision until its next allocation.
             if (!Record(slot, WorldItemStateCommitKind.Remove)) return Fail();
             steps.Add(new(start, operations.Count, slot, 0, pending[..pendingCount].ToArray(), null));
@@ -216,7 +217,8 @@ public sealed partial class RuntimeWorldItemStore
             var before = working[item.Handle.Slot];
             long physicalValue = CoinPhysicalValue(item.ItemNetId, acceptedAmount);
             if (!before.Active || before.Reserved || before.Claimed || Capture(item.Handle.Slot, in before) != item ||
-                physicalValue <= 0 || before.FundedCoinValue <= 0 ||
+                physicalValue <= 0 || before.FundedCoinValue < 0 ||
+                (before.FundedCoinValue == 0 && !before.OwnedCoinPhysical) ||
                 before.FundedCoinValue > CoinPhysicalValue(before.Update.ItemNetId, before.Update.Stack))
                 return Fail();
             long transferredValue = Math.Min(before.FundedCoinValue, physicalValue);
@@ -278,6 +280,22 @@ public sealed partial class RuntimeWorldItemStore
 
         public bool TrySpawnSource(in WorldItemDropStateUpdate drop, int leaseTicks, out short slot, byte? sourceLocalPlayerId = null,
             WorldItemCreationSource1458 creationSource = WorldItemCreationSource1458.NewItem)
+            => TrySpawnSourceCore(in drop, leaseTicks, out slot, sourceLocalPlayerId, creationSource, null);
+
+        // A prepared conserving inventory owner supplies the bounded copper budget.
+        // Raw client synchronization never calls this trusted source capability.
+        internal bool TrySpawnFundedCoinSource(in WorldItemDropStateUpdate drop, out short slot,
+            byte sourceLocalPlayerId, long fundedCoinValue)
+        {
+            slot = -1;
+            long physical = CoinPhysicalValue(drop.ItemNetId, drop.Stack);
+            if (physical <= 0 || fundedCoinValue < 0 || fundedCoinValue > physical) return Fail();
+            return TrySpawnSourceCore(in drop, 0, out slot, sourceLocalPlayerId,
+                WorldItemCreationSource1458.NewItem, fundedCoinValue);
+        }
+
+        private bool TrySpawnSourceCore(in WorldItemDropStateUpdate drop, int leaseTicks, out short slot,
+            byte? sourceLocalPlayerId, WorldItemCreationSource1458 creationSource, long? preparedCoinValue)
         {
             slot = -1;
             if (disposed || claimed || failed || steps.Count == VanillaCapacity || leaseTicks < 0 ||
@@ -352,9 +370,10 @@ public sealed partial class RuntimeWorldItemStore
                 state.Generation++; state.Revision = leaseTicks == 0 ? 1UL : 0UL;
                 state.Active = leaseTicks == 0; state.Reserved = leaseTicks != 0; state.SourceLease = leaseTicks != 0;
                 state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceOwnerAge = 0; state.SourceReleaseRequested = false; state.Update = CreateInitial(in publicationDrop);
+                state.OwnedCoinPhysical = creationSource == WorldItemCreationSource1458.NewItem && preparedCoinValue.HasValue;
                 state.FundedCoinValue = creationSource == WorldItemCreationSource1458.NewItem
-                    ? CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) : 0;
-                state.FundedQuantity = creationSource == WorldItemCreationSource1458.NewItem && state.FundedCoinValue == 0 ? publicationDrop.Stack : 0;
+                    ? preparedCoinValue ?? CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) : 0;
+                state.FundedQuantity = creationSource == WorldItemCreationSource1458.NewItem && CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) == 0 ? publicationDrop.Stack : 0;
                 if (leaseTicks == 0) state.Update = state.Update with { Color = null };
                 if (leaseTicks == 0 && ownerFacts is not null)
                     state.Update = state.Update with { GrabDelayPlayer = 0 };
@@ -614,6 +633,8 @@ public sealed partial class RuntimeWorldItemStore
                         long transferredCoinValue = Math.Min(CoinPhysicalValue(source.Update.ItemNetId, amount), source.FundedCoinValue);
                         source.FundedCoinValue -= transferredCoinValue;
                         destination.FundedCoinValue = checked(destination.FundedCoinValue + transferredCoinValue);
+                        if(CoinPhysicalValue(destination.Update.ItemNetId,amount)>0)
+                            destination.OwnedCoinPhysical &= source.OwnedCoinPhysical;
                         int transferredFunding = Math.Min(amount, source.FundedQuantity);
                         source.FundedQuantity -= transferredFunding;
                         destination.FundedQuantity += transferredFunding;

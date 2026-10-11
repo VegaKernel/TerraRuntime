@@ -119,14 +119,16 @@ internal sealed partial class RuntimePlayerInventoryStore
             for (int i = start; i < start + 40; i++) changed |= reports[i] != capture.Before[i];
             if (!changed) continue;
             var storage = capture.Before.AsSpan(start, 40).ToArray().Select(StorageTuple).ToArray();
-            for (int operation = 0; operation < 5; operation++)
+            for (int operation = 0; operation <= (int)BankBulkOperation1458.Restock; operation++)
             {
-                int count = operation < 3 ? 1 : operation == 3 ? 58 : 40;
+                int count = operation is (int)BankBulkOperation1458.ShiftIntoBank ? 58 :
+                    operation is (int)BankBulkOperation1458.ShiftOutOfBank ? 40 : 1;
                 for (short source = 0; source < count; source++)
                 {
                     yield return 0;
                     int sourceIndex = operation == 3 ? source : start + source;
-                    if (operation >= 3 && capture.Before[sourceIndex] == reports[sourceIndex]) continue;
+                    if (operation is (int)BankBulkOperation1458.ShiftIntoBank or (int)BankBulkOperation1458.ShiftOutOfBank &&
+                        capture.Before[sourceIndex] == reports[sourceIndex]) continue;
                     if (!VanillaWorldItemOwner1458.TryPlanBankBulk(main, storage, bank,
                         (BankBulkOperation1458)operation, source, world, out var plan) || plan is null) continue;
                     var after = capture.Before.ToArray();
@@ -154,9 +156,21 @@ internal sealed partial class RuntimePlayerInventoryStore
     }
 
     private static bool TryApplyBankStorageFunding(RuntimePlayerInventoryItem[] before,
-        ReadOnlySpan<BankStorageStep1458> steps, int bankStart, long[] copper, short[] quantity)
+        ReadOnlySpan<BankStorageStep1458> steps, int bankStart, long[] copper, short[] quantity) =>
+        TryApplyBankStorageFunding(before, steps, bankStart, copper, quantity, out _);
+
+    private static bool TryApplyBankStorageFunding(RuntimePlayerInventoryItem[] before,
+        ReadOnlySpan<BankStorageStep1458> steps, int bankStart, long[] copper, short[] quantity,
+        out RuntimePlayerInventoryItem[] image)
+        => TryApplyBankStorageFunding(before, steps, bankStart, copper, quantity, out image, out _);
+
+    private static bool TryApplyBankStorageFunding(RuntimePlayerInventoryItem[] before,
+        ReadOnlySpan<BankStorageStep1458> steps, int bankStart, long[] copper, short[] quantity,
+        out RuntimePlayerInventoryItem[] image, out long[] overflowFunding)
     {
-        var image = before.ToArray();
+        overflowFunding = [];
+        var ground = new List<long>();
+        image = before.ToArray();
         int Map(int index) => index < 59 ? index : bankStart + index - 59;
         foreach (ref readonly var step in steps)
         {
@@ -177,7 +191,14 @@ internal sealed partial class RuntimePlayerInventoryStore
                     physicalAfter = checked(physicalAfter + CoinValue(image[index]));
                     copper[index] = 0;
                 }
-                if (physicalBefore != physicalAfter || budget > physicalAfter) return false;
+                var overflow = coins.Overflow ?? [];
+                long groundPhysical = 0;
+                foreach (var item in overflow)
+                {
+                    if (item.Type is < 71 or > 74 || item.Stack <= 0 || item.Prefix != 0 || item.Favorite) return false;
+                    groundPhysical = checked(groundPhysical + CoinValue(InventoryTuple(item)));
+                }
+                if (physicalBefore != checked(physicalAfter + groundPhysical) || budget > physicalBefore) return false;
                 var allocated = new bool[219];
                 foreach (short slot in coins.DestinationOrder)
                 {
@@ -191,6 +212,11 @@ internal sealed partial class RuntimePlayerInventoryStore
                 {
                     int index = Map(coins.Slots[i]);
                     if (!allocated[index]) { copper[index] = Math.Min(budget, CoinValue(image[index])); budget -= copper[index]; }
+                }
+                foreach (var item in overflow)
+                {
+                    long assigned = Math.Min(budget, CoinValue(InventoryTuple(item)));
+                    ground.Add(assigned); budget -= assigned;
                 }
                 if (budget != 0) return false;
                 continue;
@@ -212,6 +238,118 @@ internal sealed partial class RuntimePlayerInventoryStore
             image[destination] = target.IsEmpty ? old with { Stack = checked((short)step.Amount) }
                 : target with { Stack = checked((short)(target.Stack + step.Amount)) };
         }
+        overflowFunding = ground.ToArray();
+        return true;
+    }
+
+    internal IEnumerable<int> PrepareShopSortWork(ConnectionHandle connection, ShopJournalCapture capture,
+        RuntimePlayerInventoryItem[] reports, bool[] seen, VanillaItemPrefixWorld1458? world,
+        BankBulkResolution result, bool mainOnly)
+    {
+        ShopBankMovePreparation? accepted = null;
+        if (!capture.IsCurrent || reports.Length != 219 || seen.Length != 219 || Serial >= ulong.MaxValue - 1)
+            yield break;
+        for (int family = 0; family < (mainOnly ? 1 : 5); family++)
+        {
+            bool main = family == 0;
+            int start = main ? 0 : 59 + (family - 1) * 40;
+            int length = main ? 59 : 40;
+            bool changed = false;
+            for (int i = start; i < start + length; i++) changed |= capture.Before[i] != reports[i];
+            if (!changed) continue;
+            var physical = capture.Before.AsSpan(start, length).ToArray().Select(StorageTuple).ToArray();
+            for (byte locale = 0; locale < 12; locale++)
+            for (int order = 0; order < 256; order++)
+            {
+                int classes = 0;
+                for (int shift = 0; shift < 8; shift += 2) classes |= 1 << ((order >> shift) & 3);
+                if (classes != 15) continue;
+                for (int arithmetic = 0; arithmetic < 2; arithmetic++)
+                {
+                    yield return 0;
+                    if (!VanillaWorldItemOwner1458.TryPlanSort(physical, main, locale, (byte)order,
+                        false, arithmetic != 0, world, out var plan) || plan is null) continue;
+                    var after = capture.Before.ToArray();
+                    for (int i = 0; i < length; i++) after[start + i] = InventoryTuple(plan.Slots[i]);
+                    if ((plan.Overflow?.Length ?? 0) != 0 || !after.AsSpan().SequenceEqual(reports)) continue;
+                    bool complete = true;
+                    for (int i = 0; i < 219; i++) if (after[i] != capture.Before[i] && !seen[i]) complete = false;
+                    if (!complete) continue;
+                    var copper = capture.Copper.ToArray(); var quantity = capture.Quantity; var caps = capture.Caps;
+                    if (!TryApplySortFunding(capture.Before, plan, main, main ? 59 : start,
+                        copper, quantity, out var replayed) || !replayed.AsSpan().SequenceEqual(after)) continue;
+                    ReconcileFinalBankCaps(capture.Before, after, caps);
+                    if (!AreValidRetainedMainShopImage(after.AsSpan(0, 59), quantity.AsSpan(0, 59).ToArray(),
+                        copper.AsSpan(0, 59).ToArray(), caps.AsSpan(0, 59 * 5)) ||
+                        !AreValidShopBanks(after.AsSpan(59), copper.AsSpan(59)) ||
+                        !AreValidShopBankOwnership(after.AsSpan(59), quantity.AsSpan(59), caps.AsSpan(59 * 5))) continue;
+                    var candidate = new ShopBankMovePreparation(this, connection, capture, after, copper, quantity, caps);
+                    if (accepted is not null && !accepted.HasSameAcceptedImage(candidate))
+                    { result.Preparation = null; result.Ambiguous = true; yield break; }
+                    accepted = candidate;
+                    if (candidate.CanElideConservativeBankAlternatives())
+                    { result.Preparation = candidate; yield break; }
+                }
+            }
+        }
+        result.Preparation = accepted;
+    }
+
+    // ItemSorting.Sort moves the post-merge items as a bijection. The cursor is
+    // not a scratch slot, and sorting reports never grant provenance. Both
+    // budget images travel with the exact source tuple, including empty slots.
+    private static bool TryApplySortFunding(RuntimePlayerInventoryItem[] before,
+        WorldItemSortPlan1458 plan, bool mainInventory, int bankStart,
+        long[] copper, short[] quantity, out RuntimePlayerInventoryItem[] after)
+        => TryApplySortFunding(before, plan, mainInventory, bankStart, copper, quantity, out after, out _);
+
+    private static bool TryApplySortFunding(RuntimePlayerInventoryItem[] before,
+        WorldItemSortPlan1458 plan, bool mainInventory, int bankStart,
+        long[] copper, short[] quantity, out RuntimePlayerInventoryItem[] after, out long[] overflowFunding)
+    {
+        after = []; overflowFunding = [];
+        if (before.Length != 219 || copper.Length != 219 || quantity.Length != 219 ||
+            plan.Slots.Length != (mainInventory ? 59 : 40) ||
+            (!mainInventory && bankStart is not (59 or 99 or 139 or 179))) return false;
+        if (!TryApplyBankStorageFunding(before, plan.Steps, bankStart, copper, quantity, out var image, out overflowFunding) ||
+            overflowFunding.Length != (plan.Overflow?.Length ?? 0)) return false;
+        var permutation = plan.Permutation;
+        if (permutation.Sources.Length != permutation.Destinations.Length ||
+            permutation.Sources.Length != permutation.Before.Length ||
+            permutation.Sources.Length > 40) return false;
+        int Map(short slot) => slot < 59 ? slot : bankStart + slot - 59;
+        bool InDomain(short slot) => mainInventory ? slot is >= 10 and < 50 : slot is >= 59 and < 99;
+        var sources = new bool[219]; var destinations = new bool[219];
+        var originalCopper = copper.ToArray(); var originalQuantity = quantity.ToArray();
+        for (int i = 0; i < permutation.Sources.Length; i++)
+        {
+            short source = permutation.Sources[i], destination = permutation.Destinations[i];
+            if (!InDomain(source) || !InDomain(destination)) return false;
+            int from = Map(source), to = Map(destination);
+            if (sources[from] || destinations[to] ||
+                image[from] != InventoryTuple(permutation.Before[i]) ||
+                (image[from].ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0) return false;
+            sources[from] = true; destinations[to] = true;
+        }
+        if (!sources.AsSpan().SequenceEqual(destinations)) return false;
+        // Every nonfavorite domain slot participates. Omitting an air source
+        // would leave an earlier funded item under an unrelated sorted report.
+        for (short slot = mainInventory ? (short)10 : (short)59;
+            slot < (mainInventory ? 50 : 99); slot++)
+        {
+            int index = Map(slot);
+            bool favorite = (image[index].ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0;
+            if (sources[index] == favorite) return false;
+        }
+        after = image.ToArray();
+        for (int i = 0; i < permutation.Sources.Length; i++)
+        {
+            int from = Map(permutation.Sources[i]), to = Map(permutation.Destinations[i]);
+            after[to] = image[from]; copper[to] = originalCopper[from]; quantity[to] = originalQuantity[from];
+        }
+        int start = mainInventory ? 0 : bankStart;
+        for (int i = 0; i < plan.Slots.Length; i++)
+            if (after[start + i] != InventoryTuple(plan.Slots[i])) return false;
         return true;
     }
 
@@ -303,18 +441,72 @@ internal sealed partial class RuntimePlayerInventoryStore
         return true;
     }
 
+    // Every conserving source path preserves noncoin budget totals by exact
+    // (type,prefix), and total funded copper across coin denominations. Zero or
+    // fully funded groups have a unique allocation under each physical ceiling.
+    // A partial group is also unique when only one final physical slot holds it.
+    // Partial groups split across destinations still require all alternatives.
+    private static bool HasUniqueConservativeFunding(ReadOnlySpan<RuntimePlayerInventoryItem> before,
+        ReadOnlySpan<short> beforeQuantity, ReadOnlySpan<long> beforeCopper,
+        ReadOnlySpan<RuntimePlayerInventoryItem> after, ReadOnlySpan<short> afterQuantity,
+        ReadOnlySpan<long> afterCopper)
+    {
+        if (before.Length != 219 || after.Length != 219 || beforeQuantity.Length != 219 ||
+            beforeCopper.Length != 219 || afterQuantity.Length != 219 || afterCopper.Length != 219) return false;
+        var groups = new Dictionary<(int Type, int Prefix),
+            (long BeforePhysical, long BeforeBudget, long AfterPhysical, long AfterBudget, int Destinations)>();
+        long coinBefore = 0, coinAfter = 0, budgetBefore = 0, budgetAfter = 0;
+        int coinDestinations = 0;
+        for (int phase = 0; phase < 2; phase++)
+        {
+            var image = phase == 0 ? before : after;
+            var q = phase == 0 ? beforeQuantity : afterQuantity;
+            var money = phase == 0 ? beforeCopper : afterCopper;
+            for (int i = 0; i < 219; i++)
+            {
+                long value = CoinValue(image[i]);
+                if (q[i] < 0 || q[i] > image[i].Stack || money[i] < 0 || money[i] > value ||
+                    (value > 0 && q[i] != 0) || (image[i].IsEmpty && (q[i] != 0 || money[i] != 0))) return false;
+                if (image[i].IsEmpty) continue;
+                if (value > 0)
+                {
+                    if (phase == 0) { coinBefore += value; budgetBefore += money[i]; }
+                    else { coinAfter += value; budgetAfter += money[i]; coinDestinations++; }
+                    continue;
+                }
+                var key = (image[i].ItemType.Value, image[i].Prefix.Value);
+                groups.TryGetValue(key, out var group);
+                if (phase == 0) { group.BeforePhysical += image[i].Stack; group.BeforeBudget += q[i]; }
+                else { group.AfterPhysical += image[i].Stack; group.AfterBudget += q[i]; group.Destinations++; }
+                groups[key] = group;
+            }
+        }
+        if (coinBefore != coinAfter || budgetBefore != budgetAfter ||
+            (budgetBefore != 0 && budgetBefore != coinBefore && coinDestinations != 1)) return false;
+        foreach (var group in groups.Values)
+            if (group.BeforePhysical != group.AfterPhysical || group.BeforeBudget != group.AfterBudget ||
+                (group.BeforeBudget != 0 && group.BeforeBudget != group.BeforePhysical && group.Destinations != 1)) return false;
+        return true;
+    }
+
     internal sealed class ShopBankMovePreparation(RuntimePlayerInventoryStore owner, ConnectionHandle connection,
         ShopJournalCapture capture, RuntimePlayerInventoryItem[] after, long[] copper, short[] quantity, short[] caps)
     {
+        internal IEnumerable<int> PrepareConservativeClosedCursorWitnesses(int animation,int itemTime,
+            BankBulkResolution result) => owner.PrepareClosedCursorWitnesses(capture,after,copper,quantity,
+                caps,animation,itemTime,result);
+
         private bool adopted;
         internal bool IsCurrent => !adopted && capture.IsCurrent && owner.Serial < ulong.MaxValue - 1;
-        // With every original physical unit funded, every admitted conserving
-        // source path to this exact image has the same full provenance image.
+        // A conserving source witness may elide alternatives only when bounded
+        // per-identity budgets prove the final allocation is unique.
         // Caps use only original->final lanes, including untouched obligations.
         internal bool CanElideConservativeBankAlternatives()
         {
-            if (!HasFullBankFunding(capture.Before, capture.Quantity, capture.Copper) ||
-                !HasFullBankFunding(after, quantity, copper)) return false;
+            if (!(HasFullBankFunding(capture.Before, capture.Quantity, capture.Copper) &&
+                HasFullBankFunding(after, quantity, copper)) &&
+                !HasUniqueConservativeFunding(capture.Before, capture.Quantity, capture.Copper,
+                    after, quantity, copper)) return false;
             var expectedCaps = capture.Caps;
             ReconcileFinalBankCaps(capture.Before, after, expectedCaps);
             return caps.AsSpan().SequenceEqual(expectedCaps);

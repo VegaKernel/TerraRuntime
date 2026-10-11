@@ -146,9 +146,14 @@ public sealed class OwnedPickupStorageSource1458Tests
         var full = Enumerable.Repeat(new WorldItemPickupSlot1458(3, 9999, 0, false), 59).ToArray();
         foreach (var bad in new WorldItemPickupSlot1458[]
         {
-            default, new(-1, 1, 0, false), new(71, 0, 0, false), new(71, 101, 0, false),
-            new(74, 10000, 0, false), new(71, 1, -1, false), new(71, 1, 256, false)
+            default, new(-1, 1, 0, false), new(71, 0, 0, false), new(71, 32768, 0, false),
+            new(74, 1, VanillaItemPrefixCatalog.Count, false), new(71, 1, -1, false), new(71, 1, 256, false)
         }) Check(!VanillaWorldItemOwner1458.TryPlanStorage(bad, full, false, null, out _), "malformed incoming refusal");
+        // GetItem's source-retained coin stack bound is distinct from nominal capacity.
+        foreach (var valid in new[] { new WorldItemPickupSlot1458(71, 101, 0, false), new(74, 10000, 0, false) })
+            Check(VanillaWorldItemOwner1458.TryPlanStorage(valid, full, false, null, out var retained) &&
+                retained!.Taken == 0 && retained.Mutations.Length == 0 && retained.Residual == valid,
+                "source-positive retained stack with no capacity");
         var copper = new WorldItemPickupSlot1458(71, 20, 0, false);
         Check(!VanillaWorldItemOwner1458.TryPlanStorage(copper, full, true, null, out _), "void residual boundary");
         Check(VanillaWorldItemOwner1458.TryPlanStorage(copper, full, false, null, out var noSpace) &&

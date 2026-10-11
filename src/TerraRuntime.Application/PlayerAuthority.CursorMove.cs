@@ -11,7 +11,7 @@ internal sealed partial class PlayerAuthority
         RuntimePlayerItemPhase1458? Phase, ulong InputRevision, RuntimePlayerInventoryStore.CursorMovePreparation? Inventory, PendingCursorReturn? Return = null, PendingShopJournal? Shop = null);
 
     // Protocol 5 has no UI intent. This bounded authority policy accepts only a paired,
-    // source-valid conserved context-0 transition over existing quantity custody.
+    // source-valid conserved context-0/coin-1 transition over existing quantity custody.
     private bool TryReconcileOwnedCursorMove(PlayerEquipmentRuntimeCommand command)
     {
         var request = command.Request;
@@ -21,6 +21,33 @@ internal sealed partial class PlayerAuthority
         if (cursorMovePublishing)
         { member.CursorMove = null; RejectedEquipmentUpdates++; return true; }
         var pending = member.CursorMove;
+        // Source PickupItem followed by a coin-slot LeftClick may emit only cursor58:
+        // the client slot began and ended Air before its next sync. Match all four
+        // stored coin sources; two possible source lanes have different full images.
+        if (pending?.Inventory is null && pending?.Shop is null &&
+            request.SlotId == VanillaPlayerItemSlotCatalog.InventoryMouseItem &&
+            HasOwnedPickupContext && !member.IsDead && member.ItemPhase is not null &&
+            TryCursorReport(in request, out var firstCursor))
+        {
+            RuntimePlayerInventoryStore.CursorMovePreparation? selected = null;
+            for (short coinSlot = 50; coinSlot < 54; coinSlot++)
+            {
+                if (!inventory.TryGet(command.Connection, coinSlot, out var source) || source.IsEmpty ||
+                    !TerraRuntime.Contracts.Gameplay.VanillaCoinFacts.TryGetValue(source.ItemType, out _) ||
+                    !inventory.TryPrepareReportedCursorMove(command.Connection, coinSlot, default,
+                        member.ItemAnimation, member.ItemPhase.Value.Selected.ItemTime, out var candidate) ||
+                    candidate is null || !candidate.TrySelectCursorImage(firstCursor)) continue;
+                if (selected is not null) { RejectedEquipmentUpdates++; return true; }
+                selected = candidate;
+            }
+            if (selected is not null)
+            {
+                pending = new(member.CaptureSnapshot(), member.ItemPhase,
+                    member.ProjectileUseInputRevision, selected);
+                member.CursorMove = pending;
+            }
+        }
+
         if (pending is not null && pending.Inventory is not null)
         {
             if (request.SlotId == pending.Inventory.Slot && TryCursorReport(in request, out var duplicate) &&

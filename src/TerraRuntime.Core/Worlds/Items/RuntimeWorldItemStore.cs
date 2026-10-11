@@ -263,6 +263,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Update = default;
             state.FundedQuantity = 0;
             state.FundedCoinValue = 0;
+            state.OwnedCoinPhysical = false;
             return true;
         }
         finally
@@ -464,6 +465,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Update = default;
             state.FundedQuantity = 0;
             state.FundedCoinValue = 0;
+            state.OwnedCoinPhysical = false;
             _activeCount--;
         }
         finally
@@ -576,6 +578,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Update = update;
             state.FundedQuantity = 0;
             state.FundedCoinValue = 0;
+            state.OwnedCoinPhysical = false;
             _activeCount++;
             snapshot = Capture(slot, in state);
             return true;
@@ -598,6 +601,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Update = default;
             state.FundedQuantity = 0;
             state.FundedCoinValue = 0;
+            state.OwnedCoinPhysical = false;
             reservation = new WorldItemDropReservation(slot, new WorldItemGeneration(state.Generation));
             return true;
         }
@@ -641,6 +645,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             }
 
             state.FundedCoinValue = CoinPhysicalValue(state.Update.ItemNetId, state.Update.Stack);
+            state.OwnedCoinPhysical = false;
             state.FundedQuantity = state.FundedCoinValue > 0 ? 0 : state.Update.Stack; // Existing trusted server-drop producer.
             state.Reserved = false;
             state.Active = true;
@@ -690,7 +695,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
         state.Update = update;
         state.FundedQuantity = 0;
-            state.FundedCoinValue = 0; // Generic upsert/import is not a funded producer.
+            state.FundedCoinValue = 0;
+            state.OwnedCoinPhysical = false; // Generic upsert/import is not a funded producer.
         snapshot = Capture(slot, in state);
         return true;
     }
@@ -830,6 +836,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
     {
         public bool Active;
         public int FundedQuantity; // Generation-owned noncoin quantity; never serialized/imported.
+        public bool OwnedCoinPhysical; // Prepared-owned physical coin capability, exact-generation, never imported.
         public long FundedCoinValue; // Copper-unit custody survives owned denomination conversion; raw snapshots never seed it.
         public bool Reserved;
         public bool Claimed;

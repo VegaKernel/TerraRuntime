@@ -76,7 +76,8 @@ internal sealed partial class WorldItemAuthority
         int funded;
         if (coin)
         {
-            if (!worldItems.TryGetFundedCoinValue(in item, out fundedCoinValue) || fundedCoinValue <= 0) return false;
+            if (!worldItems.TryGetFundedCoinValue(in item, out fundedCoinValue) ||
+                (fundedCoinValue == 0 && !worldItems.HasOwnedCoinPhysical(in item))) return false;
             funded = item.Stack; // Physical storage and copper-value custody remain distinct.
         }
         else if (!worldItems.TryGetFundedQuantity(in item, out funded) || funded <= 0) return false;

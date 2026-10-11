@@ -83,6 +83,8 @@
     <EmbeddedResource Include="Fixtures/owned-pickup-crossplatform-configured-official-1458.json.gz" LogicalName="OwnedPickupStorage1458" />
     <EmbeddedResource Include="Fixtures/owned-pickup-diagonal-shimmer-source.json.gz" LogicalName="OwnedPickupShimmer1458" />
     <EmbeddedResource Include="Fixtures/owned-pickup-grab-contact-configured-official-1458.json.gz" LogicalName="OwnedPickupContact1458" />
+    <EmbeddedResource Include="Fixtures/OriginalItemSortingMetadata1458.json.gz" LogicalName="OriginalItemSortingMetadata1458" />
+    <EmbeddedResource Include="Fixtures/OriginalItemSortCoinOverflow1458.json.gz" LogicalName="OriginalItemSortCoinOverflow1458" />
   </ItemGroup>
 
   <ItemGroup>
@@ -497,5 +499,24 @@
     <EmbeddedResource Include="Fixtures/bank-bulk-clocks-configured-official-1458.json.gz" LogicalName="BankBulkStorageClocksSource1458" />
     <EmbeddedResource Include="Fixtures/bank-movecoins-edge-and-partial-configured-official-1458.json.gz" LogicalName="BankMoveCoinsEdgesSource1458" />
     <EmbeddedResource Include="Fixtures/multi-bank-cursor-configured-official-1458.json.gz" LogicalName="OriginalMultiBankCursor1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/OriginalOversizedCoinPickup1458.json.gz" LogicalName="OriginalOversizedCoinPickup1458" />
+    <EmbeddedResource Include="Fixtures/OriginalExistingCoinPickup1458.json.gz" LogicalName="OriginalExistingCoinPickup1458" />
+    <EmbeddedResource Include="Fixtures/OriginalRetainedCoinPickup1458.json.gz" LogicalName="OriginalRetainedCoinPickup1458" />
+    <EmbeddedResource Include="Fixtures/OriginalRetainedCoinCursor1458.json.gz" LogicalName="OriginalRetainedCoinCursor1458" />
+    <EmbeddedResource Include="Fixtures/OriginalRetainedCoinWallet1458.json.gz" LogicalName="OriginalRetainedCoinWallet1458" />
+    <EmbeddedResource Include="Fixtures/OriginalOversizedCoinPickupSort1458.json.gz" LogicalName="OriginalOversizedCoinPickupSort1458" />
+    <EmbeddedResource Include="Fixtures/OriginalRetainedCoinSlotCursor1458.json.gz" LogicalName="OriginalRetainedCoinSlotCursor1458" />
+    <EmbeddedResource Include="Fixtures/OriginalRetainedPrefixedCoinWallet1458.json.gz" LogicalName="OriginalRetainedPrefixedCoinWallet1458" />
+    <EmbeddedResource Include="Fixtures/OriginalRetainedCoinSlotExchange1458.json.gz" LogicalName="OriginalRetainedCoinSlotExchange1458" />
+    <EmbeddedResource Include="Fixtures/OriginalOversizedCoinPickupCursorChain1458.json.gz" LogicalName="OriginalOversizedCoinPickupCursorChain1458" />
+    <EmbeddedResource Include="Fixtures/OwnedOversizedCursorChainLinux1458.json.gz" LogicalName="OwnedOversizedCursorChainLinux1458" />
+    <EmbeddedResource Include="Fixtures/OwnedOversizedCursorChainWindows1458.json.gz" LogicalName="OwnedOversizedCursorChainWindows1458" />
+    <EmbeddedResource Include="Fixtures/OwnedOversizedPickupLinux1458.json.gz" LogicalName="OwnedOversizedPickupLinux1458" />
+    <EmbeddedResource Include="Fixtures/OwnedOversizedPickupWindows1458.json.gz" LogicalName="OwnedOversizedPickupWindows1458" />
+    <EmbeddedResource Include="Fixtures/bank-restock-configured-official-1458.json.gz" LogicalName="BankRestockSource1458" />
+    <EmbeddedResource Include="Fixtures/OriginalLocalizedItemSorting1458.json.gz" LogicalName="OriginalLocalizedItemSorting1458" />
+    <EmbeddedResource Include="Fixtures/OriginalClosedSortCycle1458.json.gz" LogicalName="OriginalClosedSortCycle1458" />
   </ItemGroup>
 </Project>

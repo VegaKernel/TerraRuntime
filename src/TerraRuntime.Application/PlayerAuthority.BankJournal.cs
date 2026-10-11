@@ -51,6 +51,12 @@ internal sealed partial class PlayerAuthority
             throw new InvalidOperationException("Prepared bank owner lost currentness during pure adoption.");
         member.TryAdvanceRevision();
         MirrorAcceptedBank4Reports(connection, journal);
+        PublishAcceptedBankJournal(connection, member, journal, payment);
+        return true;
+    }
+    private void PublishAcceptedBankJournal(ConnectionHandle connection, RuntimePlayerMember member,
+        PendingShopJournal journal, RuntimePlayerInventoryStore.ShopBankMovePreparation payment)
+    {
         Exception? failure = null;
         shopJournalPublishing[connection.Player.Slot.Value] = connection;
         try
@@ -70,7 +76,6 @@ internal sealed partial class PlayerAuthority
         }
         finally { shopJournalPublishing[connection.Player.Slot.Value] = null; }
         if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        return true;
     }
     internal sealed class BankResolution
     {
@@ -81,6 +86,34 @@ internal sealed partial class PlayerAuthority
     private IEnumerable<int> ResolveBankJournal(ConnectionHandle connection, PendingShopJournal journal, BankResolution result)
     {
         yield return 0;
+        if (journal.MainSortOnly)
+        {
+            var onlySort = new RuntimePlayerInventoryStore.BankBulkResolution();
+            using var sortWork = inventory.PrepareShopSortWork(connection, journal.Capture,
+                journal.Reports, journal.Seen, receivePrefixWorld, onlySort, true).GetEnumerator();
+            while (sortWork.MoveNext()) yield return 0;
+            result.Accepted = onlySort.Preparation; result.Ambiguous = onlySort.Ambiguous;
+            if (result.Ambiguous || (result.Accepted is { } fullyOwned && fullyOwned.CanElideConservativeBankAlternatives())) yield break;
+            if (result.Accepted is { } physical)
+            {
+                var closed = new RuntimePlayerInventoryStore.BankBulkResolution();
+                using var work = physical.PrepareConservativeClosedCursorWitnesses(journal.PlanningAnimation,
+                    journal.PlanningItemTime, closed).GetEnumerator();
+                while (work.MoveNext()) yield return 0;
+                if (closed.Ambiguous) { result.Accepted = null; result.Ambiguous = true; yield break; }
+            }
+            using var mainChains = inventory.TryCreateShopBankChainWork(connection, journal.Capture,
+                journal.Reports, journal.Seen, journal.PlanningAnimation, journal.PlanningItemTime, true);
+            if (mainChains is not null)
+            {
+                while (mainChains.MoveNext()) yield return 0;
+                if (mainChains.Ambiguous || (result.Accepted is not null && mainChains.Preparation is not null &&
+                    !result.Accepted.HasSameAcceptedImage(mainChains.Preparation)))
+                { result.Accepted = null; result.Ambiguous = true; yield break; }
+                result.Accepted ??= mainChains.Preparation;
+            }
+            yield break;
+        }
         inventory.TryPrepareShopBankMove(connection, journal.Capture, journal.Reports, journal.Seen,
             journal.PlanningAnimation, journal.PlanningItemTime, out var single, out bool ambiguous);
         if (ambiguous) { result.Ambiguous = true; yield break; }
@@ -93,6 +126,24 @@ internal sealed partial class PlayerAuthority
         if (bulk.Ambiguous || (single is not null && bulk.Preparation is not null &&
             !single.HasSameAcceptedImage(bulk.Preparation))) { result.Ambiguous = true; yield break; }
         result.Accepted = single ?? bulk.Preparation;
+        if (result.Accepted is { } allFunded && allFunded.CanElideConservativeBankAlternatives()) yield break;
+        var sorting = new RuntimePlayerInventoryStore.BankBulkResolution();
+        using (var sortWork = inventory.PrepareShopSortWork(connection, journal.Capture,
+            journal.Reports, journal.Seen, receivePrefixWorld, sorting, false).GetEnumerator())
+            while (sortWork.MoveNext()) yield return 0;
+        if (sorting.Ambiguous || (result.Accepted is not null && sorting.Preparation is not null &&
+            !result.Accepted.HasSameAcceptedImage(sorting.Preparation)))
+        { result.Ambiguous = true; result.Accepted = null; yield break; }
+        result.Accepted ??= sorting.Preparation;
+        if (result.Accepted is { } fullyFunded && fullyFunded.CanElideConservativeBankAlternatives()) yield break;
+        if (result.Accepted is { } physicalCandidate)
+        {
+            var closed = new RuntimePlayerInventoryStore.BankBulkResolution();
+            using var work = physicalCandidate.PrepareConservativeClosedCursorWitnesses(journal.PlanningAnimation,
+                journal.PlanningItemTime, closed).GetEnumerator();
+            while (work.MoveNext()) yield return 0;
+            if (closed.Ambiguous) { result.Accepted = null; result.Ambiguous = true; yield break; }
+        }
         yield return 0;
         using (var chains = inventory.TryCreateShopBankChainWork(connection, journal.Capture,
             journal.Reports, journal.Seen, journal.PlanningAnimation, journal.PlanningItemTime))
@@ -127,6 +178,8 @@ internal sealed partial class PlayerAuthority
     private void CompleteBankJournal(ConnectionHandle connection, RuntimePlayerMember member,
         PendingCursorMove receipt, PendingShopJournal journal, BankResolution result)
     {
+        if (journal.MainSortOnly && !result.Ambiguous && result.Accepted is null && !journal.StagedQuantityImage)
+        { DropBankBatchAlternative(member, journal); return; }
         if (result.Ambiguous || result.Accepted is null || !IsCurrentShopActor(member, receipt) ||
             !journal.Capture.IsCurrent || member.Revision == ulong.MaxValue ||
             member.ProjectileUseInputRevision == ulong.MaxValue)

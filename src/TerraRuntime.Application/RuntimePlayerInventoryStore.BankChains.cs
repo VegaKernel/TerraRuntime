@@ -8,22 +8,31 @@ internal sealed partial class RuntimePlayerInventoryStore
     internal BankChainWork? TryCreateShopBankChainWork(ConnectionHandle connection,
         ShopJournalCapture capture, RuntimePlayerInventoryItem[] reports, bool[] seen,
         int animation, int itemTime)
+        => TryCreateShopBankChainWork(connection, capture, reports, seen, animation, itemTime, false);
+
+    internal BankChainWork? TryCreateShopBankChainWork(ConnectionHandle connection,
+        ShopJournalCapture capture, RuntimePlayerInventoryItem[] reports, bool[] seen,
+        int animation, int itemTime, bool allowMainOnly)
     {
         if (!capture.IsCurrent || animation != 0 || reports.Length != 219 || seen.Length != 219 ||
             Serial >= ulong.MaxValue - 1) return null;
         var before = capture.Before;
         var caps = capture.Caps;
-        bool changedBank = false;
+        bool changedBank = false, changedMain = false;
         for (int slot = 0; slot < before.Length; slot++)
         {
             if (!reports[slot].IsCanonical || (reports[slot].IsEmpty && reports[slot] != default) ||
                 (reports[slot].ItemFlags & ~PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0 ||
                 (before[slot] != reports[slot] && !seen[slot])) return null;
             if (slot >= 59 && before[slot] != reports[slot]) changedBank = true;
+            if (slot < 58 && before[slot] != reports[slot]) changedMain = true;
             int lane = QuantityLane(before[slot].ItemType);
             if (lane >= 0 && caps[slot * 5 + lane] >= 0 && before[slot].Stack > caps[slot * 5 + lane]) return null;
         }
-        if (!changedBank || !ConservesBankCursorIdentities(before, reports)) return null;
+        // Main-only comparison is an explicit caller policy. It never permits
+        // an unreported bank or cursor change, or bypasses conserved identities.
+        bool mainOnly = allowMainOnly && changedMain && !changedBank && before[58] == reports[58];
+        if ((!changedBank && !mainOnly) || !ConservesBankCursorIdentities(before, reports)) return null;
         return new(this, connection, capture, reports.ToArray(), itemTime);
     }
 
@@ -81,6 +90,9 @@ internal sealed partial class RuntimePlayerInventoryStore
         private readonly IEnumerator<bool> walker;
         private bool disposed;
         private bool completed;
+        private const int MaximumRememberedStates = 128;
+        private readonly VisitedState?[] visited = new VisitedState?[MaximumRememberedStates];
+        private int visitedCount;
         internal ShopBankMovePreparation? Preparation { get; private set; }
         internal bool Ambiguous { get; private set; }
         internal long Steps { get; private set; }
@@ -94,7 +106,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             var stage = new byte[image.Length];
             for (int slot = 0; slot < image.Length; slot++)
                 if (slot == 58 || image[slot] == target[slot]) stage[slot] = 2;
-            walker = Visit(image, capture.Copper.ToArray(), capture.Quantity, capture.Caps, stage, false).GetEnumerator();
+            walker = Walk(image, capture.Copper.ToArray(), capture.Quantity, capture.Caps, stage).GetEnumerator();
         }
 
         internal bool MoveNext()
@@ -113,7 +125,106 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (disposed) return;
             disposed = true;
             walker.Dispose();
+            Array.Clear(visited);
+            visitedCount = 0;
         }
+
+        private IEnumerable<bool> Walk(RuntimePlayerInventoryItem[] image, long[] copper,
+            short[] quantity, short[] caps, byte[] stage)
+        {
+            // A donor may be split before it reaches its final residual. Every
+            // constructed Right/Left pair is a real primitive; source surplus and
+            // target deficit decrease, so no unreported loop is reconstructed.
+            foreach (bool step in VisitSplitSettlements())
+            { yield return step; if (Ambiguous) yield break; }
+            foreach (bool step in Visit(image, copper, quantity, caps, stage, false))
+            { yield return step; if (Ambiguous) yield break; }
+        }
+
+        private IEnumerable<bool> VisitSplitSettlements()
+        {
+            if (itemTime != 0 || !capture.Before[58].IsEmpty || !target[58].IsEmpty) yield break;
+            for (int order = 0; order < 6; order++)
+            {
+                var image = capture.Before.ToArray(); var copper = capture.Copper.ToArray();
+                var quantity = capture.Quantity; var caps = capture.Caps;
+                var sources = Enumerable.Range(0, image.Length).Where(i => i != 58);
+                if (order >= 3) sources = sources.Reverse();
+                bool valid = true;
+                foreach (int source in sources)
+                {
+                    int retained = image[source].ItemType == target[source].ItemType &&
+                        image[source].Prefix == target[source].Prefix ? target[source].Stack : 0;
+                    int surplus = image[source].Stack - retained;
+                    if (surplus <= 0 || image[source].IsEmpty) continue;
+                    var destinations = Enumerable.Range(0, image.Length).Where(i => i != source && i != 58 &&
+                        target[i].ItemType == image[source].ItemType && target[i].Prefix == image[source].Prefix &&
+                        (image[i].IsEmpty || image[i].ItemType == target[i].ItemType && image[i].Prefix == target[i].Prefix) &&
+                        target[i].Stack > image[i].Stack);
+                    destinations = order % 3 == 0 ? destinations.OrderBy(i => image[i].IsEmpty ? 0 : 1).ThenBy(i => i)
+                        : order % 3 == 1 ? destinations.OrderBy(i => i) : destinations.OrderByDescending(i => i);
+                    foreach (int destination in destinations.ToArray())
+                    {
+                        int amount = Math.Min(surplus, target[destination].Stack - image[destination].Stack);
+                        var residual = image[source].Stack == amount ? default
+                            : image[source] with { Stack = checked((short)(image[source].Stack - amount)) };
+                        int sourceContext = source < 59 ? VanillaInventoryCursorMove1458.OrdinaryContext
+                            : source < 179 ? VanillaInventoryCursorMove1458.BankContext : VanillaInventoryCursorMove1458.VoidBankContext;
+                        yield return true;
+                        if (!TryBankPair(image, copper, quantity, caps, source, residual, null, true, itemTime, sourceContext))
+                        { valid = false; break; }
+                        var settled = target[destination] with { Stack = checked((short)(image[destination].Stack + amount)) };
+                        int destinationContext = destination < 59 ? VanillaInventoryCursorMove1458.OrdinaryContext
+                            : destination < 179 ? VanillaInventoryCursorMove1458.BankContext : VanillaInventoryCursorMove1458.VoidBankContext;
+                        yield return true;
+                        if (!TryBankPair(image, copper, quantity, caps, destination, settled, default(RuntimePlayerInventoryItem),
+                            false, itemTime, destinationContext)) { valid = false; break; }
+                        surplus -= amount;
+                        if (surplus == 0) break;
+                    }
+                    if (!valid) break;
+                }
+                if (!valid || !image.AsSpan().SequenceEqual(target)) continue;
+                // Reuse the exact final-image/custody/cap comparison of the DFS.
+                foreach (bool step in Visit(image, copper, quantity, caps, new byte[image.Length], false))
+                { yield return step; if (Ambiguous) yield break; }
+            }
+        }
+
+        // Exact state memoization preserves every possible continuation. Fingerprints
+        // only filter comparisons; a hit requires the full physical/private/stage image.
+        // The fixed cache bounds retained memory, not the search: once full, new states
+        // are explored normally without being inserted. Stages/relay progress prevent
+        // an identical state from being a live ancestor of its own continuation.
+        private bool WasVisited(RuntimePlayerInventoryItem[] image, long[] copper,
+            short[] quantity, short[] caps, byte[] stage, bool relayed)
+        {
+            var hash = new HashCode();
+            foreach (var item in image) hash.Add(item);
+            foreach (long value in copper) hash.Add(value);
+            foreach (short value in quantity) hash.Add(value);
+            foreach (short value in caps) hash.Add(value);
+            foreach (byte value in stage) hash.Add(value);
+            hash.Add(relayed);
+            int fingerprint = hash.ToHashCode();
+            for (int i = 0; i < visitedCount; i++)
+            {
+                if (visited[i] is not { } state) continue;
+                if (state.Fingerprint == fingerprint && state.Relayed == relayed &&
+                    state.Image.AsSpan().SequenceEqual(image) &&
+                    state.Copper.AsSpan().SequenceEqual(copper) &&
+                    state.Quantity.AsSpan().SequenceEqual(quantity) &&
+                    state.Caps.AsSpan().SequenceEqual(caps) &&
+                    state.Stage.AsSpan().SequenceEqual(stage)) return true;
+            }
+            if (visitedCount < visited.Length)
+                visited[visitedCount++] = new(fingerprint, image.ToArray(), copper.ToArray(),
+                    quantity.ToArray(), caps.ToArray(), stage.ToArray(), relayed);
+            return false;
+        }
+
+        private sealed record VisitedState(int Fingerprint, RuntimePlayerInventoryItem[] Image,
+            long[] Copper, short[] Quantity, short[] Caps, byte[] Stage, bool Relayed);
 
         // Progress stages only increase: untouched -> opened -> final. At most
         // 218 noncursor slots can change, bounding active depth to 437 frames
@@ -122,6 +233,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         private IEnumerable<bool> Visit(RuntimePlayerInventoryItem[] image, long[] copper,
             short[] quantity, short[] caps, byte[] stage, bool relayed)
         {
+            if (WasVisited(image, copper, quantity, caps, stage, relayed)) yield break;
             if (image.AsSpan().SequenceEqual(target))
             {
                 var finalCaps = capture.Caps;

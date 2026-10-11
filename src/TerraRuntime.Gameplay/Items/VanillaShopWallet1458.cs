@@ -91,7 +91,7 @@ public static partial class VanillaShopWallet1458
             }
         }
         foreach (var list in empty) list.Sort(CompareEncodedDescendingSlot);
-        if (available < price) return false;
+        if (Math.Min(available, VanillaCoinFacts.MaximumCombinedPurchaseCopper) < price) return false;
         long remaining = price;
         // Each pass either pays value or breaks one denomination. The four bounded
         // wallets contain at most 214 canonical coin piles; no external callbacks occur.
@@ -298,7 +298,10 @@ public static partial class VanillaShopWallet1458
     }
     private static bool Canonical(in WorldItemPickupSlot1458 item) => item.Type == 0 // gameplay-domain-literal-audit: allow raw-entity-type-decision - Zero validates canonical Air, not a content-specific rule.
         ? item == default
-        : item.Stack > 0 && (uint)item.Prefix <= 97 && VanillaWorldItemAllocationCatalog1458.TryGet(item.Type, out var facts) && item.Stack <= facts.MaximumStack;
+        : item.Stack > 0 && (uint)item.Prefix <= 97 && VanillaWorldItemAllocationCatalog1458.TryGet(item.Type, out var facts) &&
+            (VanillaCoinFacts.TryGetValue(new ItemTypeId(item.Type), out _)
+                ? VanillaCoinFacts.IsValidRetainedStack(new ItemTypeId(item.Type), item.Stack)
+                : item.Stack <= facts.MaximumStack);
     private static int Maximum(int type) => type == VanillaCoinFacts.PlatinumCoin.Value
         ? VanillaCoinFacts.PlatinumMaximumStack : VanillaCoinFacts.LowerDenominationMaximumStack;
     private static long Unit(int type) => type switch { 71 => 1, 72 => 100, 73 => 10000, 74 => 1000000, _ => 0 };

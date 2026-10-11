@@ -119,10 +119,14 @@ public static partial class VanillaWorldItemOwner1458
     private static bool IsCanonicalStorageSlot(in WorldItemPickupSlot1458 item)
     {
         if (item.Type == 0) return item == default; // gameplay-domain-literal-audit: allow raw-entity-type-decision - Zero validates the canonical Air representation, not a content-specific rule.
+        // GetItem retains the independently validated source prefix; unlike wallet/cursor
+        // admission, this branch uses only the common positive-wire coin stack bound.
         return item.Type > 0 && item.Stack > 0 && item.Prefix >= 0 && item.Prefix < VanillaItemPrefixCatalog.Count && // gameplay-domain-literal-audit: allow raw-entity-type-decision - Canonical storage rejects signed variant IDs before retained-identity validation.
             VanillaItemRetainedIdentity1458.TryResolve(new ItemTypeId(item.Type), out var retained) &&
             retained.Value == item.Type &&
             VanillaWorldItemAllocationCatalog1458.TryGet(item.Type, out var allocation) &&
-            item.Stack <= allocation.MaximumStack;
+            (VanillaCoinFacts.TryGetValue(new ItemTypeId(item.Type), out _)
+                ? VanillaCoinFacts.IsValidRetainedStack(new ItemTypeId(item.Type), item.Stack)
+                : item.Stack <= allocation.MaximumStack);
     }
 }

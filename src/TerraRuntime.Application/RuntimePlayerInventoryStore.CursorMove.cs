@@ -9,31 +9,33 @@ internal sealed partial class RuntimePlayerInventoryStore
         RuntimePlayerInventoryItem reportedSlot, int animation, int itemTime, out CursorMovePreparation? prepared)
     {
         prepared = null;
-        if (slot is < 0 or >= 58 || VanillaPlayerItemSlotCatalog.IsCoinSlot(slot) ||
+        if (slot is < 0 or >= 58 ||
             !connection.IsAssigned || Serial >= ulong.MaxValue - 1 || !reportedSlot.IsCanonical ||
             !TryGet(connection, slot, out var beforeSlot) || !TryGet(connection, 58, out var beforeCursor)) return false;
         int player = connection.Player.Slot.Value;
         // A conserved pair may move custody; the reports themselves never create it.
         if (fundedQuantities[GetOffset(player, slot)] == 0 && fundedQuantities[GetOffset(player, 58)] == 0 &&
             coinFundedValues[GetOffset(player, slot)] == 0 && coinFundedValues[GetOffset(player, 58)] == 0 &&
-            !HasQuantityLane(player, slot, beforeSlot) && !HasQuantityLane(player, 58, beforeCursor)) return false;
+            !HasQuantityLane(player, slot, beforeSlot) && !HasQuantityLane(player, 58, beforeCursor) &&
+            !VanillaPlayerItemSlotCatalog.IsCoinSlot(slot)) return false;
+        int context = VanillaPlayerItemSlotCatalog.IsCoinSlot(slot) ? VanillaInventoryCursorMove1458.CoinContext : VanillaInventoryCursorMove1458.OrdinaryContext;
         var source = StorageTuple(beforeSlot); var cursor = StorageTuple(beforeCursor);
         var reported = StorageTuple(reportedSlot);
         bool leftAllowed = animation == 0 && itemTime == 0 &&
-            VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor, out var leftSlot, out _) && leftSlot == reported;
+            VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor, out var leftSlot, out _, context) && leftSlot == reported;
         bool rightAllowed = animation == 0 &&
             VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor, source.Stack - reported.Stack,
-                out var rightSlot, out _) && rightSlot == reported;
+                out var rightSlot, out _, context) && rightSlot == reported;
         if (!leftAllowed && !rightAllowed) return false;
         RuntimePlayerInventoryItem afterCursor;
         if (leftAllowed)
         {
-            _ = VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor, out _, out var leftCursor);
+            _ = VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor, out _, out var leftCursor, context);
             afterCursor = InventoryTuple(leftCursor);
         }
         else
         {
-            _ = VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor, source.Stack - reported.Stack, out _, out var rightCursor);
+            _ = VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor, source.Stack - reported.Stack, out _, out var rightCursor, context);
             afterCursor = InventoryTuple(rightCursor);
         }
         var image = new RuntimePlayerInventoryItem[InventorySlotCount];
@@ -131,13 +133,14 @@ internal sealed partial class RuntimePlayerInventoryStore
         }
         internal bool TrySelectCursorImage(RuntimePlayerInventoryItem reported)
         {
+            int context = VanillaPlayerItemSlotCatalog.IsCoinSlot(slot) ? VanillaInventoryCursorMove1458.CoinContext : VanillaInventoryCursorMove1458.OrdinaryContext;
             var source = StorageTuple(before[slot]); var cursor = StorageTuple(before[58]);
             var nextSource = StorageTuple(afterSlot); var nextCursor = StorageTuple(reported);
             if (leftAllowed && VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor,
-                out var leftSlot, out var leftCursor) && leftSlot == nextSource && leftCursor == nextCursor)
+                out var leftSlot, out var leftCursor, context) && leftSlot == nextSource && leftCursor == nextCursor)
                 toCursor = false;
             else if (rightAllowed && VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor,
-                source.Stack - nextSource.Stack, out var rightSlot, out var rightCursor) && rightSlot == nextSource && rightCursor == nextCursor)
+                source.Stack - nextSource.Stack, out var rightSlot, out var rightCursor, context) && rightSlot == nextSource && rightCursor == nextCursor)
                 toCursor = true;
             else return false;
             selectedCursor = reported;

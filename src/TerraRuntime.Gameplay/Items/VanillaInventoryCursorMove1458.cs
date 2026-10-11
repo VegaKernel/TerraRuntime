@@ -11,12 +11,13 @@ public enum InventoryCursorTransition1458 : byte
 }
 
 /// <summary>
-/// Detached context-0, bank4 and void-bank32 tuple transitions. UI gates and funding adoption
+/// Detached ordinary0/coin1, bank4 and void-bank32 tuple transitions. UI gates and funding adoption
 /// remain with their callers; packet-5 reports do not create quantity provenance.
 /// </summary>
 public static class VanillaInventoryCursorMove1458
 {
     public const int OrdinaryContext = 0;
+    public const int CoinContext = 1;
     public const int BankContext = 4;
     public const int VoidBankContext = 32;
     public static bool TryPlanLeftClick(in WorldItemPickupSlot1458 slot,
@@ -31,6 +32,10 @@ public static class VanillaInventoryCursorMove1458
         afterSlot = afterCursor = default;
         if (!IsContext(bankContext)) return false;
         if (!IsValid(in slot) || !IsValid(in cursor) || (slot.Type == 0 && cursor.Type == 0))
+            return false;
+
+        if (bankContext == CoinContext && cursor.Type != 0 &&
+            !VanillaCoinFacts.TryGetValue(new ItemTypeId(cursor.Type), out _))
             return false;
 
         afterSlot = cursor;
@@ -125,7 +130,7 @@ public static class VanillaInventoryCursorMove1458
         return false;
     }
 
-    private static bool IsContext(int context) => context is OrdinaryContext or BankContext or VoidBankContext;
+    private static bool IsContext(int context) => context is OrdinaryContext or CoinContext or BankContext or VoidBankContext;
 
     private static bool IsValid(in WorldItemPickupSlot1458 item)
     {
@@ -136,6 +141,8 @@ public static class VanillaInventoryCursorMove1458
             item.Prefix is >= 0 and <= byte.MaxValue && item.Stack > 0 &&
             VanillaItemRetainedIdentity1458.TryResolve(new ItemTypeId(item.Type), out var retained) &&
             retained.Value == item.Type && VanillaWorldItemAllocationCatalog1458.TryGet(item.Type, out var facts) &&
-            item.Stack <= facts.MaximumStack;
+            (VanillaCoinFacts.TryGetValue(new ItemTypeId(item.Type), out _)
+                ? VanillaCoinFacts.IsValidRetainedStack(new ItemTypeId(item.Type), item.Stack)
+                : item.Stack <= facts.MaximumStack);
     }
 }

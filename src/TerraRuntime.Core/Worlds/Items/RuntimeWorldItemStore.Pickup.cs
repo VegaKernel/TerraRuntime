@@ -44,4 +44,17 @@ public sealed partial class RuntimeWorldItemStore
         }
     }
 
+    // This capability only admits exact prepared physical state; it never grants value.
+    internal bool HasOwnedCoinPhysical(in WorldItemSnapshot expected)
+    {
+        if(!expected.Handle.IsAssigned||!IsValidSlot(expected.Handle.Slot))return false;
+        SpinWait spin=default;
+        while(true)
+        {
+            int version=ReadStableVersion(ref spin);var state=_slots[expected.Handle.Slot];
+            if(version!=ReadVersion())continue;
+            return state.Active&&!state.Reserved&&state.OwnedCoinPhysical&&
+                Capture(expected.Handle.Slot,in state)==expected&&CoinPhysicalValue(state.Update.ItemNetId,state.Update.Stack)>0;
+        }
+    }
 }

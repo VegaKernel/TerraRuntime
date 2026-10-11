@@ -8,13 +8,14 @@ public enum BankBulkOperation1458 : byte
     DepositAll,
     QuickStack,
     ShiftIntoBank,
-    ShiftOutOfBank
+    ShiftOutOfBank,
+    Restock
 }
 
 /// <summary>One detached coin rewrite; slots use main0..58 and bank59..98.</summary>
 public sealed record BankCoinNormalization1458(short[] Slots,
     WorldItemPickupSlot1458[] Before, WorldItemPickupSlot1458[] After,
-    short[] DestinationOrder);
+    short[] DestinationOrder, WorldItemPickupSlot1458[]? Overflow = null);
 
 /// <summary>Physical transfer order, or a coin rewrite when Coins is non-null. No trust is assigned.</summary>
 public readonly record struct BankStorageStep1458(short Source, short Destination,
@@ -45,7 +46,7 @@ public static partial class VanillaWorldItemOwner1458
         plan = null;
         if (inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
             bank.Length != BankInventoryCount || (uint)bankIndex >= 4 ||
-            operation > BankBulkOperation1458.ShiftOutOfBank)
+            operation > BankBulkOperation1458.Restock)
             return false;
         foreach (ref readonly var item in inventory)
             if (!IsCanonicalStorageSlot(in item)) return false;
@@ -82,6 +83,9 @@ public static partial class VanillaWorldItemOwner1458
                 if (!selected.Favorite || !((bankIndex == 0 && selected.Type == MoneyTrough) ||
                     (bankIndex == 3 && selected.Type is OpenVoidBag or ClosedVoidBag)))
                     DepositBankSlot(main, storage, sourceSlot, steps);
+                break;
+            case BankBulkOperation1458.Restock:
+                RestockBank(main, storage, steps);
                 break;
             case BankBulkOperation1458.ShiftOutOfBank:
                 if ((uint)sourceSlot >= BankInventoryCount || storage[sourceSlot].Type == 0 ||
@@ -144,6 +148,50 @@ public static partial class VanillaWorldItemOwner1458
                     (short)(VanillaPlayerItemSlotCatalog.InventoryCount + destination), main[source].Stack, steps);
                 break;
             }
+    }
+
+    private static void RestockBank(WorldItemPickupSlot1458[] main,
+        WorldItemPickupSlot1458[] bank, List<BankStorageStep1458> steps)
+    {
+        var types = new HashSet<int>();
+        var refill = new List<short>();
+        var empty = new List<short>();
+        for (short slot = VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive - 1; slot >= 0; slot--)
+        {
+            var item = main[slot];
+            if (slot >= VanillaPlayerItemSlotCatalog.CoinSlotStart &&
+                slot < VanillaPlayerItemSlotCatalog.CoinSlotEndExclusive || IsBankCoin(in item)) continue;
+            if (item.Type == 0) { empty.Add(slot); continue; } // gameplay-domain-literal-audit: allow raw-entity-type-decision - Zero tests canonical Air while identifying empty or occupied storage slots.
+            _ = VanillaWorldItemPickupCatalog1458.TryGet(item.Type, out var facts);
+            int maximum = MaximumBankStack(item);
+            if (maximum <= 1 || item.Favorite && facts.OnlyNeedOne) continue;
+            types.Add(item.Type);
+            if (item.Stack < maximum) refill.Add(slot);
+        }
+        for (short source = 0; source < bank.Length; source++)
+        {
+            if (bank[source].Type == 0 || bank[source].Prefix != VanillaPrefixIds.NoneValue ||
+                !types.Contains(bank[source].Type)) continue;
+            _ = VanillaWorldItemPickupCatalog1458.TryGet(bank[source].Type, out var facts);
+            short sourceIndex = (short)(main.Length + source);
+            for (int i = 0; i < refill.Count && bank[source].Type != 0; i++)
+            {
+                short destination = refill[i];
+                if (!CanStackBankStorage(main[destination], bank[source]) ||
+                    destination >= VanillaPlayerItemSlotCatalog.AmmoSlotStart && !facts.FitsAmmoSlot) continue;
+                int amount = Math.Min(bank[source].Stack, MaximumBankStack(main[destination]) - main[destination].Stack);
+                if (amount > 0) TransferBankStorage(main, bank, sourceIndex, destination, amount, steps);
+                if (main[destination].Stack == MaximumBankStack(main[destination])) refill.RemoveAt(i--);
+            }
+            if (bank[source].Type == 0 || !facts.Ammo) continue;
+            for (int i = 0; i < empty.Count; i++)
+            {
+                short destination = empty[i];
+                if (destination >= VanillaPlayerItemSlotCatalog.AmmoSlotStart && !facts.FitsAmmoSlot) continue;
+                TransferBankStorage(main, bank, sourceIndex, destination, bank[source].Stack, steps);
+                refill.Add(destination); empty.RemoveAt(i); break;
+            }
+        }
     }
 
     private static void QuickStackBank(WorldItemPickupSlot1458[] main,
