@@ -1,5 +1,29 @@
 # Production graph
 
+2026-10-11 integrated final-stage correction: the source-backed generation framer consumes a newly measured zero-draw type-`178` KillTile cost. `Validator1458` now accepts inactive nonnegative stale frames that the official TileFrame leaves transiently; `StructuralValidator` remains strict for generic generators. Test `.bin.gz` header resources are explicitly non-culture. No new production dependency or ownership edge; row109 remains partial.
+
+2026-10-11 one-cell-pile increment: type `185` one-cell support/substrate checks now run in the existing generation framing helper; the two-cell form remains outside this slice. No dependency or ownership edge changed; row109 remains partial.
+
+2026-10-11 three-by-one increment: type `235` footprint/support validation now runs inside the existing generation framing helper. No dependency or ownership edge changed; row109 remains partial.
+
+2026-10-11 directional-decoration increment: type `178` now uses the existing generation framing helper and its shared anchor predicate. No dependency or ownership edge changed; row109 remains partial.
+
+2026-10-11 stalactite increment: generation framing now invokes the existing `SpeleothemPass1458` validator for type `165`, sharing the tile store and pass RNG; no new project or dependency edge. Synthetic official full-pass fixture matches, but row109 remains partial.
+
+2026-10-11 cat-tail increment: type `519` water-column/floor validation and frame restyling run in the same generation framing helper. No project/dependency edge changed; row109 remains partial.
+
+2026-10-11 lily-pad increment: generation framing now handles type `518` substrate style and liquid-surface movement; the official oracle uses generation `netMode=0`. Angler quest publication still remains outside this tile-generation owner, accounting for a one-draw post-pass difference. No project/dependency edge changed; row109 remains partial.
+
+2026-10-11 bamboo increment: type `571` support and top/middle/bottom frame/RNG rules run in the existing generation framing helper. No project/dependency edge changed; row109 remains partial.
+
+2026-10-11 projectile-pressure-pad increment: the same generation framing helper now handles type `442` facing preservation, directional attachment and kill behavior. No project/dependency change; row109 remains partial.
+
+2026-10-11 underwater-plant increment: the same generation framing helper now handles the `549` `CheckUnderwaterPlant` water, support, wall and frame/RNG rules. No new dependency or runtime ownership edge; row109 remains partial.
+
+2026-10-11 echo-stalactite increment: the existing `GenerationTileFraming1458` path also validates type `693`/`694` support and footprints through `WorldGen.CheckStalactiteEcho` semantics. No project/dependency edge or seed-profile admission changed; special seeds remain outside the source-backed final overlay.
+
+2026-10-11 Final Cleanup remains inside the existing `SourceBackedFinal1458 -> FinalPass1458 -> GenerationTileFraming1458` path. The pass now performs the source rail look-ahead before loose-material extension, and the framing helper admits ordinary torch4 `CheckTorch`, all five `IsADripTile` identities, type136 dart-trap attachment/kill behavior, types129/149 multidirectional anchors, dye227, rock-golem head579, rooted cactus80 and orb-family12/31/639/696 checks. The shared `SolidTileAllowBottomSlope` helper now admits source proper-frame top-sloped platforms for these and earlier consumers. The final pass no longer normalizes inactive sibling frames after object cleanup. No project dependency, live world mutation path, new provider or seed-profile admission was added; special seeds still bypass this source-backed final overlay. Corrected official dry complete-pass fixture scope is recorded in work-state and verified-vanilla.
+
 2026-10-04 eighth merged acceptance: full 1412358/1412358, Windows NativeAOT/five smokes and all gates pass with unchanged source hash `606e033af24099c2b9043197c8fcba69c803a98bd59fb94f26db1005ee62657f`. Graph remains 15 projects / 29 edges. Source-normalized generation admits inactive (-1,-1) frames without modifying framing or persistence. Exact-commit Linux CI remains pending until push; broad parity stays open.
 
 2026-10-04 eighth ownership: Gameplay owns source contained selection, sparse item/default/color facts, mechanical-summon prerequisites and biome topics. Core owns retained AI001/Hive birth admission, mutation-serial dependency guards, pending generations and staged item color after Drop/Owner. Application captures authoritative world/player zones, preserves source birth/strike publication ordering and atomically admits shared Destroyer life. Project graph remains 15 projects / 29 edges; no production dependency was added. Full parity remains open.

@@ -26,7 +26,8 @@ public sealed class WorldStartupPreparationTests
             long timestamp = DateTime.UtcNow.ToBinary();
             var generated = pipeline.TryCreateAndPersist(request, worldPath, Guid.NewGuid(), 1458, timestamp, timestamp,
                 TestContext.Current.CancellationToken);
-            Assert.True(generated.Succeeded, generated.Creation?.Finalization?.Validation?.Detail ?? generated.Status.ToString());
+            Assert.True(generated.Succeeded, generated.Creation?.Generation.Execution?.Error?.ToString() ??
+                generated.Creation?.Finalization?.Validation?.Detail ?? generated.Status.ToString());
             AssertCompleteJungleDetritus(generated.Creation!.Value.Candidate!.TileStore);
             var logs = new RuntimeLogBuffer();
             using var errors = new StringWriter();

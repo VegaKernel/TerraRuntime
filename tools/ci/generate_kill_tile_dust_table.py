@@ -19,6 +19,11 @@ import sys
 
 UNKNOWN = 255
 
+# The original headless probe left Main.dust allocated but its elements null, so type 178's
+# special dust branch threw before it could be counted. A corrected official FinalCleanup
+# fixture with every dust slot materialized killed unsupported type 178 and spent zero genRand draws.
+VERIFIED_OVERRIDES = {178: 0}
+
 HEADER = '''using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
@@ -48,6 +53,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// breaks one has to be measured before it can be trusted. Six identities answer differently for different
 /// frames - the multi-cell objects whose origin the kill re-derives - and their frame-zero cost is what is
 /// recorded, because generation does not break them at any other frame.
+/// Type <c>178</c> is the one later correction: the initial headless probe had null elements in its dust
+/// pool, so its special dust branch threw. A registered official FinalCleanup kill fixture with a complete
+/// dust pool measures zero shared draws and supplies that table entry.
 /// </para>
 /// </remarks>
 internal static class GenerationKillTileDust1458
@@ -119,6 +127,11 @@ def main() -> int:
             table.append(UNKNOWN)
         else:
             table.append(zero_frame)
+
+    for type_id, draws in VERIFIED_OVERRIDES.items():
+        if table[type_id] not in (UNKNOWN, draws):
+            raise SystemExit(f"tile {type_id}: probe disagrees with independently verified {draws}-draw override")
+        table[type_id] = draws
 
     lines = []
     for start in range(0, count, 24):
