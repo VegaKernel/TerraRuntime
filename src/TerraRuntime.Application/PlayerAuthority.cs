@@ -553,6 +553,7 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        var bankObservation = BeginBankBatchAlternative(equipment, in request);
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
             RejectedEquipmentUpdates++;
@@ -572,6 +573,7 @@ internal sealed partial class PlayerAuthority
 
         AppliedEquipmentUpdates++;
         ObserveAcceptedBankCursorFirst(equipment.Connection, in request);
+        ObserveAcceptedBankBatchImage(equipment.Connection, bankObservation);
         events?.PlayerEquipmentUpdated(equipment.Connection, in request);
     }
 

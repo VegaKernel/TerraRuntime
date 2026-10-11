@@ -1266,7 +1266,7 @@ if(current.ItemType.Value!=109||current.Stack!=20)Assert.Fail("Source-valid bank
 if(items.CaptureFundedQuantities(c)[58]!=0)Assert.Fail("Raw first58 minted funding");
 if(mode>0)players.TryApply(new PlayerEquipmentRuntimeCommand(c,new(c.Player.Slot,99,0,0,0,0)));
 long rejected=players.RejectedEquipmentUpdates;
-players.TryApply(new PlayerInventorySyncCompleteRuntimeCommand(c));
+Complete(players,c);
 if(mode==0 && (players.RejectedEquipmentUpdates!=rejected||items.CaptureFundedQuantities(c)[58]!=0))Assert.Fail("ordinary138 manufactured or rejected bank intent");
 if(mode>0 && (items.CaptureFundedQuantities(c)[58]!=20||!items.TryCaptureShopBankOwnership(c,out var q,out _)||q[0]!=0))Assert.Fail("Bank funding not conserved across accepted first58/disjoint writer");
 Console.WriteLine($"mode={mode} passed funded={items.CaptureFundedQuantities(c)[58]} rejected={players.RejectedEquipmentUpdates}");

@@ -492,4 +492,10 @@
     <EmbeddedResource Include="Fixtures/discount-equipment-latch-configured-official-1458.json.gz" LogicalName="DiscountEquipmentPhaseSource1458" />
     <EmbeddedResource Include="Fixtures/npc-shop-vendor-status-official-1458.json.gz" LogicalName="NpcShopVendorStatus1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/bank-bulk-configured-official-1458.json.gz" LogicalName="BankBulkStorageSource1458" />
+    <EmbeddedResource Include="Fixtures/bank-bulk-clocks-configured-official-1458.json.gz" LogicalName="BankBulkStorageClocksSource1458" />
+    <EmbeddedResource Include="Fixtures/bank-movecoins-edge-and-partial-configured-official-1458.json.gz" LogicalName="BankMoveCoinsEdgesSource1458" />
+    <EmbeddedResource Include="Fixtures/multi-bank-cursor-configured-official-1458.json.gz" LogicalName="OriginalMultiBankCursor1458" />
+  </ItemGroup>
 </Project>

@@ -65,6 +65,36 @@ internal sealed partial class RuntimePlayerInventoryStore
         private bool adopted;
         private bool debitApplied;
         private ulong expectedStamp = stamp;
+        private ulong acceptedBankStamp;
+        private RuntimePlayerInventoryItem[]? acceptedBankImage;
+        private short[]? acceptedBankQuantity;
+        private long[]? acceptedBankCopper;
+        private short[]? acceptedBankCaps;
+        private bool bankContinuationRequested;
+        internal bool TryEnableBankContinuation(RuntimePlayerInventoryStore store, ConnectionHandle actor)
+        {
+            if (!IsBankContinuationSource(store, actor)) return false;
+            bankContinuationRequested = true;
+            return true;
+        }
+        internal bool IsBankContinuationSource(RuntimePlayerInventoryStore store, ConnectionHandle actor) =>
+            ReferenceEquals(store, owner) && actor == connection && IsCurrent;
+        internal bool TryCopyAcceptedBankImage(Span<RuntimePlayerInventoryItem> image, Span<long> copper,
+            Span<short> quantity, Span<short> ceilings, out ulong acceptedStamp)
+        {
+            acceptedStamp = acceptedBankStamp;
+            if (!adopted || acceptedBankImage is null || acceptedBankQuantity is null ||
+                acceptedBankCopper is null || acceptedBankCaps is null ||
+                !owner.IsCurrentCursorInventory(connection, acceptedBankStamp)) return false;
+            int player = connection.Player.Slot.Value;
+            if (!owner.items.AsSpan(player * 59, 59).SequenceEqual(acceptedBankImage) ||
+                !owner.fundedQuantities.AsSpan(player * 59, 59).SequenceEqual(acceptedBankQuantity) ||
+                !owner.coinFundedValues.AsSpan(player * 59, 59).SequenceEqual(acceptedBankCopper) ||
+                !owner.ownedQuantityCaps.AsSpan(player * 59 * 5, 59 * 5).SequenceEqual(acceptedBankCaps)) return false;
+            acceptedBankImage.CopyTo(image); acceptedBankCopper.CopyTo(copper);
+            acceptedBankQuantity.CopyTo(quantity); acceptedBankCaps.CopyTo(ceilings);
+            return true;
+        }
         internal bool TryCaptureBankSource(out RuntimePlayerInventoryItem[] image, out short[] quantity,
             out long[] copper)
         {
@@ -164,6 +194,16 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (slotFunding > afterSlot.Stack || cursorFunding > selectedCursor.Stack ||
                 slotCoinFunding > CoinValue(afterSlot) || cursorCoinFunding > CoinValue(selectedCursor) ||
                 checked(slotCoinFunding + cursorCoinFunding) != checked(coinFunding[slot] + coinFunding[58])) return false;
+            // Detach the actual existing owner result before any pure writes.
+            // A bank batch can certify this joint transition without pretending
+            // that its moved funding/caps were an ordinary min-preserving report.
+            if (bankContinuationRequested)
+            {
+                acceptedBankImage = before.ToArray(); acceptedBankImage[slot] = afterSlot; acceptedBankImage[58] = selectedCursor;
+                acceptedBankQuantity = funding.ToArray(); acceptedBankQuantity[slot] = slotFunding; acceptedBankQuantity[58] = cursorFunding;
+                acceptedBankCopper = coinFunding.ToArray(); acceptedBankCopper[slot] = slotCoinFunding; acceptedBankCopper[58] = cursorCoinFunding;
+                acceptedBankCaps = new short[59 * 5];
+            }
             adopted = true;
             // Each identity's old ceiling follows the real moved quantity. Other historical
             // lanes remain obligations, so swapping a different item cannot erase them.
@@ -183,6 +223,11 @@ internal sealed partial class RuntimePlayerInventoryStore
             owner.coinFundedValues[GetOffset(player, slot)] = slotCoinFunding;
             owner.coinFundedValues[GetOffset(player, 58)] = cursorCoinFunding;
             owner.Changed(connection.Player.Slot.Value);
+            if (acceptedBankCaps is not null)
+            {
+                owner.ownedQuantityCaps.AsSpan(player * 59 * 5, 59 * 5).CopyTo(acceptedBankCaps);
+                acceptedBankStamp = owner.playerMutationStamps[player];
+            }
             return true;
         }
         private void MoveQuantityCeiling(int player, short slot, short cursor, int lane, int oldSlot, int oldCursor, int nextSlot, int nextCursor)

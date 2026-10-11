@@ -41,18 +41,9 @@ internal sealed partial class PlayerAuthority
         return false;
     }
 
-    private bool TryCompleteBankJournal(ConnectionHandle connection, RuntimePlayerMember member,
-        PendingCursorMove receipt, PendingShopJournal journal)
+    private bool TryAdoptBankJournal(ConnectionHandle connection, RuntimePlayerMember member,
+        PendingCursorMove receipt, PendingShopJournal journal, RuntimePlayerInventoryStore.ShopBankMovePreparation payment)
     {
-        if (shopJournalPublishing[connection.Player.Slot.Value] == connection || journal.Invalid ||
-            !IsCurrentShopActor(member, receipt) || !journal.Capture.IsCurrent ||
-            member.Revision == ulong.MaxValue || member.ProjectileUseInputRevision == ulong.MaxValue)
-            return false;
-        if (!inventory.TryPrepareShopBankMove(connection, journal.Capture, journal.Reports, journal.Seen,
-                member.ItemAnimation, member.ItemPhase!.Value.Selected.ItemTime, out var payment) &&
-            !inventory.TryPrepareRawShopBankReports(connection, journal.Capture, journal.Reports, journal.Seen, out payment))
-            return false;
-        if (payment is null) return false;
         if (!payment.IsCurrent || !IsCurrentShopActor(member, receipt)) return false;
         // Both source legs are resolved against one retained before image. The first
         // inventory debit, if already published, is consumed rather than recreated.
@@ -81,4 +72,70 @@ internal sealed partial class PlayerAuthority
         if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
         return true;
     }
+    internal sealed class BankResolution
+    {
+        internal RuntimePlayerInventoryStore.ShopBankMovePreparation? Accepted;
+        internal bool Ambiguous;
+    }
+
+    private IEnumerable<int> ResolveBankJournal(ConnectionHandle connection, PendingShopJournal journal, BankResolution result)
+    {
+        yield return 0;
+        inventory.TryPrepareShopBankMove(connection, journal.Capture, journal.Reports, journal.Seen,
+            journal.PlanningAnimation, journal.PlanningItemTime, out var single, out bool ambiguous);
+        if (ambiguous) { result.Ambiguous = true; yield break; }
+        if (single is not null && single.CanElideConservativeBankAlternatives())
+        { result.Accepted = single; yield break; }
+        var bulk = new RuntimePlayerInventoryStore.BankBulkResolution();
+        using (var work = inventory.PrepareShopBankBulkWork(connection, journal.Capture,
+            journal.Reports, journal.Seen, receivePrefixWorld, bulk).GetEnumerator())
+            while (work.MoveNext()) yield return 0;
+        if (bulk.Ambiguous || (single is not null && bulk.Preparation is not null &&
+            !single.HasSameAcceptedImage(bulk.Preparation))) { result.Ambiguous = true; yield break; }
+        result.Accepted = single ?? bulk.Preparation;
+        yield return 0;
+        using (var chains = inventory.TryCreateShopBankChainWork(connection, journal.Capture,
+            journal.Reports, journal.Seen, journal.PlanningAnimation, journal.PlanningItemTime))
+        {
+            if (chains is not null)
+            {
+                while (chains.MoveNext())
+                {
+                    if (chains.Preparation is { } complete && complete.CanElideConservativeBankAlternatives())
+                    { result.Accepted = complete; yield break; }
+                    yield return 0;
+                }
+                if (chains.Ambiguous || (result.Accepted is not null && chains.Preparation is not null &&
+                    !result.Accepted.HasSameAcceptedImage(chains.Preparation)))
+                { result.Ambiguous = true; result.Accepted = null; yield break; }
+                result.Accepted ??= chains.Preparation;
+            }
+        }
+        if (result.Accepted is not null) yield break;
+        yield return 0;
+        inventory.TryPrepareRawShopBankReports(connection, journal.Capture, journal.Reports,
+            journal.Seen, out result.Accepted);
+        if (result.Accepted is null && journal.Quote is not null && journal.Economic is not null)
+        {
+            journal.BankResult = null;
+            journal.Resolution = new ShopResolution();
+            using var shopWork = ResolveShopJournal(connection, journal, journal.Resolution).GetEnumerator();
+            while (shopWork.MoveNext()) yield return 0;
+        }
+    }
+
+    private void CompleteBankJournal(ConnectionHandle connection, RuntimePlayerMember member,
+        PendingCursorMove receipt, PendingShopJournal journal, BankResolution result)
+    {
+        if (result.Ambiguous || result.Accepted is null || !IsCurrentShopActor(member, receipt) ||
+            !journal.Capture.IsCurrent || member.Revision == ulong.MaxValue ||
+            member.ProjectileUseInputRevision == ulong.MaxValue)
+        { DropBankBatchAlternative(member, journal); RejectedEquipmentUpdates++; return; }
+        member.CursorMove = null;
+        if (TryAdoptBankJournal(connection, member, receipt, journal, result.Accepted)) return;
+        member.CursorMove = receipt;
+        DropBankBatchAlternative(member, journal);
+        RejectedEquipmentUpdates++;
+    }
+
 }

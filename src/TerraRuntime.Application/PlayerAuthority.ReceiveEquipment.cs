@@ -180,6 +180,8 @@ internal sealed partial class PlayerAuthority
             {
                 return false;
             }
+            var normalized = Request;
+            var observation = owner.BeginBankBatchAlternative(new PlayerEquipmentRuntimeCommand(connection, normalized), in normalized);
             // Concrete single-writer tail: all members/items/profiles/cursor/counters
             // are adopted before invoking the existing equipment observer.
             if (member is not null && !member.TryAdvanceRevision())
@@ -199,6 +201,7 @@ internal sealed partial class PlayerAuthority
             random.CopyStateFrom(after);
             owner.AppliedEquipmentUpdates++;
             owner.ObserveAcceptedBankCursorFirst(connection, in request);
+            owner.ObserveAcceptedBankBatchImage(connection, observation);
             acceptedPlayer = member?.CaptureSnapshot();
             acceptedPhase = member?.ItemPhase;
             acceptedInput = member?.ProjectileUseInputRevision ?? 0;

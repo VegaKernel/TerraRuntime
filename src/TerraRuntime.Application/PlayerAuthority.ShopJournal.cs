@@ -20,10 +20,17 @@ internal sealed partial class PlayerAuthority
         internal bool Invalid;
         internal bool WaitingForBankCursorFirst;
         internal bool ObservedBankCursorFirst;
+        internal bool ObservedBatch;
+        internal bool StagedCursorDebit;
+        internal bool StagedQuantityImage;
+        internal RuntimePlayerMember? ObservedMember;
+        internal PlayerStateSnapshot ObservedActor;
+        internal ulong ObservedInputRevision;
         internal bool IsSealed;
         internal int PlanningAnimation;
         internal int PlanningItemTime;
         internal ShopResolution? Resolution;
+        internal BankResolution? BankResult;
         internal IEnumerator<int>? Work;
         internal bool IsRetired { get; private set; }
 
@@ -43,6 +50,83 @@ internal sealed partial class PlayerAuthority
             LastIndex = index;
             return true;
         }
+    }
+
+    // This local capability belongs to one established receive/debit adoption.
+    // It survives a primary CursorMove replacement without becoming another
+    // receipt or granting any quantity from a client image.
+    internal sealed class BankBatchObservation(RuntimePlayerMember member, PendingShopJournal journal,
+        RuntimePlayerInventoryStore.ShopJournalCapture.ObservedShopImagePreparation image,
+        int index, RuntimePlayerInventoryItem normalized)
+    {
+        internal RuntimePlayerMember Member => member;
+        internal PendingShopJournal Journal => journal;
+        internal int Index => index;
+        internal RuntimePlayerInventoryItem Normalized => normalized;
+        internal bool TryAcceptUnpublished() => image.TryAcceptUnpublished();
+    }
+
+    private BankBatchObservation? BeginBankBatchAlternative(PlayerEquipmentRuntimeCommand command,
+        in PlayerEquipmentCommitRequest normalized)
+    {
+        if (!membership.TryGet(command.Connection, out var member) || !HasOwnedPickupContext ||
+            member.IsDead || member.ItemPhase is null ||
+            (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0 ||
+            normalized.PlayerSlot != member.Slot) return null;
+        bool bank = RuntimePlayerInventoryStore.TryGetShopBankOffset(normalized.SlotId, out int offset);
+        int index = bank ? 59 + offset : normalized.SlotId;
+        if (index is < 0 or >= 219 || (!bank && index >= 59) ||
+            !TryShopReport(in normalized, out var reported)) return null;
+        var journal = member.CursorMove?.Shop;
+        if (journal is not null)
+        {
+            if (!journal.ObservedBatch || journal.IsSealed || journal.IsRetired || journal.Invalid ||
+                !ReferenceEquals(journal.ObservedMember, member) ||
+                journal.ObservedInputRevision != member.ProjectileUseInputRevision ||
+                !journal.Capture.IsCurrent) return null;
+        }
+        else
+        {
+            if (!inventory.TryCaptureShopJournal(command.Connection, out var capture) || capture is null) return null;
+            journal = new(capture, null, null) { ObservedBatch = true, ObservedMember = member,
+                ObservedActor = member.CaptureSnapshot(), ObservedInputRevision = member.ProjectileUseInputRevision };
+        }
+        if (!journal.Capture.TryPrepareObservedBatchImage(index, in reported, out var prepared) || prepared is null)
+            return null;
+        return new(member, journal, prepared, index, reported);
+    }
+
+    private void ObserveAcceptedBankBatchImage(ConnectionHandle connection, BankBatchObservation? observation)
+    {
+        if (observation is null) return;
+        var journal = observation.Journal;
+        if (!membership.TryGet(connection, out var member) || !ReferenceEquals(member, observation.Member) ||
+            member.IsDead || member.ItemPhase is null || member.SelectedItem != journal.ObservedActor.SelectedItem ||
+            (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0 ||
+            !observation.TryAcceptUnpublished() || !journal.Observe(observation.Index, observation.Normalized))
+        { DropBankBatchAlternative(observation.Member, journal); return; }
+        journal.ObservedInputRevision = member.ProjectileUseInputRevision;
+        var primary = member.CursorMove;
+        member.CursorMove = primary is null
+            ? new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, null, Shop: journal)
+            : primary with { Shop = journal };
+    }
+
+    private BankBatchObservation? BeginBankCursorCompletion(ConnectionHandle connection, PendingShopJournal? journal,
+        RuntimePlayerInventoryStore.CursorMovePreparation source, in PlayerEquipmentCommitRequest accepted)
+    {
+        if (journal is not { ObservedBatch: true } || accepted.SlotId != 58 ||
+            !membership.TryGet(connection, out var member) || !ReferenceEquals(journal.ObservedMember, member) ||
+            journal.ObservedInputRevision != member.ProjectileUseInputRevision ||
+            !TryShopReport(in accepted, out var cursor) ||
+            !journal.Capture.TryPrepareObservedCursorCompletion(source, cursor, out var prepared) || prepared is null) return null;
+        return new(member, journal, prepared, 58, cursor);
+    }
+
+    private static void DropBankBatchAlternative(RuntimePlayerMember member, PendingShopJournal journal)
+    {
+        if (member.CursorMove is not { } current || !ReferenceEquals(current.Shop, journal)) return;
+        member.CursorMove = current.Inventory is null && current.Return is null ? null : current with { Shop = null };
     }
 
     // Packet5 is an image, not a shop intent. A retained quote makes a bounded trade
@@ -65,7 +149,8 @@ internal sealed partial class PlayerAuthority
         { member.CursorMove = null; RejectedEquipmentUpdates++; return true; }
         if (bank && pending is null && receipt?.Inventory is not { DebitApplied: true } &&
             VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId) &&
-            (!membership.TryGetTownShopSession(command.Connection.Player, out var rawSession) || rawSession?.Quote is null))
+            (!membership.TryGetTownShopSession(command.Connection.Player, out var rawSession) || rawSession?.Quote is null) &&
+            (!TryShopReport(in request, out var rawBankImage) || inventory.CanSetShopBankReport(command.Connection, request.SlotId, rawBankImage)))
             return false;
         if (!TryShopReport(in request, out var reported))
         {
@@ -75,6 +160,64 @@ internal sealed partial class PlayerAuthority
         int index = bank ? 59 + bankOffset : request.SlotId;
         if (pending is not null)
         {
+            if (pending.ObservedBatch)
+            {
+                if (!IsCurrentShopActor(member, receipt!) || !pending.Capture.IsCurrent || pending.Invalid)
+                { DropBankBatchAlternative(member, pending); return false; }
+                if (!bank && index < 59 && receipt!.Inventory is null && receipt.Return is null &&
+                    !inventory.CanAcceptOwnedQuantityReport(command.Connection, in request) &&
+                    HasRetainedBankTransferSource(pending.Capture, index, reported))
+                {
+                    pending.StagedQuantityImage = true;
+                    if (!pending.Observe(index, in reported))
+                    { DropBankBatchAlternative(member, pending); RejectedEquipmentUpdates++; }
+                    return true;
+                }
+                if (bank && !inventory.CanSetShopBankReport(command.Connection, request.SlotId, reported) &&
+                    HasRetainedBankTransferSource(pending.Capture, index, reported))
+                {
+                    pending.StagedQuantityImage = true;
+                    if (!pending.Observe(index, in reported))
+                    { DropBankBatchAlternative(member, pending); RejectedEquipmentUpdates++; }
+                    return true;
+                }
+                if (pending.StagedCursorDebit)
+                {
+                    if (!bank && index != 58) { DropBankBatchAlternative(member, pending); return false; }
+                    if (!pending.Observe(index, in reported))
+                    { DropBankBatchAlternative(member, pending); RejectedEquipmentUpdates++; }
+                    return true;
+                }
+                if (bank && pending.Seen[58] && !pending.Capture.Before[index].IsEmpty &&
+                    pending.Capture.Before[index].Stack > reported.Stack &&
+                    pending.Capture.Before[index].ItemType == pending.Reports[58].ItemType &&
+                    pending.Capture.Before[index].Prefix == pending.Reports[58].Prefix)
+                {
+                    if (!pending.Observe(index, in reported))
+                    { DropBankBatchAlternative(member, pending); RejectedEquipmentUpdates++; }
+                    return true;
+                }
+                if (bank && !reported.IsEmpty)
+                {
+                    bool retainedDebit = false;
+                    for (int ordinary = 0; ordinary < 58; ordinary++)
+                    {
+                        var original = pending.Capture.Before[ordinary];
+                        retainedDebit |= pending.Seen[ordinary] && original.ItemType == reported.ItemType &&
+                            original.Prefix == reported.Prefix && original.Stack > pending.Reports[ordinary].Stack;
+                    }
+                    if (retainedDebit)
+                    {
+                        if (!pending.Observe(index, in reported))
+                        { DropBankBatchAlternative(member, pending); RejectedEquipmentUpdates++; }
+                        return true;
+                    }
+                }
+                // Keep the established ordinary/Bank4 receiver and cursor owner.
+                // Their actual adoption hook records the normalized image.
+                return bank && !VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId) &&
+                    ApplyUnfundedShopBankReport(command.Connection, in request, in reported);
+            }
             if (pending.WaitingForBankCursorFirst || !IsCurrentShopActor(member, receipt!) || !pending.Capture.IsCurrent ||
                 !pending.Observe(index, in reported))
             { member.CursorMove = null; RejectedEquipmentUpdates++; }
@@ -95,6 +238,46 @@ internal sealed partial class PlayerAuthority
         if (membership.TryGetTownShopSession(command.Connection.Player, out var session) &&
             session?.Quote is { } candidate && candidate.TryCapture(out var snapshot))
         { quote = candidate; economic = snapshot; }
+        if (quote is null)
+        {
+            if (!bank && index < 59 && receipt?.Inventory is null && receipt?.Return is null &&
+                !inventory.CanAcceptOwnedQuantityReport(command.Connection, in request) &&
+                HasRetainedBankTransferSource(capture, index, reported))
+            {
+                pending = new(capture, null, null) { ObservedBatch = true, StagedQuantityImage = true, ObservedMember = member,
+                    ObservedActor = member.CaptureSnapshot(), ObservedInputRevision = member.ProjectileUseInputRevision };
+                pending.Observe(index, reported);
+                member.CursorMove = new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, null, Shop: pending);
+                return true;
+            }
+            if (bank && !inventory.CanSetShopBankReport(command.Connection, request.SlotId, reported) &&
+                HasRetainedBankTransferSource(capture, index, reported))
+            {
+                pending = new(capture, null, null) { ObservedBatch = true, StagedQuantityImage = true, ObservedMember = member,
+                    ObservedActor = member.CaptureSnapshot(), ObservedInputRevision = member.ProjectileUseInputRevision };
+                pending.Observe(index, reported);
+                member.CursorMove = member.CursorMove is { } primaryBank ? primaryBank with { Shop = pending }
+                    : new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, null, Shop: pending);
+                return true;
+            }
+            if (!bank && index == 58 && member.CursorMove?.Inventory is null &&
+                !capture.Before[58].IsEmpty && reported.Stack < capture.Before[58].Stack &&
+                CanStartBankCursorJournal(capture, reported, member.ItemAnimation, member.ItemPhase.Value.Selected.ItemTime))
+            {
+                // Retain the existing cursor-to-bank debit publication boundary.
+                // Gains remain ordinary receive images; this debit has not been
+                // physically adopted and cannot credit a bank before138.
+                pending = new(capture, null, null) { ObservedBatch = true, StagedCursorDebit = true,
+                    ObservedMember = member, ObservedActor = member.CaptureSnapshot(),
+                    ObservedInputRevision = member.ProjectileUseInputRevision };
+                pending.Observe(58, reported);
+                member.CursorMove = member.CursorMove is { } primary ? primary with { Shop = pending }
+                    : new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, null, Shop: pending);
+                return true;
+            }
+            return bank && !VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId) &&
+                ApplyUnfundedShopBankReport(command.Connection, in request, in reported);
+        }
         var before = capture.Before[index];
         // Ordinary packet5 reports keep their existing receive and cursor owners.
         // Without a quote, only a source-valid first cursor leg of an existing
@@ -145,6 +328,7 @@ internal sealed partial class PlayerAuthority
         RuntimePlayerMember? member = null;
         if (relay && membership.TryGet(connection, out member) && member.Revision == ulong.MaxValue)
         { RejectedEquipmentUpdates++; return true; }
+        var observation = BeginBankBatchAlternative(new PlayerEquipmentRuntimeCommand(connection, request), in request);
         if (!inventory.TrySetShopBankReport(connection, request.SlotId, in reported))
         { RejectedEquipmentUpdates++; return true; }
         if (relay)
@@ -153,6 +337,7 @@ internal sealed partial class PlayerAuthority
             transferProfiles.TrySetEquipment(connection, in request);
         }
         AppliedEquipmentUpdates++;
+        ObserveAcceptedBankBatchImage(connection, observation);
         // Only bank4 has an original CanRelay packet5 path. Raw bank images never fund.
         if (relay)
             events?.PlayerEquipmentUpdated(connection, in request);
@@ -167,14 +352,30 @@ internal sealed partial class PlayerAuthority
             retained == reported.ItemType;
     }
 
+    private static bool HasRetainedBankTransferSource(RuntimePlayerInventoryStore.ShopJournalCapture capture,
+        int target, in RuntimePlayerInventoryItem reported)
+    {
+        if (reported.IsEmpty || !reported.IsCanonical || (reported.ItemFlags & ~PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0) return false;
+        var old = capture.Before[target];
+        int existing = old.ItemType == reported.ItemType && old.Prefix == reported.Prefix ? old.Stack : 0;
+        int required = reported.Stack - existing;
+        if (required <= 0) return false;
+        int available = 0;
+        for (int i = target < 59 ? 59 : 0; i < capture.Before.Length; i++)
+            if (i != target && capture.Before[i].ItemType == reported.ItemType && capture.Before[i].Prefix == reported.Prefix)
+                available += capture.Before[i].Stack;
+        return available >= required;
+    }
+
     private static bool IsCoin(in RuntimePlayerInventoryItem item) =>
         !item.IsEmpty && item.ItemType.Value is >= 71 and <= 74;
 
     private bool IsCurrentShopActor(RuntimePlayerMember member, PendingCursorMove receipt) =>
         HasOwnedPickupContext && member.ItemPhase is not null && !member.IsDead &&
-        member.ProjectileUseInputRevision == receipt.InputRevision &&
-        member.CaptureSnapshot().Player == receipt.Before.Player &&
-        member.SelectedItem == receipt.Before.SelectedItem &&
+        (receipt.Shop is not { ObservedBatch: true } ownedBatch || ReferenceEquals(member, ownedBatch.ObservedMember)) &&
+        member.ProjectileUseInputRevision == (receipt.Shop is { ObservedBatch: true } observed ? observed.ObservedInputRevision : receipt.InputRevision) &&
+        member.CaptureSnapshot().Player == (receipt.Shop is { ObservedBatch: true } captured ? captured.ObservedActor.Player : receipt.Before.Player) &&
+        member.SelectedItem == (receipt.Shop is { ObservedBatch: true } selected ? selected.ObservedActor.SelectedItem : receipt.Before.SelectedItem) &&
         (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) == 0;
 
     private int nextShopWorkSlot;
@@ -195,14 +396,39 @@ internal sealed partial class PlayerAuthority
     {
         if (!membership.TryGet(connection, out var member) || member.CursorMove is not { Shop: { } journal } receipt || journal.IsSealed)
             return;
+        if (journal.ObservedBatch)
+        {
+            if (!journal.Seen.AsSpan(59).Contains(true))
+            {
+                DropBankBatchAlternative(member, journal);
+                if (journal.StagedQuantityImage) { RejectedEquipmentUpdates++; return; }
+                if (journal.StagedCursorDebit && journal.Capture.IsCurrent &&
+                    TryPrepareReceivedEquipment(new(connection, journal.Reports[58].ToCommitRequest(connection.Player.Slot, 58)),
+                        out var received) && received is not null && received.TryAdoptUnpublished())
+                {
+                    if (member.CursorMove?.Shop is { } alternative) DropBankBatchAlternative(member, alternative);
+                    received.TryPublish();
+                }
+                return;
+            }
+            journal.IsSealed = true;
+            journal.PlanningAnimation = member.ItemAnimation;
+            journal.PlanningItemTime = member.ItemPhase?.Selected.ItemTime ?? 0;
+            journal.BankResult = new BankResolution();
+            journal.Work = ResolveBankJournal(connection, journal, journal.BankResult).GetEnumerator();
+            return;
+        }
         if (journal.WaitingForBankCursorFirst || (journal.ObservedBankCursorFirst && journal.Quote is null &&
             !journal.Seen.AsSpan(59).Contains(true)))
         { member.CursorMove = null; return; }
         if (journal.Seen.AsSpan(59).Contains(true))
         {
-            member.CursorMove = null;
-            if (TryCompleteBankJournal(connection, member, receipt, journal)) return;
-            member.CursorMove = receipt;
+            journal.IsSealed = true;
+            journal.PlanningAnimation = member.ItemAnimation;
+            journal.PlanningItemTime = member.ItemPhase?.Selected.ItemTime ?? 0;
+            journal.BankResult = new BankResolution();
+            journal.Work = ResolveBankJournal(connection, journal, journal.BankResult).GetEnumerator();
+            return;
         }
         if (journal.Quote is null || journal.Economic is null || journal.Invalid ||
             !journal.Capture.IsCurrent || !IsCurrentShopActor(member, receipt))
@@ -228,18 +454,19 @@ internal sealed partial class PlayerAuthority
             idle = 0;
             LastShopWorkSteps++;
             if (journal.Invalid || !journal.Capture.IsCurrent || !IsCurrentShopActor(member, receipt) ||
-                journal.Quote is null || !journal.Quote.IsRetainedJournalCurrent(journal))
-            { journal.Work?.Dispose(); member.CursorMove = null; RejectedEquipmentUpdates++; continue; }
+                (journal.BankResult is null && (journal.Quote is null || !journal.Quote.IsRetainedJournalCurrent(journal))))
+            { journal.Work?.Dispose(); DropBankBatchAlternative(member, journal); RejectedEquipmentUpdates++; continue; }
             try
             {
                 if (journal.Work!.MoveNext()) continue;
                 journal.Work.Dispose();
-                CompleteShopJournal(member.Connection, member, receipt, journal, journal.Resolution!);
+                if (journal.BankResult is { } bankResult) CompleteBankJournal(member.Connection, member, receipt, journal, bankResult);
+                else CompleteShopJournal(member.Connection, member, receipt, journal, journal.Resolution!);
             }
             catch (Exception ex)
             {
                 journal.Work?.Dispose();
-                if (ReferenceEquals(member.CursorMove, receipt)) member.CursorMove = null;
+                if (ReferenceEquals(member.CursorMove, receipt)) DropBankBatchAlternative(member, journal);
                 failure ??= ex;
             }
         }

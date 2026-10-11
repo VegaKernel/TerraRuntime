@@ -1,5 +1,16 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Bulk and multi-bank custody — accepted local checkpoint, 2026-10-11
+
+The shipping graph now includes source-backed DepositAll, LootAll, QuickStack(false), shift transfers and represented reduced multi-bank cursor chains. The retained journal captures original 219-slot custody before ordinary debits, certifies its current overlay separately, and completes through the existing global 64-step-per-tick scheduler and command queue. Ambiguous custody is rejected before economic fallback; immediate ordinary receive behavior, observers and Bank4 profile mirroring are preserved. No new production dependency or queue was added.
+
+Local acceptance: warnings-as-errors builds 0/0; focused 155/155; fast 24914/24915; one unfiltered full run 1563207/1563208. Failures/errors are zero; fast/full retain the single known canonical-liquid skip. The exact shipping references passed typed managed and fresh Windows Native checks for 312 original rows plus 16 partial-budget rows (188392 checks), and all 3015 existing shop checks. Fresh Windows Native server/five smokes and Release/Native live 82/49/129 with two-client relay passed; both hosts stopped. Linux Native remains locally unverified; GitHub CI was not awaited.
+
+Evidence: `.cache/bank-coherent-production-acceptance-v1/status.json`, `.cache/bank-coherent-production-root-final-verification-v1.json`, `.cache/bank-combined-shipping-native-root-v1/acceptance-manifest.json`, `.cache/bank-old-shop-native-rebind-root-v1/acceptance-manifest.json`, `.cache/bank-coherent-production-live-v2/acceptance-manifest.json`. Source/test SHA256 `a916fcd294a6bfd010494727e56586d8e007679b950721f6129bb92f476d1e90`. Earlier records retain their historical status.
+
+Resume: Restock and inventory/bank sorting. Original captures and a detached Restock Game component are cache-only next-block evidence, not shipping acceptance. Arbitrary hidden cursor cycles, mixed bulk operations, nearby world-chest ingress and whole Main/natural UI remain outside this checkpoint. FullVanillaAiParity remains false.
+
+
 ## Standard-client shop/bank journal — accepted local checkpoint, 2026-10-11
 
 Source-backed cursor/bank moves use contexts `4` and `32`; the independent no-conversation replay covers 72 original rows and disjoint-player traffic. Without a captured shop quote, an ordinary cursor `58` report preserves immediate physical receive adoption and observers before `138`; retained funding is at most the earlier budget and the new physical quantity, never a minted grant. A compatible bank alternative retains the original image until matching bank reports and the delimiter complete it. With a known quote, the journal stages its reports and publishes the accepted batch after joint completion. Raw Bank4 retains normal receive normalization, RNG, input revision and transfer-profile mirroring; private bank state is adopted before callbacks. Other bank-movement families remain outside this producer.

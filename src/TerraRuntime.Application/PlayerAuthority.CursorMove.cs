@@ -26,14 +26,22 @@ internal sealed partial class PlayerAuthority
             if (request.SlotId == pending.Inventory.Slot && TryCursorReport(in request, out var duplicate) &&
                 duplicate == pending.Inventory.AfterSlot && pending.Inventory.IsCurrent && IsCurrentCursorActor(member, pending))
                 return true;
-            member.CursorMove = null;
+            // Replacing the ordinary pair must not discard an independently
+            // current bank alternative captured before the first reported debit.
+            member.CursorMove = request.SlotId == VanillaPlayerItemSlotCatalog.InventoryMouseItem || pending.Shop is null
+                ? null : pending with { Inventory = null, Return = null };
             if (request.SlotId == VanillaPlayerItemSlotCatalog.InventoryMouseItem)
             {
                 if (!TryCursorReport(in request, out var cursor) || !pending.Inventory.TrySelectCursorImage(cursor) ||
-                    !IsCurrentCursorActor(member, pending) || !pending.Inventory.IsCurrent || member.Revision == ulong.MaxValue ||
-                    !pending.Inventory.TryAdoptUnpublished())
+                    !IsCurrentCursorActor(member, pending) || !pending.Inventory.IsCurrent || member.Revision == ulong.MaxValue)
+                { RejectedEquipmentUpdates++; return true; }
+                // The existing owned pair certifies its complete quantity/copper/cap
+                // image. A raw receive certificate cannot authorize that transition.
+                var completion = BeginBankCursorCompletion(command.Connection, pending.Shop, pending.Inventory, in request);
+                if (!pending.Inventory.TryAdoptUnpublished())
                 { RejectedEquipmentUpdates++; return true; }
                 member.TryAdvanceRevision();
+                ObserveAcceptedBankBatchImage(command.Connection, completion);
                 AppliedEquipmentUpdates += pending.Inventory.DebitApplied ? 1 : 2;
                 Exception? failure = null;
                 cursorMovePublishing = true;
@@ -62,11 +70,13 @@ internal sealed partial class PlayerAuthority
             return false;
         if (prepared.CanEagerDebit)
         {
+            var observation = BeginBankBatchAlternative(command, in request);
             if (member.Revision >= ulong.MaxValue - 1 || !prepared.TryAdoptDebitUnpublished())
             { RejectedEquipmentUpdates++; return true; }
             member.TryAdvanceRevision();
             member.CursorMove = new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, prepared);
             AppliedEquipmentUpdates++;
+            ObserveAcceptedBankBatchImage(command.Connection, observation);
             // This observer sees a reported debit; only the later completion
             // observer sees the jointly adopted cursor funding and moved ceilings.
             cursorMovePublishing = true;
@@ -74,7 +84,7 @@ internal sealed partial class PlayerAuthority
             finally { cursorMovePublishing = false; }
             return true;
         }
-        member.CursorMove = new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, prepared);
+        member.CursorMove = new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, prepared, Shop: member.CursorMove?.Shop);
         return true;
     }
 

@@ -36,9 +36,9 @@ internal sealed partial class RuntimePlayerInventoryStore
     // an item; all219 physical/budget images are staged before the source138 boundary.
     internal bool TryPrepareShopBankMove(ConnectionHandle connection, ShopJournalCapture capture,
         ReadOnlySpan<RuntimePlayerInventoryItem> reports, ReadOnlySpan<bool> seen,
-        int animation, int itemTime, out ShopBankMovePreparation? prepared)
+        int animation, int itemTime, out ShopBankMovePreparation? prepared, out bool ambiguous)
     {
-        prepared = null;
+        prepared = null; ambiguous = false;
         if (!capture.IsCurrent || reports.Length != 219 || seen.Length != 219 || animation != 0 ||
             Serial >= ulong.MaxValue - 1) return false;
         int changedBank = -1;
@@ -74,16 +74,160 @@ internal sealed partial class RuntimePlayerInventoryStore
                 bool allChangesReported = true;
                 for (int i = 0; i < final.Length; i++)
                     if (final[i] != capture.Before[i] && !seen[i]) allChangesReported = false;
-                if (!allChangesReported || !AreValidFundedQuantities(finalQuantity.AsSpan(0, 59).ToArray(), final.AsSpan(0, 59)) ||
+                finalCaps = capture.Caps;
+                ReconcileFinalBankCaps(capture.Before, final, finalCaps);
+                if (!allChangesReported || !AreValidRetainedMainShopImage(final.AsSpan(0, 59), finalQuantity.AsSpan(0, 59).ToArray(), finalCopper.AsSpan(0, 59).ToArray(), finalCaps.AsSpan(0, 59 * 5)) ||
                     !AreValidShopBanks(final.AsSpan(59), finalCopper.AsSpan(59)) ||
                     !AreValidShopBankOwnership(final.AsSpan(59), finalQuantity.AsSpan(59), finalCaps.AsSpan(59 * 5))) continue;
                 var candidate = new ShopBankMovePreparation(this, connection, capture, final,
                     finalCopper, finalQuantity, finalCaps);
-                if (prepared is not null && !prepared.HasSameAcceptedImage(candidate)) { prepared = null; return false; }
+                if (prepared is not null && !prepared.HasSameAcceptedImage(candidate)) { prepared = null; ambiguous = true; return false; }
                 prepared = candidate;
             }
         }
         return prepared is not null;
+    }
+
+    internal sealed class BankBulkResolution
+    {
+        internal ShopBankMovePreparation? Preparation;
+        internal bool Ambiguous;
+    }
+
+    internal bool TryPrepareShopBankBulk(ConnectionHandle connection, ShopJournalCapture capture,
+        ReadOnlySpan<RuntimePlayerInventoryItem> reports, ReadOnlySpan<bool> seen,
+        VanillaItemPrefixWorld1458? world, out ShopBankMovePreparation? prepared, out bool ambiguous)
+    {
+        var result = new BankBulkResolution();
+        using var work = PrepareShopBankBulkWork(connection, capture, reports.ToArray(), seen.ToArray(), world, result).GetEnumerator();
+        while (work.MoveNext()) { }
+        prepared = result.Preparation; ambiguous = result.Ambiguous;
+        return prepared is not null && !ambiguous;
+    }
+
+    internal IEnumerable<int> PrepareShopBankBulkWork(ConnectionHandle connection, ShopJournalCapture capture,
+        RuntimePlayerInventoryItem[] reports, bool[] seen, VanillaItemPrefixWorld1458? world, BankBulkResolution result)
+    {
+        ShopBankMovePreparation? prepared = null;
+        if (!capture.IsCurrent || reports.Length != 219 || seen.Length != 219 || Serial >= ulong.MaxValue - 1)
+            yield break;
+        var main = capture.Before.AsSpan(0, 59).ToArray().Select(StorageTuple).ToArray();
+        for (int bank = 0; bank < 4; bank++)
+        {
+            int start = 59 + bank * 40;
+            bool changed = false;
+            for (int i = start; i < start + 40; i++) changed |= reports[i] != capture.Before[i];
+            if (!changed) continue;
+            var storage = capture.Before.AsSpan(start, 40).ToArray().Select(StorageTuple).ToArray();
+            for (int operation = 0; operation < 5; operation++)
+            {
+                int count = operation < 3 ? 1 : operation == 3 ? 58 : 40;
+                for (short source = 0; source < count; source++)
+                {
+                    yield return 0;
+                    int sourceIndex = operation == 3 ? source : start + source;
+                    if (operation >= 3 && capture.Before[sourceIndex] == reports[sourceIndex]) continue;
+                    if (!VanillaWorldItemOwner1458.TryPlanBankBulk(main, storage, bank,
+                        (BankBulkOperation1458)operation, source, world, out var plan) || plan is null) continue;
+                    var after = capture.Before.ToArray();
+                    for (int i = 0; i < 59; i++) after[i] = InventoryTuple(plan.Inventory[i]);
+                    for (int i = 0; i < 40; i++) after[start + i] = InventoryTuple(plan.Bank[i]);
+                    if (!after.AsSpan().SequenceEqual(reports)) continue;
+                    bool reported = true;
+                    for (int i = 0; i < 219; i++) if (after[i] != capture.Before[i] && !seen[i]) reported = false;
+                    if (!reported) continue;
+                    var funding = capture.Copper.ToArray(); var quantities = capture.Quantity; var ceilings = capture.Caps;
+                    if (!TryApplyBankStorageFunding(capture.Before, plan.Steps, start, funding, quantities)) continue;
+                    ReconcileFinalBankCaps(capture.Before, after, ceilings);
+                    if (!AreValidRetainedMainShopImage(after.AsSpan(0, 59), quantities.AsSpan(0, 59).ToArray(), funding.AsSpan(0, 59).ToArray(), ceilings.AsSpan(0, 59 * 5)) ||
+                        !AreValidShopBanks(after.AsSpan(59), funding.AsSpan(59)) ||
+                        !AreValidShopBankOwnership(after.AsSpan(59), quantities.AsSpan(59), ceilings.AsSpan(59 * 5))) continue;
+                    var candidate = new ShopBankMovePreparation(this, connection, capture, after, funding, quantities, ceilings);
+                    if (prepared is not null && !prepared.HasSameAcceptedImage(candidate)) { result.Ambiguous = true; result.Preparation = null; yield break; }
+                    prepared = candidate;
+                    if (candidate.CanElideConservativeBankAlternatives())
+                    { result.Preparation = candidate; yield break; }
+                }
+            }
+        }
+        result.Preparation = prepared;
+    }
+
+    private static bool TryApplyBankStorageFunding(RuntimePlayerInventoryItem[] before,
+        ReadOnlySpan<BankStorageStep1458> steps, int bankStart, long[] copper, short[] quantity)
+    {
+        var image = before.ToArray();
+        int Map(int index) => index < 59 ? index : bankStart + index - 59;
+        foreach (ref readonly var step in steps)
+        {
+            if (step.Coins is { } coins)
+            {
+                long budget = 0, physicalBefore = 0, physicalAfter = 0;
+                if (coins.Slots.Length != coins.Before.Length || coins.Slots.Length != coins.After.Length) return false;
+                var participants = new bool[219];
+                for (int i = 0; i < coins.Slots.Length; i++)
+                {
+                    if (coins.Slots[i] is < 0 or >= 99) return false;
+                    int index = Map(coins.Slots[i]);
+                    if (participants[index] || image[index] != InventoryTuple(coins.Before[i]) || quantity[index] != 0) return false;
+                    participants[index] = true;
+                    budget = checked(budget + copper[index]);
+                    physicalBefore = checked(physicalBefore + CoinValue(image[index]));
+                    image[index] = InventoryTuple(coins.After[i]);
+                    physicalAfter = checked(physicalAfter + CoinValue(image[index]));
+                    copper[index] = 0;
+                }
+                if (physicalBefore != physicalAfter || budget > physicalAfter) return false;
+                var allocated = new bool[219];
+                foreach (short slot in coins.DestinationOrder)
+                {
+                    if (slot is < 0 or >= 99) return false;
+                    int index = Map(slot);
+                    if (!participants[index] || allocated[index]) continue;
+                    allocated[index] = true;
+                    copper[index] = Math.Min(budget, CoinValue(image[index])); budget -= copper[index];
+                }
+                for (int i = 0; i < coins.Slots.Length; i++)
+                {
+                    int index = Map(coins.Slots[i]);
+                    if (!allocated[index]) { copper[index] = Math.Min(budget, CoinValue(image[index])); budget -= copper[index]; }
+                }
+                if (budget != 0) return false;
+                continue;
+            }
+            if (step.Source is < 0 or >= 99 || step.Destination is < 0 or >= 99 ||
+                step.Source == step.Destination || step.Amount <= 0) return false;
+            int source = Map(step.Source), destination = Map(step.Destination);
+            var old = InventoryTuple(step.SourceBefore); var target = InventoryTuple(step.DestinationBefore);
+            // GetItem can clear favorite when cloning into an empty slot. That
+            // flag affects the detached physical plan, not quantity identity.
+            if (image[source].ItemType != old.ItemType || image[source].Prefix != old.Prefix || image[source].Stack != old.Stack ||
+                image[destination].ItemType != target.ItemType || image[destination].Prefix != target.Prefix || image[destination].Stack != target.Stack ||
+                step.Amount > old.Stack || (!target.IsEmpty && (old.ItemType != target.ItemType || old.Prefix != target.Prefix))) return false;
+            short moved = checked((short)Math.Min(quantity[source], step.Amount));
+            long money = Math.Min(copper[source], CoinValue(old with { Stack = checked((short)step.Amount) }));
+            quantity[source] -= moved; quantity[destination] = checked((short)(quantity[destination] + moved));
+            copper[source] -= money; copper[destination] = checked(copper[destination] + money);
+            image[source] = old.Stack == step.Amount ? default : old with { Stack = checked((short)(old.Stack - step.Amount)) };
+            image[destination] = target.IsEmpty ? old with { Stack = checked((short)step.Amount) }
+                : target with { Stack = checked((short)(target.Stack + step.Amount)) };
+        }
+        return true;
+    }
+
+    private static void ReconcileFinalBankCaps(ReadOnlySpan<RuntimePlayerInventoryItem> before,
+        ReadOnlySpan<RuntimePlayerInventoryItem> after, Span<short> caps)
+    {
+        for (int i = 0; i < before.Length; i++)
+            for (int lane = 0; lane < OwnedQuantityTypes.Length; lane++)
+            {
+                int type = OwnedQuantityTypes[lane];
+                int oldQuantity = before[i].ItemType.Value == type ? before[i].Stack : 0;
+                int nextQuantity = after[i].ItemType.Value == type ? after[i].Stack : 0;
+                ref short cap = ref caps[i * 5 + lane];
+                if (nextQuantity < oldQuantity && cap >= 0) cap = checked((short)Math.Max(0, cap - (oldQuantity - nextQuantity)));
+                if (nextQuantity > oldQuantity) cap = checked((short)nextQuantity);
+            }
     }
 
     private static bool TryBankPair(RuntimePlayerInventoryItem[] image, long[] copper, short[] quantity,
@@ -147,11 +291,34 @@ internal sealed partial class RuntimePlayerInventoryStore
         return true;
     }
 
+    private static bool HasFullBankFunding(ReadOnlySpan<RuntimePlayerInventoryItem> image,
+        ReadOnlySpan<short> quantity, ReadOnlySpan<long> copper)
+    {
+        if (image.Length != 219 || quantity.Length != image.Length || copper.Length != image.Length) return false;
+        for (int i = 0; i < image.Length; i++)
+        {
+            long value = CoinValue(image[i]);
+            if (copper[i] != value || quantity[i] != (value > 0 ? 0 : image[i].Stack)) return false;
+        }
+        return true;
+    }
+
     internal sealed class ShopBankMovePreparation(RuntimePlayerInventoryStore owner, ConnectionHandle connection,
         ShopJournalCapture capture, RuntimePlayerInventoryItem[] after, long[] copper, short[] quantity, short[] caps)
     {
         private bool adopted;
         internal bool IsCurrent => !adopted && capture.IsCurrent && owner.Serial < ulong.MaxValue - 1;
+        // With every original physical unit funded, every admitted conserving
+        // source path to this exact image has the same full provenance image.
+        // Caps use only original->final lanes, including untouched obligations.
+        internal bool CanElideConservativeBankAlternatives()
+        {
+            if (!HasFullBankFunding(capture.Before, capture.Quantity, capture.Copper) ||
+                !HasFullBankFunding(after, quantity, copper)) return false;
+            var expectedCaps = capture.Caps;
+            ReconcileFinalBankCaps(capture.Before, after, expectedCaps);
+            return caps.AsSpan().SequenceEqual(expectedCaps);
+        }
         internal bool HasSameAcceptedImage(ShopBankMovePreparation other) =>
             after.AsSpan().SequenceEqual(other.Items) && copper.AsSpan().SequenceEqual(other.Copper) &&
             quantity.AsSpan().SequenceEqual(other.Quantity) && caps.AsSpan().SequenceEqual(other.Caps);
