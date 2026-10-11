@@ -6,6 +6,8 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class PlayerAuthority
 {
+    internal bool? MagicItemWindowsArithmetic => playerUpdateWorld?.WindowsItemPrefixArithmetic;
+
     internal bool? CaptureMagicChannel(PlayerHandle player)
     {
         if (!membership.TryGet(player, out var member)) return null;
@@ -24,7 +26,7 @@ internal sealed partial class PlayerAuthority
             (phase.MagicPayment is { } imported && !imported.IsValid) ||
             !member.HasMana || member.Mana < 0 ||
             (member.ControlFlags & 32) == 0 || (member.MiscFlags2 & 64) == 0 ||
-            selected.Prefix.Value != 0 || selected.Stack <= 0) return false;
+            selected.Stack <= 0) return false;
         // These are source pre-ItemCheck branch inputs, not a client success claim.
         // A packet-first producer must obey the same current no-use boundary.
         if (member.IsDead ||
@@ -33,6 +35,8 @@ internal sealed partial class PlayerAuthority
             VanillaPlayerHealthContext1458.IsRemoteOutOfRange(member.PositionX, member.PositionY,
                 20, 42, world.MaxTilesX, world.MaxTilesY) ||
             transferProfiles.CountActiveBuffs(connection, new(23)) is not 0) return false;
+        if (!VanillaChanneledMagicWeaponStats1458.TryResolve(selected.ItemType, selected.Prefix,
+            world.WindowsItemPrefixArithmetic, out var resolvedWeapon, out _)) return false;
         combat = derived;
         var previous = phase.MagicPayment;
         bool same = previous is { } known && known.Matches(connection.Player, member.SelectedItem,
@@ -43,7 +47,7 @@ internal sealed partial class PlayerAuthority
         {
             if (same && (!phase.Selected.ReleaseUseItem || phase.Selected.Animation > 0)) return false;
             if (previous is { Attempt: ulong.MaxValue } ||
-                !VanillaRemoteChannelledMagic1458.TryResolveManaCost(weapon.ManaCost, derived.ManaCostMultiplier, out int cost))
+                !VanillaRemoteChannelledMagic1458.TryResolveManaCost(resolvedWeapon.ManaCost, derived.ManaCostMultiplier, out int cost))
                 return false;
             ulong attempt = (previous?.Attempt ?? 0) + 1;
             int available = member.Mana;
@@ -71,7 +75,7 @@ internal sealed partial class PlayerAuthority
                 magicUse = new(payment, beforeBuffs!, afterBuffs!, prepared);
             }
         }
-        period = payment.SlowMagicUse ? (int)(weapon.UseTimeTicks * 2.5f) : weapon.UseTimeTicks;
+        period = payment.SlowMagicUse ? (int)(resolvedWeapon.UseTimeTicks * 2.5f) : resolvedWeapon.UseTimeTicks;
         return true;
     }
 }

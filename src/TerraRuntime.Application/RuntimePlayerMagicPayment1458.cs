@@ -11,7 +11,7 @@ internal readonly record struct RuntimePlayerMagicPayment1458(
 {
     internal RuntimePlayerMagicRefill1458? Refill { get; init; }
     internal bool IsValid => Attempt > 0 && Slot <= 58 && Item.IsCanonical && Item.Stack > 0 &&
-        Item.Prefix.Value == 0 && BaseManaMaximum > 0 && PaidMana is >= 0 and <= 400 &&
+        BaseManaMaximum > 0 && PaidMana is >= 0 and <= 400 &&
         TerraRuntime.Gameplay.Players.VanillaRemoteChannelledMagic1458.IsSupported(Item.ItemType, Item.Prefix) &&
         (!AwaitingPhase || BirthConsumed && !EligibleBirth) &&
         (Refill is not { } refill || refill.IsValid && refill.Connection.Player == Player && refill.Attempt == Attempt);

@@ -6,7 +6,8 @@ namespace TerraRuntime.Gameplay.Players;
 public readonly record struct PlayerRemoteChannelledMagicFacts1458(ItemTypeId Weapon, PrefixId Prefix,
     int Mana, bool Channel, bool SlowMagicUse, bool ControlUseItem, bool LastUseSuccess,
     bool Cursed, bool CrowdControlled, bool SelectionBuffered, bool Prepaid = false,
-    bool PrepaidSlowMagicUse = false, float ManaCostMultiplier = 1f);
+    bool PrepaidSlowMagicUse = false, float ManaCostMultiplier = 1f,
+    bool WindowsItemPrefixArithmetic = false);
 
 public readonly record struct PlayerRemoteChannelledMagicTransition1458(
     PlayerSelectedConsumableState1458 State, int Mana, bool Channel, bool SlowMagicUse,
@@ -16,8 +17,8 @@ public readonly record struct PlayerRemoteChannelledMagicTransition1458(
 /// <summary>Source-neutral remote clocks/payment for the three represented channelled weapons.</summary>
 public static class VanillaRemoteChannelledMagic1458
 {
-    public static bool IsSupported(ItemTypeId weapon, PrefixId prefix) => prefix.Value == 0 &&
-        VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(weapon, out _);
+    public static bool IsSupported(ItemTypeId weapon, PrefixId prefix, bool windowsItemPrefixArithmetic = false) =>
+        VanillaChanneledMagicWeaponStats1458.TryResolve(weapon, prefix, windowsItemPrefixArithmetic, out _, out _);
 
     // CheckMana's source Single product is truncated before sufficient/shortage selection.
     public static bool TryResolveManaCost(int rawCost, float multiplier, out int cost)
@@ -44,11 +45,12 @@ public static class VanillaRemoteChannelledMagic1458
         out PlayerRemoteChannelledMagicTransition1458 transition)
     {
         transition = default;
-        if (!IsSupported(facts.Weapon, facts.Prefix) || facts.Mana < 0 || next is null ||
+        if (!IsSupported(facts.Weapon, facts.Prefix, facts.WindowsItemPrefixArithmetic) || facts.Mana < 0 || next is null ||
             previous.Animation is < 0 or > short.MaxValue || previous.AnimationMax is < 0 or > short.MaxValue ||
             previous.ItemTime is < 0 or > short.MaxValue || previous.ItemTimeMax is < 0 or > short.MaxValue ||
             previous.RevolverCritBonus < int.MinValue + 2 ||
-            !VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(facts.Weapon, out var weapon) ||
+            !VanillaChanneledMagicWeaponStats1458.TryResolve(facts.Weapon, facts.Prefix,
+                facts.WindowsItemPrefixArithmetic, out var weapon, out _) ||
             !TryResolveManaCost(weapon.ManaCost, facts.ManaCostMultiplier, out int manaCost)) return false;
         if (facts.CrowdControlled)
         {

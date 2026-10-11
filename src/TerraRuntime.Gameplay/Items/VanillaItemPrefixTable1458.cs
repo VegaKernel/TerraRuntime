@@ -700,6 +700,16 @@ public static class VanillaItemPrefixTable1458
         return true;
     }
 
+    /// <summary>Stored Item.Prefix mana metadata; does not by itself admit item use.</summary>
+    public static bool TryGetManaMultiplier(PrefixId prefix, out float multiplier)
+    {
+        multiplier = default;
+        if ((uint)prefix.Value >= PrefixCount)
+            return false;
+        multiplier = Multipliers[prefix.Value * 3 + 2];
+        return true;
+    }
+
     /// <summary>Clock-only prefix validity for a known item and its genuine roll family.</summary>
     public static bool TryResolveSpeedMultiplier(ItemTypeId item, PrefixId prefix,
         bool windowsItemPrefixArithmetic, out float multiplier)

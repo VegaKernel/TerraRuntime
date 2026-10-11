@@ -295,8 +295,8 @@ internal sealed partial class PlayerAuthority
                 !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
                     world.WindowsItemPrefixArithmetic) &&
                 !VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType, selected.Prefix) &&
-                !VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix))) return false;
-        if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix) &&
+                !VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic))) return false;
+        if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic) &&
             (item.BaseManaMaximum <= 0 || item.MagicPayment is { } malformedPayment && !malformedPayment.IsValid)) return false;
         var critArithmetic = world.WindowsItemPrefixArithmetic
             ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
@@ -361,7 +361,7 @@ internal sealed partial class PlayerAuthority
             if (plan.PublishMana) mana = mana with { Maximum = item.Mana.Maximum };
             beganActualUse = use.BeganUse;
         }
-        else if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix))
+        else if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic))
         {
             var priorPayment = item.MagicPayment;
             bool prepaid = priorPayment is { AwaitingPhase: true } paid &&
@@ -370,7 +370,7 @@ internal sealed partial class PlayerAuthority
             int available = mana.Mana;
             bool attempt = facts.ControlUseItem && clocks.ReleaseUseItem && clocks.Animation == 0 &&
                 !facts.Cursed && !facts.CrowdControlled && !facts.SelectionBuffered;
-            if (!VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(selected.ItemType, out var magicWeapon) ||
+            if (!VanillaChanneledMagicWeaponStats1458.TryResolve(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic, out var magicWeapon, out _) ||
                 item.DerivedCombat is not { } magicCombat ||
                 !VanillaRemoteChannelledMagic1458.TryResolveManaCost(magicWeapon.ManaCost, magicCombat.ManaCostMultiplier, out int cost))
                 return false;
@@ -390,7 +390,7 @@ internal sealed partial class PlayerAuthority
             var magicFacts = new PlayerRemoteChannelledMagicFacts1458(selected.ItemType, selected.Prefix,
                 available, item.Channel, item.SlowMagicUse, facts.ControlUseItem, facts.LastUseSuccess,
                 facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, prepaid,
-                prepaid && priorPayment!.Value.SlowMagicUse, magicCombat.ManaCostMultiplier);
+                prepaid && priorPayment!.Value.SlowMagicUse, magicCombat.ManaCostMultiplier, world.WindowsItemPrefixArithmetic);
             if (!VanillaRemoteChannelledMagic1458.TryStep(clocks, in magicFacts, random.Next, out var magicUse))
                 return false;
             if (magicUse.AttemptedUse)

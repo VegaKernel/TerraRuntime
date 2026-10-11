@@ -477,4 +477,9 @@
     <EmbeddedResource Include="Fixtures/inventory-close-configured-official-1458.json.gz" LogicalName="InventoryClose1458" />
     <EmbeddedResource Include="Fixtures/inventory-close-nonfavorite-configured-official-1458.json.gz" LogicalName="InventoryCloseNonfavorite1458" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/channelled-magic-prefix-configured-official-1458.json.gz" LogicalName="MagicPrefixPhase1458" />
+    <EmbeddedResource Include="Fixtures/channelled-magic-prefix-shoot-configured-official-1458.json.gz" LogicalName="MagicPrefixShoot1458" />
+  </ItemGroup>
 </Project>

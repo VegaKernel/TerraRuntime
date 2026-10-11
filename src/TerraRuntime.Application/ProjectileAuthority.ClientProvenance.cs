@@ -387,8 +387,9 @@ internal sealed partial class ProjectileAuthority
         out AuthoritativeClientProjectileSpawn authoritative)
     {
         authoritative = default;
-        // Exact magic prefix formulas are deliberately not guessed in this slice. Prefix-free items plus the
-        // source-backed equipment snapshot are enough to make damage/mana/cadence authoritative.
+        // Stored Item.Prefix fields precede retained class combat and equipment mana cost.
+        // Never-bound component callers retain their existing neutral-only policy.
+        var launchWeapon = weapon;
         int manaCost = weapon.ManaCost;
         int period = weapon.UseTimeTicks;
         RuntimePlayerMagicPayment1458? magicPayment = null;
@@ -396,6 +397,10 @@ internal sealed partial class ProjectileAuthority
         VanillaPlayerCombatSnapshot attackerCombat;
         if (players.HasRemotePlayerPhaseBinding)
         {
+            if (players.MagicItemWindowsArithmetic is not { } windows ||
+                !VanillaChanneledMagicWeaponStats1458.TryResolve(weaponItem.ItemType, weaponItem.Prefix,
+                    windows, out launchWeapon, out _))
+                return ClientProjectileProvenanceResolveResult.Rejected;
             if (!players.TryPrepareMagicPayment(connection, weaponItem, in weapon,
                 out var payment, out manaCost, out period, out attackerCombat, out magicUse))
                 return ClientProjectileProvenanceResolveResult.Rejected;
@@ -406,10 +411,10 @@ internal sealed partial class ProjectileAuthority
             !players.TryCaptureCombatSnapshot(connection, out attackerCombat))
             return ClientProjectileProvenanceResolveResult.NotApplicable;
 
-        int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicDamage(in weapon, in attackerCombat);
-        float expectedKnockBack = weapon.BaseKnockBack;
+        int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicDamage(in launchWeapon, in attackerCombat);
+        float expectedKnockBack = launchWeapon.BaseKnockBack;
         VanillaLaunchSpeedEnvelope speedEnvelope =
-            VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicLaunchSpeedEnvelope(in weapon);
+            VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicLaunchSpeedEnvelope(in launchWeapon);
         float speedSquared = packet.VelocityX * packet.VelocityX + packet.VelocityY * packet.VelocityY;
         if (!(speedSquared > 0f) || !float.IsFinite(speedSquared) || !speedEnvelope.IsValid)
             return ClientProjectileProvenanceResolveResult.Rejected;
