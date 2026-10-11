@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Two-cell type-185 pile framing, 2026-10-11
+
+TerrariaServer 1.4.5.8 `WorldGen.CheckPile`/`Check2x1` selects a horizontal two-cell pile when `frameY==18`. `Check2x1` derives its left edge from the triggering cell's `frameX/18` parity, requires the right frame X to be exactly 18 greater, validates both lower supports, downgrades frame-X band 1368..1458 by 1368 when neither floor is type2/477/492, then applies snow/ice style25..30 and sand-family style41..46/62..64 checks. The official registered `FinalCleanup` 1000x500 fourteen-site fixture gives whole-grid six-field SHA-256 `d954c20684f75c4613c670c8971995c2fa7da89efd28d63fdd52d2bba525db75`, next RNG1056314798. Destroyed treasure styles may additionally call `Item.NewItem` and consume `genRand`; this fixture does not cover them.
+
 ## Inactive frames and type-178 dust in Final Cleanup, 2026-10-11
 
 TerrariaServer 1.4.5.8 `WorldGen.TileFrame` clears slope and paint on an inactive cell but leaves its old frame coordinates. Source `SaveWorldTiles` does not serialize frame coordinates for inactive cells. The canonical generation validator therefore admits a paired nonnegative stale frame as well as `(-1,-1)` with zero shape; the generic structural validator keeps its stricter normalized-generation contract. A generated Small-world prefix exposed six adjacent inactive type-`25` cells with the old 3x2 frame pattern, and three Small/Large startup seeds pass after preserving it. The source `KillTile_MakeTileDust` special branch for type `178` requires a fully materialized `Main.dust` pool in the headless probe. With that source prerequisite, an unsupported type-`178` decoration dies and costs zero shared RNG draws. The registered official seven-site `FinalCleanup` fixture matches whole-grid SHA-256 `c46bfd206579d1a5c0412063a000603f4e1b657f3769880767aad9fb28ae97be`, next RNG `1056314798`.

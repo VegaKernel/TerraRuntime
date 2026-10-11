@@ -2,7 +2,7 @@
 
 2026-10-11 integrated final-stage correction: the source-backed generation framer consumes a newly measured zero-draw type-`178` KillTile cost. `Validator1458` now accepts inactive nonnegative stale frames that the official TileFrame leaves transiently; `StructuralValidator` remains strict for generic generators. Test `.bin.gz` header resources are explicitly non-culture. No new production dependency or ownership edge; row109 remains partial.
 
-2026-10-11 one-cell-pile increment: type `185` one-cell support/substrate checks now run in the existing generation framing helper; the two-cell form remains outside this slice. No dependency or ownership edge changed; row109 remains partial.
+2026-10-11 pile continuation: type `185` one- and two-cell support/substrate checks now run in the existing generation framing helper. A fourteen-site official `FinalCleanup` full-grid/RNG fixture covers ordinary, snow, sand, and grass-style cases. Treasure-style item publication remains outside this slice. No dependency or ownership edge changed; row109 remains partial.
 
 2026-10-11 three-by-one increment: type `235` footprint/support validation now runs inside the existing generation framing helper. No dependency or ownership edge changed; row109 remains partial.
 
