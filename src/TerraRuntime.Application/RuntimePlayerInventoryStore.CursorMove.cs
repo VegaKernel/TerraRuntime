@@ -111,6 +111,19 @@ internal sealed partial class RuntimePlayerInventoryStore
             adopted = true;
             return true;
         }
+        internal bool TryCaptureSelectedPotionDebit(RuntimePlayerInventoryStore store, ConnectionHandle actor,
+            out RuntimePlayerInventoryItem original, out short originalFunding)
+        {
+            original=default; originalFunding=0;
+            if (!ReferenceEquals(store,owner) || actor != connection || !debitApplied || !IsCurrent ||
+                !AreValidOwnedQuantities(caps,before) ||
+                !VanillaSelectedConsumableCatalog1458.TryGet(before[slot].ItemType,out var potion) ||
+                potion.HealLife <= 0 && potion.HealMana <= 0 || before[slot].Prefix.Value != 0 ||
+                funding[slot] < 1 || afterSlot != (before[slot].Stack == 1 ? default : before[slot] with { Stack=(short)(before[slot].Stack-1) })) return false;
+            original=before[slot]; originalFunding=funding[slot]; return true;
+        }
+        internal ItemTypeId BeforePotionType => before[slot].ItemType;
+        internal void AdoptSelectedPotionDebit() => adopted=true;
         internal bool DebitApplied => debitApplied;
         internal bool CanEagerDebit => afterSlot.IsEmpty || (afterSlot.ItemType == before[slot].ItemType &&
             afterSlot.Prefix == before[slot].Prefix && afterSlot.Stack < before[slot].Stack);

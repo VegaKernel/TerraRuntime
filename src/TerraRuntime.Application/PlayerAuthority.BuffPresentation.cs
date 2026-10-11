@@ -56,6 +56,11 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        if (activePlayer is not null && IsExplainedSelectedPotionBuffAcknowledgement(activePlayer,request.BuffTypes.Span))
+        {
+            AppliedBuffSnapshots++;
+            return;
+        }
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
             RejectedBuffSnapshots++;
@@ -63,7 +68,8 @@ internal sealed partial class PlayerAuthority
         }
 
         bool explainedQuickMana = activePlayer is not null &&
-            IsExplainedQuickManaBuffAcknowledgement(activePlayer, request.BuffTypes.Span);
+            (IsExplainedQuickManaBuffAcknowledgement(activePlayer, request.BuffTypes.Span) ||
+             IsExplainedSelectedPotionBuffAcknowledgement(activePlayer, request.BuffTypes.Span));
         if (!explainedQuickMana && !transferProfiles.TrySetBuffTypes(command.Connection, request.BuffTypes))
         {
             RejectedBuffSnapshots++;

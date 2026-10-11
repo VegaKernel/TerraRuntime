@@ -1,5 +1,16 @@
 # TerraRuntime roadmap
 
+## Owned selected potions - accepted local checkpoint, 2026-10-11
+
+Eight neutral-prefix healing/mana items (28/188/499/3544 and 110/189/500/2209) now use the existing player phase with one funded physical debit, source clocks/RNG, indexed sickness and vitals. Full vitals still consume the funded item. The bounded latest-use receipt reconciles report-first and phase-first inventory/vital/buff observations without replaying paid benefits, resetting durations or restoring newer owned damage/mana expenditure. Repeated funded uses preserve quantity3->2->1; transfer clears receipt state while retaining accepted custody. Five consumption lanes and existing ownership/queue boundaries remain unchanged.
+
+Local acceptance: Release warnings-as-errors builds0/0; focused38/38; fast24925/24926; one unfiltered full run1563218/1563219. No failures/errors; fast/full retain one known canonical-liquid skip. Typed managed and fresh Windows Native Game2/2 each146858 checks and ACK1/1 each16492 checks pass against identical shipping32. Fresh Windows Native server/five smokes and Release/Native live82/49/129 with two-client relay pass; both hosts stopped. Four neighboring fixture migrations only establish explicit trusted funding or preserve the remote-source clock projection; original numeric source oracles remain unchanged. Linux Native remains locally unverified; GitHub CI was not awaited.
+
+Final evidence: `.cache/selected-potion-production-acceptance-v2/root-final-verification.json`, final status, preserved Native scope bridge and `.cache/selected-potion-production-live-v2/acceptance-manifest.json`. Source/test SHA256 `e26145b90ac2ca7bd9164273d46f65e9452e3d0c7b4a0b1389361f9fb356ccf3` records executed working bytes relative to baseline c4af1341; Git newline normalization is separate. Corrected original capture covers608 configured sequences/12160 phase comparisons across the combined source cohorts, not natural whole Main/UI execution.
+
+Resume: review and integrate the independently captured35/43 presentation relay next, then continue inventory/ammo/equipment, combat/buffs and events/progression. The relay remains cache-only at this checkpoint and grants no vitals or funding. Canonical Air differs from the source's transient retained zero-stack type. Arbitrary historical ACK streams, unrestricted player health authority and full gameplay/AI parity are not claimed. FullVanillaAiParity remains false. Earlier entries below preserve historical status.
+
+
 ## Restock and sorting custody - accepted local checkpoint, 2026-10-11
 
 Source-backed Restock, localized main/bank Sort, represented coin overflow and retained coin-slot cursor moves are integrated with the existing bounded inventory owners. Positive retained coin tuples may reach the signed wire bound32767; nominal100/9999 remain merge capacities, and the source wallet availability clamp remains9999999999 copper. Owner-specific prefix validation is preserved. Zero/fractional prepared coin sources retain physical provenance without gaining economic funding. Sorting keeps exact private custody alternatives, including ordinary cursor credits; obsolete sorted observations cannot consume a valid ordinary transfer. Genuine indistinguishable closed cursor cycles with different funding still reject.

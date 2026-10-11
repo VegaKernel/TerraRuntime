@@ -135,6 +135,10 @@ internal sealed partial class PlayerAuthority
             transferProfiles.TryAdoptBuffState(member.Connection, plan.BeforeBuffs, plan.Buffs);
             member.TryAdvanceRemotePhaseRevision();
             member.ItemPhase = plan.Item;
+            if (plan.InventoryMutations.Any(static mutation => mutation.CursorSourceDebit is not null) &&
+                member.CursorMove?.Inventory is { } consumed &&
+                plan.InventoryMutations.Any(mutation=>ReferenceEquals(mutation.CursorSourceDebit,consumed)))
+                member.CursorMove = null;
             ObserveShopPricingPhase(member);
             if (plan.Item?.MagicPayment is not null) member.OwnsManaMaximum = true;
             member.PhysicsPhase = plan.Physics;
@@ -171,6 +175,18 @@ internal sealed partial class PlayerAuthority
                     }
                     catch (Exception error) { first ??= error; }
                 }
+            }
+            if (plan.PublishHealth && membership.TryGet(plan.Member.Connection, out var healthMember) &&
+                ReferenceEquals(healthMember, plan.Member) && healthMember.NpcHealth == plan.Health &&
+                healthMember.ItemPhase == plan.Item)
+            {
+                try
+                {
+                    var report = new PlayerHealthCommitRequest(plan.Member.Slot,
+                        checked((short)plan.Health!.Value.Life), healthMember.MaxLife);
+                    events?.PlayerHealthUpdated(plan.Member.Connection, in report);
+                }
+                catch (Exception error) { first ??= error; }
             }
             if (plan.PublishMana && membership.TryGet(plan.Member.Connection, out var manaMember) &&
                 ReferenceEquals(manaMember, plan.Member) && manaMember.Mana == plan.Item!.Value.Mana.Mana &&
@@ -291,8 +307,12 @@ internal sealed partial class PlayerAuthority
             plan.Changed = true;
             return true;
         }
-        if (!inventory.TryGet(member.Connection, member.SelectedItem, out var selected) ||
-            !selected.IsCanonical ||
+        if (!inventory.TryGet(member.Connection, member.SelectedItem, out var selected)) return false;
+        if (item.SelectedPotionUse is { Completed:false } provisional && provisional.Slot == member.SelectedItem &&
+            provisional.Player == member.Connection.Player && member.CursorMove?.Inventory is { } potionDebit &&
+            potionDebit.TryCaptureSelectedPotionDebit(inventory,member.Connection,out var originalPotion,out _) &&
+            originalPotion == provisional.Before) selected=originalPotion;
+        if (!selected.IsCanonical ||
             (!(selected.Prefix == VanillaPrefixIds.None &&
                 VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _)) &&
                 !VanillaRemoteRangedItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
@@ -466,6 +486,13 @@ internal sealed partial class PlayerAuthority
             };
             beganActualUse = passiveUse.BeganActualUse;
         }
+        else if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var selectedPotion) &&
+            (selectedPotion.HealLife > 0 || selectedPotion.HealMana > 0))
+        {
+            if (!TryPlanOwnedSelectedPotion(plan, selected, item, clocks, in facts, random,
+                out use, out item)) return false;
+            beganActualUse = use.BeganUse;
+        }
         else
         {
             if (!VanillaSelectedConsumable1458.TryStep(clocks, in facts, random.Next, random.NextDouble, out use))
@@ -530,6 +557,7 @@ internal sealed partial class PlayerAuthority
         internal RuntimePlayerInventoryItem[] InventoryBefore { get; } = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
         internal List<RemotePhaseInventoryMutation> InventoryMutations { get; } = [];
         internal bool PublishMana { get; set; }
+        internal bool PublishHealth { get; set; }
         internal bool PublishBuffs { get; set; }
         internal TerraRuntime.Contracts.Gameplay.BuffTypeId[]? PublishedBuffTypes { get; set; }
         internal RuntimePlayerMember Member { get; } = member;

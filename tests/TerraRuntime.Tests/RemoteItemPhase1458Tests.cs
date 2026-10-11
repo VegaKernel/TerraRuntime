@@ -16,7 +16,7 @@ namespace TerraRuntime.Tests;
 public sealed class RemoteItemPhase1458Tests
 {
     [Fact]
-    public void Actual_ascending_UpdatePlayers_census_matches_remote_vitals_timers_physics_buffs_and_shared_cursor()
+    public void Funded_ascending_census_preserves_original_remote_phase_projection_and_adds_owned_debit_publications()
     {
         using var source = Read();
         Assert.Equal(8, source.RootElement.GetArrayLength());
@@ -24,7 +24,7 @@ public sealed class RemoteItemPhase1458Tests
         foreach (var row in source.RootElement.EnumerateArray())
         {
             string mode = row.GetProperty("mode").GetString()!;
-            using var f = new Fixture(mode, runtimeTick);
+            using var f = new Fixture(mode, runtimeTick, fundedPotions:true);
             var sentinel = f.Member(255).CaptureSnapshot();
             var sentinelPhase = f.Member(255).ItemPhase;
             foreach (var step in row.GetProperty("steps").EnumerateArray())
@@ -34,7 +34,9 @@ public sealed class RemoteItemPhase1458Tests
                     if (f.Players.TryGet(slot, out _)) f.Move(slot, tick > 0);
                 f.Events.Count = 0;
                 Assert.True(f.Step(), $"{mode}/{tick}/runtime={runtimeTick}");
-                Assert.Equal(0, f.Events.Count);
+                // Original capture is remote projection. This configured authoritative
+                // fixture funds its potion and separately publishes the paid local debit.
+                Assert.Equal(tick == 1 ? 3 : 0, f.Events.Count);
                 AssertRandom(step.GetProperty("after"), f.Random);
                 foreach (var expected in step.GetProperty("players").EnumerateArray())
                 {
@@ -65,7 +67,12 @@ public sealed class RemoteItemPhase1458Tests
                     Assert.Equal(expected.GetProperty("buffTypes").EnumerateArray().Select(x => x.GetInt32()), types.Select(x => x.Value));
                     Assert.Equal(expected.GetProperty("buffTimes").EnumerateArray().Select(x => x.GetInt32()), times);
                     Assert.True(f.Players.TryGetInventoryItem(f.Connections[slot], 0, out var item));
-                    Assert.Equal(f.ItemIds[slot] == 0 ? 0 : 3, item.Stack);
+                    Assert.Equal(f.ItemIds[slot] == 0 ? 0 : f.ItemIds[slot] == 28 && tick > 0 ? 2 : 3, item.Stack);
+                    if(f.ItemIds[slot]==28)
+                    {
+                        var inventory=(RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(f.Players)!;
+                        Assert.Equal((short)(tick>0?2:3),inventory.CaptureFundedQuantities(f.Connections[slot])[0]);
+                    }
                 }
                 Assert.Equal(sentinel, f.Member(255).CaptureSnapshot());
                 Assert.Equal(sentinelPhase, f.Member(255).ItemPhase);
@@ -322,7 +329,7 @@ public sealed class RemoteItemPhase1458Tests
         private readonly List<PlayerJoinSession> sessions = [];
         private readonly HashSet<byte> moved = [];
         private readonly PlayerSlotPool pool = new(3);
-        internal Fixture(string mode, bool runtimeTick = false)
+        internal Fixture(string mode, bool runtimeTick = false, bool fundedPotions=false)
         {
             for (int x = 0; x < 400; x++) Tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             var projectiles = new RuntimeProjectileStore();
@@ -365,6 +372,13 @@ public sealed class RemoteItemPhase1458Tests
                 Apply(new PlayerEquipmentRuntimeCommand(connection, new(session.Slot, 0, id == 0 ? (short)0 : (short)3, 0, id, 0)));
                 Apply(new PlayerSpawnRuntimeCommand(connection, session, new(session.Slot, 100, 103, 0, 0, 0, 0, 0)));
                 Move(slot, false);
+                if(fundedPotions && id==28)
+                {
+                    // Explicit producer-owned budget, not inferred from the raw packet5.
+                    var inventory=(RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(Players)!;
+                    short[] quantities=new short[59];quantities[0]=3;
+                    inventory.AdoptFundedQuantities(connection,quantities);
+                }
                 // Explicit source-configured imported lifecycle branches, after genuine membership creation.
                 // Packet movement admission is not weakened to inject outside coordinates.
                 if (slot == 0 && mode == "outside-first") { Member(slot).PositionX = 0; Member(slot).PositionY = 0; }

@@ -141,7 +141,7 @@ public sealed class RemoteStyle1AndRangedPrefixPhase1458Tests
     }
 
     [Fact]
-    public void Carried_source_clocks_follow_common_gun_potion_empty_and_early_return_boundaries()
+    public void Funded_runtime_projection_preserves_remote_gun_potion_empty_and_early_return_clocks()
     {
         foreach(string resource in new[] { "RemoteCrossFamilyClocksLinux1458", "RemoteStyle1EarlyClocksLinux1458" })
         {
@@ -205,10 +205,12 @@ public sealed class RemoteStyle1AndRangedPrefixPhase1458Tests
             f.Move(step.GetProperty("use").GetBoolean(), checked((byte)I(before, "selected")));
             AssertRandom(step.GetProperty("before"), f.Random);
             f.Events.Count = 0;
+            ulong beforePaidEpoch = f.Member.ItemPhase?.SelectedPotionUse?.Attempt ?? 0;
             f.State.Tick();
             Assert.True(f.Member.ItemPhase.HasValue, $"{identity}/{tick}");
             Assert.NotNull(f.Member.PhysicsPhase);
-            Assert.Equal(0, f.Events.Count);
+            bool paidUse = (f.Member.ItemPhase?.SelectedPotionUse?.Attempt ?? 0) != beforePaidEpoch;
+            Assert.Equal(paidUse ? 2 : 0, f.Events.Count); // owned inventory + buff publication, source remote frames stay empty
             Assert.Equal(0, step.GetProperty("frames").GetArrayLength());
             Assert.Equal(0, f.Projectiles.ActiveCount);
             AssertRandom(step.GetProperty("after"), f.Random);
@@ -263,7 +265,17 @@ public sealed class RemoteStyle1AndRangedPrefixPhase1458Tests
         {
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, I(slot, "slot"), out var actual));
             Assert.Equal(I(slot, "type"), actual.ItemType.Value);
-            Assert.Equal(I(slot, "stack"), actual.Stack);
+            int sourceStack = I(slot, "stack");
+            if (I(slot, "type") == 28)
+            {
+                int used = checked((int)(f.Member.ItemPhase?.SelectedPotionUse?.Attempt ?? 0));
+                int ownedStack = Math.Max(3, sourceStack) - used;
+                Assert.Equal(ownedStack, actual.Stack);
+                var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                    .GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(f.Players)!;
+                Assert.Equal(ownedStack, inventory.CaptureFundedQuantities(f.Connection)[I(slot, "slot")]);
+            }
+            else Assert.Equal(sourceStack, actual.Stack);
             Assert.Equal(I(slot, "prefix"), actual.Prefix.Value);
         }
     }
@@ -320,6 +332,22 @@ public sealed class RemoteStyle1AndRangedPrefixPhase1458Tests
             Apply(new PlayerSpawnRuntimeCommand(Connection, session, new(session.Slot, 100, 103, 0, 0, 0, 0, 0)));
             Apply(new PlayerBuffTypesRuntimeCommand(Connection, new(session.Slot,
                 source.GetProperty("buffs").EnumerateArray().Select(x => new BuffTypeId(x.GetInt32())).ToArray())));
+            // The remote source consumes no inventory. This owned-runtime projection
+            // imports a trusted potion budget explicitly; raw equipment never funds it.
+            // A one-stack remote clock fixture uses configured stock3 so its remote
+            // non-last-stack clocks remain the compared component projection.
+            foreach (var sourceItem in source.GetProperty("beforeInventory").EnumerateArray())
+            {
+                if (I(sourceItem, "type") != 28) continue;
+                short slot = checked((short)I(sourceItem, "slot"));
+                short stock = checked((short)Math.Max(3, I(sourceItem, "stack")));
+                if (stock != I(sourceItem, "stack")) Equipment(slot, 28, stock);
+                var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                    .GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Players)!;
+                var budgets = inventory.CaptureFundedQuantities(Connection);
+                budgets[slot] = stock;
+                inventory.AdoptFundedQuantities(Connection, budgets);
+            }
             Move(false, 0);
             var initial=source.GetProperty("initial");
             Member.ItemAnimation=I(initial,"animation");

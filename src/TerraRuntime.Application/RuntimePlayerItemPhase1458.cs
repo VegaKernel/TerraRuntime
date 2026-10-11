@@ -144,6 +144,7 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     }
 
     internal RuntimePlayerManaCrystalIntent1458? ManaCrystalIntent { get; init; }
+    internal RuntimePlayerSelectedPotionUse1458? SelectedPotionUse { get; init; }
     internal int DeadTime { get; init; }
     internal int RespawnTimer { get; init; }
     internal int ManaPotionDelay { get; init; }

@@ -495,6 +495,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryAcknowledgeSelectedPotionInventory(equipment)) return;
         if (TryReconcileShopInventoryReport(equipment)) return;
         if (TryReconcileFavoriteCursorReturn(equipment)) return;
         if (TryReconcileOwnedCursorMove(equipment)) return;
@@ -579,6 +580,7 @@ internal sealed partial class PlayerAuthority
 
     private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health)
     {
+        if (TryAcknowledgeSelectedPotionHealth(health)) return;
         PlayerHealthCommitRequest received = health.Request;
         PlayerHealthCommitRequest request = VanillaVitalsRules.NormalizeHealth(in received);
         if (!health.Connection.IsAssigned || health.Connection.Player.Slot != request.PlayerSlot)
@@ -632,6 +634,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerMana(PlayerManaRuntimeCommand mana)
     {
         PlayerManaCommitRequest request = mana.Request;
+        if (TryAcknowledgeSelectedPotionMana(mana)) return;
         if (TryAcknowledgeManaCrystalMana(mana)) return;
         if (!mana.Connection.IsAssigned || mana.Connection.Player.Slot != request.PlayerSlot)
         {

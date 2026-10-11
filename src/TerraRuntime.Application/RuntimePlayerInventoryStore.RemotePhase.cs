@@ -5,7 +5,11 @@ using TerraRuntime.Gameplay.Items;
 namespace TerraRuntime.Application;
 
 internal readonly record struct RemotePhaseInventoryMutation(
-    ConnectionHandle Connection, short Slot, RuntimePlayerInventoryItem Before, RuntimePlayerInventoryItem After);
+    ConnectionHandle Connection, short Slot, RuntimePlayerInventoryItem Before, RuntimePlayerInventoryItem After)
+{
+    internal bool ConsumeFundedQuantity { get; init; }
+    internal RuntimePlayerInventoryStore.CursorMovePreparation? CursorSourceDebit {get;init;}
+}
 
 internal readonly record struct OwnedInventoryQuantity1458(short Slot, ItemTypeId ItemType, short Maximum);
 
@@ -104,14 +108,20 @@ internal sealed partial class RuntimePlayerInventoryStore
                 before != mutation.Before || !CanConsumeOwnedQuantity(mutation) || !seen.Add(GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)))
                 return false;
         }
-        preparation = new(this, expectedSerial, mutations.ToArray());
+        var frozenSourceFunding=new short[mutations.Length];
+        for(int index=0;index<mutations.Length;index++)
+            if(mutations[index].CursorSourceDebit is { } source &&
+                !source.TryCaptureSelectedPotionDebit(this,mutations[index].Connection,out _,out frozenSourceFunding[index])) return false;
+        preparation = new(this, expectedSerial, mutations.ToArray(),frozenSourceFunding);
         return true;
     }
 
     private static bool IsOwnedConsumption(in RemotePhaseInventoryMutation mutation)
     {
         var before = mutation.Before;
-        if (!before.IsCanonical || before.IsEmpty || before.Prefix.Value != 0 || QuantityLane(before.ItemType) < 0)
+        if (mutation.CursorSourceDebit is not null) return mutation.ConsumeFundedQuantity && mutation.After == before;
+        if (!before.IsCanonical || before.IsEmpty || before.Prefix.Value != 0 ||
+            (QuantityLane(before.ItemType) < 0 && !mutation.ConsumeFundedQuantity))
             return false;
         RuntimePlayerInventoryItem expected = before.Stack == 1 ? default : before with { Stack = (short)(before.Stack - 1) };
         return mutation.After == expected;
@@ -119,14 +129,20 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     private bool CanConsumeOwnedQuantity(in RemotePhaseInventoryMutation mutation)
     {
-        int lane = QuantityLane(mutation.Before.ItemType);
+        if (mutation.CursorSourceDebit is { } source)
+            return source.Slot == mutation.Slot && source.TryCaptureSelectedPotionDebit(this,mutation.Connection,out _,out _);
+        if (mutation.ConsumeFundedQuantity &&
+            (!VanillaSelectedConsumableCatalog1458.TryGet(mutation.Before.ItemType, out var potion) ||
+             potion.HealLife <= 0 && potion.HealMana <= 0 ||
+             fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] <= 0)) return false;
+        int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);
         if (lane < 0) return true;
         short cap = ownedQuantityCaps[QuantityOffset(mutation.Connection.Player.Slot.Value, mutation.Slot, lane)];
         return cap < 0 || mutation.Before.Stack <= cap;
     }
 
     internal sealed class RemotePhasePreparation(RuntimePlayerInventoryStore owner,
-        ulong serial, RemotePhaseInventoryMutation[] mutations)
+        ulong serial, RemotePhaseInventoryMutation[] mutations, short[] frozenSourceFunding)
     {
         private bool adopted;
         internal bool IsCurrent
@@ -135,7 +151,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             {
                 if (adopted || owner.Serial != serial) return false;
                 foreach (var mutation in mutations)
-                    if (!owner.TryGet(mutation.Connection, mutation.Slot, out var item) || item != mutation.Before)
+                    if (!owner.TryGet(mutation.Connection, mutation.Slot, out var item) || item != mutation.Before || !owner.CanConsumeOwnedQuantity(mutation))
                         return false;
                 return true;
             }
@@ -145,12 +161,20 @@ internal sealed partial class RuntimePlayerInventoryStore
         {
             if (!IsCurrent) return false;
             adopted = true;
-            foreach (var mutation in mutations)
+            for(int index=0;index<mutations.Length;index++)
             {
+                var mutation=mutations[index];
+                if (mutation.CursorSourceDebit is { } source)
+                {
+                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=(short)(frozenSourceFunding[index]-1);
+                    source.AdoptSelectedPotionDebit();
+                }
+                else if (mutation.ConsumeFundedQuantity)
+                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)]--;
                 owner.PreserveReportedFunding(mutation.Connection.Player.Slot.Value, mutation.Slot, mutation.After);
                 owner.items[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] = mutation.After;
-                int lane = QuantityLane(mutation.Before.ItemType);
-                if (lane >= 0 && mutation.After.Stack < mutation.Before.Stack &&
+                int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);
+                if (lane >= 0 && (mutation.CursorSourceDebit is not null || mutation.After.Stack < mutation.Before.Stack) &&
                     (mutation.After.IsEmpty || mutation.After.ItemType == mutation.Before.ItemType))
                 {
                     int offset = QuantityOffset(mutation.Connection.Player.Slot.Value, mutation.Slot, lane);

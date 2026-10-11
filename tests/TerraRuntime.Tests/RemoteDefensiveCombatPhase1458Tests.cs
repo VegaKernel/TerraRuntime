@@ -305,6 +305,19 @@ public sealed class RemoteDefensiveCombatPhase1458Tests
             Equipment(0, (short)I(spec, "weapon"), row.GetProperty("initial").GetProperty("lastItemUseAttemptSuccess").GetBoolean() ? (short)20 : (short)1,
                 (byte)I(spec, "prefix"));
             Equipment(1, (short)I(spec, "weapon"), 1);
+            if (spec.GetProperty("name").GetString() == "mana-potion-first-use")
+            {
+                // This configured source comparison uses trusted owned potions, not raw report grants.
+                var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                    .GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Players)!;
+                var funding = inventory.CaptureFundedQuantities(Connection);
+                foreach (short slot in new short[] { 0, 1 })
+                {
+                    Assert.True(inventory.TryGet(Connection, slot, out var potion));
+                    funding[slot] = potion.Stack;
+                }
+                inventory.AdoptFundedQuantities(Connection, funding);
+            }
             Equipment(54, 97, 50);
             foreach (var entry in spec.GetProperty("armor").EnumerateArray())
             {

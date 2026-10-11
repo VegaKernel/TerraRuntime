@@ -14,6 +14,8 @@ public readonly record struct PlayerSelectedConsumableTransition1458(
     PlayerSelectedConsumableState1458 State, int Life, int Mana,
     bool BeganUse, int PotionSicknessOffer, int ManaSicknessOffer)
 {
+    public bool Consumed { get; init; }
+    public int RemainingStack { get; init; }
     public bool PendingItemReuse { get; init; }
     public bool ResetItemRotation { get; init; }
 }
@@ -86,6 +88,36 @@ public static class VanillaSelectedConsumable1458
             PendingItemReuse = pending,
             ResetItemRotation = resetItemRotation
         };
+        return true;
+    }
+
+    /// <summary>Local ordinary potion ItemCheck, including its post-effect inventory debit.
+    /// A zero stack retains the source item identity until source item cleanup or inventory synchronization.</summary>
+    public static bool TryStepOwned(PlayerSelectedConsumableState1458? previous,
+        in PlayerSelectedConsumableFacts1458 facts, int selectedStack,
+        Func<int, int, int> nextInteger, Func<double> nextDouble,
+        out PlayerSelectedConsumableTransition1458 transition)
+    {
+        transition = default;
+        if (!VanillaSelectedConsumableCatalog1458.TryGet(facts.Item, out var item) ||
+            item.HealLife == 0 && item.HealMana == 0 ||
+            !VanillaWorldItemAllocationCatalog1458.TryGet(facts.Item.Value, out var allocation) ||
+            selectedStack < 0 || selectedStack > allocation.MaximumStack) return false;
+
+        // Local ItemCheck recomputes the ordinary use result; the retained success bit gates only remote players.
+        var localFacts = facts with { LastUseSuccess = true };
+        if (!TryStep(previous, in localFacts, nextInteger, nextDouble, out transition)) return false;
+
+        // The source consumes after healing and ApplyItemTime, rather than at the start gate.
+        bool consumptionPoint = facts.AllowedToHoldItems && !facts.CrowdControlled &&
+            transition.State.ItemTimeMax != 0 &&
+            transition.State.ItemTime == transition.State.ItemTimeMax;
+        bool consumed = consumptionPoint && selectedStack > 0;
+        int remaining = selectedStack - (consumed ? 1 : 0);
+        var state = transition.State;
+        if (consumptionPoint && remaining == 0)
+            state = state with { ItemTime = state.Animation };
+        transition = transition with { State = state, Consumed = consumed, RemainingStack = remaining };
         return true;
     }
 

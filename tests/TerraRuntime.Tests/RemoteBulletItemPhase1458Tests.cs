@@ -26,13 +26,15 @@ public sealed class RemoteBulletItemPhase1458Tests
     }
 
     [Fact]
-    public void Actual_animation_reports_and_potion_to_gun_selection_preserve_source_continued_clocks()
+    public void Funded_potion_to_gun_projection_preserves_original_remote_continued_clocks()
     {
         using var source = Read();
         var rows = source.RootElement.EnumerateArray().Where(row => !row.GetProperty("mode").GetString()!.EndsWith("fresh", StringComparison.Ordinal)).ToArray();
         Assert.Equal(9, rows.Length);
         Assert.Equal(2, rows.Count(row => row.GetProperty("mode").GetString() == "from-potion"));
         foreach (var row in rows) CompareSequence(row);
+        VerifyOwnedLastStackClockContinuation(rows.First(row => I(row, "weapon") == 98 &&
+            row.GetProperty("mode").GetString() == "from-potion"));
     }
 
     [Fact]
@@ -77,7 +79,7 @@ public sealed class RemoteBulletItemPhase1458Tests
     }
 
     [Fact]
-    public void Empty_item_and_potion_animation_reports_preserve_original_pending_reuse_boundary()
+    public void Funded_potion_projection_and_empty_reports_preserve_original_remote_pending_reuse_boundary()
     {
         using var source = Read("RemoteCommonPending1458");
         var rows = source.RootElement.EnumerateArray().ToArray();
@@ -89,6 +91,51 @@ public sealed class RemoteBulletItemPhase1458Tests
             Assert.False(row.GetProperty("steps")[7].GetProperty("player").GetProperty("pendingReuse").GetBoolean());
             CompareSequence(row);
         }
+    }
+
+    private static void VerifyOwnedLastStackClockContinuation(JsonElement remoteInputs)
+    {
+        // Configured local-owned companion, not a rewrite of the remote numeric oracle.
+        // The corrected local selected-potion source binds last-stack Time=Animation=16.
+        // Gun packet27/provenance/payment is covered separately by PendingBullet tests;
+        // this common remote phase deliberately produces no autonomous projectiles.
+        using var f = new Fixture(remoteInputs, ownedPotionStock: 1);
+        f.Move(false, 0);
+        f.State.Tick();
+        f.Move(true, 0);
+        f.State.Tick();
+        Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var empty));
+        Assert.True(empty.IsEmpty);
+        var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+            .GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(f.Players)!;
+        Assert.Equal(0, inventory.CaptureFundedQuantities(f.Connection)[0]);
+        Assert.Equal(16, f.Member.ItemPhase!.Value.Selected.Animation);
+        Assert.Equal(16, f.Member.ItemPhase.Value.Selected.ItemTime);
+        Assert.Equal((ulong)1, f.Member.ItemPhase.Value.SelectedPotionUse!.Value.Attempt);
+        bool gunBegan = false;
+        for (int tick = 2; tick <= 24 && !gunBegan; tick++)
+        {
+            byte selected = tick >= 3 ? (byte)1 : (byte)0;
+            f.Move(tick != 5, selected);
+            int priorAnimation = f.Member.ItemPhase!.Value.Selected.Animation;
+            f.State.Tick();
+            var phase = f.Member.ItemPhase!.Value;
+            gunBegan = selected == 1 && phase.Selected.Animation > priorAnimation;
+            if (gunBegan)
+            {
+                Assert.InRange(priorAnimation, 0, 1);
+                Assert.Equal(8, phase.Selected.Animation);
+            }
+            Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out empty));
+            Assert.True(empty.IsEmpty);
+            Assert.Equal(0, inventory.CaptureFundedQuantities(f.Connection)[0]);
+            Assert.Equal((ulong)1, phase.SelectedPotionUse!.Value.Attempt);
+            Assert.Equal(400, f.Member.CaptureSnapshot().NpcLife);
+            Assert.Equal(0, f.Projectiles.ActiveCount);
+            Assert.True(f.Players.TryGetInventoryItem(f.Connection, 54, out var ammo));
+            Assert.Equal(50, ammo.Stack);
+        }
+        Assert.True(gunBegan, "Real selector/control/ticks must reach the legal common gun clock without another potion payment.");
     }
 
     private static void CompareSequence(JsonElement row)
@@ -121,10 +168,12 @@ public sealed class RemoteBulletItemPhase1458Tests
             f.Move(step.GetProperty("use").GetBoolean(), checked((byte)I(before, "selected")));
             AssertRandom(step.GetProperty("before"), f.Random);
             f.Events.Count = 0;
+            ulong beforePaidEpoch = f.Member.ItemPhase?.SelectedPotionUse?.Attempt ?? 0;
             f.State.Tick();
             Assert.True(f.Member.ItemPhase.HasValue, $"{identity}/{tick}");
             Assert.NotNull(f.Member.PhysicsPhase);
-            Assert.Equal(0, f.Events.Count);
+            bool paidUse = (f.Member.ItemPhase?.SelectedPotionUse?.Attempt ?? 0) != beforePaidEpoch;
+            Assert.Equal(paidUse ? 2 : 0, f.Events.Count); // owned inventory + buff publication, original remote frames stay empty
             Assert.Equal(0, step.GetProperty("frames").GetArrayLength());
             Assert.Equal(0, f.Projectiles.ActiveCount);
             AssertRandom(step.GetProperty("after"), f.Random);
@@ -169,7 +218,17 @@ public sealed class RemoteBulletItemPhase1458Tests
         {
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, I(slot, "slot"), out var actual));
             Assert.Equal(I(slot, "type"), actual.ItemType.Value);
-            Assert.Equal(I(slot, "stack"), actual.Stack);
+            int sourceStack = I(slot, "stack");
+            if (I(slot, "type") == 28)
+            {
+                int used = checked((int)(f.Member.ItemPhase?.SelectedPotionUse?.Attempt ?? 0));
+                int ownedStack = Math.Max(3, sourceStack) - used;
+                Assert.Equal(ownedStack, actual.Stack);
+                var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                    .GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(f.Players)!;
+                Assert.Equal(ownedStack, inventory.CaptureFundedQuantities(f.Connection)[I(slot, "slot")]);
+            }
+            else Assert.Equal(sourceStack, actual.Stack);
             Assert.Equal(I(slot, "prefix"), actual.Prefix.Value);
         }
     }
@@ -201,7 +260,7 @@ public sealed class RemoteBulletItemPhase1458Tests
         internal RuntimePlayerMember Member { get { Assert.True(Players.TryGet(0, out var member)); return member; } }
         internal PlayerBuffState Buffs => ((RuntimePlayerTransferProfileStore)typeof(PlayerAuthority)
             .GetField("transferProfiles", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Players)!).CaptureBuffState(Connection)!;
-        internal Fixture(JsonElement source)
+        internal Fixture(JsonElement source, short? ownedPotionStock = null)
         {
             var tiles = new WorldTileStore(new WorldDimensions(400, 300));
             for (int x = 0; x < 400; x++) tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
@@ -225,6 +284,22 @@ public sealed class RemoteBulletItemPhase1458Tests
             Apply(new PlayerSpawnRuntimeCommand(Connection, session, new(session.Slot, 100, 103, 0, 0, 0, 0, 0)));
             Apply(new PlayerBuffTypesRuntimeCommand(Connection, new(session.Slot,
                 source.GetProperty("buffs").EnumerateArray().Select(x => new BuffTypeId(x.GetInt32())).ToArray())));
+            // The remote source consumes no inventory. This owned-runtime projection
+            // imports a trusted potion budget explicitly; raw equipment never funds it.
+            // A one-stack remote clock fixture uses configured stock3 so its remote
+            // non-last-stack clocks remain the compared component projection.
+            foreach (var sourceItem in source.GetProperty("beforeInventory").EnumerateArray())
+            {
+                if (I(sourceItem, "type") != 28) continue;
+                short slot = checked((short)I(sourceItem, "slot"));
+                short stock = ownedPotionStock ?? checked((short)Math.Max(3, I(sourceItem, "stack")));
+                if (stock != I(sourceItem, "stack")) Equipment(slot, 28, stock);
+                var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                    .GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Players)!;
+                var budgets = inventory.CaptureFundedQuantities(Connection);
+                budgets[slot] = stock;
+                inventory.AdoptFundedQuantities(Connection, budgets);
+            }
             Move(false, 0);
         }
         internal void ConsumeAmmoOwned()

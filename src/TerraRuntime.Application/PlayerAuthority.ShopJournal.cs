@@ -464,6 +464,7 @@ internal sealed partial class PlayerAuthority
 
     private void ApplyInventorySyncComplete(ConnectionHandle connection)
     {
+        CompleteUnpaidSelectedPotionReport(connection);
         if (!membership.TryGet(connection, out var member) || member.CursorMove is not { Shop: { } journal } receipt || journal.IsSealed)
             return;
         if (TrySealSortOverflow(connection, member, receipt, journal)) return;

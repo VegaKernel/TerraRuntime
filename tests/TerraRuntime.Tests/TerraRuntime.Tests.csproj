@@ -9,6 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/SelectedPotionUseLinuxFirst1458.json.gz" LogicalName="SelectedPotionUseLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedPotionUseLinuxRepeat1458.json.gz" LogicalName="SelectedPotionUseLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/SelectedPotionUseWindowsFirst1458.json.gz" LogicalName="SelectedPotionUseWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedPotionUseWindowsRepeat1458.json.gz" LogicalName="SelectedPotionUseWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/EarlySyncLinuxFirst1458.json.gz" LogicalName="EarlySyncLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/EarlySyncLinuxRepeat1458.json.gz" LogicalName="EarlySyncLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/EarlySyncWindowsFirst1458.json.gz" LogicalName="EarlySyncWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/EarlySyncWindowsRepeat1458.json.gz" LogicalName="EarlySyncWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/SelectedPotionThrottleLinuxFirst1458.json.gz" LogicalName="SelectedPotionThrottleLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedPotionThrottleWindowsFirst1458.json.gz" LogicalName="SelectedPotionThrottleWindowsFirst1458" />
     <EmbeddedResource Include="Fixtures/client-placement-inventory-causality-official-1458.json.gz" LogicalName="ClientPlacementInventoryCausality1458" />
     <EmbeddedResource Include="Fixtures/captain-ghost-linked-source-official-1458.json.gz" LogicalName="CaptainGhostLinkedSource1458" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

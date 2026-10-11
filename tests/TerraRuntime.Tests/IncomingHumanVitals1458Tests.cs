@@ -62,7 +62,12 @@ public sealed class IncomingHumanVitals1458Tests
             Assert.Equal(400, f.Member.DerivedLifeMax);
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var item));
             Assert.Equal(I(row, "inventoryType"), item.ItemType.Value);
-            Assert.Equal(I(row, "inventoryStack"), item.Stack);
+            // The original remote phase retains its reported stack. This configured runtime now
+            // owns the local potion debit as well; vitals, clocks and all source RNG checks above stay exact.
+            int sourceStack = I(row, "inventoryStack");
+            Assert.Equal(f.IsPotion ? 3 : 0, sourceStack);
+            Assert.Equal(sourceStack - (f.IsPotion ? 1 : 0), item.Stack);
+            Assert.Equal(f.IsPotion ? 2 : 0, f.FundedQuantity);
             hits++;
         }
         Assert.Equal(18, hits);
@@ -309,6 +314,8 @@ public sealed class IncomingHumanVitals1458Tests
         internal readonly RuntimeNpcStore Npcs = new(2);
         internal readonly RuntimeProjectileStore Shots = new(2);
         internal readonly VanillaUnifiedRandom1458 PlayerRandom;
+        internal bool IsPotion => profile == "potion28";
+        internal short FundedQuantity => ((RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Players)!).CaptureFundedQuantities(Connection)[0];
         internal RuntimePlayerMember Member { get { Assert.True(Players.TryGet(Connection, out var member)); return member; } }
         internal Fixture(string profile, short reportedLife = 50, bool configureSourceLife = true, bool reportHealth = true,
             IncomingHumanCombatPolicy1458 policy = IncomingHumanCombatPolicy1458.PhaseOwned)
@@ -324,6 +331,14 @@ public sealed class IncomingHumanVitals1458Tests
             Connection = Join(94020, reportedLife, reportHealth);
             State.Apply(new PlayerEquipmentRuntimeCommand(Connection,
                 new(Connection.Player.Slot, 0, (short)(profile == "potion28" ? 3 : 0), 0, (short)(profile == "potion28" ? 28 : 0), 0)));
+            // This source comparison starts with a trusted consumable, not an unfunded packet-5 import.
+            if (profile == "potion28")
+            {
+                var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Players)!;
+                short[] funded = new short[59];
+                funded[0] = 3;
+                inventory.AdoptFundedQuantities(Connection, funded);
+            }
             if (configureSourceLife)
                 Member.NpcHealth = Member.NpcHealth!.Value with { Life = 50, RegenCount = profile == "regen" ? 119 : 0, RegenTime = profile == "regen" ? 600f : 0f };
         }
