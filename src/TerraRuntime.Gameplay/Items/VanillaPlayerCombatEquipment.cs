@@ -276,6 +276,12 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
             case 491: // Ranger Emblem
                 snapshot = snapshot with { RangedDamage = snapshot.RangedDamage + 0.15f };
                 break;
+            case 2998: // Summoner Emblem: source UpdateEquips adds minion damage.
+                snapshot = snapshot with { MinionDamage = snapshot.MinionDamage + 0.15f };
+                break;
+            case 935: // Avenger Emblem applies to all four damage classes.
+                AddDamage(0.12f, ref snapshot);
+                break;
             case 1321: // Magic Quiver
                 snapshot = snapshot with
                 {
@@ -294,7 +300,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
                     MagicCrit = snapshot.MagicCrit + 8,
                     MeleeDamage = snapshot.MeleeDamage + 0.10f,
                     RangedDamage = snapshot.RangedDamage + 0.10f,
-                    MagicDamage = snapshot.MagicDamage + 0.10f
+                    MagicDamage = snapshot.MagicDamage + 0.10f,
+                    MinionDamage = snapshot.MinionDamage + 0.10f
                 };
                 break;
             case 1858: // Sniper Scope
@@ -371,7 +378,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
         {
             MeleeDamage = snapshot.MeleeDamage + amount,
             RangedDamage = snapshot.RangedDamage + amount,
-            MagicDamage = snapshot.MagicDamage + amount
+            MagicDamage = snapshot.MagicDamage + amount,
+            MinionDamage = snapshot.MinionDamage + amount
         };
         return true;
     }

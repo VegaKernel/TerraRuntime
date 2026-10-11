@@ -1,5 +1,15 @@
 # Owned player item use 1.4.5.8
 
+## Functional combat accessories — integrated, combined acceptance pending
+
+The owned remote player phase admits seven combat accessories through the existing equipment catalog and slot rules: 489 (magic damage), 490 (melee damage), 491 (ranged damage), 2998 (minion damage), 935 (all four damage classes), 1301 (all four damage classes and critical chance), and 1858 (ranged damage and critical chance). Alternate-loadout favorite inheritance uses the same catalog; unsupported equipment still retires the whole shared player phase.
+
+Destroyer Emblem 1301 now supplies its source minion damage bonus, and accessory damage prefixes 69–72 also apply to minions. The remote phase retains accessory speed prefixes 77–80 for these families. Its existing melee clock consumes the derived animation multiplier once; the common equipment snapshot keeps its raw attack-speed multiplier for other consumers. Configured Wooden Sword 24 use has maximum animation 20 with no speed prefix and 19 with any of these four speed prefixes. Existing 101 remote melee identities retain their default clock behavior; special speed-exempt items and broader slowing effects are not admitted by this change.
+
+Equipment expert/master mode and dedicated local vanity context are captured before external providers and compared again before joint adoption. A late equipment-world change refuses the complete census without advancing the shared RNG. Dedicated local vanity remains immutable after its first binding.
+
+Candidate evidence covers 4832 admitted source phase comparisons and 60 connected launch/NPC-hit compositions, with three grouped Facts and eight sensitive omission controls. The copied candidate builds and restored tests pass; final combined Release/full/Native/live acceptance is pending. Configured original calls do not establish natural client scheduling, Windows equipment wire parity or full vanilla gameplay parity.
+
 ## Owned contact pickup
 
 Owned contact pickup requires a live represented player phase, an assigned owner and actual body intersection. It runs after the player phase and before world-item timers or new owner discovery. Ground quantity custody is private to the existing item generation: trusted creation can fund a grant, while raw reports cannot increase that budget. Mixed ordinary stacks grant only funded quantity and retain the visible remainder; coin conversion requires a fully funded ground stack. Final callback guards precede joint ground/inventory adoption, and publication follows both changes, with world packets 21/151 before inventory packet 5. A stale notification is suppressed without undoing an accepted grant.

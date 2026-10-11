@@ -462,4 +462,10 @@
     <EmbeddedResource Include="Fixtures/owned-human-cursor-move-supplement-official-1458.json.gz" LogicalName="OwnedCursorMoveSupplement1458" />
     <EmbeddedResource Include="Fixtures/owned-human-cursor-clock-official-1458.json.gz" LogicalName="OwnedCursorClock1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/functional-combat-equipment-configured-official-1458.json.gz" LogicalName="FunctionalCombatEquipmentPhase1458" />
+    <EmbeddedResource Include="Fixtures/functional-combat-equipment-speed-configured-official-1458.json.gz" LogicalName="FunctionalCombatEquipmentSpeed1458" />
+    <EmbeddedResource Include="Fixtures/functional-combat-equipment-hit-configured-official-1458.json.gz" LogicalName="FunctionalCombatEquipmentHit1458" />
+    <EmbeddedResource Include="Fixtures/functional-combat-equipment-inherited-configured-official-1458.json.gz" LogicalName="FunctionalCombatEquipmentInherited1458" />
+  </ItemGroup>
 </Project>

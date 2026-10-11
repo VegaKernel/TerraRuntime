@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Functional equipment integration — combined local acceptance pending
+
+Seven combat accessory families, source minion-damage writers and accessory speed prefixes are integrated with the existing remote phase and shared-census currentness guards. Candidate evidence covers4832 admitted phases and60 connected NPC hits; three grouped Facts and eight sensitive omission controls pass their scoped checks. Release build, focused61/61, neighbors502/502 and fast24884/24885 (one known skip) pass for the equipment commit checkpoint. Final combined full/Native/live acceptance with coin-value and cursor-return work remains pending; broad vanilla parity is open. See [owned player item use](en/player-item-use-1458.md).
+
 ## Cursor/drop — accepted local checkpoint, 2026-10-11
 
 Move/drop local checkpoint accepted: Release Rebuild has zero warnings/errors; focused18636/18636. One unfiltered full run passes 1563174/1563175, zero failures/errors and one known canonical-liquid skip. Fresh shipping Windows NativeAOT and all five smokes pass; Release/Native live82/49+129 and two-client relay pass with processes stopped. Typed managed/fresh Windows Native agree on48836 checks:36 drop rows,122 cursor rows and12 custody cases. Typed scope distinguishes24 actual State drops from12 configured moving-body drops, and58 actual State cursor rows from64 configured clock/animation rows. All32 shipping references and source/test bytes are independently verified. Native excludes private full56, literal whole-wire and entire durable-Fact parity. Linux NativeAOT remains locally unverified; GitHub CI is not awaited.

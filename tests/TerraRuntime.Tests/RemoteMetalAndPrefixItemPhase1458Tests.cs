@@ -77,7 +77,9 @@ public sealed class RemoteMetalAndPrefixItemPhase1458Tests
     {
         using var source = Read("NeutralMetalPlayerPhase1458");
         var row = source.RootElement.EnumerateArray().First(row => row.GetProperty("mode").GetString() == "baseline" && I(row, "weapon") == 0);
-        foreach (var entry in new[] { (59,1,0), (59,80,0), (59,89,62), (59,2757,0), (62,490,0), (900,1,0) })
+        // Accessory490 now has independently verified functional-slot support;
+        // retain its rejection witness in the head slot rather than the admitted slot62.
+        foreach (var entry in new[] { (59,1,0), (59,80,0), (59,89,62), (59,2757,0), (59,490,0), (900,1,0) })
         {
             using var f = new Fixture(row);
             if (entry.Item3 == 0)

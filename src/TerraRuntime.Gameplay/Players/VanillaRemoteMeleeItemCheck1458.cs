@@ -23,12 +23,17 @@ public static class VanillaRemoteMeleeItemCheck1458
 
     public static bool TryStep(PlayerSelectedConsumableState1458? previous,
         in PlayerRemoteMeleeItemFacts1458 facts, Func<int, int, int> nextInteger,
-        out PlayerRemoteMeleeItemTransition1458 transition)
+        out PlayerRemoteMeleeItemTransition1458 transition, float meleeAnimationMultiplier = 1f)
     {
         transition = default;
         if (!TryGet(facts.Item, facts.Prefix, facts.WindowsItemPrefixArithmetic,
                 out int useAnimation, out bool autoReuse, out bool miningTool))
             return false;
+        if (!float.IsFinite(meleeAnimationMultiplier) || meleeAnimationMultiplier <= 0f ||
+            meleeAnimationMultiplier > 1f)
+            return false;
+        // Source ApplyItemAnimation consumes the already capped/inverted owned phase speed.
+        useAnimation = Math.Max(1, (int)(useAnimation * meleeAnimationMultiplier));
         var controls = new PlayerRemoteItemControls1458(facts.ControlUseItem, facts.LastUseSuccess,
             facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered);
         if (!VanillaRemoteItemClocks1458.TryStep(previous, useAnimation, autoReuse, true,

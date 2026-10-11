@@ -42,6 +42,9 @@ internal sealed partial class PlayerAuthority
         var grapplingSource = npcHealthGrapplingFacts;
         var ownedHealthWorld = remotePlayerHealthWorld;
         var ownedProjectiles = remotePlayerProjectiles;
+        bool equipmentExpert = combatEquipmentExpertMode;
+        bool equipmentMaster = combatEquipmentMasterMode;
+        var localVanity = combatEquipmentLocalVanityArmor;
         var plans = new RemoteItemPhasePlan1458[members.Length];
         // Capture the entire census before the health world/grapple providers can run.
         for (int i = 0; i < members.Length; i++)
@@ -96,6 +99,8 @@ internal sealed partial class PlayerAuthority
             !ReferenceEquals(npcHealthGrapplingFacts, grapplingSource) ||
             remotePlayerHealthWorld != ownedHealthWorld || !ReferenceEquals(remotePlayerProjectiles, ownedProjectiles) ||
             !random.HasSameState(beforeRandom) || playerUpdateWorld != world ||
+            combatEquipmentExpertMode != equipmentExpert || combatEquipmentMasterMode != equipmentMaster ||
+            combatEquipmentLocalVanityArmor != localVanity ||
             serverPlayers?.CopySnapshots(bots) > 0) return false;
         for (int i = 0; i < versions.Length; i++)
             if (tiles.GetSectionVersion(TerrariaSectionGeometry.FromLinearIndex(tiles.Dimensions, i)) != versions[i])
@@ -430,7 +435,8 @@ internal sealed partial class PlayerAuthority
             var meleeFacts = new PlayerRemoteMeleeItemFacts1458(selected.ItemType, facts.ControlUseItem,
                 facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered,
                 selected.Prefix, world.WindowsItemPrefixArithmetic);
-            if (!VanillaRemoteMeleeItemCheck1458.TryStep(clocks, in meleeFacts, random.Next, out var meleeUse))
+            if (!VanillaRemoteMeleeItemCheck1458.TryStep(clocks, in meleeFacts, random.Next, out var meleeUse,
+                derivedCombat.MeleeAnimationMultiplier))
                 return false;
             use = new(meleeUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
