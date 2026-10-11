@@ -34,6 +34,9 @@ internal sealed partial class ServerRuntimeState
         if (_runtime.WorldTiles is { } environmentTiles && _runtime.EnvironmentWorldFacts is { VampireSeed: false } environment)
             _runtime.ServerPlayers?.TickLava(Updates, environmentTiles, _runtime.ExpertMode, _runtime.MasterMode, environment.RemixWorld);
         _runtime.ServerPlayers?.TickPhysics(_runtime.PlayerSnapshots);
+        // Original Main.UpdateWorld_Players runs GrabItems before UpdateWorld_Items decrements
+        // grab delay/reservations or discovers a new owner. Do not grant a newly eligible body early.
+        _runtime.WorldItems.TickOwnedHumanPickups();
         _runtime.Npcs.TickSimulation();
         _runtime.NpcPlayerCombat.Tick(Updates);
         if (_runtime.Projectiles.TryTickState(_runtime.Npcs.ProjectileNpcCombat))

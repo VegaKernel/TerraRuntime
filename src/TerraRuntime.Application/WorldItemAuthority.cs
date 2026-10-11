@@ -243,6 +243,12 @@ internal sealed partial class WorldItemAuthority
             return;
         }
 
+        if (worldItems.TryGetActive(command.Target.Slot, out var pickupItem) && pickupItem.Handle == command.Target &&
+            TryOwnedContactPickup(pickupItem, command.Connection, command.State) is { } picked)
+        {
+            if (picked) AppliedDrops++; else RejectedDrops++;
+            return;
+        }
         WorldItemDropStateUpdate state = command.State;
         if (worldItems.TryApplyDrop(command.Target.Slot, in state, out _))
         {
@@ -265,6 +271,12 @@ internal sealed partial class WorldItemAuthority
             return;
         }
 
+        if (worldItems.TryGetActive(command.Target.Slot, out var pickupItem) && pickupItem.Handle == command.Target &&
+            TryOwnedContactPickup(pickupItem, command.Connection, null) is { } picked)
+        {
+            if (picked) AppliedRemovals++; else RejectedRemovals++;
+            return;
+        }
         if (worldItems.TryRemove(command.Target.Slot, out _))
         {
             AppliedRemovals++;

@@ -77,6 +77,12 @@
     <EmbeddedResource Include="Fixtures/mana-crystal-sync-configured-original-1458.json.gz" LogicalName="ManaCrystalSync1458" />
     <EmbeddedResource Include="Fixtures/human-mana-flower-remote-official-1458.json.gz" LogicalName="HumanManaFlowerRemote1458" />
     <EmbeddedResource Include="Fixtures/human-mana-flower-local-official-1458.json.gz" LogicalName="HumanManaFlowerLocal1458" />
+    <EmbeddedResource Include="Fixtures/owned-ordinary-storage-source-1458.json.gz" LogicalName="OwnedOrdinaryStorageSource1458" />
+    <EmbeddedResource Include="Fixtures/owned-coin-pickup-configured-official-1458.json.gz" LogicalName="OwnedCoinPickupSource1458" />
+    <EmbeddedResource Include="Fixtures/selected-coin-remote-phase-configured-official-1458.json.gz" LogicalName="SelectedCoinRemotePhase1458" />
+    <EmbeddedResource Include="Fixtures/owned-pickup-crossplatform-configured-official-1458.json.gz" LogicalName="OwnedPickupStorage1458" />
+    <EmbeddedResource Include="Fixtures/owned-pickup-diagonal-shimmer-source.json.gz" LogicalName="OwnedPickupShimmer1458" />
+    <EmbeddedResource Include="Fixtures/owned-pickup-grab-contact-configured-official-1458.json.gz" LogicalName="OwnedPickupContact1458" />
   </ItemGroup>
 
   <ItemGroup>

@@ -199,15 +199,18 @@ public sealed partial class RuntimeWorldItemStore
             int start = operations.Count;
             state.Active = false;
             state.Update = default;
+            state.FundedQuantity = 0;
             // Ordinary TryRemove preserves the slot's generation/revision until its next allocation.
             if (!Record(slot, WorldItemStateCommitKind.Remove)) return Fail();
             steps.Add(new(start, operations.Count, slot, 0, pending[..pendingCount].ToArray(), null));
             return true;
         }
-        internal bool TryTakeSource(in WorldItemSnapshot item, int acceptedAmount)
+        internal bool TryTakeSource(in WorldItemSnapshot item, int acceptedAmount, bool requireFundedQuantity = false)
         {
             if (acceptedAmount <= 0 || acceptedAmount > item.Stack)
                 return Fail();
+            if (requireFundedQuantity && (!item.Handle.IsAssigned || !IsValidSlot(item.Handle.Slot) ||
+                working[item.Handle.Slot].FundedQuantity < acceptedAmount)) return Fail();
             if (acceptedAmount == item.Stack)
                 return TryRemoveSource(item);
             if (disposed || claimed || failed || steps.Count != 0 || !item.Handle.IsAssigned ||
@@ -219,6 +222,7 @@ public sealed partial class RuntimeWorldItemStore
                 return Fail();
             int start = operations.Count;
             state.Update = state.Update with { Stack = checked((short)(item.Stack - acceptedAmount)) };
+            state.FundedQuantity = Math.Max(0, state.FundedQuantity - acceptedAmount);
             // Residual preserves body/generation and uses the existing revision/Drop publication owner.
             // Overflow is refused while this is still a detached preview.
             if (!RecordSync(slot, WorldItemStateCommitKind.Drop))
@@ -325,6 +329,7 @@ public sealed partial class RuntimeWorldItemStore
                 state.Generation++; state.Revision = leaseTicks == 0 ? 1UL : 0UL;
                 state.Active = leaseTicks == 0; state.Reserved = leaseTicks != 0; state.SourceLease = leaseTicks != 0;
                 state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceOwnerAge = 0; state.SourceReleaseRequested = false; state.Update = CreateInitial(in publicationDrop);
+                state.FundedQuantity = creationSource == WorldItemCreationSource1458.NewItem ? publicationDrop.Stack : 0;
                 if (leaseTicks == 0) state.Update = state.Update with { Color = null };
                 if (leaseTicks == 0 && ownerFacts is not null)
                     state.Update = state.Update with { GrabDelayPlayer = 0 };
@@ -560,11 +565,17 @@ public sealed partial class RuntimeWorldItemStore
                         int amount = Math.Min(source.Update.Stack, targetFacts.MaximumStack - destination.Update.Stack);
                         if (amount > 0)
                         {
+                        int transferredFunding = Math.Min(amount, source.FundedQuantity);
+                        source.FundedQuantity -= transferredFunding;
+                        destination.FundedQuantity += transferredFunding;
                             source.Update = source.Update with { Stack = (short)(source.Update.Stack - amount) };
                             destination.Update = destination.Update with { Stack = (short)(destination.Update.Stack + amount) };
                             if (source.Update.Stack == 0) source.Active = false;
                             if (destination.Update.Stack == targetFacts.MaximumStack && destination.Update.ItemNetId is 71 or 72 or 73)
+{
                                 destination.Update = destination.Update with { ItemNetId = (short)(destination.Update.ItemNetId + 1), Stack = 1, Prefix = 0 };
+                            destination.FundedQuantity = destination.FundedQuantity == targetFacts.MaximumStack ? 1 : 0; // Fully funded 100-unit conversion only; mixed value fails closed.
+    }
                             if (!RecordSync((short)target, WorldItemStateCommitKind.Drop) ||
                                 !RecordSync(transfer.Source, source.Active ? WorldItemStateCommitKind.Drop : WorldItemStateCommitKind.Remove)) return Fail();
                         }

@@ -1,4 +1,10 @@
 # NativeAOT and CoreCLR hosting baseline
+## Owned contact pickup — accepted local checkpoint, 2026-10-11
+
+Local checkpoint: Release Rebuild with zero warnings/errors; focused18633/18633. One unfiltered full suite passes 1563171/1563172, zero failures/errors and one known canonical-liquid skip. Fresh shipping Windows NativeAOT and five smokes pass; Release/Native live join82/49 and two-client relay pass. Typed managed/fresh Windows Native checks agree: Core261, pure coin11849 and Application99475. All32 shipping references and source/test bytes are exact. Native scope excludes private full56, literal full-wire parity and complete durable-Fact parity. Linux NativeAOT remains locally unverified; GitHub CI is not awaited.
+
+Production source SHA256 `bf54db0c5ddba7170edfee768d275161451643cdb7e616bef52af18015e8853f`; source/test SHA256 `e473d9db05ef5eff9ea5669bd053add47a7e5c54dc07c159b374b7f0637e0447`. Ground custody and pure coin components use typed checks; Application exercises actual Apply/Tick and public custody. Initial client inventory provenance, cursor movement, owned human drop and Void Bag remain open. Evidence: `.cache/owned-pickup-checkpoint-block-v4-status.json`, `.cache/owned-pickup-checkpoint-block-v4-full-tests/result.json`, `.cache/owned-pickup-root-shipping-verification-v4.json`. No new production dependency.
+
 
 ## Retained human direct-melee combat fields — accepted local checkpoint, 2026-10-11
 

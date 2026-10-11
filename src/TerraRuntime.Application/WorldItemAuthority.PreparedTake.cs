@@ -13,10 +13,10 @@ internal sealed partial class WorldItemAuthority
     internal bool TryPrepareTrustedTake(
         in WorldItemSnapshot expected,
         int acceptedAmount,
-        out RuntimeWorldItemStore.AllocationPreview? plan)
+        out RuntimeWorldItemStore.AllocationPreview? plan, bool requireFundedQuantity = false)
     {
         plan = worldItems.CreateAllocationPreview();
-        if (plan.TryTakeSource(expected, acceptedAmount))
+        if (plan.TryTakeSource(expected, acceptedAmount, requireFundedQuantity))
             return true;
         plan.Dispose();
         plan = null;

@@ -5,7 +5,7 @@ public readonly record struct WorldItemOwnerPlayer1458(byte Slot, float X, float
     bool Dead, bool CanPull, bool ManaMagnet, bool LifeMagnet, int GrabRange);
 
 /// <summary>Player.ItemSpace/CanPullItem and WorldItem.FindOwner, without inventory mutation or RNG.</summary>
-public static class VanillaWorldItemOwner1458
+public static partial class VanillaWorldItemOwner1458
 {
     public const int SearchRange = 1920; // NPC.sWidth.
     public const int DefaultGrabRange = 42;
