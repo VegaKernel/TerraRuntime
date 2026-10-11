@@ -58,6 +58,11 @@ internal sealed partial class PlayerAuthority
             membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
             plans[i].BeforeShopSession = shopSession;
             if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore)) return false;
+            // Capture source UpdateEquips' bag gate before any external provider.
+            // Cursor 58 and stored bags cannot open Void storage.
+            for (int slot = 0; slot < 58; slot++)
+                if (VanillaVoidStorageCatalog1458.OpensVoidStorage(plans[i].InventoryBefore[slot].ItemType))
+                    plans[i].VoidStorageOpen = true;
         }
         foreach (var plan in plans)
         {
@@ -224,7 +229,7 @@ internal sealed partial class PlayerAuthority
             item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
-            !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus) ||
+            !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus, plan.VoidStorageOpen) ||
             plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
@@ -348,7 +353,7 @@ internal sealed partial class PlayerAuthority
         item = (item with { DerivedCombat = derivedCombat }).AdvanceShopDiscount(derivedCombat.DiscountEquipped);
         if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
-                selectedHealthInputs: (capturedHealthWorld, plan.Grappling)) ||
+                selectedHealthInputs: (capturedHealthWorld, plan.Grappling), selectedVoidStorageOpen: plan.VoidStorageOpen) ||
             health is not { SourceProfileKnown: true } knownHealth) return false;
 
         int potionDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(21));
@@ -555,6 +560,7 @@ internal sealed partial class PlayerAuthority
         PlayerAppearanceCommitRequest? appearance, PlayerEquipmentCommitRequest[] equipment,
         BuffTypeId[] buffTypes, PlayerBuffState buffs, bool godMode, bool ownsManaMaximum)
     {
+        internal bool VoidStorageOpen { get; set; }
         internal RuntimeTownShopSession1458? BeforeShopSession { get; set; }
         internal RuntimePlayerInventoryItem[] InventoryBefore { get; } = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
         internal List<RemotePhaseInventoryMutation> InventoryMutations { get; } = [];

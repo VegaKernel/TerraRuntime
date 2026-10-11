@@ -590,4 +590,14 @@
     <EmbeddedResource Include="Fixtures/QuickBuffBankClosedLinuxFirst1458.json.gz" LogicalName="QuickBuffBankCycleLinuxFirst1458" />
     <EmbeddedResource Include="Fixtures/QuickBuffBankClosedWindowsFirst1458.json.gz" LogicalName="QuickBuffBankCycleWindowsFirst1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/VoidStorageMetadataLinuxFirst1458.json.gz" LogicalName="VoidStorageMetadataLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/VoidStorageMetadataLinuxRepeat1458.json.gz" LogicalName="VoidStorageMetadataLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/VoidStorageMetadataWindowsFirst1458.json.gz" LogicalName="VoidStorageMetadataWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/VoidStorageMetadataWindowsRepeat1458.json.gz" LogicalName="VoidStorageMetadataWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/VoidStorageRoleLinuxFirst1458.json.gz" LogicalName="VoidStorageRoleLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/VoidStorageRoleLinuxRepeat1458.json.gz" LogicalName="VoidStorageRoleLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/VoidStorageRoleWindowsFirst1458.json.gz" LogicalName="VoidStorageRoleWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/VoidStorageRoleWindowsRepeat1458.json.gz" LogicalName="VoidStorageRoleWindowsRepeat1458" />
+  </ItemGroup>
 </Project>

@@ -19,7 +19,7 @@ internal sealed partial class PlayerAuthority
 
     private bool TryPlanNpcHealth(RuntimePlayerMember member, int? maximum,
         bool outside, bool ghost, out PlayerNpcHealthState1458? next, bool selectedItemPhase = false,
-        (PlayerNpcHealthWorld1458 World, bool? Grappling)? selectedHealthInputs = null)
+        (PlayerNpcHealthWorld1458 World, bool? Grappling)? selectedHealthInputs = null, bool selectedVoidStorageOpen = true)
     {
         next = null;
         var before = member.CaptureSnapshot();
@@ -31,7 +31,7 @@ internal sealed partial class PlayerAuthority
             member.NpcHealth is { SourceProfileKnown: true } && (member.ItemAnimation == 0 || selectedItemPhase) &&
             !member.HasMount && (member.MiscFlags1 & (1 << 2)) == 0 && (member.MiscFlags2 & 1) == 0 &&
             (appearance?.ConsumableUnlockFlags ?? 0) == 0 &&
-            (selectedItemPhase ? TryCaptureProvenRemoteEquipment(equipment, appearance, out _, out _) :
+            (selectedItemPhase ? TryCaptureProvenRemoteEquipment(equipment, appearance, out _, out _, selectedVoidStorageOpen) :
                 !equipment.Any(static item => item.Stack > 0 && VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(item.SlotId)));
         int regeneration = 0;
         foreach (var buff in buffs ?? [])

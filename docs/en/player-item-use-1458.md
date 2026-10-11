@@ -1,5 +1,15 @@
 # Owned player item use 1.4.5.8
 
+## Void Vault storage role — scoped local acceptance passed
+
+Release WAE0/0, focused231/231 and fast24965/24966 pass with zero failures/errors and one known liquid skip. Exact Game/runtime Facts pass106345/2688 checks on managed and Windows Native; five Native server smokes and Release/Native live82/49/129 plus72 signed health/mana effects pass. Both hosts are stopped. A second full run was deferred as requested; the preceding full is historical evidence for its own inputs.
+
+Stored Void Vault items use a source-backed storage classification across all 6,196 original identities. Of the positive identities, 6,153 are neutral for the owned player phase. Items 4346 and 5095 are neutral because the source excludes them from Void Bag effects. The other 42 information or mechanical writers remain unsupported when storage effects are active.
+
+The phase captures the source bag gate from main inventory slots 0..57 before external providers. Cursor 58 and bags inside banks cannot open storage. Known stored writers are inert and admitted when this gate is closed; with an open gate their unowned effects cause the complete phase to refuse. Stored armor/accessory prefixes provide no equipped grants. Unknown represented identities and unsupported functional equipment still refuse; invalid raw reports retain their existing normalization policy. Both combat-equipment and selected-health planning use the same captured gate, followed by complete inventory, equipment, actor, indexed-buff and provider currentness checks.
+
+Original evidence includes four identical metadata captures, 272 original ResetEffects/UpdateEquips storage-role cases and a full-stack aggregate effect comparison. The grouped runtime Fact exercises actual owned ticks, closed/cursor/bank-only/open gates and late-provider changes. Five runtime omissions and two catalog omissions fail assertions and restore green. Fresh combined local/Windows Native acceptance passed; natural whole Main/UI, the 42 active writer effects and Linux Native remain open.
+
 ## QuickBuff local acceptance, 2026-10-11
 
 Release WAE0/0, focused88/88, fast24963/24964 and one unfiltered full1563256/1563257 pass with zero failures/errors and one known liquid skip. Exact new Game/owned Facts pass29346/77936 checks each on managed and Windows Native. Five Native server smokes and Release/Native live82/49/129 plus72 signed health/mana effects pass; both hosts stopped. Linux Native and broader vanilla compatibility remain open.
