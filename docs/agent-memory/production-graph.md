@@ -1,5 +1,9 @@
 # Production graph
 
+2026-10-11 one-cell table-object increment: the existing `GenerationTileFraming1458` now applies source `CheckOnTable1x1` support checks to nine identities during `FinalCleanup`, reusing the admitted `GenerationFurnitureTiles1458` table catalog and KillTile dust path. No new project/dependency/ownership edge; row109 remains partial.
+
+2026-10-11 tree-root validation correction: `Validator1458` now accepts the source `CheckTreeWithSettings` inactive Type0 `(154,-1)` frame, preserving the generation-only versus structural validator boundary. No new project/dependency/ownership edge.
+
 ## Restock and sorting custody - accepted local checkpoint, 2026-10-11
 
 Source-backed Restock, localized main/bank Sort, represented coin overflow and retained coin-slot cursor moves are integrated with the existing bounded inventory owners. Positive retained coin tuples may reach the signed wire bound32767; nominal100/9999 remain merge capacities, and the source wallet availability clamp remains9999999999 copper. Owner-specific prefix validation is preserved. Zero/fractional prepared coin sources retain physical provenance without gaining economic funding. Sorting keeps exact private custody alternatives, including ordinary cursor credits; obsolete sorted observations cannot consume a valid ordinary transfer. Genuine indistinguishable closed cursor cycles with different funding still reject.

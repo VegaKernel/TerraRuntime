@@ -30,6 +30,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <c>CheckTorch</c>, all five <c>IsADripTile</c> identities, dart trap <c>136</c>, directional tiles
 /// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one- and two-cell type-<c>185</c>
 /// piles, dye <c>227</c>,
+/// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
 /// underwater plants <c>549</c>, projectile pressure pads <c>442</c>, bamboo <c>571</c>,
@@ -127,6 +128,12 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type == 185)
         {
             FrameSinglePile(i, j);
+            return;
+        }
+
+        if (tile.Type is 13 or 33 or 49 or 50 or 78 or 174 or 372 or 646 or 707)
+        {
+            FrameOnTableOneByOne(i, j, tile.Type);
             return;
         }
 
@@ -538,6 +545,39 @@ internal sealed class GenerationTileFraming1458(
         if (snowStyle && floor is not (147 or 161 or 163 or 164 or 200 or 162 or 224) ||
             sandStyle && floor is not (53 or 112 or 116 or 234 or 397 or 398 or 402 or 399 or 396 or 400 or 403 or 401))
             KillTile(i, j);
+    }
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 <c>WorldGen.CheckOnTable1x1</c>. A top-sloped platform is usable only
+    /// when its low side joins a flat neighbouring platform; type78 alone can fall back to solid ground.
+    /// </summary>
+    private void FrameOnTableOneByOne(int i, int j, ushort type)
+    {
+        WorldTile support = At(i, j + 1);
+        if (support.Shape is 2 or 3)
+        {
+            int neighbourX = support.Shape == 3 ? i - 1 : i + 1;
+            WorldTile neighbour = At(neighbourX, j + 1);
+            if (!VanillaTileIds.IsPlatform(support.TileType) || !neighbour.IsActive ||
+                !VanillaTileIds.IsPlatform(neighbour.TileType) || neighbour.Shape != 0)
+                KillTile(i, j);
+            return;
+        }
+
+        if (support.Shape == 1)
+        {
+            KillTile(i, j);
+            return;
+        }
+
+        bool table = support.IsActive && GenerationFurnitureTiles1458.IsTable(support.Type);
+        bool solidTop = support.IsActive && !support.IsActuated &&
+            VanillaTileCollisionCatalog.IsSolid(support.TileType) &&
+            VanillaTileCollisionCatalog.IsSolidTop(support.TileType);
+        if (table || solidTop || type == 78 && SolidTileAllowBottomSlope(i, j + 1))
+            return;
+
+        KillTile(i, j);
     }
 
     /// <summary>

@@ -49,6 +49,26 @@ public sealed class InactiveGenerationFrames1458Tests
         Assert.Equal(WorldValidationStatus.InvalidFlags, StructuralValidator.Validate(workspace, Metadata()).Status);
     }
 
+    [Theory]
+    [InlineData(0, 154, -1, 0, true)]
+    [InlineData(0, 154, -1, 1, false)]
+    [InlineData(1, 154, -1, 0, false)]
+    [InlineData(0, 153, -1, 0, false)]
+    [InlineData(0, 154, -2, 0, false)]
+    public void Vanilla_validator_admits_only_the_source_tree_root_mixed_frame(
+        ushort type, short frameX, short frameY, byte shape, bool admitted)
+    {
+        // WorldGen.CheckTreeWithSettings may write (154,-1) after KillTile
+        // has already made the unsupported root inactive and Type0.
+        var workspace = new Workspace(600, 500);
+        ref WorldTile tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(300, 200)];
+        tile.Type = type; tile.FrameX = frameX; tile.FrameY = frameY; tile.Shape = shape;
+        Assert.Equal(admitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
+            Validator1458.Validate(workspace, Metadata()).Status);
+        Assert.Equal(WorldValidationStatus.InvalidFlags,
+            StructuralValidator.Validate(workspace, Metadata()).Status);
+    }
+
     [Fact]
     public void Actuated_active_chest_still_requires_a_valid_object_footprint()
     {
