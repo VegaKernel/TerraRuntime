@@ -1,5 +1,18 @@
 # Verified vanilla facts
 
+## Selected potion corrected-source review, 2026-10-11
+
+The distinct corrected v2 capture initializes original legacy localization. Four real platform/repeat processes agree across576 configured sequences /11520 ItemCheck calls; ordinary retained stack2 packet5 remains a real item rather than Air. Root independently checked all59 inventory tuples and decoded176 inventory and144 vital frames against captured post-sync state. Early-sync last-stack source evidence adds32 sequences /640 phases. These are configured component captures, not natural Main/UI acceptance.
+
+Real owned damage between report-first inventory ingress and paid phase can make the client's anticipated vital ACK differ from the server's actual paid result. Cache v4 still allows that delayed ACK to replay lost HP in an independently failing split-budget test. Preserve anticipated and actual results within the existing bounded receipt before claiming owned potion reconciliation; production has not adopted this prototype.
+
+## Selected potion source capture environment correction, 2026-10-11
+
+Official1.4.5.8 NetMessage.SendData packet5 checks the selected item Name as well as stack/type and normalizes empty-name items to Air. The configured selected-potion v1 probes omitted localization initialization: their pre-sync ItemCheck arithmetic, one-debit and clock/RNG facts are usable, while ordinary positive-stack packet5/post-sync images are diagnostic. A distinct corrected capture is required for source-backed inventory ACK chronology; preserve the frozen v1 artifacts rather than rewriting them.
+
+MessageBuffer packets35/43 replace the wire actor with whoAmI on the server and relay a signed-short presentation amount to other clients. They invoke cosmetic HealEffect/ManaEffect and do not mutate life/mana. Receiving them cannot authorize item payment or a vitality grant. Local ordinary potion use consumes at full vitals; local ItemCheck recomputes use success, unlike the retained remote success bit. Owned runtime integration remains unaccepted cache work.
+
+
 ## Restock/Sort source custody checkpoint, 2026-10-11
 
 Official configured 1.4.5.8 GetItem may retain entire19998/29997 platinum stacks; nominal9999 is a merge capacity, not a universal retained bound. The wire-facing retained bound is32767; the39996 source offer is unrepresentable and is refused. Storage/Wallet retain their existing validated prefix domains; the cursor transform keeps its existing coin prefixNone restriction. BuyItem availability clamps at9999999999 copper. Main Sort/Restock retains the captured locale ordering, favorite/coin/ammo exclusions and source packet order. An initially-Air coin slot53 can receive and then clear through Left before synchronization, emitting only58 then138; a forged Stone cursor does not become that source operation.
