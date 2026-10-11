@@ -15,6 +15,11 @@ public static class VanillaSelectedConsumableCatalog1458
             definition = new(type, 0, 0, false, 0, 0, 0);
             return true;
         }
+        if (type.Value == 109)
+        {
+            definition = new(type, 0, 0, false, 30, 30, 0);
+            return true;
+        }
         // These ordinary SetDefaults families share useStyle9, neutral prefix, no mana cost and three drink colours.
         (int life, int mana) = type.Value switch
         {

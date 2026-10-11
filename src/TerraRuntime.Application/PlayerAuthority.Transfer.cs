@@ -58,7 +58,7 @@ internal sealed partial class PlayerAuthority
             buffTypes,
             player.GodMode,
             mouseItemNormalized)
-        { ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
+        { OwnedInventoryQuantities = this.inventory.CaptureOwnedQuantities(connection), OwnsManaMaximum = player.OwnsManaMaximum, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
           BuffState = transferProfiles.CaptureBuffState(connection) };
 
         membership.ClearPending(connection);
@@ -109,7 +109,7 @@ internal sealed partial class PlayerAuthority
         RuntimePlayerTransferState transfer = command.Transfer;
         // Unknown imported clocks stay unknown; malformed represented clocks are not constructor facts.
         if (transfer.ItemPhase is { ToolTime: < 0 } or { AttackCD: < 0 } ||
-            (transfer.ItemPhase?.MagicPayment is { } importedPayment && !importedPayment.IsValid) ||
+            (transfer.ItemPhase?.MagicPayment is { } importedPayment && (!importedPayment.IsValid || !transfer.OwnsManaMaximum)) ||
             (transfer.ItemPhase?.DerivedCombat is { } derivedCombat && !IsValidDerivedCombat(in derivedCombat)))
         {
             command.Completion.TrySetResult(false);
@@ -141,6 +141,9 @@ internal sealed partial class PlayerAuthority
             transfer.Slot != connection.Player.Slot ||
             membership.Contains(connection.Player.Slot) ||
             transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
+            transfer.OwnedInventoryQuantities is null ||
+            !RuntimePlayerInventoryStore.AreValidOwnedQuantities(transfer.OwnedInventoryQuantities, transfer.Inventory) ||
+            !inventory.CanAttachOwnedQuantities(transfer.OwnedInventoryQuantities.Length) ||
             !inventory.TryAttach(connection))
         {
             command.Completion.TrySetResult(false);
@@ -157,6 +160,7 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        inventory.AdoptOwnedQuantities(connection, transfer.OwnedInventoryQuantities);
         PlayerStateSnapshot previous = transfer.Player;
         // TerrariaServer 1.4.5.8 Player.Spawn_SetPosition treats SpawnX/SpawnY as the floor tile,
         // not as the player's top-left pixel position. Keep the authoritative snapshot aligned with the exact
@@ -200,10 +204,11 @@ internal sealed partial class PlayerAuthority
             HasMana = previous.HasMana,
             Mana = previous.Mana,
             MaxMana = previous.MaxMana,
+            OwnsManaMaximum = transfer.OwnsManaMaximum,
             ItemPhase = transfer.ItemPhase is { } phase
-                ? phase with { Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
+                ? phase with { ManaCrystalIntent = null, Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
                     MagicPayment = phase.MagicPayment is { } payment ? payment with
-                    { EligibleBirth = false, BirthConsumed = true, AwaitingPhase = false } : null }
+                    { EligibleBirth = false, BirthConsumed = true, AwaitingPhase = false, Refill = null } : null }
                 : null,
             // Transfer attach executes a spawn boundary: source Spawn clears wet/lava contacts
             // while preserving jump/releaseJump. Missing imported provenance stays unknown.

@@ -307,7 +307,7 @@ internal sealed partial class ProjectileAuthority
     {
         if (authoritative.PlayerCapture is not { } capture || authoritative.RandomBefore is not { } before ||
             authoritative.RandomAfter is not { } after || !projectileRandom.HasSameState(before) ||
-            !players.CanCommitProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicPayment) ||
+            !players.CanCommitProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicPayment, authoritative.MagicUse) ||
             (authoritative.RequiresPlainBowPose && !players.IsCurrentPlainBowProjectilePose(capture)) ||
             !projectiles.TryPrepareVanillaSpawn(authoritative.State, timeLeftOverride, out var prepared) ||
             prepared is null || !prepared.IsCurrent)
@@ -324,7 +324,7 @@ internal sealed partial class ProjectileAuthority
         // The entire tail up to publication is callback-free on the authoritative writer. All owners were
         // validated before any generation, inventory, mana, RNG or cadence state can change.
         if (!prepared.TryCommitUnpublished(out var trusted)) return false;
-        if (!players.TryCommitProjectileUseUnpublished(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicPayment) ||
+        if (!players.TryCommitProjectileUseUnpublished(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicPayment, authoritative.MagicUse) ||
             !projectiles.TryMarkCombatTrusted(trusted.Handle, connection.Player))
             throw new InvalidOperationException("Validated projectile use changed during callback-free adoption.");
         projectileRandom.CopyStateFrom(after);
@@ -334,10 +334,15 @@ internal sealed partial class ProjectileAuthority
             trustedClientUseCadence.MarkUse(connection.Player, authoritative.UseTick, authoritative.UseTimeTicks);
         AppliedSpawns++;
         PromotedClientProjectileSpawns++;
-        players.PublishProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost);
+        Exception? publicationFailure = null;
+        try { players.PublishProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicUse); }
+        catch (Exception ex) { publicationFailure = ex; }
         // An event sink may deliberately retire or replace the already-owned generation. Publication then
         // refuses the stale snapshot; item-use acceptance is not undone after outward callbacks begin.
-        prepared.TryPublish(in trusted);
+        try { prepared.TryPublish(in trusted); }
+        catch (Exception ex) { publicationFailure ??= ex; }
+        if (publicationFailure is not null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(publicationFailure).Throw();
         return true;
     }
 

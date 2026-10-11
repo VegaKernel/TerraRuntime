@@ -9,11 +9,22 @@ internal readonly record struct RuntimePlayerMagicPayment1458(
     int BaseManaMaximum, int PaidMana, bool SlowMagicUse, bool EligibleBirth,
     bool BirthConsumed, bool AwaitingPhase)
 {
+    internal RuntimePlayerMagicRefill1458? Refill { get; init; }
     internal bool IsValid => Attempt > 0 && Slot <= 58 && Item.IsCanonical && Item.Stack > 0 &&
         Item.Prefix.Value == 0 && BaseManaMaximum > 0 && PaidMana is >= 0 and <= 400 &&
         TerraRuntime.Gameplay.Players.VanillaRemoteChannelledMagic1458.IsSupported(Item.ItemType, Item.Prefix) &&
-        (!AwaitingPhase || BirthConsumed && !EligibleBirth);
+        (!AwaitingPhase || BirthConsumed && !EligibleBirth) &&
+        (Refill is not { } refill || refill.IsValid && refill.Connection.Player == Player && refill.Attempt == Attempt);
     internal bool Matches(PlayerHandle player, byte slot, RuntimePlayerInventoryItem item,
         int baseManaMaximum) => Player == player && Slot == slot && Item == item &&
         BaseManaMaximum == baseManaMaximum;
+}
+
+// Kept inside the paid attempt, not a separate report/receipt registry. Transfer clears it.
+internal readonly record struct RuntimePlayerMagicRefill1458(ConnectionHandle Connection, ulong Attempt,
+    short Slot, RuntimePlayerInventoryItem Before, RuntimePlayerInventoryItem After)
+{
+    internal bool IsValid => Connection.IsAssigned && Attempt > 0 && Slot is >= 0 and < 58 &&
+        Before.IsCanonical && Before.ItemType.Value is (110 or 189 or 500 or 2209) && Before.Stack > 0 && Before.Prefix.Value == 0 &&
+        After.IsCanonical && After == (Before.Stack == 1 ? default : Before with { Stack = (short)(Before.Stack - 1) });
 }

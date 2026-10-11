@@ -204,6 +204,7 @@ internal sealed class RuntimePendingPlayerVitals(ConnectionHandle connection)
     public bool HasMana { get; set; }
     public short Mana { get; set; }
     public short MaxMana { get; set; }
+    internal bool OwnsManaMaximum { get; set; }
 }
 
 internal sealed class RuntimePlayerMember
@@ -237,6 +238,7 @@ internal sealed class RuntimePlayerMember
     public bool HasMana { get; set; }
     public short Mana { get; set; }
     public short MaxMana { get; set; }
+    internal bool OwnsManaMaximum { get; set; }
     internal RuntimePlayerItemPhase1458? ItemPhase { get; set; } = RuntimePlayerItemPhase1458.Constructor;
     internal RuntimePlayerPhysicsPhase1458? PhysicsPhase { get; set; } = RuntimePlayerPhysicsPhase1458.Constructor;
     public byte ControlFlags { get; set; }

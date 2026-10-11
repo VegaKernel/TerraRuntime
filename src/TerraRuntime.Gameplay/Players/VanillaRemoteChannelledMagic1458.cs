@@ -6,7 +6,7 @@ namespace TerraRuntime.Gameplay.Players;
 public readonly record struct PlayerRemoteChannelledMagicFacts1458(ItemTypeId Weapon, PrefixId Prefix,
     int Mana, bool Channel, bool SlowMagicUse, bool ControlUseItem, bool LastUseSuccess,
     bool Cursed, bool CrowdControlled, bool SelectionBuffered, bool Prepaid = false,
-    bool PrepaidSlowMagicUse = false);
+    bool PrepaidSlowMagicUse = false, float ManaCostMultiplier = 1f);
 
 public readonly record struct PlayerRemoteChannelledMagicTransition1458(
     PlayerSelectedConsumableState1458 State, int Mana, bool Channel, bool SlowMagicUse,
@@ -18,6 +18,17 @@ public static class VanillaRemoteChannelledMagic1458
 {
     public static bool IsSupported(ItemTypeId weapon, PrefixId prefix) => prefix.Value == 0 &&
         VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(weapon, out _);
+
+    // CheckMana's source Single product is truncated before sufficient/shortage selection.
+    public static bool TryResolveManaCost(int rawCost, float multiplier, out int cost)
+    {
+        cost = 0;
+        if (rawCost <= 0 || !float.IsFinite(multiplier) || multiplier <= 0f) return false;
+        float product = rawCost * multiplier;
+        if (!float.IsFinite(product) || product < 1f || product >= int.MaxValue) return false;
+        cost = (int)product;
+        return true;
+    }
 
     public static bool TryPay(int mana, int cost, out int after, out bool slow)
     {
@@ -37,7 +48,8 @@ public static class VanillaRemoteChannelledMagic1458
             previous.Animation is < 0 or > short.MaxValue || previous.AnimationMax is < 0 or > short.MaxValue ||
             previous.ItemTime is < 0 or > short.MaxValue || previous.ItemTimeMax is < 0 or > short.MaxValue ||
             previous.RevolverCritBonus < int.MinValue + 2 ||
-            !VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(facts.Weapon, out var weapon)) return false;
+            !VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(facts.Weapon, out var weapon) ||
+            !TryResolveManaCost(weapon.ManaCost, facts.ManaCostMultiplier, out int manaCost)) return false;
         if (facts.CrowdControlled)
         {
             transition = new(previous with { Animation = 0, AnimationMax = 0 }, facts.Mana, false,
@@ -58,7 +70,7 @@ public static class VanillaRemoteChannelledMagic1458
             if (facts.Prepaid) slow = facts.PrepaidSlowMagicUse;
             else
             {
-                if (!TryPay(mana, weapon.ManaCost, out int after, out slow)) return false;
+                if (!TryPay(mana, manaCost, out int after, out slow)) return false;
                 paid = mana - after; mana = after;
             }
         }

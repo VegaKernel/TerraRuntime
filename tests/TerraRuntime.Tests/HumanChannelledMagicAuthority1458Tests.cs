@@ -350,13 +350,13 @@ internal sealed class Harness
             (RuntimePlayerTransferProfileStore)typeof(PlayerAuthority)
                 .GetField("transferProfiles", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Players)!;
 
-        internal Fixture(JsonElement row, bool windows)
+        internal Fixture(JsonElement row, bool windows, IRuntimePlayerEventSink? playerEvents = null)
         {
             Projectiles = new(commitSink: Replication);
             var tiles = new WorldTileStore(new WorldDimensions(400, 300));
             for (int x = 0; x < 400; x++)
                 tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
-            State = new(worldTiles: tiles, projectiles: Projectiles, projectileReplication: Replication, playerUpdateRandomSeed: new(0));
+            State = new(playerEvents: playerEvents, worldTiles: tiles, projectiles: Projectiles, projectileReplication: Replication, playerUpdateRandomSeed: new(0));
             Players = ((ServerRuntimeComposition)typeof(ServerRuntimeState)
                 .GetField("_runtime", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(State)!).Players;
             Random = (VanillaUnifiedRandom1458)typeof(PlayerAuthority)

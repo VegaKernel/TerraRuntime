@@ -74,6 +74,9 @@
     <EmbeddedResource Include="Fixtures/bot-ammo-conservation-configured-original-1458.json.gz" LogicalName="BotAmmoConservationConfigured1458" />
     <EmbeddedResource Include="Fixtures/bot-muramasa-prefix-stored-official-1458.json.gz" LogicalName="BotMuramasaPrefix1458" />
     <EmbeddedResource Include="Fixtures/human-direct-melee-original-1458.json.gz" LogicalName="HumanDirectMelee1458" />
+    <EmbeddedResource Include="Fixtures/mana-crystal-sync-configured-original-1458.json.gz" LogicalName="ManaCrystalSync1458" />
+    <EmbeddedResource Include="Fixtures/human-mana-flower-remote-official-1458.json.gz" LogicalName="HumanManaFlowerRemote1458" />
+    <EmbeddedResource Include="Fixtures/human-mana-flower-local-official-1458.json.gz" LogicalName="HumanManaFlowerLocal1458" />
   </ItemGroup>
 
   <ItemGroup>

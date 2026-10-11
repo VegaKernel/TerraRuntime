@@ -14,6 +14,7 @@ internal sealed record RuntimePlayerProjectileUseCapture(
 {
     internal RuntimePlayerMember? Member { get; init; }
     internal ulong InputRevision { get; init; }
+    internal bool OwnsManaMaximum { get; init; }
     internal PlayerAppearanceCommitRequest? Appearance { get; init; }
     // Retained clocks and phase retirement can change without changing the public player pose.
     internal RuntimePlayerItemPhase1458? ItemPhase { get; init; }
@@ -42,6 +43,7 @@ internal sealed partial class PlayerAuthority
         capture = new(connection, member.CaptureSnapshot(), serial, profile, equipment, buffs)
         {
             Member = member, InputRevision = member.ProjectileUseInputRevision, Appearance = appearance,
+            OwnsManaMaximum = member.OwnsManaMaximum,
             ItemPhase = member.ItemPhase, PhysicsPhase = member.PhysicsPhase
         };
         return true;
@@ -51,6 +53,7 @@ internal sealed partial class PlayerAuthority
     {
         if (!membership.TryGet(capture.Connection, out var member) || !ReferenceEquals(member, capture.Member) ||
             member.ProjectileUseInputRevision != capture.InputRevision ||
+            member.OwnsManaMaximum != capture.OwnsManaMaximum ||
             member.CaptureSnapshot() != capture.Player ||
             member.ItemPhase != capture.ItemPhase ||
             !inventory.TryIsCurrent(capture.Connection, capture.InventorySerial)) return false;
@@ -76,10 +79,15 @@ internal sealed partial class PlayerAuthority
     }
 
     internal bool CanCommitProjectileUse(RuntimePlayerProjectileUseCapture capture,
-        RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicPayment1458? magicPayment = null)
+        RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicPayment1458? magicPayment = null, RuntimePlayerMagicUsePreparation? magicUse = null)
     {
         if (!IsCurrentProjectileUse(capture) || manaCost < 0 ||
-            (manaCost > 0 && mutation is not null)) return false;
+            (manaCost > 0 && mutation is not null && magicUse is null)) return false;
+        if (magicUse is { } prepared)
+            return mutation is null && magicPayment == prepared.Payment && prepared.Payment.IsValid &&
+                prepared.Payment.Refill is { } refill && refill.Connection == capture.Connection &&
+                capture.ItemPhase is { } capturedPhase && prepared.Payment.BaseManaMaximum == capturedPhase.BaseManaMaximum &&
+                prepared.Inventory.IsCurrent && transferProfiles.IsCurrentBuffState(capture.Connection, prepared.BeforeBuffs);
         if (magicPayment is { } payment)
             return payment.IsValid && capture.ItemPhase is { } phase && payment.Player == capture.Connection.Player &&
                 payment.BaseManaMaximum == phase.BaseManaMaximum && capture.Player.HasMana &&
@@ -90,15 +98,33 @@ internal sealed partial class PlayerAuthority
     }
 
     internal bool TryCommitProjectileUseUnpublished(RuntimePlayerProjectileUseCapture capture,
-        RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicPayment1458? magicPayment = null)
+        RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicPayment1458? magicPayment = null, RuntimePlayerMagicUsePreparation? magicUse = null)
     {
         if (!IsCurrentProjectileUse(capture) || manaCost < 0 ||
-            (manaCost > 0 && mutation is not null)) return false;
+            (manaCost > 0 && mutation is not null && magicUse is null)) return false;
+        if (magicUse is { } prepared)
+        {
+            if (!CanCommitProjectileUse(capture, mutation, manaCost, magicPayment, prepared) ||
+                !membership.TryGet(capture.Connection, out var restoredMember) ||
+                restoredMember.ItemPhase is not { } restoredPhase || restoredMember.Revision == ulong.MaxValue)
+                return false;
+            // All owners were preflighted before the caller adopted the projectile generation.
+            if (!prepared.Inventory.TryAdoptUnpublished() ||
+                !transferProfiles.TryAdoptBuffState(capture.Connection, prepared.BeforeBuffs, prepared.AfterBuffs) ||
+                !restoredMember.TryAdvanceRevision())
+                throw new InvalidOperationException("Validated QuickMana changed during callback-free adoption.");
+            restoredMember.OwnsManaMaximum = true;
+            restoredMember.Mana = checked((short)prepared.Payment.PaidMana);
+            restoredMember.ItemPhase = restoredPhase with { Mana = restoredPhase.Mana with { Mana = restoredMember.Mana },
+                Channel = true, SlowMagicUse = prepared.Payment.SlowMagicUse, MagicPayment = prepared.Payment };
+            return true;
+        }
         if (magicPayment is { } payment)
         {
             if (!CanCommitProjectileUse(capture, mutation, manaCost, payment) ||
                 !membership.TryGet(capture.Connection, out var paidMember) ||
                 paidMember.ItemPhase is not { } phase || !paidMember.TryAdvanceRevision()) return false;
+            paidMember.OwnsManaMaximum = true;
             paidMember.Mana = checked((short)(paidMember.Mana - manaCost));
             paidMember.ItemPhase = phase with { Mana = phase.Mana with { Mana = paidMember.Mana },
                 Channel = true, SlowMagicUse = payment.SlowMagicUse, MagicPayment = payment };
@@ -119,9 +145,29 @@ internal sealed partial class PlayerAuthority
         return inventory.TryApplyAtomic(capture.Connection, mutations, capture.InventorySerial);
     }
 
-    internal void PublishProjectileUse(RuntimePlayerProjectileUseCapture capture, RuntimePlayerInventoryMutation? mutation, int manaCost)
+    internal void PublishProjectileUse(RuntimePlayerProjectileUseCapture capture, RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicUsePreparation? magicUse = null)
     {
         ConnectionHandle connection = capture.Connection;
+        if (magicUse is { } prepared)
+        {
+            Exception? failure = null;
+            void Publish(Action action) { try { action(); } catch (Exception ex) { failure ??= ex; } }
+            // The complete refill/payment/buff/item state is owned before the first observer.
+            if (prepared.Inventory.IsAcceptedItemCurrent(0))
+                Publish(() => { var item = prepared.Payment.Refill!.Value;
+                    var request = item.After.ToCommitRequest(connection.Player.Slot, item.Slot);
+                    events?.PlayerEquipmentUpdated(connection, in request); });
+            if (membership.TryGet(connection, out var member) && member.ItemPhase?.MagicPayment == prepared.Payment &&
+                member.Mana == prepared.Payment.PaidMana && member.MaxMana == capture.Player.MaxMana)
+                Publish(() => { var request = new PlayerManaCommitRequest(connection.Player.Slot,
+                    checked((short)prepared.Payment.PaidMana), capture.Player.MaxMana);
+                    events?.PlayerManaUpdated(connection, in request); });
+            if (transferProfiles.IsCurrentBuffState(connection, prepared.AfterBuffs))
+                Publish(() => { var request = new PlayerBuffTypesCommitRequest(connection.Player.Slot, prepared.AfterBuffs.CaptureTypes());
+                    events?.PlayerBuffTypesUpdated(connection, in request); });
+            if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+            return;
+        }
         if (manaCost > 0)
         {
             var request = new PlayerManaCommitRequest(connection.Player.Slot,

@@ -15,9 +15,9 @@ internal sealed partial class PlayerAuthority
     internal bool TryPrepareMagicPayment(ConnectionHandle connection,
         RuntimePlayerInventoryItem selected, in VanillaChanneledMagicProjectileWeaponCombatDefinition weapon,
         out RuntimePlayerMagicPayment1458 payment, out int debit, out int period,
-        out VanillaPlayerCombatSnapshot combat)
+        out VanillaPlayerCombatSnapshot combat, out RuntimePlayerMagicUsePreparation? magicUse)
     {
-        payment = default; debit = 0; period = 0; combat = default;
+        payment = default; debit = 0; period = 0; combat = default; magicUse = null;
         if (!playerUpdateRandomOwned || !membership.TryGet(connection, out var member) ||
             member.ItemPhase is not { DerivedCombat: { } derived } phase ||
             !IsValidDerivedCombat(in derived) || phase.BaseManaMaximum <= 0 ||
@@ -43,11 +43,33 @@ internal sealed partial class PlayerAuthority
         {
             if (same && (!phase.Selected.ReleaseUseItem || phase.Selected.Animation > 0)) return false;
             if (previous is { Attempt: ulong.MaxValue } ||
-                !VanillaRemoteChannelledMagic1458.TryPay(member.Mana, weapon.ManaCost, out int after, out bool slow))
+                !VanillaRemoteChannelledMagic1458.TryResolveManaCost(weapon.ManaCost, derived.ManaCostMultiplier, out int cost))
                 return false;
-            debit = member.Mana - after;
-            payment = new(connection.Player, (previous?.Attempt ?? 0) + 1, member.SelectedItem,
-                selected, phase.BaseManaMaximum, after, slow, false, true, true);
+            ulong attempt = (previous?.Attempt ?? 0) + 1;
+            int available = member.Mana;
+            RuntimePlayerMagicRefill1458? refill = null;
+            PlayerBuffState? beforeBuffs = null;
+            PlayerBuffState? afterBuffs = null;
+            if (derived.ManaFlower && available < cost)
+            {
+                var items = new RuntimePlayerInventoryItem[59];
+                beforeBuffs = transferProfiles.CaptureBuffState(connection);
+                if (beforeBuffs is null || !inventory.TryCopyInventory(connection, items)) return false;
+                afterBuffs = beforeBuffs.Clone();
+                if (!TryStageAutoQuickMana(connection, attempt, available, phase.Mana.Maximum,
+                    phase.ManaPotionDelay, items, afterBuffs, out available, out refill)) return false;
+            }
+            if (!VanillaRemoteChannelledMagic1458.TryPay(available, cost, out int after, out bool slow)) return false;
+            debit = Math.Min(available, cost);
+            payment = new(connection.Player, attempt, member.SelectedItem,
+                selected, phase.BaseManaMaximum, after, slow, false, true, true) { Refill = refill };
+            if (refill is { } restored)
+            {
+                var mutations = new[] { new RemotePhaseInventoryMutation(connection, restored.Slot, restored.Before, restored.After) };
+                if (!inventory.TryPrepareRemotePhase(mutations, inventory.Serial, out var prepared) || prepared is null)
+                    return false;
+                magicUse = new(payment, beforeBuffs!, afterBuffs!, prepared);
+            }
         }
         period = payment.SlowMagicUse ? (int)(weapon.UseTimeTicks * 2.5f) : weapon.UseTimeTicks;
         return true;

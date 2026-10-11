@@ -755,6 +755,7 @@ public sealed class RuntimeBotAuthorityTests
             WeaponPolicy = RuntimeBotWeaponPolicy.Bow
         };
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(bot.Id, configuration));
+        fixture.RemoveMagicQuiver(bot.ServerPlayerId);
         _ = fixture.SpawnNpc(VanillaNpcIds.BlueSlime, x: 520f, y: 160f);
 
         Assert.True(fixture.ServerPlayers.TryGetItem(
@@ -1029,6 +1030,8 @@ public sealed class RuntimeBotAuthorityTests
         };
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(bot.Id, configuration));
 
+        fixture.RemoveMagicQuiver(bot.ServerPlayerId);
+
         fixture.State.Apply(new PlayerPvpToggleRuntimeCommand(target, Hostile: true));
         fixture.State.Tick();
         Assert.Equal(0, fixture.Projectiles.ActiveCount);
@@ -1261,6 +1264,17 @@ public sealed class RuntimeBotAuthorityTests
         public RuntimeWorldItemStore WorldItems { get; }
         public RuntimeProjectileStore Projectiles { get; }
         public RuntimeBotTelemetry Telemetry { get; }
+
+        public void RemoveMagicQuiver(ServerPlayerId id)
+        {
+            // The randomized Shroomite preset can conserve arrows. Tests requiring an exact
+            // debit remove its quiver while retaining their original ammo/trust assertions.
+            short slot = checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 7));
+            Assert.True(ServerPlayers.TryGetItem(id, slot, out ServerPlayerItemState item));
+            if (item.ItemType == VanillaItemIds.MagicQuiver)
+                Assert.True(ServerPlayers.SetItem(id, new ServerPlayerItemState(
+                    slot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)));
+        }
 
         public async Task<RuntimeBotSnapshot?> CreateBotAsync(RuntimeBotCreateRequest request)
         {

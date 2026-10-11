@@ -474,6 +474,12 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (!inventory.CanAcceptOwnedQuantityReport(equipment.Connection, in request))
+        {
+            RejectedEquipmentUpdates++;
+            return;
+        }
+        if (TryAcknowledgeManaCrystalInventory(equipment)) return;
         // Unsupported default contexts retain the prior equipment component policy.
         // After normalization is admitted, every preparation/adoption failure refuses
         // the receive without falling back or publishing a partially planned cursor.
@@ -588,6 +594,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerMana(PlayerManaRuntimeCommand mana)
     {
         PlayerManaCommitRequest request = mana.Request;
+        if (TryAcknowledgeManaCrystalMana(mana)) return;
         if (!mana.Connection.IsAssigned || mana.Connection.Player.Slot != request.PlayerSlot)
         {
             RejectedManaUpdates++;
@@ -596,6 +603,13 @@ internal sealed partial class PlayerAuthority
 
         if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
         {
+            if (activePlayer.OwnsManaMaximum &&
+                (request.MaxMana != activePlayer.MaxMana || (request.Mana != activePlayer.Mana &&
+                    request.Mana != activePlayer.ItemPhase?.MagicPayment?.PaidMana)))
+            {
+                RejectedManaUpdates++;
+                return;
+            }
             if (activePlayer.ItemPhase is { MagicPayment: { } payment } owned &&
                 (request.MaxMana != owned.BaseManaMaximum ||
                  (request.Mana != payment.PaidMana && request.Mana != activePlayer.Mana)))
@@ -603,7 +617,7 @@ internal sealed partial class PlayerAuthority
                 RejectedManaUpdates++;
                 return;
             }
-            if (activePlayer.ItemPhase is { MagicPayment: not null })
+            if (activePlayer.OwnsManaMaximum || activePlayer.ItemPhase is { MagicPayment: not null })
             {
                 // Explained report acknowledgement preserves phase-owned regeneration and maximum epoch.
                 if (activePlayer.Connection != mana.Connection) { RejectedManaUpdates++; return; }
@@ -697,6 +711,7 @@ internal sealed partial class PlayerAuthority
             MaxMana = hasPending ? pending!.MaxMana : (short)0,
             ItemPhase = RuntimePlayerItemPhase1458.Constructor with
             {
+                ManaCrystalIntent = null,
                 RespawnTimer = request.RespawnTimer,
                 BaseManaMaximum = hasPending && pending!.HasMana ? pending.MaxMana : 20,
                 Mana = RuntimePlayerItemPhase1458.Constructor.Mana with { Mana = hasPending && pending!.HasMana ? pending.Mana : 0 }
@@ -742,6 +757,7 @@ internal sealed partial class PlayerAuthority
         if (player.ItemPhase is { } phase)
             player.ItemPhase = phase with
             {
+                ManaCrystalIntent = null,
                 RespawnTimer = request.RespawnTimer,
                 DeadTime = request.SpawnContext == 1 && player.IsDead ? phase.DeadTime : 0
             };
@@ -905,6 +921,7 @@ internal sealed partial class PlayerAuthority
             ((request.ControlFlags & 32) == 0 || player.SelectedItem != request.SelectedItem))
             player.ItemPhase = paymentPhase with
             { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
+        CaptureManaCrystalIntent(player, in request);
         player.ControlFlags = request.ControlFlags;
         player.MovementFlags = request.MovementFlags;
         if (player.PhysicsPhase is { } physics)

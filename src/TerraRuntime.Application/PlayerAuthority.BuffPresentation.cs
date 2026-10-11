@@ -31,6 +31,15 @@ internal sealed partial class PlayerAuthority
         (serverPlayers is not null && serverPlayers.TryGet(new PlayerSlotId(slot), out var player) &&
          serverPlayers.GetMoonLeechDuration(player.Player) > 0);
 
+    private bool IsExplainedQuickManaBuffAcknowledgement(RuntimePlayerMember member,
+        ReadOnlySpan<BuffTypeId> incoming)
+    {
+        if (!inventory.HasOwnedManaPotionQuantity(member.Connection)) return false;
+        var buffs = transferProfiles.CaptureBuffState(member.Connection);
+        return buffs is not null && buffs.CountActive(new(94)) > 0 &&
+            incoming.SequenceEqual(buffs.CaptureTypes());
+    }
+
     private void ApplyPlayerBuffTypes(PlayerBuffTypesRuntimeCommand command)
     {
         PlayerBuffTypesCommitRequest request = command.Request;
@@ -53,7 +62,9 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
-        if (!transferProfiles.TrySetBuffTypes(command.Connection, request.BuffTypes))
+        bool explainedQuickMana = activePlayer is not null &&
+            IsExplainedQuickManaBuffAcknowledgement(activePlayer, request.BuffTypes.Span);
+        if (!explainedQuickMana && !transferProfiles.TrySetBuffTypes(command.Connection, request.BuffTypes))
         {
             RejectedBuffSnapshots++;
             return;

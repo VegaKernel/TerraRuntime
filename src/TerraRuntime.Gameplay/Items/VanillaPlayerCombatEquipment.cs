@@ -32,6 +32,9 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     public bool LavaRose { get; init; }
     public bool WaterWalk { get; init; }
 
+    public bool ManaFlower { get; init; }
+    public float ManaCostMultiplier { get; init; } = 1f;
+
     public bool Archery { get; init; }
     public float MinionDamage { get; init; } = 1f;
 
@@ -52,7 +55,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         ArmorPenetration: 0,
         MeleeArmorPenetration: 0,
         NoKnockback: false,
-        MagicQuiver: false) { Archery = false, MinionDamage = 1f };
+        MagicQuiver: false) { Archery = false, MinionDamage = 1f, ManaFlower = false, ManaCostMultiplier = 1f };
 
     /// <summary>Player.CapAttackSpeeds / TurnAttackSpeedToUseTimeMultiplier.</summary>
     public float MeleeAnimationMultiplier
@@ -185,6 +188,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
             return false;
         }
 
+        if (snapshot.ManaFlower)
+            snapshot = snapshot with { ManaCostMultiplier = snapshot.ManaCostMultiplier - 0.08f };
         return true;
     }
 
@@ -256,6 +261,9 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
     {
         switch (type.Value)
         {
+            case 555: // ApplyEquipFunctional owns a flag; UpdateEquips subtracts once.
+                snapshot = snapshot with { ManaFlower = true };
+                break;
             case 156: // Cobalt Shield
                 snapshot = snapshot with { Defense = snapshot.Defense + 1, NoKnockback = true };
                 break;

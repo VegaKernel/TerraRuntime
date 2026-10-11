@@ -392,11 +392,12 @@ internal sealed partial class ProjectileAuthority
         int manaCost = weapon.ManaCost;
         int period = weapon.UseTimeTicks;
         RuntimePlayerMagicPayment1458? magicPayment = null;
+        RuntimePlayerMagicUsePreparation? magicUse = null;
         VanillaPlayerCombatSnapshot attackerCombat;
         if (players.HasRemotePlayerPhaseBinding)
         {
             if (!players.TryPrepareMagicPayment(connection, weaponItem, in weapon,
-                out var payment, out manaCost, out period, out attackerCombat))
+                out var payment, out manaCost, out period, out attackerCombat, out magicUse))
                 return ClientProjectileProvenanceResolveResult.Rejected;
             magicPayment = payment;
         }
@@ -450,7 +451,7 @@ internal sealed partial class ProjectileAuthority
             InventoryMutation: null,
             ManaCost: manaCost,
             speedEnvelope,
-            period) { UseTick = tick, MagicPayment = magicPayment };
+            period) { UseTick = tick, MagicPayment = magicPayment, MagicUse = magicUse };
         return ClientProjectileProvenanceResolveResult.Accepted;
     }
 

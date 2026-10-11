@@ -68,7 +68,7 @@ internal readonly record struct RuntimePlayerInventoryMutation(
 /// Pending packet-5 state can arrive before spawn; a different connection generation cannot replace it until the
 /// matching connection is cleared on disconnect.
 /// </summary>
-internal sealed class RuntimePlayerInventoryStore
+internal sealed partial class RuntimePlayerInventoryStore
 {
     internal ulong Serial { get; private set; } = 1;
     private void Changed() { if (Serial < ulong.MaxValue) Serial++; }
@@ -105,7 +105,7 @@ internal sealed class RuntimePlayerInventoryStore
         if (!connection.IsAssigned ||
             connection.Player.Slot != request.PlayerSlot ||
             !RuntimePlayerInventoryItem.TryFromNormalized(in request, out RuntimePlayerInventoryItem item) ||
-            !CanAccept(connection))
+            !CanAccept(connection) || !CanAcceptOwnedQuantityReport(connection, in request))
         {
             return false;
         }
@@ -226,6 +226,7 @@ internal sealed class RuntimePlayerInventoryStore
         connections[playerSlot] = default;
         Changed();
         items.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
+        ClearOwnedQuantities(playerSlot);
     }
 
     private static int GetOffset(int playerSlot, int inventorySlot) =>

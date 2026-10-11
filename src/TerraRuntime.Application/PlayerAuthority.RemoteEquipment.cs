@@ -48,7 +48,11 @@ internal sealed partial class PlayerAuthority
             // before armor grants; it may block a later favorite but grants no armor benefits.
             bool sharingBlocker = inactiveArmor && item.ItemNetId == VanillaItemIds.CopperBroadsword.Value;
             bool defensiveAccessory = index is >= 3 and <= 9 && item.ItemNetId is 156 or 3212;
-            if (defensiveAccessory)
+            if (index is >= 3 and <= 9 && item.ItemNetId == 555)
+            {
+                if (item.PrefixId != default) return false;
+            }
+            else if (defensiveAccessory)
             {
                 // Arcane is staged through the common effective-slot mana owner; Ankh
                 // immunity writers still require a separate buff-phase owner.
@@ -69,7 +73,7 @@ internal sealed partial class PlayerAuthority
         return combat with
         {
             Defense = 0, ArmorPenetration = 0, NoKnockback = false,
-            MeleeCrit = 4, RangedCrit = 4, MagicCrit = 4
+            MeleeCrit = 4, RangedCrit = 4, MagicCrit = 4, ManaFlower = false, ManaCostMultiplier = 1f
         } == VanillaPlayerCombatSnapshot.Baseline;
     }
 
