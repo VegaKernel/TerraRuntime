@@ -956,6 +956,7 @@ internal sealed partial class PlayerAuthority
             }
         }
 
+        var quickBuffMovement = CaptureQuickBuffMovement(player, in request);
         if (!player.TryAdvanceRevision())
         {
             RejectedMovements++;
@@ -995,6 +996,7 @@ internal sealed partial class PlayerAuthority
         player.CameraTargetX = request.HasCameraTarget ? request.CameraTargetX : 0f;
         player.CameraTargetY = request.HasCameraTarget ? request.CameraTargetY : 0f;
 
+        ObserveQuickBuffMovement(player, quickBuffMovement);
         AppliedMovements++;
         LastMovementSlot = request.PlayerSlot;
         LastMovementPositionX = request.PositionX;

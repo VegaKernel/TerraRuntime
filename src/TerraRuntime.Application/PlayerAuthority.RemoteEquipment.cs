@@ -19,6 +19,14 @@ internal sealed partial class PlayerAuthority
         foreach (var item in equipment)
         {
             if (item.Stack <= 0) continue;
+            // Bank4 is mirrored in the transfer profile, but it is not equipped armor.
+            // These captured consumables write neither source information nor mechanical
+            // accessory fields. Other bank items retain the existing whole-phase refusal:
+            // source void-eligible 6190 writes oldStyleParkour, which this phase does not own.
+            if (item.SlotId is >= VanillaPlayerItemSlotCatalog.Bank4Start and
+                < VanillaPlayerItemSlotCatalog.Bank4EndExclusive &&
+                VanillaSelectedConsumableCatalog1458.TryGet(new ItemTypeId((ushort)item.ItemNetId), out var stored) &&
+                stored.BuffType > 0) continue;
             bool inactiveArmor = false;
             int index = item.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
             if ((uint)index >= VanillaPlayerItemSlotCatalog.FunctionalArmorCount)

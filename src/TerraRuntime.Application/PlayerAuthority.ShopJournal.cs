@@ -24,6 +24,11 @@ internal sealed partial class PlayerAuthority
         internal bool StagedCursorDebit;
         internal bool StagedQuantityImage;
         internal bool MainSortOnly;
+        internal PlayerBuffState? QuickBuffBefore;
+        internal TerraRuntime.Contracts.Gameplay.BuffTypeId[]? QuickBuffIncoming;
+        internal bool QuickBuffSealed;
+        internal PlayerBuffState? QuickBuffNext;
+        internal TerraRuntime.Contracts.Gameplay.BuffTypeId[]? QuickBuffOffers;
         internal RuntimePlayerMember? ObservedMember;
         internal PlayerStateSnapshot ObservedActor;
         internal ulong ObservedInputRevision;
@@ -91,7 +96,8 @@ internal sealed partial class PlayerAuthority
         {
             if (!inventory.TryCaptureShopJournal(command.Connection, out var capture) || capture is null) return null;
             journal = new(capture, null, null) { ObservedBatch = true, ObservedMember = member,
-                ObservedActor = member.CaptureSnapshot(), ObservedInputRevision = member.ProjectileUseInputRevision };
+                ObservedActor = member.CaptureSnapshot(), ObservedInputRevision = member.ProjectileUseInputRevision,
+                QuickBuffBefore = transferProfiles.CaptureBuffState(command.Connection) };
         }
         if (!journal.Capture.TryPrepareObservedBatchImage(index, in reported, out var prepared) || prepared is null)
             return null;
@@ -464,9 +470,12 @@ internal sealed partial class PlayerAuthority
 
     private void ApplyInventorySyncComplete(ConnectionHandle connection)
     {
+        if (membership.TryGet(connection, out var quickMember) && quickMember.CursorMove is { Shop: { } quickJournal } quickReceipt &&
+            !quickJournal.IsSealed && TrySealQuickBuff(connection, quickMember, quickReceipt, quickJournal)) return;
         CompleteUnpaidSelectedPotionReport(connection);
         if (!membership.TryGet(connection, out var member) || member.CursorMove is not { Shop: { } journal } receipt || journal.IsSealed)
             return;
+        if (TrySealQuickBuff(connection, member, receipt, journal)) return;
         if (TrySealSortOverflow(connection, member, receipt, journal)) return;
         if (journal.ObservedBatch)
         {
@@ -542,7 +551,8 @@ internal sealed partial class PlayerAuthority
             {
                 if (journal.Work!.MoveNext()) continue;
                 journal.Work.Dispose();
-                if (journal.SortOverflow is not null) CompleteSortOverflowJournal(member.Connection, member, receipt, journal);
+                if (journal.QuickBuffSealed) CompleteQuickBuffJournal(member.Connection, member, receipt, journal);
+                else if (journal.SortOverflow is not null) CompleteSortOverflowJournal(member.Connection, member, receipt, journal);
                 else if (journal.BankResult is { } bankResult) CompleteBankJournal(member.Connection, member, receipt, journal, bankResult);
                 else CompleteShopJournal(member.Connection, member, receipt, journal, journal.Resolution!);
             }

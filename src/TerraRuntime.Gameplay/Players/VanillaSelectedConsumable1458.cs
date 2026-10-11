@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Buffs;
 
 namespace TerraRuntime.Gameplay.Players;
 
@@ -21,6 +22,16 @@ public readonly record struct PlayerSelectedConsumableTransition1458(
     public bool PendingItemReuse { get; init; }
     public bool ResetItemRotation { get; init; }
 }
+
+public readonly record struct QuickBuffEligibility1458(bool PendingInventoryActions, bool Cursed,
+    bool CrowdControlled, bool Dead, bool Spectating, bool NoItems);
+
+public readonly record struct QuickBuffMutation1458(int SourceSlot, WorldItemPickupSlot1458 Before,
+    WorldItemPickupSlot1458 After, BuffTypeId OfferType, int OfferDuration);
+
+public sealed record QuickBuffPlan1458(WorldItemPickupSlot1458[] Inventory,
+    WorldItemPickupSlot1458[] VoidItems, BuffTypeId[] BuffTypes, int[] BuffTimes,
+    QuickBuffMutation1458[] Mutations);
 
 /// <summary>Selected ordinary remote ItemCheck. Offers do not debit inventory or publish client reports.</summary>
 public static class VanillaSelectedConsumable1458
@@ -161,5 +172,124 @@ public static class VanillaSelectedConsumable1458
             }
         }
         return true;
+    }
+
+    /// <summary>Detached six-family QuickBuff. Source input eligibility is explicit; this does not
+    /// establish button intent or funded custody. All supplied images must be canonical, including inactive Void slots.
+    /// Unsupported potentially mutating buff/food families refuse; immunity is an explicit detached input.</summary>
+    public static bool TryPlanQuickBuff(ReadOnlySpan<WorldItemPickupSlot1458> inventory,
+        ReadOnlySpan<WorldItemPickupSlot1458> voidItems, ReadOnlySpan<BuffTypeId> buffTypes,
+        ReadOnlySpan<int> buffTimes, in QuickBuffEligibility1458 eligibility,
+        ReadOnlySpan<bool> immunity, out QuickBuffPlan1458? plan)
+    {
+        plan = null;
+        if (inventory.Length != 59 || voidItems.Length != 40 || buffTypes.Length != 44 ||
+            buffTimes.Length != 44 || !immunity.IsEmpty && immunity.Length <= 117) return false;
+        foreach (var item in inventory) if (!IsQuickBuffItem(item)) return false;
+        foreach (var item in voidItems) if (!IsQuickBuffItem(item)) return false;
+        for (int i = 0; i < buffTypes.Length; i++)
+            if (!VanillaBuffIds.TryCreate(buffTypes[i].Value, out _) || buffTimes[i] < 0) return false;
+
+        var nextInventory = inventory.ToArray();
+        var nextVoid = voidItems.ToArray();
+        var types = buffTypes.ToArray();
+        var times = buffTimes.ToArray();
+        var mutations = new List<QuickBuffMutation1458>(98);
+        bool blocked = eligibility.PendingInventoryActions || eligibility.Cursed ||
+            eligibility.CrowdControlled || eligibility.Dead || eligibility.Spectating || eligibility.NoItems;
+        if (!blocked && CountQuickBuffPrefix(types) != types.Length)
+        {
+            bool voidEnabled = false;
+            for (int i = 0; i < 58; i++)
+                if (inventory[i].Type == VanillaNpcLootPredicateItemIds1458.OpenVoidBag.Value && inventory[i].Stack > 0) voidEnabled = true;
+            // QuickBuff selects food before scanning ordinary buffs. Preflight both source images
+            // before applying any mutation, so unsupported food/pet/mana behavior cannot be omitted.
+            if (!HasSupportedQuickBuffItems(inventory[..58]) ||
+                voidEnabled && !HasSupportedQuickBuffItems(voidItems)) return false;
+            for (int i = 0; i < 58 && CountQuickBuffPrefix(types) != types.Length; i++)
+                ApplyQuickBuffItem(nextInventory, i, i, types, times, immunity, mutations);
+            if (voidEnabled)
+                for (int i = 0; i < 40 && CountQuickBuffPrefix(types) != types.Length; i++)
+                    ApplyQuickBuffItem(nextVoid, i, 59 + i, types, times, immunity, mutations);
+        }
+        plan = new(nextInventory, nextVoid, types, times, mutations.ToArray());
+        return true;
+    }
+
+    private static bool IsQuickBuffItem(in WorldItemPickupSlot1458 item)
+    {
+        if (item.Type == 0) return item == default; // gameplay-domain-literal-audit: allow raw-entity-type-decision - canonical empty item sentinel, not a Terraria content identity.
+        return item.Type > 0 && item.Stack > 0 && // gameplay-domain-literal-audit: allow raw-entity-type-decision - positive item-domain validity, not a Terraria content identity.
+            item.Prefix >= 0 && item.Prefix < VanillaItemPrefixCatalog.Count &&
+            VanillaItemRetainedIdentity1458.TryResolve(new(item.Type), out var retained) &&
+            retained.Value == item.Type &&
+            VanillaWorldItemAllocationCatalog1458.TryGet(item.Type, out var allocation) &&
+            (VanillaCoinFacts.TryGetValue(new(item.Type), out _)
+                ? VanillaCoinFacts.IsValidRetainedStack(new(item.Type), item.Stack)
+                : item.Stack <= allocation.MaximumStack);
+    }
+
+    private static bool HasSupportedQuickBuffItems(ReadOnlySpan<WorldItemPickupSlot1458> items)
+    {
+        foreach (var item in items)
+            if (VanillaSelectedConsumableCatalog1458.MayParticipateInQuickBuff(new(item.Type)) &&
+                (!VanillaSelectedConsumableCatalog1458.TryGet(new(item.Type), out var definition) ||
+                    definition.BuffType == 0)) return false;
+        return true;
+    }
+
+    private static int CountQuickBuffPrefix(ReadOnlySpan<BuffTypeId> types)
+    {
+        // Player.CountBuffs advances its read index only on a positive type. Duration is irrelevant.
+        int count = 0;
+        for (int i = 0; i < types.Length; i++) if (types[count].Value > 0) count++;
+        return count;
+    }
+
+    private static void ApplyQuickBuffItem(WorldItemPickupSlot1458[] items, int slot, int sourceSlot,
+        BuffTypeId[] types, int[] times, ReadOnlySpan<bool> immunity, List<QuickBuffMutation1458> mutations)
+    {
+        var before = items[slot];
+        if (!VanillaSelectedConsumableCatalog1458.TryGet(new(before.Type), out var definition) ||
+            definition.BuffType == 0) return;
+        var offer = new BuffTypeId((short)definition.BuffType);
+        foreach (var type in types) if (type == offer) return;
+        if (immunity.IsEmpty || !immunity[offer.Value]) AddQuickBuffOffer(types, times, offer, definition.BuffTime);
+        var after = before.Stack == 1 ? default : before with { Stack = before.Stack - 1 };
+        items[slot] = after;
+        mutations.Add(new(sourceSlot, before, after, offer, definition.BuffTime));
+    }
+
+    private static void AddQuickBuffOffer(BuffTypeId[] types, int[] times, BuffTypeId offer, int duration)
+    {
+        for (int attempt = 0; attempt < types.Length; attempt++)
+        {
+            int removable = 0;
+            while (removable < types.Length && VanillaBuffDefinitionCatalog.IsDebuff(types[removable])) removable++;
+            if (removable == types.Length) return;
+            for (int i = removable; i < types.Length; i++)
+                if (types[i] == VanillaBuffIds.None)
+                {
+                    types[i] = offer;
+                    times[i] = duration;
+                    return;
+                }
+            types[removable] = VanillaBuffIds.None;
+            times[removable] = 0;
+            int destination = 0;
+            // Source DelBuff compacts 0..42 and leaves the special last slot in place.
+            for (int i = 0; i < types.Length - 1; i++)
+                if (types[i] != VanillaBuffIds.None && times[i] != 0)
+                {
+                    if (destination < i)
+                    {
+                        types[destination] = types[i];
+                        times[destination] = times[i];
+                        types[i] = VanillaBuffIds.None;
+                        times[i] = 0;
+                    }
+                    destination++;
+                }
+        }
     }
 }

@@ -106,7 +106,8 @@ internal sealed partial class RuntimePlayerInventoryStore
     }
 
     internal IEnumerable<int> PrepareShopBankBulkWork(ConnectionHandle connection, ShopJournalCapture capture,
-        RuntimePlayerInventoryItem[] reports, bool[] seen, VanillaItemPrefixWorld1458? world, BankBulkResolution result)
+        RuntimePlayerInventoryItem[] reports, bool[] seen, VanillaItemPrefixWorld1458? world, BankBulkResolution result,
+        bool includeUnchanged = false)
     {
         ShopBankMovePreparation? prepared = null;
         if (!capture.IsCurrent || reports.Length != 219 || seen.Length != 219 || Serial >= ulong.MaxValue - 1)
@@ -117,7 +118,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             int start = 59 + bank * 40;
             bool changed = false;
             for (int i = start; i < start + 40; i++) changed |= reports[i] != capture.Before[i];
-            if (!changed) continue;
+            if (!changed && !includeUnchanged) continue;
             var storage = capture.Before.AsSpan(start, 40).ToArray().Select(StorageTuple).ToArray();
             for (int operation = 0; operation <= (int)BankBulkOperation1458.Restock; operation++)
             {
@@ -128,7 +129,7 @@ internal sealed partial class RuntimePlayerInventoryStore
                     yield return 0;
                     int sourceIndex = operation == 3 ? source : start + source;
                     if (operation is (int)BankBulkOperation1458.ShiftIntoBank or (int)BankBulkOperation1458.ShiftOutOfBank &&
-                        capture.Before[sourceIndex] == reports[sourceIndex]) continue;
+                        capture.Before[sourceIndex] == reports[sourceIndex] && !includeUnchanged) continue;
                     if (!VanillaWorldItemOwner1458.TryPlanBankBulk(main, storage, bank,
                         (BankBulkOperation1458)operation, source, world, out var plan) || plan is null) continue;
                     var after = capture.Before.ToArray();
@@ -244,7 +245,7 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     internal IEnumerable<int> PrepareShopSortWork(ConnectionHandle connection, ShopJournalCapture capture,
         RuntimePlayerInventoryItem[] reports, bool[] seen, VanillaItemPrefixWorld1458? world,
-        BankBulkResolution result, bool mainOnly)
+        BankBulkResolution result, bool mainOnly, bool includeUnchanged = false)
     {
         ShopBankMovePreparation? accepted = null;
         if (!capture.IsCurrent || reports.Length != 219 || seen.Length != 219 || Serial >= ulong.MaxValue - 1)
@@ -256,7 +257,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             int length = main ? 59 : 40;
             bool changed = false;
             for (int i = start; i < start + length; i++) changed |= capture.Before[i] != reports[i];
-            if (!changed) continue;
+            if (!changed && !includeUnchanged) continue;
             var physical = capture.Before.AsSpan(start, length).ToArray().Select(StorageTuple).ToArray();
             for (byte locale = 0; locale < 12; locale++)
             for (int order = 0; order < 256; order++)

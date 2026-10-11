@@ -56,6 +56,8 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        if (activePlayer is not null && TryHandleQuickBuffSnapshot(activePlayer, in request))
+            return;
         if (activePlayer is not null &&
             (IsExplainedSelectedPotionBuffAcknowledgement(activePlayer, request.BuffTypes.Span) ||
              TryExplainDeniedSelectedBuffAcknowledgement(activePlayer, request.BuffTypes.Span)))

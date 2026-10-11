@@ -568,4 +568,26 @@
     <EmbeddedResource Include="Fixtures/MagicQuiverWeaponInputLinuxFirst1458.json.gz" LogicalName="MagicQuiverWeaponInputLinuxFirst1458" />
     <EmbeddedResource Include="Fixtures/MagicQuiverWeaponInputWindowsFirst1458.json.gz" LogicalName="MagicQuiverWeaponInputWindowsFirst1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/QuickBuffClosedLinuxFirst1458.json.gz" LogicalName="QuickBuffClosedLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffClosedLinuxRepeat1458.json.gz" LogicalName="QuickBuffClosedLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffClosedWindowsFirst1458.json.gz" LogicalName="QuickBuffClosedWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffClosedWindowsRepeat1458.json.gz" LogicalName="QuickBuffClosedWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffMetadataLinuxFirst1458.json.gz" LogicalName="QuickBuffMetadataLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffMetadataLinuxRepeat1458.json.gz" LogicalName="QuickBuffMetadataLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffMetadataWindowsFirst1458.json.gz" LogicalName="QuickBuffMetadataWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffMetadataWindowsRepeat1458.json.gz" LogicalName="QuickBuffMetadataWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSixLinuxFirst1458.json.gz" LogicalName="QuickBuffSixLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSixLinuxRepeat1458.json.gz" LogicalName="QuickBuffSixLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSixWindowsFirst1458.json.gz" LogicalName="QuickBuffSixWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSixWindowsRepeat1458.json.gz" LogicalName="QuickBuffSixWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSparseLinuxFirst1458.json.gz" LogicalName="QuickBuffSparseLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSparseLinuxRepeat1458.json.gz" LogicalName="QuickBuffSparseLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSparseWindowsFirst1458.json.gz" LogicalName="QuickBuffSparseWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffSparseWindowsRepeat1458.json.gz" LogicalName="QuickBuffSparseWindowsRepeat1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/QuickBuffBankClosedLinuxFirst1458.json.gz" LogicalName="QuickBuffBankCycleLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/QuickBuffBankClosedWindowsFirst1458.json.gz" LogicalName="QuickBuffBankCycleWindowsFirst1458" />
+  </ItemGroup>
 </Project>

@@ -33,6 +33,7 @@ internal sealed partial class PlayerAuthority
         out RuntimePlayerItemPhase1458 nextItem)
     {
         nextItem = item;
+        bool quickBuffOwnsDebit = plan.Member.CursorMove?.Shop is { QuickBuffSealed: true };
         RuntimePlayerInventoryStore.CursorMovePreparation? sourceDebit = null;
         RemotePhaseInventoryMutation admittedDebit;
         if (item.SelectedPotionUse is { Completed: false } held && held.Player == plan.Member.Connection.Player &&
@@ -44,7 +45,7 @@ internal sealed partial class PlayerAuthority
             admittedDebit = new(plan.Member.Connection, plan.Member.SelectedItem, physical, physical)
             { ConsumeFundedQuantity = true, CursorSourceDebit = candidate };
         }
-        else if (!inventory.TryPrepareSelectedPotionConsumption(plan.Member.Connection,
+        else if (quickBuffOwnsDebit || !inventory.TryPrepareSelectedPotionConsumption(plan.Member.Connection,
             plan.Member.SelectedItem, out admittedDebit))
         {
             // No payment means no local effect. Clock-only progression keeps this
@@ -55,7 +56,7 @@ internal sealed partial class PlayerAuthority
             var deniedFacts = facts with { Cursed = true };
             if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in deniedFacts,
                 selected.Stack, random.Next, random.NextDouble, out use)) return false;
-            if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var deniedPotion) &&
+            if (!quickBuffOwnsDebit && VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var deniedPotion) &&
                 deniedPotion.BuffType > 0 &&
                 (use.BuffDurationOffer > 0 || facts.ControlUseItem && !facts.Cursed &&
                     !facts.CrowdControlled && !facts.SelectionBuffered && clocks.Animation == 0 &&
@@ -243,9 +244,13 @@ internal sealed partial class PlayerAuthority
     private bool TryApplySelectedBuffSubsetRemoval(RuntimePlayerMember member,
         in PlayerBuffTypesCommitRequest request)
     {
-        if (member.ItemPhase?.SelectedPotionUse is not { } use || use.Player != member.Connection.Player ||
-            !VanillaSelectedConsumableCatalog1458.TryGet(use.Before.ItemType, out var potion) ||
-            potion.BuffType <= 0 && potion.HealLife <= 0 && potion.HealMana <= 0 ||
+        bool quickBuffExplanation = member.ItemPhase?.QuickBuffExplanation is { } quick &&
+            quick.Player == member.Connection.Player;
+        bool selectedExplanation = member.ItemPhase?.SelectedPotionUse is { } use &&
+            use.Player == member.Connection.Player &&
+            VanillaSelectedConsumableCatalog1458.TryGet(use.Before.ItemType, out var potion) &&
+            (potion.BuffType > 0 || potion.HealLife > 0 || potion.HealMana > 0);
+        if ((!quickBuffExplanation && !selectedExplanation) ||
             transferProfiles.CaptureBuffState(member.Connection) is not { } previous ||
             !previous.TryPrepareSourceSubsetRemoval(request.BuffTypes.Span, out var next, out bool ambiguous))
             return false;

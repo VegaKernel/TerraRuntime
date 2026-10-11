@@ -277,7 +277,7 @@ internal sealed partial class PlayerAuthority
             MaxMana = previous.MaxMana,
             OwnsManaMaximum = transfer.OwnsManaMaximum,
             ItemPhase = transferredPhase is { } phase
-                ? phase with { ManaCrystalIntent = null, SelectedPotionUse = null, Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
+                ? phase with { ManaCrystalIntent = null, SelectedPotionUse = null, QuickBuffExplanation = null, Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
                     MagicPayment = phase.MagicPayment is { } payment ? payment with
                     { EligibleBirth = false, BirthConsumed = true, AwaitingPhase = false, Refill = null } : null }
                 : null,
