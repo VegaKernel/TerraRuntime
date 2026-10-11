@@ -94,7 +94,7 @@ internal sealed partial class PlayerAuthority
                 capture.Player.Mana >= manaCost && (manaCost == 0 || payment.PaidMana == capture.Player.Mana - manaCost);
         if (manaCost > 0) return capture.Player.HasMana && capture.Player.Mana >= manaCost;
         return mutation is not { } value ||
-            (VanillaPlayerItemSlotCatalog.IsInventorySlot(value.Slot) && value.Item.IsCanonical);
+            inventory.CanApplyProjectileConsumption(capture.Connection, in value, capture.InventorySerial);
     }
 
     internal bool TryCommitProjectileUseUnpublished(RuntimePlayerProjectileUseCapture capture,
@@ -140,9 +140,7 @@ internal sealed partial class PlayerAuthority
             return true;
         }
         if (mutation is not { } value) return true;
-        Span<RuntimePlayerInventoryMutation> mutations = stackalloc RuntimePlayerInventoryMutation[1];
-        mutations[0] = value;
-        return inventory.TryApplyAtomic(capture.Connection, mutations, capture.InventorySerial);
+        return inventory.TryApplyProjectileConsumption(capture.Connection, in value, capture.InventorySerial);
     }
 
     internal void PublishProjectileUse(RuntimePlayerProjectileUseCapture capture, RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicUsePreparation? magicUse = null)

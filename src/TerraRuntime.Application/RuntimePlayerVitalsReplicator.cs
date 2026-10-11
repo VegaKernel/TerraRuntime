@@ -93,6 +93,19 @@ internal sealed class RuntimePlayerVitalsReplicator
         }
     }
 
+    public void PlayerVitalsPresentation(ConnectionHandle connection, byte messageId, short amount)
+    {
+        if (!connection.IsAssigned || messageId is not (35 or 43) ||
+            !_endpoints.TryGetValue(connection.Source, out Endpoint? origin) || !origin.IsPlaying(connection.Player))
+            return;
+        byte[] bytes = [6, 0, messageId, connection.Player.Slot.Value, 0, 0];
+        System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(4), amount);
+        var frame = new OutboundFrame(bytes);
+        foreach (var pair in _endpoints)
+            if (pair.Key != connection.Source && pair.Value.TryGetPlayingPlayer(out _))
+                _ = pair.Value.Outbound.TryEnqueue(frame);
+    }
+
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
         if (!connection.IsAssigned || connection.Player.Slot != request.PlayerSlot)

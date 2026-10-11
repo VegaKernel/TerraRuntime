@@ -50,6 +50,12 @@ internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
         _operationsObserver?.PlayerHealthUpdated(connection, in request);
     }
 
+    public void PlayerVitalsPresentation(ConnectionHandle connection, byte messageId, short amount)
+    {
+        _vitals.PlayerVitalsPresentation(connection, messageId, amount);
+        _operationsObserver?.PlayerVitalsPresentation(connection, messageId, amount);
+    }
+
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
         _vitals.PlayerManaUpdated(connection, in request);

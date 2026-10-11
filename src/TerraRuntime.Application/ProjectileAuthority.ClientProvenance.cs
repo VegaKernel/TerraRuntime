@@ -67,7 +67,7 @@ internal sealed partial class ProjectileAuthority
                 out VanillaStandaloneProjectileWeaponCombatDefinition standaloneWeapon))
         {
             return TryResolveStrictStandaloneProjectileSpawn(
-                connection, in player, selectedSlot, in weaponItem, in standaloneWeapon, in packet, out authoritative);
+                connection, in player, selectedSlot, in weaponItem, in standaloneWeapon, in packet, plannedRandom, out authoritative);
         }
 
         if (!VanillaProjectileWeaponCombatCatalog.TryGetWeapon(
@@ -468,6 +468,7 @@ internal sealed partial class ProjectileAuthority
         in RuntimePlayerInventoryItem weaponItem,
         in VanillaStandaloneProjectileWeaponCombatDefinition weapon,
         in TerrariaProjectileUpdateState packet,
+        VanillaUnifiedRandom1458 plannedRandom,
         out AuthoritativeClientProjectileSpawn authoritative)
     {
         authoritative = default;
@@ -522,7 +523,10 @@ internal sealed partial class ProjectileAuthority
             KnockBack: expectedKnockBack,
             OriginalDamage: 0);
 
-        RuntimePlayerInventoryItem remaining = !weapon.Consumable
+        bool conserve = weapon.Consumable &&
+            VanillaProjectileWeaponCombatCatalog.PrepareStandaloneConservation(
+                in weapon, in attackerCombat, plannedRandom.Next);
+        RuntimePlayerInventoryItem remaining = !weapon.Consumable || conserve
             ? weaponItem
             : weaponItem.Stack == 1
                 ? default

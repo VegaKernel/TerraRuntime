@@ -61,7 +61,8 @@ internal sealed partial class PlayerAuthority
                 // immunity writers still require a separate buff-phase owner.
                 if (item.PrefixId.Value is not (0 or 62 or 63 or 64 or 65 or 66 or 67 or 68 or 69 or 70 or 71 or 72 or 77 or 78 or 79 or 80)) return false;
             }
-            else if (item.PrefixId != default || (!IsProvenNeutralMetal(item.ItemNetId) && !sharingBlocker)) return false;
+            else if (item.PrefixId != default || (!IsProvenNeutralMetal(item.ItemNetId) &&
+                !IsProvenAmmoConservationArmor(item.ItemNetId, index) && !sharingBlocker)) return false;
         }
         if (inherited && combatEquipmentLocalVanityArmor != VanillaPlayerLocalVanityArmor1458.Empty) return false;
 
@@ -78,9 +79,16 @@ internal sealed partial class PlayerAuthority
             Defense = 0, ArmorPenetration = 0, NoKnockback = false,
             MeleeCrit = 4, RangedCrit = 4, MagicCrit = 4, ManaFlower = false, ManaCostMultiplier = 1f,
             DiscountEquipped = false, GoldRing = false, HasLuckyCoin = false, HasLuckLuckyCoin = false,
-            MeleeDamage = 1f, RangedDamage = 1f, MagicDamage = 1f, MinionDamage = 1f, MeleeAttackSpeed = 1f
+            MeleeDamage = 1f, RangedDamage = 1f, MagicDamage = 1f, MinionDamage = 1f, MeleeAttackSpeed = 1f,
+            HuntressAmmoCost90 = false, ChloroAmmoCost80 = false, AmmoCost80 = false, AmmoCost75 = false
         } == VanillaPlayerCombatSnapshot.Baseline;
     }
+
+    // Source-certified isolated armor grants; the shared catalog still validates effective
+    // slot identity, complete sets and prefixes before this phase projection.
+    private static bool IsProvenAmmoConservationArmor(int type, int armorIndex) =>
+        (armorIndex, type) is (0, 1002) or (1, 3804) or (1, 4983) or (1, 3878) or
+            (1, 1549) or (1, 2758);
 
     private static bool IsProvenNeutralMetal(int type) => type is
         76 or 77 or 78 or 79 or 80 or 81 or 82 or 83 or 89 or 90 or 91 or 92 or

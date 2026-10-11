@@ -18,6 +18,37 @@ internal sealed partial class RuntimePlayerInventoryStore
             ? Math.Min(fundedQuantities[offset], after.Stack) : (short)0;
     }
 
+    // A validated projectile producer spends one physical noncoin item. Imported
+    // unfunded stock retains its existing physical-use policy; this never creates budget.
+    internal bool CanApplyProjectileConsumption(ConnectionHandle connection,
+        in RuntimePlayerInventoryMutation mutation, ulong expectedSerial)
+    {
+        if (!TryIsCurrent(connection, expectedSerial) || !mutation.Item.IsCanonical ||
+            !TryGet(connection, mutation.Slot, out var before) || before.IsEmpty ||
+            !before.IsCanonical || CoinValue(before) != 0) return false;
+        var quantity = fundedQuantities[GetOffset(connection.Player.Slot.Value, mutation.Slot)];
+        if (quantity < 0 || quantity > before.Stack) return false;
+        var consumed = before.Stack == 1 ? default : before with { Stack = checked((short)(before.Stack - 1)) };
+        return mutation.Item == before || mutation.Item == consumed;
+    }
+
+    internal bool TryApplyProjectileConsumption(ConnectionHandle connection,
+        in RuntimePlayerInventoryMutation mutation, ulong expectedSerial)
+    {
+        if (!CanApplyProjectileConsumption(connection, in mutation, expectedSerial) ||
+            !TryGet(connection, mutation.Slot, out var before)) return false;
+        int offset = GetOffset(connection.Player.Slot.Value, mutation.Slot);
+        short originalQuantity = fundedQuantities[offset];
+        bool consumed = mutation.Item != before;
+        Span<RuntimePlayerInventoryMutation> writes = stackalloc RuntimePlayerInventoryMutation[1];
+        writes[0] = mutation;
+        if (!TryApplyAtomic(connection, writes, expectedSerial)) return false;
+        // TryApplyAtomic has no callbacks. Use the prevalidated budget, not its
+        // raw-report min projection, before any projectile observer can run.
+        if (consumed) fundedQuantities[offset] = checked((short)Math.Max(0, originalQuantity - 1));
+        return true;
+    }
+
     internal bool TryGetFundedQuantity(ConnectionHandle connection, int slot, out short quantity)
     {
         quantity = 0;

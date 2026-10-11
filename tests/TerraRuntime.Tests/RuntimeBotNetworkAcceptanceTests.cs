@@ -306,6 +306,12 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             WeaponPolicy = RuntimeBotWeaponPolicy.Bow
         };
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(bot.Id, configuration));
+        // This case verifies paid-ammo replication. Random armor and Quiver can
+        // conserve the shot, so pin its functional equipment to no conservation.
+        for (short slot = VanillaPlayerItemSlotCatalog.ArmorStart;
+             slot < VanillaPlayerItemSlotCatalog.BaselineFunctionalArmorEndExclusive; slot++)
+            Assert.True(fixture.ServerPlayers.SetItem(bot.ServerPlayerId,
+                new ServerPlayerItemState(slot, default, 0, default, 0)));
         Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot targetState));
         fixture.SpawnNpc(VanillaNpcIds.Zombie, targetState.PositionX + 48f, targetState.PositionY);
         fixture.DrainFrames();

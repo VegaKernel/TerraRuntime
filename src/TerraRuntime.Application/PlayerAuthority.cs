@@ -88,6 +88,10 @@ internal sealed partial class PlayerAuthority
             case PlayerHealthRuntimeCommand health:
                 ApplyPlayerHealth(health);
                 return true;
+            case PlayerVitalsPresentationRuntimeCommand presentation:
+                if (presentation.MessageId is 35 or 43 && membership.TryGet(presentation.Connection, out _))
+                    events?.PlayerVitalsPresentation(presentation.Connection, presentation.MessageId, presentation.Amount);
+                return true;
             case PlayerManaRuntimeCommand mana:
                 ApplyPlayerMana(mana);
                 return true;

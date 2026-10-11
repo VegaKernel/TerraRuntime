@@ -318,6 +318,7 @@ public sealed partial class WorldRuntime : IDisposable
         EquipmentIngress = new RuntimePlayerEquipmentIngress(CommandIngress);
         HealthIngress = new RuntimePlayerHealthIngress(CommandIngress);
         ManaIngress = new RuntimePlayerManaIngress(CommandIngress);
+        VitalsPresentationIngress = new RuntimePlayerVitalsPresentationIngress(CommandIngress);
         MovementIngress = new RuntimePlayerMovementIngress(CommandIngress);
         PlayerCombatIngress = new RuntimePlayerCombatNetworkIngress(CommandIngress);
         PlayerStealthIngress = new RuntimePlayerStealthNetworkIngress(CommandIngress);
@@ -395,6 +396,7 @@ public sealed partial class WorldRuntime : IDisposable
     internal RuntimePlayerEquipmentIngress EquipmentIngress { get; }
     internal RuntimePlayerHealthIngress HealthIngress { get; }
     internal RuntimePlayerManaIngress ManaIngress { get; }
+    internal RuntimePlayerVitalsPresentationIngress VitalsPresentationIngress { get; }
     internal RuntimePlayerMovementIngress MovementIngress { get; }
     internal RuntimePlayerCombatNetworkIngress PlayerCombatIngress { get; }
     internal RuntimePlayerStealthNetworkIngress PlayerStealthIngress { get; }

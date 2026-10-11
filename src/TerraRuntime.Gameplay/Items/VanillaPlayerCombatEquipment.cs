@@ -40,6 +40,11 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     public bool ManaFlower { get; init; }
     public float ManaCostMultiplier { get; init; } = 1f;
 
+    public bool HuntressAmmoCost90 { get; init; }
+    public bool ChloroAmmoCost80 { get; init; }
+    public bool AmmoCost80 { get; init; }
+    public bool AmmoCost75 { get; init; }
+
     public bool Archery { get; init; }
     public float MinionDamage { get; init; } = 1f;
 
@@ -229,6 +234,7 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 0)
         {
+            if (type.Value == 1002) { snapshot = snapshot with { Defense = snapshot.Defense + 13, RangedDamage = snapshot.RangedDamage + 0.16f, ChloroAmmoCost80 = true }; return true; }
             if (type == VanillaItemIds.SolarFlareHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 24, MeleeCrit = snapshot.MeleeCrit + 26 }; return true; }
             if (type == VanillaItemIds.VortexHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 14, RangedCrit = snapshot.RangedCrit + 7, RangedDamage = snapshot.RangedDamage + 0.16f }; return true; }
             if (type == VanillaItemIds.ShroomiteHeadgear) { snapshot = snapshot with { Defense = snapshot.Defense + 11, RangedCrit = snapshot.RangedCrit + 5, ArrowDamage = snapshot.ArrowDamage * 1.12f }; return true; }
@@ -239,9 +245,12 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 1)
         {
+            if (type.Value == 3804) { snapshot = snapshot with { Defense = snapshot.Defense + 17, RangedDamage = snapshot.RangedDamage + 0.2f, MinionDamage = snapshot.MinionDamage + 0.2f, HuntressAmmoCost90 = true }; return true; }
+            if (type.Value == 4983) { snapshot = snapshot with { Defense = snapshot.Defense + 14, RangedDamage = snapshot.RangedDamage + 0.05f, MeleeDamage = snapshot.MeleeDamage + 0.05f, MagicDamage = snapshot.MagicDamage + 0.05f, MinionDamage = snapshot.MinionDamage + 0.05f, HuntressAmmoCost90 = true }; return true; }
+            if (type.Value == 3878) { snapshot = snapshot with { Defense = snapshot.Defense + 24, RangedDamage = snapshot.RangedDamage + 0.25f, MinionDamage = snapshot.MinionDamage + 0.25f, AmmoCost80 = true }; return true; }
             if (type == VanillaItemIds.SolarFlareBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 34, MeleeDamage = snapshot.MeleeDamage + 0.29f }; return true; }
-            if (type == VanillaItemIds.VortexBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 28, RangedCrit = snapshot.RangedCrit + 12, RangedDamage = snapshot.RangedDamage + 0.12f }; return true; }
-            if (type == VanillaItemIds.ShroomiteBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 24, RangedCrit = snapshot.RangedCrit + 13, RangedDamage = snapshot.RangedDamage + 0.13f }; return true; }
+            if (type == VanillaItemIds.VortexBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 28, RangedCrit = snapshot.RangedCrit + 12, RangedDamage = snapshot.RangedDamage + 0.12f, AmmoCost75 = true }; return true; }
+            if (type == VanillaItemIds.ShroomiteBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 24, RangedCrit = snapshot.RangedCrit + 13, RangedDamage = snapshot.RangedDamage + 0.13f, AmmoCost80 = true }; return true; }
             if (type == VanillaItemIds.BeetleScaleMail) { snapshot = snapshot with { Defense = snapshot.Defense + 20, MeleeDamage = snapshot.MeleeDamage + 0.08f, MeleeCrit = snapshot.MeleeCrit + 8, MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.06f }; return true; }
             if (type == VanillaItemIds.BeetleShell) { snapshot = snapshot with { Defense = snapshot.Defense + 32, MeleeDamage = snapshot.MeleeDamage + 0.05f, MeleeCrit = snapshot.MeleeCrit + 5 }; return true; }
             return false;

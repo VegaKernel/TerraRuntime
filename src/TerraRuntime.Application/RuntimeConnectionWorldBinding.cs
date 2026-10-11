@@ -314,7 +314,7 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         GameCommandSourceId source,
         PlayerBootstrapFrameSink bootstrap)
     {
-        var vitals = new PlayerVitalsFrameSink(source, bootstrap, runtime.HealthIngress, runtime.ManaIngress);
+        var vitals = new PlayerVitalsFrameSink(source, bootstrap, runtime.HealthIngress, runtime.ManaIngress, runtime.VitalsPresentationIngress);
         var zones = new PlayerZonesFrameSink(source, bootstrap, vitals, runtime.PlayerZonesIngress);
         var stealth = new PlayerStealthFrameSink(source, bootstrap, zones, runtime.PlayerStealthIngress);
         var luck = new PlayerLuckFactorsFrameSink(source, bootstrap, stealth, runtime.PlayerLuckFactorsIngress);

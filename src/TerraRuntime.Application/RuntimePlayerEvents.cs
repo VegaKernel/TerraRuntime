@@ -32,6 +32,8 @@ internal interface IRuntimePlayerEventSink
     void PlayerZonesUpdated(ConnectionHandle connection, in PlayerZoneSnapshot1458 zones) { }
     void PlayerItemAnimationUpdated(ConnectionHandle connection, float rotation, short animation) { }
 
+    void PlayerVitalsPresentation(ConnectionHandle connection, byte messageId, short amount) { }
+
     void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
     }

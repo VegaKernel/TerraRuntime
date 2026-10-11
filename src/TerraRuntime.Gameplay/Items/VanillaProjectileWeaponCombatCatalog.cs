@@ -53,7 +53,8 @@ public readonly record struct VanillaStandaloneProjectileWeaponCombatDefinition(
     int UseTimeTicks,
     int AnimationTicks,
     bool Consumable,
-    float ImpossibleSpawnCenterDistancePixels);
+    float ImpossibleSpawnCenterDistancePixels,
+    bool Ranged = true);
 
 public readonly record struct VanillaProjectileAmmoCombatDefinition(
     ItemTypeId Type,
@@ -158,12 +159,12 @@ public static class VanillaProjectileWeaponCombatCatalog
         new(VanillaItemIds.RainbowRod, VanillaProjectileIds.RainbowRodBullet, 50, 6f, 6f, 21, 25, 25, SpawnRange)
     ];
 
-    // Item.SetDefaults cases 42, 154, 279, 287, 1809, 1913 and 3379. These consumable ranged weapons spawn their
+    // Item.SetDefaults cases 42, 154, 166, 167, 279, 287, 1809, 1913 and 3379. These selected consumables spawn their
     // projectile directly from the selected stack, so there is no PickAmmo source. Prefixes are not admitted.
     private static readonly VanillaStandaloneProjectileWeaponCombatDefinition[] StandaloneWeapons =
     [
-        new(VanillaItemIds.Bomb, VanillaProjectileIds.Bomb, 0, 0f, 5f, 25, 25, true, SpawnRange),
-        new(VanillaItemIds.Dynamite, VanillaProjectileIds.Dynamite, 0, 0f, 4f, 40, 40, true, SpawnRange),
+        new(VanillaItemIds.Bomb, VanillaProjectileIds.Bomb, 0, 0f, 5f, 25, 25, true, SpawnRange, Ranged: false),
+        new(VanillaItemIds.Dynamite, VanillaProjectileIds.Dynamite, 0, 0f, 4f, 40, 40, true, SpawnRange, Ranged: false),
         new(VanillaItemIds.Shuriken, VanillaProjectileIds.Shuriken, 10, 0f, 9f, 15, 15, true, SpawnRange),
         new(VanillaItemIds.Bone, VanillaProjectileIds.Bone, 20, 2.3f, 8f, 12, 12, true, SpawnRange),
         new(VanillaItemIds.ThrowingKnife, VanillaProjectileIds.ThrowingKnife, 12, 2f, 10f, 15, 15, true, SpawnRange),
@@ -453,8 +454,37 @@ public static class VanillaProjectileWeaponCombatCatalog
         int potionRoll = ammoPotion ? next(0, 5) : -1;
         if (weapon.Type != VanillaItemIds.CelebrationMk2 && weapon.WeaponAmmoConservationOneIn > 0)
             weaponRoll = next(0, weapon.WeaponAmmoConservationOneIn);
-        return boxRoll == 0 || potionRoll == 0 ||
+        bool armorConserved = PrepareArmorAmmoConservation(in attacker, next);
+        return armorConserved ||
+            boxRoll == 0 || potionRoll == 0 ||
             ShouldConserveAmmo(in weapon, in ammo, in attacker, weaponRoll, quiverRoll);
+    }
+
+    /// <summary>
+    /// Player.ItemCheck's selected consumable tail. The nine admitted standalone items
+    /// have no ForceConsumption override and CanConsumeConsumableItem returns true.
+    /// This boundary starts after source shoot/presentation RNG; it does not run ItemCheck.
+    /// </summary>
+    public static bool PrepareStandaloneConservation(
+        in VanillaStandaloneProjectileWeaponCombatDefinition weapon,
+        in VanillaPlayerCombatSnapshot attacker,
+        Func<int, int, int> next)
+    {
+        ArgumentNullException.ThrowIfNull(next);
+        if (!weapon.Consumable) return true;
+        return weapon.Ranged && PrepareArmorAmmoConservation(in attacker, next);
+    }
+
+    private static bool PrepareArmorAmmoConservation(
+        in VanillaPlayerCombatSnapshot attacker,
+        Func<int, int, int> next)
+    {
+        // Every applicable offer executes, including after an earlier successful offer.
+        int huntressRoll = attacker.HuntressAmmoCost90 ? next(0, 10) : -1;
+        int chlorophyteRoll = attacker.ChloroAmmoCost80 ? next(0, 5) : -1;
+        int armor80Roll = attacker.AmmoCost80 ? next(0, 5) : -1;
+        int armor75Roll = attacker.AmmoCost75 ? next(0, 4) : -1;
+        return huntressRoll == 0 || chlorophyteRoll == 0 || armor80Roll == 0 || armor75Roll == 0;
     }
 
     private static float ResolveRangedDamageMultiplier(

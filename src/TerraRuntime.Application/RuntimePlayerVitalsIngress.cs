@@ -64,3 +64,15 @@ internal sealed class RuntimePlayerManaIngress : IPlayerManaIngress
             new PlayerManaRuntimeCommand(connection, request));
     }
 }
+
+internal sealed record PlayerVitalsPresentationRuntimeCommand(
+    ConnectionHandle Connection, byte MessageId, short Amount) : RuntimeCommand;
+
+internal sealed class RuntimePlayerVitalsPresentationIngress(
+    IGameCommandIngress<RuntimeCommand> ingress) : IPlayerVitalsPresentationIngress
+{
+    private readonly IGameCommandIngress<RuntimeCommand> ingress = ingress ?? throw new ArgumentNullException(nameof(ingress));
+    public bool TryPost(ConnectionHandle connection, byte messageId, short amount) =>
+        connection.IsAssigned && messageId is 35 or 43 && ingress.TryPost(connection.Source,
+            new PlayerVitalsPresentationRuntimeCommand(connection, messageId, amount));
+}

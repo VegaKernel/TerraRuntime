@@ -63,6 +63,12 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerStealthUpdated(connection, stealth);
     }
 
+    public void PlayerVitalsPresentation(ConnectionHandle connection, byte messageId, short amount)
+    {
+        first.PlayerVitalsPresentation(connection, messageId, amount);
+        second.PlayerVitalsPresentation(connection, messageId, amount);
+    }
+
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
         first.PlayerManaUpdated(connection, in request);

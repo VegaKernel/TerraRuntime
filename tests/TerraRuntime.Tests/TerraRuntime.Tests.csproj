@@ -529,4 +529,29 @@
     <EmbeddedResource Include="Fixtures/OriginalLocalizedItemSorting1458.json.gz" LogicalName="OriginalLocalizedItemSorting1458" />
     <EmbeddedResource Include="Fixtures/OriginalClosedSortCycle1458.json.gz" LogicalName="OriginalClosedSortCycle1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/OriginalSelectedPotionPresentationRelay1458.json.gz" LogicalName="OriginalSelectedPotionPresentationRelay1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/ArmorAmmoLinuxFirst1458.json.gz" LogicalName="ArmorAmmoLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ArmorAmmoLinuxRepeat1458.json.gz" LogicalName="ArmorAmmoLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ArmorAmmoWindowsFirst1458.json.gz" LogicalName="ArmorAmmoWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ArmorAmmoWindowsRepeat1458.json.gz" LogicalName="ArmorAmmoWindowsRepeat1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/ArmorAmmoUnassistedLinuxFirst1458.json.gz" LogicalName="ArmorAmmoUnassistedLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ArmorAmmoUnassistedWindowsFirst1458.json.gz" LogicalName="ArmorAmmoUnassistedWindowsFirst1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/StandaloneCheckpointLinuxFirst1458.json.gz" LogicalName="StandaloneCheckpointLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneCheckpointLinuxRepeat1458.json.gz" LogicalName="StandaloneCheckpointLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneCheckpointWindowsFirst1458.json.gz" LogicalName="StandaloneCheckpointWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneCheckpointWindowsRepeat1458.json.gz" LogicalName="StandaloneCheckpointWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneComposedLinuxFirst1458.json.gz" LogicalName="StandaloneComposedLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneComposedLinuxRepeat1458.json.gz" LogicalName="StandaloneComposedLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneComposedWindowsFirst1458.json.gz" LogicalName="StandaloneComposedWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneComposedWindowsRepeat1458.json.gz" LogicalName="StandaloneComposedWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneArmorCheckpointLinux1458.json.gz" LogicalName="StandaloneArmorCheckpointLinux1458" />
+    <EmbeddedResource Include="Fixtures/StandaloneArmorCheckpointWindows1458.json.gz" LogicalName="StandaloneArmorCheckpointWindows1458" />
+  </ItemGroup>
 </Project>

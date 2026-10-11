@@ -1,3 +1,4 @@
+using System.Buffers;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
@@ -6,11 +7,17 @@ using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
 
+public interface IPlayerVitalsPresentationIngress
+{
+    bool TryPost(ConnectionHandle connection, byte messageId, short amount);
+}
+
 public enum PlayerVitalsStopReason : byte
 {
     None = 0,
     MalformedHealth = 1,
     MalformedMana = 2,
+    MalformedPresentation = 3,
 }
 
 /// <summary>
@@ -26,13 +33,15 @@ public sealed class PlayerVitalsFrameSink :
     private readonly PlayerBootstrapFrameSink _bootstrap;
     private readonly IPlayerHealthIngress _healthIngress;
     private readonly IPlayerManaIngress _manaIngress;
+    private readonly IPlayerVitalsPresentationIngress? _presentationIngress;
     private TerrariaConnectionStopReason _connectionStopReason;
 
     public PlayerVitalsFrameSink(
         GameCommandSourceId source,
         PlayerBootstrapFrameSink bootstrap,
         IPlayerHealthIngress healthIngress,
-        IPlayerManaIngress manaIngress)
+        IPlayerManaIngress manaIngress,
+        IPlayerVitalsPresentationIngress? presentationIngress = null)
     {
         if (source.IsSystem)
             throw new ArgumentException("Player vitals ingress requires a connection command source.", nameof(source));
@@ -44,6 +53,7 @@ public sealed class PlayerVitalsFrameSink :
         _bootstrap = bootstrap;
         _healthIngress = healthIngress;
         _manaIngress = manaIngress;
+        _presentationIngress = presentationIngress;
     }
 
     public PlayerVitalsStopReason StopReason { get; private set; }
@@ -59,7 +69,7 @@ public sealed class PlayerVitalsFrameSink :
 
             return StopReason switch
             {
-                PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana => TerrariaFrameRejectionCategory.MalformedProtocol,
+                PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana or PlayerVitalsStopReason.MalformedPresentation => TerrariaFrameRejectionCategory.MalformedProtocol,
                 _ => ClassifyBootstrapRejection(_bootstrap.StopReason)
             };
         }
@@ -74,8 +84,23 @@ public sealed class PlayerVitalsFrameSink :
         {
             TerrariaMessageId.PlayerHp => HandleHealth(frame),
             TerrariaMessageId.PlayerMana => HandleMana(frame),
+            TerrariaMessageId.PlayerHealEffect or TerrariaMessageId.PlayerManaEffect => HandlePresentation(frame),
             _ => DelegateToBootstrap(in frame)
         };
+    }
+
+    private TerrariaFrameSinkResult HandlePresentation(in TerrariaFrame frame)
+    {
+        if (_bootstrap.AssignedPlayerHandle is not PlayerHandle player || _presentationIngress is null)
+            return DelegateToBootstrap(in frame);
+        if (frame.Payload.Length != 3)
+            return Stop(PlayerVitalsStopReason.MalformedPresentation);
+        Span<byte> payload = stackalloc byte[3];
+        frame.Payload.CopyTo(payload);
+        short amount = System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(payload[1..]);
+        // The authenticated actor replaces the claimed payload actor, including signed amounts.
+        _ = _presentationIngress.TryPost(new ConnectionHandle(_source, player), frame.MessageId, amount);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult HandleHealth(in TerrariaFrame frame)
