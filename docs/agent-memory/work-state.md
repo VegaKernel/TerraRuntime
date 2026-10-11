@@ -1,5 +1,10 @@
 # Work state
 
+## Potion checkpoint merged with concurrent main, 2026-10-11
+
+Potion implementation committed as271aefc5. Concurrent main6f2e0946 adds three FinalCleanup/world-generation commits; merged cleanly by ort as0865f8a3, preserving both branches and the merged test resource list. Postmerge Release tests build has zero warnings/errors; fast24948/24949 and focused142/143 (changed FinalCleanup/inactive frames/startup plus Game/ACK potion cases) pass with zero failures/errors and the same known liquid skip. Evidence .cache/selected-potion-merged-main-verification-v1.json. No full rerun was launched for this merge. Potion full, fresh WindowsNative and live proofs below remain explicitly scoped to the premerge source/test digest; do not relabel them as the new merged binary. The next relay block will freeze its own coherent merged graph and batch shipping checks. No root test process remains active for the potion/merge block. Push follows local checks; no GitHub CI wait.
+
+
 ## Owned selected potions - accepted local checkpoint, 2026-10-11
 
 Eight neutral-prefix healing/mana items (28/188/499/3544 and 110/189/500/2209) now use the existing player phase with one funded physical debit, source clocks/RNG, indexed sickness and vitals. Full vitals still consume the funded item. The bounded latest-use receipt reconciles report-first and phase-first inventory/vital/buff observations without replaying paid benefits, resetting durations or restoring newer owned damage/mana expenditure. Repeated funded uses preserve quantity3->2->1; transfer clears receipt state while retaining accepted custody. Five consumption lanes and existing ownership/queue boundaries remain unchanged.
