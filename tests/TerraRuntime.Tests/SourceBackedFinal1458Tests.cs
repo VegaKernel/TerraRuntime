@@ -906,6 +906,46 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_one_cell_table_objects_match_official_support_rules()
+    {
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        void Set(int x, int y, ushort type)
+        {
+            var tile = new WorldTile { Type = type, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        ushort[] objects = [13, 33, 49, 50, 78, 174, 372, 646, 707];
+        for (int n = 0; n < objects.Length; n++)
+        {
+            int x = 500 + 40 * n;
+            Set(x, 100, objects[n]);
+            Set(x, 101, 19);
+            Set(x + 15, 100, objects[n]);
+        }
+        Set(900, 100, 78);
+        Set(900, 101, 1);
+        Set(920, 100, 13);
+        Set(920, 101, 1);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        for (int n = 0; n < objects.Length; n++)
+        {
+            int x = 500 + 40 * n;
+            Assert.True(workspace.TileStore.Get(x, 100).IsActive);
+            Assert.False(workspace.TileStore.Get(x + 15, 100).IsActive);
+        }
+        Assert.True(workspace.TileStore.Get(900, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(920, 100).IsActive);
+        Assert.Equal("3DEA150113D7E656D82D0B17377350553F94AF2DDA60FC13476867196146996D", HashFixture(workspace));
+        Assert.Equal(1056314798, random.Next());
+    }
+
+    [Fact]
     public void Final_cleanup_repairs_boulder_frames_then_replaces_boulders_blocked_by_a_heart()
     {
         // TerrariaServer 1.4.5.8 FinalCleanup first restores the frame-derived 2x2 boulder footprint;

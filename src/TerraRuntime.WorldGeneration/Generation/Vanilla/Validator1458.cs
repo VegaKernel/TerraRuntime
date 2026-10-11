@@ -211,9 +211,12 @@ public static class Validator1458
                 {
                     // Source FinalCleanup frames inactive cells without clearing their old frame coordinates.
                     // Positive coordinates are transient: SaveWorldTiles omits frames for inactive cells.
-                    // Preserve them for pass parity, but reject mixed/other negative sentinels and shape.
+                    // CheckTreeWithSettings (1.4.5.8) can kill a root, then write its
+                    // crown frame using the now-unset Y sentinel. Only this Type0
+                    // (154,-1) mixed pair is source-backed; other mixed sentinels fail.
                     if (tile.Shape != 0 || !((tile.FrameX >= 0 && tile.FrameY >= 0) ||
-                        (tile.FrameX == -1 && tile.FrameY == -1)))
+                        (tile.FrameX == -1 && tile.FrameY == -1) ||
+                        (tile.Type == 0 && tile.FrameX == 154 && tile.FrameY == -1)))
                         return new(WorldValidationStatus.InvalidFlags, $"Inactive tile at ({x},{y}) has non-zero frame/shape {tile.FrameX},{tile.FrameY} shape {tile.Shape}.");
                 }
             }

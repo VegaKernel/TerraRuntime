@@ -11,6 +11,12 @@ Final evidence: `.cache/selected-potion-production-acceptance-v2/root-final-veri
 Resume: review and integrate the independently captured35/43 presentation relay next, then continue inventory/ammo/equipment, combat/buffs and events/progression. The relay remains cache-only at this checkpoint and grants no vitals or funding. Canonical Air differs from the source's transient retained zero-stack type. Arbitrary historical ACK streams, unrestricted player health authority and full gameplay/AI parity are not claimed. FullVanillaAiParity remains false. Earlier entries below preserve historical status.
 
 
+## One-cell table objects during FinalCleanup, 2026-10-11
+
+TerrariaServer 1.4.5.8 `WorldGen.CheckOnTable1x1` handles tile identities `13`, `33`, `49`, `50`, `78`, `174`, `372`, `646`, `707`. Below a top-sloped platform it checks a flat neighbouring platform on the low side; a half brick is rejected; otherwise a valid Table anchor or active `Main.tileTable` support survives, with a `SolidTileAllowBottomSlope` fallback only for type78. The retained ordinary 1000x500 registered full-pass fixture covers flat platform-table support, no support and solid ground across 20 sites; six-field SHA-256 `3dea150113d7e656d82d0b17377350553f94af2dda60fc13476867196146996d`, next RNG1056314798. Slope results after the full platform framing sweep remain outside the accepted fixture.
+
+TerrariaServer 1.4.5.8 `WorldGen.CheckTreeWithSettings` continues framing after `KillTile` removes an unsupported tree root. With a right-side branch and no tree above, it can leave inactive Type0 with FrameX154 and FrameY-1. This is a legitimate generation-only mixed sentinel, not a corrupt tile. The vanilla-generation validator admits only this Type0 pair with Shape0; structural validation remains unchanged.
+
 ## Selected potion corrected-source review, 2026-10-11
 
 The distinct corrected v2 capture initializes original legacy localization. Four real platform/repeat processes agree across576 configured sequences /11520 ItemCheck calls; ordinary retained stack2 packet5 remains a real item rather than Air. Root independently checked all59 inventory tuples and decoded176 inventory and144 vital frames against captured post-sync state. Early-sync last-stack source evidence adds32 sequences /640 phases. These are configured component captures, not natural Main/UI acceptance.
