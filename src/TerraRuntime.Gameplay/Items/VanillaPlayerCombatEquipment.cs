@@ -47,6 +47,10 @@ public readonly record struct VanillaPlayerCombatSnapshot(
 
     public bool Archery { get; init; }
     public float MinionDamage { get; init; } = 1f;
+    public float MinionKnockback { get; init; }
+    public float MoveSpeed { get; init; } = 1f;
+    public float PickSpeed { get; init; } = 1f;
+    public bool WellFed { get; init; }
 
     public static VanillaPlayerCombatSnapshot Baseline => new(
         Defense: 0,
@@ -126,10 +130,18 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
     // effective functional-slot loop as combat benefits, before the caller's cap400.
     public static bool TryBuild(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
         in VanillaPlayerCombatEquipmentContext context, out VanillaPlayerCombatSnapshot snapshot,
-        out int manaMaximumBonus)
+        out int manaMaximumBonus) =>
+        TryBuild(equipment, in context, VanillaPlayerCombatSnapshot.Baseline, out snapshot, out manaMaximumBonus);
+
+    /// <summary>Source UpdateBuffs precedes UpdateEquips. The caller supplies its validated
+    /// reset-plus-indexed-buff image so equipment additions retain source Single rounding.</summary>
+    public static bool TryBuild(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+        in VanillaPlayerCombatEquipmentContext context, in VanillaPlayerCombatSnapshot initial,
+        out VanillaPlayerCombatSnapshot snapshot, out int manaMaximumBonus)
     {
         manaMaximumBonus = 0;
-        snapshot = VanillaPlayerCombatSnapshot.Baseline;
+        snapshot = initial;
+        if (!VanillaPlayerCombatBuffs1458.TryApply(in initial, ReadOnlySpan<BuffTypeId>.Empty, out _)) return false;
         if (context.MasterMode && !context.ExpertMode) return false;
         Span<PlayerEquipmentCommitRequest> effective = stackalloc PlayerEquipmentCommitRequest[VanillaPlayerItemSlotCatalog.FunctionalArmorCount];
         for (int index = 0; index < effective.Length; index++)

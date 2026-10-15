@@ -136,6 +136,14 @@ public static class VanillaSelectedConsumable1458
         int buffDuration = 0;
         if (facts.AllowedToHoldItems)
         {
+            if (animation > 0 && item.FoodColourCount > 0 && nextInteger(0, 2) != 0)
+            {
+                nextDouble();
+                nextDouble();
+                nextDouble();
+                nextInteger(0, item.FoodColourCount);
+                nextDouble();
+            }
             if (animation > 0 && item.DrinkColourCount > 0)
             {
                 // Source drink positions, rotation, colour and scale survive the dedicated visual sink.
@@ -190,7 +198,36 @@ public static class VanillaSelectedConsumable1458
         var localFacts = facts with { LastUseSuccess = true };
         if (!TryStepCore(previous, in localFacts, nextInteger, nextDouble, localEffects: true, out transition)) return false;
 
-        // The source consumes after healing and ApplyItemTime, rather than at the start gate.
+        return CompleteOrdinaryConsumption(in facts, selectedStack, in transition, out transition);
+    }
+
+    /// <summary>Source selected food ItemCheck with distinct raw cursed and effective noItems inputs.
+    /// The explicit local flag owns food offers/debit; remote calls retain clocks and visual RNG only.</summary>
+    public static bool TryStepFood(PlayerSelectedConsumableState1458? previous,
+        in PlayerSelectedConsumableFacts1458 facts, int selectedStack, bool localEffects, bool noItems,
+        Func<int, int, int> nextInteger, Func<double> nextDouble,
+        out PlayerSelectedConsumableTransition1458 transition)
+    {
+        transition = default;
+        if (!VanillaSelectedConsumableCatalog1458.TryGet(facts.Item, out var item) ||
+            FoodPriority(new BuffTypeId((short)item.BuffType)) == 0 ||
+            !VanillaWorldItemAllocationCatalog1458.TryGet(facts.Item.Value, out var allocation) ||
+            selectedStack < 0 || selectedStack > allocation.MaximumStack) return false;
+        var useFacts = facts with { Cursed = noItems,
+            LastUseSuccess = localEffects || facts.LastUseSuccess };
+        if (!TryStepCore(previous, in useFacts, nextInteger, nextDouble, localEffects, out transition)) return false;
+        if (localEffects)
+            return CompleteOrdinaryConsumption(in facts, selectedStack, in transition, out transition);
+        transition = transition with { RemainingStack = selectedStack };
+        return true;
+    }
+
+    private static bool CompleteOrdinaryConsumption(in PlayerSelectedConsumableFacts1458 facts,
+        int selectedStack, in PlayerSelectedConsumableTransition1458 planned,
+        out PlayerSelectedConsumableTransition1458 transition)
+    {
+        transition = planned;
+        // The source consumes after the effect and ApplyItemTime, rather than at the start gate.
         bool consumptionPoint = facts.AllowedToHoldItems && !facts.CrowdControlled &&
             transition.State.ItemTimeMax != 0 &&
             transition.State.ItemTime == transition.State.ItemTimeMax;
@@ -490,8 +527,9 @@ public static class VanillaSelectedConsumable1458
                 if (inventory[i].Type == VanillaNpcLootPredicateItemIds1458.OpenVoidBag.Value && inventory[i].Stack > 0) voidEnabled = true;
             // QuickBuff selects food before scanning ordinary buffs. Preflight both source images
             // before applying any mutation, so unsupported food/pet/mana behavior cannot be omitted.
-            if (!HasSupportedQuickBuffItems(inventory[..58]) ||
-                voidEnabled && !HasSupportedQuickBuffItems(voidItems)) return false;
+            if (!HasSupportedQuickBuffItems(inventory[..58], immunity.Length) ||
+                voidEnabled && !HasSupportedQuickBuffItems(voidItems, immunity.Length)) return false;
+            ApplyBestQuickBuffFood(nextInventory, nextVoid, voidEnabled, types, times, immunity, mutations);
             for (int i = 0; i < 58 && CountQuickBuffPrefix(types) != types.Length; i++)
                 ApplyQuickBuffItem(nextInventory, i, i, types, times, immunity, mutations);
             if (voidEnabled)
@@ -515,12 +553,12 @@ public static class VanillaSelectedConsumable1458
                 : item.Stack <= allocation.MaximumStack);
     }
 
-    private static bool HasSupportedQuickBuffItems(ReadOnlySpan<WorldItemPickupSlot1458> items)
+    private static bool HasSupportedQuickBuffItems(ReadOnlySpan<WorldItemPickupSlot1458> items, int immunityLength)
     {
         foreach (var item in items)
             if (VanillaSelectedConsumableCatalog1458.MayParticipateInQuickBuff(new(item.Type)) &&
                 (!VanillaSelectedConsumableCatalog1458.TryGet(new(item.Type), out var definition) ||
-                    definition.BuffType == 0)) return false;
+                    definition.BuffType == 0 || immunityLength > 0 && definition.BuffType >= immunityLength)) return false;
         return true;
     }
 
@@ -532,6 +570,75 @@ public static class VanillaSelectedConsumable1458
         return count;
     }
 
+    private static int FoodPriority(BuffTypeId type) => type == VanillaBuffIds.WellFed ? 1 :
+        type == VanillaBuffIds.WellFed2 ? 2 : type == VanillaBuffIds.WellFed3 ? 3 : 0;
+
+    private static void ApplyBestQuickBuffFood(WorldItemPickupSlot1458[] inventory,
+        WorldItemPickupSlot1458[] voidItems, bool voidEnabled, BuffTypeId[] types, int[] times,
+        ReadOnlySpan<bool> immunity, List<QuickBuffMutation1458> mutations)
+    {
+        int minimum = 0;
+        for (int i = 0; i < types.Length; i++)
+            if (times[i] >= 1)
+            {
+                int priority = FoodPriority(types[i]);
+                if (minimum <= priority) minimum = priority + 1;
+            }
+        int selected = -1;
+        int duration = 0;
+        void Consider(WorldItemPickupSlot1458[] items, int slot, int sourceSlot)
+        {
+            var candidate = items[slot];
+            if (candidate.Stack <= 0 || !VanillaSelectedConsumableCatalog1458.TryGet(new(candidate.Type), out var food)) return;
+            int priority = FoodPriority(new BuffTypeId((short)food.BuffType));
+            if (priority > 0 && priority >= minimum &&
+                (selected < 0 || duration < food.BuffTime || priority > minimum))
+            {
+                selected = sourceSlot;
+                duration = food.BuffTime;
+                minimum = priority;
+            }
+        }
+        for (int i = 0; i < 58; i++) Consider(inventory, i, i);
+        if (voidEnabled)
+            for (int i = 0; i < voidItems.Length; i++) Consider(voidItems, i, 59 + i);
+        if (selected < 0) return;
+        var chosenItems = selected < 59 ? inventory : voidItems;
+        int chosenSlot = selected < 59 ? selected : selected - 59;
+        var before = chosenItems[chosenSlot];
+        VanillaSelectedConsumableCatalog1458.TryGet(new(before.Type), out var definition);
+        var offer = new BuffTypeId((short)definition.BuffType);
+        if (immunity.IsEmpty || !immunity[offer.Value])
+        {
+            // Source AddBuff scans current slots forward after each DelBuff compaction.
+            // Adjacent configured fed-state duplicates therefore retain its source quirk.
+            for (int i = 0; i < types.Length; i++)
+                if (VanillaBuffDefinitionCatalog.TryGet(types[i], out var existing) && existing.IsFedState)
+                    RemoveQuickBuffAt(types, times, i);
+            AddQuickBuffOffer(types, times, offer, duration == 0 ? 3600 : duration);
+        }
+        var after = before.Stack == 1 ? default : before with { Stack = before.Stack - 1 };
+        chosenItems[chosenSlot] = after;
+        mutations.Add(new(selected, before, after, offer, duration == 0 ? 3600 : duration));
+    }
+
+    private static void RemoveQuickBuffAt(BuffTypeId[] types, int[] times, int slot)
+    {
+        types[slot] = VanillaBuffIds.None;
+        times[slot] = 0;
+        int destination = 0;
+        for (int i = 0; i < types.Length - 1; i++)
+            if (types[i] != VanillaBuffIds.None && times[i] != 0)
+            {
+                if (destination < i)
+                {
+                    types[destination] = types[i]; times[destination] = times[i];
+                    types[i] = VanillaBuffIds.None; times[i] = 0;
+                }
+                destination++;
+            }
+    }
+
     private static void ApplyQuickBuffItem(WorldItemPickupSlot1458[] items, int slot, int sourceSlot,
         BuffTypeId[] types, int[] times, ReadOnlySpan<bool> immunity, List<QuickBuffMutation1458> mutations)
     {
@@ -539,6 +646,7 @@ public static class VanillaSelectedConsumable1458
         if (!VanillaSelectedConsumableCatalog1458.TryGet(new(before.Type), out var definition) ||
             definition.BuffType == 0) return;
         var offer = new BuffTypeId((short)definition.BuffType);
+        if (FoodPriority(offer) != 0) return;
         foreach (var type in types) if (type == offer) return;
         if (immunity.IsEmpty || !immunity[offer.Value]) AddQuickBuffOffer(types, times, offer, definition.BuffTime);
         var after = before.Stack == 1 ? default : before with { Stack = before.Stack - 1 };

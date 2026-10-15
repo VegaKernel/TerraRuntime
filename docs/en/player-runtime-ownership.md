@@ -57,6 +57,8 @@ sequenceDiagram
 
 The transaction is single-use. After attach, restore or discard, another terminal action is rejected. This makes accidental double ownership and reuse of a detached payload explicit failures instead of implicit shared-state behavior.
 
+Owned paid food retains its provenance and remaining world-update budget in the same 44-slot buff state. Detached time does not spend that budget. Attach or failed-move restoration resets the source clock epoch for the receiving runtime, so a lower destination tick neither freezes nor refills the remaining duration. Client buff acknowledgements do not renew it. This food-only authority policy leaves the six earlier potion clocks unchanged.
+
 ## Failure semantics
 
 Destination slot reservation happens before the source detach barrier where possible. Once the source has detached the player, any later routing/bootstrap/attach failure must restore the source authoritative state before normal play resumes.

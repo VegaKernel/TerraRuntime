@@ -33,13 +33,15 @@ internal sealed partial class PlayerAuthority
             ((appearance?.ConsumableUnlockFlags ?? 0) & ~127) == 0 &&
             (selectedItemPhase ? TryCaptureProvenRemoteEquipment(equipment, appearance, out _, out _, selectedVoidStorageOpen) :
                 !equipment.Any(static item => item.Stack > 0 && VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(item.SlotId)));
+        var foodBefore = transferProfiles.CaptureBuffState(member.Connection);
         int regeneration = 0;
         foreach (var buff in buffs ?? [])
         {
             if (buff == VanillaBuffIds.Regeneration) regeneration++;
             else if (buff != VanillaBuffIds.Poisoned && buff != VanillaBuffIds.OnFire &&
                 buff != VanillaBuffIds.CursedInferno && buff != VanillaBuffIds.Lifeforce &&
-                !(selectedItemPhase && buff.Value is 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321)) supported = false;
+                buff.Value is not (26 or 206 or 207) &&
+                !(selectedItemPhase && buff.Value is 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) supported = false;
         }
 
         // Source remote UpdateLifeRegen precedes movement. Liquid, solid overlap and special furniture
@@ -91,6 +93,9 @@ internal sealed partial class PlayerAuthority
             (buffs is null) != (currentBuffs is null) ||
             (buffs is not null && !buffs.AsSpan().SequenceEqual(currentBuffs)))
             return false;
+        if ((foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true ||
+            buffs?.Any(static b => b.Value is 26 or 206 or 207) == true) &&
+            (foodBefore is null || !transferProfiles.IsCurrentBuffState(member.Connection, foodBefore))) return false;
         for (int i = 0; i < sectionCount; i++)
             if (worldTiles!.GetSectionVersion(sections[i]) != versions[i]) return false;
 
@@ -99,7 +104,8 @@ internal sealed partial class PlayerAuthority
             buffs?.Any(static b => b == VanillaBuffIds.Poisoned) == true,
             buffs?.Any(static b => b == VanillaBuffIds.OnFire) == true,
             buffs?.Any(static b => b == VanillaBuffIds.CursedInferno) == true,
-            ((appearance?.ConsumableUnlockFlags ?? 0) & 1) != 0);
+            ((appearance?.ConsumableUnlockFlags ?? 0) & 1) != 0,
+            foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true);
         return true;
     }
 

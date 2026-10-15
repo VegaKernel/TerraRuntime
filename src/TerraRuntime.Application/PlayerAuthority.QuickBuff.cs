@@ -18,7 +18,7 @@ internal sealed partial class PlayerAuthority
         if (member.CursorMove is not { Shop: { ObservedBatch: true, IsSealed: false } journal } receipt ||
             journal.QuickBuffIncoming is null || journal.QuickBuffBefore is null ||
             !journal.Capture.IsCurrent || !IsCurrentShopActor(member, receipt) ||
-            !transferProfiles.IsCurrentBuffState(member.Connection, journal.QuickBuffBefore) ||
+            !IsCurrentQuickBuffClock(member.Connection, journal.QuickBuffBefore) ||
             member.ControlFlags != request.ControlFlags || member.MovementFlags != request.MovementFlags ||
             member.MiscFlags1 != request.MiscFlags1 || member.MiscFlags2 != request.MiscFlags2 ||
             member.SelectedItem != request.SelectedItem || member.HasMount != request.HasMount ||
@@ -37,7 +37,7 @@ internal sealed partial class PlayerAuthority
             journal.ObservedInputRevision == ulong.MaxValue ||
             member.ProjectileUseInputRevision != journal.ObservedInputRevision + 1 ||
             journal.QuickBuffBefore is null ||
-            !transferProfiles.IsCurrentBuffState(member.Connection, journal.QuickBuffBefore)) return;
+            !IsCurrentQuickBuffClock(member.Connection, journal.QuickBuffBefore)) return;
         // Certifies only the one normal owner write whose unchanged source input
         // was checked above. Other commands and observer reentry still invalidate it.
         journal.ObservedInputRevision = member.ProjectileUseInputRevision;
@@ -129,11 +129,11 @@ internal sealed partial class PlayerAuthority
         if (journal.QuickBuffBefore is not { } beforeBuffs ||
             journal.QuickBuffIncoming is not { } incoming || member.ItemPhase is null ||
             member.IsDead || member.HasMount || member.NpcHealth is not { SourceProfileKnown: true } ||
-            !transferProfiles.IsCurrentBuffState(connection, beforeBuffs)) yield break;
+            !IsCurrentQuickBuffClock(connection, beforeBuffs)) yield break;
         beforeBuffs.CaptureSlots(out var types, out var durations);
         // These are the already represented whole-phase buff facts. Unrepresented
         // control/crafting/spectator states do not gain admission through QuickBuff.
-        if (types.Any(type => type.Value is not (0 or 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321)))
+        if (types.Any(type => type.Value is not (0 or 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)))
             yield break;
         var before = journal.Capture.Before;
         var main = before.AsSpan(0, 59).ToArray().Select(QuickBuffTuple).ToArray();
@@ -142,7 +142,7 @@ internal sealed partial class PlayerAuthority
             false, member.IsDead, false, beforeBuffs.CountActive(new(23)) != 0);
         if (!VanillaSelectedConsumable1458.TryPlanQuickBuff(main, bank, types, durations,
                 in eligibility, ReadOnlySpan<bool>.Empty, out var plan) || plan is null ||
-            plan.Mutations.Length == 0) yield break;
+            plan.Mutations.Length is < 1 or > 7) yield break;
         var nextBuffs = beforeBuffs.Clone();
         foreach (var mutation in plan.Mutations)
         {
@@ -165,6 +165,7 @@ internal sealed partial class PlayerAuthority
         }
         if (!after.AsSpan().SequenceEqual(journal.Reports)) yield break;
         journal.QuickBuffNext = nextBuffs;
+        journal.QuickBuffOrderedOffers = plan.Mutations.ToArray();
         journal.QuickBuffOffers = plan.Mutations.Select(static mutation => mutation.OfferType).Distinct().ToArray();
         var costs = new RuntimePlayerInventoryStore.BankBulkResolution();
         using var work = inventory.PrepareQuickBuffCosts(connection, journal.Capture,
@@ -179,20 +180,37 @@ internal sealed partial class PlayerAuthority
     {
         if (!journal.Capture.IsCurrent || !IsCurrentShopActor(member, receipt) ||
             journal.QuickBuffBefore is not { } previous || journal.QuickBuffIncoming is not { } incoming ||
-            !transferProfiles.IsCurrentBuffState(connection, previous) || member.ItemPhase is not { } phase ||
+            !TryCaptureQuickBuffClock(connection, previous, out var currentBuffs) || member.ItemPhase is not { } phase ||
             member.Revision == ulong.MaxValue)
         { DropBankBatchAlternative(member, journal); RejectedEquipmentUpdates++; return; }
         var payment = journal.BankResult?.Accepted;
         bool paid = journal.BankResult is { Ambiguous: false } && payment is { IsCurrent: true } &&
             journal.QuickBuffNext is not null;
+        PlayerBuffState? merged = null;
+        if (paid)
+        {
+            merged = currentBuffs!.Clone();
+            if (journal.QuickBuffOrderedOffers is not { Length: > 0 and <= 7 } offers)
+                throw new InvalidOperationException("Prepared QuickBuff lacks its bounded ordered offers.");
+            foreach (var offer in offers)
+            {
+                if (!merged.TryApplySelectedConsumable(offer.OfferType, offer.OfferDuration, false))
+                { paid = false; break; }
+                if (offer.OfferType.Value is 26 or 206 or 207)
+                    merged.StampOwnedFoodGrant(currentCombatTick);
+            }
+        }
+        // Action eligibility and economic alternatives used the captured source before-image.
+        // Paid offers now merge onto the actual remaining food budget, never captured timers.
         // No callback occurs between these pure guards and the two owner adoptions.
         if (paid && (!payment!.TryAdoptUnpublished() ||
-            !transferProfiles.TryAdoptBuffState(connection, previous, journal.QuickBuffNext!)))
+            !transferProfiles.TryAdoptBuffState(connection, currentBuffs!, merged!)))
             throw new InvalidOperationException("Prepared QuickBuff owner lost currentness during pure adoption.");
         member.ItemPhase = phase with { QuickBuffExplanation = new(connection.Player,
             incoming.ToArray(), paid ? [] : journal.QuickBuffOffers ?? phase.QuickBuffExplanation?.DeniedOffers ?? []) };
         DropBankBatchAlternative(member, journal);
         if (!paid) { RejectedEquipmentUpdates++; return; }
+        journal.QuickBuffNext = merged;
         member.TryAdvanceRevision();
         MirrorAcceptedBank4Reports(connection, journal);
         Exception? failure = null;
@@ -201,12 +219,22 @@ internal sealed partial class PlayerAuthority
         if (membership.TryGet(connection, out var current) && ReferenceEquals(current, member) &&
             transferProfiles.IsCurrentBuffState(connection, journal.QuickBuffNext!))
         {
-            var request = new PlayerBuffTypesCommitRequest(member.Slot, incoming);
+            var request = new PlayerBuffTypesCommitRequest(member.Slot, journal.QuickBuffNext!.CaptureTypes());
             try { events?.PlayerBuffTypesUpdated(connection, in request); }
             catch (Exception error) { failure ??= error; }
         }
         if (failure is not null)
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
+    private bool IsCurrentQuickBuffClock(ConnectionHandle connection, PlayerBuffState before) =>
+        TryCaptureQuickBuffClock(connection, before, out _);
+
+    private bool TryCaptureQuickBuffClock(ConnectionHandle connection, PlayerBuffState before,
+        out PlayerBuffState? current)
+    {
+        current = transferProfiles.CaptureBuffState(connection);
+        return current is not null && before.IsFoodClockContinuation(current);
     }
 
     private static WorldItemPickupSlot1458 QuickBuffTuple(RuntimePlayerInventoryItem item) =>

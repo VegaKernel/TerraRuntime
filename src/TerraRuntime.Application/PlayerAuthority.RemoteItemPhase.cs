@@ -265,12 +265,13 @@ internal sealed partial class PlayerAuthority
         VanillaUnifiedRandom1458 random)
     {
         var member = plan.Member;
+        var effectTypes = plan.BeforeBuffs.CaptureEffectTypes();
         if (plan.Item is not { } item || (item.ShopDiscountStates & ~15) != 0 || item.ClientUiPriceArithmeticMask > 3 || plan.Physics is not { } physical ||
             item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & ~127) != 0 ||
             !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus, plan.VoidStorageOpen) ||
-            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321)) ||
+            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
             (member.MovementFlags & ~0x54) != 0 || physical.GravityDirection is not (1f or -1f) ||
@@ -282,6 +283,14 @@ internal sealed partial class PlayerAuthority
         bool outside = VanillaPlayerHealthContext1458.IsRemoteOutOfRange(plan.X, plan.Y, 20, 42,
             world.MaxTilesX, world.MaxTilesY);
         bool ghost = (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0;
+        if (member.IsDead && plan.Buffs.HasOwnedFoodSlots)
+        {
+            plan.Buffs.ClearOwnedFood();
+            plan.PublishBuffs = true;
+        }
+        if (!member.IsDead)
+            plan.PublishBuffs |= plan.Buffs.AdvanceOwnedFoodClock(currentCombatTick, !outside);
+
         plan.Maximum = VanillaPlayerHealthContext1458.Resolve(member.DerivedLifeMax, member.BaseLifeMax,
             0, outside, ghost, member.IsDead);
         plan.Debuffs = VanillaPlayerHealthContext1458.ResolveDebuffs(member.Debuffs,
@@ -291,11 +300,11 @@ internal sealed partial class PlayerAuthority
         {
             if (item.MagicPayment is { } payment)
                 item = item with { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
-            bool combatBuff = plan.BuffTypes.Any(static type => type.Value is 5 or 16 or 114 or 115 or 117 or 321);
+            bool combatBuff = effectTypes.Any(static type => type.Value is 5 or 16 or 114 or 115 or 117 or 321 or 26 or 206 or 207);
             if (combatBuff)
             {
                 if (item.DerivedCombat is not { } retained || !IsValidDerivedCombat(in retained) ||
-                    !VanillaPlayerCombatBuffs1458.TryApply(in retained, plan.BuffTypes, out var compounded) ||
+                    !VanillaPlayerCombatBuffs1458.TryApply(in retained, effectTypes, out var compounded) ||
                     !IsValidDerivedCombat(in compounded)) return false;
                 item = item with { DerivedCombat = compounded };
             }
@@ -377,8 +386,14 @@ internal sealed partial class PlayerAuthority
         // UpdateBuffs precedes the final magic-damage heat/sickness writer; ItemCheck's
         // new mana-potion buff is offered afterward and first affects the following phase.
         int sicknessDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(94));
-        if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, plan.BuffTypes, out var buffCombat) ||
-            !VanillaPlayerCombatBuffs1458.TryResolveMagicDamage(buffCombat.MagicDamage, sicknessDuration, heat,
+        VanillaPlayerCombatSnapshot buffCombat;
+        bool foodEffects = effectTypes.Any(static type => type.Value is 26 or 206 or 207);
+        if (foodEffects)
+        {
+            if (!TryBuildSourceOrderedFoodCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat)) return false;
+        }
+        else if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, effectTypes, out buffCombat)) return false;
+        if (!VanillaPlayerCombatBuffs1458.TryResolveMagicDamage(buffCombat.MagicDamage, sicknessDuration, heat,
                 world.WindowsItemPrefixArithmetic, out float magicDamage)) return false;
         var derivedCombat = buffCombat with
         {
@@ -392,9 +407,9 @@ internal sealed partial class PlayerAuthority
             ? PermanentUpgradeFlags(in phaseAppearance) : (byte)0);
         if (member.OwnedPermanentUpgradeMask != 0)
             item = item with { PermanentPhaseFlags = capturedUnlocks.Flags };
-        if (capturedUnlocks.Flags != 0 || item.PermanentBoosters is not null || member.OwnedPermanentUpgradeMask != 0)
+        if (capturedUnlocks.Flags != 0 || item.PermanentBoosters is not null || member.OwnedPermanentUpgradeMask != 0 || buffCombat.WellFed)
         {
-            var resetBoosters = new PlayerPermanentBoosterState1458(derivedCombat.Defense, 0, 1f, 1f, 1f);
+            var resetBoosters = new PlayerPermanentBoosterState1458(derivedCombat.Defense, 0, buffCombat.PickSpeed, 1f, 1f);
             if (!VanillaSelectedConsumable1458.TryApplyPermanentBoosters(in resetBoosters, in capturedUnlocks, out var boosters) ||
                 !VanillaSelectedConsumable1458.TryFinalizePermanentSpeeds(in boosters, out var speeds) ||
                 !VanillaSelectedConsumable1458.TryGetPermanentCraftingRegion(plan.X, plan.Y, 20, 42, 5, 3,
@@ -430,8 +445,15 @@ internal sealed partial class PlayerAuthority
         var source = plan.Before;
         var previousJump = physical.Jump;
         var contacts = physical.Contacts;
+        // Food contributes moveSpeed before the ordinary source horizontal multiplier.
+        // It changes maxRunSpeed and acceleration, not accRunSpeed or slowdown.
+        var foodHorizontal = new VanillaServerPlayerHorizontalProfile1458(
+            VanillaServerPlayerHorizontalControl.MaximumRunSpeed * buffCombat.MoveSpeed,
+            VanillaServerPlayerHorizontalControl.MaximumRunSpeed,
+            VanillaServerPlayerHorizontalControl.RunAcceleration * buffCombat.MoveSpeed,
+            VanillaServerPlayerHorizontalControl.RunSlowdown, false);
         if (!physics.TryStep(in source, horizontal, jump, in previousJump, in contacts,
-            in world, out var motion, out var nextJump) || motion.LiquidContacts != default)
+            in world, in foodHorizontal, out var motion, out var nextJump) || motion.LiquidContacts != default)
             return false;
         plan.X = motion.PositionX;
         plan.Y = motion.PositionY;
@@ -596,6 +618,9 @@ internal sealed partial class PlayerAuthority
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(94), use.ManaSicknessOffer, false);
         if (use.BuffDurationOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(use.BuffOfferType, use.BuffDurationOffer, false);
+        if (use.Consumed && use.BuffOfferType.Value is 26 or 206 or 207)
+            plan.Buffs.StampOwnedFoodGrant(currentCombatTick);
+
         plan.Health = knownHealth with { Life = use.Life };
         plan.Item = item with
         {

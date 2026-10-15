@@ -78,6 +78,12 @@ internal sealed partial class PlayerAuthority
                     selected.Stack, true, true, random.Next, random.NextDouble, out var deniedPermanent)) return false;
                 use = deniedPermanent.Use;
             }
+            else if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var deniedFood) &&
+                deniedFood.BuffType is 26 or 206 or 207)
+            {
+                if (!VanillaSelectedConsumable1458.TryStepFood(clocks, in facts, selected.Stack,
+                    false, true, random.Next, random.NextDouble, out use)) return false;
+            }
             else if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in deniedFacts,
                 selected.Stack, random.Next, random.NextDouble, out use)) return false;
             if (!quickBuffOwnsDebit && VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var deniedPotion) &&
@@ -120,6 +126,13 @@ internal sealed partial class PlayerAuthority
                 plan.AcceptedBaseLifeMaximum = permanent.BaseLifeMaximum;
                 plan.Maximum = permanent.DerivedLifeMaximum;
             }
+        }
+        else if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var food) &&
+            food.BuffType is 26 or 206 or 207)
+        {
+            if (!VanillaSelectedConsumable1458.TryStepFood(clocks, in facts, selected.Stack,
+                true, plan.Buffs.CountActive(new(23)) > 0,
+                random.Next, random.NextDouble, out use)) return false;
         }
         else if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in facts, selected.Stack,
             random.Next, random.NextDouble, out use)) return false;

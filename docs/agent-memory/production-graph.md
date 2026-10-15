@@ -1,5 +1,15 @@
 # Production graph
 
+## Food producer, provenance and current-clock merge: accepted local checkpoint, 2026-10-15
+
+The existing item-use/inventory transaction pays food before observers. PlayerBuffState owns provenance, remaining ticks, private semantic lineage and bounded actual slot origins in its44 slots; no separate payment ledger or general scheduler. Only real clock changes bridge QuickBuff capture. Captured eligibility/economic alternatives remain fixed, while ordered paid offers apply to current slots after full219-slot preparation. Nonclock semantic/private mutation refuses; no old timer is copied back.
+
+Food updates age through successful/refused player phases, retain final-tick effects, clear death/outside-death food and reset destination epoch on transfer. Legacy potion clocks remain unchanged. Source-ordered buff-before-equipment projection reaches motion, represented weapon and Expert-health consumers. Game233/App555 have5/16 deltas, with all other owners unchanged.
+
+Release tests/server WAE0/0;193/193 focused normal-discovery tests; mandatory fast24982/24983; ONE unfiltered full1563275/1563276, zero failures/errors and the same known liquid skip. All4979 methods selected, zero exclusions. Full test time $744.569\,\mathrm{s}$. Complete XML remains on C. Exact same three new normal Fact bodies pass typed managed/fresh WindowsNative, with171242 Game helper predicates and2525 wrapper/App typed assertions. Fresh Native server/five smokes and actual Release/Native82/49/129, two-client/chat and72 signed35/43 effects per host pass; both hosts stopped. LinuxNative remains unverified; no new dependency or GitHub CI wait.
+
+Executed source/test fingerprint `fb369b22c800eb669cc12932219149ddbd52b59d808a4487b070a5f611056d24` against parent e9d44908. Evidence: `.cache/next-work-on-c/food-shipping-acceptance-v1`, `food-typed-native-acceptance-v2` and `food-server-live-acceptance-v1`. Typed manifest SHA7dcc05c81fbde329973648640ad224521857b4b19e910cbaffe0d005ffe1e65e; live aggregate SHA0ed2a441a10b27b39730cb71026306c683e2c7b20edbe75a76b653bfe947bb43. No post-test source/fixture/assertion/format changes. Ordinary Git LF projection is separately checked before commit; no multiline C# literal changes. Git shipment record is authoritative for commit/push state.
+
 ## Durable chest ownership, recovery and sandbox handoff: accepted local checkpoint, 2026-10-15
 
 The existing chest slot owner now retains exact funded quantities and copper, including partial and zero budgets. Physical items and private budgets adopt together before observers. Remote crafting carries those exact certificates through its existing journal instead of crediting the nominal value of removed material.

@@ -136,6 +136,24 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             in horizontal, in jumpState, in previousContacts, world, out next, out nextJumpState);
     }
 
+    internal bool TryStep(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
+        ServerPlayerJumpIntent jumpIntent,
+        in VanillaServerPlayerJumpState jumpState,
+        in VanillaLiquidContactState previousContacts,
+        in RuntimePlayerUpdateWorld1458 world,
+        in VanillaServerPlayerHorizontalProfile1458 horizontal,
+        out ServerPlayerDryPhysicsStepResult next,
+        out VanillaServerPlayerJumpState nextJumpState)
+    {
+        if (!world.IsValid || world.MaxTilesX != tiles.Dimensions.WidthTiles ||
+            world.MaxTilesY != tiles.Dimensions.HeightTiles)
+        { next = default; nextJumpState = default; return false; }
+        return TryStepControlled(in player, horizontalIntent, jumpIntent, false,
+            in horizontal, in jumpState, in previousContacts, world, out next, out nextJumpState);
+    }
+
     private bool TryStepControlled(
         in PlayerStateSnapshot player,
         ServerPlayerHorizontalIntent horizontalIntent,

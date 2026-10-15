@@ -12,7 +12,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         int[] sources, int animation, int itemTime, VanillaItemPrefixWorld1458? world, BankBulkResolution result)
     {
         yield return 0;
-        if (!capture.IsCurrent || reports.Length != 219 || sources.Length is < 1 or > 6)
+        if (!capture.IsCurrent || reports.Length != 219 || sources.Length is < 1 or > 7)
             yield break;
         var before = capture.Before;
         var originalQuantity = capture.Quantity;

@@ -11,7 +11,13 @@ public static class VanillaRemotePlayerHealth1458
     public const int MaximumSupportedLifeMax = short.MaxValue + 44 * (short.MaxValue / 5 / 20 * 20);
     public static PlayerNpcHealthState1458? Step(PlayerNpcHealthState1458? previous, int maximum,
         bool outside, bool ghost, bool dead, bool supported, bool expert, bool moving,
-        int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno, bool aegisCrystal = false)
+        int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno, bool aegisCrystal = false) =>
+        Step(previous, maximum, outside, ghost, dead, supported, expert, moving,
+            regenerationSlots, poisoned, onFire, cursedInferno, aegisCrystal, wellFed: false);
+
+    public static PlayerNpcHealthState1458? Step(PlayerNpcHealthState1458? previous, int maximum,
+        bool outside, bool ghost, bool dead, bool supported, bool expert, bool moving,
+        int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno, bool aegisCrystal, bool wellFed)
     {
         // Player.Update returns outside the world before Ghost/UpdateDead and before regeneration.
         if (outside || ghost) return previous;
@@ -38,7 +44,7 @@ public static class VanillaRemotePlayerHealth1458
             time = 3600f;
         }
         natural *= moving ? .5f : 1.25f;
-        if (expert) natural /= 2f;
+        if (expert && !wellFed) natural /= 2f;
         natural *= (float)maximum / 400f * .85f + .15f;
         rate += (int)Math.Round(natural);
         long accumulated = (long)count + rate;

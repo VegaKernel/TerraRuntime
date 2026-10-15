@@ -1,5 +1,15 @@
 # Verified vanilla facts
 
+## Food source rules and paid-duration authority: accepted local checkpoint, 2026-10-15
+
+Repeated official1458 metadata/caller captures verify82 retained ordinary foods across26/206/207, selected clocks/visual RNG, AddBuff reset/downgrade and immunity consumption, food-first QuickBuff tier/time/order, UpdateBuffs-before-equipment and capped consumer arithmetic. A positive local timer applies effects before decrement/forward cleanup. Outside UpdateBuffs has no ResetEffects; compounding is retained source behavior. WindowsCLR4x86 old unfed midpoint differences remain literal; no epsilon/expected-value rewriting hides them.
+
+TerraRuntime deliberately owns earned-food duration in world updates, including refused phases and outside-death clearing; it does not claim original dedicated remote presence lists decrement. Raw50 does not establish paid-food effects; earlier six potion clocks are unchanged. Actual configured State callers confirm three movement tiers, capped Pick1 cadence18, admitted Bow39 damage11/paidammo and terminal/expired Expert5/2. Source and actual caller scopes remain separate from natural wholeMain/RNG, minion births, local mining or new immunity producers.
+
+Release tests/server WAE0/0;193/193 focused normal-discovery tests; mandatory fast24982/24983; ONE unfiltered full1563275/1563276, zero failures/errors and the same known liquid skip. All4979 methods selected, zero exclusions. Full test time $744.569\,\mathrm{s}$. Complete XML remains on C. Exact same three new normal Fact bodies pass typed managed/fresh WindowsNative, with171242 Game helper predicates and2525 wrapper/App typed assertions. Fresh Native server/five smokes and actual Release/Native82/49/129, two-client/chat and72 signed35/43 effects per host pass; both hosts stopped. LinuxNative remains unverified; no new dependency or GitHub CI wait.
+
+Executed source/test fingerprint `fb369b22c800eb669cc12932219149ddbd52b59d808a4487b070a5f611056d24` against parent e9d44908. Evidence: `.cache/next-work-on-c/food-shipping-acceptance-v1`, `food-typed-native-acceptance-v2` and `food-server-live-acceptance-v1`. Typed manifest SHA7dcc05c81fbde329973648640ad224521857b4b19e910cbaffe0d005ffe1e65e; live aggregate SHA0ed2a441a10b27b39730cb71026306c683e2c7b20edbe75a76b653bfe947bb43. No post-test source/fixture/assertion/format changes. Ordinary Git LF projection is separately checked before commit; no multiline C# literal changes. Git shipment record is authoritative for commit/push state.
+
 ## Durable chest ownership: accepted authority boundary, 2026-10-15
 
 Canonical `.wld` chest tuples remain physical stock. The new custody companion is TerraRuntime authority metadata, not an additional vanilla world-file section. Complete coverage, identity, revision and whole-world hash bind its exact funded quantities/copper to the physical checkpoint. Missing metadata never proves a fresh full import. The existing world codec supplies revision handling; no guessed file offsets or copied vanilla method bodies were added.

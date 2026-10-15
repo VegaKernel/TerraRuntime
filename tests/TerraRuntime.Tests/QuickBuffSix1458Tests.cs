@@ -109,7 +109,7 @@ public sealed class QuickBuffSix1458Tests
         var times = new int[44];
         var allowed = new QuickBuffEligibility1458(false, false, false, false, false, false);
         inventory[0] = new(292, 2, 0, false);
-        // Food and other unsupported buff candidates are explicit refusal, not silently skipped.
+        // Unsupported non-food buff candidates remain explicit refusals, not silently skipped.
         inventory[1] = new(289, 2, 0, false);
         Assert.False(VanillaSelectedConsumable1458.TryPlanQuickBuff(inventory, bank, types, times,
             in allowed, [], out _));
@@ -118,9 +118,25 @@ public sealed class QuickBuffSix1458Tests
             in pending, [], out var noOp));
         Assert.Equal(inventory, noOp!.Inventory);
         Assert.Empty(noOp.Mutations);
+        // Food is now source-supported. It is consumed before the ordinary potion scan.
         inventory[1] = new(357, 2, 0, false);
-        Assert.False(VanillaSelectedConsumable1458.TryPlanQuickBuff(inventory, bank, types, times,
-            in allowed, [], out _));
+        Assert.True(VanillaSelectedConsumable1458.TryPlanQuickBuff(inventory, bank, types, times,
+            in allowed, [], out var food));
+        var expectedFoodInventory = inventory.ToArray();
+        expectedFoodInventory[0] = expectedFoodInventory[0] with { Stack = 1 };
+        expectedFoodInventory[1] = expectedFoodInventory[1] with { Stack = 1 };
+        Assert.Equal(expectedFoodInventory, food!.Inventory);
+        Assert.Equal(bank, food.VoidItems);
+        var expectedFoodTypes = new BuffTypeId[44];
+        expectedFoodTypes[0] = VanillaBuffIds.WellFed2;
+        expectedFoodTypes[1] = VanillaBuffIds.Ironskin;
+        Assert.Equal(expectedFoodTypes, food.BuffTypes);
+        var expectedFoodTimes = new int[44];
+        expectedFoodTimes[0] = expectedFoodTimes[1] = 28_800;
+        Assert.Equal(expectedFoodTimes, food.BuffTimes);
+        Assert.Equal(new[] { 1, 0 }, food.Mutations.Select(cost => cost.SourceSlot));
+        Assert.Equal(new[] { VanillaBuffIds.WellFed2, VanillaBuffIds.Ironskin }, food.Mutations.Select(cost => cost.OfferType));
+        Assert.All(food.Mutations, cost => Assert.Equal(28_800, cost.OfferDuration));
         inventory[1] = new(9, 9999, 0, false);
         Assert.True(VanillaSelectedConsumable1458.TryPlanQuickBuff(inventory, bank, types, times,
             in allowed, [], out var ordinary));

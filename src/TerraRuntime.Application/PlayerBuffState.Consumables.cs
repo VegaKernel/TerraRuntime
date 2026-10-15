@@ -43,6 +43,7 @@ internal sealed partial class PlayerBuffState
             if (retained) continue;
             copy.types[removed] = VanillaBuffIds.None;
             copy.durations[removed] = 0;
+            copy.ownedFood[removed] = false;
             int destination = 0;
             for (int i = 0; i < Capacity - 1; i++)
                 if (copy.types[i] != VanillaBuffIds.None && copy.durations[i] != 0)
@@ -51,8 +52,10 @@ internal sealed partial class PlayerBuffState
                     {
                         copy.types[destination] = copy.types[i];
                         copy.durations[destination] = copy.durations[i];
+                        copy.ownedFood[destination] = copy.ownedFood[i];
                         copy.types[i] = VanillaBuffIds.None;
                         copy.durations[i] = 0;
+                        copy.ownedFood[i] = false;
                     }
                     destination++;
                 }
@@ -62,20 +65,27 @@ internal sealed partial class PlayerBuffState
             ambiguous = true;
             return true;
         }
+        copy.InvalidateFoodClockLineage();
         next = copy;
         return true;
     }
 
     internal PlayerBuffState Clone()
     {
-        var copy = new PlayerBuffState { count = count };
+        var copy = new PlayerBuffState { count = count, lastOwnedFoodTick = lastOwnedFoodTick, ownedFoodEffectAtTick = ownedFoodEffectAtTick, foodClockLineage = foodClockLineage };
         types.CopyTo(copy.types, 0);
         durations.CopyTo(copy.durations, 0);
+        ownedFood.CopyTo(copy.ownedFood, 0);
+        foodClockOrigins.CopyTo(copy.foodClockOrigins, 0);
         return copy;
     }
 
     internal bool HasSameSlots(PlayerBuffState other) =>
-        types.AsSpan().SequenceEqual(other.types) && durations.AsSpan().SequenceEqual(other.durations);
+        types.AsSpan().SequenceEqual(other.types) && durations.AsSpan().SequenceEqual(other.durations) &&
+        ownedFood.AsSpan().SequenceEqual(other.ownedFood) &&
+        (!(HasOwnedFoodSlots || other.HasOwnedFoodSlots) || ReferenceEquals(foodClockLineage, other.foodClockLineage)) &&
+        foodClockOrigins.AsSpan().SequenceEqual(other.foodClockOrigins) &&
+        lastOwnedFoodTick == other.lastOwnedFoodTick && ownedFoodEffectAtTick == other.ownedFoodEffectAtTick;
 
     internal void CaptureSlots(out BuffTypeId[] slotTypes, out int[] slotDurations)
     {
@@ -104,11 +114,24 @@ internal sealed partial class PlayerBuffState
         return 0;
     }
 
-    // Only the selected healing, mana and six source-backed buff additions are admitted here. The caller stages
+    // Only the selected healing, mana, six source-backed buff potions and food are admitted here. The caller stages
     // this mutation on Clone; a full debuff table refuses insertion without refusing the heal.
     internal bool TryApplySelectedConsumable(BuffTypeId type, int duration, bool immune)
     {
-        if (immune || duration <= 0 || type.Value is not (21 or 94 or 5 or 16 or 112 or 114 or 115 or 117)) return false;
+        bool applied = TryApplySelectedConsumableCore(type, duration, immune);
+        if (applied) InvalidateFoodClockLineage();
+        return applied;
+    }
+
+    private bool TryApplySelectedConsumableCore(BuffTypeId type, int duration, bool immune)
+    {
+        if (immune || duration <= 0 || type.Value is not (21 or 94 or 5 or 16 or 112 or 114 or 115 or 117 or 26 or 206 or 207)) return false;
+        // Player.AddBuff removes fed-state entries before looking for an existing timer.
+        // Forward iteration deliberately follows original DelBuff compaction, including slot43.
+        if (type.Value is 26 or 206 or 207)
+            for (int i = 0; i < Capacity; i++)
+                if (types[i].Value is 26 or 206 or 207 or 332 or 333 or 334)
+                    RemoveFedStateSlot(i);
         for (int i = 0; i < Capacity; i++)
             if (types[i] == type)
             {
@@ -119,6 +142,7 @@ internal sealed partial class PlayerBuffState
                     durations[i] = Math.Min(durations[i] + duration, 600);
                 }
                 else durations[i] = Math.Max(durations[i], duration);
+                if (type.Value is 26 or 206 or 207) ownedFood[i] = true;
                 return true;
             }
 
@@ -132,12 +156,14 @@ internal sealed partial class PlayerBuffState
                 {
                     types[i] = type;
                     durations[i] = duration;
+                    ownedFood[i] = type.Value is 26 or 206 or 207;
                     count = Capacity;
                     return true;
                 }
 
             types[removable] = VanillaBuffIds.None;
             durations[removable] = 0;
+            ownedFood[removable] = false;
             int destination = 0;
             // Source Player.DelBuff compacts 0..42, leaving slot43 in place.
             for (int i = 0; i < Capacity - 1; i++)
@@ -147,12 +173,70 @@ internal sealed partial class PlayerBuffState
                     {
                         types[destination] = types[i];
                         durations[destination] = durations[i];
+                        ownedFood[destination] = ownedFood[i];
                         types[i] = VanillaBuffIds.None;
                         durations[i] = 0;
+                        ownedFood[i] = false;
                     }
                     destination++;
                 }
         }
         return false;
     }
+    private void RemoveFedStateSlot(int slot)
+    {
+        types[slot] = VanillaBuffIds.None;
+        durations[slot] = 0;
+        ownedFood[slot] = false;
+        foodClockOrigins[slot] = byte.MaxValue;
+        int destination = 0;
+        for (int i = 0; i < Capacity - 1; i++)
+            if (types[i] != VanillaBuffIds.None && durations[i] != 0)
+            {
+                if (destination < i)
+                {
+                    types[destination] = types[i];
+                    durations[destination] = durations[i];
+                    ownedFood[destination] = ownedFood[i];
+                    foodClockOrigins[destination] = foodClockOrigins[i];
+                    foodClockOrigins[i] = byte.MaxValue;
+                    types[i] = VanillaBuffIds.None;
+                    durations[i] = 0;
+                    ownedFood[i] = false;
+                }
+                destination++;
+            }
+    }
+
+    // New paid food owns a local-style budget in authoritative world updates.
+    // The other remote buff durations retain their established presence-only policy.
+    internal bool AdvanceOwnedFoodClock(long tick, bool compactExpired)
+    {
+        if (!HasOwnedFoodSlots || lastOwnedFoodTick == tick) return false;
+        lastOwnedFoodTick = tick;
+        ownedFoodEffectAtTick = HasOwnedFood;
+        bool expired = false;
+        for (int i = 0; i < Capacity; i++)
+            if (ownedFood[i] && durations[i] > 0 && --durations[i] == 0) expired = true;
+        if (compactExpired)
+            for (int i = 0; i < Capacity; i++)
+                if (ownedFood[i] && durations[i] <= 0) RemoveFedStateSlot(i);
+        return expired;
+    }
+
+    internal void StampOwnedFoodGrant(long tick)
+    {
+        if (lastOwnedFoodTick == tick) return;
+        lastOwnedFoodTick = tick;
+        ownedFoodEffectAtTick = false;
+    }
+
+    internal void ClearOwnedFood()
+    {
+        InvalidateFoodClockLineage();
+        for (int i = Capacity - 1; i >= 0; i--)
+            if (ownedFood[i]) RemoveFedStateSlot(i);
+        ownedFoodEffectAtTick = false;
+    }
+
 }

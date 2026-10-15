@@ -40,6 +40,7 @@ internal sealed partial class PlayerAuthority
     {
         if (TryTickRemotePlayerPhase()) return true;
         RetireRemotePlayerPhase();
+        AdvanceOwnedFoodAfterFailedPhase();
         return false;
     }
 

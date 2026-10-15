@@ -65,6 +65,8 @@ internal sealed partial class PlayerAuthority
             AppliedBuffSnapshots++;
             return;
         }
+        if (activePlayer is not null && TryHandleOwnedFoodSnapshot(activePlayer, in request))
+            return;
         if (activePlayer is not null && TryApplySelectedBuffSubsetRemoval(activePlayer, in request))
             return;
         if (activePlayer is not null && IsKnownDeniedSelectedBuffIncrement(activePlayer, request.BuffTypes.Span))
@@ -91,4 +93,35 @@ internal sealed partial class PlayerAuthority
         RecalculatePlayerLuck(activePlayer);
         events?.PlayerBuffTypesUpdated(command.Connection, in request);
     }
+    private bool TryHandleOwnedFoodSnapshot(RuntimePlayerMember member, in PlayerBuffTypesCommitRequest request)
+    {
+        if (transferProfiles.CaptureBuffState(member.Connection) is not { HasOwnedFood: true } previous) return false;
+        var incoming = request.BuffTypes.Span;
+        if (incoming.SequenceEqual(previous.CaptureTypes()))
+        {
+            AppliedBuffSnapshots++;
+            return true;
+        }
+        if (previous.TryPrepareSourceSubsetRemoval(incoming, out var next, out bool ambiguous))
+        {
+            if (ambiguous || next is null || !member.TryAdvanceRevision() ||
+                !transferProfiles.TryAdoptBuffState(member.Connection, previous, next)) RejectedBuffSnapshots++;
+            else
+            {
+                AppliedBuffSnapshots++;
+                RecalculatePlayerLuck(member);
+                events?.PlayerBuffTypesUpdated(member.Connection, in request);
+            }
+            return true;
+        }
+        // A changed presence-only report cannot select or renew an owned duplicate.
+        foreach (var type in previous.CaptureEffectTypes())
+            if (type.Value is 26 or 206 or 207 && incoming.Contains(type))
+            {
+                RejectedBuffSnapshots++;
+                return true;
+            }
+        return false; // Removing all earned food may retain the existing unrelated-import policy.
+    }
+
 }

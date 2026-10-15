@@ -1,5 +1,15 @@
 # TerraRuntime roadmap
 
+## Funded food and QuickBuff continuation: accepted local checkpoint, 2026-10-15
+
+The connected block supports82 ordinary food definitions, funded selected use, food-first QuickBuff with seven exact costs and private provenance in the existing44-slot owner. Earned food duration ages by authoritative world updates even after unrelated phase refusal; final positive tick contributes effects, new grants start at payment, death clears food including outside actors and transfer resets its clock epoch without refilling. Captured QuickBuff choices merge onto current remaining time; raw acknowledgements never restore the capture. Six older potion clocks keep their policy.
+
+Release tests/server WAE0/0;193/193 focused normal-discovery tests; mandatory fast24982/24983; ONE unfiltered full1563275/1563276, zero failures/errors and the same known liquid skip. All4979 methods selected, zero exclusions. Full test time $744.569\,\mathrm{s}$. Complete XML remains on C. Exact same three new normal Fact bodies pass typed managed/fresh WindowsNative, with171242 Game helper predicates and2525 wrapper/App typed assertions. Fresh Native server/five smokes and actual Release/Native82/49/129, two-client/chat and72 signed35/43 effects per host pass; both hosts stopped. LinuxNative remains unverified; no new dependency or GitHub CI wait.
+
+Executed source/test fingerprint `fb369b22c800eb669cc12932219149ddbd52b59d808a4487b070a5f611056d24` against parent e9d44908. Evidence: `.cache/next-work-on-c/food-shipping-acceptance-v1`, `food-typed-native-acceptance-v2` and `food-server-live-acceptance-v1`. Typed manifest SHA7dcc05c81fbde329973648640ad224521857b4b19e910cbaffe0d005ffe1e65e; live aggregate SHA0ed2a441a10b27b39730cb71026306c683e2c7b20edbe75a76b653bfe947bb43. No post-test source/fixture/assertion/format changes. Ordinary Git LF projection is separately checked before commit; no multiline C# literal changes. Git shipment record is authoritative for commit/push state.
+
+This checkpoint reaches actual configured movement/capped cadence/Bow damage-ammo/Expert-regeneration callers. Minion births, local mining, food platters, special hunger/sitting contexts and natural wholeMain/UI remain separate gaps. Next major item/combat candidate is the complete retained gem-staff/robe family, not blanket FullVanillaAiParity. The continuous compatibility goal remains active.
+
 ## Durable chest ownership and sandbox materialization: accepted local checkpoint, 2026-10-15
 
 The next persistence/item-authority block is locally accepted: exact world-chest quantity/copper survives saves, interrupted recovery, backup restoration and readonly sandbox creation. Initial vanilla import requires explicit trust; managed missing/corrupt metadata never refills stock. Remote crafting consumes exact partial material certificates through the existing journal. One lifetime writer owns startup through final checkpoint completion.

@@ -26,6 +26,8 @@ internal sealed partial class PlayerAuthority
         float.IsFinite(combat.Endurance) && combat.Endurance >= 0f &&
         IsNonnegativeFinite(combat.MeleeDamage) && IsNonnegativeFinite(combat.RangedDamage) &&
         IsNonnegativeFinite(combat.MinionDamage) && combat.MinionDamage > 0f &&
+        IsNonnegativeFinite(combat.MinionKnockback) && IsNonnegativeFinite(combat.MoveSpeed) &&
+        IsNonnegativeFinite(combat.PickSpeed) &&
         IsNonnegativeFinite(combat.MagicDamage) && float.IsFinite(combat.RangedMultDamage) && combat.RangedMultDamage > 0f &&
         IsNonnegativeFinite(combat.ArrowDamage) && IsNonnegativeFinite(combat.ArrowDamageAdditiveStack) &&
         IsNonnegativeFinite(combat.BulletDamage) && IsNonnegativeFinite(combat.MeleeAttackSpeed) &&

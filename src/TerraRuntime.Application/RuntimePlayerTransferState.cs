@@ -129,8 +129,12 @@ internal sealed class RuntimePlayerTransferProfileStore
         return true;
     }
 
-    internal void RestoreBuffState(ConnectionHandle connection, PlayerBuffState snapshot) =>
-        GetOrReplace(connection).Buffs = snapshot.Clone();
+    internal void RestoreBuffState(ConnectionHandle connection, PlayerBuffState snapshot)
+    {
+        var retained = snapshot.Clone();
+        retained.ResetOwnedFoodClockForTransfer();
+        GetOrReplace(connection).Buffs = retained;
+    }
 
     public bool TryCapture(
         ConnectionHandle connection,

@@ -4,7 +4,10 @@ namespace TerraRuntime.Gameplay.Items;
 
 public readonly record struct SelectedConsumableDefinition1458(
     ItemTypeId Type, int HealLife, int HealMana, bool HealingDelay, int UseTime,
-    int UseAnimation, int DrinkColourCount, int BuffType = 0, int BuffTime = 0);
+    int UseAnimation, int DrinkColourCount, int BuffType = 0, int BuffTime = 0)
+{
+    public int FoodColourCount { get; init; }
+}
 
 public static class VanillaSelectedConsumableCatalog1458
 {
@@ -31,6 +34,7 @@ public static class VanillaSelectedConsumableCatalog1458
             definition = new(type, 0, 0, false, useDuration, useDuration, 0);
             return true;
         }
+        if (TryGetFood(type, out definition)) return true;
         (int buff, int duration) = type.Value switch
         {
             292 => (5, 28_800),
@@ -62,6 +66,100 @@ public static class VanillaSelectedConsumableCatalog1458
         definition = new(type, life, mana, life > 0, 17, 17, 3);
         return life > 0 || mana > 0;
     }
+    // Original SetDefaults roster: all82 retained food identities share ordinary17-tick
+    // consumable clocks, no healing/mana/shoot/place path, with separately captured particles.
+    private static bool TryGetFood(ItemTypeId type, out SelectedConsumableDefinition1458 definition)
+    {
+        (int buff, int duration, int foodColours, int drinkColours) = type.Value switch
+        {
+            357 => (206, 28_800, 2, 0),
+            967 => (26, 3_600, 0, 2),
+            969 => (26, 36_000, 0, 3),
+            1787 => (26, 28_800, 3, 0),
+            1911 => (207, 14_400, 4, 0),
+            1919 => (207, 14_400, 4, 0),
+            1920 => (207, 14_400, 4, 0),
+            2267 => (206, 28_800, 3, 0),
+            2268 => (206, 36_000, 3, 0),
+            2425 => (26, 28_800, 4, 0),
+            2426 => (206, 36_000, 2, 0),
+            2427 => (206, 28_800, 3, 0),
+            3195 => (206, 50_400, 4, 0),
+            3532 => (207, 86_400, 2, 0),
+            4009 => (26, 18_000, 2, 0),
+            4011 => (207, 57_600, 2, 0),
+            4012 => (206, 36_000, 4, 0),
+            4013 => (207, 86_400, 2, 0),
+            4014 => (26, 36_000, 3, 0),
+            4015 => (207, 28_800, 4, 0),
+            4016 => (206, 50_400, 2, 0),
+            4017 => (206, 72_000, 3, 0),
+            4018 => (206, 57_600, 0, 2),
+            4019 => (206, 36_000, 3, 0),
+            4020 => (206, 50_400, 2, 0),
+            4021 => (206, 36_000, 3, 0),
+            4022 => (207, 172_800, 3, 0),
+            4023 => (206, 57_600, 2, 0),
+            4024 => (26, 36_000, 2, 0),
+            4025 => (207, 43_200, 3, 0),
+            4026 => (206, 50_400, 4, 0),
+            4027 => (207, 57_600, 0, 4),
+            4028 => (206, 57_600, 3, 0),
+            4029 => (207, 28_800, 4, 0),
+            4030 => (26, 90_000, 3, 0),
+            4031 => (26, 36_000, 3, 0),
+            4032 => (206, 36_000, 3, 0),
+            4033 => (26, 36_000, 3, 0),
+            4034 => (206, 50_400, 4, 0),
+            4035 => (206, 64_800, 4, 0),
+            4036 => (207, 28_800, 4, 0),
+            4037 => (207, 57_600, 3, 0),
+            4282 => (26, 18_000, 2, 0),
+            4283 => (26, 18_000, 3, 0),
+            4284 => (26, 18_000, 3, 0),
+            4285 => (26, 18_000, 3, 0),
+            4286 => (26, 18_000, 2, 0),
+            4287 => (26, 18_000, 3, 0),
+            4288 => (206, 18_000, 4, 0),
+            4289 => (26, 18_000, 3, 0),
+            4290 => (26, 18_000, 3, 0),
+            4291 => (26, 18_000, 2, 0),
+            4292 => (26, 18_000, 3, 0),
+            4293 => (26, 18_000, 2, 0),
+            4294 => (26, 18_000, 2, 0),
+            4295 => (26, 18_000, 3, 0),
+            4296 => (26, 18_000, 3, 0),
+            4297 => (206, 18_000, 2, 0),
+            4403 => (206, 36_000, 4, 0),
+            4411 => (26, 36_000, 2, 0),
+            4614 => (26, 36_000, 0, 2),
+            4615 => (207, 57_600, 0, 2),
+            4616 => (26, 36_000, 0, 2),
+            4617 => (26, 54_000, 0, 2),
+            4618 => (26, 36_000, 0, 2),
+            4619 => (26, 72_000, 0, 2),
+            4620 => (26, 72_000, 0, 2),
+            4621 => (26, 72_000, 0, 2),
+            4622 => (26, 72_000, 0, 2),
+            4623 => (206, 72_000, 0, 3),
+            4624 => (26, 54_000, 0, 2),
+            4625 => (26, 90_000, 3, 0),
+            5009 => (26, 18_000, 0, 2),
+            5041 => (26, 72_000, 0, 2),
+            5042 => (206, 36_000, 0, 2),
+            5092 => (206, 28_800, 3, 0),
+            5093 => (206, 21_600, 6, 0),
+            5275 => (26, 7_200, 0, 2),
+            5277 => (26, 18_000, 3, 0),
+            5278 => (26, 18_000, 3, 0),
+            5537 => (26, 18_000, 3, 0),
+            5645 => (26, 36_000, 6, 0),
+            _ => (0, 0, 0, 0)
+        };
+        definition = new(type, 0, 0, false, 17, 17, drinkColours, buff, duration) { FoodColourCount = foodColours };
+        return buff != 0;
+    }
+
     /// <summary>Known SetDefaults families that may enter QuickBuff's food or non-summon buff path.
     /// Other retained families have no applicable buff; unsupported candidates must not be silently skipped.</summary>
     public static bool MayParticipateInQuickBuff(ItemTypeId type) => type.Value is

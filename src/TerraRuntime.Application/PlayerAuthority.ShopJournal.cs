@@ -30,6 +30,7 @@ internal sealed partial class PlayerAuthority
         internal TerraRuntime.Contracts.Gameplay.BuffTypeId[]? QuickBuffIncoming;
         internal bool QuickBuffSealed;
         internal PlayerBuffState? QuickBuffNext;
+        internal QuickBuffMutation1458[]? QuickBuffOrderedOffers;
         internal TerraRuntime.Contracts.Gameplay.BuffTypeId[]? QuickBuffOffers;
         internal RuntimePlayerMember? ObservedMember;
         internal PlayerStateSnapshot ObservedActor;
