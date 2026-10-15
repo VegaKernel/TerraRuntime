@@ -6,6 +6,8 @@ namespace TerraRuntime.Application;
 
 internal interface IChestNetworkIngress
 {
+    bool TryPostCrafting(ConnectionHandle connection, TerrariaCraftingRequest1458 request) => false;
+
     bool TryPostOpen(ConnectionHandle connection, in TerrariaChestOpenRequest request);
 
     bool TryPostItem(ConnectionHandle connection, in TerrariaChestItemState state);
@@ -28,6 +30,10 @@ internal sealed class RuntimeChestNetworkIngress : IChestNetworkIngress
         ArgumentNullException.ThrowIfNull(ingress);
         this.ingress = ingress;
     }
+
+    public bool TryPostCrafting(ConnectionHandle connection, TerrariaCraftingRequest1458 request) =>
+        connection.IsAssigned && request is not null &&
+        ingress.TryPost(connection.Source, new ClientChestCraftingRuntimeCommand(connection, request));
 
     public bool TryPostOpen(ConnectionHandle connection, in TerrariaChestOpenRequest request) =>
         connection.IsAssigned &&

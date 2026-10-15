@@ -59,6 +59,8 @@ internal sealed class ServerRuntimeComposition
         MasterMode = masterMode;
     }
 
+    internal RuntimeChestCommandProcessor? ChestCommands { get; private init; }
+
     internal RuntimeTickCounter Updates { get; }
 
     internal RuntimeCommandCounter Commands { get; }
@@ -162,6 +164,7 @@ internal sealed class ServerRuntimeComposition
             playersAuthority.SetPlayerUpdateRandom(new VanillaUnifiedRandom1458(playerSeed.Value));
         if (worldTiles is not null && townCommerceWorldFacts is { } playerWorld)
         {
+            playersAuthority.SetCraftingWorldFacts(in playerWorld);
             var sourceWorld = new RuntimePlayerUpdateWorld1458(worldTiles.Dimensions.WidthTiles,
                 worldTiles.Dimensions.HeightTiles, playerWorld.WorldSurface, playerWorld.RemixWorld, playerWorld.SkyblockWorld)
             { WindowsItemPrefixArithmetic = itemPrefixArithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86 };
@@ -193,6 +196,12 @@ internal sealed class ServerRuntimeComposition
         float pickupDifficulty = (masterMode ? 3f : expertMode ? 2f : 1f) +
             ((worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false) ? 1f : 0f);
         playersAuthority.SetCombatEquipmentWorldModes(pickupDifficulty >= 2f, pickupDifficulty >= 3f);
+        if (chestCommands?.OwnedChestTiles is { } chestTiles && chestCommands.OwnedChestStore.OwnsLoadedWorldStock)
+        {
+            playersAuthority.BindOwnedWorldChests(chestCommands.OwnedChestStore, chestTiles, chestCommands.OwnedChestReplication);
+            chestCommands.BindOwnedItemReports(playersAuthority.ObserveOwnedWorldChestReport);
+            chestCommands.BindRemoteCraftCosts(playersAuthority.CaptureRemoteCraftCosts);
+        }
         serverPlayers?.SetCombatEquipmentWorldModes(pickupDifficulty >= 2f, pickupDifficulty >= 3f);
         // Standard dedicated Main.LocalPlayer is reserved slot255 with constructor-empty armor.
         // The shared PlayerSlotPool leases only0..254; client/server-player equipment cannot write it.
@@ -282,6 +291,7 @@ internal sealed class ServerRuntimeComposition
             lootRandom: gameplayRandom, deathPrelude: deathPrelude, townSocialWorldFacts: townSocialWorldFacts,
             townLootLanguage: VanillaTownNpcLootLanguage1458.English,
             invasionProgressPublisher: invasionProgressPublisher, invasionStartPublisher: invasionStartPublisher);
+        playersAuthority.SetTorchFavorPrelude(npcAuthority.DeathPrelude);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,
@@ -349,7 +359,7 @@ internal sealed class ServerRuntimeComposition
             progression,
             townCommerceWorldFacts,
             expertMode,
-            masterMode);
+            masterMode) { ChestCommands = chestCommands };
     }
 
 }

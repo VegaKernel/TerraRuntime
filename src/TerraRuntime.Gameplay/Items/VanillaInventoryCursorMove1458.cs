@@ -18,6 +18,7 @@ public static class VanillaInventoryCursorMove1458
 {
     public const int OrdinaryContext = 0;
     public const int CoinContext = 1;
+    public const int WorldChestContext = 3;
     public const int BankContext = 4;
     public const int VoidBankContext = 32;
     public static bool TryPlanLeftClick(in WorldItemPickupSlot1458 slot,
@@ -55,7 +56,7 @@ public static class VanillaInventoryCursorMove1458
                 afterCursor = remaining == 0 ? default : slot with { Stack = remaining, Favorite = cursor.Favorite };
             }
         }
-        if (bankContext == BankContext)
+        if (bankContext is BankContext or WorldChestContext)
         {
             // Original context4 clears both resulting favorites; void context32
             // keeps the ordinary context0 favorite transition.
@@ -130,7 +131,7 @@ public static class VanillaInventoryCursorMove1458
         return false;
     }
 
-    private static bool IsContext(int context) => context is OrdinaryContext or CoinContext or BankContext or VoidBankContext;
+    private static bool IsContext(int context) => context is OrdinaryContext or CoinContext or WorldChestContext or BankContext or VoidBankContext;
 
     private static bool IsValid(in WorldItemPickupSlot1458 item)
     {

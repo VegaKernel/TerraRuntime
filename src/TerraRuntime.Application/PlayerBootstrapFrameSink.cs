@@ -1,3 +1,4 @@
+using System.Buffers;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
@@ -744,6 +745,16 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     {
         PlayerJoinSession session = _session!;
         if (!_spawnSubmitted && session.State != PlayerJoinState.Playing)
+            return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+
+        // Net-module payloads have independent schemas and bounds. Classify the
+        // namespace before invoking the chat-specific deserializer or text limit.
+        if (frame.Payload.Length < sizeof(ushort))
+            return Stop(PlayerBootstrapStopReason.MalformedChat);
+        var moduleReader = new SequenceReader<byte>(frame.Payload);
+        if (!moduleReader.TryReadLittleEndian(out short moduleId))
+            return Stop(PlayerBootstrapStopReason.MalformedChat);
+        if (unchecked((ushort)moduleId) != 1)
             return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
 
         TerrariaClientChatDecodeResult decode = TerrariaChatCodec.TryDecodeClientMessage(

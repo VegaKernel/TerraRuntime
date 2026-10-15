@@ -118,7 +118,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (!ReferenceEquals(store,owner) || actor != connection || !debitApplied || !IsCurrent ||
                 !AreValidOwnedQuantities(caps,before) ||
                 !VanillaSelectedConsumableCatalog1458.TryGet(before[slot].ItemType,out var potion) ||
-                (potion.HealLife <= 0 && potion.HealMana <= 0 && potion.BuffType <= 0 && before[slot].ItemType.Value is not (29 or 1291 or 3335 or 5326 or 5337 or 5338 or 5339 or 5340 or 5341 or 5342)) || before[slot].Prefix.Value != 0 ||
+                (potion.HealLife <= 0 && potion.HealMana <= 0 && potion.BuffType <= 0 && before[slot].ItemType.Value is not (29 or 1291 or 3335 or 5326 or 5337 or 5338 or 5339 or 5340 or 5341 or 5342 or 5043)) || before[slot].Prefix.Value != 0 ||
                 funding[slot] < 1 || afterSlot != (before[slot].Stack == 1 ? default : before[slot] with { Stack=(short)(before[slot].Stack-1) })) return false;
             original=before[slot]; originalFunding=funding[slot]; return true;
         }

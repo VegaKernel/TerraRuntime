@@ -18,3 +18,7 @@ internal sealed record ClientActiveChestRuntimeCommand(
 internal sealed record ClientChestNameLookupRuntimeCommand(
     ConnectionHandle Connection,
     TerrariaChestNameLookupRequest Request) : RuntimeCommand;
+
+internal sealed record ClientChestCraftingRuntimeCommand(
+    ConnectionHandle Connection,
+    TerrariaCraftingRequest1458 Request) : RuntimeCommand;

@@ -24,6 +24,8 @@ internal sealed partial class PlayerAuthority
         internal bool StagedCursorDebit;
         internal bool StagedQuantityImage;
         internal bool MainSortOnly;
+        internal bool CraftCandidate;
+        internal CraftResolution? CraftResult;
         internal PlayerBuffState? QuickBuffBefore;
         internal TerraRuntime.Contracts.Gameplay.BuffTypeId[]? QuickBuffIncoming;
         internal bool QuickBuffSealed;
@@ -34,6 +36,13 @@ internal sealed partial class PlayerAuthority
         internal ulong ObservedInputRevision;
         internal bool IsSealed;
         internal PendingSortOverflow? SortOverflow;
+        internal bool RemoteCostWorkPending;
+        internal bool RemoteCraftSegments;
+        internal readonly bool[] RemoteEpochSeen = new bool[219];
+        internal RemoteCraftCostCertificate? RemoteCosts;
+        internal RuntimeChestStore.OwnedTransferCapture? WorldChest;
+        internal List<TerraRuntime.Protocol.Multiplicity.TerrariaChestItemState>? WorldReports;
+        internal RuntimePlayerInventoryStore.WorldTransferResolution? WorldResult;
         internal int PlanningAnimation;
         internal int PlanningItemTime;
         internal ShopResolution? Resolution;
@@ -50,10 +59,12 @@ internal sealed partial class PlayerAuthority
 
         internal bool Observe(int index, in RuntimePlayerInventoryItem reported)
         {
-            if (IsSealed || IsRetired || Invalid || index < LastIndex || (Seen[index] && Reports[index] != reported))
+            bool alreadySeen = RemoteCraftSegments ? RemoteEpochSeen[index] : Seen[index];
+            if (IsSealed || IsRetired || Invalid || index < LastIndex || (alreadySeen && Reports[index] != reported))
             { Invalid = true; return false; }
             Reports[index] = reported;
             Seen[index] = true;
+            if (RemoteCraftSegments) RemoteEpochSeen[index] = true;
             LastIndex = index;
             return true;
         }
@@ -168,6 +179,23 @@ internal sealed partial class PlayerAuthority
         int index = bank ? 59 + bankOffset : request.SlotId;
         if (pending is not null)
         {
+            // Remote work owns a retained whole-operation before-image. Its
+            // early source debit reports must not enter the eager cursor path.
+            if (pending.RemoteCraftSegments)
+            {
+                if (!IsCurrentShopActor(member, receipt!) || !pending.Capture.IsCurrent ||
+                    !pending.Observe(index, in reported))
+                { DropBankBatchAlternative(member, pending); RejectedEquipmentUpdates++; }
+                else pending.StagedQuantityImage = true;
+                return true;
+            }
+            if (pending.WorldChest is not null)
+            {
+                if (!IsCurrentShopActor(member, receipt!) || !pending.Capture.IsCurrent || !pending.WorldChest.IsCurrent ||
+                    !pending.Observe(index, in reported))
+                { DropBankBatchAlternative(member, pending); RejectedEquipmentUpdates++; }
+                return true;
+            }
             if(pending.SortOverflow is not null)
             {
                 if(!IsCurrentShopActor(member,receipt!)||!pending.Capture.IsCurrent||pending.Invalid||
@@ -470,13 +498,16 @@ internal sealed partial class PlayerAuthority
 
     private void ApplyInventorySyncComplete(ConnectionHandle connection)
     {
+        if (TryRetainRemoteCraftBoundary(connection)) return;
         if (membership.TryGet(connection, out var quickMember) && quickMember.CursorMove is { Shop: { } quickJournal } quickReceipt &&
             !quickJournal.IsSealed && TrySealQuickBuff(connection, quickMember, quickReceipt, quickJournal)) return;
         CompleteUnpaidSelectedPotionReport(connection);
         if (!membership.TryGet(connection, out var member) || member.CursorMove is not { Shop: { } journal } receipt || journal.IsSealed)
             return;
+        if (TrySealWorldChestTransfer(connection, member, receipt, journal)) return;
         if (TrySealQuickBuff(connection, member, receipt, journal)) return;
         if (TrySealSortOverflow(connection, member, receipt, journal)) return;
+        if (TrySealLocalCraft(connection, member, receipt, journal)) return;
         if (journal.ObservedBatch)
         {
             if (!journal.Seen.AsSpan(59).Contains(true))
@@ -531,12 +562,14 @@ internal sealed partial class PlayerAuthority
         journal.Work = ResolveShopJournal(connection, journal, journal.Resolution).GetEnumerator();
     }
 
-    internal void TickShopJournalWork()
+    internal void TickShopJournalWork(int workBudget = ShopWorkStepsPerTick)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(workBudget);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(workBudget, ShopWorkStepsPerTick);
         LastShopWorkSteps = 0;
         int idle = 0;
         Exception? failure = null;
-        while (LastShopWorkSteps < ShopWorkStepsPerTick && idle < MaxPlayerSlots)
+        while (LastShopWorkSteps < workBudget && idle < MaxPlayerSlots)
         {
             byte slot = (byte)nextShopWorkSlot;
             nextShopWorkSlot = (nextShopWorkSlot + 1) % MaxPlayerSlots;
@@ -545,13 +578,15 @@ internal sealed partial class PlayerAuthority
             idle = 0;
             LastShopWorkSteps++;
             if (journal.Invalid || !journal.Capture.IsCurrent || !IsCurrentShopActor(member, receipt) ||
-                (journal.BankResult is null && journal.SortOverflow is null && (journal.Quote is null || !journal.Quote.IsRetainedJournalCurrent(journal))))
+                (journal.WorldResult is null && journal.BankResult is null && journal.CraftResult is null && journal.SortOverflow is null && (journal.Quote is null || !journal.Quote.IsRetainedJournalCurrent(journal))))
             { journal.Work?.Dispose(); DropBankBatchAlternative(member, journal); RejectedEquipmentUpdates++; continue; }
             try
             {
                 if (journal.Work!.MoveNext()) continue;
                 journal.Work.Dispose();
-                if (journal.QuickBuffSealed) CompleteQuickBuffJournal(member.Connection, member, receipt, journal);
+                if (journal.WorldResult is not null) CompleteWorldChestTransfer(member.Connection, member, receipt, journal);
+                else if (journal.CraftResult is { } craftResult) CompleteLocalCraftJournal(member.Connection, member, receipt, journal, craftResult);
+                else if (journal.QuickBuffSealed) CompleteQuickBuffJournal(member.Connection, member, receipt, journal);
                 else if (journal.SortOverflow is not null) CompleteSortOverflowJournal(member.Connection, member, receipt, journal);
                 else if (journal.BankResult is { } bankResult) CompleteBankJournal(member.Connection, member, receipt, journal, bankResult);
                 else CompleteShopJournal(member.Connection, member, receipt, journal, journal.Resolution!);

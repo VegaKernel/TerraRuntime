@@ -18,6 +18,12 @@ public static partial class VanillaWorldItemOwner1458
     public static bool TryPlanStorage(in WorldItemPickupSlot1458 incoming,
         ReadOnlySpan<WorldItemPickupSlot1458> inventory, bool voidEnabled,
         VanillaItemPrefixWorld1458? world, out WorldItemStoragePlan1458? plan)
+        => TryPlanStorage(in incoming, inventory, voidEnabled, world, out plan, false);
+
+    /// <summary>Source GetItem settings variant. NoCoinMerge suppresses DoCoins while retaining coin slot priority.</summary>
+    public static bool TryPlanStorage(in WorldItemPickupSlot1458 incoming,
+        ReadOnlySpan<WorldItemPickupSlot1458> inventory, bool voidEnabled,
+        VanillaItemPrefixWorld1458? world, out WorldItemStoragePlan1458? plan, bool noCoinMerge)
     {
         plan = null;
         if (inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
@@ -29,7 +35,7 @@ public static partial class VanillaWorldItemOwner1458
             if (!IsCanonicalStorageSlot(in inventory[slot])) return false;
 
         if (incoming.Type is >= 71 and <= 74)
-            return TryPlanCoinStorage(in incoming, inventory, voidEnabled, out plan);
+            return TryPlanCoinStorage(in incoming, inventory, voidEnabled, out plan, noCoinMerge);
 
         bool usable = facts.HasUseStyle;
         if (incoming.Type is 544 or 556 or 557 or 5334)

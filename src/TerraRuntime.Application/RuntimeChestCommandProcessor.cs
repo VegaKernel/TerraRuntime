@@ -10,19 +10,23 @@ namespace TerraRuntime.Application;
 /// the chest replication registry. Phase-7 inventory conservation remains a separate validation layer so gameplay
 /// parity is not blocked on anti-cheat policy that packet 5 itself does not yet enforce.
 /// </summary>
-internal sealed class RuntimeChestCommandProcessor
+internal sealed partial class RuntimeChestCommandProcessor
 {
     private readonly RuntimeChestStore store;
     private readonly RuntimeChestReplicationRegistry replication;
 
     public RuntimeChestCommandProcessor(
         RuntimeChestStore store,
-        RuntimeChestReplicationRegistry replication)
+        RuntimeChestReplicationRegistry replication,
+        WorldTileStore? craftingTiles = null,
+        Func<ConnectionHandle, bool>? currentCraftingActor = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(replication);
         this.store = store;
         this.replication = replication;
+        this.craftingTiles = craftingTiles;
+        this.currentCraftingActor = currentCraftingActor;
     }
 
     public long AppliedOpens { get; private set; }
@@ -51,6 +55,10 @@ internal sealed class RuntimeChestCommandProcessor
 
         switch (command)
         {
+            case ClientChestCraftingRuntimeCommand craft:
+                ApplyCrafting(craft);
+                return true;
+
             case ClientChestOpenRuntimeCommand open:
                 ApplyOpen(open);
                 return true;
@@ -103,6 +111,11 @@ internal sealed class RuntimeChestCommandProcessor
 
     private void ApplyItem(ClientChestItemRuntimeCommand command)
     {
+        if (store.OwnsLoadedWorldStock)
+        {
+            if (ownedItemReports?.Invoke(command.Connection, command.State) != true) RejectedItemUpdates++;
+            return;
+        }
         TerrariaChestItemState submitted = command.State;
         if (!store.TrySetItem(command.Connection, in submitted, out TerrariaChestItemState committed))
         {
@@ -117,11 +130,17 @@ internal sealed class RuntimeChestCommandProcessor
     private void ApplyActiveState(ClientActiveChestRuntimeCommand command)
     {
         TerrariaActiveChestState submitted = command.State;
+        if (currentCraftingActor is not null && !currentCraftingActor(command.Connection))
+        {
+            RejectedActiveStates++;
+            return;
+        }
         if (!store.TryApplyActiveState(
                 command.Connection,
                 in submitted,
                 out WorldChest? renamedChest,
-                out bool closedWorldChest))
+                out bool closedWorldChest,
+                recordOwnedContainerContext: currentCraftingActor is not null))
         {
             RejectedActiveStates++;
             return;
@@ -150,6 +169,11 @@ internal sealed class RuntimeChestCommandProcessor
 
     internal void ReleasePlayer(ConnectionHandle connection)
     {
+        if (craftingWork is { } work && work.Connection == connection)
+        {
+            work.Steps.Dispose();
+            craftingWork = null;
+        }
         if (store.TryClose(connection, out short closedChestId) && closedChestId >= 0)
             replication.PublishClosed(connection);
     }

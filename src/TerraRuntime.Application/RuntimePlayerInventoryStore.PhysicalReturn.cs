@@ -46,50 +46,88 @@ internal sealed partial class RuntimePlayerInventoryStore
                 if (a == b || b == 58 || accepted[b].IsEmpty ||
                     accepted[a].ItemType != accepted[b].ItemType ||
                     accepted[a].Prefix != accepted[b].Prefix) continue;
-                accepted.CopyTo(image, 0); acceptedCopper.CopyTo(copper, 0);
-                acceptedQuantity.CopyTo(quantity, 0); acceptedCaps.CopyTo(caps, 0);
-                int amount = accepted[a].Stack;
-                // Left whole A, Left merge B, repeated Right amount, Left return A.
-                // Each actual planned primitive is checked again by TryBankPair.
-                bool valid = true;
-                for (int leg = 0; leg < 4; leg++)
+                // Enumerate both the source three-Left whole-object exchange
+                // and the existing merge/right/return witness. Currency's
+                // Main endpoints of this new whole-object family are 0..49 only;
+                // coin/ammo UI roles 1/2 cannot be modeled as ordinary context 0.
+                // Currency's identical-middle certificate here is bank-only: ordinary
+                // DoCoins must not be assumed inert at the nominal carry limit.
+                for (int path = 0; path < 2; path++)
                 {
-                    int repetitions = leg == 2 ? amount : 1;
-                    for (int repeat = 0; repeat < repetitions; repeat++)
+                    bool fullExchange = path == 0;
+                    if (fullExchange &&
+                        ((a is >= 50 and < 59) || (b is >= 50 and < 59) ||
+                         !VanillaWorldItemAllocationCatalog1458.TryGet(accepted[a].ItemType.Value, out var fullFacts) ||
+                         accepted[a].Stack != fullFacts.MaximumStack || accepted[b].Stack != fullFacts.MaximumStack ||
+                         (CoinValue(accepted[a]) > 0 && (a < 59 || b < 59)))) continue;
+                    accepted.CopyTo(image, 0); acceptedCopper.CopyTo(copper, 0);
+                    acceptedQuantity.CopyTo(quantity, 0); acceptedCaps.CopyTo(caps, 0);
+                    int amount = accepted[a].Stack;
+                    // Left whole A, Left merge B, repeated Right amount, Left return A.
+                    // Each actual planned primitive is checked again by TryBankPair.
+                    bool valid = true;
+                    for (int leg = 0; leg < (fullExchange ? 3 : 4); leg++)
                     {
-                        yield return 0;
-                        int slot = leg is 0 or 3 ? a : b;
-                        int context = slot < 59 ? VanillaInventoryCursorMove1458.OrdinaryContext :
-                            slot < 179 ? VanillaInventoryCursorMove1458.BankContext :
-                            VanillaInventoryCursorMove1458.VoidBankContext;
-                        var source = StorageTuple(image[slot]); var cursor = StorageTuple(image[58]);
-                        WorldItemPickupSlot1458 nextSlot, nextCursor;
-                        bool planned = leg == 2
-                            ? VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor, 1,
-                                out nextSlot, out nextCursor, context)
-                            : VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor,
-                                out nextSlot, out nextCursor, context);
-                        if (!planned || !TryBankPair(image, copper, quantity, caps, slot,
-                            InventoryTuple(nextSlot), InventoryTuple(nextCursor), leg == 2, itemTime, context))
-                        { valid = false; break; }
+                        int repetitions = !fullExchange && leg == 2 ? amount : 1;
+                        for (int repeat = 0; repeat < repetitions; repeat++)
+                        {
+                            yield return 0;
+                            int slot = leg == 0 || leg == (fullExchange ? 2 : 3) ? a : b;
+                            int context = slot is >= 50 and < 54 ? VanillaInventoryCursorMove1458.CoinContext :
+                                slot < 59 ? VanillaInventoryCursorMove1458.OrdinaryContext :
+                                slot < 179 ? VanillaInventoryCursorMove1458.BankContext :
+                                VanillaInventoryCursorMove1458.VoidBankContext;
+                            var source = StorageTuple(image[slot]); var cursor = StorageTuple(image[58]);
+                            // Original context2 gates Left by the incoming item's
+                            // FitsAmmoSlot; Right only withdraws and has no such gate.
+                            // Once eligible, its tuple transform is ordinary context0.
+                            bool right = !fullExchange && leg == 2;
+                            if (!right && slot is >= 54 and < 58 && cursor.Type != 0 &&
+                                (!VanillaWorldItemPickupCatalog1458.TryGet(cursor.Type, out var ammoFacts) ||
+                                 !ammoFacts.FitsAmmoSlot))
+                            { valid = false; break; }
+                            WorldItemPickupSlot1458 nextSlot, nextCursor;
+                            bool planned = !fullExchange && leg == 2
+                                ? VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor, 1,
+                                    out nextSlot, out nextCursor, context)
+                                : VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor,
+                                    out nextSlot, out nextCursor, context);
+                            // Original full-capacity matching Left swaps the objects,
+                            // even when both public tuples remain identical. The tuple
+                            // primitive returns false for that public no-op; its out
+                            // images still certify this narrowly source-proven branch.
+                            if (fullExchange && leg == 1 && !planned &&
+                                (source == cursor ||
+                                 (context is VanillaInventoryCursorMove1458.OrdinaryContext or VanillaInventoryCursorMove1458.VoidBankContext &&
+                                  (source with { Favorite = cursor.Favorite }) == cursor)) &&
+                                nextSlot == source && nextCursor == cursor)
+                            {
+                                (copper[slot], copper[58]) = (copper[58], copper[slot]);
+                                (quantity[slot], quantity[58]) = (quantity[58], quantity[slot]);
+                                continue;
+                            }
+                            if (!planned || !TryBankPair(image, copper, quantity, caps, slot,
+                                InventoryTuple(nextSlot), InventoryTuple(nextCursor), !fullExchange && leg == 2, itemTime, context))
+                            { valid = false; break; }
+                        }
+                        if (!valid) break;
                     }
-                    if (!valid) break;
+                    if (!valid || !image.AsSpan().SequenceEqual(accepted)) continue;
+                    // The shared journal represents caps by original -> final lanes.
+                    var finalCaps = capture.Caps;
+                    ReconcileFinalBankCaps(capture.Before, image, finalCaps);
+                    quantity.AsSpan(0, 59).CopyTo(mainQuantity);
+                    copper.AsSpan(0, 59).CopyTo(mainCopper);
+                    if (!finalCaps.AsSpan().SequenceEqual(acceptedCaps) ||
+                        !AreValidRetainedMainShopImage(image.AsSpan(0, 59), mainQuantity, mainCopper,
+                            finalCaps.AsSpan(0, 59 * 5)) ||
+                        !AreValidShopBanks(image.AsSpan(59), copper.AsSpan(59)) ||
+                        !AreValidShopBankOwnership(image.AsSpan(59), quantity.AsSpan(59),
+                            finalCaps.AsSpan(59 * 5))) continue;
+                    if (!copper.AsSpan().SequenceEqual(acceptedCopper) ||
+                        !quantity.AsSpan().SequenceEqual(acceptedQuantity))
+                    { result.Ambiguous = true; yield break; }
                 }
-                if (!valid || !image.AsSpan().SequenceEqual(accepted)) continue;
-                // The shared journal represents caps by original -> final lanes.
-                var finalCaps = capture.Caps;
-                ReconcileFinalBankCaps(capture.Before, image, finalCaps);
-                quantity.AsSpan(0, 59).CopyTo(mainQuantity);
-                copper.AsSpan(0, 59).CopyTo(mainCopper);
-                if (!finalCaps.AsSpan().SequenceEqual(acceptedCaps) ||
-                    !AreValidRetainedMainShopImage(image.AsSpan(0, 59), mainQuantity, mainCopper,
-                        finalCaps.AsSpan(0, 59 * 5)) ||
-                    !AreValidShopBanks(image.AsSpan(59), copper.AsSpan(59)) ||
-                    !AreValidShopBankOwnership(image.AsSpan(59), quantity.AsSpan(59),
-                        finalCaps.AsSpan(59 * 5))) continue;
-                if (!copper.AsSpan().SequenceEqual(acceptedCopper) ||
-                    !quantity.AsSpan().SequenceEqual(acceptedQuantity))
-                { result.Ambiguous = true; yield break; }
             }
         }
     }

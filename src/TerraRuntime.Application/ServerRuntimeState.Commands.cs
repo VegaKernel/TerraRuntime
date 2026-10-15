@@ -12,7 +12,8 @@ namespace TerraRuntime.Application;
 internal sealed partial class ServerRuntimeState
 {
     internal bool CanApplyCommand(GameCommandSourceId source, RuntimeCommand command) =>
-        _runtime.Players.CanApplyShopSource(source);
+        _runtime.Players.CanApplyShopSource(source) &&
+        (_runtime.ChestCommands?.CanApplyCraftingCommand(command) ?? true);
 
     public void Apply(RuntimeCommand command)
     {

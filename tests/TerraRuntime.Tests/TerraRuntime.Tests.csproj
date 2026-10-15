@@ -624,4 +624,48 @@
     <EmbeddedResource Include="Fixtures/AmbrosiaMetadataWindowsFirst.json.gz" LogicalName="AmbrosiaPlacementMetadataWindowsFirst1458" />
     <EmbeddedResource Include="Fixtures/AmbrosiaMetadataWindowsRepeat.json.gz" LogicalName="AmbrosiaPlacementMetadataWindowsRepeat1458" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/CraftingReachLinuxFirst1458.json.gz" LogicalName="CraftingReachLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingLocalLinuxFirst1458.json.gz" LogicalName="CraftingLocalLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingLocalWindowsFirst1458.json.gz" LogicalName="CraftingLocalWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCurrentBankLinuxFirst1458.json.gz" LogicalName="CraftingCurrentBankLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCurrentBankWindowsFirst1458.json.gz" LogicalName="CraftingCurrentBankWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingLocalLinuxRepeat1458.json.gz" LogicalName="CraftingLocalLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingLocalWindowsRepeat1458.json.gz" LogicalName="CraftingLocalWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCallerLinuxFirst1458.json.gz" LogicalName="CraftingCallerLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCallerLinuxRepeat1458.json.gz" LogicalName="CraftingCallerLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCallerWindowsFirst1458.json.gz" LogicalName="CraftingCallerWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCallerWindowsRepeat1458.json.gz" LogicalName="CraftingCallerWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCoinLinuxFirst1458.json.gz" LogicalName="CraftingCoinLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCoinLinuxRepeat1458.json.gz" LogicalName="CraftingCoinLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCoinWindowsFirst1458.json.gz" LogicalName="CraftingCoinWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingCoinWindowsRepeat1458.json.gz" LogicalName="CraftingCoinWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingAllSkipLinuxFirst1458.json.gz" LogicalName="CraftingAllSkipLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingAllSkipLinuxRepeat1458.json.gz" LogicalName="CraftingAllSkipLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingAllSkipWindowsFirst1458.json.gz" LogicalName="CraftingAllSkipWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingAllSkipWindowsRepeat1458.json.gz" LogicalName="CraftingAllSkipWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingPrefixCapabilityLinuxFirst1458.json.gz" LogicalName="CraftingPrefixCapabilityLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingPrefixCapabilityLinuxRepeat1458.json.gz" LogicalName="CraftingPrefixCapabilityLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/CraftingPrefixCapabilityWindowsFirst1458.json.gz" LogicalName="CraftingPrefixCapabilityWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/CraftingPrefixCapabilityWindowsRepeat1458.json.gz" LogicalName="CraftingPrefixCapabilityWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/TorchFavorSourceLinuxFirst1458.json.gz" LogicalName="TorchFavorSourceLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/TorchFavorSourceLinuxRepeat1458.json.gz" LogicalName="TorchFavorSourceLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/TorchFavorSourceWindowsFirst1458.json.gz" LogicalName="TorchFavorSourceWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/TorchFavorSourceWindowsRepeat1458.json.gz" LogicalName="TorchFavorSourceWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/WorldChestCursorLinux1458.json.gz" LogicalName="WorldChestCursorLinux1458" />
+    <EmbeddedResource Include="Fixtures/WorldChestCompoundLinux1458.json.gz" LogicalName="WorldChestCompoundLinux1458" />
+    <EmbeddedResource Include="Fixtures/RemoteCraftEarlyLinux1458.json.gz" LogicalName="RemoteCraftEarlyLinux1458" />
+    <EmbeddedResource Include="Fixtures/WorldChestCursorWindows1458.json.gz" LogicalName="WorldChestCursorWindows1458" />
+    <EmbeddedResource Include="Fixtures/WorldChestCompoundWindows1458.json.gz" LogicalName="WorldChestCompoundWindows1458" />
+    <EmbeddedResource Include="Fixtures/RemoteCraftEarlyWindows1458.json.gz" LogicalName="RemoteCraftEarlyWindows1458" />
+    <EmbeddedResource Include="Fixtures/bank-favorite-linux-first-official-1458.json.gz" LogicalName="BankFavoriteLinuxfirst1458" />
+    <EmbeddedResource Include="Fixtures/bank-favorite-linux-repeat-official-1458.json.gz" LogicalName="BankFavoriteLinuxrepeat1458" />
+    <EmbeddedResource Include="Fixtures/bank-favorite-windows-first-official-1458.json.gz" LogicalName="BankFavoriteWindowsfirst1458" />
+    <EmbeddedResource Include="Fixtures/bank-favorite-windows-repeat-official-1458.json.gz" LogicalName="BankFavoriteWindowsrepeat1458" />
+    <EmbeddedResource Include="Fixtures/reserved-role-cycle-linux-first-official-1458.json.gz" LogicalName="ReservedCycleLinuxfirst1458" />
+    <EmbeddedResource Include="Fixtures/reserved-role-cycle-linux-repeat-official-1458.json.gz" LogicalName="ReservedCycleLinuxrepeat1458" />
+    <EmbeddedResource Include="Fixtures/reserved-role-cycle-windows-first-official-1458.json.gz" LogicalName="ReservedCycleWindowsfirst1458" />
+    <EmbeddedResource Include="Fixtures/reserved-role-cycle-windows-repeat-official-1458.json.gz" LogicalName="ReservedCycleWindowsrepeat1458" />
+  </ItemGroup>
 </Project>

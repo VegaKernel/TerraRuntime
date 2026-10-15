@@ -10,6 +10,7 @@ internal sealed partial class PlayerAuthority
     private void CaptureManaCrystalIntent(RuntimePlayerMember member, in PlayerMovementCommitRequest request)
     {
         if (member.ItemPhase is not { } phase) return;
+        CaptureTorchFavorIntent(member, in request, ref phase);
         CapturePermanentUpgradeIntent(member, in request, ref phase);
         // Releasing or changing selection retires only the unfinished local life
         // action. The permanent custody guard and exact delayed ACK explanation

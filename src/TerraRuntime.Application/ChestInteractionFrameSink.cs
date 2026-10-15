@@ -66,6 +66,17 @@ public sealed class ChestInteractionFrameSink :
         if (StopReason != ChestInteractionFrameStopReason.None)
             return TerrariaFrameSinkResult.Stop;
 
+        if (TerrariaCraftingRequestCodec1458.IsCraftingModule(in frame))
+        {
+            if (!TryGetPlayingConnection(out ConnectionHandle craftingConnection))
+                return Stop(ChestInteractionFrameStopReason.InvalidJoinState);
+            if (TerrariaCraftingRequestCodec1458.TryDecode(in frame, out var craftingRequest) !=
+                TerrariaCraftingRequestDecode1458.Decoded || craftingRequest is null)
+                return Stop(ChestInteractionFrameStopReason.MalformedChestPacket);
+            _ = ingress.TryPostCrafting(craftingConnection, craftingRequest);
+            return TerrariaFrameSinkResult.Continue;
+        }
+
         TerrariaMessageId messageId = (TerrariaMessageId)frame.MessageId;
         if (messageId is not TerrariaMessageId.RequestChestOpen and
             not TerrariaMessageId.SyncChestItem and

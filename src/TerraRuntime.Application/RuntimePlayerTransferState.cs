@@ -21,6 +21,8 @@ internal sealed record RuntimePlayerTransferState(
     internal bool OwnsManaMaximum { get; init; }
     internal bool OwnsLifeMaximum { get; init; }
     internal byte OwnedPermanentUpgradeMask { get; init; }
+    internal bool OwnsTorchFavor { get; init; }
+    internal bool PaidTorchFavor { get; init; }
     internal RuntimePlayerInventoryItem[] ShopBankInventory { get; init; } = new RuntimePlayerInventoryItem[160];
     internal long[] FundedShopBankCopper { get; init; } = new long[160];
     internal short[] FundedShopBankQuantities { get; init; } = new short[160];

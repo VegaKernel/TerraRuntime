@@ -57,6 +57,14 @@ public readonly record struct PlayerPermanentUnlockTransition1458(
     public ItemTypeId SelectedItem { get; init; }
 }
 
+/// <summary>One detached Torch God favor use. The caller owns payment, appearance
+/// and the once-only scripted bestiary credit; this value never publishes.</summary>
+public readonly record struct PlayerTorchGodFavorTransition1458(
+    PlayerSelectedConsumableTransition1458 Use, bool Unlocked, bool UsingBiomeTorches, bool Applied)
+{
+    public ItemTypeId SelectedItem { get; init; }
+}
+
 /// <summary>Inputs after equipment and before source UpdatePermanentBoosters.</summary>
 public readonly record struct PlayerPermanentBoosterState1458(
     int Defense, int FishingSkill, float PickSpeed, float TileSpeed, float WallSpeed);
@@ -253,6 +261,49 @@ public static class VanillaSelectedConsumable1458
             state = state with { ItemTime = state.Animation };
         use = use with { State = state, Consumed = consumed, RemainingStack = remaining };
         transition = new(use, nextUnlocks, applied, family)
+        {
+            SelectedItem = remaining == 0 && state.Animation == 0 ? VanillaItemIds.None : facts.Item
+        };
+        return true;
+    }
+
+    /// <summary>Terraria 1.4.5.8 ItemCheck_UseTorchGodsFavor followed by the
+    /// ordinary consumable debit. The supplied local-effects decision must come
+    /// from the caller's owned use; packet-4 flags alone do not provide it.</summary>
+    public static bool TryStepTorchGodFavor(PlayerSelectedConsumableState1458? previous,
+        in PlayerSelectedConsumableFacts1458 facts, int selectedStack,
+        bool unlocked, bool usingBiomeTorches, bool localEffects, bool noItems,
+        Func<int, int, int> nextInteger, Func<double> nextDouble,
+        out PlayerTorchGodFavorTransition1458 transition)
+    {
+        transition = default;
+        if (selectedStack is < 0 or > short.MaxValue ||
+            (facts.Item.Value != 5043 && !facts.Item.IsNone)) return false;
+        var useFacts = facts with
+        {
+            Cursed = noItems,
+            LastUseSuccess = localEffects || facts.LastUseSuccess
+        };
+        if (!TryStepCore(previous, in useFacts, nextInteger, nextDouble, localEffects: false, out var use))
+            return false;
+        bool applied = facts.Item.Value == 5043 && localEffects && facts.AllowedToHoldItems &&
+            use.State.Animation > 0 && use.State.ItemTime == 0 && !unlocked;
+        if (applied)
+        {
+            unlocked = true;
+            usingBiomeTorches = true;
+            VanillaSelectedConsumableCatalog1458.TryGet(facts.Item, out var item);
+            use = use with { State = use.State with { ItemTime = item.UseTime, ItemTimeMax = item.UseTime } };
+        }
+        bool consumptionPoint = localEffects && facts.AllowedToHoldItems && !facts.CrowdControlled &&
+            use.State.ItemTimeMax != 0 && use.State.ItemTime == use.State.ItemTimeMax;
+        bool consumed = consumptionPoint && selectedStack > 0;
+        int remaining = selectedStack - (consumed ? 1 : 0);
+        var state = use.State;
+        if (consumptionPoint && remaining == 0)
+            state = state with { ItemTime = state.Animation };
+        use = use with { State = state, Consumed = consumed, RemainingStack = remaining };
+        transition = new(use, unlocked, usingBiomeTorches, applied)
         {
             SelectedItem = remaining == 0 && state.Animation == 0 ? VanillaItemIds.None : facts.Item
         };

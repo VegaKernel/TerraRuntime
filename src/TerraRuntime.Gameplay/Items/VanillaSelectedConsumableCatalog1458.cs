@@ -20,7 +20,7 @@ public static class VanillaSelectedConsumableCatalog1458
             definition = new(type, 0, 0, false, 30, 30, 0);
             return true;
         }
-        if (type.Value == 3335)
+        if (type.Value is 3335 or 5043)
         {
             definition = new(type, 0, 0, false, 30, 30, 0);
             return true;

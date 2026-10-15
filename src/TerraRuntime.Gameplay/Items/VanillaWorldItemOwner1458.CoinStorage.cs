@@ -10,7 +10,7 @@ public static partial class VanillaWorldItemOwner1458
     // it is not a claim about intermediate GetItem callbacks or wallet spending.
     private static bool TryPlanCoinStorage(in WorldItemPickupSlot1458 incoming,
         ReadOnlySpan<WorldItemPickupSlot1458> inventory, bool voidEnabled,
-        out WorldItemStoragePlan1458? plan)
+        out WorldItemStoragePlan1458? plan, bool noCoinMerge = false)
     {
         plan = null;
         var projected = inventory.ToArray();
@@ -63,7 +63,7 @@ public static partial class VanillaWorldItemOwner1458
             int amount = Math.Min(remaining, maximum - before.Stack);
             Set(slot, before with { Stack = before.Stack + amount });
             remaining -= amount;
-            ConvertExactHundred(slot);
+            if (!noCoinMerge) ConvertExactHundred(slot);
         }
 
         for (short slot = VanillaPlayerItemSlotCatalog.CoinSlotStart;
@@ -81,7 +81,7 @@ public static partial class VanillaWorldItemOwner1458
                 if (projected[slot].Type != 0) continue;
                 Set((short)slot, incoming with { Stack = remaining });
                 remaining = 0;
-                ConvertExactHundred((short)slot);
+                if (!noCoinMerge) ConvertExactHundred((short)slot);
                 break;
             }
         }

@@ -1003,6 +1003,37 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
+        // Source bank hitboxes; definition metadata does not implement their AI.
+        if (type.Value == 525)
+        {
+            definition = new(30, 24, new(97), false, false, true, 30, 24);
+            return true;
+        }
+        if (type.Value == 960)
+        {
+            definition = new(20, 20, new(26), true, false, true, 20, 20);
+            return true;
+        }
+        if (type.Value == 734)
+        {
+            definition = new(30, 24, new(154), false, false, true, 30, 24);
+            return true;
+        }
+
+        // Source SetDefaults/GetCollisionParams metadata enables retained owner
+        // grappling classification and crafting retirement. AI67/26 execution
+        // is still an independent unsupported behavior boundary.
+        if (type.Value == 1093)
+        {
+            definition = new(14, 22, new(67), true, false, true, 14, 22);
+            return true;
+        }
+        if (type.Value == 1094)
+        {
+            definition = new(18, 18, new(26), true, false, true, 18, 18);
+            return true;
+        }
+
         if (VanillaFallingBlock1458.TryGetTile(type, out _))
         {
             definition = new(10, 10, VanillaProjectileAiStyles.FallingBlock, true, false, true, 10, 10);

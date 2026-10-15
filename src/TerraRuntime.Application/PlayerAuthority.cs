@@ -479,7 +479,9 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
-        if (activePlayer is not null && !TryPreparePermanentAppearance(activePlayer, in request, out request))
+        if (activePlayer is not null &&
+            (!TryPrepareTorchFavorAppearance(activePlayer, in request, out request) ||
+             !TryPreparePermanentAppearance(activePlayer, in request, out request)))
         {
             RejectedAppearances++;
             return;
@@ -505,6 +507,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryStageLocalCraftCredit(equipment)) return;
         if (TryAcknowledgeSelectedPotionInventory(equipment)) return;
         if (TryReconcileShopInventoryReport(equipment)) return;
         if (TryReconcileFavoriteCursorReturn(equipment)) return;

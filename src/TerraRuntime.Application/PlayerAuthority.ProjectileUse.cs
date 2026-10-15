@@ -116,7 +116,7 @@ internal sealed partial class PlayerAuthority
             restoredMember.OwnsManaMaximum = true;
             restoredMember.Mana = checked((short)prepared.Payment.PaidMana);
             restoredMember.ItemPhase = restoredPhase with { Mana = restoredPhase.Mana with { Mana = restoredMember.Mana },
-                Channel = true, SlowMagicUse = prepared.Payment.SlowMagicUse, MagicPayment = prepared.Payment };
+                Channel = true, OwnedChannelExpectedType = ResolveOwnedChannelExpectedType(prepared.Payment), SlowMagicUse = prepared.Payment.SlowMagicUse, MagicPayment = prepared.Payment };
             return true;
         }
         if (magicPayment is { } payment)
@@ -127,7 +127,7 @@ internal sealed partial class PlayerAuthority
             paidMember.OwnsManaMaximum = true;
             paidMember.Mana = checked((short)(paidMember.Mana - manaCost));
             paidMember.ItemPhase = phase with { Mana = phase.Mana with { Mana = paidMember.Mana },
-                Channel = true, SlowMagicUse = payment.SlowMagicUse, MagicPayment = payment };
+                Channel = true, OwnedChannelExpectedType = ResolveOwnedChannelExpectedType(payment), SlowMagicUse = payment.SlowMagicUse, MagicPayment = payment };
             return true;
         }
         if (manaCost > 0)
@@ -141,6 +141,13 @@ internal sealed partial class PlayerAuthority
         }
         if (mutation is not { } value) return true;
         return inventory.TryApplyProjectileConsumption(capture.Connection, in value, capture.InventorySerial);
+    }
+
+    private static int ResolveOwnedChannelExpectedType(RuntimePlayerMagicPayment1458 payment)
+    {
+        if (!TerraRuntime.Gameplay.Items.VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(payment.Item.ItemType, out var weapon))
+            throw new InvalidOperationException("Validated channel payment lost its source weapon.");
+        return weapon.ProjectileType.Value;
     }
 
     internal void PublishProjectileUse(RuntimePlayerProjectileUseCapture capture, RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicUsePreparation? magicUse = null)

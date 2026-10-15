@@ -11,7 +11,7 @@ namespace TerraRuntime.Application;
 /// Transport-only projection of authoritative chest commits. The game thread decides ownership and state first;
 /// this registry only serializes committed snapshots and fans them out to connection-owned bounded queues.
 /// </summary>
-internal sealed class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
+internal sealed partial class RuntimeChestReplicationRegistry : IRuntimePlayerEventSink
 {
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
 

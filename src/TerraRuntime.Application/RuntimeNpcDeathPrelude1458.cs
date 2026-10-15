@@ -51,6 +51,21 @@ internal sealed class RuntimeNpcDeathPrelude1458
         var result = new RuntimeNpcDeathPrelude1458(CaptureBanners(), CaptureBestiary());
         result.Revision = Revision; return result;
     }
+    internal bool TryPrepareScriptedKills(ReadOnlySpan<NpcSnapshot> victims, out RuntimeNpcDeathPrelude1458? preview)
+    {
+        preview = null;
+        if (victims.Length is < 1 or > 255) return false;
+        var staged = CreatePreview();
+        foreach (var victim in victims)
+        {
+            // A batch is one detached transaction containing several genuine
+            // scripted deaths; retain every frame and sequential reported count.
+            staged.applied = false;
+            if (!staged.TryRegisterScriptedKill(in victim)) return false;
+        }
+        preview = staged;
+        return true;
+    }
     public WorldBannerData1458 CaptureBanners() => new((int[])kills.Clone(), (ushort[])claims.Clone());
     public WorldBestiaryData CaptureBestiary() => new(bestiary.Select(static entry => new WorldBestiaryKill(entry.Key, entry.Value)).ToArray(),
         (string[])sightings.Clone(), (string[])chats.Clone());

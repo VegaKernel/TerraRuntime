@@ -133,8 +133,9 @@ public sealed partial class WorldRuntime : IDisposable
 
         TileManipulationReplication = new RuntimeTileManipulationReplicationRegistry();
         ChestReplication = new RuntimeChestReplicationRegistry();
-        Chests = new RuntimeChestStore(world.Chests);
-        ChestCommands = new RuntimeChestCommandProcessor(Chests, ChestReplication);
+        Chests = new RuntimeChestStore(world.Chests, ownsLoadedWorldStock: true);
+        ChestCommands = new RuntimeChestCommandProcessor(Chests, ChestReplication, world.Tiles,
+            connection => State is { } state && state.IsCurrentPlayerConnection(connection));
         SignReplication = new RuntimeSignReplicationRegistry();
         Signs = new RuntimeSignStore(world.Signs, world.Tiles);
         SignCommands = new RuntimeSignCommandProcessor(Signs, SignReplication);

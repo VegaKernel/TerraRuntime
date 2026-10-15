@@ -11,6 +11,8 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
+    internal bool IsCurrentPlayerConnection(ConnectionHandle connection) => _runtime.Players.IsCurrent(connection);
+
     internal bool TryCapturePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
         => _runtime.Players.TryCapture(player, out snapshot);
 

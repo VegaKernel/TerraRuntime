@@ -80,7 +80,7 @@ internal sealed partial class PlayerAuthority
             buffTypes,
             player.GodMode,
             mouseItemNormalized)
-        { ShopBankInventory = bankItems, FundedShopBankCopper = bankCopper, FundedShopBankQuantities = bankQuantities, OwnedShopBankQuantityCaps = bankCaps, FundedInventoryCoinValues = coinValues, FundedInventoryQuantities = funded, OwnedInventoryQuantities = quantityCaps, OwnsManaMaximum = player.OwnsManaMaximum, OwnsLifeMaximum = player.OwnsLifeMaximum, OwnedPermanentUpgradeMask = player.OwnedPermanentUpgradeMask, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
+        { ShopBankInventory = bankItems, FundedShopBankCopper = bankCopper, FundedShopBankQuantities = bankQuantities, OwnedShopBankQuantityCaps = bankCaps, FundedInventoryCoinValues = coinValues, FundedInventoryQuantities = funded, OwnedInventoryQuantities = quantityCaps, OwnsManaMaximum = player.OwnsManaMaximum, OwnsLifeMaximum = player.OwnsLifeMaximum, OwnedPermanentUpgradeMask = player.OwnedPermanentUpgradeMask, OwnsTorchFavor = player.OwnsTorchFavor, PaidTorchFavor = player.PaidTorchFavor, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
           BuffState = transferProfiles.CaptureBuffState(connection) };
 
         membership.ClearPending(connection);
@@ -165,7 +165,18 @@ internal sealed partial class PlayerAuthority
     {
         ConnectionHandle connection = command.Connection;
         RuntimePlayerTransferState transfer = command.Transfer;
+        if (transfer.PaidTorchFavor && (!transfer.OwnsTorchFavor ||
+            (transfer.Appearance?.TorchAndCartFlags & 4) != 4))
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
         // Unknown imported clocks stay unknown; malformed represented clocks are not constructor facts.
+        if (transfer.ItemPhase?.OwnedChannelExpectedType is { } expectedChannel && expectedChannel is not (16 or 34 or 79))
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
         if (transfer.ItemPhase is { ClientUiPriceArithmeticMask: > 3 } or { ShopDiscountStates: > 15 } or { ToolTime: < 0 } or { AttackCD: < 0 } ||
             (transfer.ItemPhase?.MagicPayment is { } importedPayment && (!importedPayment.IsValid || !transfer.OwnsManaMaximum)) ||
             (transfer.ItemPhase?.DerivedCombat is { } derivedCombat && !IsValidDerivedCombat(in derivedCombat)))
@@ -278,6 +289,8 @@ internal sealed partial class PlayerAuthority
             OwnsManaMaximum = transfer.OwnsManaMaximum,
             OwnsLifeMaximum = transfer.OwnsLifeMaximum,
             OwnedPermanentUpgradeMask = transfer.OwnedPermanentUpgradeMask,
+            OwnsTorchFavor = transfer.OwnsTorchFavor,
+            PaidTorchFavor = transfer.PaidTorchFavor,
             ItemPhase = transferredPhase is { } phase
                 ? phase with { ManaCrystalIntent = null, SelectedPotionUse = null, QuickBuffExplanation = null, Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
                     MagicPayment = phase.MagicPayment is { } payment ? payment with

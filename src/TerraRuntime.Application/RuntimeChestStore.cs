@@ -1,4 +1,4 @@
-﻿using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -10,7 +10,7 @@ namespace TerraRuntime.Application;
 /// thread. Chest ownership is generation-safe and exclusive, matching vanilla's request/open protocol: packet 31
 /// asks the server to acquire a chest; only the exact live connection that acquired it may mutate packet-32 slots.
 /// </summary>
-internal sealed class RuntimeChestStore
+internal sealed partial class RuntimeChestStore
 {
     private const int PlayerSlotCount = byte.MaxValue + 1;
     private const short NoChest = -1;
@@ -21,8 +21,9 @@ internal sealed class RuntimeChestStore
     private readonly ConnectionHandle[] activeConnections = new ConnectionHandle[PlayerSlotCount];
     private readonly short[] activeChests = new short[PlayerSlotCount];
 
-    public RuntimeChestStore(ReadOnlySpan<WorldChest> source)
+    public RuntimeChestStore(ReadOnlySpan<WorldChest> source, bool ownsLoadedWorldStock = false)
     {
+        this.ownsLoadedWorldStock = ownsLoadedWorldStock;
         Array.Fill(activeChests, NoChest);
 
         foreach (WorldChest chest in source)
@@ -54,6 +55,7 @@ internal sealed class RuntimeChestStore
     /// following commit observes the same store state unless another gameplay operation deliberately ran first.
     /// </summary>
     public bool CanCreateAt(int tileX, int tileY) =>
+        craftingRevision < ulong.MaxValue &&
         !chestByCoordinates.ContainsKey(GetCoordinateKey(tileX, tileY)) &&
         FindFirstFreeChestSlot() >= 0;
 
@@ -79,7 +81,7 @@ internal sealed class RuntimeChestStore
         out WorldChest chest)
     {
         chest = null!;
-        if (itemSlotCount <= 0 || itemSlotCount > VanillaChestStorageFacts1458.MaximumProtocolItemSlots)
+        if (craftingRevision == ulong.MaxValue || itemSlotCount <= 0 || itemSlotCount > VanillaChestStorageFacts1458.MaximumProtocolItemSlots)
             return false;
 
         long coordinateKey = GetCoordinateKey(tileX, tileY);
@@ -97,6 +99,7 @@ internal sealed class RuntimeChestStore
             string.Empty,
             new WorldChestItem[itemSlotCount]);
         chests[chestId] = created;
+        craftingRevision++;
         if (!chestByCoordinates.TryAdd(coordinateKey, chestId))
         {
             chests[chestId] = null;
@@ -112,7 +115,7 @@ internal sealed class RuntimeChestStore
     /// or contains items; name text alone is not inventory and therefore does not block an otherwise empty chest.
     /// </summary>
     public bool CanRemoveAt(int tileX, int tileY) =>
-        TryGetRemovableChest(tileX, tileY, out _, out _);
+        craftingRevision < ulong.MaxValue && TryGetRemovableChest(tileX, tileY, out _, out _);
 
     /// <summary>
     /// Removes an empty, closed chest from both slot and coordinate indexes. Ownership/session arrays are required to
@@ -121,13 +124,14 @@ internal sealed class RuntimeChestStore
     public bool TryRemoveAt(int tileX, int tileY, out WorldChest removed)
     {
         removed = null!;
-        if (!TryGetRemovableChest(tileX, tileY, out short chestId, out WorldChest chest))
+        if (craftingRevision == ulong.MaxValue || !TryGetRemovableChest(tileX, tileY, out short chestId, out WorldChest chest))
             return false;
 
         if (!chestByCoordinates.Remove(GetCoordinateKey(tileX, tileY)))
             return false;
 
         chests[chestId] = null;
+        craftingRevision++;
         owners[chestId] = default;
         removed = chest;
         return true;
@@ -139,7 +143,7 @@ internal sealed class RuntimeChestStore
         short tileY,
         out WorldChest chest)
     {
-        if (!connection.IsAssigned ||
+        if (craftingRevision == ulong.MaxValue || !connection.IsAssigned ||
             !chestByCoordinates.TryGetValue(GetCoordinateKey(tileX, tileY), out short chestId) ||
             chests[chestId] is not WorldChest existing)
         {
@@ -166,6 +170,7 @@ internal sealed class RuntimeChestStore
         if (previousChestId >= 0 && previousChestId != chestId && owners[previousChestId] == connection)
             owners[previousChestId] = default;
 
+        craftingRevision++;
         owners[chestId] = connection;
         activeConnections[playerSlot] = connection;
         activeChests[playerSlot] = chestId;
@@ -179,7 +184,7 @@ internal sealed class RuntimeChestStore
         out TerrariaChestItemState committed)
     {
         committed = default;
-        if (!TryGetOpenChest(connection, out WorldChest chest) ||
+        if (craftingRevision == ulong.MaxValue || !TryGetOpenChest(connection, out WorldChest chest) ||
             submitted.ChestId != chest.SlotId ||
             submitted.ItemSlot >= chest.Items.Length ||
             submitted.Stack < 0)
@@ -207,7 +212,9 @@ internal sealed class RuntimeChestStore
                 checked((short)itemType.Value));
         }
 
+        if (ownsLoadedWorldStock && chest.Items[submitted.ItemSlot] != item) return false;
         chest.Items[submitted.ItemSlot] = item;
+        craftingRevision++;
         return true;
     }
 
@@ -215,17 +222,20 @@ internal sealed class RuntimeChestStore
         ConnectionHandle connection,
         in TerrariaActiveChestState submitted,
         out WorldChest? renamedChest,
-        out bool closedWorldChest)
+        out bool closedWorldChest,
+        bool recordOwnedContainerContext = false)
     {
         renamedChest = null;
         closedWorldChest = false;
-        if (!connection.IsAssigned)
+        if (craftingRevision == ulong.MaxValue || !connection.IsAssigned)
             return false;
 
         // Vanilla uses negative chest indices for closing a world chest or switching to a player-owned bank.
         // Either transition releases any currently acquired world chest.
         if (submitted.ChestId < 0)
         {
+            if (recordOwnedContainerContext)
+                return TryRecordOwnedContainerContext(connection, in submitted, out closedWorldChest);
             if (!TryClose(connection, out short closedChestId))
                 return false;
             closedWorldChest = closedChestId >= 0;
@@ -272,6 +282,7 @@ internal sealed class RuntimeChestStore
             name,
             chest.Items);
         chests[chest.SlotId] = updated;
+        craftingRevision++;
         renamedChest = updated;
         return true;
     }
@@ -309,7 +320,7 @@ internal sealed class RuntimeChestStore
     public bool TryClose(ConnectionHandle connection, out short closedChestId)
     {
         closedChestId = NoChest;
-        if (!connection.IsAssigned)
+        if (craftingRevision == ulong.MaxValue || !connection.IsAssigned)
             return false;
 
         int playerSlot = connection.Player.Slot.Value;
@@ -319,6 +330,7 @@ internal sealed class RuntimeChestStore
         short chestId = activeChests[playerSlot];
         activeConnections[playerSlot] = default;
         activeChests[playerSlot] = NoChest;
+        craftingRevision++;
 
         if (chestId < 0)
             return true;

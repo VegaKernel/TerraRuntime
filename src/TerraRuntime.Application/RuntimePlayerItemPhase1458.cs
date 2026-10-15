@@ -158,6 +158,8 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     internal int ManaPotionDelay { get; init; }
     internal bool PendingItemReuse { get; init; }
     internal bool Channel { get; init; }
+    // Source StartChanneling(Item) provenance; current selection and raw Channel do not establish this cache.
+    internal int? OwnedChannelExpectedType { get; init; }
     internal bool SlowMagicUse { get; init; }
     internal RuntimePlayerMagicPayment1458? MagicPayment { get; init; }
     internal int? ToolTime { get; init; }

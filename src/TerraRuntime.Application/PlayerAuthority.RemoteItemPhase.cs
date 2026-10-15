@@ -29,6 +29,8 @@ internal sealed partial class PlayerAuthority
             return false;
         ulong memberSerial = membership.Serial;
         ulong inventorySerial = inventory.Serial;
+        var favorPrelude = torchFavorPrelude;
+        ulong favorRevision = favorPrelude?.Revision ?? 0;
         var beforeRandom = random.Clone();
         var plannedRandom = random.Clone();
         var versions = new long[tiles.Dimensions.SectionCount];
@@ -58,6 +60,8 @@ internal sealed partial class PlayerAuthority
             membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
             plans[i].BeforeShopSession = shopSession;
             plans[i].BeforePermanentUpgradeMask = member.OwnedPermanentUpgradeMask;
+            plans[i].BeforeOwnsTorchFavor = member.OwnsTorchFavor;
+            plans[i].BeforePaidTorchFavor = member.PaidTorchFavor;
             if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore)) return false;
             // Capture source UpdateEquips' bag gate before any external provider.
             // Cursor 58 and stored bags cannot open Void storage.
@@ -122,6 +126,7 @@ internal sealed partial class PlayerAuthority
                 member.CaptureSnapshot() != plan.Before || member.ItemPhase != plan.BeforeItem ||
                 member.PhysicsPhase != plan.BeforePhysics || member.GodMode != plan.GodMode ||
                 member.OwnedPermanentUpgradeMask != plan.BeforePermanentUpgradeMask ||
+                member.OwnsTorchFavor != plan.BeforeOwnsTorchFavor || member.PaidTorchFavor != plan.BeforePaidTorchFavor ||
                 member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum || member.OwnsLifeMaximum != plan.BeforeOwnsLifeMaximum ||
                 member.Revision == ulong.MaxValue ||
                 !transferProfiles.TryCapture(member.Connection, out var appearance, out var equipment, out var buffs) ||
@@ -129,11 +134,24 @@ internal sealed partial class PlayerAuthority
                 buffs is null || !buffs.AsSpan().SequenceEqual(plan.BuffTypes) ||
                 !transferProfiles.IsCurrentBuffState(member.Connection, plan.BeforeBuffs)) return false;
         }
+        RuntimeNpcDeathPrelude1458? favorPreview = null;
+        int favorCount = plans.Count(static plan => plan.CreditTorchFavor);
+        if (favorCount != 0)
+        {
+            if (!ReferenceEquals(torchFavorPrelude, favorPrelude) || favorPrelude is null || favorPrelude.Revision != favorRevision)
+                return false;
+            var victims = new NpcSnapshot[favorCount];
+            Array.Fill(victims, new(default, default, 664, 664, 0f, 0f, 0f, 0f, 0, default, default));
+            if (!favorPrelude.TryPrepareScriptedKills(victims, out favorPreview)) return false;
+        }
         foreach (var plan in plans)
             if (plan.PublishBuffs) plan.PublishedBuffTypes = plan.Buffs.CaptureTypes();
         var phaseMutations = plans.SelectMany(static plan => plan.InventoryMutations).ToArray();
         if (!inventory.TryPrepareRemotePhase(phaseMutations, inventorySerial, out var inventoryPlan) ||
             !inventoryPlan!.TryAdoptUnpublished()) return false;
+        RuntimeNpcDeathPrelude1458.PreludePublication? favorPublication = null;
+        if (favorPreview is not null && !favorPrelude!.TryAdoptUnpublished(favorPreview, favorRevision, out favorPublication))
+            throw new InvalidOperationException("Validated Torch favor prelude lost currentness during callback-free adoption.");
         foreach (var plan in plans)
         {
             if (!plan.Changed) continue;
@@ -142,6 +160,7 @@ internal sealed partial class PlayerAuthority
             transferProfiles.TryAdoptBuffState(member.Connection, plan.BeforeBuffs, plan.Buffs);
             if (plan.AcceptedPermanentAppearance is { } acceptedAppearance)
                 transferProfiles.TrySetAppearance(member.Connection, in acceptedAppearance);
+            if (plan.CreditTorchFavor) member.PaidTorchFavor = true;
             member.TryAdvanceRemotePhaseRevision();
             member.ItemPhase = plan.Item;
             if (plan.InventoryMutations.Any(static mutation => mutation.CursorSourceDebit is not null) &&
@@ -173,6 +192,8 @@ internal sealed partial class PlayerAuthority
         }
         random.CopyStateFrom(plannedRandom);
         Exception? first = null;
+        try { favorPublication?.TryPublish(); }
+        catch (Exception error) { first = error; }
         int mutationIndex = 0;
         for (int index = 0; index < plans.Length; index++)
         {
@@ -376,7 +397,7 @@ internal sealed partial class PlayerAuthority
             var resetBoosters = new PlayerPermanentBoosterState1458(derivedCombat.Defense, 0, 1f, 1f, 1f);
             if (!VanillaSelectedConsumable1458.TryApplyPermanentBoosters(in resetBoosters, in capturedUnlocks, out var boosters) ||
                 !VanillaSelectedConsumable1458.TryFinalizePermanentSpeeds(in boosters, out var speeds) ||
-                !VanillaSelectedConsumable1458.TryGetPermanentCraftingRegion(plan.X, plan.Y, 20, 42, 5, 4,
+                !VanillaSelectedConsumable1458.TryGetPermanentCraftingRegion(plan.X, plan.Y, 20, 42, 5, 3,
                     in capturedUnlocks, out var craftingRegion)) return false;
             derivedCombat = derivedCombat with { Defense = boosters.Defense };
             item = item with
@@ -432,6 +453,11 @@ internal sealed partial class PlayerAuthority
             if (plan.PublishMana) mana = mana with { Maximum = item.Mana.Maximum };
             beganActualUse = use.BeganUse;
         }
+        else if (selected.ItemType.Value == 5043)
+        {
+            if (!TryPlanOwnedTorchFavor(plan, selected, item, clocks, in facts, random, out use, out item)) return false;
+            beganActualUse = use.BeganUse;
+        }
         else if (PermanentUpgradeBit(selected.ItemType.Value) != 0)
         {
             if (!TryPlanOwnedPermanentUpgrade(plan, selected, item, clocks, in facts, random,
@@ -485,6 +511,7 @@ internal sealed partial class PlayerAuthority
             else if (priorPayment is { } stale &&
                 (!facts.ControlUseItem || !stale.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum)))
                 item = item with { MagicPayment = stale with { EligibleBirth = false, AwaitingPhase = false } };
+            if (magicUse.BeganActualUse) item = item with { OwnedChannelExpectedType = magicWeapon.ProjectileType.Value };
             item = item with { Channel = magicUse.Channel, SlowMagicUse = magicUse.SlowMagicUse };
             if (magicUse.RefreshManaDelay) mana = mana with { Delay = 4f };
             use = new(magicUse.State, facts.Life, magicUse.Mana, false, 0, 0)
@@ -636,6 +663,9 @@ internal sealed partial class PlayerAuthority
         internal bool BeforeOwnsManaMaximum { get; } = ownsManaMaximum;
         internal bool BeforeOwnsLifeMaximum { get; } = ownsLifeMaximum;
         internal byte BeforePermanentUpgradeMask { get; set; }
+        internal bool BeforeOwnsTorchFavor { get; set; }
+        internal bool BeforePaidTorchFavor { get; set; }
+        internal bool CreditTorchFavor { get; set; }
         internal PlayerAppearanceCommitRequest? AcceptedPermanentAppearance { get; set; }
         internal int? AcceptedBaseLifeMaximum { get; set; }
         internal PlayerBuffState Buffs { get; } = buffs.Clone();

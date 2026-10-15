@@ -15,6 +15,8 @@ internal readonly record struct RuntimePlayerSelectedPotionUse1458(
     int BaseManaMaximum, PlayerSelectedConsumableState1458 Clocks)
 {
     internal bool Completed { get; init; }
+    internal bool TorchFavor { get; init; }
+    internal byte TorchFlagsBefore { get; init; }
     internal byte PermanentUpgradeBit { get; init; }
     internal byte PermanentUpgradeBefore { get; init; }
     internal byte PermanentUpgradeAfter { get; init; }
