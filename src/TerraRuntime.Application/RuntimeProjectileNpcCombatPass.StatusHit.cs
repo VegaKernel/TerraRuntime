@@ -82,11 +82,12 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
     }
     // Original UpdateBuffs writes for these represented inputs introduce no intrinsic
     // StatusNPC/SpawnHitVisuals flag. Their class crit is captured once; Archery/Wrath
-    // damage and speed already belong to the retained phase/launch boundary.
+    // damage and speed already belong to the retained phase/launch boundary. Food26/206/207
+    // likewise contributes through that projection and introduces no on-hit status offer.
     private static bool HasSupportedNpcHitBuffs(ReadOnlySpan<TerraRuntime.Contracts.Gameplay.BuffTypeId> buffs)
     {
         foreach (var buff in buffs)
-            if (buff.Value is not (0 or 5 or 16 or 93 or 112 or 114 or 115 or 117 or 321)) return false;
+            if (buff.Value is not (0 or 5 or 16 or 26 or 93 or 112 or 114 or 115 or 117 or 206 or 207 or 321)) return false;
         return true;
     }
 

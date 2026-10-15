@@ -2,6 +2,8 @@
 
 ## Funded food and its consumers
 
+The NPC contact admission guard accepts food buffs `26`, `206` and `207`: their damage and class crit already belong to the retained player projection, and they add no intrinsic projectile hit status. The configured paid-food → paid bow → projectile simulation → NPC contact regression covers ordinary, Unholy and Jester arrows with all three food tiers and unfed controls. This extends the earlier launch/payment check; it does not establish every projectile or NPC interaction.
+
 The selected-food producer extends the existing item-use transaction. A successful source use debits one owned inventory unit and adopts the indexed buff result before observers. Physical stock, a client buff list or an acknowledgement cannot supply that payment. The source roster contains 82 food definitions across buffs `26`, `206` and `207`; metadata coverage alone does not establish every food interaction.
 
 Selected use and QuickBuff have different rules. Selected `AddBuff` removes fed-state slots in source order before updating or inserting the result, so eating the same food can reset its timer and eating weaker food can replace a stronger tier. The detached source planner preserves consumption when immunity prevents the buff; this explicit input does not admit new runtime immunity/equipment producers. QuickBuff first chooses food using its own tier, duration and inventory order, then processes supported potions. Cursor `58` is not a QuickBuff source; Void storage follows the existing captured bag gate. All private alternatives must converge on the inventory and indexed buff result before payment is accepted.

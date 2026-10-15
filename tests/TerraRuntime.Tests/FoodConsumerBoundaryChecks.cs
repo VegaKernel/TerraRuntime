@@ -22,6 +22,64 @@ namespace TerraRuntime.Tests;
 
 internal static class FoodConsumerBoundaryChecks
 {
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "npcs")]
+    private static extern ref RuntimeNpcStore RootNpcs(NpcAuthority owner);
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "projectiles")]
+    private static extern ref RuntimeProjectileStore RootShots(ProjectileAuthority owner);
+    private static void CheckFundedNpcContact(short food, short ammunition)
+    {
+        bool paidFood = food != 0;
+        using var f = new FoodConsumerFixture("empty-selected", runtimeTick: true);
+        var c = f.Connections[2];
+        var m = f.Member(2);
+        var inv = Inventory(f.Players);
+        f.Apply(new PlayerInventorySyncCompleteRuntimeCommand(c)); f.Tick();
+        if (paidFood)
+            f.Apply(new PlayerEquipmentRuntimeCommand(c, new(c.Player.Slot, 0, 3, 0, food, 0)));
+        f.Apply(new PlayerEquipmentRuntimeCommand(c, new(c.Player.Slot, 1, 1, 0, 39, 0)));
+        f.Apply(new PlayerEquipmentRuntimeCommand(c, new(c.Player.Slot, 54, 3, 0, ammunition, 0)));
+        f.Apply(new PlayerInventorySyncCompleteRuntimeCommand(c));
+        short[] q = new short[59]; q[0] = paidFood ? (short)1 : (short)0; q[54] = 1;
+        inv.AdoptFundedQuantities(c, q);
+        f.Move(2, true); f.Tick();
+        Assert.Equal(paidFood, f.Buffs(2).HasOwnedFood);
+        f.Move(2, false); for (int i = 0; i < 55; i++) f.Tick();
+        Assert.True(m.ItemPhase.HasValue);
+        Assert.Equal(paidFood, m.ItemPhase.Value.DerivedCombat!.Value.WellFed);
+        f.Apply(new PlayerMovementRuntimeCommand(c, new(c.Player.Slot, 32, (byte)(m.MovementFlags | 16),
+            0, 64, 1, m.PositionX, m.PositionY, false, 0, 0, false, 0, false, 0, 0, 0, 0, false, 0, 0)));
+        f.Tick(); Assert.True(m.ItemPhase.HasValue);
+        var combat = m.ItemPhase.Value.DerivedCombat!.Value;
+        Assert.True(VanillaOrdinaryBowLaunch1458.TryResolve(new(39), default, new(ammunition), in combat, out var launch));
+        var packet = new TerrariaProjectileUpdateState(new(c.Player.Slot.Value, 901, 1), checked((short)launch.ProjectileType.Value),
+            m.PositionX + 5f, m.PositionY + 16f, launch.Speed, 0, 0, 0, 0, 0, (short)launch.Damage, launch.KnockBack, 0);
+        f.Apply(new ClientProjectileUpdateRuntimeCommand(c, packet));
+        var composition = Composition(f.Runtime);
+        Assert.Equal(1, composition.Projectiles.PromotedClientProjectileSpawns);
+        Assert.True(inv.TryGet(c, 54, out var paidAmmo));
+        Assert.Equal((short)2, paidAmmo.Stack);
+        Assert.Equal((short)0, inv.CaptureFundedQuantities(c)[54]);
+        if (paidFood) Assert.Equal((short)0, inv.CaptureFundedQuantities(c)[0]);
+        var shots = RootShots(composition.Projectiles);
+        var images = new ProjectileSnapshot[shots.Capacity];
+        Assert.Equal(1, shots.CopyActive(images));
+        var shot = images[0];
+        Assert.True(shots.IsCombatTrusted(shot.Handle));
+        var npcs = RootNpcs(composition.Npcs);
+        var state = new NpcStateUpdate(3, 3, shot.PositionX, shot.PositionY, 0, 0, 0, default,
+            NpcSimulationState.Initial with { Life = 45, LifeMax = 45, LifeRegenCounter = 0,
+                Immortal = false, MoneyValue = 0, ExtraMoneyValue = 0, ShimmerTransparency = 0 });
+        Assert.True(npcs.TrySpawn(0, in state, out var actor));
+        var pass = composition.Npcs.ProjectileNpcCombat;
+        long beforeHits = pass.CommittedHits;
+        Assert.True(f.Players.TryCaptureProjectileUse(c.Player, out var owner));
+        Assert.True(composition.Projectiles.TryTickState(pass));
+        pass.Tick();
+        Assert.True(npcs.TryGet(actor.Handle, out var after));
+        Assert.Equal(1L, pass.CommittedHits - beforeHits);
+        Assert.True(after.Simulation.Life < 45);
+    }
+
     private static JsonDocument Read(string name)
     {
         using var stream = typeof(FoodConsumerBoundaryChecks).Assembly.GetManifestResourceStream(name)
@@ -33,6 +91,9 @@ internal static class FoodConsumerBoundaryChecks
     private static extern ref int[] BuffDurations(PlayerBuffState state);
     public static void Run()
     {
+        foreach (short food in new short[] { 0, 967, 357, 4022 })
+            foreach (short ammunition in new short[] { 40, 47, 51 })
+                CheckFundedNpcContact(food, ammunition);
         foreach (string platform in new[] { "Linux", "Windows" })
         {
             using var source = Read("FoodConsumers" + platform + "1458");
