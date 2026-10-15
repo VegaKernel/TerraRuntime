@@ -34,6 +34,32 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
         Func<TSnapshot, Stream, CancellationToken, Task> serializeAsync,
         AtomicSaveFileWriterOptions? writerOptions = null,
         Action<TSnapshot>? onCommitted = null)
+        : this(destinationPath, captureSnapshot, serializeAsync, writerOptions, onCommitted, prepareCandidateAsync: null)
+    {
+    }
+
+    /// <summary>Prepares snapshot-bound durable dependencies after candidate validation and before canonical
+    /// publication. Failure leaves the old canonical generation unchanged. The existing constructor ABI is retained.</summary>
+    public WorldSaveCoordinator(
+        string destinationPath,
+        Func<TSnapshot> captureSnapshot,
+        Func<TSnapshot, Stream, CancellationToken, Task> serializeAsync,
+        AtomicSaveFileWriterOptions? writerOptions,
+        Action<TSnapshot>? onCommitted,
+        Func<TSnapshot, string, CancellationToken, Task>? prepareCandidateAsync)
+        : this(destinationPath, captureSnapshot, serializeAsync, writerOptions, onCommitted, prepareCandidateAsync,
+            acquireWriteOwnership: null)
+    {
+    }
+
+    public WorldSaveCoordinator(
+        string destinationPath,
+        Func<TSnapshot> captureSnapshot,
+        Func<TSnapshot, Stream, CancellationToken, Task> serializeAsync,
+        AtomicSaveFileWriterOptions? writerOptions,
+        Action<TSnapshot>? onCommitted,
+        Func<TSnapshot, string, CancellationToken, Task>? prepareCandidateAsync,
+        Func<TSnapshot, IDisposable>? acquireWriteOwnership)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(captureSnapshot);
@@ -44,6 +70,7 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
         this.onCommitted = onCommitted;
         scheduler = new CoalescingSaveScheduler<TSnapshot>(async (snapshot, cancellationToken) =>
         {
+            using var writeOwnership = acquireWriteOwnership?.Invoke(snapshot);
             long writeStartedAt = Stopwatch.GetTimestamp();
             try
             {
@@ -64,7 +91,7 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
                                 serializationStartedAt);
                         }
                     },
-                    writerOptions,
+                    BindCandidatePreparation(writerOptions, snapshot, prepareCandidateAsync),
                     cancellationToken).ConfigureAwait(false);
 
                 this.onCommitted?.Invoke(snapshot);
@@ -74,6 +101,23 @@ public sealed class WorldSaveCoordinator<TSnapshot> : IAsyncDisposable
                 RecordDuration(ref lastWriteTicks, ref totalWriteTicks, writeStartedAt);
             }
         });
+    }
+
+    private static AtomicSaveFileWriterOptions? BindCandidatePreparation(
+        AtomicSaveFileWriterOptions? options, TSnapshot snapshot,
+        Func<TSnapshot, string, CancellationToken, Task>? prepareCandidateAsync)
+    {
+        if (prepareCandidateAsync is null) return options;
+        var originalValidator = options?.ValidateCandidateAsync;
+        return (options ?? new AtomicSaveFileWriterOptions()) with
+        {
+            ValidateCandidateAsync = async (path, cancellationToken) =>
+            {
+                if (originalValidator is not null)
+                    await originalValidator(path, cancellationToken).ConfigureAwait(false);
+                await prepareCandidateAsync(snapshot, path, cancellationToken).ConfigureAwait(false);
+            }
+        };
     }
 
     /// <summary>

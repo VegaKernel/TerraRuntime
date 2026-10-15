@@ -545,7 +545,7 @@ public sealed class SandboxHost : IDisposable
             {
                 MaxPlayers = maxPlayersPerRuntime,
                 CaptureOperationsTelemetry = captureOperationsTelemetry
-            });
+            }, sourceCustody: materialized.Custody);
 
         bool admitted = false;
         try

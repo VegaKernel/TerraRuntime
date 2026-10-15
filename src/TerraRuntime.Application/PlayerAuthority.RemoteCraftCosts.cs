@@ -12,13 +12,14 @@ internal sealed partial class PlayerAuthority
     {
         private bool consumed;
         internal ReadOnlySpan<RuntimeChestStore.CraftingPreparation.FundedMaterialLeg> Materials => materials;
-        internal WorldItemPickupSlot1458[] CaptureMaterials()
+        internal RuntimePlayerInventoryStore.CraftExternalMaterial[] CaptureMaterials()
         {
-            var result = new WorldItemPickupSlot1458[materials.Length];
+            var result = new RuntimePlayerInventoryStore.CraftExternalMaterial[materials.Length];
             for (int i = 0; i < result.Length; i++)
             {
                 var material = materials[i];
-                result[i] = new(material.Before.ItemType, material.Amount, material.Before.Prefix, false);
+                result[i] = new(new(material.Before.ItemType, material.Amount, material.Before.Prefix, false),
+                    material.FundedQuantity, material.FundedCopper);
             }
             return result;
         }

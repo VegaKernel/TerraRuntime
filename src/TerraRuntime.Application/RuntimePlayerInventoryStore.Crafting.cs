@@ -5,6 +5,10 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimePlayerInventoryStore
 {
+    // The same committed external material slice retains its exact private
+    // budget; physical amount alone is not a payment certificate.
+    internal readonly record struct CraftExternalMaterial(WorldItemPickupSlot1458 Item, int Quantity, long Copper);
+
     // Detached recipe custody working state. It reuses the same physical and
     // private arrays and the final bank-journal token; no raw report credits it.
     internal CraftWorkingImage? TryCreateCraftWorking(ConnectionHandle connection, ShopJournalCapture capture)
@@ -29,11 +33,12 @@ internal sealed partial class RuntimePlayerInventoryStore
             HasUniqueConservativeFunding(image, quantity, copper, image, quantity, copper);
 
         internal bool TryApply(WorldItemCraftPlan1458 plan)
-            => plan.ExternalDebits.Length == 0 && TryApply(plan, []);
+            => plan.ExternalDebits.Length == 0 && TryApply(plan, [], []);
 
-        internal bool TryApply(WorldItemCraftPlan1458 plan, ReadOnlySpan<WorldItemCraftExternalLeg1458> paidExternalDebits)
+        internal bool TryApply(WorldItemCraftPlan1458 plan, ReadOnlySpan<WorldItemCraftExternalLeg1458> paidExternalDebits,
+            ReadOnlySpan<CraftExternalMaterial> externalFunding)
         {
-            if (!paidExternalDebits.SequenceEqual(plan.ExternalDebits)) return false;
+            if (!paidExternalDebits.SequenceEqual(plan.ExternalDebits) || externalFunding.Length != paidExternalDebits.Length) return false;
             if (!capture.IsCurrent || plan.After.Length != 219 ||
                 !VanillaRecipeCatalog1458.TryGet(plan.RecipeIndex, out var recipe) ||
                 !TryCraftItem(plan.Result, out var result) || result.IsEmpty ||
@@ -61,12 +66,26 @@ internal sealed partial class RuntimePlayerInventoryStore
                 else if (unit > 0 ? nextCopper[slot] < required[slot] * unit : nextQuantity[slot] < required[slot]) return false;
             }
             long consumedCopper = 0;
-            foreach (var external in paidExternalDebits)
+            bool externalQuantityPaid = true;
+            for (int index = 0; index < paidExternalDebits.Length; index++)
             {
+                var external = paidExternalDebits[index];
+                var funding = externalFunding[index];
                 if (external.Amount <= 0 || external.Amount > external.Item.Stack ||
+                    funding.Item != (external.Item with { Stack = external.Amount }) ||
+                    funding.Quantity < 0 || funding.Copper < 0 ||
                     !TryCraftItem(external.Item, out var material) || material.IsEmpty) return false;
                 long value = CoinValue(material);
-                if (value > 0) consumedCopper = checked(consumedCopper + value / material.Stack * external.Amount);
+                if (value > 0)
+                {
+                    if (funding.Quantity != 0 || funding.Copper > value / material.Stack * external.Amount) return false;
+                    consumedCopper = checked(consumedCopper + funding.Copper);
+                }
+                else
+                {
+                    if (funding.Copper != 0 || funding.Quantity > external.Amount) return false;
+                    externalQuantityPaid &= funding.Quantity == external.Amount;
+                }
             }
             foreach (var leg in plan.Debits)
             {
@@ -98,7 +117,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             else
             {
                 if (currency || consumedCopper != 0) return false;
-                nextQuantity[58] = checked((short)(nextQuantity[58] + result.Stack));
+                nextQuantity[58] = checked((short)(nextQuantity[58] + (externalQuantityPaid ? result.Stack : 0)));
                 nextCopper[58] = 0;
             }
             foreach (var grant in plan.StorageGrants)

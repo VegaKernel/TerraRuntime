@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using TerraRuntime.Core.Worlds;
 using TerraRuntime.Core;
 using TerraRuntime.Application.Operations;
 using TerraRuntime.Protocol;
@@ -38,7 +39,8 @@ internal sealed record PreparedWorldStartup(
     WorldFilePreservedSections SaveTemplate,
     PlayerBootstrapPacketSet BootstrapPackets,
     string RuntimeBootstrapCachePath,
-    WorldStartupMetrics Metrics);
+    WorldStartupMetrics Metrics,
+    RuntimeManagedWorldCustody? ManagedCustody = null);
 
 internal readonly record struct WorldStartupPreparationResult(
     WorldStartupPreparationStatus Status,
@@ -68,8 +70,31 @@ internal static class WorldStartupPreparation
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(hostLog);
+        WorldPersistenceOwnerLease? owner = null;
+        try
+        {
+            owner = WorldPersistenceOwnerLease.Acquire(options.WorldPath);
+            var result = await PrepareUnderLeaseAsync(options, hostLog, owner).ConfigureAwait(false);
+            if (result.Status != WorldStartupPreparationStatus.Ready || result.Startup is null) return result;
+            var managed = await RuntimeManagedWorldCustody.OpenAsync(owner, result.Startup.World,
+                result.Startup.LoadLimits, options.ImportInitialWorldCustody).ConfigureAwait(false);
+            owner = null; // Ownership is returned with the prepared startup and retained through the host session.
+            return WorldStartupPreparationResult.Ready(result.Startup with { ManagedCustody = managed });
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
+        {
+            hostLog.Log(OperationsLogLevel.Error, StructuredLogEventIds.WorldLoadFailed, StructuredLogCategory.World,
+                "World", $"Canonical world custody preparation failed: {error.Message}", useStandardError: true);
+            return WorldStartupPreparationResult.Failed(27);
+        }
+        finally { owner?.Dispose(); }
+    }
 
-        if (!CleanupAbandonedWrites(options.WorldPath, hostLog))
+    private static async Task<WorldStartupPreparationResult> PrepareUnderLeaseAsync(
+        ServerHostOptions options, RuntimeHostLog hostLog, WorldPersistenceOwnerLease owner)
+    {
+        WorldFileLoadLimits worldLoadLimits = ServerWorldLoadPolicy.CreateLimits();
+        if (!CleanupAbandonedWrites(options.WorldPath, hostLog, owner, worldLoadLimits))
             return WorldStartupPreparationResult.Failed(26);
 
         if (!File.Exists(options.WorldPath))
@@ -112,7 +137,7 @@ internal static class WorldStartupPreparation
         }
         sourceStatDuration = Stopwatch.GetElapsedTime(sourceStatStart);
 
-        WorldFileLoadLimits worldLoadLimits = ServerWorldLoadPolicy.CreateLimits();
+
         string runtimeCachePath = RuntimeWorldSnapshotCache.GetCachePath(options.WorldPath);
         long cacheLoadStart = Stopwatch.GetTimestamp();
         RuntimeWorldSnapshotLoadDiagnostic cacheDiagnostic = RuntimeWorldSnapshotCache.TryLoadValidatedSource(
@@ -223,7 +248,9 @@ internal static class WorldStartupPreparation
                 RuntimeWorldCheckpointRestoreDiagnostic recovery =
                     await RuntimeWorldCheckpointRecovery.TryRestoreBackupAsync(
                         options.WorldPath,
-                        worldLoadLimits).ConfigureAwait(false);
+                        worldLoadLimits,
+                        validateCustody: new RuntimeWorldChestCustodyArtifacts(owner, worldLoadLimits,
+                            RuntimeManagedWorldCustody.MaximumWorldBytes).ValidateRecoveryBytesAsync).ConfigureAwait(false);
                 if (!recovery.IsRestored)
                 {
                     hostLog.Log(
@@ -411,13 +438,16 @@ internal static class WorldStartupPreparation
                 metrics));
     }
 
-    private static bool CleanupAbandonedWrites(string worldPath, RuntimeHostLog hostLog)
+    private static bool CleanupAbandonedWrites(string worldPath, RuntimeHostLog hostLog,
+        WorldPersistenceOwnerLease owner, WorldFileLoadLimits limits)
     {
+        var custody = new RuntimeWorldChestCustodyArtifacts(owner, limits, RuntimeManagedWorldCustody.MaximumWorldBytes);
         // All entry points prepare through this boundary, including the product/managed host.
         // Do not reduce recovery to a cleanup bool: live leases and conflicts must block startup.
         foreach (string target in new[] { worldPath, RuntimeWorldCheckpointRecovery.GetBackupPath(worldPath) })
         {
-            AtomicSaveFileRecoveryDiagnostic recovery = AtomicSaveFileWriter.RecoverAbandonedWrites(target);
+            AtomicSaveFileRecoveryDiagnostic recovery = AtomicSaveFileWriter.RecoverAbandonedWrites(target,
+                candidate => custody.ValidateRecoveryCandidateAsync(candidate).GetAwaiter().GetResult());
             string? failure = recovery.IoFailed
                 ? $"Interrupted world-save recovery could not inspect managed transactions safely: '{target}'."
                 : recovery.LiveWrites != 0

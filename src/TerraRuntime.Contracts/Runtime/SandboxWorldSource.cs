@@ -12,7 +12,11 @@ public abstract record SandboxWorldSource
     {
     }
 
-    public sealed record WorldFile(string AssetPath) : SandboxWorldSource;
+    public sealed record WorldFile(string AssetPath) : SandboxWorldSource
+    {
+        /// <summary>Explicitly imports initial vanilla stock when no managed custody artifacts exist.</summary>
+        public bool TrustInitialVanillaStock { get; init; }
+    }
 
     public sealed record Generated(
         WorldGeneratorId GeneratorId,

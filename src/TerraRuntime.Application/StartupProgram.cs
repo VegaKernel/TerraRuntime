@@ -65,6 +65,7 @@ public static class StartupProgram
             return 24;
         }
 
+        bool createdTrustedWorld = false;
         string[] serverArgs = args;
         bool startupTuiEnabled = IsTerminalUiRequested(serverArgs);
         if (StartupWorldCreationRequestParser.HasCreateWorldArgument(serverArgs))
@@ -95,6 +96,7 @@ public static class StartupProgram
                 return 25;
             }
 
+            createdTrustedWorld = true;
             serverArgs =
             [
                 .. StartupWorldCreationRequestParser.RemoveCreationArguments(serverArgs),
@@ -134,6 +136,7 @@ public static class StartupProgram
                 {
                     return 25;
                 }
+                createdTrustedWorld = true;
             }
             else
             {
@@ -152,6 +155,10 @@ public static class StartupProgram
             PrintUsage();
             return 23;
         }
+
+        // Only successful no-overwrite authoritative generation establishes a new trusted
+        // vanilla import. Loading an arbitrary/missing managed file never sets this flag.
+        if (createdTrustedWorld) options = options with { ImportInitialWorldCustody = true };
 
         StartupProgressUiHost? startupUi = options.TerminalUiEnabled
             ? StartupProgressUiHost.StartServerStartup(
@@ -348,8 +355,9 @@ public static class StartupProgram
         Console.WriteLine("    Scans the runtime Worlds folder and lets you load or create a .wld world.");
         Console.WriteLine();
         Console.WriteLine("Server startup:");
-        Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--bind 0.0.0.0] [--port 7777] [--max-players 8] [--max-world-runtimes 8] [--sandbox-materialization-concurrency 1] [--interest-management] [--no-tui]");
+        Console.WriteLine("  TerraRuntime.Server --world <path.wld> [--bind 0.0.0.0] [--port 7777] [--max-players 8] [--max-world-runtimes 8] [--sandbox-materialization-concurrency 1] [--interest-management] [--no-tui] [--import-world-custody]");
         Console.WriteLine();
+        Console.WriteLine("    --import-world-custody explicitly trusts a first vanilla import; existing managed custody is never reset. Newly generated worlds are trusted by their successful no-overwrite producer.");
         Console.WriteLine("World generators:");
         Console.WriteLine("  TerraRuntime.Server --list-world-generators");
         Console.WriteLine("    Lists built-in and trusted-host registered generators.");

@@ -32,11 +32,12 @@ public sealed class WorldStartupPreparationTests
             var logs = new RuntimeLogBuffer();
             using var errors = new StringWriter();
             var options = new ServerHostOptions(worldPath, ServerHostOptions.DefaultPort, MaxPlayers: 1,
-                InterestManagementEnabled: false, TerminalUiEnabled: false);
+                InterestManagementEnabled: false, TerminalUiEnabled: false) { ImportInitialWorldCustody = true };
             WorldStartupPreparationResult result;
             await using (var hostLog = new RuntimeHostLog(logs, TextWriter.Null, errors,
                 new RuntimeHostLoggingOptions { ConsoleEnabled = true, JsonLinesEnabled = false }))
                 result = await WorldStartupPreparation.PrepareAsync(options, hostLog);
+            using var managedCustody = result.Startup?.ManagedCustody;
             Assert.True(result.Status == WorldStartupPreparationStatus.Ready, errors.ToString());
             Assert.NotNull(result.Startup);
         }

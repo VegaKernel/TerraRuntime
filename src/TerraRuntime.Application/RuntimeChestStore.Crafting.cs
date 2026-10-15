@@ -37,29 +37,31 @@ internal sealed partial class RuntimeChestStore
             revision = owner.craftingRevision;
         }
 
-        internal readonly record struct FundedMaterialLeg(short ChestId, byte Slot, WorldChestItem Before, WorldChestItem After)
+        internal readonly record struct FundedMaterialLeg(short ChestId, byte Slot, WorldChestItem Before, WorldChestItem After, int FundedQuantity, long FundedCopper)
         {
             internal int Amount => Before.Stack - After.Stack;
-            internal int FundedQuantity => Before.TryGetItemType(out ItemTypeId type) && VanillaCoinFacts.TryGetValue(type, out _) ? 0 : Amount;
-            internal long FundedCopper => Before.TryGetItemType(out ItemTypeId type) && VanillaCoinFacts.TryGetValue(type, out long unit) ? checked(unit * Amount) : 0;
         }
 
         internal bool TryCaptureFundedMaterialLegs(out FundedMaterialLeg[] legs)
         {
             legs = [];
             if (!owner.ownsLoadedWorldStock || !Accepted || !IsCurrent || changes.Count > 255) return false;
-            var current = new Dictionary<(short Chest, byte Slot), WorldChestItem>();
+            var current = new Dictionary<(short Chest, byte Slot), (WorldChestItem Physical, int Quantity, long Copper)>();
             var result = new FundedMaterialLeg[changes.Count];
             for (int index = 0; index < changes.Count; index++)
             {
                 Change change = changes[index];
                 var key = (change.Chest, change.Slot);
-                if (!current.TryGetValue(key, out WorldChestItem before)) before = images[change.Chest].Before[change.Slot];
+                if (!current.TryGetValue(key, out var budget)) budget = (images[change.Chest].Before[change.Slot], owner.custodyQuantity[change.Chest]![change.Slot], owner.custodyCopper[change.Chest]![change.Slot]);
+                WorldChestItem before = budget.Physical;
                 WorldChestItem after = change.After;
                 if (before.IsEmpty || !before.TryGetItemType(out ItemTypeId type) || type.IsNone || before.Stack <= after.Stack ||
                     (!after.IsEmpty && (after.ItemType != before.ItemType || after.Prefix != before.Prefix))) return false;
-                result[index] = new(change.Chest, change.Slot, before, after);
-                current[key] = after;
+                int amount = before.Stack - after.Stack;
+                int paidQuantity = Math.Min(budget.Quantity, amount);
+                long paidCopper = VanillaCoinFacts.TryGetValue(type, out long unit) ? Math.Min(budget.Copper, checked(unit * amount)) : 0;
+                result[index] = new(change.Chest, change.Slot, before, after, paidQuantity, paidCopper);
+                current[key] = (after, budget.Quantity - paidQuantity, budget.Copper - paidCopper);
             }
             legs = result;
             return true;
@@ -161,7 +163,11 @@ internal sealed partial class RuntimeChestStore
             // All validation above is charged to the shared iterator budget. This
             // non-callback write section runs on the same authoritative thread.
             foreach (Change change in changes)
-                images[change.Chest].Chest.Items[change.Slot] = change.After;
+            {
+                var chest = images[change.Chest].Chest;
+                owner.ApplyConsumedCustody(chest, change.Slot, change.After);
+                chest.Items[change.Slot] = change.After;
+            }
             owner.craftingRevision++;
             Accepted = false;
             return true;

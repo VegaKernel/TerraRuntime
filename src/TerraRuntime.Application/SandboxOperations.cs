@@ -141,13 +141,14 @@ internal sealed class SandboxCommandParser
         SandboxWorldSource source;
         switch (parts[2].ToLowerInvariant())
         {
-            case "file" when parts.Length == 4:
+            case "file" when parts.Length == 4 ||
+                                  (parts.Length == 5 && parts[4].Equals("--import-world-custody", StringComparison.OrdinalIgnoreCase)):
                 if (!TryResolveAsset(parts[3], out string? path, out error))
                 {
                     operation = null;
                     return false;
                 }
-                source = new SandboxWorldSource.WorldFile(path!);
+                source = new SandboxWorldSource.WorldFile(path!) { TrustInitialVanillaStock = parts.Length == 5 };
                 break;
             case "gen":
                 if (!TryParseGenerated(parts, 3, name.Value, out SandboxWorldSource.Generated? generated, out error))
@@ -160,7 +161,7 @@ internal sealed class SandboxCommandParser
             case "schem":
                 return Fail($"{root} schematic materialization is not implemented yet.", out operation, out error);
             default:
-                return Fail($"usage: {root} <name> gen <id> [seed <n|random>] [size <primary|w>x<h>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>] | file <world>", out operation, out error);
+                return Fail($"usage: {root} <name> gen <id> [seed <n|random>] [size <primary|w>x<h>] [mode <classic|expert|master|journey>] [evil <corruption|crimson>] | file <world> [--import-world-custody]", out operation, out error);
         }
 
         operation = new SandboxOperation.Create(new SandboxCreateRequest(name, isolation, source));
@@ -405,7 +406,7 @@ internal sealed class SandboxCommandParser
     }
 
     private const string Usage =
-        "usage: sandbox list|status|jobs|job|move|regen|destroy|cancel | sb1 <name> gen|file ... | sb2 <name> gen|file ... | respawn <player> <sandbox|primary>";
+        "usage: sandbox list|status|jobs|job|move|regen|destroy|cancel | sb1 <name> gen|file ... | sb2 <name> gen|file ... (file accepts --import-world-custody) | respawn <player> <sandbox|primary>";
 
     private static bool Fail<T>(string message, out T? operation, out string? error)
     {

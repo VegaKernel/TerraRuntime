@@ -23,7 +23,8 @@ internal readonly record struct SandboxWorldMaterializationResult(
     SandboxWorldMaterializationStatus Status,
     WorldFileData? World = null,
     PlayerBootstrapPacketSet? Bootstrap = null,
-    string? Error = null)
+    string? Error = null,
+    RuntimeWorldChestCustodySnapshot? Custody = null)
 {
     public bool Succeeded => Status == SandboxWorldMaterializationStatus.Ready && World is not null && Bootstrap is not null;
 }
@@ -176,7 +177,19 @@ internal sealed class SandboxWorldMaterializer
                 Error: exception.Message);
         }
 
-        return LoadAndBootstrap(bytes);
+        SandboxWorldMaterializationResult loaded = LoadAndBootstrap(bytes);
+        if (!loaded.Succeeded) return loaded;
+        try
+        {
+            RuntimeWorldChestCustodySnapshot custody = RuntimeWorldChestCustodyReader.Read(
+                source.AssetPath, bytes, loaded.World!, source.TrustInitialVanillaStock, cancellationToken);
+            return loaded with { Custody = custody };
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return new SandboxWorldMaterializationResult(SandboxWorldMaterializationStatus.ValidationFailed,
+                Error: exception.Message);
+        }
     }
 
     private SandboxWorldMaterializationResult LoadAndBootstrap(byte[] canonicalWorld)

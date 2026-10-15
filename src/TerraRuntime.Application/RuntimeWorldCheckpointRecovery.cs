@@ -75,7 +75,8 @@ internal static class RuntimeWorldCheckpointRecovery
     public static async Task<RuntimeWorldCheckpointRestoreDiagnostic> TryRestoreBackupAsync(
         string worldPath,
         WorldFileLoadLimits limits,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<WorldFileData, byte[], CancellationToken, Task>? validateCustody = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(worldPath);
         limits.Validate();
@@ -90,7 +91,7 @@ internal static class RuntimeWorldCheckpointRecovery
         {
             backupBytes = await File.ReadAllBytesAsync(backupPath, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
         {
             return new RuntimeWorldCheckpointRestoreDiagnostic(RuntimeWorldCheckpointRestoreResult.IoError);
         }
@@ -111,6 +112,7 @@ internal static class RuntimeWorldCheckpointRecovery
 
         try
         {
+            if (validateCustody is not null) await validateCustody(backupWorld, backupBytes, cancellationToken).ConfigureAwait(false);
             await AtomicSaveFileWriter.WriteAsync(
                 fullWorldPath,
                 async (stream, token) =>
@@ -119,7 +121,7 @@ internal static class RuntimeWorldCheckpointRecovery
                 },
                 cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
         {
             return new RuntimeWorldCheckpointRestoreDiagnostic(RuntimeWorldCheckpointRestoreResult.IoError);
         }

@@ -14,6 +14,8 @@ internal sealed partial class RuntimePlayerInventoryStore
     {
         internal ShopBankMovePreparation? Inventory;
         internal WorldChestItem[]? Chest;
+        internal short[]? ChestQuantity;
+        internal long[]? ChestCopper;
         internal bool Ambiguous;
     }
 
@@ -43,8 +45,8 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (!TryWorldInventoryTuple(world.Before[slot], out var item)) yield break;
             int index = 219 + slot;
             image[index] = item;
-            copper[index] = CoinValue(item);
-            quantity[index] = copper[index] == 0 ? item.Stack : (short)0;
+            copper[index] = world.Copper[slot];
+            quantity[index] = world.Quantity[slot];
         }
         // Source compound UI calls may change one main/bank position without a
         // cursor58 report. The complete219 target still validates the result.
@@ -140,7 +142,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             }
             // Partial world slots require durable ownership, which this strict
             // transitional mode does not yet persist. Preserve both preimages.
-            if (!fullWorld) continue;
+            if (!fullWorld && !world.SupportsDurableCustody) continue;
             bool unique = true;
             var groups = new Dictionary<(ItemTypeId Type, PrefixId Prefix), (long Physical, long Funded, int Destinations)>();
             for (int index = 0; index < count; index++)
@@ -170,10 +172,14 @@ internal sealed partial class RuntimePlayerInventoryStore
                 !AreValidShopBanks(actorItems.AsSpan(59), actorCopper.AsSpan(59)) ||
                 !AreValidShopBankOwnership(actorItems.AsSpan(59), actorQuantity.AsSpan(59), actorCaps.AsSpan(59 * 5))) continue;
             var prepared = new ShopBankMovePreparation(this, connection, capture, actorItems, actorCopper, actorQuantity, actorCaps);
-            if (result.Inventory is { } prior && (!prior.HasSameAcceptedImage(prepared) || !result.Chest!.AsSpan().SequenceEqual(afterWorld)))
+            if (result.Inventory is { } prior && (!prior.HasSameAcceptedImage(prepared) || !result.Chest!.AsSpan().SequenceEqual(afterWorld) ||
+                !result.ChestQuantity!.AsSpan().SequenceEqual(state.Quantity.AsSpan(219)) ||
+                !result.ChestCopper!.AsSpan().SequenceEqual(state.Copper.AsSpan(219))))
             { result.Ambiguous = true; result.Inventory = null; result.Chest = null; yield break; }
             result.Inventory = prepared;
             result.Chest = afterWorld;
+            result.ChestQuantity = state.Quantity.AsSpan(219).ToArray();
+            result.ChestCopper = state.Copper.AsSpan(219).ToArray();
         }
         if (result.Ambiguous) { result.Inventory = null; result.Chest = null; }
     }

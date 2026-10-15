@@ -1,5 +1,15 @@
 # Verified vanilla facts
 
+## Durable chest ownership: accepted authority boundary, 2026-10-15
+
+Canonical `.wld` chest tuples remain physical stock. The new custody companion is TerraRuntime authority metadata, not an additional vanilla world-file section. Complete coverage, identity, revision and whole-world hash bind its exact funded quantities/copper to the physical checkpoint. Missing metadata never proves a fresh full import. The existing world codec supplies revision handling; no guessed file offsets or copied vanilla method bodies were added.
+
+Original context3 packet32/5/138 transfer witnesses now retain partial/q0/fractional ownership through the existing joint adoption, checkpoint, recovery and restart. Removed remote materials retain their actual budgets; a q0 physical debit cannot fund an output. Readonly WorldFile sandboxes carry the matching snapshot, including while the primary lifetime lease is held. Selected corruption/missing metadata refuses loading or recovery before canonical replacement; restored matching metadata permits retry.
+
+Local acceptance uses executed fingerprint `2d8c183caced361fe714998a87476cb2e0c4c1ce28ac0d602465257aa62924ca`: Release126 focused, fast24979/24980, unfiltered full1563272/1563273, zero failures/errors and one known liquid skip. Same grouped normal Fact passes managed/fresh Windows Native with21196 helper predicates plus3 wrappers. Fresh server five smokes and actual Release/Native82/49/129, two-client/chat and72signed35/43 effects each pass. Linux Native and complete vanilla compatibility remain unverified. Recorded one-test CR-only and four helpers empty-EOF formatting bridges change no executable tokens or assertions.
+
+Next food metadata/source captures and consumer prototypes are cache-only. Windows/.NET48x86 and Linux/.NET11 direct consumer differences are preserved as observations; uncapped animation captures do not establish full phase cadence. No new food parity or raw-client food-buff authority is claimed by this checkpoint.
+
 ## Funded crafting, Torch favor and bank custody: accepted local checkpoint, 2026-10-15
 
 Final staging note: the cached diff check found trailing spaces on four otherwise blank lines in CraftCurrencyChecks.cs/CraftStateChecks.cs. Only those spaces were removed; exact executed originals, old/new hashes and line numbers are preserved at root-combined-gameplay-v1/whitespace-bridge-v1/bridge.json. Root verifies this token-identical test-only bridge against executed c268 inputs, separately records final shipping text fingerprint, and does not rerun tests for cosmetic changes. Production/shipping32/assertions are unchanged. Final diff checks include HEAD/staged new files, not just previously tracked unstaged paths.

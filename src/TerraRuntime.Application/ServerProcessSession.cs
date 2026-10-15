@@ -71,7 +71,7 @@ internal sealed class ServerProcessSession : IDisposable
                 MaxPlayers = options.MaxPlayers,
                 CaptureOperationsTelemetry = options.TerminalUiEnabled
             },
-            new WorldRuntimePersistence(options.WorldPath, startup.SaveTemplate, startup.LoadLimits));
+            new WorldRuntimePersistence(options.WorldPath, startup.SaveTemplate, startup.LoadLimits, startup.ManagedCustody));
         runtimeRegistry = new WorldRegistry(options.MaxWorldRuntimes);
         sandboxHost = new SandboxHost(
             runtimeRegistry,

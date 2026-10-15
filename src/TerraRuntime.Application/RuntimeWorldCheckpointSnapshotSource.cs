@@ -27,7 +27,8 @@ internal sealed record RuntimeWorldCheckpointSnapshot(
     WorldTownRoom[]? TownRooms = null,
     WorldBannerData1458? Banners = null,
     WorldBestiaryData? Bestiary = null,
-    WorldInvasionSaveState1458? Invasion = null);
+    WorldInvasionSaveState1458? Invasion = null,
+    RuntimeWorldCustodyCheckpoint? Custody = null);
 
 /// <summary>
 /// Game-thread-owned snapshot source for the current persistence slice. Tile copying is spread across bounded section
@@ -37,6 +38,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
 {
     private readonly WorldTileSaveShadowSynchronizer tileSynchronizer;
     private readonly RuntimeChestStore chestStore;
+    private readonly RuntimeManagedWorldCustody? managedCustody;
     private readonly RuntimeNpcDeathPrelude1458? deathPrelude;
     private readonly RuntimeWorldClock? worldClock;
     private readonly RuntimeSignStore? signStore;
@@ -53,12 +55,14 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
         RuntimeTownNpcStateStore? townNpcStore = null,
         RuntimeWorldProgressionMutations? progressionMutations = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
-        Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null)
+        Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null,
+        RuntimeManagedWorldCustody? managedCustody = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
         ArgumentNullException.ThrowIfNull(chestStore);
         this.chestStore = chestStore;
+        this.managedCustody = managedCustody;
         this.deathPrelude = deathPrelude;
         this.invasionSaveStateSource = invasionSaveStateSource;
         this.worldClock = worldClock;
@@ -108,16 +112,17 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
         if (signStore is not null && signStore.TryCaptureCanonicalSnapshot(out WorldSign[] signSnapshot))
             signs = signSnapshot;
 
+        var custody = managedCustody?.Capture(chestStore);
         snapshot = new RuntimeWorldCheckpointSnapshot(
             tiles,
-            chestStore.CaptureSnapshot(),
+            custody is null ? chestStore.CaptureSnapshot() : custody.Custody.Chests.Select(static image => image.Chest).ToArray(),
             clock,
             signs,
             progressionMutations.CaptureSnapshot(),
             townNpcStore?.CaptureNpcPersistence(),
             townNpcStore?.CaptureTownRooms(),
             deathPrelude?.CaptureBanners(), deathPrelude?.CaptureBestiary(),
-            invasionSaveStateSource?.Invoke());
+            invasionSaveStateSource?.Invoke(), custody);
         return true;
     }
 }

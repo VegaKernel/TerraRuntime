@@ -1,5 +1,15 @@
 # Production graph
 
+## Durable chest ownership, recovery and sandbox handoff: accepted local checkpoint, 2026-10-15
+
+The existing chest slot owner now retains exact funded quantities and copper, including partial and zero budgets. Physical items and private budgets adopt together before observers. Remote crafting carries those exact certificates through its existing journal instead of crediting the nominal value of removed material.
+
+The lifetime normalized-world-path lease spans startup, recovery, simulation and final background checkpoint completion. The game thread reserves canonical revisions; background work validates the world, prepares its immutable custody dependency and atomically publishes the world. Recovery validates the matching dependency before replacement. Retention preserves current/backup/candidate dependencies within bounded work. Custody files are authoritative; runtime/bootstrap caches remain disposable. Explicit initial vanilla import is separate from ordinary restart and trusted fresh generation.
+
+Readonly sandbox materialization binds custody to the same captured canonical bytes, then passes the detached budget snapshot through both runtime constructors. It takes no writer lease and never repairs or refills a managed source. Default-untrusted vanilla file imports require explicit opt-in. The normal grouped Fact passes on managed and fresh Windows Native: host5653, trust45, remote15498 predicates plus3 wrappers. Release126 focused, fast24979/24980 and full1563272/1563273 pass with zero failures/errors and one known liquid skip. All4976 full methods are selected. Release/Native live join/relay/effects and five Native server smokes pass; Linux Native remains unverified.
+
+Executed source/test fingerprint: `2d8c183caced361fe714998a87476cb2e0c4c1ce28ac0d602465257aa62924ca`. Evidence: `.cache/next-work-on-c/durable-chests-shipping-acceptance-v2`, `durable-chest-typed-native-acceptance-v1` and `durable-chests-live-acceptance-v2`. One existing fixture receives a strict post-test carriage-return-only bridge and four helpers lose only surplus empty EOF lines, with executed originals retained; no assertions, production or binaries change. Shipping text fingerprint: `2179edfe76e0f030849ee3c54d995b9e8381a86a89e0ded241a704f277834e18`. No CI wait or new dependency. Food/QuickBuff work remains a separate cache-only successor.
+
 ## Funded crafting, Torch favor and bank custody: accepted local checkpoint, 2026-10-15
 
 Final staging note: the cached diff check found trailing spaces on four otherwise blank lines in CraftCurrencyChecks.cs/CraftStateChecks.cs. Only those spaces were removed; exact executed originals, old/new hashes and line numbers are preserved at root-combined-gameplay-v1/whitespace-bridge-v1/bridge.json. Root verifies this token-identical test-only bridge against executed c268 inputs, separately records final shipping text fingerprint, and does not rerun tests for cosmetic changes. Production/shipping32/assertions are unchanged. Final diff checks include HEAD/staged new files, not just previously tracked unstaged paths.

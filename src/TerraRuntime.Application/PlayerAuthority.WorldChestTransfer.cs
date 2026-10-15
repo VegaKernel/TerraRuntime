@@ -77,7 +77,7 @@ internal sealed partial class PlayerAuthority
         }
         // Both owners are fully validated on the same world thread. No callback
         // occurs between these writes; the inventory preparation has no escrow.
-        if (!world.TryAdoptUnpublished(result.Chest) || !actor.TryAdoptUnpublished())
+        if (!world.TryAdoptUnpublished(result.Chest, result.ChestQuantity!, result.ChestCopper!) || !actor.TryAdoptUnpublished())
             throw new InvalidOperationException("Current two-store world transfer lost pure adoption.");
         member.CursorMove = null;
         member.TryAdvanceRevision();

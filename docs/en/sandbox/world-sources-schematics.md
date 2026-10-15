@@ -64,6 +64,20 @@ Level 2 may execute generation inside the worker. Level 1 executes it in the mai
 
 An ephemeral sandbox does not have to overwrite its source file. Persistent mode uses explicit persistence policy and separate publication/save rules.
 
+### Managed-stock trust contract
+
+Read-only materialization from a managed `WorldFile` preserves exact funded quantities and copper, including partial, zero and fractional-coin budgets. It loads the matching managed pair regardless of import opt-in and does not refill stock from physical stacks. This concerns `WorldFile` materialization; the future `SnapshotClone` source above remains separate.
+
+`SandboxWorldSource.WorldFile.TrustInitialVanillaStock` defaults to `false`. A vanilla file without custody metadata is refused unless the operator explicitly trusts its initial stock and no managed artifacts exist. Missing, corrupt or foreign managed metadata cannot be reset by this option. The worker descriptor retains the same trust choice; transporting a descriptor does not establish loader acceptance.
+
+The file-source command accepts `sb1`, `sb2` or `sb` followed by `<name> file <world> [--import-world-custody]`. For example:
+
+```text
+sb1 arena file Worlds/import.wld --import-world-custody
+```
+
+The import option is valid only for a file source, not a generated source. It is an explicit first-import trust decision, not a repair option for managed worlds. Back up a managed source with its matching custody directory; disposable caches can be rebuilt. See [world persistence](../world-persistence.md).
+
 ## TerraRuntime Schematic
 
 TerraRuntime gets its own portable scene/region format: **TerraRuntime Schematic**, with the recommended `.trschem` extension.

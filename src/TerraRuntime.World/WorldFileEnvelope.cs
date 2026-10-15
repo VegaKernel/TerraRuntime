@@ -32,6 +32,10 @@ public sealed class WorldFileEnvelope
 
     public WorldFormatCompatibility Compatibility => WorldFileFormatPolicy.Assess(FormatVersion);
 
+    /// <summary>Detached envelope for an explicitly reserved canonical save generation.</summary>
+    public WorldFileEnvelope WithRevision(uint revision) => new(FormatVersion, revision, FavoriteFlags,
+        SectionOffsets.ToArray(), FrameImportanceCount, FrameImportanceBits.ToArray());
+
     public bool IsFrameImportant(int tileType)
     {
         if ((uint)tileType >= (uint)FrameImportanceCount)

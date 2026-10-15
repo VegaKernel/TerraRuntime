@@ -38,7 +38,8 @@ public readonly record struct WorldRuntimeSnapshot(
 internal sealed record WorldRuntimePersistence(
     string WorldPath,
     WorldFilePreservedSections SaveTemplate,
-    WorldFileLoadLimits LoadLimits);
+    WorldFileLoadLimits LoadLimits,
+    RuntimeManagedWorldCustody? ManagedCustody = null);
 
 /// <summary>
 /// Owns one complete live authoritative world: mutable simulation state, registries, ingress, replication,
@@ -67,7 +68,8 @@ public sealed partial class WorldRuntime : IDisposable
         PlayerBootstrapPacketSet bootstrapPackets,
         IInterestManagementControl interestManagement,
         WorldRuntimeOptions options,
-        WorldRuntimePersistence? persistence = null)
+        WorldRuntimePersistence? persistence = null,
+        RuntimeWorldChestCustodySnapshot? sourceCustody = null)
     {
         if (!identity.IsAssigned)
             throw new ArgumentException("World runtime identity must be assigned.", nameof(identity));
@@ -133,7 +135,13 @@ public sealed partial class WorldRuntime : IDisposable
 
         TileManipulationReplication = new RuntimeTileManipulationReplicationRegistry();
         ChestReplication = new RuntimeChestReplicationRegistry();
-        Chests = new RuntimeChestStore(world.Chests, ownsLoadedWorldStock: true);
+        RuntimeWorldChestCustodySnapshot? custody = persistence?.ManagedCustody?.Loaded ?? sourceCustody;
+        if (custody is not null && (custody.WorldId != world.Header.WorldId ||
+            custody.WorldUniqueId != world.Header.UniqueId || custody.Revision != world.Envelope.Revision))
+            throw new InvalidDataException("Source custody does not match the materialized world.");
+        Chests = custody is not null
+            ? new RuntimeChestStore(world.Chests, custody)
+            : new RuntimeChestStore(world.Chests, ownsLoadedWorldStock: true);
         ChestCommands = new RuntimeChestCommandProcessor(Chests, ChestReplication, world.Tiles,
             connection => State is { } state && state.IsCurrentPlayerConnection(connection));
         SignReplication = new RuntimeSignReplicationRegistry();
@@ -155,7 +163,7 @@ public sealed partial class WorldRuntime : IDisposable
                 townNpcStore: TownNpcs,
                 progressionMutations: WorldProgression,
                 checkpointValidationLimits: persistence.LoadLimits, deathPrelude: DeathPrelude,
-                invasionSaveStateSource: Invasion.CaptureSaveState);
+                invasionSaveStateSource: Invasion.CaptureSaveState, managedCustody: persistence.ManagedCustody);
             autosave = new VanillaWorldAutosaveScheduler();
         }
 
@@ -499,6 +507,7 @@ public sealed partial class WorldRuntime : IDisposable
             _ = GameLoop.Stop(TimeSpan.FromSeconds(5));
         Volatile.Write(ref lifecycle, (int)WorldRuntimeLifecycle.Disposed);
         GameLoop.Dispose();
+        worldSave?.CompleteAsync().GetAwaiter().GetResult();
         sectionCacheRebuild.Dispose();
     }
 

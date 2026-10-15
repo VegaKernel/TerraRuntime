@@ -36,7 +36,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     internal IEnumerable<int> PrepareCraftWitnessWork(ConnectionHandle connection, ShopJournalCapture capture,
         RuntimePlayerInventoryItem[] observed, byte[][] accessibleOrders, bool[] stations,
         RecipeEnvironment1458 environment, VanillaItemPrefixWorld1458? world, CraftWitnessResolution result,
-        WorldItemPickupSlot1458[]? remoteMaterials = null)
+        CraftExternalMaterial[]? remoteMaterials = null)
     {
         yield return 0;
         if (!capture.IsCurrent || observed.Length != 219 || stations.Length != 754) yield break;
@@ -80,25 +80,33 @@ internal sealed partial class RuntimePlayerInventoryStore
                                     in environment, quick, false, new int[VanillaRecipeCatalog1458.GetIngredientCount(index)],
                                     prefix.Prefix, windows, world, out plan)
                                 : VanillaWorldItemOwner1458.TryPlanCraftWitnessWithExternalMaterials(index, slots, order, stations,
-                                    in environment, quick, prefix.Prefix, windows, world, remote, out plan);
+                                    in environment, quick, prefix.Prefix, windows, world, remote.Select(static material => material.Item).ToArray(), out plan);
                             if (!planned || plan is null) break;
                             if (remote is not null)
                             {
                                 bool paid = true;
-                                foreach (var leg in plan.ExternalDebits)
+                                var funding = new CraftExternalMaterial[plan.ExternalDebits.Length];
+                                for (int legIndex = 0; legIndex < plan.ExternalDebits.Length; legIndex++)
                                 {
-                                    if ((uint)leg.MaterialIndex >= remote.Length || remote[leg.MaterialIndex] != leg.Item ||
+                                    var leg = plan.ExternalDebits[legIndex];
+                                    if ((uint)leg.MaterialIndex >= remote.Length || remote[leg.MaterialIndex].Item != leg.Item ||
                                         leg.Amount <= 0 || leg.Amount > leg.Item.Stack) { paid = false; break; }
+                                    var material = remote[leg.MaterialIndex];
+                                    int takenQuantity = Math.Min(material.Quantity, leg.Amount);
+                                    long takenCopper = VanillaCoinFacts.TryGetValue(new(leg.Item.Type), out long unit)
+                                        ? Math.Min(material.Copper, checked(unit * leg.Amount)) : 0;
+                                    funding[legIndex] = new(leg.Item with { Stack = leg.Amount }, takenQuantity, takenCopper);
                                     remote[leg.MaterialIndex] = leg.Amount == leg.Item.Stack ? default :
-                                        leg.Item with { Stack = leg.Item.Stack - leg.Amount };
+                                        new(leg.Item with { Stack = leg.Item.Stack - leg.Amount },
+                                            material.Quantity - takenQuantity, material.Copper - takenCopper);
                                 }
-                                if (!paid || !working.TryApply(plan, plan.ExternalDebits)) break;
+                                if (!paid || !working.TryApply(plan, plan.ExternalDebits, funding)) break;
                             }
                             else if (!working.TryApply(plan)) break;
                             int count = CountCraftIdentity(working.Image, produced, prefix.Prefix);
                             if (count <= previousCount || count > targetCount) break;
                             if (!working.Image.AsSpan().SequenceEqual(observed) ||
-                                (remote is not null && remote.Any(static item => item.Type != 0))) continue;
+                                (remote is not null && remote.Any(static material => material.Item.Type != 0))) continue;
                             var accepted = working.TryPrepareAccepted(observed);
                             if (accepted is null) break;
                             short killType = plan.KillOwnedProjectileType;

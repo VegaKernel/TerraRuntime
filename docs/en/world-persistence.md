@@ -15,6 +15,36 @@ world.runtime-world  disposable TerraRuntime startup snapshot
 
 The `.wld` remains the compatibility boundary. A `.runtime-world` file is an optimization and may be discarded whenever its layout or validation rules change. A cache failure must never become world corruption.
 
+## 1.1 Durable world-chest ownership
+
+The canonical `.wld` stores physical chest items. TerraRuntime also retains the quantity and copper value that its authoritative owners can spend. These budgets can differ from the physical stack: a stack of three items may contain one funded unit, and a silver coin may retain less than its face value. A restart must preserve that difference.
+
+Managed worlds keep authoritative ownership files in `<world.wld>.custody`. The managed anchor identifies the world; immutable generation files bind complete chest coverage to the world UUID, world ID, canonical revision and whole-file hash. They are required persistence dependencies. They are not disposable `.runtime-world` or bootstrap caches.
+
+First import of an existing vanilla world requires the operator's explicit `--import-world-custody` trust decision. Missing metadata never implies a fresh import. The flag cannot refill a managed world's missing budgets or override a conflicting generation. Ordinary restarts require the matching metadata. A successful `--create-world` operation establishes initial ownership from its newly generated world before host attachment; it does not need a separate import flag.
+
+```mermaid
+flowchart TD
+    Capture["Game-loop snapshot: physical items and private budgets"] --> Revision["Reserve a unique canonical revision"]
+    Revision --> Serialize["Background .wld serialization and validation"]
+    Serialize --> Dependency["Publish matching immutable ownership generation"]
+    Dependency --> Canonical["Atomically publish canonical .wld"]
+    Canonical --> Retention["Bounded retention of required generations"]
+    Canonical --> Cache["Optional disposable runtime-cache rebuild"]
+```
+
+One lifetime owner lease excludes another TerraRuntime writer for the same normalized destination. It remains held through startup recovery, the authoritative loop, final snapshot handoff and completion of background writes. Revision reservation occurs on the authoritative thread; final shutdown explicitly transfers that responsibility after the loop has stopped. Exhausted revisions fail closed. Hardlink and alternate-path identity are outside the normalized-path guarantee unless explicitly handled.
+
+The existing `.wld` validator runs before ownership preparation. Candidate ownership must be valid before canonical publication, including interrupted-write recovery and backup restoration. Missing or corrupt companion metadata causes refusal; it cannot become fully funded stock. Backups must be restored with their own matching ownership generation.
+
+Retention runs off the game loop under write ownership. It keeps canonical, validated backup and any active candidate dependency, scans a bounded number of recognized generation entries, and refuses unknown or unresolved data instead of sweeping it. A retention or cache-maintenance failure after successful publication is reported separately; it does not refund a committed transfer or turn a successful world save into a failed transaction.
+
+Chest transfers adopt physical items and exact private budgets together before observers. Raw packet `32` is a physical report, not a funding producer. Remote crafting retains the actual funded quantity and copper of removed material legs on the existing operation journal. A physical debit or approval alone cannot turn unfunded material into a funded result.
+
+Back up and restore the canonical world together with its custody directory. Disposable runtime and bootstrap caches can still be rebuilt. Copying the `.wld` alone does not preserve managed ownership.
+
+Interrupted-write recovery validates the candidate companion before replacing the canonical file. A missing or corrupt companion preserves the old canonical bytes and the recoverable candidate transaction. Restoring the matching companion permits a later retry; metadata failure alone does not discard that transaction.
+
 ## 2. World-loading path
 
 Cold startup uses the canonical `.wld` loader:
@@ -248,7 +278,7 @@ Silent data loss is considered worse than refusing a save.
 
 The runtime emits machine-readable startup profile data for source metadata/stat, canonical `.wld` read, runtime-snapshot load, fallback loader stages, snapshot rebuild/write, bootstrap preparation, `WorldReady`/`NetworkReady` wall time and startup allocation delta.
 
-On a genuine warm hit, canonical `.wld` file-read time remains zero because file contents are not read. The official-world workflow verifies cold/warm startup and includes a warm path where source `.wld` contents are unreadable while filesystem metadata remains available.
+Warm runtime reuse avoids canonical parsing and post-load preparation, but still reads canonical bytes for the stable content fingerprint. Managed custody validation remains a separate requirement even on a cache hit; filesystem timestamps or a readable runtime cache cannot replace the canonical file and its matching companion.
 
 ## 18. Evidence and tests
 
@@ -281,6 +311,8 @@ World-format changes require independent evidence from real Terraria 1.4.5.8 wor
 TerraRuntime still does not implement every field/section of a complete fresh vanilla `WorldFileWriter`. Future progression/events/housing/tile-entity systems require explicit persistence integration as they become authoritative.
 
 Runtime snapshot layout remains disposable rather than a stable external storage API. Validated previous-generation backup rotation and automatic corruption recovery are implemented, but there is no multi-generation retention/history policy. Managed orphan `.tmp` files are reclaimed on host startup and before later saves only when their TerraRuntime lease can be acquired exclusively; unknown legacy temporaries without a lease are intentionally not deleted automatically. Linux parent-directory `fsync` strengthens power-loss durability; equivalent filesystem semantics remain platform-dependent outside that path. `.wld` remains the canonical recovery boundary.
+
+The custody contract in §1.1 adds bounded dependency retention, not a general world-history archive. Managed recovery requires the matching custody directory alongside the physical `.wld`; exporting or copying `.wld` alone is not a custody migration.
 
 ## 20. Change checklist
 

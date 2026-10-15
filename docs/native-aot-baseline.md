@@ -1,5 +1,15 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Durable chest custody and readonly sandbox sources: accepted local checkpoint, 2026-10-15
+
+Fresh Release tests/server builds pass with zero warnings/errors;126 focused tests pass. Mandatory fast passes24,979 of24,980 cases. One unfiltered full passes1,563,272 of1,563,273 cases, with all4,976 discovered methods selected, zero exclusions, zero failures/errors and one existing canonical-liquid skip. Full test execution took $738.008\,\mathrm{s}$; the complete XML report of2,112,287,944bytes remains on C.
+
+The exact new normal grouped Fact passes on managed and fresh Windows Native with21,196 helper predicates and3 wrappers. It exercises durable exact chest budgets, recovery, readonly sandbox materialization and the explicit file trust contract. All11 helper sources and32 shipping assemblies are bound before/after execution. Evidence: `.cache/next-work-on-c/durable-chest-typed-native-acceptance-v1/result.json`, SHA `15e5bc83b56c41cfc207300ba63592dfebc42380a6aaa1089139c7e292821e1d`.
+
+Fresh Windows server Native publish and five smokes pass. Actual Release and Native live82/49/129,15sections, two-client relay/chat and72signed35/43 effects each pass; both hosts stopped. Aggregate: `durable-chests-live-acceptance-v2/acceptance-manifest.json`, SHA `7074a26e3cdc43105a1665ade9ca5768bd924962e35826df93cd4239220941f2`. Server Native executable SHA: `96d1e26b02c47e84cfed8673d73f4233e82c1648c6c9a8fdab794bcd948b623d`.
+
+Executed source/test fingerprint is `2d8c183caced361fe714998a87476cb2e0c4c1ce28ac0d602465257aa62924ca`; accepted managed evidence is `durable-chests-shipping-acceptance-v2`. Recorded post-test formatting bridges clean carriage returns from one existing fixture and surplus empty EOF lines from four helpers without changing assertions or production; shipping text fingerprint is `2179edfe76e0f030849ee3c54d995b9e8381a86a89e0ded241a704f277834e18`. Linux Native remains locally unverified. No production dependency was added and GitHub CI was not awaited. Food prototypes are outside this accepted snapshot.
+
 ## Funded crafting, Torch God's Favor and bank witnesses: verified local checkpoint, 2026-10-15
 
 The final staged diff removes trailing spaces from four otherwise blank lines in two new test helpers. Their executed bytes are preserved with a verified blank-line-only shipping bridge under `root-combined-gameplay-v1/whitespace-bridge-v1`; production, assertions and executable tokens are unchanged. No tests were repeated for this cosmetic correction. The fingerprint below identifies the executed snapshot; final verification also records the shipped text fingerprint.

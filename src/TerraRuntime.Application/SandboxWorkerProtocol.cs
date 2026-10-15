@@ -15,6 +15,8 @@ internal sealed record SandboxWorkerDescriptor(
     string? WorldName, ulong Seed, int WidthTiles, int HeightTiles,
     WorldGenerationGameMode GameMode, WorldGenerationEvil Evil, string? SeedText, string? Sha256, int MaxPlayers)
 {
+    public bool TrustInitialVanillaStock { get; init; }
+
     [JsonIgnore]
     public WorldRuntimeIdentity Identity => new(new WorldRuntimeId(RuntimeId), new WorldSessionId(SessionId));
 
@@ -26,7 +28,7 @@ internal sealed record SandboxWorkerDescriptor(
             throw new InvalidDataException("Invalid worker descriptor limits.");
         if (SourceKind == SandboxWorkerSourceKind.Generated)
         {
-            if (Sha256 is not null || WorldName is null ||
+            if (TrustInitialVanillaStock || Sha256 is not null || WorldName is null ||
                 (long)WidthTiles * HeightTiles > ServerWorldLoadPolicy.CreateLimits().MaxTileCount)
                 throw new InvalidDataException("Invalid generated worker source.");
             var source = new SandboxWorldSource.Generated(new WorldGeneratorId(Source), WorldName, Seed,
@@ -41,7 +43,7 @@ internal sealed record SandboxWorkerDescriptor(
                 WidthTiles != 0 || HeightTiles != 0 || Seed != 0 || GameMode != 0 || Evil != 0)
                 throw new InvalidDataException("Invalid world-file worker source.");
             _ = Convert.FromHexString(Sha256);
-            return new SandboxWorldSource.WorldFile(Source);
+            return new SandboxWorldSource.WorldFile(Source) { TrustInitialVanillaStock = TrustInitialVanillaStock };
         }
         throw new InvalidDataException("Unsupported worker source kind.");
     }

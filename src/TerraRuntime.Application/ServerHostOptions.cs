@@ -13,6 +13,8 @@ public sealed record ServerHostOptions(
     public const int DefaultMaxWorldRuntimes = 8;
     public const int DefaultSandboxMaterializationConcurrency = 1;
 
+    public bool ImportInitialWorldCustody { get; init; }
+
     public string BindAddress { get; init; } = DefaultBindAddress;
 
     public int MaxWorldRuntimes { get; init; } = DefaultMaxWorldRuntimes;
@@ -29,6 +31,7 @@ public sealed record ServerHostOptions(
         int maxPlayers = DefaultMaxPlayers;
         bool interestManagementEnabled = false;
         bool terminalUiEnabled = true;
+        bool importInitialWorldCustody = false;
         int maxWorldRuntimes = DefaultMaxWorldRuntimes;
         int sandboxMaterializationConcurrency = DefaultSandboxMaterializationConcurrency;
 
@@ -37,6 +40,10 @@ public sealed record ServerHostOptions(
             string arg = args[i];
             switch (arg)
             {
+                case "--import-world-custody":
+                    importInitialWorldCustody = true;
+                    break;
+
                 case "--world":
                     if (!TryReadValue(args, ref i, out worldPath))
                     {
@@ -120,6 +127,7 @@ public sealed record ServerHostOptions(
             interestManagementEnabled,
             terminalUiEnabled)
         {
+            ImportInitialWorldCustody = importInitialWorldCustody,
             BindAddress = bindAddress,
             MaxWorldRuntimes = maxWorldRuntimes,
             SandboxMaterializationConcurrency = sandboxMaterializationConcurrency

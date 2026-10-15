@@ -29,7 +29,7 @@ internal static class SandboxWorkerProgram
             try { exitCode = RunAsync(args[1], token).GetAwaiter().GetResult(); }
             finally { CryptographicOperations.ZeroMemory(token); }
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or
             OperationCanceledException or ArgumentException or JsonException or FormatException or InvalidOperationException)
         {
             Console.Error.WriteLine($"Sandbox worker rejected/stopped: {exception.GetType().Name}.");
@@ -67,7 +67,7 @@ internal static class SandboxWorkerProgram
             throw new InvalidDataException("Worker world materialization failed: " + prepared.Status);
         startup.Token.ThrowIfCancellationRequested();
         using var runtime = new WorldRuntime(descriptor.Identity, source, prepared.World!, prepared.Bootstrap!,
-            new InterestManagementControl(), new WorldRuntimeOptions { MaxPlayers = descriptor.MaxPlayers });
+            new InterestManagementControl(), new WorldRuntimeOptions { MaxPlayers = descriptor.MaxPlayers }, sourceCustody: prepared.Custody);
         runtime.Start();
         while (runtime.GameLoop.Snapshot.Tick == 0 && runtime.Lifecycle == WorldRuntimeLifecycle.Running)
             await Task.Delay(10, startup.Token).ConfigureAwait(false);

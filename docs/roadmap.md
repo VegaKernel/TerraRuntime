@@ -1,5 +1,15 @@
 # TerraRuntime roadmap
 
+## Durable chest ownership and sandbox materialization: accepted local checkpoint, 2026-10-15
+
+The next persistence/item-authority block is locally accepted: exact world-chest quantity/copper survives saves, interrupted recovery, backup restoration and readonly sandbox creation. Initial vanilla import requires explicit trust; managed missing/corrupt metadata never refills stock. Remote crafting consumes exact partial material certificates through the existing journal. One lifetime writer owns startup through final checkpoint completion.
+
+Release builds WAE0/0; focused126/126; mandatory fast24979/24980; one unfiltered full1563272/1563273, zero failures/errors and the known single liquid skip. All4976 methods selected, no exclusions. Same grouped proof passes managed/fresh Windows Native21196 helper predicates plus3 wrappers; Native server five smokes and actual Release/Native82/49/129/two-client/chat/72signed35/43 effects pass. Both hosts stopped. Linux Native remains unverified; no dependency or CI wait.
+
+Executed source/test fingerprint `2d8c183caced361fe714998a87476cb2e0c4c1ce28ac0d602465257aa62924ca`; evidence: `.cache/next-work-on-c/durable-chests-shipping-acceptance-v2`, `durable-chest-typed-native-acceptance-v1`, `durable-chests-live-acceptance-v2`. Only recorded CR-only existing-test and four helpers empty-EOF formatting bridges follow execution; no assertions or production change. Final shipping text fingerprint `2179edfe76e0f030849ee3c54d995b9e8381a86a89e0ded241a704f277834e18`.
+
+All three agents continue the next cache-only block: funded selected food, QuickBuff food-first ordering and actual combat/movement/regeneration consumers. Official metadata identifies82 food definitions; actual State regression shows paid food currently missing. Raw client buff presence must not become a new food-effect producer. Minion birth, local mining, special food contexts and broader vanilla AI parity remain explicit separate gaps. This checkpoint does not complete the continuous compatibility objective.
+
 ## Funded crafting, Torch favor and bank custody: accepted local checkpoint, 2026-10-15
 
 Final staging note: the cached diff check found trailing spaces on four otherwise blank lines in CraftCurrencyChecks.cs/CraftStateChecks.cs. Only those spaces were removed; exact executed originals, old/new hashes and line numbers are preserved at root-combined-gameplay-v1/whitespace-bridge-v1/bridge.json. Root verifies this token-identical test-only bridge against executed c268 inputs, separately records final shipping text fingerprint, and does not rerun tests for cosmetic changes. Production/shipping32/assertions are unchanged. Final diff checks include HEAD/staged new files, not just previously tracked unstaged paths.

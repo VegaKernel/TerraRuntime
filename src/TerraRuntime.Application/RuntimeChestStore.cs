@@ -40,6 +40,7 @@ internal sealed partial class RuntimeChestStore
             if (!chestByCoordinates.TryAdd(coordinateKey, chest.SlotId))
                 throw new InvalidOperationException($"Duplicate chest coordinates {chest.X},{chest.Y} in loaded world state.");
 
+            InitializeFullCustody(chest);
             chests[chest.SlotId] = new WorldChest(
                 chest.SlotId,
                 chest.X,
@@ -98,6 +99,7 @@ internal sealed partial class RuntimeChestStore
             tileY,
             string.Empty,
             new WorldChestItem[itemSlotCount]);
+        InitializeFullCustody(created);
         chests[chestId] = created;
         craftingRevision++;
         if (!chestByCoordinates.TryAdd(coordinateKey, chestId))
@@ -131,6 +133,8 @@ internal sealed partial class RuntimeChestStore
             return false;
 
         chests[chestId] = null;
+        custodyQuantity[chestId] = null;
+        custodyCopper[chestId] = null;
         craftingRevision++;
         owners[chestId] = default;
         removed = chest;
@@ -213,6 +217,7 @@ internal sealed partial class RuntimeChestStore
         }
 
         if (ownsLoadedWorldStock && chest.Items[submitted.ItemSlot] != item) return false;
+        ApplyRawCustodyMinimum(chest, submitted.ItemSlot, in item);
         chest.Items[submitted.ItemSlot] = item;
         craftingRevision++;
         return true;

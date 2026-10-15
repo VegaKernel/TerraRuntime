@@ -36,7 +36,8 @@ internal readonly record struct RuntimeWorldSaveStatus(
     long RuntimeCacheRebuilds = 0,
     long RuntimeCacheRebuildCoalesced = 0,
     long RuntimeCacheRebuildFailures = 0,
-    RuntimeWorldSnapshotRebuildResult? LastRuntimeCacheRebuildResult = null);
+    RuntimeWorldSnapshotRebuildResult? LastRuntimeCacheRebuildResult = null,
+    long CustodyRetentionFailures = 0);
 
 /// <summary>
 /// Bridges thread-safe save requests into game-thread-owned snapshot capture. Tile shadow maintenance and mutable
@@ -50,6 +51,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
     private const long MaxTotalSignTextBytes = 64L * 1024 * 1024;
 
     private readonly RuntimeWorldCheckpointSnapshotSource snapshotSource;
+    private readonly RuntimeManagedWorldCustody? managedCustody;
     private readonly WorldSaveCoordinator<RuntimeWorldCheckpointSnapshot> coordinator;
     private readonly CoalescingSaveScheduler<long>? runtimeCacheRebuildScheduler;
     private readonly int synchronizationSectionsPerTick;
@@ -76,7 +78,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
         RuntimeWorldProgressionMutations? progressionMutations = null,
         WorldFileLoadLimits? checkpointValidationLimits = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
-        Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null)
+        Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null,
+        RuntimeManagedWorldCustody? managedCustody = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -117,6 +120,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             });
         }
 
+        this.managedCustody = managedCustody;
         this.synchronizationSectionsPerTick = synchronizationSectionsPerTick;
         snapshotSource = new RuntimeWorldCheckpointSnapshotSource(
             tiles,
@@ -125,7 +129,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             worldClock,
             signStore,
             townNpcStore,
-            progressionMutations, deathPrelude, invasionSaveStateSource);
+            progressionMutations, deathPrelude, invasionSaveStateSource, managedCustody);
         coordinator = new WorldSaveCoordinator<RuntimeWorldCheckpointSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,
@@ -137,7 +141,10 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
                 stream,
                 cancellationToken),
             writerOptions,
-            onCommitted: _ => QueueRuntimeCacheRebuild());
+            onCommitted: _ => { managedCustody?.OnCommitted(); QueueRuntimeCacheRebuild(); },
+            prepareCandidateAsync: managedCustody is null ? null : (snapshot, path, token) =>
+                managedCustody.Artifacts.PrepareCandidateAsync(snapshot.Custody ?? throw new InvalidDataException("Managed snapshot lost custody."), path, token),
+            acquireWriteOwnership: managedCustody is null ? null : _ => managedCustody.Owner.EnterCheckpointWrite());
         PublishOwnerStatus();
     }
 
@@ -178,7 +185,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             RuntimeCacheRebuildFailures: Volatile.Read(ref runtimeCacheRebuildFailures),
             LastRuntimeCacheRebuildResult: cacheResult < 0
                 ? null
-                : (RuntimeWorldSnapshotRebuildResult)cacheResult);
+                : (RuntimeWorldSnapshotRebuildResult)cacheResult,
+            CustodyRetentionFailures: managedCustody?.RetentionFailures ?? 0);
     }
 
     /// <summary>
@@ -246,6 +254,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
     /// </summary>
     public void CaptureFinalSaveAfterOwnerStopped()
     {
+        managedCustody?.Owner.TransferRevisionCaptureAfterOwnerStopped();
         if (Interlocked.Exchange(ref acceptingRequests, 0) == 0)
             throw new InvalidOperationException("The world save service is already completing.");
 
@@ -438,7 +447,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
         }
 
         WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
-            sourceEnvelope,
+            snapshot.Custody is { } custody ? sourceEnvelope.WithRevision(custody.Revision.Value) : sourceEnvelope,
             sourceHeader,
             headerSection,
             preserved,

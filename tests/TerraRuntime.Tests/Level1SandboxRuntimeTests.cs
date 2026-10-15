@@ -355,7 +355,7 @@ public sealed class Level1SandboxRuntimeTests
                 new SandboxCreateRequest(
                     name,
                     WorldIsolationLevel.InProcess,
-                    new SandboxWorldSource.WorldFile(path)),
+                    new SandboxWorldSource.WorldFile(path) { TrustInitialVanillaStock = true }),
                 out SandboxJobId jobId,
                 out string? error), error);
             SandboxJobSnapshot completed = await sandboxes.WaitForJobAsync(
@@ -655,7 +655,7 @@ public sealed class Level1SandboxRuntimeTests
         {
             await File.WriteAllBytesAsync(path, bytes, TestContext.Current.CancellationToken);
             var descriptor = new SandboxWorkerDescriptor(Guid.NewGuid(), Guid.NewGuid(), SandboxWorkerSourceKind.WorldFile,
-                path, null, 0, 0, 0, default, default, null, Convert.ToHexString(SHA256.HashData(bytes)), 4);
+                path, null, 0, 0, 0, default, default, null, Convert.ToHexString(SHA256.HashData(bytes)), 4) { TrustInitialVanillaStock = true };
             string executable = Path.Combine(AppContext.BaseDirectory,
                 OperatingSystem.IsWindows() ? "TerraRuntime.Server.exe" : "TerraRuntime.Server");
             await using SandboxSupervisor worker = await SandboxSupervisor.StartAsync(executable, descriptor, TestContext.Current.CancellationToken);

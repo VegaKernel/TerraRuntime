@@ -42,6 +42,7 @@ public static class TerrariaServerHost
         if (preparation.Status == WorldStartupPreparationStatus.Failed || preparation.Startup is null)
             return preparation.ExitCode;
 
+        using var custodyOwner = preparation.Startup.ManagedCustody;
         using var session = new ServerProcessSession(
             options,
             runtimeInterestManagement,

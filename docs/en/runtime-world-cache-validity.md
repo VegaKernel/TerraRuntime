@@ -6,6 +6,8 @@
 
 `.wld` remains the canonical source of truth. A `.runtime-world` image is accepted only when it proves that it belongs to the current canonical bytes and to the current TerraRuntime cache layout. File timestamps are useful for detecting a changing source during reads, but timestamps alone never authorize a cache hit.
 
+The `.wld` remains the physical checkpoint, while exact spendable chest quantities and copper require its matching authoritative custody metadata. This check also applies to warm cache hits. Missing or corrupt custody is a startup refusal, not a disposable-cache miss that can refill stock. See [world persistence](world-persistence.md#11-durable-world-chest-ownership).
+
 ## Header contract
 
 The fixed 128-byte runtime-cache header carries:

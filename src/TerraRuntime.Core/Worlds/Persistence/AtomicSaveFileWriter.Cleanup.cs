@@ -36,7 +36,13 @@ public static partial class AtomicSaveFileWriter
     /// Inspects abandoned managed save transactions for one target, completes recovery-ready transactions when safe,
     /// removes invalid/partial transactions and quarantines conflicting recovery-ready transactions for inspection.
     /// </summary>
-    public static AtomicSaveFileRecoveryDiagnostic RecoverAbandonedWrites(string targetPath)
+    public static AtomicSaveFileRecoveryDiagnostic RecoverAbandonedWrites(string targetPath) =>
+        RecoverAbandonedWrites(targetPath, validateCandidate: null);
+
+    /// <summary>Validates caller-owned durable dependencies after the marker's byte/path checks and before
+    /// publication. Validation failure preserves the candidate and marker for a later retry.</summary>
+    public static AtomicSaveFileRecoveryDiagnostic RecoverAbandonedWrites(string targetPath,
+        Action<string>? validateCandidate)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
 
@@ -58,7 +64,7 @@ public static partial class AtomicSaveFileWriter
 
         try
         {
-            return CleanupAbandonedTemporaries(fullTargetPath);
+            return CleanupAbandonedTemporaries(fullTargetPath, validateCandidate);
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or NotSupportedException)
@@ -67,7 +73,8 @@ public static partial class AtomicSaveFileWriter
         }
     }
 
-    private static AtomicSaveFileRecoveryDiagnostic CleanupAbandonedTemporaries(string targetPath)
+    private static AtomicSaveFileRecoveryDiagnostic CleanupAbandonedTemporaries(string targetPath,
+        Action<string>? validateCandidate = null)
     {
         string directory = Path.GetDirectoryName(targetPath)
             ?? throw new ArgumentException("Target path has no directory.", nameof(targetPath));
@@ -164,6 +171,37 @@ public static partial class AtomicSaveFileWriter
                     ioFailed = true;
                     keepTransaction = true;
                     continue;
+                }
+
+                if (validateCandidate is not null)
+                {
+                    try { validateCandidate(temporaryPath); }
+                    catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
+                    {
+                        ioFailed = true;
+                        keepTransaction = true;
+                        continue;
+                    }
+                    // A caller callback cannot invalidate the marker-bound bytes or publication preconditions.
+                    if (TryReadRecoveryMarker(recoveryMarkerPath, temporaryPath, targetPath,
+                            out RecoveryMarker validatedMarker) != RecoveryMarkerReadResult.Valid)
+                    {
+                        ioFailed = true;
+                        keepTransaction = true;
+                        continue;
+                    }
+                    RecoveryPublicationDecision validatedDecision = CanPublishRecoveredTemporary(targetPath, in validatedMarker);
+                    if (validatedDecision != RecoveryPublicationDecision.Publish)
+                    {
+                        if (validatedDecision == RecoveryPublicationDecision.Suppress)
+                        {
+                            QuarantineRecoveryMarker(recoveryMarkerPath, conflictMarkerPath);
+                            suppressed++;
+                        }
+                        else ioFailed = true;
+                        keepTransaction = true;
+                        continue;
+                    }
                 }
 
                 PublishTemporaryFile(temporaryPath, targetPath);
