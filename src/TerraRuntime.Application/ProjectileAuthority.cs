@@ -9,7 +9,6 @@ using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
-
 internal enum ClientProjectileProvenanceResolveResult : byte
 {
     NotApplicable = 0,
@@ -17,8 +16,7 @@ internal enum ClientProjectileProvenanceResolveResult : byte
     Rejected = 2
 }
 
-internal readonly record struct AuthoritativeClientProjectileSpawn(
-    ProjectileStateUpdate State,
+internal readonly record struct AuthoritativeClientProjectileSpawn(ProjectileStateUpdate State,
     RuntimePlayerInventoryMutation? InventoryMutation,
     int ManaCost,
     VanillaLaunchSpeedEnvelope LaunchSpeedEnvelope,
@@ -32,12 +30,12 @@ internal readonly record struct AuthoritativeClientProjectileSpawn(
     internal ProjectileStateUpdate[]? VolleyStates { get; init; }
     internal AlternativeBulletUse1458? AlternativeBulletUse { get; init; }
     internal bool RequiresPlainBowPose { get; init; }
+    internal GemStaffFeatures1458? GemStaffFeatures { get; init; }
     internal RuntimePlayerMagicPayment1458? MagicPayment { get; init; }
     internal RuntimePlayerMagicUsePreparation? MagicUse { get; init; }
 }
 
 internal sealed record AlternativeBulletUse1458(AuthoritativeClientProjectileSpawn Use);
-
 /// <summary>
 /// Owns the projectile store, simulation, client commit validation and lifecycle metrics for one world.
 /// It is invoked only by the enclosing authoritative world loop.
@@ -64,13 +62,12 @@ internal sealed partial class ProjectileAuthority
     private readonly VanillaUnifiedRandom1458 projectileRandom;
     private readonly RuntimeProjectileClientUseCadenceTracker trustedClientUseCadence = new();
     private readonly RuntimeCelebrationMk2VolleyTracker celebrationMk2Volleys = new();
-    private readonly PendingClientBulletVolley?[] pendingBulletVolleys = new PendingClientBulletVolley[byte.MaxValue + 1];
+    private readonly PendingClientBulletVolley? [] pendingBulletVolleys = new PendingClientBulletVolley[byte.MaxValue + 1];
     private readonly ProjectileSnapshot[] controlledProjectileBuffer;
     private const byte ControlUseItemFlag = 1 << 5;
     internal RuntimeFallingBlockProjectiles FallingBlocks { get; } = new();
 
-    public ProjectileAuthority(
-        RuntimeProjectileStore projectiles,
+    public ProjectileAuthority(RuntimeProjectileStore projectiles,
         PlayerAuthority players,
         RuntimeNpcStore npcs,
         IRuntimePlayerSlotSnapshotLookup playerSnapshots,
@@ -94,8 +91,11 @@ internal sealed partial class ProjectileAuthority
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
         cultistLightningArcTrails = new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
         var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns, FallingBlocks);
-        var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails,
-            players, new RuntimeProjectileNpcHealing1458(npcs, npcReplication),
+        var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns,
+            cultistLightningArcTrails,
+            players,
+            new RuntimeProjectileNpcHealing1458(npcs,
+            npcReplication),
             new RuntimeProjectileCollisionTileCut1458(this.projectileRandom));
         executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects, npcs);
         this.stepper = stepper;
@@ -132,27 +132,32 @@ internal sealed partial class ProjectileAuthority
         }
     }
 
-
     public ReadOnlySpan<RuntimeProjectileExplosionEvent> PendingExplosions => explosions.Events;
-
     internal ReadOnlySpan<RuntimeProjectileTileExplosionEvent> PendingTileExplosions => tileExplosions.Events;
-
     internal RuntimeCultistLightningArcTrailRegistry CultistLightningArcTrails => cultistLightningArcTrails;
 
     public void ApplyReflections() => AppliedReflections += reflections.Tick();
-
-    public bool TryCapture(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
-        projectiles.TryGet(projectile, out snapshot);
-
+    public bool TryCapture(ProjectileHandle projectile, out ProjectileSnapshot snapshot) => projectiles.TryGet(projectile, out snapshot);
     internal bool TrySpawnFallingBlock(TerraRuntime.Contracts.Gameplay.TileTypeId tile, int x, int y, out ProjectileSnapshot spawned)
     {
         spawned = default;
-        if (stepper is null || !FallingBlocks.CanSpawn || projectiles.ActiveCount >= Math.Min(1000, projectiles.Capacity) ||
-            !VanillaFallingBlock1458.TryGetProjectile(tile, out var type)) return false;
+        if (stepper is null ||
+            !FallingBlocks.CanSpawn ||
+            projectiles.ActiveCount >= Math.Min(1000,
+            projectiles.Capacity) ||
+            !VanillaFallingBlock1458.TryGetProjectile(tile,
+            out var type))
+            return false;
         // WorldGen.SpawnFallingBlockProjectile dedicated branch: center(8,10), 10x10 body, Y velocity .5.
         var state = new ProjectileStateUpdate(type, byte.MaxValue, x * 16f + 3, y * 16f + 5, 0, .5f, default, 0, 10, 0, 10);
-        if (!projectiles.TrySpawnVanilla(state, out spawned)) return false;
-        if (!projectiles.TryMarkCombatTrusted(spawned.Handle)) { projectiles.TryDespawn(spawned.Handle, out _); return false; }
+        if (!projectiles.TrySpawnVanilla(state, out spawned))
+            return false;
+        if (!projectiles.TryMarkCombatTrusted(spawned.Handle))
+        {
+            projectiles.TryDespawn(spawned.Handle, out _);
+            return false;
+        }
+
         FallingBlocks.Register(spawned.Handle);
         AppliedSpawns++;
         return true;
@@ -164,15 +169,16 @@ internal sealed partial class ProjectileAuthority
         projectiles.TryDespawn(handle, out _);
     }
 
-    internal bool TrySpawnTrustedServerPlayerProjectile(
-        PlayerHandle owner,
-        in ProjectileStateUpdate state,
-        out ProjectileSnapshot snapshot)
+    internal bool TrySpawnTrustedServerPlayerProjectile(PlayerHandle owner, in ProjectileStateUpdate state, out ProjectileSnapshot snapshot)
     {
         snapshot = default;
-        if (!owner.IsAssigned || state.Spawner != owner.Slot.Value ||
-            !playerSnapshots.TryGetPlayer(owner.Slot, out PlayerStateSnapshot current) || current.Player != owner ||
-            !projectiles.TrySpawnVanilla(in state, out ProjectileSnapshot spawned))
+        if (!owner.IsAssigned ||
+            state.Spawner != owner.Slot.Value ||
+            !playerSnapshots.TryGetPlayer(owner.Slot,
+            out PlayerStateSnapshot current) ||
+            current.Player != owner ||
+            !projectiles.TrySpawnVanilla(in state,
+            out ProjectileSnapshot spawned))
         {
             return false;
         }
@@ -205,8 +211,7 @@ internal sealed partial class ProjectileAuthority
     public long RelayedUnknownDestroys { get; private set; }
     public ProjectileStateTickSummary LastTick { get; private set; }
 
-    private static ProjectileStateUpdate SnapshotToUpdate(in ProjectileSnapshot current) => new(
-        current.Type,
+    private static ProjectileStateUpdate SnapshotToUpdate(in ProjectileSnapshot current) => new(current.Type,
         current.Spawner,
         current.PositionX,
         current.PositionY,
@@ -217,5 +222,4 @@ internal sealed partial class ProjectileAuthority
         current.Damage,
         current.KnockBack,
         current.OriginalDamage);
-
 }

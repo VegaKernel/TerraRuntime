@@ -8,6 +8,10 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeProjectileReplicationRegistryTests
 {
     [Fact]
+    public void Gem_staff_source_updates_retry_after_throttling_and_preserve_kill_packet_positions() =>
+        GemStaffNetworkChecks.Run();
+
+    [Fact]
     public void Existing_projectile_is_sent_as_baseline_only_after_player_enters_playing_state()
     {
         var replication = new RuntimeProjectileReplicationRegistry();

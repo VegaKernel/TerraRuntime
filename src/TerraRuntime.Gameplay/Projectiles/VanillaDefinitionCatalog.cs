@@ -7,6 +7,7 @@ public static class VanillaProjectileAiStyles
 {
     public static readonly ProjectileAiStyleId None = new(0);
     public static readonly ProjectileAiStyleId Arrow = new(1);
+    public static readonly ProjectileAiStyleId GemStaff = new(29);
     public static readonly ProjectileAiStyleId Thrown = new(2);
     public static readonly ProjectileAiStyleId Boomerang = new(3);
     public static readonly ProjectileAiStyleId FallingStar = new(5);
@@ -1003,6 +1004,11 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
+        if (VanillaGemStaffProjectile1458.IsGemStaffProjectile(type))
+        {
+            definition = new(10, 10, VanillaProjectileAiStyles.GemStaff, true, false, true, 2, 2);
+            return true;
+        }
         // Source bank hitboxes; definition metadata does not implement their AI.
         if (type.Value == 525)
         {

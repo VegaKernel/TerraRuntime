@@ -97,7 +97,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             ProjectileSnapshot projectile = projectileBuffer[projectileIndex];
             // Main.UpdateWorld_Projectiles (1.4.5.8) never runs Update/Damage for overflow slot1000.
             if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
-                IsOrdinaryArrowHandled(in projectile))
+                IsOrdinaryArrowHandled(in projectile) ||
+                VanillaGemStaffProjectile1458.IsGemStaffProjectile(projectile.Type))
                 continue;
             if (projectiles.IsCombatTrusted(projectile.Handle) && VanillaProjectileOwnership.IsServerOwned(projectile.Spawner) &&
                 VanillaFallingBlock1458.TryGetTile(projectile.Type, out _) &&

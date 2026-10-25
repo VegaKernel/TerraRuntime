@@ -7,7 +7,6 @@ using TerraRuntime.Gameplay.Players;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
-
 internal sealed partial class PlayerAuthority
 {
     // A bounded ordinary remote profile, not the complete Player.Update scheduler. All players
@@ -15,17 +14,24 @@ internal sealed partial class PlayerAuthority
     internal bool TryTickRemotePlayerPhase()
     {
         Span<PlayerStateSnapshot> bots = stackalloc PlayerStateSnapshot[MaxPlayerSlots];
-        if (serverPlayers?.CopySnapshots(bots) > 0) return false;
+        if (serverPlayers?.CopySnapshots(bots) > 0)
+            return false;
         // An empty update does not read world/profile facts or consume the player stream.
         // Keep the normal no-player tick allocation-free without reviving retired custody.
-        if (membership.Count == 0) return true;
+        if (membership.Count == 0)
+            return true;
         // Main.UpdateWorld_Players never updates its dedicated local slot255.
-        var members = membership.Members.Where(static member => member.Slot.Value < byte.MaxValue)
-            .OrderBy(static member => member.Slot.Value).ToArray();
-        if (members.Length == 0) return playerUpdateRandomOwned && playerUpdateRandom is not null;
-        if (!playerUpdateRandomOwned || playerUpdateRandom is not { } random || playerUpdateWorld is not { } world ||
-            worldTiles is not { } tiles || !world.IsValid || membership.Serial == ulong.MaxValue ||
-            inventory.Serial == ulong.MaxValue || tiles.Dimensions.SectionCount > 4_096)
+        var members = membership.Members.Where(static member => member.Slot.Value < byte.MaxValue).OrderBy(static member => member.Slot.Value).ToArray();
+        if (members.Length == 0)
+            return playerUpdateRandomOwned && playerUpdateRandom is not null;
+        if (!playerUpdateRandomOwned ||
+            playerUpdateRandom is not { } random ||
+            playerUpdateWorld is not { } world ||
+            worldTiles is not { } tiles ||
+            !world.IsValid ||
+            membership.Serial == ulong.MaxValue ||
+            inventory.Serial == ulong.MaxValue ||
+            tiles.Dimensions.SectionCount > 4_096)
             return false;
         ulong memberSerial = membership.Serial;
         ulong inventorySerial = inventory.Serial;
@@ -37,7 +43,8 @@ internal sealed partial class PlayerAuthority
         for (int i = 0; i < versions.Length; i++)
         {
             versions[i] = tiles.GetSectionVersion(TerrariaSectionGeometry.FromLinearIndex(tiles.Dimensions, i));
-            if (versions[i] == long.MaxValue || (versions[i] & 1) != 0) return false;
+            if (versions[i] == long.MaxValue || (versions[i] & 1) != 0)
+                return false;
         }
 
         var healthWorldSource = npcHealthWorldFacts;
@@ -52,68 +59,95 @@ internal sealed partial class PlayerAuthority
         for (int i = 0; i < members.Length; i++)
         {
             var member = members[i];
-            if (!transferProfiles.TryCapture(member.Connection, out var appearance, out var equipment, out var buffs) ||
-                buffs is null || transferProfiles.CaptureBuffState(member.Connection) is not { } buffState)
+            if (!transferProfiles.TryCapture(member.Connection,
+                out var appearance,
+                out var equipment,
+                out var buffs) ||
+                buffs is null ||
+                transferProfiles.CaptureBuffState(member.Connection)is not { } buffState)
                 return false;
-            plans[i] = new(member, member.CaptureSnapshot(), member.ItemPhase, member.PhysicsPhase,
-                appearance, equipment, buffs, buffState, member.GodMode, member.OwnsManaMaximum, member.OwnsLifeMaximum);
+            plans[i] = new(member,
+                member.CaptureSnapshot(),
+                member.ItemPhase,
+                member.PhysicsPhase,
+                appearance,
+                equipment,
+                buffs,
+                buffState,
+                member.GodMode,
+                member.OwnsManaMaximum,
+                member.OwnsLifeMaximum);
             membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
             plans[i].BeforeShopSession = shopSession;
             plans[i].BeforePermanentUpgradeMask = member.OwnedPermanentUpgradeMask;
             plans[i].BeforeOwnsTorchFavor = member.OwnsTorchFavor;
             plans[i].BeforePaidTorchFavor = member.PaidTorchFavor;
-            if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore)) return false;
+            if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore))
+                return false;
             // Capture source UpdateEquips' bag gate before any external provider.
             // Cursor 58 and stored bags cannot open Void storage.
             for (int slot = 0; slot < 58; slot++)
                 if (VanillaVoidStorageCatalog1458.OpensVoidStorage(plans[i].InventoryBefore[slot].ItemType))
                     plans[i].VoidStorageOpen = true;
         }
+
         foreach (var plan in plans)
         {
-            bool outside = VanillaPlayerHealthContext1458.IsRemoteOutOfRange(plan.X, plan.Y, 20, 42,
-                world.MaxTilesX, world.MaxTilesY);
+            bool outside = VanillaPlayerHealthContext1458.IsRemoteOutOfRange(plan.X, plan.Y, 20, 42, world.MaxTilesX, world.MaxTilesY);
             bool ghost = (plan.Before.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0;
-            if (outside || ghost || plan.Before.IsDead) continue;
-            if (ownedHealthWorld is not { } healthWorld || ownedProjectiles is null) return false;
+            if (outside || ghost || plan.Before.IsDead)
+                continue;
+            if (ownedHealthWorld is not { } healthWorld || ownedProjectiles is null)
+                return false;
             plan.HealthWorld = healthWorld;
             plan.Grappling = CaptureRemotePlayerGrappling(plan.Before.Player);
             // The ordinary physics owner has no retained hook attachment/movement phase.
             if (plan.Grappling != false ||
-                (healthWorldSource is not null && healthWorldSource() != healthWorld) ||
-                (grapplingSource is not null && grapplingSource(plan.Before.Player) != plan.Grappling))
+                (healthWorldSource is not null &&
+                healthWorldSource() != healthWorld) ||
+                (grapplingSource is not null &&
+                grapplingSource(plan.Before.Player) != plan.Grappling))
                 return false;
         }
+
         var physics = new VanillaServerPlayerDryPhysicsStepper(tiles);
         foreach (var plan in plans)
         {
-            if (!TryPlanRemoteItemPhase(plan, in world, physics, plannedRandom)) return false;
+            if (!TryPlanRemoteItemPhase(plan, in world, physics, plannedRandom))
+                return false;
         }
 
         // Finish every external read before the final owned-store comparisons. In particular a
         // later player's provider can mutate an earlier player's indexed buff durations.
         foreach (var plan in plans)
-            if (plan.HealthWorld is not null && grapplingSource is not null &&
-                grapplingSource(plan.Before.Player) != plan.Grappling)
+            if (plan.HealthWorld is not null && grapplingSource is not null && grapplingSource(plan.Before.Player) != plan.Grappling)
                 return false;
         foreach (var plan in plans)
             if (plan.HealthWorld is { } healthWorld && healthWorldSource is not null && healthWorldSource() != healthWorld)
                 return false;
-
         foreach (var plan in plans)
             if (plan.HealthWorld is not null && CaptureRemotePlayerGrappling(plan.Before.Player) != plan.Grappling)
                 return false;
-
         // No external readers occur after this tail. Adoption cannot expose a partial census.
-        if (membership.Serial != memberSerial || inventory.Serial != inventorySerial ||
-            !playerUpdateRandomOwned || !ReferenceEquals(playerUpdateRandom, random) ||
-            !ReferenceEquals(npcHealthWorldFacts, healthWorldSource) ||
-            !ReferenceEquals(npcHealthGrapplingFacts, grapplingSource) ||
-            remotePlayerHealthWorld != ownedHealthWorld || !ReferenceEquals(remotePlayerProjectiles, ownedProjectiles) ||
-            !random.HasSameState(beforeRandom) || playerUpdateWorld != world ||
-            combatEquipmentExpertMode != equipmentExpert || combatEquipmentMasterMode != equipmentMaster ||
+        if (membership.Serial != memberSerial ||
+            inventory.Serial != inventorySerial ||
+            !playerUpdateRandomOwned ||
+            !ReferenceEquals(playerUpdateRandom,
+            random) ||
+            !ReferenceEquals(npcHealthWorldFacts,
+            healthWorldSource) ||
+            !ReferenceEquals(npcHealthGrapplingFacts,
+            grapplingSource) ||
+            remotePlayerHealthWorld != ownedHealthWorld ||
+            !ReferenceEquals(remotePlayerProjectiles,
+            ownedProjectiles) ||
+            !random.HasSameState(beforeRandom) ||
+            playerUpdateWorld != world ||
+            combatEquipmentExpertMode != equipmentExpert ||
+            combatEquipmentMasterMode != equipmentMaster ||
             combatEquipmentLocalVanityArmor != localVanity ||
-            serverPlayers?.CopySnapshots(bots) > 0) return false;
+            serverPlayers?.CopySnapshots(bots) > 0)
+            return false;
         for (int i = 0; i < versions.Length; i++)
             if (tiles.GetSectionVersion(TerrariaSectionGeometry.FromLinearIndex(tiles.Dimensions, i)) != versions[i])
                 return false;
@@ -121,19 +155,35 @@ internal sealed partial class PlayerAuthority
         {
             var member = plan.Member;
             membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
-            if (!ReferenceEquals(shopSession, plan.BeforeShopSession) ||
-                !membership.TryGet(member.Connection, out var current) || !ReferenceEquals(current, member) ||
-                member.CaptureSnapshot() != plan.Before || member.ItemPhase != plan.BeforeItem ||
-                member.PhysicsPhase != plan.BeforePhysics || member.GodMode != plan.GodMode ||
+            if (!ReferenceEquals(shopSession,
+                plan.BeforeShopSession) ||
+                !membership.TryGet(member.Connection,
+                out var current) ||
+                !ReferenceEquals(current,
+                member) ||
+                member.CaptureSnapshot() != plan.Before ||
+                member.ItemPhase != plan.BeforeItem ||
+                member.PhysicsPhase != plan.BeforePhysics ||
+                member.GodMode != plan.GodMode ||
                 member.OwnedPermanentUpgradeMask != plan.BeforePermanentUpgradeMask ||
-                member.OwnsTorchFavor != plan.BeforeOwnsTorchFavor || member.PaidTorchFavor != plan.BeforePaidTorchFavor ||
-                member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum || member.OwnsLifeMaximum != plan.BeforeOwnsLifeMaximum ||
+                member.OwnsTorchFavor != plan.BeforeOwnsTorchFavor ||
+                member.PaidTorchFavor != plan.BeforePaidTorchFavor ||
+                member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum ||
+                member.OwnsLifeMaximum != plan.BeforeOwnsLifeMaximum ||
                 member.Revision == ulong.MaxValue ||
-                !transferProfiles.TryCapture(member.Connection, out var appearance, out var equipment, out var buffs) ||
-                appearance != plan.Appearance || !equipment.AsSpan().SequenceEqual(plan.Equipment) ||
-                buffs is null || !buffs.AsSpan().SequenceEqual(plan.BuffTypes) ||
-                !transferProfiles.IsCurrentBuffState(member.Connection, plan.BeforeBuffs)) return false;
+                !transferProfiles.TryCapture(member.Connection,
+                out var appearance,
+                out var equipment,
+                out var buffs) ||
+                appearance != plan.Appearance ||
+                !equipment.AsSpan().SequenceEqual(plan.Equipment) ||
+                buffs is null ||
+                !buffs.AsSpan().SequenceEqual(plan.BuffTypes) ||
+                !transferProfiles.IsCurrentBuffState(member.Connection,
+                plan.BeforeBuffs))
+                return false;
         }
+
         RuntimeNpcDeathPrelude1458? favorPreview = null;
         int favorCount = plans.Count(static plan => plan.CreditTorchFavor);
         if (favorCount != 0)
@@ -142,33 +192,40 @@ internal sealed partial class PlayerAuthority
                 return false;
             var victims = new NpcSnapshot[favorCount];
             Array.Fill(victims, new(default, default, 664, 664, 0f, 0f, 0f, 0f, 0, default, default));
-            if (!favorPrelude.TryPrepareScriptedKills(victims, out favorPreview)) return false;
+            if (!favorPrelude.TryPrepareScriptedKills(victims, out favorPreview))
+                return false;
         }
+
         foreach (var plan in plans)
-            if (plan.PublishBuffs) plan.PublishedBuffTypes = plan.Buffs.CaptureTypes();
+            if (plan.PublishBuffs)
+                plan.PublishedBuffTypes = plan.Buffs.CaptureTypes();
         var phaseMutations = plans.SelectMany(static plan => plan.InventoryMutations).ToArray();
-        if (!inventory.TryPrepareRemotePhase(phaseMutations, inventorySerial, out var inventoryPlan) ||
-            !inventoryPlan!.TryAdoptUnpublished()) return false;
+        if (!inventory.TryPrepareRemotePhase(phaseMutations, inventorySerial, out var inventoryPlan) || !inventoryPlan!.TryAdoptUnpublished())
+            return false;
         RuntimeNpcDeathPrelude1458.PreludePublication? favorPublication = null;
         if (favorPreview is not null && !favorPrelude!.TryAdoptUnpublished(favorPreview, favorRevision, out favorPublication))
             throw new InvalidOperationException("Validated Torch favor prelude lost currentness during callback-free adoption.");
         foreach (var plan in plans)
         {
-            if (!plan.Changed) continue;
+            if (!plan.Changed)
+                continue;
             var member = plan.Member;
             // Every condition was checked above; these owned assignments invoke no callbacks.
             transferProfiles.TryAdoptBuffState(member.Connection, plan.BeforeBuffs, plan.Buffs);
             if (plan.AcceptedPermanentAppearance is { } acceptedAppearance)
                 transferProfiles.TrySetAppearance(member.Connection, in acceptedAppearance);
-            if (plan.CreditTorchFavor) member.PaidTorchFavor = true;
+            if (plan.CreditTorchFavor)
+                member.PaidTorchFavor = true;
             member.TryAdvanceRemotePhaseRevision();
             member.ItemPhase = plan.Item;
             if (plan.InventoryMutations.Any(static mutation => mutation.CursorSourceDebit is not null) &&
                 member.CursorMove?.Inventory is { } consumed &&
-                plan.InventoryMutations.Any(mutation=>ReferenceEquals(mutation.CursorSourceDebit,consumed)))
+                plan.InventoryMutations.Any(mutation => ReferenceEquals(mutation.CursorSourceDebit,
+                consumed)))
                 member.CursorMove = null;
             ObserveShopPricingPhase(member);
-            if (plan.Item?.MagicPayment is not null) member.OwnsManaMaximum = true;
+            if (plan.Item?.MagicPayment is not null)
+                member.OwnsManaMaximum = true;
             member.PhysicsPhase = plan.Physics;
             member.ItemAnimation = plan.Item!.Value.Selected.Animation;
             member.ItemRotation = plan.Rotation;
@@ -181,19 +238,29 @@ internal sealed partial class PlayerAuthority
                 member.MaxLife = checked((short)acceptedBase);
                 member.OwnsLifeMaximum = true;
             }
+
             member.Debuffs = plan.Debuffs;
             member.Mana = checked((short)plan.Item.Value.Mana.Mana);
-            if (plan.PublishMana) member.MaxMana = checked((short)plan.Item.Value.BaseManaMaximum);
+            if (plan.PublishMana)
+                member.MaxMana = checked((short)plan.Item.Value.BaseManaMaximum);
             member.PositionX = plan.X;
             member.PositionY = plan.Y;
             member.VelocityX = plan.Vx;
             member.VelocityY = plan.Vy;
             member.MarkRemotePhaseSnapshot();
         }
+
         random.CopyStateFrom(plannedRandom);
         Exception? first = null;
-        try { favorPublication?.TryPublish(); }
-        catch (Exception error) { first = error; }
+        try
+        {
+            favorPublication?.TryPublish();
+        }
+        catch (Exception error)
+        {
+            first = error;
+        }
+
         int mutationIndex = 0;
         for (int index = 0; index < plans.Length; index++)
         {
@@ -201,123 +268,204 @@ internal sealed partial class PlayerAuthority
             foreach (var mutation in plan.InventoryMutations)
             {
                 int journalIndex = mutationIndex++;
-                if (membership.TryGet(mutation.Connection, out var current) && ReferenceEquals(current, plan.Member) &&
-                    inventoryPlan.IsAcceptedItemCurrent(journalIndex))
+                if (membership.TryGet(mutation.Connection, out var current) && ReferenceEquals(current, plan.Member) && inventoryPlan.IsAcceptedItemCurrent(journalIndex))
                 {
                     try
                     {
                         var report = mutation.After.ToCommitRequest(mutation.Connection.Player.Slot, mutation.Slot);
                         events?.PlayerEquipmentUpdated(mutation.Connection, in report);
                     }
-                    catch (Exception error) { first ??= error; }
+                    catch (Exception error)
+                    {
+                        first ??= error;
+                    }
                 }
             }
+
             if (plan.AcceptedPermanentAppearance is { } publishedAppearance &&
-                membership.TryGet(plan.Member.Connection, out var appearanceMember) &&
-                ReferenceEquals(appearanceMember, plan.Member) &&
-                transferProfiles.TryCapture(plan.Member.Connection, out var currentAppearance, out _, out _) &&
+                membership.TryGet(plan.Member.Connection,
+                out var appearanceMember) &&
+                ReferenceEquals(appearanceMember,
+                plan.Member) &&
+                transferProfiles.TryCapture(plan.Member.Connection,
+                out var currentAppearance,
+                out _,
+                out _) &&
                 currentAppearance == publishedAppearance)
             {
-                try { events?.PlayerAppearanceUpdated(plan.Member.Connection, in publishedAppearance); }
-                catch (Exception error) { first ??= error; }
+                try
+                {
+                    events?.PlayerAppearanceUpdated(plan.Member.Connection, in publishedAppearance);
+                }
+                catch (Exception error)
+                {
+                    first ??= error;
+                }
             }
-            if (plan.PublishHealth && membership.TryGet(plan.Member.Connection, out var healthMember) &&
-                ReferenceEquals(healthMember, plan.Member) && healthMember.NpcHealth == plan.Health &&
+
+            if (plan.PublishHealth &&
+                membership.TryGet(plan.Member.Connection,
+                out var healthMember) &&
+                ReferenceEquals(healthMember,
+                plan.Member) &&
+                healthMember.NpcHealth == plan.Health &&
                 healthMember.ItemPhase == plan.Item)
             {
                 try
                 {
-                    var report = new PlayerHealthCommitRequest(plan.Member.Slot,
-                        checked((short)plan.Health!.Value.Life), healthMember.MaxLife);
+                    var report = new PlayerHealthCommitRequest(plan.Member.Slot, checked((short)plan.Health!.Value.Life), healthMember.MaxLife);
                     events?.PlayerHealthUpdated(plan.Member.Connection, in report);
                 }
-                catch (Exception error) { first ??= error; }
+                catch (Exception error)
+                {
+                    first ??= error;
+                }
             }
-            if (plan.PublishMana && membership.TryGet(plan.Member.Connection, out var manaMember) &&
-                ReferenceEquals(manaMember, plan.Member) && manaMember.Mana == plan.Item!.Value.Mana.Mana &&
-                manaMember.MaxMana == plan.Item.Value.BaseManaMaximum && manaMember.ItemPhase?.BaseManaMaximum == plan.Item.Value.BaseManaMaximum)
+
+            if (plan.PublishMana &&
+                membership.TryGet(plan.Member.Connection,
+                out var manaMember) &&
+                ReferenceEquals(manaMember,
+                plan.Member) &&
+                manaMember.Mana == plan.Item!.Value.Mana.Mana &&
+                manaMember.MaxMana == plan.Item.Value.BaseManaMaximum &&
+                manaMember.ItemPhase?.BaseManaMaximum == plan.Item.Value.BaseManaMaximum)
             {
                 try
                 {
                     var report = new PlayerManaCommitRequest(plan.Member.Slot, manaMember.Mana, manaMember.MaxMana);
                     events?.PlayerManaUpdated(plan.Member.Connection, in report);
                 }
-                catch (Exception error) { first ??= error; }
+                catch (Exception error)
+                {
+                    first ??= error;
+                }
             }
+
             if (plan.PublishedBuffTypes is { } publishedBuffs &&
-                membership.TryGet(plan.Member.Connection, out var buffMember) && ReferenceEquals(buffMember, plan.Member) &&
-                transferProfiles.IsCurrentBuffState(plan.Member.Connection, plan.Buffs))
+                membership.TryGet(plan.Member.Connection,
+                out var buffMember) &&
+                ReferenceEquals(buffMember,
+                plan.Member) &&
+                transferProfiles.IsCurrentBuffState(plan.Member.Connection,
+                plan.Buffs))
             {
                 try
                 {
                     var report = new PlayerBuffTypesCommitRequest(plan.Member.Slot, publishedBuffs);
                     events?.PlayerBuffTypesUpdated(plan.Member.Connection, in report);
                 }
-                catch (Exception error) { first ??= error; }
+                catch (Exception error)
+                {
+                    first ??= error;
+                }
             }
         }
-        if (first is not null) ExceptionDispatchInfo.Capture(first).Throw();
+
+        if (first is not null)
+            ExceptionDispatchInfo.Capture(first).Throw();
         return true;
     }
 
     private bool TryPlanRemoteItemPhase(RemoteItemPhasePlan1458 plan,
-        in RuntimePlayerUpdateWorld1458 world, VanillaServerPlayerDryPhysicsStepper physics,
+        in RuntimePlayerUpdateWorld1458 world,
+        VanillaServerPlayerDryPhysicsStepper physics,
         VanillaUnifiedRandom1458 random)
     {
         var member = plan.Member;
         var effectTypes = plan.BeforeBuffs.CaptureEffectTypes();
-        if (plan.Item is not { } item || (item.ShopDiscountStates & ~15) != 0 || item.ClientUiPriceArithmeticMask > 3 || plan.Physics is not { } physical ||
-            item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
-            member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
+        if (plan.Item is not { } item ||
+            (item.ShopDiscountStates & ~15) != 0 ||
+            item.ClientUiPriceArithmeticMask > 3 ||
+            plan.Physics is not { } physical ||
+            item.DeadTime is < 0 or >= int.MaxValue ||
+            item.RespawnTimer < 0 ||
+            item.ManaPotionDelay < 0 ||
+            member.NpcHealth is not { SourceProfileKnown: true } ||
+            member.HasMount ||
+            plan.GodMode ||
             ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & ~127) != 0 ||
-            !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus, plan.VoidStorageOpen) ||
+            !TryCaptureProvenRemoteEquipment(plan.Equipment,
+            plan.Appearance,
+            out var equipmentCombat,
+            out int manaMaximumBonus,
+            plan.VoidStorageOpen) ||
             plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) ||
-            member.MiscFlags1 != 0 || (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
+            member.MiscFlags1 != 0 ||
+            (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
-            (member.MovementFlags & ~0x54) != 0 || physical.GravityDirection is not (1f or -1f) ||
-            item.Selected.Animation != member.ItemAnimation) return false;
+            (member.MovementFlags & ~0x54) != 0 ||
+            physical.GravityDirection is not (1f or -1f) ||
+            item.Selected.Animation != member.ItemAnimation)
+            return false;
         // Packet42 and accepted projectile mana debits write the owned current value. Neither
         // update resets the retained source regeneration count or delay.
-        item = item with { Mana = item.Mana with { Mana = member.Mana } };
-
-        bool outside = VanillaPlayerHealthContext1458.IsRemoteOutOfRange(plan.X, plan.Y, 20, 42,
-            world.MaxTilesX, world.MaxTilesY);
+        item = item with
+        {
+            Mana = item.Mana with
+            {
+                Mana = member.Mana
+            }
+        };
+        bool outside = VanillaPlayerHealthContext1458.IsRemoteOutOfRange(plan.X, plan.Y, 20, 42, world.MaxTilesX, world.MaxTilesY);
         bool ghost = (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0;
         if (member.IsDead && plan.Buffs.HasOwnedFoodSlots)
         {
             plan.Buffs.ClearOwnedFood();
             plan.PublishBuffs = true;
         }
+
         if (!member.IsDead)
             plan.PublishBuffs |= plan.Buffs.AdvanceOwnedFoodClock(currentCombatTick, !outside);
-
-        plan.Maximum = VanillaPlayerHealthContext1458.Resolve(member.DerivedLifeMax, member.BaseLifeMax,
-            0, outside, ghost, member.IsDead);
-        plan.Debuffs = VanillaPlayerHealthContext1458.ResolveDebuffs(member.Debuffs,
-            plan.Buffs.CaptureDebuffFlags(), outside, ghost, member.IsDead);
+        plan.Maximum = VanillaPlayerHealthContext1458.Resolve(member.DerivedLifeMax, member.BaseLifeMax, 0, outside, ghost, member.IsDead);
+        plan.Debuffs = VanillaPlayerHealthContext1458.ResolveDebuffs(member.Debuffs, plan.Buffs.CaptureDebuffFlags(), outside, ghost, member.IsDead);
         int delay = item.Selected.PotionDelay;
         if (outside)
         {
             if (item.MagicPayment is { } payment)
-                item = item with { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
+                item = item with
+                {
+                    MagicPayment = payment with
+                    {
+                        EligibleBirth = false,
+                        AwaitingPhase = false,
+                        MidpointEligible = false
+                    }
+                };
             bool combatBuff = effectTypes.Any(static type => type.Value is 5 or 16 or 114 or 115 or 117 or 321 or 26 or 206 or 207);
             if (combatBuff)
             {
-                if (item.DerivedCombat is not { } retained || !IsValidDerivedCombat(in retained) ||
-                    !VanillaPlayerCombatBuffs1458.TryApply(in retained, effectTypes, out var compounded) ||
-                    !IsValidDerivedCombat(in compounded)) return false;
-                item = item with { DerivedCombat = compounded };
+                if (item.DerivedCombat is not { } retained ||
+                    !IsValidDerivedCombat(in retained) ||
+                    !VanillaPlayerCombatBuffs1458.TryApply(in retained,
+                    effectTypes,
+                    out var compounded) ||
+                    !IsValidDerivedCombat(in compounded))
+                    return false;
+                item = item with
+                {
+                    DerivedCombat = compounded
+                };
             }
+
             int duration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(21));
-            if (duration > 0) delay = duration;
-            plan.Item = item with { Selected = item.Selected with { Animation = 0, PotionDelay = delay } };
+            if (duration > 0)
+                delay = duration;
+            plan.Item = item with
+            {
+                Selected = item.Selected with
+                {
+                    Animation = 0,
+                    PotionDelay = delay
+                }
+            };
             plan.Changed = true;
             return true;
         }
+
         if (!VanillaSelectedConsumable1458.TryStepHeat(item.ManaHeat, random.NextDouble, random.Next, out float heat))
             return false;
-        if (item.ToolTime is not >= 0 ||
-            !VanillaRemoteMeleeItemCheck1458.TryStepAttackCooldown(item.AttackCD, item.Selected.Animation, out int attackCD))
+        if (item.ToolTime is not >= 0 || !VanillaRemoteMeleeItemCheck1458.TryStepAttackCooldown(item.AttackCD, item.Selected.Animation, out int attackCD))
             return false;
         delay = Math.Max(0, delay - 1);
         item = item with
@@ -325,23 +473,38 @@ internal sealed partial class PlayerAuthority
             ManaHeat = heat,
             AttackCD = attackCD,
             ManaPotionDelay = Math.Max(0, item.ManaPotionDelay - 1),
-            Selected = item.Selected with { PotionDelay = delay }
+            Selected = item.Selected with
+            {
+                PotionDelay = delay
+            }
         };
         if (ghost || member.IsDead)
         {
             if (item.MagicPayment is { } payment)
-                item = item with { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
+                item = item with
+                {
+                    MagicPayment = payment with
+                    {
+                        EligibleBirth = false,
+                        AwaitingPhase = false,
+                        MidpointEligible = false
+                    }
+                };
             // Stationary ghost/dead profiles with retained nonconstructor clocks are independently captured.
             // Moving ghosts and respawn side effects require their own retained state.
-            if (ghost && (plan.Vx != 0f || plan.Vy != 0f || (member.ControlFlags & 0x1c) != 0)) return false;
+            if (ghost && (plan.Vx != 0f || plan.Vy != 0f || (member.ControlFlags & 0x1c) != 0))
+                return false;
             // Dedicated UpdateDead can turn a hardcore player into a ghost when the respawn
             // clock expires. This slice does not own surviveHardcoreDeath or the ghost transition.
-            if (!ghost && plan.Appearance is { DifficultyFlags: var difficulty } &&
-                (difficulty & 2) != 0 && (difficulty & 8) == 0) return false;
+            if (!ghost && plan.Appearance is { DifficultyFlags: var difficulty } && (difficulty & 2) != 0 && (difficulty & 8) == 0)
+                return false;
             if (member.IsDead && !ghost)
             {
                 plan.Buffs.ClearNonPersistentOnDeath();
-                plan.Health = member.NpcHealth!.Value with { Life = 0 };
+                plan.Health = member.NpcHealth!.Value with
+                {
+                    Life = 0
+                };
                 item = item with
                 {
                     ManaHeat = 1f,
@@ -349,36 +512,71 @@ internal sealed partial class PlayerAuthority
                     ManaPotionDelay = 0,
                     DeadTime = item.DeadTime + 1,
                     RespawnTimer = Math.Clamp(item.RespawnTimer - 1, 0, 3_600),
-                    Selected = item.Selected with { Animation = 0, PotionDelay = 0 }
+                    Selected = item.Selected with
+                    {
+                        Animation = 0,
+                        PotionDelay = 0
+                    }
                 };
-                plan.Physics = physical with { GravityDirection = 1f };
+                plan.Physics = physical with
+                {
+                    GravityDirection = 1f
+                };
             }
+
             if (ghost)
                 // Source Ghost() has its own crit reset; dead/outside retain their prior fields.
-                item = item with { Mana = item.Mana with { Maximum = item.BaseManaMaximum },
-                    DerivedCombat = VanillaPlayerCombatSnapshot.Baseline };
+                item = item with
+                {
+                    Mana = item.Mana with
+                    {
+                        Maximum = item.BaseManaMaximum
+                    },
+                    DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
+                };
             plan.Item = item;
             plan.Changed = true;
             return true;
         }
-        if (!inventory.TryGet(member.Connection, member.SelectedItem, out var selected)) return false;
-        if (item.SelectedPotionUse is { Completed:false } provisional && provisional.Slot == member.SelectedItem &&
-            provisional.Player == member.Connection.Player && member.CursorMove?.Inventory is { } potionDebit &&
-            potionDebit.TryCaptureSelectedPotionDebit(inventory,member.Connection,out var originalPotion,out _) &&
-            originalPotion == provisional.Before) selected=originalPotion;
+
+        if (!inventory.TryGet(member.Connection, member.SelectedItem, out var selected))
+            return false;
+        if (item.SelectedPotionUse is { Completed: false } provisional &&
+            provisional.Slot == member.SelectedItem &&
+            provisional.Player == member.Connection.Player &&
+            member.CursorMove?.Inventory is { } potionDebit &&
+            potionDebit.TryCaptureSelectedPotionDebit(inventory,
+            member.Connection,
+            out var originalPotion,
+            out _) &&
+            originalPotion == provisional.Before)
+            selected = originalPotion;
         if (!selected.IsCanonical ||
             (!(selected.Prefix == VanillaPrefixIds.None &&
-                VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _)) &&
-                !VanillaRemoteRangedItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
-                    world.WindowsItemPrefixArithmetic) &&
-                !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
-                    world.WindowsItemPrefixArithmetic) &&
-                !VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType, selected.Prefix) &&
-                !VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic))) return false;
-        if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic) &&
-            (item.BaseManaMaximum <= 0 || item.MagicPayment is { } malformedPayment && !malformedPayment.IsValid)) return false;
-        var critArithmetic = world.WindowsItemPrefixArithmetic
-            ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
+            VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType,
+            out _)) &&
+            !VanillaRemoteRangedItemCheck1458.IsSupported(selected.ItemType,
+            selected.Prefix,
+            world.WindowsItemPrefixArithmetic) &&
+            !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType,
+            selected.Prefix,
+            world.WindowsItemPrefixArithmetic) &&
+            !VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType,
+            selected.Prefix) &&
+            !VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType,
+            selected.Prefix,
+            world.WindowsItemPrefixArithmetic) &&
+            !VanillaGemStaff1458.TryGetWeapon(selected.ItemType,
+            out _)))
+            return false;
+        if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType,
+            selected.Prefix,
+            world.WindowsItemPrefixArithmetic) &&
+            (item.BaseManaMaximum <= 0 ||
+            item.MagicPayment is { } malformedPayment &&
+            !malformedPayment.IsValid))
+            return false;
+        var critArithmetic = world.WindowsItemPrefixArithmetic ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
         if (!VanillaSelectedItemCrit1458.TryResolve(selected.ItemType, selected.Prefix, critArithmetic, out int itemCrit))
             return false;
         // ResetEffects derives all three fields from this phase's selected Item.crit.
@@ -390,11 +588,13 @@ internal sealed partial class PlayerAuthority
         bool foodEffects = effectTypes.Any(static type => type.Value is 26 or 206 or 207);
         if (foodEffects)
         {
-            if (!TryBuildSourceOrderedFoodCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat)) return false;
+            if (!TryBuildSourceOrderedFoodCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat))
+                return false;
         }
-        else if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, effectTypes, out buffCombat)) return false;
-        if (!VanillaPlayerCombatBuffs1458.TryResolveMagicDamage(buffCombat.MagicDamage, sicknessDuration, heat,
-                world.WindowsItemPrefixArithmetic, out float magicDamage)) return false;
+        else if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, effectTypes, out buffCombat))
+            return false;
+        if (!VanillaPlayerCombatBuffs1458.TryResolveMagicDamage(buffCombat.MagicDamage, sicknessDuration, heat, world.WindowsItemPrefixArithmetic, out float magicDamage))
+            return false;
         var derivedCombat = buffCombat with
         {
             Defense = buffCombat.Defense,
@@ -403,18 +603,33 @@ internal sealed partial class PlayerAuthority
             MagicCrit = buffCombat.MagicCrit + itemCrit,
             MagicDamage = magicDamage
         };
-        var capturedUnlocks = new PlayerPermanentUnlockState1458(plan.Appearance is { } phaseAppearance
-            ? PermanentUpgradeFlags(in phaseAppearance) : (byte)0);
+        var capturedUnlocks = new PlayerPermanentUnlockState1458(plan.Appearance is { } phaseAppearance ? PermanentUpgradeFlags(in phaseAppearance) : (byte)0);
         if (member.OwnedPermanentUpgradeMask != 0)
-            item = item with { PermanentPhaseFlags = capturedUnlocks.Flags };
+            item = item with
+            {
+                PermanentPhaseFlags = capturedUnlocks.Flags
+            };
         if (capturedUnlocks.Flags != 0 || item.PermanentBoosters is not null || member.OwnedPermanentUpgradeMask != 0 || buffCombat.WellFed)
         {
             var resetBoosters = new PlayerPermanentBoosterState1458(derivedCombat.Defense, 0, buffCombat.PickSpeed, 1f, 1f);
-            if (!VanillaSelectedConsumable1458.TryApplyPermanentBoosters(in resetBoosters, in capturedUnlocks, out var boosters) ||
-                !VanillaSelectedConsumable1458.TryFinalizePermanentSpeeds(in boosters, out var speeds) ||
-                !VanillaSelectedConsumable1458.TryGetPermanentCraftingRegion(plan.X, plan.Y, 20, 42, 5, 3,
-                    in capturedUnlocks, out var craftingRegion)) return false;
-            derivedCombat = derivedCombat with { Defense = boosters.Defense };
+            if (!VanillaSelectedConsumable1458.TryApplyPermanentBoosters(in resetBoosters,
+                in capturedUnlocks,
+                out var boosters) ||
+                !VanillaSelectedConsumable1458.TryFinalizePermanentSpeeds(in boosters,
+                out var speeds) ||
+                !VanillaSelectedConsumable1458.TryGetPermanentCraftingRegion(plan.X,
+                plan.Y,
+                20,
+                42,
+                5,
+                3,
+                in capturedUnlocks,
+                out var craftingRegion))
+                return false;
+            derivedCombat = derivedCombat with
+            {
+                Defense = boosters.Defense
+            };
             item = item with
             {
                 PermanentBoosters = boosters,
@@ -422,22 +637,44 @@ internal sealed partial class PlayerAuthority
                 PermanentCraftingRegion = craftingRegion
             };
         }
-        if (!IsValidDerivedCombat(in derivedCombat)) return false;
+
+        if (!IsValidDerivedCombat(in derivedCombat))
+            return false;
         // UpdateEquips precedes this writer in original Player.Update. An open
         // shop retains the prior availability even when functional gear changes.
-        item = (item with { DerivedCombat = derivedCombat }).AdvanceShopDiscount(derivedCombat.DiscountEquipped);
-        if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
-            !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
-                selectedHealthInputs: (capturedHealthWorld, plan.Grappling), selectedVoidStorageOpen: plan.VoidStorageOpen) ||
-            health is not { SourceProfileKnown: true } knownHealth) return false;
+        item = (item with
+        {
+            DerivedCombat = derivedCombat
+        }
 
+        ).AdvanceShopDiscount(derivedCombat.DiscountEquipped);
+        if (plan.Maximum is not { } maximum ||
+            plan.HealthWorld is not { } capturedHealthWorld ||
+            !TryPlanNpcHealth(member,
+            maximum,
+            false,
+            false,
+            out var health,
+            selectedItemPhase: true,
+            selectedHealthInputs: (capturedHealthWorld, plan.Grappling),
+            selectedVoidStorageOpen: plan.VoidStorageOpen) ||
+            health is not { SourceProfileKnown: true } knownHealth)
+            return false;
         int potionDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(21));
-        if (potionDuration > 0) delay = potionDuration;
+        if (potionDuration > 0)
+            delay = potionDuration;
         var manaFacts = new PlayerManaRegenerationFacts1458(plan.Vx, plan.Vy, plan.Grappling!.Value, false, ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & 4) != 0, 0, 0f, 0);
-        if (!VanillaRemoteManaRegeneration1458.TryStep(item.Mana with { Maximum = (int)Math.Min((long)item.BaseManaMaximum + manaMaximumBonus, 400) },
-            in manaFacts, out var mana, out _)) return false;
-        mana = mana with { Mana = Math.Min(mana.Mana, mana.Maximum), Count = Math.Max(0, mana.Count) };
-
+        if (!VanillaRemoteManaRegeneration1458.TryStep(item.Mana with { Maximum = (int)Math.Min((long)item.BaseManaMaximum + manaMaximumBonus,
+            400) },
+            in manaFacts,
+            out var mana,
+            out _))
+            return false;
+        mana = mana with
+        {
+            Mana = Math.Min(mana.Mana, mana.Maximum),
+            Count = Math.Max(0, mana.Count)
+        };
         bool left = (member.ControlFlags & 4) != 0;
         bool right = (member.ControlFlags & 8) != 0;
         var horizontal = ResolveRemoteHorizontalIntent(left, right, plan.Vx);
@@ -447,13 +684,21 @@ internal sealed partial class PlayerAuthority
         var contacts = physical.Contacts;
         // Food contributes moveSpeed before the ordinary source horizontal multiplier.
         // It changes maxRunSpeed and acceleration, not accRunSpeed or slowdown.
-        var foodHorizontal = new VanillaServerPlayerHorizontalProfile1458(
-            VanillaServerPlayerHorizontalControl.MaximumRunSpeed * buffCombat.MoveSpeed,
+        var foodHorizontal = new VanillaServerPlayerHorizontalProfile1458(VanillaServerPlayerHorizontalControl.MaximumRunSpeed * buffCombat.MoveSpeed,
             VanillaServerPlayerHorizontalControl.MaximumRunSpeed,
             VanillaServerPlayerHorizontalControl.RunAcceleration * buffCombat.MoveSpeed,
-            VanillaServerPlayerHorizontalControl.RunSlowdown, false);
-        if (!physics.TryStep(in source, horizontal, jump, in previousJump, in contacts,
-            in world, in foodHorizontal, out var motion, out var nextJump) || motion.LiquidContacts != default)
+            VanillaServerPlayerHorizontalControl.RunSlowdown,
+            false);
+        if (!physics.TryStep(in source,
+            horizontal,
+            jump,
+            in previousJump,
+            in contacts,
+            in world,
+            in foodHorizontal,
+            out var motion,
+            out var nextJump) ||
+            motion.LiquidContacts != default)
             return false;
         plan.X = motion.PositionX;
         plan.Y = motion.PositionY;
@@ -462,90 +707,330 @@ internal sealed partial class PlayerAuthority
         // Player.Update (1.4.5.8) clears wingTime when wingsLogic is zero; the generic
         // jump helper's grounded recharge belongs to its separate wing-capable callers.
         plan.Physics = new(nextJump with { WingTime = 0 }, motion.LiquidContacts);
-        var facts = new PlayerSelectedConsumableFacts1458(selected.ItemType, knownHealth.Life, maximum,
-            mana.Mana, mana.Maximum, (member.ControlFlags & 32) != 0, (member.MiscFlags2 & 64) != 0,
-            plan.Buffs.CountActive(new BuffTypeId(23)) != 0, false, true, false);
-        var clocks = item.Selected with { PotionDelay = delay };
+        var facts = new PlayerSelectedConsumableFacts1458(selected.ItemType,
+            knownHealth.Life,
+            maximum,
+            mana.Mana,
+            mana.Maximum,
+            (member.ControlFlags & 32) != 0,
+            (member.MiscFlags2 & 64) != 0,
+            plan.Buffs.CountActive(new BuffTypeId(23)) != 0,
+            false,
+            true,
+            false);
+        var clocks = item.Selected with
+        {
+            PotionDelay = delay
+        };
         PlayerSelectedConsumableTransition1458 use;
         bool beganActualUse;
         bool mining = false;
         if (VanillaManaCrystalUse1458.IsSupported(selected.ItemType, selected.Prefix))
         {
-            if (!TryPlanManaCrystal(plan, selected, item, clocks, in facts, random, out use, out item)) return false;
-            if (plan.PublishMana) mana = mana with { Maximum = item.Mana.Maximum };
+            if (!TryPlanManaCrystal(plan, selected, item, clocks, in facts, random, out use, out item))
+                return false;
+            if (plan.PublishMana)
+                mana = mana with
+                {
+                    Maximum = item.Mana.Maximum
+                };
             beganActualUse = use.BeganUse;
         }
         else if (selected.ItemType.Value == 5043)
         {
-            if (!TryPlanOwnedTorchFavor(plan, selected, item, clocks, in facts, random, out use, out item)) return false;
+            if (!TryPlanOwnedTorchFavor(plan, selected, item, clocks, in facts, random, out use, out item))
+                return false;
             beganActualUse = use.BeganUse;
         }
         else if (PermanentUpgradeBit(selected.ItemType.Value) != 0)
         {
-            if (!TryPlanOwnedPermanentUpgrade(plan, selected, item, clocks, in facts, random,
-                out use, out item)) return false;
+            if (!TryPlanOwnedPermanentUpgrade(plan, selected, item, clocks, in facts, random, out use, out item))
+                return false;
             beganActualUse = use.BeganUse;
+        }
+        else if (VanillaGemStaff1458.TryGetWeapon(selected.ItemType, out _))
+        {
+            if (item.BaseManaMaximum <= 0 || item.MagicPayment is { } invalid && !invalid.IsValid || item.DerivedCombat is not { } gemCombat)
+                return false;
+            bool? extra = plan.Appearance is { } gemAppearance ? (gemAppearance.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
+            var gemContext = new VanillaPlayerCombatEquipmentContext(extra, combatEquipmentExpertMode, combatEquipmentMasterMode)
+            {
+                LocalVanityArmor = combatEquipmentLocalVanityArmor
+            };
+            if (!VanillaPlayerCombatEquipmentCatalog.TryCaptureEffectiveGemStaffBody(plan.Equipment,
+                in gemContext,
+                out var body) ||
+                !VanillaGemStaff1458.TryPackFeatures(selected.ItemType,
+                body,
+                out var features) ||
+                !VanillaGemStaff1458.TryResolveWeapon(selected.ItemType,
+                selected.Prefix,
+                world.WindowsItemPrefixArithmetic,
+                out var gemWeapon,
+                out _))
+                return false;
+            var previous = item.MagicPayment;
+            bool same = previous is { GemStaff: true } old &&
+                old.Matches(member.Connection.Player,
+                member.SelectedItem,
+                selected,
+                item.BaseManaMaximum) &&
+                old.EffectiveBody == body;
+            var localClocks = same ? previous!.Value.GemClocks : clocks;
+            bool prepaid = same && previous is { AwaitingPhase: true };
+            int available = mana.Mana;
+            RuntimePlayerMagicRefill1458? refill = null;
+            bool localAttempt = facts.ControlUseItem &&
+                !facts.Cursed &&
+                !facts.CrowdControlled &&
+                !facts.SelectionBuffered &&
+                (localClocks.ReleaseUseItem &&
+                localClocks.Animation == 0 ||
+                gemWeapon.AutoReuse &&
+                localClocks.Animation <= 1);
+            if (localAttempt && !prepaid && gemCombat.ManaFlower && available < (int)(gemWeapon.ManaCost * gemCombat.ManaCostMultiplier))
+            {
+                if (previous is { Attempt: ulong.MaxValue } ||
+                    !TryStageAutoQuickMana(member.Connection,
+                    (previous?.Attempt ?? 0) + 1,
+                    available,
+                    mana.Maximum,
+                    item.ManaPotionDelay,
+                    plan.InventoryBefore,
+                    plan.Buffs,
+                    out available,
+                    out refill))
+                    return false;
+                if (refill is { } restored)
+                {
+                    plan.InventoryMutations.Add(new(member.Connection, restored.Slot, restored.Before, restored.After) { ConsumeFundedQuantity = true });
+                    plan.PublishMana = plan.PublishBuffs = true;
+                }
+            }
+
+            var gemFacts = new PlayerGemStaffFacts1458(selected.ItemType,
+                selected.Prefix,
+                body,
+                available,
+                item.SlowMagicUse,
+                facts.ControlUseItem,
+                same ? previous!.Value.GemLastUseSuccess : facts.LastUseSuccess,
+                facts.Cursed,
+                facts.CrowdControlled,
+                facts.SelectionBuffered,
+                true)
+            {
+                Prepaid = prepaid,
+                PrepaidSlowMagicUse = prepaid && previous!.Value.SlowMagicUse,
+                ManaCostMultiplier = gemCombat.ManaCostMultiplier,
+                WindowsItemPrefixArithmetic = world.WindowsItemPrefixArithmetic
+            };
+            // Both caller roles observe the same single source crit draw; the detached
+            // local clock authorizes payment/volley, while visible clocks remain dedicated remote.
+            int? critDraw = null;
+            int SharedCrit(int min, int max) => critDraw ??= random.Next(min, max);
+            if (!VanillaGemStaffUse1458.TryStep(localClocks, in gemFacts, SharedCrit, out var localUse))
+                return false;
+            var remoteFacts = gemFacts with
+            {
+                LocalPlayer = false,
+                Mana = localUse.Mana,
+                Prepaid = true,
+                PrepaidSlowMagicUse = localUse.SlowMagicUse
+            };
+            if (!VanillaGemStaffUse1458.TryStep(clocks, in remoteFacts, SharedCrit, out var remoteUse))
+                return false;
+            if (localUse.BeganActualUse)
+            {
+                if (previous is { Attempt: ulong.MaxValue })
+                    return false;
+                item = item with
+                {
+                    MagicPayment = new(member.Connection.Player,
+                        prepaid ? previous!.Value.Attempt : (previous?.Attempt ?? 0) + 1,
+                        member.SelectedItem,
+                        selected,
+                        item.BaseManaMaximum,
+                        localUse.Mana,
+                        localUse.SlowMagicUse,
+                        localUse.InitialShoot,
+                        prepaid,
+                        false)
+                    {
+                        GemStaff = true,
+                        GemClocks = localUse.State,
+                        GemLastUseSuccess = localUse.LastUseSuccess,
+                        EffectiveBody = body,
+                        GemFeatures = features,
+                        Refill = refill ?? (prepaid ? previous!.Value.Refill : null)
+                    }
+                };
+            }
+            else if (same)
+                item = item with
+                {
+                    MagicPayment = previous!.Value with
+                    {
+                        GemClocks = localUse.State,
+                        GemLastUseSuccess = localUse.LastUseSuccess,
+                        AwaitingPhase = false,
+                        MidpointEligible = previous.Value.MidpointEligible || localUse.MidpointShoot,
+                        EligibleBirth = previous.Value.EligibleBirth || localUse.InitialShoot && !previous.Value.BirthConsumed
+                    }
+                };
+            else if (previous is { } stale)
+                item = item with
+                {
+                    MagicPayment = stale with
+                    {
+                        EligibleBirth = false,
+                        MidpointEligible = false
+                    }
+                };
+            item = item with
+            {
+                Channel = false,
+                SlowMagicUse = localUse.SlowMagicUse
+            };
+            if (remoteUse.RefreshManaDelay)
+                mana = mana with
+                {
+                    Delay = 4f
+                };
+            use = new(remoteUse.State, facts.Life, localUse.Mana, false, 0, 0)
+            {
+                PendingItemReuse = remoteUse.PendingItemReuse
+            };
+            beganActualUse = localUse.BeganActualUse;
         }
         else if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic))
         {
             var priorPayment = item.MagicPayment;
-            bool prepaid = priorPayment is { AwaitingPhase: true } paid &&
-                paid.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum);
+            bool prepaid = priorPayment is { AwaitingPhase: true } paid && paid.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum);
             RuntimePlayerMagicRefill1458? refill = null;
             int available = mana.Mana;
-            bool attempt = facts.ControlUseItem && clocks.ReleaseUseItem && clocks.Animation == 0 &&
-                !facts.Cursed && !facts.CrowdControlled && !facts.SelectionBuffered;
-            if (!VanillaChanneledMagicWeaponStats1458.TryResolve(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic, out var magicWeapon, out _) ||
+            bool attempt = facts.ControlUseItem && clocks.ReleaseUseItem && clocks.Animation == 0 && !facts.Cursed && !facts.CrowdControlled && !facts.SelectionBuffered;
+            if (!VanillaChanneledMagicWeaponStats1458.TryResolve(selected.ItemType,
+                selected.Prefix,
+                world.WindowsItemPrefixArithmetic,
+                out var magicWeapon,
+                out _) ||
                 item.DerivedCombat is not { } magicCombat ||
-                !VanillaRemoteChannelledMagic1458.TryResolveManaCost(magicWeapon.ManaCost, magicCombat.ManaCostMultiplier, out int cost))
+                !VanillaRemoteChannelledMagic1458.TryResolveManaCost(magicWeapon.ManaCost,
+                magicCombat.ManaCostMultiplier,
+                out int cost))
                 return false;
             if (attempt && !prepaid && magicCombat.ManaFlower && available < cost)
             {
                 if (priorPayment is { Attempt: ulong.MaxValue } ||
-                    !TryStageAutoQuickMana(member.Connection, (priorPayment?.Attempt ?? 0) + 1,
-                        available, mana.Maximum, item.ManaPotionDelay, plan.InventoryBefore, plan.Buffs,
-                        out available, out refill)) return false;
+                    !TryStageAutoQuickMana(member.Connection,
+                    (priorPayment?.Attempt ?? 0) + 1,
+                    available,
+                    mana.Maximum,
+                    item.ManaPotionDelay,
+                    plan.InventoryBefore,
+                    plan.Buffs,
+                    out available,
+                    out refill))
+                    return false;
                 if (refill is { } restored)
                 {
-                    plan.InventoryMutations.Add(new(member.Connection, restored.Slot, restored.Before, restored.After));
+                    plan.InventoryMutations.Add(new(member.Connection, restored.Slot, restored.Before, restored.After) { ConsumeFundedQuantity = true });
                     plan.PublishMana = true;
                     plan.PublishBuffs = true;
                 }
             }
-            var magicFacts = new PlayerRemoteChannelledMagicFacts1458(selected.ItemType, selected.Prefix,
-                available, item.Channel, item.SlowMagicUse, facts.ControlUseItem, facts.LastUseSuccess,
-                facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, prepaid,
-                prepaid && priorPayment!.Value.SlowMagicUse, magicCombat.ManaCostMultiplier, world.WindowsItemPrefixArithmetic);
+
+            var magicFacts = new PlayerRemoteChannelledMagicFacts1458(selected.ItemType,
+                selected.Prefix,
+                available,
+                item.Channel,
+                item.SlowMagicUse,
+                facts.ControlUseItem,
+                facts.LastUseSuccess,
+                facts.Cursed,
+                facts.CrowdControlled,
+                facts.SelectionBuffered,
+                prepaid,
+                prepaid &&
+                priorPayment!.Value.SlowMagicUse,
+                magicCombat.ManaCostMultiplier,
+                world.WindowsItemPrefixArithmetic);
             if (!VanillaRemoteChannelledMagic1458.TryStep(clocks, in magicFacts, random.Next, out var magicUse))
                 return false;
             if (magicUse.AttemptedUse)
             {
-                if (prepaid) item = item with { MagicPayment = priorPayment!.Value with { AwaitingPhase = false } };
+                if (prepaid)
+                    item = item with
+                    {
+                        MagicPayment = priorPayment!.Value with
+                        {
+                            AwaitingPhase = false
+                        }
+                    };
                 else
                 {
-                    if (priorPayment is { Attempt: ulong.MaxValue }) return false;
-                    item = item with { MagicPayment = new(member.Connection.Player,
-                        (priorPayment?.Attempt ?? 0) + 1, member.SelectedItem, selected,
-                        item.BaseManaMaximum, magicUse.Mana, magicUse.SlowMagicUse,
-                        magicUse.BeganActualUse, false, false) { Refill = refill } };
+                    if (priorPayment is { Attempt: ulong.MaxValue })
+                        return false;
+                    item = item with
+                    {
+                        MagicPayment = new(member.Connection.Player,
+                            (priorPayment?.Attempt ?? 0) + 1,
+                            member.SelectedItem,
+                            selected,
+                            item.BaseManaMaximum,
+                            magicUse.Mana,
+                            magicUse.SlowMagicUse,
+                            magicUse.BeganActualUse,
+                            false,
+                            false)
+                        {
+                            Refill = refill
+                        }
+                    };
                 }
             }
-            else if (priorPayment is { } stale &&
-                (!facts.ControlUseItem || !stale.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum)))
-                item = item with { MagicPayment = stale with { EligibleBirth = false, AwaitingPhase = false } };
-            if (magicUse.BeganActualUse) item = item with { OwnedChannelExpectedType = magicWeapon.ProjectileType.Value };
-            item = item with { Channel = magicUse.Channel, SlowMagicUse = magicUse.SlowMagicUse };
-            if (magicUse.RefreshManaDelay) mana = mana with { Delay = 4f };
+            else if (priorPayment is { } stale && (!facts.ControlUseItem || !stale.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum)))
+                item = item with
+                {
+                    MagicPayment = stale with
+                    {
+                        EligibleBirth = false,
+                        AwaitingPhase = false
+                    }
+                };
+            if (magicUse.BeganActualUse)
+                item = item with
+                {
+                    OwnedChannelExpectedType = magicWeapon.ProjectileType.Value
+                };
+            item = item with
+            {
+                Channel = magicUse.Channel,
+                SlowMagicUse = magicUse.SlowMagicUse
+            };
+            if (magicUse.RefreshManaDelay)
+                mana = mana with
+                {
+                    Delay = 4f
+                };
             use = new(magicUse.State, facts.Life, magicUse.Mana, false, 0, 0)
-            { PendingItemReuse = magicUse.PendingItemReuse };
+            {
+                PendingItemReuse = magicUse.PendingItemReuse
+            };
             beganActualUse = magicUse.BeganActualUse;
         }
-
         else if (VanillaRemoteRangedItemCheck1458.TryGetAmmoFamily(selected.ItemType, out var ammoFamily))
         {
             var rangedFacts = new PlayerRemoteRangedItemFacts1458(selected.ItemType,
-                CaptureRemoteRangedAmmo(member, ammoFamily), facts.ControlUseItem, facts.LastUseSuccess,
-                facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, selected.Prefix,
+                CaptureRemoteRangedAmmo(member,
+                ammoFamily),
+                facts.ControlUseItem,
+                facts.LastUseSuccess,
+                facts.Cursed,
+                facts.CrowdControlled,
+                facts.SelectionBuffered,
+                selected.Prefix,
                 world.WindowsItemPrefixArithmetic);
             if (!VanillaRemoteRangedItemCheck1458.TryStep(clocks, in rangedFacts, random.Next, out var rangedUse))
                 return false;
@@ -555,14 +1040,17 @@ internal sealed partial class PlayerAuthority
             };
             beganActualUse = rangedUse.BeganActualUse;
         }
-        else if (VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
-            world.WindowsItemPrefixArithmetic))
+        else if (VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic))
         {
-            var meleeFacts = new PlayerRemoteMeleeItemFacts1458(selected.ItemType, facts.ControlUseItem,
-                facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered,
-                selected.Prefix, world.WindowsItemPrefixArithmetic);
-            if (!VanillaRemoteMeleeItemCheck1458.TryStep(clocks, in meleeFacts, random.Next, out var meleeUse,
-                derivedCombat.MeleeAnimationMultiplier))
+            var meleeFacts = new PlayerRemoteMeleeItemFacts1458(selected.ItemType,
+                facts.ControlUseItem,
+                facts.LastUseSuccess,
+                facts.Cursed,
+                facts.CrowdControlled,
+                facts.SelectionBuffered,
+                selected.Prefix,
+                world.WindowsItemPrefixArithmetic);
+            if (!VanillaRemoteMeleeItemCheck1458.TryStep(clocks, in meleeFacts, random.Next, out var meleeUse, derivedCombat.MeleeAnimationMultiplier))
                 return false;
             use = new(meleeUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
@@ -574,19 +1062,25 @@ internal sealed partial class PlayerAuthority
         }
         else if (VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType, selected.Prefix))
         {
-            var passiveFacts = new PlayerRemotePassiveItemFacts1458(selected.ItemType, facts.ControlUseItem,
-                facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, selected.Prefix);
+            var passiveFacts = new PlayerRemotePassiveItemFacts1458(selected.ItemType,
+                facts.ControlUseItem,
+                facts.LastUseSuccess,
+                facts.Cursed,
+                facts.CrowdControlled,
+                facts.SelectionBuffered,
+                selected.Prefix);
             float placementAnimationMultiplier = 1f;
-            if (item.PermanentSpeeds is { } placementSpeeds &&
-                VanillaItemPlacementTable1458.TryGet(selected.ItemType, out var placement))
+            if (item.PermanentSpeeds is { } placementSpeeds && VanillaItemPlacementTable1458.TryGet(selected.ItemType, out var placement))
             {
                 // ApplyItemAnimation reads capped/inverted tile speed first,
                 // otherwise wall speed. Mining pickSpeed does not alter this clock.
-                if (placement.PlacesTile) placementAnimationMultiplier = placementSpeeds.TileAnimationMultiplier;
-                else if (placement.PlacesWall) placementAnimationMultiplier = placementSpeeds.WallAnimationMultiplier;
+                if (placement.PlacesTile)
+                    placementAnimationMultiplier = placementSpeeds.TileAnimationMultiplier;
+                else if (placement.PlacesWall)
+                    placementAnimationMultiplier = placementSpeeds.WallAnimationMultiplier;
             }
-            if (!VanillaRemotePassiveItemCheck1458.TryStep(clocks, in passiveFacts, random.Next,
-                out var passiveUse, placementAnimationMultiplier))
+
+            if (!VanillaRemotePassiveItemCheck1458.TryStep(clocks, in passiveFacts, random.Next, out var passiveUse, placementAnimationMultiplier))
                 return false;
             use = new(passiveUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
@@ -595,12 +1089,15 @@ internal sealed partial class PlayerAuthority
             };
             beganActualUse = passiveUse.BeganActualUse;
         }
-        else if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var selectedPotion) &&
-            (selectedPotion.HealLife > 0 || selectedPotion.HealMana > 0 || selectedPotion.BuffType > 0 ||
-                selected.ItemType.Value is 29 or 1291))
+        else if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType,
+            out var selectedPotion) &&
+            (selectedPotion.HealLife > 0 ||
+            selectedPotion.HealMana > 0 ||
+            selectedPotion.BuffType > 0 ||
+            selected.ItemType.Value is 29 or 1291))
         {
-            if (!TryPlanOwnedSelectedPotion(plan, selected, item, clocks, in facts, random,
-                out use, out item)) return false;
+            if (!TryPlanOwnedSelectedPotion(plan, selected, item, clocks, in facts, random, out use, out item))
+                return false;
             beganActualUse = use.BeganUse;
         }
         else
@@ -609,9 +1106,11 @@ internal sealed partial class PlayerAuthority
                 return false;
             beganActualUse = use.BeganUse;
         }
+
         // ItemCheck clears non-shooting item rotation when attempting use, even if
         // the later success/cursed/potion-delay gate rejects the actual start.
-        if (use.ResetItemRotation) plan.Rotation = 0f;
+        if (use.ResetItemRotation)
+            plan.Rotation = 0f;
         if (use.PotionSicknessOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(21), use.PotionSicknessOffer, false);
         if (use.ManaSicknessOffer > 0)
@@ -620,11 +1119,17 @@ internal sealed partial class PlayerAuthority
             plan.Buffs.TryApplySelectedConsumable(use.BuffOfferType, use.BuffDurationOffer, false);
         if (use.Consumed && use.BuffOfferType.Value is 26 or 206 or 207)
             plan.Buffs.StampOwnedFoodGrant(currentCombatTick);
-
-        plan.Health = knownHealth with { Life = use.Life };
+        plan.Health = knownHealth with
+        {
+            Life = use.Life
+        };
         plan.Item = item with
         {
-            Mana = mana with { Mana = use.Mana }, Selected = use.State,
+            Mana = mana with
+            {
+                Mana = use.Mana
+            },
+            Selected = use.State,
             PendingItemReuse = use.PendingItemReuse,
             AttackCD = beganActualUse ? 0 : item.AttackCD,
             ToolTime = beganActualUse && mining ? 1 : item.ToolTime
@@ -645,10 +1150,15 @@ internal sealed partial class PlayerAuthority
                 unknown = true;
                 continue;
             }
-            if (item.Stack <= 0) continue;
-            if (!VanillaItemIds.TryCreate(item.ItemType.Value, out _)) unknown = true;
-            else if (VanillaProjectileWeaponCombatCatalog.IsAmmoType(family, item.ItemType)) return true;
+
+            if (item.Stack <= 0)
+                continue;
+            if (!VanillaItemIds.TryCreate(item.ItemType.Value, out _))
+                unknown = true;
+            else if (VanillaProjectileWeaponCombatCatalog.IsAmmoType(family, item.ItemType))
+                return true;
         }
+
         return unknown ? null : false;
     }
 
@@ -663,10 +1173,17 @@ internal sealed partial class PlayerAuthority
         return right ? ServerPlayerHorizontalIntent.Right : ServerPlayerHorizontalIntent.Stop;
     }
 
-    private sealed class RemoteItemPhasePlan1458(RuntimePlayerMember member, PlayerStateSnapshot before,
-        RuntimePlayerItemPhase1458? item, RuntimePlayerPhysicsPhase1458? physics,
-        PlayerAppearanceCommitRequest? appearance, PlayerEquipmentCommitRequest[] equipment,
-        BuffTypeId[] buffTypes, PlayerBuffState buffs, bool godMode, bool ownsManaMaximum, bool ownsLifeMaximum)
+    private sealed class RemoteItemPhasePlan1458(RuntimePlayerMember member,
+        PlayerStateSnapshot before,
+        RuntimePlayerItemPhase1458? item,
+        RuntimePlayerPhysicsPhase1458? physics,
+        PlayerAppearanceCommitRequest? appearance,
+        PlayerEquipmentCommitRequest[] equipment,
+        BuffTypeId[] buffTypes,
+        PlayerBuffState buffs,
+        bool godMode,
+        bool ownsManaMaximum,
+        bool ownsLifeMaximum)
     {
         internal bool VoidStorageOpen { get; set; }
         internal RuntimeTownShopSession1458? BeforeShopSession { get; set; }

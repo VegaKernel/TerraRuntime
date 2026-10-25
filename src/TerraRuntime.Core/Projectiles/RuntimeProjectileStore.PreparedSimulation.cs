@@ -45,13 +45,46 @@ public sealed partial class RuntimeProjectileStore
         internal PlayerHandle TrustedOwner => before.CombatTrustedOwner;
         internal NpcHandle SourceNpc => before.SourceNpc;
         internal bool IsCurrent => !adopted && Same(in owner._slots[slot], in before);
+        internal bool IsPublicationCurrent => adopted && Same(in owner._slots[slot], in shadow);
         internal int PublicationCount => publications.Count;
 
-        internal bool TryStageMotion(in ProjectileStateUpdate update, in ProjectileLifecycleState lifecycle)
+        internal bool TryStageMotion(in ProjectileStateUpdate update, in ProjectileLifecycleState lifecycle) =>
+            TryStageMotion(in update, in lifecycle, false);
+
+        internal bool TryStageGemStaffKill(in ProjectileStateUpdate update, in ProjectileLifecycleState lifecycle)
+        {
+            if (!shadow.CombatTrusted || !shadow.CombatTrustedOwner.IsAssigned ||
+                shadow.Lifecycle.GemStaff is null || shadow.Lifecycle.GemStaffFeatures is null ||
+                shadow.Lifecycle.GemStaffKillInProgress || lifecycle.GemStaff is null ||
+                lifecycle.GemStaffFeatures != shadow.Lifecycle.GemStaffFeatures ||
+                lifecycle.GemStaffUpdateCount != shadow.Lifecycle.GemStaffUpdateCount || lifecycle.TimeLeft != 0 ||
+                lifecycle.PenetrateOverride is < -1 ||
+                !VanillaGemStaffProjectile1458.IsGemStaffProjectile(shadow.Update.Type)) return false;
+            var killing = lifecycle with { GemStaffKillInProgress = true };
+            // Source Kill calls area Damage while the generation is still active, including
+            // lifetime zero. The enclosing actor removes it after those source effects.
+            return TryStageMotion(in update, in killing, true);
+        }
+
+        internal bool TryStageGemStaffKilledMotion(in ProjectileStateUpdate update,
+            in ProjectileLifecycleState lifecycle)
+        {
+            if (!shadow.CombatTrusted || !shadow.CombatTrustedOwner.IsAssigned ||
+                !shadow.Lifecycle.GemStaffKillInProgress || !lifecycle.GemStaffKillInProgress ||
+                lifecycle.TimeLeft != 0 || lifecycle.GemStaff is null ||
+                lifecycle.GemStaffFeatures != shadow.Lifecycle.GemStaffFeatures ||
+                lifecycle.GemStaffUpdateCount != shadow.Lifecycle.GemStaffUpdateCount) return false;
+            return TryStageMotion(in update, in lifecycle, true);
+        }
+
+        private bool TryStageMotion(in ProjectileStateUpdate update, in ProjectileLifecycleState lifecycle,
+            bool preserveTerminalGem)
         {
             if (adopted || !shadow.Active || !IsValidState(in update) ||
                 update.Type != shadow.Update.Type || update.Spawner != shadow.Update.Spawner ||
-                lifecycle.PenetrateOverride is < -1 || !lifecycle.LocalAi.IsFinite ||
+                lifecycle.PenetrateOverride is < -1 && !(lifecycle.PenetrateOverride == -2 &&
+                    shadow.Lifecycle.GemStaffKillInProgress && lifecycle.GemStaffKillInProgress && lifecycle.TimeLeft == 0) ||
+                !lifecycle.LocalAi.IsFinite ||
                 lifecycle.NetImportant != shadow.Lifecycle.NetImportant ||
                 lifecycle.Reflected != shadow.Lifecycle.Reflected)
                 return false;
@@ -60,7 +93,7 @@ public sealed partial class RuntimeProjectileStore
                 return false;
             planned.Update = update;
             planned.Lifecycle = lifecycle;
-            if (lifecycle.TimeLeft <= 0)
+            if (lifecycle.TimeLeft <= 0 && !preserveTerminalGem)
             {
                 terminalSnapshot = Capture(slot, in planned);
                 terminalLifecycle = planned.Lifecycle;
@@ -112,6 +145,22 @@ public sealed partial class RuntimeProjectileStore
             publications.Add((kind, Snapshot));
             if (!shadow.Active)
                 terminalPublicationQueued = true;
+            return true;
+        }
+
+        internal bool TryQueueGemStaffDespawn() => TryQueueGemStaffDespawn(null);
+
+        internal bool TryQueueGemStaffDespawn(ProjectileKillOrigin? sourceKillOrigin)
+        {
+            if (adopted || shadow.Active || terminalPublicationQueued || !before.CombatTrusted ||
+                !before.CombatTrustedOwner.IsAssigned || terminalLifecycle.GemStaff is null ||
+                terminalLifecycle.GemStaffFeatures is null || sourceKillOrigin is { IsValid: false }) return false;
+            // The authoritative gem actor owns the source-local Kill/bounds packet29,
+            // including player-owned generations normally removed without server echo.
+            var publication = sourceKillOrigin is { } origin
+                ? Snapshot with { PositionX = origin.X, PositionY = origin.Y } : Snapshot;
+            publications.Add((ProjectileStateCommitKind.Despawn, publication));
+            terminalPublicationQueued = true;
             return true;
         }
 

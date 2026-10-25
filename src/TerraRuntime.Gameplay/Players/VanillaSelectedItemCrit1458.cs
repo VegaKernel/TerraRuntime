@@ -16,6 +16,9 @@ public static class VanillaSelectedItemCrit1458
         if (VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(item, out _))
             return VanillaChanneledMagicWeaponStats1458.TryResolve(item, prefix,
                 arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86, out _, out itemCrit);
+        if (VanillaGemStaff1458.TryGetWeapon(item, out _))
+            return VanillaGemStaff1458.TryResolveWeapon(item, prefix,
+                arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86, out _, out itemCrit);
         if (VanillaSelectedConsumableCatalog1458.TryGet(item, out _))
             return prefix.Value == 0;
         if (VanillaRemotePassiveItemCatalog1458.TryGet(item, prefix, out _))

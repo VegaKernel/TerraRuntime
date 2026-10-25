@@ -105,6 +105,11 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
 
     public void ProjectileStateCommitted(ProjectileStateCommitKind kind, in ProjectileSnapshot snapshot)
     {
+        // A preceding composed observer can revise or replace this actor after Core
+        // enters its commit sink. Its historical notification must not alter the new baseline.
+        if (IsStaleGemStaffPublication(kind, in snapshot))
+            return;
+
         // The accepted batch already retained final bindings and queued every historical packet-27.
         // Other composed sinks still observe each birth; a distinct reentrant spawn follows the normal path.
         if (kind == ProjectileStateCommitKind.Spawn && IsAcceptedBirthObserver(in snapshot))
@@ -123,6 +128,7 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
         if (kind == ProjectileStateCommitKind.Remove)
         {
             // Source: an inactive projectile resets netSpam, so a reused slot starts with a full budget.
+            pendingGemStaffUpdates[snapshot.Handle.Slot] = default;
             Volatile.Write(ref netSpam[snapshot.Handle.Slot], 0);
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
             ClearLiveFrame(snapshot.Handle);
@@ -152,7 +158,9 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
                     return;
                 }
 
-                if (!RuntimeProjectilePacketProjection.TryCreateDestroy(in snapshot, in destroyKey, out var destroyState) ||
+                bool projected = TryCreateGemStaffBoundsDestroy(in snapshot, in destroyKey, out var destroyState) ||
+                    RuntimeProjectilePacketProjection.TryCreateDestroy(in snapshot, in destroyKey, out destroyState);
+                if (!projected ||
                     !TerrariaProjectileEncoder.TryEncodeDestroy(in destroyState, out byte[] destroyFrame))
                 {
                     Interlocked.Increment(ref unsupportedCommits);
@@ -163,6 +171,7 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
             }
             finally
             {
+                pendingGemStaffUpdates[snapshot.Handle.Slot] = default;
                 Volatile.Write(ref netSpam[snapshot.Handle.Slot], 0);
                 Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
                 ClearLiveFrame(snapshot.Handle);
@@ -215,15 +224,19 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
 
         if (!IsRetainedOrdinaryArrowJournalSnapshot(in snapshot))
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], updateFrame);
+        if (kind == ProjectileStateCommitKind.Spawn)
+            pendingGemStaffUpdates[snapshot.Handle.Slot] = default;
+        bool gemUpdateIntent = !clientCommit && HasGemStaffUpdateIntent(kind, in snapshot);
         bool duplicate = UpdateLiveFrame(snapshot.Handle, updateFrame);
-        if (kind == ProjectileStateCommitKind.Update && duplicate)
+        if (kind == ProjectileStateCommitKind.Update && duplicate && !gemUpdateIntent)
         {
             Interlocked.Increment(ref suppressedDuplicateFrames);
             return;
         }
 
-        if (kind == ProjectileStateCommitKind.Update && !clientCommit &&
-            !VanillaProjectileReplicationFacts.PublishesOrdinaryServerUpdate(snapshot.Type))
+        if (kind == ProjectileStateCommitKind.Update && !clientCommit && !gemUpdateIntent &&
+            (VanillaGemStaffProjectile1458.IsGemStaffProjectile(snapshot.Type) ||
+             !VanillaProjectileReplicationFacts.PublishesOrdinaryServerUpdate(snapshot.Type)))
         {
             Interlocked.Increment(ref suppressedOrdinaryServerUpdateFrames);
             return;
@@ -238,6 +251,7 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
             return;
         }
 
+        if (gemUpdateIntent) pendingGemStaffUpdates[snapshot.Handle.Slot] = default;
         Broadcast(updateFrame, clientCommit, excludedSource);
     }
 

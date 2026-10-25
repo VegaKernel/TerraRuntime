@@ -9,6 +9,58 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/GemStaffActorUpdateLinuxFirst1458.json.gz" LogicalName="GemStaffActorUpdateLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorUpdateLinuxRepeat1458.json.gz" LogicalName="GemStaffActorUpdateLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorUpdateWindowsFirst1458.json.gz" LogicalName="GemStaffActorUpdateWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorUpdateWindowsRepeat1458.json.gz" LogicalName="GemStaffActorUpdateWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorImpactLinuxFirst1458.json.gz" LogicalName="GemStaffActorImpactLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorImpactLinuxRepeat1458.json.gz" LogicalName="GemStaffActorImpactLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorImpactWindowsFirst1458.json.gz" LogicalName="GemStaffActorImpactWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorImpactWindowsRepeat1458.json.gz" LogicalName="GemStaffActorImpactWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorWindLinuxFirst1458.json.gz" LogicalName="GemStaffActorWindLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorWindLinuxRepeat1458.json.gz" LogicalName="GemStaffActorWindLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorWindWindowsFirst1458.json.gz" LogicalName="GemStaffActorWindWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorWindWindowsRepeat1458.json.gz" LogicalName="GemStaffActorWindWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorInactiveOwnerLinuxFirst1458.json.gz" LogicalName="GemStaffActorInactiveOwnerLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorInactiveOwnerLinuxRepeat1458.json.gz" LogicalName="GemStaffActorInactiveOwnerLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorInactiveOwnerWindowsFirst1458.json.gz" LogicalName="GemStaffActorInactiveOwnerWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActorInactiveOwnerWindowsRepeat1458.json.gz" LogicalName="GemStaffActorInactiveOwnerWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetBoundaryLinuxFirst1458.json.gz" LogicalName="GemStaffTargetBoundaryLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetBoundaryLinuxRepeat1458.json.gz" LogicalName="GemStaffTargetBoundaryLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetBoundaryWindowsFirst1458.json.gz" LogicalName="GemStaffTargetBoundaryWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetBoundaryWindowsRepeat1458.json.gz" LogicalName="GemStaffTargetBoundaryWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActiveNoItemsLinux1458.json.gz" LogicalName="GemStaffActiveNoItemsLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffActiveNoItemsWindows1458.json.gz" LogicalName="GemStaffActiveNoItemsWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffBehaviorLinux1458.json.gz" LogicalName="GemStaffBehaviorLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffBehaviorWindows1458.json.gz" LogicalName="GemStaffBehaviorWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffBoundaryLinuxFirst1458.json.gz" LogicalName="GemStaffBoundaryLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffBoundaryLinuxRepeat1458.json.gz" LogicalName="GemStaffBoundaryLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffBoundaryWindowsFirst1458.json.gz" LogicalName="GemStaffBoundaryWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffBoundaryWindowsRepeat1458.json.gz" LogicalName="GemStaffBoundaryWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffContactLinux1458.json.gz" LogicalName="GemStaffContactLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffContactWindows1458.json.gz" LogicalName="GemStaffContactWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffGeometryLinuxFirst1458.json.gz" LogicalName="GemStaffGeometryLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffGeometryLinuxRepeat1458.json.gz" LogicalName="GemStaffGeometryLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffGeometryWindowsFirst1458.json.gz" LogicalName="GemStaffGeometryWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffGeometryWindowsRepeat1458.json.gz" LogicalName="GemStaffGeometryWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffLosLinux1458.json.gz" LogicalName="GemStaffLosLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffLosWindows1458.json.gz" LogicalName="GemStaffLosWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffMetadataLinux1458.json.gz" LogicalName="GemStaffMetadataLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffMetadataWindows1458.json.gz" LogicalName="GemStaffMetadataWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffMotionLinuxFirst1458.json.gz" LogicalName="GemStaffMotionLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffMotionLinuxRepeat1458.json.gz" LogicalName="GemStaffMotionLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffMotionWindowsFirst1458.json.gz" LogicalName="GemStaffMotionWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffMotionWindowsRepeat1458.json.gz" LogicalName="GemStaffMotionWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffPrefixLinux1458.json.gz" LogicalName="GemStaffPrefixLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffPrefixWindows1458.json.gz" LogicalName="GemStaffPrefixWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffRefillLinux1458.json.gz" LogicalName="GemStaffRefillLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffRefillWindows1458.json.gz" LogicalName="GemStaffRefillWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffRobesLinux1458.json.gz" LogicalName="GemStaffRobesLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffRobesWindows1458.json.gz" LogicalName="GemStaffRobesWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetsLinuxFirst1458.json.gz" LogicalName="GemStaffTargetsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetsLinuxRepeat1458.json.gz" LogicalName="GemStaffTargetsLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetsWindowsFirst1458.json.gz" LogicalName="GemStaffTargetsWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/GemStaffTargetsWindowsRepeat1458.json.gz" LogicalName="GemStaffTargetsWindowsRepeat1458" />
     <EmbeddedResource Include="Fixtures/SelectedPotionUseLinuxFirst1458.json.gz" LogicalName="SelectedPotionUseLinuxFirst1458" />
     <EmbeddedResource Include="Fixtures/SelectedPotionUseLinuxRepeat1458.json.gz" LogicalName="SelectedPotionUseLinuxRepeat1458" />
     <EmbeddedResource Include="Fixtures/SelectedPotionUseWindowsFirst1458.json.gz" LogicalName="SelectedPotionUseWindowsFirst1458" />

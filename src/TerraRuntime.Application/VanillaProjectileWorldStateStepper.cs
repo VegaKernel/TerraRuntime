@@ -12,7 +12,7 @@ namespace TerraRuntime.Application;
 /// owns wind, liquids, collision, integration and the conservative CutTiles boundary. Combat/damage and
 /// irreversible world effects remain separate slices.
 /// </summary>
-internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
+internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
     private readonly VanillaProjectileWorldMotionResolver worldMotion;
     private readonly WorldTileStore ordinaryTiles;

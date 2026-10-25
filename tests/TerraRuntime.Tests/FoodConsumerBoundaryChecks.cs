@@ -26,7 +26,7 @@ internal static class FoodConsumerBoundaryChecks
     private static extern ref RuntimeNpcStore RootNpcs(NpcAuthority owner);
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "projectiles")]
     private static extern ref RuntimeProjectileStore RootShots(ProjectileAuthority owner);
-    private static void CheckFundedNpcContact(short food, short ammunition)
+    private static int CheckFundedNpcContact(short food, short ammunition, bool noItems = false)
     {
         bool paidFood = food != 0;
         using var f = new FoodConsumerFixture("empty-selected", runtimeTick: true);
@@ -65,6 +65,14 @@ internal static class FoodConsumerBoundaryChecks
         Assert.Equal(1, shots.CopyActive(images));
         var shot = images[0];
         Assert.True(shots.IsCombatTrusted(shot.Handle));
+        if (noItems)
+        {
+            // Apply after the funded birth: NoItems must not manufacture another use,
+            // but it cannot suppress the existing ordinary arrow's source contact.
+            f.Apply(new PlayerBuffTypesRuntimeCommand(c, new(c.Player.Slot, new BuffTypeId[] { new(23) })));
+            Assert.True(f.Players.TryCaptureProjectileUse(c.Player, out var noItemsOwner));
+            Assert.Contains(new BuffTypeId(23), noItemsOwner!.Buffs!);
+        }
         var npcs = RootNpcs(composition.Npcs);
         var state = new NpcStateUpdate(3, 3, shot.PositionX, shot.PositionY, 0, 0, 0, default,
             NpcSimulationState.Initial with { Life = 45, LifeMax = 45, LifeRegenCounter = 0,
@@ -78,6 +86,7 @@ internal static class FoodConsumerBoundaryChecks
         Assert.True(npcs.TryGet(actor.Handle, out var after));
         Assert.Equal(1L, pass.CommittedHits - beforeHits);
         Assert.True(after.Simulation.Life < 45);
+        return 45 - after.Simulation.Life;
     }
 
     private static JsonDocument Read(string name)
@@ -91,9 +100,14 @@ internal static class FoodConsumerBoundaryChecks
     private static extern ref int[] BuffDurations(PlayerBuffState state);
     public static void Run()
     {
+        int clearOrdinaryArrowDamage = 0;
         foreach (short food in new short[] { 0, 967, 357, 4022 })
             foreach (short ammunition in new short[] { 40, 47, 51 })
-                CheckFundedNpcContact(food, ammunition);
+            {
+                int damage = CheckFundedNpcContact(food, ammunition);
+                if (food == 0 && ammunition == 40) clearOrdinaryArrowDamage = damage;
+            }
+        Assert.Equal(clearOrdinaryArrowDamage, CheckFundedNpcContact(0, 40, noItems: true));
         foreach (string platform in new[] { "Linux", "Windows" })
         {
             using var source = Read("FoodConsumers" + platform + "1458");

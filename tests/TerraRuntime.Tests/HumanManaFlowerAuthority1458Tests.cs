@@ -34,6 +34,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
                     var spec = row.GetProperty("spec");
                     foreach (var initial in row.GetProperty("initialInventory").EnumerateArray())
                         f.Equipment(initial.GetProperty("index").GetInt16(), initial.GetProperty("type").GetInt16(), initial.GetProperty("stack").GetInt16(), initial.GetProperty("prefix").GetByte());
+                    f.FundSourceManaPotions();
                     if (spec.TryGetProperty("manaPotionDelay", out var delay))
                         f.Member.ItemPhase = f.Member.ItemPhase!.Value with { ManaPotionDelay = delay.GetInt32() };
                     foreach (var step in row.GetProperty("steps").EnumerateArray())
@@ -125,6 +126,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
                             var original = local.RootElement.GetProperty(windows ? "windows" : "linux").EnumerateArray().Single(r => r.GetProperty("weapon").GetInt32() == weapon && r.GetProperty("potion").GetInt32() == potionType && r.GetProperty("flower").GetBoolean() && r.GetProperty("manaProfile").GetInt32() == manaCase);
                             using var f = new Harness.Fixture(phase, windows);
                             f.Equipment(2, potionType, 3);
+                            f.FundSourceManaPotions();
                             f.State.Apply(new PlayerManaRuntimeCommand(f.Connection, new(f.Connection.Player.Slot, original.GetProperty("initialMana").GetInt16(), 200)));
                             f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true);
                             if (phaseFirst) f.State.Tick();
@@ -185,7 +187,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
             foreach (int lifecycle in new[] { 0, 1, 2 })
             {
                 using var f = new Harness.Fixture(phase, false);
-                f.Equipment(2, potion, 3); f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true); f.State.Tick();
+                f.Equipment(2, potion, 3); f.FundSourceManaPotions(); f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true); f.State.Tick();
                 Assert.Equal(300, f.Profiles.CaptureBuffState(f.Connection)!.GetDuration(new(94)));
                 Assert.True(f.Players.TryGetInventoryItem(f.Connection, 2, out var after)); Assert.Equal(2, (int)after.Stack);
                 if (lifecycle == 0)
@@ -237,7 +239,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
         foreach (bool mutateBuffDuration in new[] { false, true })
         {
             using var f = new Harness.Fixture(phase, false);
-            f.Equipment(2, 110, 3); f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true);
+            f.Equipment(2, 110, 3); f.FundSourceManaPotions(); f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true);
             var bt = new BuffTypeId[44]; var times = new int[44]; bt[0] = new(93); times[0] = 60;
             f.Profiles.RestoreBuffState(f.Connection, PlayerBuffState.FromSlots(bt, times));
             var replication = new RuntimeProjectileReplicationRegistry();
@@ -262,7 +264,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
         }
         using (var failed = new Harness.Fixture(phase, false))
         {
-            failed.Equipment(2, 110, 3); failed.Move(false, 0, false); failed.State.Tick(); failed.Move(true, 0, false); failed.State.Tick();
+            failed.Equipment(2, 110, 3); failed.FundSourceManaPotions(); failed.Move(false, 0, false); failed.State.Tick(); failed.Move(true, 0, false); failed.State.Tick();
             Assert.Equal(38, (int)failed.Member.Mana); Assert.Equal(0, failed.Member.ItemPhase!.Value.Selected.Animation);
             Assert.False(failed.Member.ItemPhase.Value.MagicPayment!.Value.EligibleBirth);
             failed.State.Tick(); Assert.Equal(38, (int)failed.Member.Mana);
@@ -275,7 +277,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
         foreach (bool phaseFirst in new[] { false, true })
         {
             var events = new Events(); using var f = new Harness.Fixture(phase, false, events);
-            f.Equipment(2, 110, 3); f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true);
+            f.Equipment(2, 110, 3); f.FundSourceManaPotions(); f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true);
             var peer = new ConnectionHandle(GameCommandSourceId.FromConnection(99812), new(new(1), new(1)));
             var queue = new TerrariaConnectionOutboundQueue(new(64, 65536, 4096));
             Assert.True(f.Replication.TryRegister(peer.Source, queue));
@@ -312,7 +314,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
             // The synchronous observer may replace the accepted potion image and report
             // another birth. All custody/cadence owners must already be adopted.
             var events = reentryEvents;
-            reentered.Equipment(2, 110, 3); reentered.Move(false, 0, true); reentered.State.Tick(); reentered.Move(true, 0, true);
+            reentered.Equipment(2, 110, 3); reentered.FundSourceManaPotions(); reentered.Move(false, 0, true); reentered.State.Tick(); reentered.Move(true, 0, true);
             var packet = new TerrariaProjectileUpdateState(new(0, 995, 1), 16, 1594, 1611, 6, 0, 0, 0, 0, 0, 35, 7.5f, 0);
             events.Seen.Clear(); events.OnEquipment = () =>
             {
@@ -332,7 +334,7 @@ public sealed class HumanManaFlowerAuthority1458Tests
         var newerManaEvents = new Events();
         using (var newerMana = new Harness.Fixture(phase, false, newerManaEvents))
         {
-            newerMana.Equipment(2, 110, 3); newerMana.Move(false, 0, true); newerMana.State.Tick(); newerMana.Move(true, 0, true);
+            newerMana.Equipment(2, 110, 3); newerMana.FundSourceManaPotions(); newerMana.Move(false, 0, true); newerMana.State.Tick(); newerMana.Move(true, 0, true);
             newerManaEvents.Seen.Clear(); newerManaEvents.OnEquipment = () =>
             {
                 newerManaEvents.OnEquipment = null;
@@ -464,6 +466,18 @@ public sealed class HumanManaFlowerAuthority1458Tests
                     MoveSecond(false, false); State.Apply(new PlayerEquipmentRuntimeCommand(SecondConnection, new(SecondConnection.Player.Slot, 0, 1, 0, 98, 0)));
                     State.Apply(new PlayerEquipmentRuntimeCommand(SecondConnection, new(SecondConnection.Player.Slot, 54, 50, 0, 97, 0)));
                 }
+            }
+
+            // Trusted source-fixture setup only; raw reports and observer reentry never call this.
+            internal void FundSourceManaPotions()
+            {
+                var store=(RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                    .GetField("inventory",BindingFlags.NonPublic|BindingFlags.Instance)!.GetValue(Players)!;
+                var quantity=store.CaptureFundedQuantities(Connection);
+                for(short slot=0;slot<58;slot++)
+                    if(store.TryGet(Connection,slot,out var item)&&item.ItemType.Value is 110 or 189 or 500 or 2209)
+                        quantity[slot]=item.Stack;
+                store.AdoptFundedQuantities(Connection,quantity);
             }
 
             internal void Equipment(short slot, short type, short stack, byte prefix = 0, byte flags = 0) =>

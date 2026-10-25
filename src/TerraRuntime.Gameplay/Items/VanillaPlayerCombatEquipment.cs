@@ -175,6 +175,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
                 {
                     return false;
                 }
+                if (armorIndex == 1 && VanillaGemStaff1458.TryGetRobe(type, out var robe))
+                    manaMaximumBonus += robe.ManaMaximumBonus;
                 if (armorIndex == 0) head = type;
                 else if (armorIndex == 1) body = type;
                 else legs = type;
@@ -259,6 +261,12 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 1)
         {
+            if (VanillaGemStaff1458.TryGetRobe(type, out var robe))
+            {
+                snapshot = snapshot with { Defense = snapshot.Defense + robe.Defense,
+                    ManaCostMultiplier = snapshot.ManaCostMultiplier - robe.ManaCostReduction };
+                return true;
+            }
             if (type.Value == 3804) { snapshot = snapshot with { Defense = snapshot.Defense + 17, RangedDamage = snapshot.RangedDamage + 0.2f, MinionDamage = snapshot.MinionDamage + 0.2f, HuntressAmmoCost90 = true }; return true; }
             if (type.Value == 4983) { snapshot = snapshot with { Defense = snapshot.Defense + 14, RangedDamage = snapshot.RangedDamage + 0.05f, MeleeDamage = snapshot.MeleeDamage + 0.05f, MagicDamage = snapshot.MagicDamage + 0.05f, MinionDamage = snapshot.MinionDamage + 0.05f, HuntressAmmoCost90 = true }; return true; }
             if (type.Value == 3878) { snapshot = snapshot with { Defense = snapshot.Defense + 24, RangedDamage = snapshot.RangedDamage + 0.25f, MinionDamage = snapshot.MinionDamage + 0.25f, AmmoCost80 = true }; return true; }

@@ -55,6 +55,13 @@ public static class VanillaCombatFacts
             case 981: // Silver Bullet
                 damageClass = VanillaProjectileDamageClass.Ranged;
                 return true;
+            case 121: // Seven retained gem staff projectiles share the magic damage class.
+            case 122:
+            case 123:
+            case 124:
+            case 125:
+            case 126:
+            case 597:
             case 16: // Magic Missile
             case 34: // Flamelash
             case 79: // Rainbow Rod Bullet
@@ -97,6 +104,21 @@ public static class VanillaCombatFacts
         int damage = ApplyDamageVariation(projectileDamage, damageVariationPercent);
         int armorPenetration = owner.GetArmorPenetration(damageClass == VanillaProjectileDamageClass.Melee);
         hit = new VanillaProjectileResolvedHit(damage, critical, armorPenetration);
+        return true;
+    }
+
+    public static bool TryResolveGemStaffPveHit(ProjectileTypeId type, int capturedProjectileDamage,
+        in VanillaPlayerCombatSnapshot owner, GemStaffFeatures1458 features,
+        int critRollPercent, int damageVariationPercent, out VanillaProjectileResolvedHit hit)
+    {
+        hit = default;
+        if (!VanillaGemStaffProjectile1458.IsGemStaffProjectile(type) ||
+            !VanillaGemStaffProjectile1458.TryDecodeFeatures(VanillaGemStaffProjectile1458.EncodeFeatures(features), out _) ||
+            !TryResolvePveHit(type, capturedProjectileDamage, in owner, critRollPercent, damageVariationPercent, out var original))
+            return false;
+        int addition = (features & GemStaffFeatures1458.ArPenSpread) != 0 ? 4 : 0;
+        if (original.ArmorPenetration > int.MaxValue - addition) return false;
+        hit = original with { ArmorPenetration = original.ArmorPenetration + addition };
         return true;
     }
 

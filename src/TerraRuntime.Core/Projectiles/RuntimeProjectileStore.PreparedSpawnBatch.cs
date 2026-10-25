@@ -1,5 +1,6 @@
 using System.Buffers;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Core.Projectiles;
 
@@ -7,7 +8,10 @@ public sealed partial class RuntimeProjectileStore
 {
     internal const int MaximumSpawnBatchSize = 8;
 
-    internal readonly record struct SpawnRequest(ProjectileStateUpdate State, int? TimeLeftOverride = null);
+    internal readonly record struct SpawnRequest(ProjectileStateUpdate State, int? TimeLeftOverride = null)
+    {
+        internal GemStaffFeatures1458? GemStaffFeatures { get; init; }
+    }
 
     /// <summary>Plans bounded, ordered NewProjectile allocations without exposing an intermediate generation.</summary>
     internal bool TryPrepareVanillaSpawnBatch(ReadOnlySpan<SpawnRequest> requests, out SpawnBatchPreparation? preparation)
@@ -71,8 +75,8 @@ public sealed partial class RuntimeProjectileStore
                     !TrySelectVanillaAllocationSlot(shadow.AsSpan(0, owner.Capacity), out ushort slot) || shadow[slot].Generation == ulong.MaxValue)
                     return false;
 
-                if (request.TimeLeftOverride is int timeLeft)
-                    lifecycle = lifecycle with { TimeLeft = timeLeft };
+                if (!TryFinalizePreparedSpawnLifecycle(in state, request.TimeLeftOverride,
+                        request.GemStaffFeatures, ref lifecycle)) return false;
 
                 ref SlotState next = ref shadow[slot];
                 if (!next.Active) finalActiveCount++;

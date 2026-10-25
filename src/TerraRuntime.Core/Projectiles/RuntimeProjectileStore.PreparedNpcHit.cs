@@ -5,7 +5,11 @@ namespace TerraRuntime.Core.Projectiles;
 
 public sealed partial class RuntimeProjectileStore
 {
-    internal bool TryPrepareNpcHit(in ProjectileSnapshot expected, out NpcHitPreparation? preparation)
+    internal bool TryPrepareNpcHit(in ProjectileSnapshot expected, out NpcHitPreparation? preparation) =>
+        TryPrepareNpcHit(in expected, false, out preparation);
+
+    internal bool TryPrepareNpcHit(in ProjectileSnapshot expected, bool deferTerminalRemoval,
+        out NpcHitPreparation? preparation)
     {
         preparation = null;
         if (!IsCurrentHandleCandidate(expected.Handle))
@@ -19,7 +23,10 @@ public sealed partial class RuntimeProjectileStore
             return false;
         }
 
-        preparation = new NpcHitPreparation(this, expected.Handle.Slot);
+        if (deferTerminalRemoval && (!state.CombatTrusted || !state.CombatTrustedOwner.IsAssigned ||
+                state.Lifecycle.GemStaff is null || state.Lifecycle.GemStaffFeatures is null ||
+                !VanillaGemStaffProjectile1458.IsGemStaffProjectile(state.Update.Type))) return false;
+        preparation = new NpcHitPreparation(this, expected.Handle.Slot, deferTerminalRemoval);
         return preparation.CanAdopt;
     }
 
@@ -36,13 +43,15 @@ public sealed partial class RuntimeProjectileStore
         private bool adopted;
         private bool published;
 
-        internal NpcHitPreparation(RuntimeProjectileStore owner, ushort slot)
+        internal NpcHitPreparation(RuntimeProjectileStore owner, ushort slot) : this(owner, slot, false) { }
+
+        internal NpcHitPreparation(RuntimeProjectileStore owner, ushort slot, bool deferTerminalRemoval)
         {
             this.owner = owner;
             this.slot = slot;
             before = owner._slots[slot];
             CanAdopt = TryProjectNpcHit(slot, in before, out after, out reset, out despawn,
-                out resetSnapshot, out hitSnapshot);
+                out resetSnapshot, out hitSnapshot, deferTerminalRemoval);
         }
 
         internal bool CanAdopt { get; }
@@ -94,7 +103,8 @@ public sealed partial class RuntimeProjectileStore
 
     // Shared shadow projection; the live-hit token and detached simulation use the same semantics.
     private static bool TryProjectNpcHit(ushort slot, in SlotState before, out SlotState after,
-        out bool reset, out bool despawn, out ProjectileSnapshot resetSnapshot, out ProjectileSnapshot hitSnapshot)
+        out bool reset, out bool despawn, out ProjectileSnapshot resetSnapshot, out ProjectileSnapshot hitSnapshot,
+        bool deferTerminalRemoval = false)
     {
         after = default;
         reset = false;
@@ -119,7 +129,8 @@ public sealed partial class RuntimeProjectileStore
         }
 
         int remaining = planned.Lifecycle.PenetrateOverride ?? initial;
-        despawn = remaining >= 0 && remaining <= 1;
+        if (deferTerminalRemoval && remaining == 0) return false;
+        despawn = !deferTerminalRemoval && remaining >= 0 && remaining <= 1;
         if (despawn)
         {
             hitSnapshot = Capture(slot, in planned);
@@ -132,7 +143,7 @@ public sealed partial class RuntimeProjectileStore
         }
         else
         {
-            if (remaining > 1)
+            if (remaining > 1 || deferTerminalRemoval && remaining == 1)
             {
                 if (!TryAdvance(ref planned.Revision))
                     return false;

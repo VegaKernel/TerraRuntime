@@ -43,6 +43,7 @@ public sealed class HumanChanneledMagicPrefix1458Tests
                 using var f = new HumanManaFlowerAuthority1458Tests.Harness.Fixture(row, windows);
                 foreach (var item in row.GetProperty("initialInventory").EnumerateArray())
                     f.Equipment(item.GetProperty("index").GetInt16(), item.GetProperty("type").GetInt16(), item.GetProperty("stack").GetInt16(), item.GetProperty("prefix").GetByte());
+                f.FundSourceManaPotions();
                 foreach (var step in row.GetProperty("steps").EnumerateArray())
                 {
                     f.PrepareStep(step);
@@ -101,6 +102,7 @@ public sealed class HumanChanneledMagicPrefix1458Tests
                 using var f = new HumanManaFlowerAuthority1458Tests.Harness.Fixture(profile, windows);
                 if (flower) f.Equipment(62, 555, 1);
                 f.Equipment(2, 110, 3);
+                f.FundSourceManaPotions();
                 int mana = row.GetProperty("initialMana").GetInt32();
                 f.State.Apply(new PlayerManaRuntimeCommand(f.Connection, new(f.Connection.Player.Slot, (short)mana, 200)));
                 f.Move(false, 0, true); f.State.Tick(); f.Move(true, 0, true);

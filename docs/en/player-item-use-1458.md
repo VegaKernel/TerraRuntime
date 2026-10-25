@@ -1,5 +1,18 @@
 # Owned player item use 1.4.5.8
 
+## Gem staffs and effective robes
+
+The integrated block covers retained staffs `739..744` and `3377`, and functional robes `1282..1287` and `4256`. Prefix stats, robe defense, mana maximum and mana-cost reduction use the source-qualified equipment order and effective-body selection, including the represented inherited-loadout rules. Positive explicit prefixes `0..97` are distinct from the game's natural prefix-roll families. The recorded Windows and CoreCLR integer-rounding results remain separate.
+
+A source cast pays once and can produce one or two synchronous births. The spread feature separately allows a half-animation volley without another mana payment or item-time reset. The existing payment receipt retains local source clocks beside dedicated-remote presentation clocks; source epochs, selection, effective robe and private inventory currentness bound each entitlement. Packet `27`, reported mana and client AI values cannot create a paid birth. Shared AutoQuickMana consumes the first source-selected potion through the existing funded-quantity owner, including the older channel weapons; an unfunded first potion cannot be skipped to obtain a later refill.
+
+Item `6171` has dormant AllGems code but public source `SetDefaults` finally turns it into Air through the deprecated-item rule. It is not an ordinary eighth staff. AllGems2 has no observed source producer. Neither branch is admitted by ordinary projectile ingress.
+
+The connected projectile implementation retains features, AI, trail and local-immunity age on the real generation. Normal contact keeps terminal penetration active until source Kill; area damage uses the resized same projectile, not a fabricated child. Prepared contact currently covers NPCs `1`, `3` and `59`, represented owner buffs and luck zero; independent new PVE goldens directly cover NPC `1`. Player-owned projectile tile cutting remains a separate world-edit authority gap; the captured terrain comparisons use inert solid tiles. Arbitrary NPC families, whole vanilla execution, Linux Native and the existing food summon/local-mining gaps are not established by this block. Final shipping checks are recorded separately.
+
+An already paid midpoint remains eligible after NoItems/buff23 arrives: this input prevents a new start but does not cancel the existing volley. If the exact owner generation disappears, the dedicated fallback performs source AI/Kill and the remaining movement tail without new target selection or owner-derived PVE. Ordinary Kill sends no packet29 in this role; the earlier world-bounds exit still sends its unconditional packet29. Retained ai2 may use the prior raw NPC geometry; a new occupant of the player slot does not inherit the old entitlement.
+
+
 ## Funded food and its consumers
 
 The NPC contact admission guard accepts food buffs `26`, `206` and `207`: their damage and class crit already belong to the retained player projection, and they add no intrinsic projectile hit status. The configured paid-food → paid bow → projectile simulation → NPC contact regression covers ordinary, Unholy and Jester arrows with all three food tiers and unfed controls. This extends the earlier launch/payment check; it does not establish every projectile or NPC interaction.

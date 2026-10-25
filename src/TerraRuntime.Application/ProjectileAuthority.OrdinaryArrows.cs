@@ -10,6 +10,8 @@ internal sealed partial class ProjectileAuthority
 
     private ProjectileActorSimulationResult TrySimulateOrdinaryArrowActor(ProjectileSnapshot initial)
     {
+        if (TerraRuntime.Gameplay.Projectiles.VanillaGemStaffProjectile1458.IsGemStaffProjectile(initial.Type))
+            return TrySimulateGemStaffActor(initial);
         var combat = activeOrdinaryArrowCombat;
         if (combat is null || stepper is not VanillaProjectileWorldStateStepper concrete ||
             initial.Type.Value is not (4 or 5)) return ProjectileActorSimulationResult.NotApplicable;

@@ -12,7 +12,7 @@ namespace TerraRuntime.Application;
 /// This layer owns post-AI wind, liquid contact/state, tile collision, position integration, generic impact expiry
 /// and the conservative CutTiles side-effect boundary. It does not decide AI-family velocity changes.
 /// </summary>
-internal sealed class VanillaProjectileWorldMotionResolver
+internal sealed partial class VanillaProjectileWorldMotionResolver
 {
     private const float WaterMovementScale = 0.5f;
     private const float HoneyMovementScale = 0.25f;

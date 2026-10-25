@@ -11,6 +11,11 @@ public static class VanillaProjectileNpcCombatFacts
 {
     public static bool TryGetInitialPenetration(ProjectileTypeId type, out int penetration)
     {
+        if (VanillaGemStaffProjectile1458.IsGemStaffProjectile(type))
+        {
+            penetration = 1;
+            return true;
+        }
         if (type == VanillaProjectileIds.WoodenArrowFriendly ||
             type == VanillaProjectileIds.FireArrow ||
             type == VanillaProjectileIds.Bullet ||
@@ -92,6 +97,11 @@ public static class VanillaProjectileNpcCombatFacts
     /// </summary>
     public static bool TryGetLocalNpcImmunityCooldown(ProjectileTypeId type, out int cooldown)
     {
+        if (VanillaGemStaffProjectile1458.IsGemStaffProjectile(type))
+        {
+            cooldown = 60;
+            return true;
+        }
         if (type.Value is 133 or 136 or 139 or 142)
         {
             cooldown = -1;

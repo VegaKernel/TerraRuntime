@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Core.Projectiles;
 
@@ -67,6 +68,18 @@ public readonly record struct ProjectileLifecycleState(
 
     /// <summary>Server-only vanilla Projectile.localAI state for this exact generation.</summary>
     public ProjectileLocalAiState LocalAi { get; init; }
+
+    /// <summary>Paid gem-staff birth mask; packet updates cannot initialize this state.</summary>
+    public GemStaffFeatures1458? GemStaffFeatures { get; init; }
+
+    /// <summary>Authoritative scale, rotation and bounded collision trail for that birth.</summary>
+    public GemStaffRuntimeState1458? GemStaff { get; init; }
+
+    /// <summary>Adopted source updates for gem local immunity; unrelated world ticks do not age it.</summary>
+    public long GemStaffUpdateCount { get; init; }
+
+    /// <summary>Owns the source Kill body through its area damage and final removal.</summary>
+    public bool GemStaffKillInProgress { get; init; }
 }
 
 /// <summary>

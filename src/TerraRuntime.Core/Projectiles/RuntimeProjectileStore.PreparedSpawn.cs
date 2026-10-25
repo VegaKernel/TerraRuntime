@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Core.Projectiles;
 
@@ -11,6 +12,13 @@ public sealed partial class RuntimeProjectileStore
     internal bool TryPrepareVanillaSpawn(
         in ProjectileStateUpdate update,
         int? timeLeftOverride,
+        out SpawnPreparation? preparation) =>
+        TryPrepareVanillaSpawn(in update, timeLeftOverride, null, out preparation);
+
+    internal bool TryPrepareVanillaSpawn(
+        in ProjectileStateUpdate update,
+        int? timeLeftOverride,
+        GemStaffFeatures1458? gemStaffFeatures,
         out SpawnPreparation? preparation)
     {
         preparation = null;
@@ -23,10 +31,29 @@ public sealed partial class RuntimeProjectileStore
             return false;
         }
 
-        if (timeLeftOverride is int sourceTimeLeft)
-            lifecycle = lifecycle with { TimeLeft = sourceTimeLeft };
+        if (!TryFinalizePreparedSpawnLifecycle(in update, timeLeftOverride, gemStaffFeatures, ref lifecycle))
+            return false;
 
         preparation = new SpawnPreparation(this, slot, in update, in lifecycle);
+        return true;
+    }
+
+    private static bool TryFinalizePreparedSpawnLifecycle(in ProjectileStateUpdate update,
+        int? timeLeftOverride, GemStaffFeatures1458? gemStaffFeatures, ref ProjectileLifecycleState lifecycle)
+    {
+        if (gemStaffFeatures is not { } features)
+        {
+            if (timeLeftOverride is int time) lifecycle = lifecycle with { TimeLeft = time };
+            return true;
+        }
+        // FinalizeNewProjectile owns this once, inside the same prepared birth as payment.
+        // A later packet update cannot acquire or refresh these private lifecycle fields.
+        if (timeLeftOverride is not null ||
+            !VanillaGemStaffProjectile1458.TryDecodeFeatures(update.Ai.Ai0, out var encoded) || encoded != features ||
+            !VanillaGemStaffProjectile1458.TryFinalize(update.Type, features,
+                new GemStaffFinalize1458(1, 1, lifecycle.TimeLeft, 0), out var finalized)) return false;
+        lifecycle = lifecycle with { TimeLeft = finalized.TimeLeft, PenetrateOverride = finalized.Penetration,
+            GemStaffFeatures = features, GemStaff = GemStaffRuntimeState1458.Constructor };
         return true;
     }
 

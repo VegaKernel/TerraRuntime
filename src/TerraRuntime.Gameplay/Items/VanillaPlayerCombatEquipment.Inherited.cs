@@ -11,6 +11,16 @@ public readonly record struct VanillaPlayerLocalVanityArmor1458(ItemTypeId Head,
 
 public static partial class VanillaPlayerCombatEquipmentCatalog
 {
+    public static bool TryCaptureEffectiveGemStaffBody(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+        in VanillaPlayerCombatEquipmentContext context, out ItemTypeId body)
+    {
+        body = default;
+        if (!TrySelectEffectiveEquipment(equipment, in context, 1, out var selected)) return false;
+        if (selected.Stack <= 0) return true;
+        if (!selected.TryGetCanonicalItemType(out body)) return false;
+        return true;
+    }
+
     private static bool HasEffectiveCandidate(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment, int index)
     {
         if (FindEquipment(equipment, VanillaPlayerItemSlotCatalog.ArmorStart + index).Stack > 0) return true;
@@ -122,7 +132,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
             89 or 90 or 91 or 92 or 687 or 690 or 693 or 696 or 954 or 955 or
                 1002 or 1546 or 1547 or 2199 or 2757 or 2763 => new(0),
             80 or 81 or 82 or 83 or 688 or 691 or 694 or 697 or 1549 or 2200 or
-                2201 or 2758 or 2764 or 3804 or 3878 or 4983 => new(1),
+                2201 or 2758 or 2764 or 3804 or 3878 or 4983 or
+                1282 or 1283 or 1284 or 1285 or 1286 or 1287 or 4256 => new(1),
             76 or 77 or 78 or 79 or 689 or 692 or 695 or 698 or 1550 or 2202 or
                 2759 or 2765 => new(2),
             49 or 156 or 211 or 854 or 3033 or 3034 or 3035 or 935 or 2998 or 489 or 490 or 491 or 555 or 1301 or 1321 or 1613 or

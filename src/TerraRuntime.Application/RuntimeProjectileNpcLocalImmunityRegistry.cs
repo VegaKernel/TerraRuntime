@@ -61,6 +61,21 @@ internal sealed class RuntimeProjectileNpcLocalImmunityRegistry
         lastHitTicks[index] = tick;
     }
 
+    internal void ResetGemStaffKillImmunity(ProjectileHandle projectile, long sourceUpdateCount)
+    {
+        if (!projectile.IsAssigned) throw new ArgumentException("Projectile handle must be assigned.", nameof(projectile));
+        ArgumentOutOfRangeException.ThrowIfNegative(sourceUpdateCount);
+        if ((uint)projectile.Slot >= (uint)projectileCapacity)
+            throw new ArgumentOutOfRangeException(nameof(projectile));
+        // Gem Kill keeps exactly60, the full source localNPCImmunity value. Gem callers
+        // timestamp hits with adopted actor updates, not world ticks; only a hit in this
+        // same source update still has60. Older values are cleared before area Damage.
+        int start = checked(projectile.Slot * npcCapacity);
+        for (int index = start; index < start + npcCapacity; index++)
+            if (projectileGenerations[index] == projectile.Generation && lastHitTicks[index] != sourceUpdateCount)
+                lastHitTicks[index] = long.MinValue;
+    }
+
     internal ProjectileNpcImmunityCheckpoint1458 Capture(ProjectileHandle projectile, NpcHandle target)
     {
         int index = GetIndex(projectile, target);
