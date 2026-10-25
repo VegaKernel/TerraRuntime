@@ -217,7 +217,8 @@ internal sealed partial class PlayerAuthority
         int hitDirection,
         VanillaPlayerImmunityChannel1458 immunityChannel,
         out PlayerStateSnapshot committed,
-        IncomingPlayerCombatCapture1458? targetCapture = null) =>
+        IncomingPlayerCombatCapture1458? targetCapture = null,
+        NpcContactBuffSource1458? contactBuffs = null) =>
         TryCommitAuthoritativePveDamage(
             tick,
             targetHandle,
@@ -225,7 +226,7 @@ internal sealed partial class PlayerAuthority
             damage,
             hitDirection,
             immunityChannel,
-            out committed, targetCapture);
+            out committed, targetCapture, contactBuffs);
 
     internal PlayerDamageCommitResult TryCommitAuthoritativeNpcProjectileDamage(
         long tick,
@@ -261,7 +262,8 @@ internal sealed partial class PlayerAuthority
         int hitDirection,
         VanillaPlayerImmunityChannel1458 immunityChannel,
         out PlayerStateSnapshot committed,
-        IncomingPlayerCombatCapture1458? targetCapture = null)
+        IncomingPlayerCombatCapture1458? targetCapture = null,
+        NpcContactBuffSource1458? contactBuffs = null)
     {
         committed = default;
         if (!targetHandle.IsAssigned || !sourceDamage.IsValid || damage <= 0 ||
@@ -321,9 +323,17 @@ internal sealed partial class PlayerAuthority
         long until = tick + VanillaIncomingPlayerDamageFacts1458.ResolvePveImmunityTicks(final.Damage);
         damageImmunity.RecordPve(targetHandle, immunityChannel, until);
 
+        // StatusFromNPC follows a positive, surviving Hurt. Adopt it before publishing HP:
+        // callbacks may disconnect, kill or replace the player, but cannot split the owned commit.
         committed = target.CaptureSnapshot();
+        var effects = contactBuffs is { } source && !target.IsDead
+            ? ApplyNpcContactBuffs(target, in targetCombat, in source)
+            : [];
+        if (!membership.TryGet(target.Connection, out var current) || !ReferenceEquals(current, target) ||
+            target.CaptureSnapshot() != committed) return PlayerDamageCommitResult.Committed;
         var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
         events?.PlayerAuthoritativeHealthUpdated(target.Connection, in health);
+        PublishNpcContactBuffs(target, effects);
         return PlayerDamageCommitResult.Committed;
     }
 

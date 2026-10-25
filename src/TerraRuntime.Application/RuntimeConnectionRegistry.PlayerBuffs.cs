@@ -70,4 +70,14 @@ internal sealed partial class RuntimeConnectionRegistry
             Interlocked.Increment(ref _relayedPvpBuffFrames);
     }
 
+    public void PlayerNpcContactBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks)
+    {
+        if (!player.IsAssigned || !VanillaNpcContactBuffs1458.IsContactBuffType(buffType) || durationTicks <= 0 ||
+            !TryGetPlayingEndpoint(player, out RuntimeConnectionEndpoint endpoint)) return;
+        // MessageBuffer(55) on the client accepts all local-target types and calls AddBuff(fromNetPvP:true),
+        // avoiding a second Expert/Master adjustment. The inbound hostile/PvP allowlist remains unchanged.
+        byte[] encoded = TerrariaPlayerPvpBuffCodec1458.Encode(player.Slot.Value, buffType, durationTicks);
+        endpoint.Outbound.TryEnqueue(new OutboundFrame(encoded));
+    }
+
 }

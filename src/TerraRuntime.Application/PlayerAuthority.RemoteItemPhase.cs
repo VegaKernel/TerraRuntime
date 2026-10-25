@@ -390,7 +390,7 @@ internal sealed partial class PlayerAuthority
             out var equipmentCombat,
             out int manaMaximumBonus,
             plan.VoidStorageOpen) ||
-            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) ||
+            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 23 or 24 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) ||
             member.MiscFlags1 != 0 ||
             (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
