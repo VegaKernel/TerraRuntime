@@ -1,10 +1,77 @@
+using System.Security.Cryptography;
+using System.Text;
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
 public sealed class SourceBackedPostSettle1458Tests
 {
+    [Theory]
+    [InlineData(1458, 600, 500, "F418CBBCBE9D86668D9C5DC01CA051DBBEE6C3A3401A52C9BBDBC3D38473A31E", 1162070998)]
+    [InlineData(1458, 4200, 1200, "E58255F2CA721C9615E7C8A22DA42105C91D2AF87001265CCCC0C78DCA60FD82", 663238162)]
+    [InlineData(42, 600, 500, "F418CBBCBE9D86668D9C5DC01CA051DBBEE6C3A3401A52C9BBDBC3D38473A31E", 818126015)]
+    [InlineData(42, 4200, 1200, "E58255F2CA721C9615E7C8A22DA42105C91D2AF87001265CCCC0C78DCA60FD82", 320230768)]
+    [InlineData(8675309, 600, 500, "F418CBBCBE9D86668D9C5DC01CA051DBBEE6C3A3401A52C9BBDBC3D38473A31E", 447973439)]
+    [InlineData(8675309, 4200, 1200, "E58255F2CA721C9615E7C8A22DA42105C91D2AF87001265CCCC0C78DCA60FD82", 1122986386)]
+    [InlineData(4, 600, 500, "2B90551D225A1AB53054028E9695238CFC8CC69AA32A169A601F27399D4DF6B5", 1679415354)]
+    [InlineData(4, 4200, 1200, "EF7D4D0D83D47BE4F675EC32AA7CBC517E1186134B13D1225B1BD0B4C4DFC596", 875195200)]
+    public void Waterfalls_matches_official_registered_full_pass(int seed, int width, int height, string digest, int nextRandom)
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy Waterfalls, seed1458. The fixture
+        // exercises both scans, snow-type rarity, halfbrick veto, protected supports,
+        // type-191 temporary non-solidity and a twice-pounded lip.
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        void Put(int x, int y, ushort type = 0, bool active = false, byte liquid = 0,
+            ushort wall = 0, bool half = false)
+        {
+            var tile = new WorldTile
+            {
+                Type = type, Flags = active ? WorldTileFlags.Active : WorldTileFlags.None,
+                LiquidAmount = liquid, Wall = wall, Shape = half ? (byte)1 : (byte)0
+            };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+
+        int row = height == 1200 ? 500 : 120;
+        foreach (int baseX in height == 1200 ? new[] { 800, 1800, 2800 } : new[] { 80 })
+        {
+            foreach ((int offset, ushort type) in new[] { (0, (ushort)1), (45, (ushort)75),
+                         (90, (ushort)76), (135, (ushort)1), (180, (ushort)1),
+                         (225, (ushort)1), (475, (ushort)191) })
+            {
+                int x = baseX + offset;
+                Put(x, row, type, active: true, wall: offset == 180 ? (ushort)350 : (ushort)0);
+                Put(x, row + 1, 1, active: true);
+                Put(x - 1, row, liquid: 100);
+            }
+            Put(baseX + 135, row - 5, 1, active: true, half: true);
+            Put(baseX + 225, row - 1, 21, active: true);
+            foreach ((int offset, bool left, bool right, ushort type) in new[] {
+                         (270, true, false, (ushort)1), (315, false, true, (ushort)1),
+                         (360, true, true, (ushort)1), (405, true, false, (ushort)48),
+                         (440, true, false, (ushort)232) })
+            {
+                int x = baseX + offset;
+                Put(x, row, type, active: true);
+                Put(x, row + 1, 1, active: true);
+                if (left) { Put(x - 1, row, 1, active: true, half: true); Put(x - 2, row, liquid: 100); }
+                if (right) { Put(x + 1, row, 1, active: true, half: true); Put(x + 2, row, liquid: 100); }
+            }
+        }
+
+        var random = new RandomAdapter(seed);
+        new PostSettlePass1458(PostSettleStage1458.Waterfalls, new PostSettleState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", checked((ulong)seed), width, height),
+                workspace, random));
+
+        Assert.Equal(digest, HashFixture(workspace));
+        Assert.Equal(nextRandom, random.Next());
+    }
+
     [Fact]
     public void Canonical_ordinary_world_extends_source_order_from_remove_water_through_statues()
     {
@@ -106,6 +173,42 @@ public sealed class SourceBackedPostSettle1458Tests
         Assert.Single(builder.Entries, entry => entry.Descriptor.Id.Value == id);
 
     private readonly record struct CaptureEntry(WorldGenerationPassDescriptor Descriptor, IWorldGenerationPass Pass);
+
+    private static string HashFixture(Workspace workspace)
+    {
+        var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        {
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
+                .Append(tile.Shape).Append(';');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
+    }
+
+    private sealed class Context(
+        WorldGenerationRequest request, Workspace workspace, IWorldGenerationVanillaRandom random) : IWorldGenerationContext
+    {
+        public WorldGenerationRequest Request => request;
+        public IWorldGenerationWorkspace Workspace => workspace;
+        public IWorldGenerationMetadataWorkspace Metadata => workspace;
+        public IWorldGenerationRandom Random => throw new NotSupportedException();
+        public IWorldGenerationVanillaRandom VanillaRandom => random;
+        public CancellationToken CancellationToken => CancellationToken.None;
+        public void ReportProgress(double fraction, string? message = null) { }
+    }
+
+    private sealed class RandomAdapter(int seed) : IWorldGenerationVanillaRandom
+    {
+        private readonly VanillaUnifiedRandom1458 random = new(seed);
+        public int Next() => random.Next();
+        public int Next(int maxValue) => random.Next(maxValue);
+        public int Next(int minValue, int maxValue) => random.Next(minValue, maxValue);
+        public double NextDouble() => random.NextDouble();
+        public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
+    }
 
     private sealed class CaptureBuilder : IWorldGenerationPlanBuilder
     {

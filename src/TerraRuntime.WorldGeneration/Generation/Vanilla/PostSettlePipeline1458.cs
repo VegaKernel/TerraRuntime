@@ -380,58 +380,76 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
 
     private void ApplyWaterfalls(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        int target = Math.Max(10, grid.Width / 260);
-        int placed = 0;
-        int minY = Math.Clamp((int)state.WorldSurface + 20, 5, state.UnderworldTop - 80);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 40);
-
-        for (int attempt = 0; attempt < target * 100 && placed < target; attempt++)
+        // TerrariaServer 1.4.5.8 GenPassNameID.Waterfalls scans the entire interior twice.
+        // It shapes the lip of a liquid fall; it never paints a descending liquid column.
+        long pounded = 0;
+        for (int x = 20; x < grid.Width - 20; x++)
         {
-            if ((attempt & 31) == 0)
+            if ((x & 31) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
-
-            int x = random.Next(8, grid.Width - 8);
-            int y = random.Next(minY, maxY);
-            ref WorldTile source = ref grid.At(x, y);
-            if (source.IsActive || source.LiquidAmount < 160)
-                continue;
-            if (!grid.At(x, y + 1).IsActive)
-                continue;
-
-            int direction = random.Next(2) == 0 ? -1 : 1;
-            int lipX = x + direction;
-            if (!grid.Contains(lipX, y) || grid.At(lipX, y).IsActive)
-                continue;
-            int drop = FindVerticalDrop(grid, lipX, y, 24);
-            if (drop < 4)
-                continue;
-
-            int amount = Math.Max(80, source.LiquidAmount / 2);
-            for (int dy = 0; dy < drop; dy++)
+            for (int y = 20; y < grid.Height - 20; y++)
             {
-                ref WorldTile fall = ref grid.At(lipX, y + dy);
-                if (fall.IsActive)
-                    break;
-                fall.LiquidKind = source.LiquidKind;
-                fall.LiquidAmount = (byte)Math.Max(fall.LiquidAmount, amount);
-                amount = Math.Max(48, amount - 4);
+                if (!SolidWaterfallTile(grid.At(x, y)) || grid.At(x - 1, y).IsActive ||
+                    !SolidWaterfallTile(grid.At(x, y + 1)) || grid.At(x + 1, y).IsActive ||
+                    grid.At(x - 1, y).LiquidAmount == 0 && grid.At(x + 1, y).LiquidAmount == 0)
+                    continue;
+
+                int top = y - random.Next(8, 20);
+                int bottom = y + random.Next(8, 20);
+                bool allowed = true;
+                for (int scanY = top; scanY <= bottom; scanY++)
+                    if (grid.At(x, scanY).IsActive && grid.At(x, scanY).Shape == 1)
+                        allowed = false;
+                if (grid.At(x, y).Type is 75 or 76 && random.Next(10) != 0)
+                    allowed = false;
+                if (allowed && PoundWaterfallTile(grid, x, y))
+                    pounded++;
             }
-            placed++;
+        }
+        for (int x = 20; x < grid.Width - 20; x++)
+        {
+            if ((x & 31) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+            for (int y = 20; y < grid.Height - 20; y++)
+            {
+                WorldTile tile = grid.At(x, y);
+                if (tile.Type is 48 or 232 || !SolidWaterfallTile(tile) ||
+                    !SolidWaterfallTile(grid.At(x, y + 1)))
+                    continue;
+                if (!SolidWaterfallTile(grid.At(x + 1, y)) && grid.At(x - 1, y).IsActive &&
+                    grid.At(x - 1, y).Shape == 1 && grid.At(x - 2, y).LiquidAmount > 0 &&
+                    PoundWaterfallTile(grid, x, y))
+                    pounded++;
+                if (!SolidWaterfallTile(grid.At(x - 1, y)) && grid.At(x + 1, y).IsActive &&
+                    grid.At(x + 1, y).Shape == 1 && grid.At(x + 2, y).LiquidAmount > 0 &&
+                    PoundWaterfallTile(grid, x, y))
+                    pounded++;
+            }
         }
 
-        context.ReportProgress(1d, $"Creating waterfall source drops ({placed}/{target})");
+        context.ReportProgress(1d, $"Shaped waterfall lips ({pounded} pound operations)");
     }
 
-    private static int FindVerticalDrop(RuntimeGrid grid, int x, int y, int maxDrop)
+    private static bool SolidWaterfallTile(in WorldTile tile) =>
+        tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
+        // Smooth World has already made type 192 and cracked bricks non-solid;
+        // Waterfalls additionally suspends type 191 solidity for this pass.
+        tile.Type is not (191 or 192 or 481 or 482 or 483 or 484) &&
+        VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+
+    private static bool PoundWaterfallTile(RuntimeGrid grid, int x, int y)
     {
-        int drop = 0;
-        for (int dy = 0; dy < maxDrop && grid.Contains(x, y + dy); dy++)
-        {
-            if (grid.At(x, y + dy).IsActive)
-                break;
-            drop++;
-        }
-        return drop;
+        ref WorldTile tile = ref grid.At(x, y);
+        WorldTile above = grid.At(x, y - 1);
+        if (!tile.IsActive || tile.Wall == 350 ||
+            !WorldSmoothingCatalog1458.CanBePounded(tile.TileType) ||
+            above.IsActive && WorldSmoothingCatalog1458.ForbidsSlopingBelow(above.TileType) ||
+            !WorldSmoothingCatalog1458.CanRemoveTileBelow(in above, tile.TileType))
+            return false;
+        // Generation PoundTile toggles halfBrick without SquareTileFrame or effects.
+        tile.Shape = tile.Shape == 1 ? (byte)0 : (byte)1;
+        return true;
     }
 
     private void ApplyIce(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)

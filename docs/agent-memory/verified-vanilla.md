@@ -1,5 +1,7 @@
 # Verified vanilla facts
 
+2026-10-25 TerrariaServer 1.4.5.8 `GenPassNameID.Waterfalls` performs two interior scans, not liquid-column placement. First scan draws two vertical ranges for a liquid-adjacent solid lip, vetoes a half-brick anywhere in the inclusive range, gates types75/76 by Next(10), then invokes generation `PoundTile`. Second scan independently pounds left- and right-halfbrick/liquid cases, allowing a double toggle. Type191 is temporarily non-solid; 48/232 are excluded from the second scan. Eight official registered complete-pass synthetic fixtures (seeds4/42/1458/8675309, 600x500 and4200x1200) match seven cell fields including shape and next RNG. The source harness's unrelated default Spider call must be suppressed. This does not prove real-prefix or special-seed parity.
+
 2026-10-25 TerrariaServer 1.4.5.8 `WorldGen` registered `Final Cleanup` grass-offer tail tests `TileID.Sets.Dirt`, whose source catalog is `{0,668}`. Selecting an already-present `668` counts toward the ordinary target even without a visible tile change. Source `Tile.ClearTile` clears slope and active/inactive only, preserving wall, liquid, wires, paint, coating, actuator and frames before type668 replacement. Three initial seed1458 Dirt/Dirtiest sites with wall/liquid/wire/paint in a `600x500` official full-pass fixture leave next RNG370853568 and six-field SHA-256 `8a59ce7099ee4244061b74e617a11f6cd193d35f1e5d2b32e08e864d0f05a04a`. This is an ordinary-tail fixture, not special-seed or real-prefix parity.
 
 ## Gem-staff block: accepted local checkpoint, 2026-10-25
