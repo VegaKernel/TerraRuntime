@@ -5,6 +5,10 @@ namespace TerraRuntime.Tests;
 
 public sealed class WorkerCompletionCommandForwarderTests
 {
+    // This verifies shutdown and ownership, not one-second scheduling under the full source matrices.
+    // Use the same bounded allowance as BoundedWorkerPoolTests.
+    private static readonly TimeSpan WorkerShutdownDeadline = TimeSpan.FromSeconds(5);
+
     [Fact]
     public void Forwarder_posts_worker_result_as_system_command()
     {
@@ -30,8 +34,8 @@ public sealed class WorkerCompletionCommandForwarderTests
         Assert.Equal(new ApplyResultCommand(42), ingress.Command);
         Assert.Equal(1, forwarder.ForwardedCommands);
         Assert.Null(forwarder.Fault);
-        Assert.True(workers.Stop(TimeSpan.FromSeconds(1)));
-        Assert.True(forwarder.Stop(TimeSpan.FromSeconds(1)));
+        Assert.True(workers.Stop(WorkerShutdownDeadline));
+        Assert.True(forwarder.Stop(WorkerShutdownDeadline));
     }
 
     [Fact]
@@ -65,9 +69,9 @@ public sealed class WorkerCompletionCommandForwarderTests
         Assert.Equal(snapshot.GameThreadId, state.ApplyThreadId);
         Assert.NotEqual(Environment.CurrentManagedThreadId, state.ApplyThreadId);
         Assert.Equal(1, forwarder.ForwardedCommands);
-        Assert.True(workers.Stop(TimeSpan.FromSeconds(1)));
-        Assert.True(forwarder.Stop(TimeSpan.FromSeconds(1)));
-        Assert.True(loop.Stop(TimeSpan.FromSeconds(1)));
+        Assert.True(workers.Stop(WorkerShutdownDeadline));
+        Assert.True(forwarder.Stop(WorkerShutdownDeadline));
+        Assert.True(loop.Stop(WorkerShutdownDeadline));
     }
 
     private sealed record ApplyResultCommand(int Value);

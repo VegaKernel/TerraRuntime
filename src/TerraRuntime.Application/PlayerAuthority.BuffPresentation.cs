@@ -19,7 +19,8 @@ internal sealed partial class PlayerAuthority
     internal int GetBuffDuration(PlayerHandle player, BuffTypeId type) =>
         membership.TryGet(player, out RuntimePlayerMember? member)
             ? transferProfiles.GetBuffDuration(member.Connection, type)
-            : type == VanillaBuffIds.MoonLeech ? serverPlayers?.GetMoonLeechDuration(player) ?? 0 : 0;
+            : type == VanillaBuffIds.MoonLeech ? serverPlayers?.GetMoonLeechDuration(player) ?? 0
+            : serverPlayers?.GetNpcContactBuffDuration(player, type) ?? 0;
 
     // Spawn-only flags follow remote Player.UpdateBuffs; this does not admit combat modifiers.
     internal bool HasNaturalSpawnBuffSnapshot(byte slot, BuffTypeId type) =>
@@ -56,6 +57,15 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        if (activePlayer is not null && transferProfiles.CaptureBuffState(command.Connection) is
+            { HasOwnedNpcContactBuffs: true } contactState)
+        {
+            // Presence-only client reports cannot renew an earned timer or discard a server effect.
+            // Other local cures/removal transactions need their own causal authority before admission.
+            if (request.BuffTypes.Span.SequenceEqual(contactState.CaptureTypes())) AppliedBuffSnapshots++;
+            else RejectedBuffSnapshots++;
+            return;
+        }
         if (activePlayer is not null && TryHandleQuickBuffSnapshot(activePlayer, in request))
             return;
         if (activePlayer is not null &&

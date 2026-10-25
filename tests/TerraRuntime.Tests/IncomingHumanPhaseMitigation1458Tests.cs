@@ -183,6 +183,18 @@ public sealed class IncomingHumanPhaseMitigation1458Tests
                 f.Member.GodMode = !previouslyGodMode;
             });
             f.Run(route, random);
+            if (route == "npc-contact" && previouslyGodMode)
+            {
+                // Update_NPCCollision returns for creativeGodMode before DamageVar. No random
+                // callback runs in this branch; the other routes retain their own source ordering.
+                Assert.Equal(0, random.Draws);
+                Assert.True(f.Member.GodMode);
+                Assert.Equal(before, f.Member.CaptureSnapshot());
+                Assert.Equal(item, f.Member.ItemPhase);
+                Assert.False(f.Players.IsGeneralPveImmune(f.Connection.Player, 1));
+                Assert.Equal(1, f.LastContact?.GodModeAvoidances);
+                continue;
+            }
             Assert.True(random.Draws > 0);
             Assert.Equal(before, f.Member.CaptureSnapshot()); // The omitted snapshot field cannot protect this case.
             Assert.Equal(item, f.Member.ItemPhase);

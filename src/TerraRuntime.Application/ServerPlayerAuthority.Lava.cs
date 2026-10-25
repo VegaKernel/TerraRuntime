@@ -24,6 +24,7 @@ internal sealed partial class ServerPlayerAuthority
         for (int i = 0; i < count; i++)
         {
             PlayerStateSnapshot player = snapshots[i];
+            if (!states.TryGet(player.Player, out var livePlayer) || livePlayer != player) continue;
             if (!player.HasHealth || player.IsDead || player.Life <= 0)
             {
                 ResetLavaState(player.Player);
@@ -34,12 +35,17 @@ internal sealed partial class ServerPlayerAuthority
             if (lava.Owner != player.Player)
                 lava = new LavaState { Owner = player.Player, Protection = equipment.LavaProtectionTicks };
 
-            // Player.UpdateBuffs -> UpdateLifeRegen precedes this update's liquid collision.
-            // Ordinary OnFire blocks positive regeneration and subtracts eight / 120 HP per update.
-            if (lava.BurningTicks > 0)
+            // Player.UpdateBuffs -> UpdateLifeRegen precedes this update's liquid collision. The neutral
+            // source rates add: poison4, ordinary fire8, cursed fire24 per120 HP. Vampire/dripping-slime,
+            // honey and other unrepresented regeneration modifiers are outside this admitted actor slice.
+            bool burning = lava.BurningTicks > 0;
+            if (burning) lava.BurningTicks--;
+            PlayerDebuffSnapshot1458 contactEffects = npcContactBuffOwners[player.Player.Slot.Value] == player.Player
+                ? npcContactDebuffEffects[player.Player.Slot.Value] : default;
+            int regenLoss = (burning ? 8 : 0) + (contactEffects.Poisoned ? 4 : 0) + (contactEffects.OnFire2 ? 24 : 0);
+            if (regenLoss > 0)
             {
-                lava.BurningTicks--;
-                lava.RegenLoss += 8;
+                lava.RegenLoss += regenLoss;
                 if (lava.RegenLoss >= 120)
                 {
                     lava.RegenLoss -= 120;
@@ -47,11 +53,12 @@ internal sealed partial class ServerPlayerAuthority
                     {
                         var burn = new FinalDamageToHp(1, new TargetMitigation(0, 0, 0, false, false, true));
                         if (CommitResolvedDamage(tick, in player,
-                                DamageSource.FromEnvironment(EnvironmentDamageCause.Burning), default, in burn,
+                                DamageSource.FromEnvironment(contactEffects.Poisoned ? EnvironmentDamageCause.Poison : EnvironmentDamageCause.Burning), default, in burn,
                                 0, default, false, damageOverTime: true, out var burned) == PlayerDamageCommitResult.Committed)
                         {
                             player = burned;
-                            if (player.IsDead) continue;
+                            if (player.IsDead || !states.TryGet(player.Player, out var liveBurned) || liveBurned != player)
+                                continue;
                         }
                     }
                 }
@@ -73,7 +80,9 @@ internal sealed partial class ServerPlayerAuthority
                                 DamageSource.FromEnvironment(EnvironmentDamageCause.Lava), default, damage, 0,
                                 VanillaPlayerImmunityChannel1458.Lava, expertMode, masterMode, out var struck) == PlayerDamageCommitResult.Committed)
                         {
-                            if (struck.IsDead) continue;
+                            if (struck.IsDead || !states.TryGet(player.Player, out var liveStruck) || liveStruck != struck)
+                                continue;
+                            player = struck;
                             lava.BurningTicks = Math.Max(lava.BurningTicks, duration);
                         }
                     }
@@ -91,13 +100,13 @@ internal sealed partial class ServerPlayerAuthority
         }
     }
 
-    private void PublishBurning(ref LavaState lava)
+    private void PublishBurning(ref LavaState lava, bool publish = true)
     {
         bool burning = lava.BurningTicks > 0;
         if (burning == lava.PublishedBurning) return;
         if (burning) moonLeechBeforeBurning[lava.Owner.Slot.Value] = GetMoonLeechDuration(lava.Owner) > 0;
         lava.PublishedBurning = burning;
-        PublishBuffTypes(lava.Owner);
+        if (publish) PublishBuffTypes(lava.Owner);
     }
 
     private void ResetLavaState(PlayerHandle player)

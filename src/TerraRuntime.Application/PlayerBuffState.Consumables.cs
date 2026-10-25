@@ -43,7 +43,7 @@ internal sealed partial class PlayerBuffState
             if (retained) continue;
             copy.types[removed] = VanillaBuffIds.None;
             copy.durations[removed] = 0;
-            copy.ownedFood[removed] = false;
+            copy.ownedFood[removed] = false; copy.ownedNpcContact[removed] = false;
             int destination = 0;
             for (int i = 0; i < Capacity - 1; i++)
                 if (copy.types[i] != VanillaBuffIds.None && copy.durations[i] != 0)
@@ -53,9 +53,10 @@ internal sealed partial class PlayerBuffState
                         copy.types[destination] = copy.types[i];
                         copy.durations[destination] = copy.durations[i];
                         copy.ownedFood[destination] = copy.ownedFood[i];
+                        copy.ownedNpcContact[destination] = copy.ownedNpcContact[i];
                         copy.types[i] = VanillaBuffIds.None;
                         copy.durations[i] = 0;
-                        copy.ownedFood[i] = false;
+                        copy.ownedFood[i] = false; copy.ownedNpcContact[i] = false;
                     }
                     destination++;
                 }
@@ -76,6 +77,9 @@ internal sealed partial class PlayerBuffState
         types.CopyTo(copy.types, 0);
         durations.CopyTo(copy.durations, 0);
         ownedFood.CopyTo(copy.ownedFood, 0);
+        ownedNpcContact.CopyTo(copy.ownedNpcContact, 0);
+        copy.contactDebuffsForUpdate = contactDebuffsForUpdate;
+        copy.contactFrozenForUpdate = contactFrozenForUpdate;
         foodClockOrigins.CopyTo(copy.foodClockOrigins, 0);
         return copy;
     }
@@ -83,6 +87,9 @@ internal sealed partial class PlayerBuffState
     internal bool HasSameSlots(PlayerBuffState other) =>
         types.AsSpan().SequenceEqual(other.types) && durations.AsSpan().SequenceEqual(other.durations) &&
         ownedFood.AsSpan().SequenceEqual(other.ownedFood) &&
+        ownedNpcContact.AsSpan().SequenceEqual(other.ownedNpcContact) &&
+        contactDebuffsForUpdate == other.contactDebuffsForUpdate &&
+        contactFrozenForUpdate == other.contactFrozenForUpdate &&
         (!(HasOwnedFoodSlots || other.HasOwnedFoodSlots) || ReferenceEquals(foodClockLineage, other.foodClockLineage)) &&
         foodClockOrigins.AsSpan().SequenceEqual(other.foodClockOrigins) &&
         lastOwnedFoodTick == other.lastOwnedFoodTick && ownedFoodEffectAtTick == other.ownedFoodEffectAtTick;
@@ -123,9 +130,9 @@ internal sealed partial class PlayerBuffState
         return applied;
     }
 
-    private bool TryApplySelectedConsumableCore(BuffTypeId type, int duration, bool immune)
+    private bool TryApplySelectedConsumableCore(BuffTypeId type, int duration, bool immune, bool npcContact = false)
     {
-        if (immune || duration <= 0 || type.Value is not (21 or 94 or 5 or 16 or 112 or 114 or 115 or 117 or 26 or 206 or 207)) return false;
+        if (immune || duration <= 0 || (!npcContact && type.Value is not (21 or 94 or 5 or 16 or 112 or 114 or 115 or 117 or 26 or 206 or 207))) return false;
         // Player.AddBuff removes fed-state entries before looking for an existing timer.
         // Forward iteration deliberately follows original DelBuff compaction, including slot43.
         if (type.Value is 26 or 206 or 207)
@@ -157,13 +164,14 @@ internal sealed partial class PlayerBuffState
                     types[i] = type;
                     durations[i] = duration;
                     ownedFood[i] = type.Value is 26 or 206 or 207;
+                    ownedNpcContact[i] = npcContact;
                     count = Capacity;
                     return true;
                 }
 
             types[removable] = VanillaBuffIds.None;
             durations[removable] = 0;
-            ownedFood[removable] = false;
+            ownedFood[removable] = false; ownedNpcContact[removable] = false;
             int destination = 0;
             // Source Player.DelBuff compacts 0..42, leaving slot43 in place.
             for (int i = 0; i < Capacity - 1; i++)
@@ -174,9 +182,10 @@ internal sealed partial class PlayerBuffState
                         types[destination] = types[i];
                         durations[destination] = durations[i];
                         ownedFood[destination] = ownedFood[i];
+                        ownedNpcContact[destination] = ownedNpcContact[i];
                         types[i] = VanillaBuffIds.None;
                         durations[i] = 0;
-                        ownedFood[i] = false;
+                        ownedFood[i] = false; ownedNpcContact[i] = false;
                     }
                     destination++;
                 }
@@ -187,7 +196,7 @@ internal sealed partial class PlayerBuffState
     {
         types[slot] = VanillaBuffIds.None;
         durations[slot] = 0;
-        ownedFood[slot] = false;
+        ownedFood[slot] = false; ownedNpcContact[slot] = false;
         foodClockOrigins[slot] = byte.MaxValue;
         int destination = 0;
         for (int i = 0; i < Capacity - 1; i++)
@@ -198,11 +207,12 @@ internal sealed partial class PlayerBuffState
                     types[destination] = types[i];
                     durations[destination] = durations[i];
                     ownedFood[destination] = ownedFood[i];
+                        ownedNpcContact[destination] = ownedNpcContact[i];
                     foodClockOrigins[destination] = foodClockOrigins[i];
                     foodClockOrigins[i] = byte.MaxValue;
                     types[i] = VanillaBuffIds.None;
                     durations[i] = 0;
-                    ownedFood[i] = false;
+                    ownedFood[i] = false; ownedNpcContact[i] = false;
                 }
                 destination++;
             }

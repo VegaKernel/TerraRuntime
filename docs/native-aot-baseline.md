@@ -1,5 +1,11 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## NPC contact status: Windows local validation, 2026-10-25
+
+The isolated `combat/npc-contact-buffs` candidate builds Release with warnings as errors and publishes Windows NativeAOT; loop/protocol/network/world/TUI smokes pass. The 16 unchanged new normal Fact bodies are additionally linked into a static typed harness with a small reviewed assertion shim: managed and fresh Windows Native both execute 1,024,679 assertion invocations with byte-identical per-Fact output. Exact 38 DLL inputs, linked sources and two numeric gzip fixtures are pinned, native CLR directory is 0/0. This is additional typed replay, not an AOT xUnit runner or whole Main parity. Evidence `.cache/npc-contact-native-v2/acceptance.json`; shipping server `.cache/windows-native-result.json`. No production dependency is added.
+
+Linux NativeAOT remains unverified: the local Windows publish guard rejects linux-x64 and no WSL distro is available. Original Linux-edition gameplay observations run under Windows CoreCLR are independent helper evidence, not Linux execution or Native acceptance. FullVanillaAiParity remains false. Full/fast/focused results are recorded in the branch work state.
+
 ## Food authority: verified local checkpoint, 2026-10-15
 
 Release tests/server WAE0/0;193/193 focused normal-discovery tests; mandatory fast24982/24983; ONE unfiltered full1563275/1563276, zero failures/errors and the same known liquid skip. All4979 methods selected, zero exclusions. Full test time $744.569\,\mathrm{s}$. Complete XML remains on C. Exact same three new normal Fact bodies pass typed managed/fresh WindowsNative, with171242 Game helper predicates and2525 wrapper/App typed assertions. Fresh Native server/five smokes and actual Release/Native82/49/129, two-client/chat and72 signed35/43 effects per host pass; both hosts stopped. LinuxNative remains unverified; no new dependency or GitHub CI wait.

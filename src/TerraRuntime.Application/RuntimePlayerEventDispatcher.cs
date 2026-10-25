@@ -113,6 +113,12 @@ internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
         _operationsObserver?.PlayerPvpBuffApplied(player, buffType, durationTicks);
     }
 
+    public void PlayerNpcContactBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks)
+    {
+        _connections.PlayerNpcContactBuffApplied(player, buffType, durationTicks);
+        _operationsObserver?.PlayerNpcContactBuffApplied(player, buffType, durationTicks);
+    }
+
     public void PlayerDisconnected(ConnectionHandle connection)
     {
         _connections.PlayerDisconnected(connection);

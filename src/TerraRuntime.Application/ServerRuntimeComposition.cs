@@ -336,9 +336,11 @@ internal sealed class ServerRuntimeComposition
         var npcPlayerCombat = new RuntimeNpcPlayerCombatPass(
             npcStore,
             playersAuthority,
+            sourceRandom: gameplayRandom,
             serverPlayers: serverPlayers,
             expertMode: expertMode,
-            masterMode: masterMode);
+            masterMode: masterMode,
+            goodWorld: worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false);
 
         return new ServerRuntimeComposition(
             updates,

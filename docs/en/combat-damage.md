@@ -1,5 +1,7 @@
 Owned metal armor and atomic projectile item use: [scope and transaction](player-item-use-1458.md).
 
+NPC contact status application: [ownership, source rules and limitations](npc-contact-debuffs-1458.md).
+
 ## Retained human direct-melee combat fields — accepted local checkpoint, 2026-10-11
 
 Source-bound direct melee consumes the retained player-phase damage and class crit. Selected item crit is already included in that class value and is not added a second time. PvP retains its fixed 10 percent crit policy. Never-bound component callers retain their equipment projection; retired phase ownership rejects before random offers or fallback. Complete player custody is checked again after virtual random callbacks.
