@@ -1,5 +1,7 @@
 # Production graph
 
+2026-10-25 ordinary Shell Piles row56 now uses the existing `SourceBackedPostSettle1458 -> PostSettlePass1458` owner, Beaches' two published `Workspace` shell anchors and the same shared vanilla RNG. The invented sampled single-tile placement is replaced by source `ShellPile` brush offers; no project, dependency, threading or persistence edge changes. Row56 is bounded `C` on eight registered official full-pass fixtures; special seeds still route through compatibility.
+
 2026-10-25 Waterfalls row58 now uses the existing `SourceBackedPostSettle1458 -> PostSettlePass1458` owner, shared vanilla RNG, collision catalog and `WorldSmoothingCatalog1458` pound/support predicates. The invented liquid-placement loop is removed. No project, dependency or ownership edge changes; row58 is bounded `C` on eight official registered full-pass fixtures.
 
 2026-10-25 Final Cleanup ordinary grass-offer correction stays in `FinalPass1458` and uses the existing shared generation RNG. The source `TileID.Sets.Dirt` set includes type668, so an unchanged `668` cell can terminate the bounded offer loop. No project, dependency or ownership edge changes; row109 remains partial.

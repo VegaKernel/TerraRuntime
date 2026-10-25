@@ -9,6 +9,61 @@ namespace TerraRuntime.Tests;
 public sealed class SourceBackedPostSettle1458Tests
 {
     [Theory]
+    [InlineData(1458, 600, 500, "72345AD32F51D98300A1274DCBBCC0A8430D47530DF591F3669C30AB98D1D607", 157, 80, 444, 80, 163, 402866635)]
+    [InlineData(1458, 4200, 1200, "6502B8649A5096D8D7A56B6B873E270B75F42B03CD773BB89A77EC19680F5CAF", 997, 230, 3204, 230, 163, 402866635)]
+    [InlineData(1, 600, 500, "FEB4B449F9CF69F84F308FEDB1CF9EFFD79C030ECDF37840CFD475152DCAFF1E", 153, 80, 440, 130, 85, 1029774417)]
+    [InlineData(1, 4200, 1200, "AECDF32415BB89E7CF03FB6F72A4BB99BB5ED2706FFADB9ACA434EC4ED1E367D", 993, 230, 3200, 280, 85, 1029774417)]
+    [InlineData(42, 600, 500, "0CCE92D1033891BF7A1A2833913375B307325824F3693E4AFEA028E7B6250A25", 163, 130, 440, 80, 99, 514872570)]
+    [InlineData(42, 4200, 1200, "43F9CC5575055F1B2541E918D8942AB3AAF9EB292DEE5F51954A0EE91710C9F7", 1003, 280, 3200, 230, 99, 514872570)]
+    [InlineData(4, 600, 500, "936BF1918F54272E68817DAC0B1F487A010DE03FD74B82BD13B880E77B80F9FB", 160, 130, 440, 130, 0, 1211126341)]
+    [InlineData(4, 4200, 1200, "5F0015F9C799F1200E049301B11229468A75BF9BE91332A697F329D20E3ED430", 1000, 280, 3200, 280, 0, 1211126341)]
+    public void Shell_piles_match_official_registered_ordinary_pass_and_publish_anchors(
+        int seed, int width, int height, string digest, int leftXAfter, int leftYAfter,
+        int rightXAfter, int rightYAfter, int expectedShells, int nextRandom)
+    {
+        // Independent TerrariaServer 1.4.5.8 registered PassLegacy, seed1458.
+        // Dry substrate patches accept both outward offers without introducing a
+        // second water-adjacent edge in the source's anchor search rectangle.
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        int leftX = height == 1200 ? 1000 : 160;
+        int rightX = height == 1200 ? 3200 : 440;
+        int floorY = height == 1200 ? 280 : 130;
+        int bandWidth = height == 1200 ? 200 : 120;
+        var sand = new WorldTile { Type = 53, Flags = WorldTileFlags.Active };
+        void SandBand(int firstX, int lastX)
+        {
+            for (int x = firstX; x <= lastX; x++)
+            for (int y = floorY; y < floorY + 50; y++)
+                workspace.TileStore.Set(x, y, in sand);
+        }
+        SandBand(leftX, leftX + bandWidth - 1);
+        SandBand(rightX - bandWidth + 1, rightX);
+        SandBand(leftX - 100, leftX - 2);
+        SandBand(rightX + 2, rightX + 100);
+        var water = new WorldTile { LiquidAmount = 100 };
+        workspace.TileStore.Set(leftX - 1, floorY, in water);
+        workspace.TileStore.Set(rightX + 1, floorY, in water);
+        workspace.SetVanillaShellAnchors(new(leftX, floorY), new(rightX, floorY));
+
+        var random = new RandomAdapter(seed);
+        new PostSettlePass1458(PostSettleStage1458.ShellPiles, new PostSettleState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Shells", checked((ulong)seed), width, height),
+                workspace, random));
+
+        Assert.Equal(new VanillaShellAnchor1458(leftXAfter, leftYAfter), workspace.VanillaLeftShellAnchor);
+        Assert.Equal(new VanillaShellAnchor1458(rightXAfter, rightYAfter), workspace.VanillaRightShellAnchor);
+        int shells = 0;
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: 495 }) shells++;
+        Assert.Equal(expectedShells, shells);
+        Assert.Equal(digest, HashFixture(workspace));
+        Assert.Equal(nextRandom, random.Next());
+    }
+
+    [Theory]
     [InlineData(1458, 600, 500, "F418CBBCBE9D86668D9C5DC01CA051DBBEE6C3A3401A52C9BBDBC3D38473A31E", 1162070998)]
     [InlineData(1458, 4200, 1200, "E58255F2CA721C9615E7C8A22DA42105C91D2AF87001265CCCC0C78DCA60FD82", 663238162)]
     [InlineData(42, 600, 500, "F418CBBCBE9D86668D9C5DC01CA051DBBEE6C3A3401A52C9BBDBC3D38473A31E", 818126015)]

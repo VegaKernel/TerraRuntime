@@ -216,7 +216,7 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
                 ApplyOasis(context, workspace);
                 break;
             case PostSettleStage1458.ShellPiles:
-                ApplyShellPiles(context, grid, random);
+                ApplyShellPiles(context, workspace, grid, random);
                 break;
             case PostSettleStage1458.SmoothWorld:
                 ApplySmoothWorld(context, workspace);
@@ -325,43 +325,127 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Generating oasis basins ({placed}/{count})");
     }
 
-    private void ApplyShellPiles(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyShellPiles(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
+        // TerrariaServer 1.4.5.8 GenPassNameID.ShellPilesMarblePilesAndSpikePits.
+        // The source-backed provider enters this pass only for ordinary seeds;
+        // MarblePiles, SpikeCaves and the notTheBees refusal belong to the secret-seed barrier.
+        VanillaShellAnchor1458 left = workspace.VanillaLeftShellAnchor;
+        VanillaShellAnchor1458 right = workspace.VanillaRightShellAnchor;
+        if (random.Next(2) == 0)
         {
-            <= 4200 => 14,
-            <= 6400 => 20,
-            _ => 28
-        };
-        int placed = 0;
-        int attempts = target * 40;
-
-        for (int attempt = 0; attempt < attempts && placed < target; attempt++)
-        {
-            if ((attempt & 31) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            bool left = random.Next(2) == 0;
-            int minX = left ? 24 : bootstrap.RightBeachStart;
-            int maxX = left ? bootstrap.LeftBeachEnd : grid.Width - 24;
-            if (maxX <= minX + 4)
-                continue;
-            int x = random.Next(minX + 2, maxX - 2);
-            int surface = grid.FindFirstActiveY(x, 1, Math.Min(grid.Height, (int)state.RockLayer));
-            if (surface <= 1 || surface >= grid.Height - 2)
-                continue;
-            if (!IsSandFamily(grid.At(x, surface).Type))
-                continue;
-            ref WorldTile above = ref grid.At(x, surface - 1);
-            if (above.IsActive || above.LiquidAmount > 0)
-                continue;
-
-            SetType(ref above, ShellPile);
-            placed++;
+            for (int x = left.X - 20; x <= left.X + 20; x++)
+            for (int y = left.Y - 10; y <= left.Y + 10; y++)
+                if (grid.At(x, y).IsActive && grid.At(x, y).Type == Sand &&
+                    !grid.At(x, y - 1).IsActive && grid.At(x, y - 1).LiquidAmount == 0 &&
+                    !grid.At(x - 1, y).IsActive && grid.At(x - 1, y).LiquidAmount > 0)
+                    left = new VanillaShellAnchor1458(x, y);
+            left = left with { Y = left.Y - 50, X = left.X - random.Next(5) };
+            if (random.Next(2) == 0) left = left with { X = left.X - random.Next(10) };
+            if (random.Next(3) == 0) left = left with { X = left.X - random.Next(15) };
+            if (random.Next(4) != 0) ShellPileAt(grid, random, left.X, left.Y);
+            int denominator = random.Next(2, 4);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, left.X - random.Next(10, 35), left.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, left.X - random.Next(40, 65), left.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, left.X - random.Next(70, 95), left.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, left.X - random.Next(100, 125), left.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, left.X + random.Next(10, 25), left.Y);
         }
+        if (random.Next(2) == 0)
+        {
+            for (int x = right.X - 20; x <= right.X + 20; x++)
+            for (int y = right.Y - 10; y <= right.Y + 10; y++)
+                if (grid.At(x, y).IsActive && grid.At(x, y).Type == Sand &&
+                    !grid.At(x, y - 1).IsActive && grid.At(x, y - 1).LiquidAmount == 0 &&
+                    !grid.At(x + 1, y).IsActive && grid.At(x + 1, y).LiquidAmount > 0)
+                    right = new VanillaShellAnchor1458(x, y);
+            right = right with { Y = right.Y - 50, X = right.X + random.Next(5) };
+            // The source's next two right-beach draws alter shellStartXLeft, not shellStartXRight.
+            if (random.Next(2) == 0) left = left with { X = left.X + random.Next(10) };
+            if (random.Next(3) == 0) left = left with { X = left.X + random.Next(15) };
+            if (random.Next(4) != 0) ShellPileAt(grid, random, right.X, right.Y);
+            int denominator = random.Next(2, 4);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, right.X + random.Next(10, 35), right.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, right.X + random.Next(40, 65), right.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, right.X + random.Next(70, 95), right.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, right.X + random.Next(100, 125), right.Y);
+            if (random.Next(denominator) == 0) ShellPileAt(grid, random, right.X - random.Next(10, 25), right.Y);
+        }
+        workspace.SetVanillaShellAnchors(left, right);
+        context.ReportProgress(1d, "Applied source-backed ocean shell-pile offers");
+    }
 
-        context.ReportProgress(1d, $"Placing ocean shell piles ({placed}/{target})");
+    private bool ShellPileAt(RuntimeGrid grid, IRandom random, int x, int y)
+    {
+        if (!grid.Contains(x, y)) return false;
+        int groundY = y;
+        while (!SolidShellFloor(grid.At(x, groundY)))
+        {
+            groundY++;
+            if (groundY > state.WorldSurface || !grid.Contains(x, groundY)) return false;
+        }
+        if (grid.At(x, groundY).Type != Sand || grid.At(x, groundY).Wall != 0) return false;
+
+        int originY = groundY - 1;
+        double centerX = x;
+        double centerY = originY;
+        double velocityX = random.NextDouble() * 0.6 - 0.3;
+        double velocityY = random.NextDouble() * 0.5 + 0.5;
+        double radius = random.Next(2, 4);
+        if (random.Next(10) == 0) radius += 1d;
+        int steps = random.Next(3, 6);
+        while (steps-- > 0)
+        {
+            for (int column = x - (int)radius * 4; column <= x + radius * 4d; column++)
+            {
+                int row = originY + (int)radius * 4;
+                while (row > originY - radius * 4d)
+                {
+                    double threshold = radius * random.Next(70, 91) * 0.01;
+                    double dx = (centerX - column) * 0.6;
+                    double dy = centerY - row;
+                    if (Math.Sqrt(dx * dx + dy * dy) < threshold)
+                    {
+                        if (row <= originY + 1 || random.Next(6) == 0)
+                        {
+                            SetShellMaterial(grid, column, row, ShellPile);
+                            if (!grid.At(column, row + 1).IsActive)
+                            {
+                                SetShellMaterial(grid, column, row + 1, ShellPile);
+                                if (!grid.At(column, row + 2).IsActive)
+                                {
+                                    SetShellMaterial(grid, column, row + 2, Sand);
+                                    if (!grid.At(column, row + 3).IsActive)
+                                        SetShellMaterial(grid, column, row + 3, HardenedSand);
+                                }
+                            }
+                        }
+                        else if (grid.At(column, row).Type != ShellPile)
+                            SetShellMaterial(grid, column, row, Sand);
+                    }
+                    row--;
+                }
+            }
+            centerX += velocityX;
+            centerY += velocityY;
+            velocityX += random.NextDouble() * 0.2 - 0.1;
+            velocityY += random.NextDouble() * 0.2 - 0.1;
+            // Source Utils.Clamp returns a value that this caller discards.
+        }
+        return true;
+    }
+
+    private static bool SolidShellFloor(in WorldTile tile) =>
+        tile.IsActive && !tile.IsActuated && tile.Shape == 0 && tile.Type != 484 &&
+        VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+
+    private static void SetShellMaterial(RuntimeGrid grid, int x, int y, ushort type)
+    {
+        ref WorldTile tile = ref grid.At(x, y);
+        tile.Type = type;
+        tile.Flags |= WorldTileFlags.Active;
+        tile.Shape = 0;
     }
 
     private static void ApplySmoothWorld(IWorldGenerationContext context, Workspace workspace)
