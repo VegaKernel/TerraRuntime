@@ -225,7 +225,7 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
                 ApplyWaterfalls(context, grid, random);
                 break;
             case PostSettleStage1458.Ice:
-                ApplyIce(context, grid, random);
+                ApplyIce(context, workspace, grid);
                 break;
             case PostSettleStage1458.WallVariety:
                 ApplyWallVariety(context, workspace);
@@ -536,43 +536,86 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         return true;
     }
 
-    private void ApplyIce(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyIce(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int left = Math.Max(1, bootstrap.SnowOriginLeft - 80);
-        int right = Math.Min(grid.Width - 1, bootstrap.SnowOriginRight + 80);
-        int top = Math.Clamp((int)state.WorldSurface - 10, 1, grid.Height - 2);
-        int bottom = Math.Clamp((int)state.RockLayer + 160, top + 1, state.UnderworldTop);
-        long frozen = 0;
-
-        for (int x = left; x < right; x++)
+        // TerrariaServer 1.4.5.8 GenPassNameID.FragileIceOverIceBiomeWater.
+        // Ordinary generation scans every liquid cell below worldSurface; it
+        // does not sample the snow bounds or convert stone/walls at random.
+        var framer = new GenerationTileFraming1458(workspace.TileStore,
+            context.VanillaRandom ?? throw new InvalidOperationException("Ice requires shared vanilla RNG."));
+        long placed = 0;
+        for (int x = 10; x < grid.Width - 10; x++)
         {
             if ((x & 63) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
-            for (int y = top; y < bottom; y++)
+            for (int y = (int)state.WorldSurface; y < grid.Height - 100; y++)
             {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive)
-                {
-                    if (tile.Type == Stone && random.Next(5) == 0)
-                    {
-                        SetType(ref tile, Ice);
-                        frozen++;
-                    }
-                    if (tile.Wall is DirtUnsafeWall or RockyDirtUnsafeWall && random.Next(4) == 0)
-                        tile.Wall = IceUnsafeWall;
-                    continue;
-                }
-
-                if (tile.LiquidKind == WorldLiquidKind.Water && tile.LiquidAmount >= 200 && random.Next(3) == 0)
-                {
-                    SetType(ref tile, Ice);
-                    frozen++;
-                }
+                WorldTile tile = grid.At(x, y);
+                if (tile.LiquidAmount > 0 && tile.LiquidKind != WorldLiquidKind.Lava)
+                    placed += MakeWateryIceThing(grid, framer, x, y);
             }
         }
+        // The source ends this pass by making Lihzahrd brick and fragile ice
+        // temporarily non-solid for later generation owners.
+        workspace.SetVanillaPostIceNonSolidTiles();
+        context.ReportProgress(1d, $"Placed thin ice over snow-biome water ({placed} cells)");
+    }
 
-        context.ReportProgress(1d, $"Freezing underground snow-biome pockets ({frozen} ice tiles)");
+    private static int MakeWateryIceThing(RuntimeGrid grid, GenerationTileFraming1458 framer, int x, int y)
+    {
+        WorldTile start = grid.At(x, y);
+        if (!grid.Contains(x, y) || start.LiquidAmount == 0 || start.IsActive ||
+            start.LiquidKind == WorldLiquidKind.Lava)
+            return 0;
+        int floorY = y;
+        while (!grid.At(x, floorY).IsActive && grid.At(x, floorY).LiquidAmount > 0)
+        {
+            floorY++;
+            if (floorY > grid.Height - 50) return 0;
+        }
+        WorldTile floor = grid.At(x, floorY);
+        if (!floor.IsActive || floor.Type is not (147 or 161 or 200 or 163 or 164)) return 0;
+
+        int topY = floorY - 1;
+        while (grid.At(x, topY).LiquidAmount > 0)
+        {
+            topY--;
+            if (topY < 10) return 0;
+        }
+        if (grid.At(x, topY).IsActive) return 0;
+        topY++;
+        if (grid.At(x, topY).IsActive) return 0;
+
+        int placed = 0;
+        for (int column = x;
+             grid.Contains(column, topY) && column > 0 && !grid.At(column, topY).IsActive &&
+             grid.At(column, topY).LiquidAmount > 0 && grid.At(column, topY - 1).LiquidAmount == 0 &&
+             !grid.At(column, topY - 1).IsActive && grid.At(column - 1, topY).Shape != 1;
+             column--)
+            placed += PlaceThinIce(grid, framer, column, topY);
+        for (int column = x + 1;
+             grid.Contains(column, topY) && column + 1 < grid.Width && !grid.At(column, topY).IsActive &&
+             grid.At(column, topY).LiquidAmount > 0 && grid.At(column, topY - 1).LiquidAmount == 0 &&
+             !grid.At(column, topY - 1).IsActive && grid.At(column + 1, topY).Shape != 1;
+             column++)
+            placed += PlaceThinIce(grid, framer, column, topY);
+        return placed;
+    }
+
+    private static int PlaceThinIce(RuntimeGrid grid, GenerationTileFraming1458 framer, int x, int y)
+    {
+        // WorldGen.PlaceTile(162) on an inactive water cell clears only Tile,
+        // TilePaint and Slope. Wall, liquid, wiring and actuator are retained.
+        ref WorldTile tile = ref grid.At(x, y);
+        tile.Type = 162;
+        tile.FrameX = 0;
+        tile.FrameY = 0;
+        tile.TileColor = 0;
+        tile.Shape = 0;
+        tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        tile.Flags |= WorldTileFlags.Active;
+        framer.SquareTileFrame(x, y);
+        return 1;
     }
 
     private void ApplyWallVariety(IWorldGenerationContext context, Workspace workspace)

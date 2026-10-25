@@ -78,6 +78,9 @@ public sealed class Workspace :
     private VanillaShellAnchor1458? vanillaLeftShellAnchor;
     private VanillaShellAnchor1458? vanillaRightShellAnchor;
     private WorldGenerationPoint[] vanillaOceanCaveTreasure = [];
+    private WorldGenerationPoint[]? vanillaJungleShrineChestAnchors;
+    // Source Ice pass publishes temporary Main.tileSolid[162/226]=false for later generation passes.
+    internal bool VanillaPostIceNonSolidTiles { get; private set; }
     private WorldTileRegion? vanillaShimmerStructure;
     private WorldGenerationPoint[] vanillaPyramidAnchors = [];
     private Vanilla.VanillaOasisAnchor1458[] vanillaOasisAnchors = [];
@@ -129,6 +132,10 @@ public sealed class Workspace :
         throw new InvalidOperationException("Ocean shell anchors have not been generated.");
     /// <summary>GenVars.oceanCaveTreasure in slot order; the later Water Chests pass reads these anchors.</summary>
     internal ReadOnlySpan<WorldGenerationPoint> VanillaOceanCaveTreasure => vanillaOceanCaveTreasure;
+    /// <summary>Source <c>GenVars.JChestX/Y</c> in shrine placement order.</summary>
+    internal ReadOnlySpan<WorldGenerationPoint> VanillaJungleShrineChestAnchors =>
+        vanillaJungleShrineChestAnchors ??
+        throw new InvalidOperationException("Jungle shrine chest anchors have not been published.");
     /// <summary>The 200x200 GenVars.structures rectangle the Shimmer pass protects around its pool.</summary>
     internal WorldTileRegion? VanillaShimmerStructure => vanillaShimmerStructure;
     /// <summary>Anchors the Pyramids pass accepted, in retained candidate order.</summary>
@@ -244,6 +251,21 @@ public sealed class Workspace :
 
         vanillaOceanCaveTreasure = copy;
     }
+    internal void SetVanillaJungleShrineChestAnchors(IReadOnlyList<WorldGenerationPoint> anchors)
+    {
+        ArgumentNullException.ThrowIfNull(anchors);
+        // TerrariaServer 1.4.5.8 GenVars.JChestX/Y are fixed 100-slot arrays.
+        if (anchors.Count > 100) throw new ArgumentOutOfRangeException(nameof(anchors));
+        var copy = new WorldGenerationPoint[anchors.Count];
+        for (int i = 0; i < copy.Length; i++)
+        {
+            copy[i] = anchors[i];
+            if ((uint)copy[i].X >= (uint)WidthTiles || (uint)copy[i].Y >= (uint)HeightTiles)
+                throw new ArgumentOutOfRangeException(nameof(anchors));
+        }
+        vanillaJungleShrineChestAnchors = copy;
+    }
+    internal void SetVanillaPostIceNonSolidTiles() => VanillaPostIceNonSolidTiles = true;
     internal void SetVanillaMountainCaves(ReadOnlySpan<WorldGenerationPoint> caves)
     {
         if (caves.Length > 8) throw new ArgumentOutOfRangeException(nameof(caves));
