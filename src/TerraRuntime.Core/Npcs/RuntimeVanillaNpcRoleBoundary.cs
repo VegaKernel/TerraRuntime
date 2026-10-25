@@ -43,7 +43,7 @@ public sealed class RuntimeVanillaNpcRoleBoundary
         if (!_npcs.TryGet(npc, out NpcSnapshot snapshot) ||
             !NpcTypeId.TryCreate(snapshot.Type, out NpcTypeId type) ||
             !VanillaNpcDefinitionCatalog.TryGet(type, snapshot.NetIdentity, out VanillaNpcDefinition definition) ||
-            definition.DefinitionOnly)
+            !definition.SupportsRuntimeLifecycle)
         {
             classification = default;
             return false;

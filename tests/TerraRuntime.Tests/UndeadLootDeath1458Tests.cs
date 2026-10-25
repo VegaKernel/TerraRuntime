@@ -18,7 +18,7 @@ public sealed class UndeadLootDeath1458Tests
             var profile = document.RootElement.GetProperty("profile");
             int type = profile.GetProperty("Type").GetInt32();
             if (!VanillaNpcDefinitionCatalog.TryGet(new(type), new(type), out var definition) ||
-                definition.DefinitionOnly) continue;
+                !definition.SupportsRuntimeLifecycle) continue;
             // Empty open Void Bag storage has no runtime owner; positive bank4 contents do.
             if (profile.GetProperty("LowTiles").GetBoolean() &&
                 profile.GetProperty("SickleCase").GetInt32() == 2) continue;

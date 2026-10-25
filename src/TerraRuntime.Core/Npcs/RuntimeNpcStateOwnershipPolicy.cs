@@ -14,6 +14,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
         NpcSimulationState simulation = update.Simulation with {
+            StairFall = update.Simulation.StairFall ?? false,
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {
@@ -98,6 +99,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
         simulation = simulation with
         {
+            // SetDefaults/Transform do not clear source stair-fall history.
+            StairFall = simulation.StairFall ?? previous.Simulation.StairFall ?? false,
             ShimmerTransparency = sameDefinition ? simulation.ShimmerTransparency : previous.Simulation.ShimmerTransparency,
             TownNpc = sameDefinition ? simulation.TownNpc :
                 VanillaNpcTownFlags1458.TryGet(new(update.Type), out bool townNpc) ? townNpc : null,

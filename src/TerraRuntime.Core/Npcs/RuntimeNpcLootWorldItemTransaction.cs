@@ -59,7 +59,7 @@ public sealed class RuntimeNpcLootWorldItemTransaction
             npc.Simulation.Life != 0 ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition npcDefinition) ||
-            npcDefinition.DefinitionOnly ||
+            !npcDefinition.SupportsRuntimeLifecycle ||
             !npcDefinition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return false;

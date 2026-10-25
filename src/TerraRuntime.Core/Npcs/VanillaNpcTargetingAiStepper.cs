@@ -413,6 +413,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (!VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition))
             return _inner.TryStepState(in npc, out next);
 
+        if (!definition.SupportsRuntimeLifecycle)
+        {
+            next = default;
+            return false;
+        }
+
         if (definition.Role == NpcArchetypeRole.Boss &&
             definition.BehaviorFamily == VanillaNpcBehaviorFamily.None)
         {
@@ -457,7 +463,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Jellyfish => _jellyfish,
             VanillaNpcBehaviorFamily.Antlion => _antlion,
             VanillaNpcBehaviorFamily.GhostHover => _ghostHover,
-            VanillaNpcBehaviorFamily.PirateGhost when !definition.DefinitionOnly => _pirateGhost,
+            VanillaNpcBehaviorFamily.PirateGhost when definition.SupportsRuntimeLifecycle => _pirateGhost,
             VanillaNpcBehaviorFamily.Mothron => _mothron,
             VanillaNpcBehaviorFamily.BigMimic => _bigMimic,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,

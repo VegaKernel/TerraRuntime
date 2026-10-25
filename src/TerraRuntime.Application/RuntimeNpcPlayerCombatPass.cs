@@ -73,7 +73,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
             if (!npc.IsActive ||
                 npc.Simulation.Friendly != false ||
                 !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
-                definition.DefinitionOnly ||
+                !definition.SupportsRuntimeLifecycle ||
                 definition.Role == NpcArchetypeRole.Town ||
                 !VanillaIncomingPlayerDamageFacts1458.TryGetNpcContactImmunityChannel(
                     npc.TypeIdentity,

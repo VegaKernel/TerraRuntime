@@ -250,7 +250,7 @@ internal sealed class TownNpcAuthority
                 playerBounds.AsSpan(0, boundsCount));
         }
 
-        if (schedule is not null && combat is not null)
+        if (schedule is not null && combat is not null && invasionKnown)
         {
             RuntimeTownSocialWorld1458? context = socialWorld is { } saved ? saved with {
                 ExpertMode = saved.ExpertMode || worldClock?.GetGoodWorld == true,
@@ -264,7 +264,8 @@ internal sealed class TownNpcAuthority
                 Raining: worldClock?.Raining ?? initialRaining,
                 Eclipse: initialEclipse,
                 SlimeRain: worldClock?.SlimeRainActive ?? false,
-                StormingAboveSurface: false) { PartyIsUp = partyIsUp };
+                StormingAboveSurface: false) { PartyIsUp = partyIsUp,
+                    InvasionActive = invasion is not null && invasionCapture.State.Type > 0 };
             schedule.Tick(in scheduleConditions, playerBounds.AsSpan(0, boundsCount), npcStatus, combat,
                 playerConversations.AsSpan(0, boundsCount), seatedPlayers.AsSpan(0, seatCount),
                 playerDanger.AsSpan(0, boundsCount));

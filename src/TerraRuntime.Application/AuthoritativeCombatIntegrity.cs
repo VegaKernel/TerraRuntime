@@ -199,7 +199,7 @@ internal sealed class CombatValidator
         PreparePlayerGeneration(player.Player);
 
         if (!VanillaNpcDefinitionCatalog.TryGet(target.TypeIdentity, target.NetIdentity, out VanillaNpcDefinition npcDef) ||
-            npcDef.DefinitionOnly ||
+            !npcDef.SupportsRuntimeLifecycle ||
             !npcDef.TryResolveHitbox(target.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return Reject(tick, player.Player, target.Handle, CombatIntegrityReason.UnmodeledTargetGeometry,

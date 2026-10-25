@@ -77,7 +77,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if (gravity.HasValue)
             {
                 if (!VanillaNpcWorldMotionAiStepper.TryFinishCollision(tiles, in contacted,
-                        gravity.Value.Parameters.Gravity, out moved)) { rejected++; continue; }
+                        gravity.Value.Parameters.Gravity, out moved, townContext: new(
+                            home.HomeTileY, conditions.DayTime, conditions.Eclipse, conditions.InvasionActive))) { rejected++; continue; }
             }
             else moved = contacted;
             if (!TryPlanPresentation(in moved, peers[..peerCount], ref socialPeer, emotes, randomScope is not null,

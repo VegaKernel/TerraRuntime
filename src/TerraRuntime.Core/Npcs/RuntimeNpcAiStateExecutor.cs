@@ -122,7 +122,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 continue;
             examined++;
             if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var selectedDefinition) &&
-                selectedDefinition.DefinitionOnly)
+                !selectedDefinition.SupportsRuntimeLifecycle)
             {
                 // Explicit registered state behavior keeps its existing owner. Metadata does not enable
                 // vanilla prepasses, planners, physics, contact, status or post-commit effects.

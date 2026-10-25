@@ -14,13 +14,17 @@ public sealed class DefinitionOnlyProjectileTarget1458Tests
         x, 320, 0, 0, 255, default, NpcSimulationState.Initial with
         { Life = 70, LifeMax = 70, Friendly = false, Chaseable = true, Immortal = false });
 
-    [Fact]
-    public void Retained_definition_only_actor_is_not_a_controlled_magic_or_rocket_target()
+    [Theory]
+    [InlineData(74)]
+    [InlineData(185)]
+    public void Retained_unowned_actor_is_not_a_controlled_magic_or_rocket_target(int type)
     {
         var store = new RuntimeNpcStore(2);
-        Assert.True(store.TrySpawn(0, Create(185, 320), out var actor));
+        Assert.True(store.TrySpawn(0, Create(type, 320), out var actor));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(actor.TypeIdentity, actor.NetIdentity, out var definition));
-        Assert.True(definition.DefinitionOnly);
+        Assert.Equal(type == 74, definition.DefinitionOnly);
+        Assert.Equal(type == 185, definition.CreationDefaultsOnly);
+        Assert.False(definition.SupportsRuntimeLifecycle);
         Assert.True(VanillaNpcChaseability1458.CanBeChasedBy(in actor));
         var resolver = new VanillaProjectileNpcTargetResolver(store, new(new WorldDimensions(100, 100)));
         Assert.False(resolver.TryGetChaseableTargetCenter(0, out _, out _));

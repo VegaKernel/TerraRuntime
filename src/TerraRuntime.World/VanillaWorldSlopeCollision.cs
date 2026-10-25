@@ -40,7 +40,8 @@ public static class VanillaWorldSlopeCollision
         }
 
         bool stair = false;
-        bool stairFall = fall;
+        // Collision.SlopeCollision resets this output; fall intent is not evidence of stair contact.
+        bool stairFall = false;
         bool slope1 = false;
         bool slope2 = false;
         bool slope3 = false;

@@ -55,7 +55,7 @@ public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper, INpcAiS
 
         if (!hasTypePlan && !hasArchetypeReplacement)
         {
-            if (IsDefinitionOnly(in npc)) { next = default; return false; }
+            if (LacksVanillaLifecycle(in npc)) { next = default; return false; }
             return vanilla.TryStepState(in npc, out next);
         }
 
@@ -221,9 +221,9 @@ public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper, INpcAiS
         }
     }
 
-    private static bool IsDefinitionOnly(in NpcSnapshot npc) =>
+    private static bool LacksVanillaLifecycle(in NpcSnapshot npc) =>
         TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity,
-            out var definition) && definition.DefinitionOnly;
+            out var definition) && !definition.SupportsRuntimeLifecycle;
 
     private bool TryRunVanilla(
         in NpcSnapshot current,
@@ -232,7 +232,7 @@ public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper, INpcAiS
         out bool vanillaInvalid)
     {
         vanillaUpdate = default;
-        if (IsDefinitionOnly(in current) || !vanilla.TryStepState(in current, out vanillaUpdate))
+        if (LacksVanillaLifecycle(in current) || !vanilla.TryStepState(in current, out vanillaUpdate))
         {
             projected = default;
             vanillaInvalid = false;

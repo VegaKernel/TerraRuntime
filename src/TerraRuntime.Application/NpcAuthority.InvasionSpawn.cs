@@ -93,7 +93,7 @@ internal sealed partial class NpcAuthority
         // Preserve an unsupported selected ship without resampling or adopting the speculative stream.
         if (selected.Value == 491)
             return InvasionSpawnAttempt.Stop;
-        if (!VanillaNpcDefinitionCatalog.TryGet(selected, out var admitted) || admitted.DefinitionOnly ||
+        if (!VanillaNpcDefinitionCatalog.TryGet(selected, out var admitted) || !admitted.SupportsRuntimeLifecycle ||
             admitted.IsBoss || !VanillaNpcAiCoverageCatalog.TryGet(selected, out _))
             return InvasionSpawnAttempt.Stop; // Preserve selected identity: no substitute and no adoption.
         var update = new NpcStateUpdate(selected.Value, checked((short)selected.Value), 0f, 0f, 0f, 0f,

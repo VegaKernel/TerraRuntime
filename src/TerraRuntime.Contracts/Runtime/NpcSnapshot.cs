@@ -85,6 +85,9 @@ public readonly record struct NpcSimulationState(
     /// Null leaves the definition/scale rule in control; an explicit size shares the simulation revision.</summary>
     public NpcHitboxDimensions? HitboxOverride { get; init; }
 
+    /// <summary>Retained NPC.stairFall. Null leaves committed stair history owned by the store.</summary>
+    public bool? StairFall { get; init; }
+
     public NpcLiquidContactKind LiquidContact { get; init; }
 
     public float OldPositionX { get; init; }

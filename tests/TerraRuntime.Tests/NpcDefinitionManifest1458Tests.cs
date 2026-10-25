@@ -51,6 +51,12 @@ public sealed class NpcDefinitionManifest1458Tests
     public void Every_admitted_signed_identity_keeps_original_classic_variant_stats()
     {
         using var facts = Read();
+        using var stream = typeof(NpcDefinitionManifest1458Tests).Assembly.GetManifestResourceStream(
+            OperatingSystem.IsWindows() ? "GroundRosterWindows1458" : "GroundRosterLinux1458")!;
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using var ground = JsonDocument.Parse(gzip);
+        var groundRows = ground.RootElement.GetProperty("classic").EnumerateArray()
+            .ToDictionary(r => r.GetProperty("requested").GetInt32());
         foreach (var row in facts.RootElement.EnumerateArray())
         {
             int requested = row.GetProperty("requested").GetInt32();
@@ -58,13 +64,16 @@ public sealed class NpcDefinitionManifest1458Tests
             var type = new NpcTypeId(row.GetProperty("type").GetInt32());
             if (!VanillaNpcDefinitionCatalog.TryGet(type, new NpcNetId((short)requested), out var definition))
                 continue;
+            // The earlier complete inventory was captured from the Linux original. Signed fighters
+            // additionally have an independent Windows x86 capture with distinct integer truncation.
+            var expected = groundRows.TryGetValue(requested, out var hostGround) ? hostGround : row;
             Assert.Equal(requested, row.GetProperty("netId").GetInt32());
             Assert.Equal(row.GetProperty("aiStyle").GetInt32(), definition.AiStyle.Value);
-            Assert.Equal(row.GetProperty("lifeMax").GetInt32(), definition.LifeMax);
-            Assert.Equal(row.GetProperty("damage").GetInt32(), definition.Damage);
-            Assert.Equal(row.GetProperty("defense").GetInt32(), definition.Defense);
-            Assert.Equal(row.GetProperty("scale").GetSingle(), definition.Scale, 5);
-            Assert.Equal(row.GetProperty("knockBackResist").GetSingle(), definition.KnockBackResist, 5);
+            Assert.Equal(expected.GetProperty("lifeMax").GetInt32(), definition.LifeMax);
+            Assert.Equal(expected.GetProperty("damage").GetInt32(), definition.Damage);
+            Assert.Equal(expected.GetProperty("defense").GetInt32(), definition.Defense);
+            Assert.Equal(expected.GetProperty("scale").GetSingle(), definition.Scale, 5);
+            Assert.Equal(expected.GetProperty("knockBackResist").GetSingle(), definition.KnockBackResist, 5);
         }
     }
 }

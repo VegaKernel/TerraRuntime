@@ -11,6 +11,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/NpcContactBuffLinux1458.csv.gz" LogicalName="NpcContactBuffLinux1458" />
     <EmbeddedResource Include="Fixtures/NpcContactBuffWindows1458.csv.gz" LogicalName="NpcContactBuffWindows1458" />
+    <EmbeddedResource Include="Fixtures/GroundRosterLinux1458.json.gz" LogicalName="GroundRosterLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundRosterWindows1458.json.gz" LogicalName="GroundRosterWindows1458" />
     <EmbeddedResource Include="Fixtures/GemStaffActorUpdateLinuxFirst1458.json.gz" LogicalName="GemStaffActorUpdateLinuxFirst1458" />
     <EmbeddedResource Include="Fixtures/GemStaffActorUpdateLinuxRepeat1458.json.gz" LogicalName="GemStaffActorUpdateLinuxRepeat1458" />
     <EmbeddedResource Include="Fixtures/GemStaffActorUpdateWindowsFirst1458.json.gz" LogicalName="GemStaffActorUpdateWindowsFirst1458" />
