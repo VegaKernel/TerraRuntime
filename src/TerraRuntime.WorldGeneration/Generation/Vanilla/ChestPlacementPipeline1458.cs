@@ -291,42 +291,35 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         RuntimeGrid grid,
         IWorldGenerationVanillaRandom random)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
+        // TerrariaServer 1.4.5.8 GenPassNameID.ChestsInJungleShrines consumes
+        // only the ordered GenVars.JChestX/Y entries published by JungleShrines.
+        // It never searches a random area around JungleOriginX.
+        ReadOnlySpan<WorldGenerationPoint> anchors = workspace.VanillaJungleShrineChestAnchors;
+        var placer = CreatePlacer(workspace, random);
+        var framer = new GenerationTileFraming1458(workspace.TileStore, random);
+        foreach (WorldGenerationPoint anchor in anchors)
         {
-            <= 4200 => 5,
-            <= 6400 => 7,
-            _ => 9
-        };
-        int halfWidth = Math.Max(260, grid.Width / 9);
-        int left = Math.Max(30, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 32, bootstrap.JungleOriginX + halfWidth);
-        int minY = Math.Clamp((int)state.RockLayer + 50, 20, state.UnderworldTop - 100);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 60);
-        int placed = 0;
-
-        for (int attempt = 0; attempt < target * 260 && placed < target; attempt++)
-        {
-            if ((attempt & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int x = random.Next(left, right);
-            int probeY = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probeY, Math.Min(grid.Height - 1, probeY + 45));
-            int top = floor - 2;
-            if (!CanPlaceChest(grid, x, top, allowLiquid: false, frameImportantRadius: 28))
-                continue;
-            if (!HasJungleMaterialNearby(grid, x, top, 24, 18))
-                continue;
+            context.CancellationToken.ThrowIfCancellationRequested();
             int primary = NextJungleChestPrimary(random);
-            WorldGenerationChestItem[] loot = ChestLoot1458.BuildJungle(
-                random, RequireBootstrap(), state, primary, floor, state.RockLayer, state.LavaLine, grid.Height);
-            if (!PlaceGeneratedChest(workspace, grid, x, top, IvyChestStyle, loot))
+            if (placer.TryAdd(anchor.X + random.Next(2), anchor.Y, out _, out _,
+                    primary, notNearOtherChests: false, chestStyle: IvyChestStyle,
+                    trySlope: false, chestTileType: 0))
                 continue;
-            placed++;
-        }
 
-        context.ReportProgress(1d, $"Placing Ivy Chests in the underground jungle ({placed}/{target})");
+            // Failed first offer: the source kills the 3x3 obstruction, flattens
+            // the 3x4 repair region, then retries at the unshifted anchor.
+            for (int x = anchor.X - 1; x <= anchor.X + 1; x++)
+            for (int y = anchor.Y; y <= anchor.Y + 2; y++)
+                framer.KillTile(x, y);
+            for (int x = anchor.X - 1; x <= anchor.X + 1; x++)
+            for (int y = anchor.Y; y <= anchor.Y + 3 && y < grid.Height; y++)
+                if ((uint)x < (uint)grid.Width && (uint)y < (uint)grid.Height)
+                    grid.At(x, y).Shape = 0;
+            _ = placer.TryAdd(anchor.X, anchor.Y, out _, out _,
+                primary, notNearOtherChests: false, chestStyle: IvyChestStyle,
+                trySlope: false, chestTileType: 0);
+        }
+        context.ReportProgress(1d, $"Placed Ivy Chests at jungle shrine anchors ({placer.Chests.Count}/{anchors.Length})");
     }
 
     private void ApplyWaterChests(

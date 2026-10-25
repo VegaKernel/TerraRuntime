@@ -348,6 +348,7 @@ public sealed class SourceBackedJungleStructures1458Tests
 
         Assert.Equal(expectedAnchors,
             string.Join(';', anchors.Select(static point => $"{point.X},{point.Y}")));
+        Assert.Equal(anchors, workspace.VanillaJungleShrineChestAnchors.ToArray());
         Assert.Equal(expectedHash, HashOfficialCells(workspace));
         Assert.Equal(expectedNext, random.Next());
     }

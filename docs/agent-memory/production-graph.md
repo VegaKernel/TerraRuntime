@@ -1,5 +1,7 @@
 # Production graph
 
+2026-10-25 Ice/Jungle Chest Placement block uses existing `PostSettlePass1458`, `JungleStructurePass1458` and `ChestPlacementPass1458` owners. Workspace now carries bounded ephemeral GenVars.JChestX/Y anchors from the early shrine pass to chest placement and the post-Ice non-solid162/226 fact; generated chest inventories remain in its existing persisted chest side table. `GenerationTileFraming1458.KillTile` is assembly-internal for the source fallback. No new project, dependency, threading boundary or world-file field. Rows59/65 are bounded `C` on official registered complete-delegate fixtures; special seeds and real prefixes remain open.
+
 2026-10-25 ordinary Shell Piles row56 now uses the existing `SourceBackedPostSettle1458 -> PostSettlePass1458` owner, Beaches' two published `Workspace` shell anchors and the same shared vanilla RNG. The invented sampled single-tile placement is replaced by source `ShellPile` brush offers; no project, dependency, threading or persistence edge changes. Row56 is bounded `C` on eight registered official full-pass fixtures; special seeds still route through compatibility.
 
 2026-10-25 Waterfalls row58 now uses the existing `SourceBackedPostSettle1458 -> PostSettlePass1458` owner, shared vanilla RNG, collision catalog and `WorldSmoothingCatalog1458` pound/support predicates. The invented liquid-placement loop is removed. No project, dependency or ownership edge changes; row58 is bounded `C` on eight official registered full-pass fixtures.

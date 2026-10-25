@@ -263,7 +263,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 ApplyHives(context, workspace);
                 break;
             case JungleStructureStage1458.JungleChests:
-                ApplyJungleChests(context, grid, random);
+                ApplyJungleChests(context, workspace, grid, random);
                 break;
             case JungleStructureStage1458.SettleLiquids:
                 ApplySettleLiquids(context, grid);
@@ -712,12 +712,13 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Growing bee hives ({placed})");
     }
 
-    private void ApplyJungleChests(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyJungleChests(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         double target = ApplyJungleChestsCore(grid, random, bootstrap.DungeonSide,
             (ushort)bootstrap.JungleHut, state.WorldSurface, state.RockLayer,
             context.CancellationToken);
+        workspace.SetVanillaJungleShrineChestAnchors(state.JungleChestCandidates);
 
         context.ReportProgress(
             1d,
@@ -732,6 +733,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         var pass = new JungleStructurePass1458(JungleStructureStage1458.JungleChests, state);
         pass.ApplyJungleChestsCore(new RuntimeGrid(workspace), new VanillaRandom(random),
             dungeonSide, jungleHut, worldSurface, rockLayer, default);
+        workspace.SetVanillaJungleShrineChestAnchors(state.JungleChestCandidates);
         return state.JungleChestCandidates;
     }
 

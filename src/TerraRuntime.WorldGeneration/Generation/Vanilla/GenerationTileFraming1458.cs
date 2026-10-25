@@ -1112,7 +1112,7 @@ internal sealed class GenerationTileFraming1458(
     /// <see cref="GenerationKillTileDust1458"/> - so an object destroyed by a validator moves the shared RNG by
     /// its identity's cost times the number of cells it loses.
     /// </remarks>
-    private void KillTile(int i, int j)
+    internal void KillTile(int i, int j)
     {
         if (!Contains(i, j))
             return;

@@ -9,6 +9,69 @@ namespace TerraRuntime.Tests;
 public sealed class SourceBackedPostSettle1458Tests
 {
     [Theory]
+    [InlineData(600, 500, "7FD75A49E0099D3800CC9F51AE5B9365FF70DF444983FF617B26C1531792BC24")]
+    [InlineData(4200, 1200, "AE27ADEC1AF031C1207E873B6C12CFABA9605B973310FCCCEBD31029A7AFBB20")]
+    public void Ice_matches_official_registered_ordinary_pass(int width, int height, string digest)
+    {
+        // TerrariaServer 1.4.5.8 FragileIceOverIceBiomeWater registered PassLegacy,
+        // seed1458: five snow/ice floors, shallow water, Honey/Shimmer,
+        // ordinary-stone refusal and lava refusal.
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        int firstX = height == 1200 ? 1000 : 100;
+        int top = height == 1200 ? 420 : 190;
+        ushort[] floors = [147, 161, 200, 163, 164, 1, 147, 147, 147, 147];
+        for (int group = 0; group < floors.Length; group++)
+        {
+            int left = firstX + group * 45;
+            for (int x = left; x < left + 9; x++)
+            {
+                var floor = new WorldTile { Type = floors[group], Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, top + 6, in floor);
+                for (int y = top; y < top + 6; y++)
+                {
+                    var water = new WorldTile
+                    {
+                        LiquidAmount = group == 7 ? (byte)50 : byte.MaxValue,
+                        LiquidKind = group switch
+                        {
+                            6 => WorldLiquidKind.Lava,
+                            8 => WorldLiquidKind.Honey,
+                            9 => WorldLiquidKind.Shimmer,
+                            _ => WorldLiquidKind.Water
+                        }
+                    };
+                    workspace.TileStore.Set(x, y, in water);
+                }
+            }
+        }
+        var paintedWater = new WorldTile
+        {
+            LiquidAmount = byte.MaxValue,
+            TileColor = 5,
+            Flags = WorldTileFlags.WireRed
+        };
+        workspace.TileStore.Set(firstX, top, in paintedWater);
+        var overhead = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(firstX + 4, top - 1, in overhead);
+
+        var random = new RandomAdapter(1458);
+        new PostSettlePass1458(PostSettleStage1458.Ice, new PostSettleState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Ice", 1458, width, height),
+                workspace, random));
+
+        int thinIce = 0;
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: 162 }) thinIce++;
+        Assert.Equal(71, thinIce);
+        Assert.True(workspace.VanillaPostIceNonSolidTiles);
+        Assert.Equal(digest, HashFixture(workspace));
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Theory]
     [InlineData(1458, 600, 500, "72345AD32F51D98300A1274DCBBCC0A8430D47530DF591F3669C30AB98D1D607", 157, 80, 444, 80, 163, 402866635)]
     [InlineData(1458, 4200, 1200, "6502B8649A5096D8D7A56B6B873E270B75F42B03CD773BB89A77EC19680F5CAF", 997, 230, 3204, 230, 163, 402866635)]
     [InlineData(1, 600, 500, "FEB4B449F9CF69F84F308FEDB1CF9EFFD79C030ECDF37840CFD475152DCAFF1E", 153, 80, 440, 130, 85, 1029774417)]

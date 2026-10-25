@@ -1,10 +1,71 @@
+using System.Security.Cryptography;
+using System.Text;
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
 public sealed class SourceBackedChestPlacement1458Tests
 {
+    [Theory]
+    [InlineData(1458, 600, 500, "25DE7D0706CA668C3A3EB6B6E5ACD436D3B5FBE577AD85EABA1661F0D8BF15E4", 200, 201, 997576893)]
+    [InlineData(1458, 4200, 1200, "28EA53B3B6CDFF3B07C79502DE8F5B100C9B11349B9F57FEE176EC660A30DDC9", 1000, 601, 997576893)]
+    [InlineData(1, 600, 500, "6F888379F2E68FBE936B218097F9C69B536E03ACD85352264A80F915ED9369A5", 199, 201, 259488708)]
+    [InlineData(1, 4200, 1200, "778EAAA6E3BC6FEE05BE847F60C09563FC80041C2F5BCD81A2D6AE605813FAF2", 999, 601, 259488708)]
+    [InlineData(42, 600, 500, "6F888379F2E68FBE936B218097F9C69B536E03ACD85352264A80F915ED9369A5", 199, 201, 1107915559)]
+    [InlineData(42, 4200, 1200, "778EAAA6E3BC6FEE05BE847F60C09563FC80041C2F5BCD81A2D6AE605813FAF2", 999, 601, 1107915559)]
+    [InlineData(8675309, 600, 500, "25DE7D0706CA668C3A3EB6B6E5ACD436D3B5FBE577AD85EABA1661F0D8BF15E4", 200, 201, 1335694251)]
+    [InlineData(8675309, 4200, 1200, "28EA53B3B6CDFF3B07C79502DE8F5B100C9B11349B9F57FEE176EC660A30DDC9", 1000, 601, 1335694251)]
+    public void Jungle_chest_placement_consumes_published_shrine_anchors_and_matches_official_pass(
+        int seed, int width, int height, string digest, int firstX, int chestY, int nextRandom)
+    {
+        // Registered TerrariaServer 1.4.5.8 ChestsInJungleShrines, seed1458:
+        // first offer succeeds, second must clear a platform and retry, third
+        // has no floor and fails after its cleanup/retry.
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        int[] anchors = height == 1200 ? [1000, 2000, 3000] : [200, 300, 400];
+        int row = height == 1200 ? 600 : 200;
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int index = 0; index < 2; index++)
+        for (int x = anchors[index] - 2; x <= anchors[index] + 2; x++)
+            workspace.TileStore.Set(x, row + 3, in stone);
+        var platform = new WorldTile { Type = 19, Flags = WorldTileFlags.Active };
+        foreach (int x in new[] { anchors[1], anchors[2] })
+            workspace.TileStore.Set(x, row + 1, in platform);
+        workspace.SetVanillaJungleShrineChestAnchors(
+            anchors.Select(x => new WorldGenerationPoint(x, row)).ToArray());
+
+        var random = new RandomAdapter(seed);
+        new ChestPlacementPass1458(ChestPlacementStage1458.JungleChestsPlacement, new ChestPlacementState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Shrines", checked((ulong)seed), width, height),
+                workspace, random));
+
+        WorldChest[] chests = workspace.CaptureGeneratedChests();
+        Assert.Equal(2, chests.Length);
+        int secondX = anchors[1] - 1;
+        Assert.Equal((firstX, chestY), (chests[0].X, chests[0].Y));
+        Assert.Equal((secondX, chestY), (chests[1].X, chests[1].Y));
+        (string firstItems, string secondItems) = seed switch
+        {
+            1458 => ("211x1p70 3360x1 3361x1 21x10 279x40 296x2 8x24 73x1 2204x1",
+                "212x1p76 5525x1 43x1 41x41 295x2 2351x2 2350x3 282x18 2204x1"),
+            1 => ("211x1p74 3360x1 3361x1 167x1 19x5 295x2 2351x2 2350x2 282x17",
+                "212x1 43x1 21x8 41x42 295x1 2350x3 73x1"),
+            42 => ("211x1p65 3360x1 3361x1 167x1 19x7 41x31 2329x1 2350x2",
+                "212x1p65 3360x1 3361x1 167x1 188x3 73x1"),
+            8675309 => ("211x1p71 3360x1 3361x1 4426x1 21x10 188x5 303x2",
+                "212x1p65 3360x1 3361x1 43x1 51x30 41x34 305x1 8x20 73x2"),
+            _ => throw new ArgumentOutOfRangeException(nameof(seed))
+        };
+        Assert.Equal($"[{firstX},{chestY}]{firstItems} [{secondX},{chestY}]{secondItems}",
+            ChestInventory(chests));
+        Assert.Equal(digest, HashFixture(workspace));
+        Assert.Equal(nextRandom, random.Next());
+    }
+
     [Fact]
     public void Canonical_ordinary_world_extends_source_order_through_water_chests()
     {
@@ -145,6 +206,59 @@ public sealed class SourceBackedChestPlacement1458Tests
         Assert.Single(builder.Entries, entry => entry.Descriptor.Id.Value == id);
 
     private readonly record struct CaptureEntry(WorldGenerationPassDescriptor Descriptor, IWorldGenerationPass Pass);
+
+    private static string HashFixture(Workspace workspace)
+    {
+        var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        {
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
+                .Append(tile.Shape).Append(';');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
+    }
+
+    private static string ChestInventory(WorldChest[] chests)
+    {
+        var inventory = new StringBuilder();
+        foreach (WorldChest chest in chests)
+        {
+            inventory.Append('[').Append(chest.X).Append(',').Append(chest.Y).Append(']');
+            foreach (WorldChestItem item in chest.Items)
+            {
+                if (item.IsEmpty) continue;
+                inventory.Append(item.ItemType).Append('x').Append(item.Stack);
+                if (item.Prefix != 0) inventory.Append('p').Append(item.Prefix);
+                inventory.Append(' ');
+            }
+        }
+        return inventory.ToString().TrimEnd();
+    }
+
+    private sealed class Context(
+        WorldGenerationRequest request, Workspace workspace, IWorldGenerationVanillaRandom random) : IWorldGenerationContext
+    {
+        public WorldGenerationRequest Request => request;
+        public IWorldGenerationWorkspace Workspace => workspace;
+        public IWorldGenerationMetadataWorkspace Metadata => workspace;
+        public IWorldGenerationRandom Random => throw new NotSupportedException();
+        public IWorldGenerationVanillaRandom VanillaRandom => random;
+        public CancellationToken CancellationToken => CancellationToken.None;
+        public void ReportProgress(double fraction, string? message = null) { }
+    }
+
+    private sealed class RandomAdapter(int seed) : IWorldGenerationVanillaRandom
+    {
+        private readonly VanillaUnifiedRandom1458 random = new(seed);
+        public int Next() => random.Next();
+        public int Next(int maxValue) => random.Next(maxValue);
+        public int Next(int minValue, int maxValue) => random.Next(minValue, maxValue);
+        public double NextDouble() => random.NextDouble();
+        public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
+    }
 
     private sealed class CaptureBuilder : IWorldGenerationPlanBuilder
     {
