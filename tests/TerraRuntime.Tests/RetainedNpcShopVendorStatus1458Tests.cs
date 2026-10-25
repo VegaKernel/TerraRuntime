@@ -17,7 +17,7 @@ public sealed class RetainedNpcShopVendorStatus1458Tests
 {
     // Official 1.4.5.8 NPC119 flag/expiry and dedicated VFX capture; original manifest SHA256
     // 8c7c8a5f2804e859799ae17446bb646a09a1ebef3e0c16de61be0ec3dd16a823.
-    // Six represented vendors are admitted; 368/453 remain definition-only.
+    // Six vendors retain admitted status lifecycle; 368/453 have creation defaults only.
     // Private full56/cursor inspection is test-only managed evidence, not Native coverage.
     [Fact]
     public void Generation_owned_vendor_status_preserves_source_expiry_and_dedicated_visual_random_order()
@@ -32,7 +32,7 @@ public sealed class RetainedNpcShopVendorStatus1458Tests
         foreach (var row in doc.RootElement.GetProperty("rows").EnumerateArray())
         {
             var store = new RuntimeNpcStore(); var npc = Spawn(store, row.GetProperty("type").GetInt32()); var status = new RuntimeNpcBuffStatus1458(store);
-            if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) && definition.DefinitionOnly) { Check(npc.Type is 368 or 453); Check(!status.TryApply(npc.Handle, new BuffTypeId(119), row.GetProperty("duration").GetInt32())); Check(!status.TryGetShoppingLoveStruck(npc.Handle, out _)); continue; }
+            if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) && !definition.SupportsRuntimeLifecycle) { Check(npc.Type is 368 or 453); Check(!status.TryApply(npc.Handle, new BuffTypeId(119), row.GetProperty("duration").GetInt32())); Check(!status.TryGetShoppingLoveStruck(npc.Handle, out _)); continue; }
             Check(status.TryApply(npc.Handle, new BuffTypeId(119), row.GetProperty("duration").GetInt32()));
             Check(status.TryGetShoppingLoveStruck(npc.Handle, out bool immediate)); Check(!immediate);
             foreach (var step in row.GetProperty("steps").EnumerateArray())
@@ -53,7 +53,7 @@ public sealed class RetainedNpcShopVendorStatus1458Tests
         foreach (var row in doc.RootElement.GetProperty("visualRows").EnumerateArray())
         {
             var store = new RuntimeNpcStore(); var npc = Spawn(store, row.GetProperty("type").GetInt32()); var status = new RuntimeNpcBuffStatus1458(store);
-            if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) && definition.DefinitionOnly) { Check(npc.Type is 368 or 453); Check(!status.TryGetShoppingLoveStruck(npc.Handle, out _)); continue; }
+            if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) && !definition.SupportsRuntimeLifecycle) { Check(npc.Type is 368 or 453); Check(!status.TryGetShoppingLoveStruck(npc.Handle, out _)); continue; }
             if (row.GetProperty("admitted").GetBoolean()) Check(status.TryApply(npc.Handle, new BuffTypeId(119), 1));
             Check(status.TryPlan(in npc, out var plan));
             var source = new SystemVanillaNpcRandom(row.GetProperty("seed").GetInt32());

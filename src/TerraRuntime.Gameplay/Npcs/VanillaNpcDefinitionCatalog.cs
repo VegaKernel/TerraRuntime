@@ -155,6 +155,12 @@ public readonly record struct VanillaNpcDefinition(
     /// <summary>Source default metadata without admitted spawn, AI, combat, death or archetype-role lifecycle.</summary>
     public bool DefinitionOnly { get; init; }
 
+    /// <summary>Real creation defaults without an admitted autonomous/status/combat/death lifecycle.</summary>
+    public bool CreationDefaultsOnly { get; init; }
+
+    /// <summary>Explicit lifecycle admission, independent of definition, AI style and parity metadata.</summary>
+    public bool SupportsRuntimeLifecycle => !DefinitionOnly && !CreationDefaultsOnly;
+
     /// <summary>Exact post-scale classic body; raw dimensions are not inferred from rounding.</summary>
     public VanillaNpcHitboxSize? SourceHitboxAtSpawn { get; init; }
 
@@ -164,6 +170,9 @@ public readonly record struct VanillaNpcDefinition(
     public bool HiddenAtSpawn { get; init; }
 
     public int AlphaAtSpawn { get; init; }
+
+    /// <summary>Signed SetDefaultsFromNetId identity; zero denotes the ordinary positive type.</summary>
+    public NpcNetId SourceNetId { get; init; }
 
     public bool IsBoss => Role == NpcArchetypeRole.Boss;
 
@@ -181,6 +190,11 @@ public readonly record struct VanillaNpcDefinition(
 
     public bool TryResolveHitbox(float scale, out VanillaNpcHitboxSize hitbox)
     {
+        if (scale == Scale && SourceHitboxAtSpawn is VanillaNpcHitboxSize sourceBody && sourceBody.IsValid)
+        {
+            hitbox = sourceBody;
+            return true;
+        }
         if (DefinitionOnly)
         {
             hitbox = SourceHitboxAtSpawn ?? default;
@@ -225,6 +239,23 @@ public static class VanillaNpcDefinitionCatalog
     public const int DefaultSpriteDirection = -1;
 
     public static bool TryGet(NpcTypeId type, out VanillaNpcDefinition definition)
+    {
+        bool found = TryGetRegistered(type, out definition);
+        if (VanillaNpcGroundRoster1458.TryGet(type, new((short)type.Value), out var source))
+        {
+            definition = source with
+            {
+                BehaviorFamily = definition.DefinitionOnly ? VanillaNpcBehaviorFamily.None : definition.BehaviorFamily,
+                PhysicsFamily = definition.DefinitionOnly ? VanillaNpcPhysicsFamily.None : definition.PhysicsFamily,
+                Role = definition.DefinitionOnly ? source.Role : definition.Role,
+                CreationDefaultsOnly = definition.DefinitionOnly
+            };
+            return true;
+        }
+        return found;
+    }
+
+    private static bool TryGetRegistered(NpcTypeId type, out VanillaNpcDefinition definition)
     {
         if (VanillaTownNpcFacts1458.TryGetDefinition(type, out definition))
             return true;
@@ -758,6 +789,17 @@ public static class VanillaNpcDefinitionCatalog
             }
 
             definition = baseDefinition;
+            return true;
+        }
+
+        if (VanillaNpcGroundRoster1458.TryGet(type, netId, out var groundVariant))
+        {
+            definition = groundVariant with
+            {
+                BehaviorFamily = baseDefinition.BehaviorFamily,
+                PhysicsFamily = baseDefinition.PhysicsFamily,
+                Role = baseDefinition.Role
+            };
             return true;
         }
 

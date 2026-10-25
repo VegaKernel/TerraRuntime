@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+## AI3/AI7 definition roster and shared staircase state, 2026-10-25
+
+The complete official 1.4.5.8 census is AI3 **191 positive + 27 signed** identities and AI7 **82 positive + 0 signed**, 300 identities in total. Source-backed creation defaults now cover both families: 106 positive definitions and 27 signed variants leave the metadata-only cohort. Global source lookup stays 691 positive / 65 signed; materialized-default support becomes **501 positive / 63 signed**, with **190 positive / 2 signed** still metadata-only. Existing explicit AI/physics admission is preserved; unsupported subtypes do not inherit a generic style handler. `FullVanillaAiParity` remains false.
+
+The shared outer collision path now retains source `stairFall`, distinguishes platform descent from slope intent and applies AI7's separate home/day/eclipse/invasion rules. This closes a concrete shared movement gap; type-specific attacks/transformations, remaining autonomous actor families, spawn pools, rescue/capture, loot and broad N1–N5 parity remain open. Full census and exact additions: [English](en/npc-ai3-ai7-roster-1458.md), [Русский](ru/npc-ai3-ai7-roster-1458.md).
+
 ## Gem staffs: accepted local checkpoint, 2026-10-25
 
 Seven retained staffs and seven effective robes now have independent official 1.4.5.8 item/prefix/ItemCheck/Shoot evidence, separate local/remote use clocks and bounded initial/twin/midpoint entitlements. Item6171 remains the verified deprecated-Air regression. Source-qualified AI29 motion, terrain, collision and same-projectile Kill effects are integrated with the existing actor and prepared damage owners; the new contact proof is bounded to NPC1/3/59 and luck0, with direct NPC1 source PVE fixtures.

@@ -1028,7 +1028,7 @@ internal sealed partial class NpcAuthority
 
     private bool TrySpawnNaturalHostileType(NpcTypeId type, in VanillaNpcTargetCandidate player, int tileX, int floorY)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.DefinitionOnly || definition.IsBoss ||
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || !definition.SupportsRuntimeLifecycle || definition.IsBoss ||
             !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
             return false;
 
@@ -1274,8 +1274,8 @@ internal sealed partial class NpcAuthority
         // GetSpawnRate's vertical depth checks below intentionally retain Player.position.
         int playerSceneTileY = Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1);
         VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(playerTileX, playerSceneTileY);
-        // РќР° РІС‹РґРµР»РµРЅРЅРѕРј СЃРµСЂРІРµСЂРµ Main.Update РїСЂРёСЃРІР°РёРІР°РµС‚ cloudAlpha = maxRaining. GetSpawnRate
-        // РїСЂРёРјРµРЅСЏРµС‚ СЌС‚РѕС‚ Snow-РїРѕРІРµСЂС…РЅРѕСЃС‚РЅС‹Р№ РјРЅРѕР¶РёС‚РµР»СЊ РґРѕ СЃС‚РµРЅ Рё РѕСЃС‚Р°Р»СЊРЅС‹С… biome-РјРѕРґРёС„РёРєР°С‚РѕСЂРѕРІ.
+        // На выделенном сервере Main.Update присваивает cloudAlpha = maxRaining. GetSpawnRate
+        // применяет этот Snow-поверхностный множитель до стен и остальных biome-модификаторов.
         if (scene is { ZoneSnow: true } && playerTileY < surface)
         {
             float cloudAlpha = worldClock!.MaxRain;
@@ -1610,7 +1610,7 @@ internal sealed partial class NpcAuthority
             NpcSnapshot npc = naturalSpawnNpcBuffer[i];
             if (npc.Type is 25 or 30 or 33 ||
                 !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
-                definition.DefinitionOnly ||
+                !definition.SupportsRuntimeLifecycle ||
                 definition.IsBoss ||
                 !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) ||
                 definition.LifeMax <= 0)
@@ -1671,7 +1671,7 @@ internal sealed partial class NpcAuthority
             if (!naturalSpawnTownNpcs.TryGet(slot, out _) ||
                 !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc) ||
                 !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
-                definition.DefinitionOnly ||
+                !definition.SupportsRuntimeLifecycle ||
                 !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
             {
                 continue;
@@ -1779,9 +1779,9 @@ internal sealed partial class NpcAuthority
             return selection.First;
         }
 
-        // Р‘Р°Р·РѕРІР°СЏ РІРµС‚РєР° waterTile РёР· SpawnAnNPC: РґРІРµ Р·Р°РїРѕР»РЅРµРЅРЅС‹Рµ РѕР±С‹С‡РЅРѕР№ РІРѕРґРѕР№ РєР»РµС‚РєРё РЅР°Рґ
-        // С‚РІС‘СЂРґС‹Рј spawnTileY. Р‘РёРѕРјРЅС‹Рµ, РѕРєРµР°РЅСЃРєРёРµ, СЃРѕР±С‹С‚РёР№РЅС‹Рµ Рё Hardmode-С†РµРїРѕС‡РєРё РѕСЃС‚Р°СЋС‚СЃСЏ
-        // Р·Р°РєСЂС‹С‚С‹РјРё РґРѕ РїРѕСЏРІР»РµРЅРёСЏ РІСЃРµС… РЅРµРѕР±С…РѕРґРёРјС‹С… source-С„Р°РєС‚РѕРІ.
+        // Базовая ветка waterTile из SpawnAnNPC: две заполненные обычной водой клетки над
+        // твёрдым spawnTileY. Биомные, океанские, событийные и Hardmode-цепочки остаются
+        // закрытыми до появления всех необходимых source-фактов.
         if (IsOrdinaryPreHardmodeWaterSpawn(tiles, tileX, floorY, scene))
             return naturalSpawnRandom.NextInt32(0, 400) == 0 ? VanillaNpcIds.GoldGoldfish : VanillaNpcIds.Goldfish;
 
@@ -1976,7 +1976,7 @@ internal sealed partial class NpcAuthority
             !npcs.TryGetActive(checked((byte)command.State.NpcSlot), out NpcSnapshot npc) ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out var catchDefinition) ||
-            catchDefinition.DefinitionOnly ||
+            !catchDefinition.SupportsRuntimeLifecycle ||
             !VanillaNpcCatchCatalog1458.TryGetCatchItem(npcType, out ItemTypeId catchItem))
         {
             return;

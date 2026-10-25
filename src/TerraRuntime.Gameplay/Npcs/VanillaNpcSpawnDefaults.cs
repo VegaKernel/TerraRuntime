@@ -64,6 +64,8 @@ public readonly partial record struct VanillaNpcSpawnDefaults(
         bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
+        if (context.IsValid && VanillaNpcGroundRoster1458.IsSupported(definition.Type))
+            return TryResolveGroundRoster(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && definition.Type == VanillaNpcIds.BlueSlime)
             return TryResolveSlimeFamily(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && (definition.Type == VanillaNpcIds.LavaSlime ||

@@ -281,7 +281,7 @@ internal sealed partial class ProjectileAuthority
             bool chaseable = VanillaNpcChaseability1458.CanBeChasedBy(in target);
             if (!chaseable && !(retainRawTarget && slot == (int)projectile.Ai.Ai2 - 1)) continue;
             if (!VanillaNpcDefinitionCatalog.TryGet(target.TypeIdentity, target.NetIdentity, out var definition) ||
-                definition.DefinitionOnly || !definition.TryResolveHitbox(target.Simulation, out var size)) return false;
+                !definition.SupportsRuntimeLifecycle || !definition.TryResolveHitbox(target.Simulation, out var size)) return false;
             bool visible = VanillaWorldCanHit.HasLineOfSight(worldTiles, projectile.PositionX, projectile.PositionY,
                 width, width, target.PositionX, target.PositionY, size.Width, size.Height);
             result.Add(new(slot, target.PositionX + size.Width * .5f, target.PositionY + size.Height * .5f,

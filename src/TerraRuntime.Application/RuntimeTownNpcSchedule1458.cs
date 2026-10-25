@@ -23,6 +23,7 @@ internal readonly record struct RuntimeTownNpcScheduleConditions1458(
 {
     public bool ReturnHomeRequested => Raining || !DayTime || Eclipse || SlimeRain || StormingAboveSurface;
     public bool PartyIsUp { get; init; }
+    public bool InvasionActive { get; init; }
 }
 
 internal readonly record struct RuntimeTownPlayerBounds1458(float X, float Y, float Width, float Height);

@@ -79,15 +79,15 @@ public sealed class NpcSourceDefaultRoster1458Tests
         }
         Assert.Equal(691, positive);
         Assert.Equal(65, signed);
-        Assert.Equal(325, definitionOnly);
+        Assert.Equal(192, definitionOnly);
     }
 
     [Fact]
     public void Definition_only_marker_prevents_shared_ai_style_from_claiming_an_actor_and_preserves_zero_body()
     {
-        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(185), out var snowFlinx));
-        Assert.True(snowFlinx.DefinitionOnly);
-        Assert.Equal(VanillaNpcBehaviorFamily.None, snowFlinx.BehaviorFamily);
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(74), out var bird));
+        Assert.True(bird.DefinitionOnly);
+        Assert.Equal(VanillaNpcBehaviorFamily.None, bird.BehaviorFamily);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(664), out var placeholder));
         Assert.True(placeholder.DefinitionOnly);
         Assert.False(placeholder.TryResolveHitbox(placeholder.Scale, out _));

@@ -6,6 +6,9 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
+internal readonly record struct VanillaNpcTownCollisionContext1458(
+    int HomeTileY, bool DayTime, bool Eclipse, bool InvasionActive);
+
 /// <summary>
 /// Post-AI authoritative movement for the verified ordinary NPC physics families. This layer also owns the
 /// source-backed King Slime terminal transition and its committed world effects: Slime Rain termination, first-kill
@@ -101,6 +104,12 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
+        if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var selected) &&
+            !selected.SupportsRuntimeLifecycle)
+        {
+            next = default;
+            return false;
+        }
         if (TryCreateKingSlimeTerminalTransition(in npc, out next))
             return true;
 
@@ -144,6 +153,12 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
     internal bool TryApplyTerrainMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next)
     {
+        if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var selected) &&
+            !selected.SupportsRuntimeLifecycle)
+        {
+            next = default;
+            return false;
+        }
         NpcStateUpdate aiState = proposed;
         bool fighterStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
@@ -380,7 +395,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     }
 
     internal static bool TryFinishCollision(WorldTileStore tiles, in NpcStateUpdate aiState,
-        float gravityAcceleration, out NpcStateUpdate next, bool? fallThroughOverride = null)
+        float gravityAcceleration, out NpcStateUpdate next, bool? fallThroughOverride = null,
+        VanillaNpcTownCollisionContext1458? townContext = null)
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
             !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
@@ -440,6 +456,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             VanillaNpcPhysicsFamily.UnicornGround => simulation.DirectionY == 1,
             _ => false
         });
+        if (definition.AiStyle.Value == 7 && townContext is { } home)
+            fallThroughPlatforms = DecideTownPlatformFall(in aiState, hitboxHeight, in home);
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
             aiState.PositionX,
@@ -476,6 +494,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         float oldPositionY = aiState.PositionY;
         float nextPositionX = aiState.PositionX + movementX;
         float nextPositionY = aiState.PositionY + movementY;
+        bool stairFall = simulation.StairFall == true || fallThroughPlatforms;
+        if (definition.AiStyle.Value == 7 && townContext is { } slopeHome)
+            stairFall = DecideTownStairFall(tiles, nextPositionX, nextPositionY, hitboxWidth, hitboxHeight,
+                simulation.TownNpc == true, in slopeHome, stairFall);
         VanillaSlopeCollisionResult slope = VanillaWorldSlopeCollision.Resolve(
             tiles,
             nextPositionX,
@@ -484,7 +506,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             collidedVelocityY,
             hitboxWidth,
             hitboxHeight,
-            fallThroughPlatforms);
+            stairFall);
+        // A falling actor retains the incoming flag even without stair contact. Otherwise only
+        // actual slope contact retains it (NPC.Collision_MoveSlopesAndStairFall, 1.4.5.8).
+        stairFall = slope.StairFall || (fallThroughPlatforms && stairFall);
         nextPositionX = slope.PositionX;
         nextPositionY = slope.PositionY;
         float finalVelocityX = slope.VelocityX;
@@ -513,10 +538,37 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 CollideY = collideY,
                 Wet = wet,
                 LiquidContact = liquidContact,
-                SolidCollision = solidCollision
+                SolidCollision = solidCollision,
+                StairFall = stairFall
             }
         };
         return true;
+    }
+
+    // Collision_DecideFallThroughPlatforms runs before movement; the subsequent stair policy
+    // observes integrated coordinates and deliberately uses a different home threshold.
+    internal static bool DecideTownPlatformFall(in NpcStateUpdate state, int height,
+        in VanillaNpcTownCollisionContext1458 home)
+    {
+        bool returning = state.Simulation.TownNpc == true &&
+            (!home.DayTime || home.InvasionActive || home.Eclipse);
+        if (returning)
+            return (state.PositionY + height - 8f) / 16f < home.HomeTileY - 1;
+        return home.HomeTileY - (int)(state.PositionY + height) / 16 > 16;
+    }
+
+    // The source stair policy does not use invasion here. HomeTileY is the stored home, rather
+    // than the resting-floor candidate computed by the AI007 furniture search.
+    internal static bool DecideTownStairFall(WorldTileStore tiles, float x, float y, int width, int height,
+        bool townNpc, in VanillaNpcTownCollisionContext1458 home, bool retained)
+    {
+        int tileX = (int)(x + width * .5f) / 16, tileY = (int)y / 16;
+        if ((uint)tileX >= (uint)tiles.Dimensions.WidthTiles ||
+            (uint)tileY >= (uint)tiles.Dimensions.HeightTiles) return retained;
+        WorldTile head = tiles.Get(tileX, tileY);
+        bool adjust = townNpc && head.IsActive && VanillaTileCollisionCatalog.IsSolid(head.TileType);
+        adjust |= !home.DayTime || home.Eclipse || home.HomeTileY - (int)(y + height) / 16 > 16;
+        return adjust ? (y + height - 8f) / 16f < home.HomeTileY : retained;
     }
 
     public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>

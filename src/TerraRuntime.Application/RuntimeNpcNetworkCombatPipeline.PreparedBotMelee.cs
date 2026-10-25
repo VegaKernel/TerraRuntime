@@ -15,7 +15,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!npcs.TryGet(target, out var current) || current.Revision.Value == ulong.MaxValue ||
             current.Simulation.DontTakeDamage || current.Simulation.Life <= 0 ||
             !VanillaNpcDefinitionCatalog.TryGet(current.TypeIdentity, current.NetIdentity, out var definition) ||
-            definition.DefinitionOnly || definition.IsBoss || definition.Role != NpcArchetypeRole.Ordinary ||
+            !definition.SupportsRuntimeLifecycle || definition.IsBoss || definition.Role != NpcArchetypeRole.Ordinary ||
             VanillaEaterOfWorldsLifecycle.IsSegment(current.TypeIdentity) || IsDestroyerMember(current.TypeIdentity) ||
             IsPrimeMember(current.TypeIdentity) || current.TypeIdentity == VanillaNpcIds.WallOfFleshEye)
             return false;

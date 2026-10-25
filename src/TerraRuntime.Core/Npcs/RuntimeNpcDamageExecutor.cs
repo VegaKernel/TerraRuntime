@@ -159,7 +159,7 @@ public sealed class RuntimeNpcDamageExecutor
         }
 
         if (VanillaNpcDefinitionCatalog.TryGet(current.TypeIdentity, current.NetIdentity, out var selectedDefinition) &&
-            selectedDefinition.DefinitionOnly)
+            !selectedDefinition.SupportsRuntimeLifecycle)
         {
             result = default;
             return false;

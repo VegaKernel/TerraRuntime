@@ -8,6 +8,16 @@ public static class VanillaNpcMoneyDefaults1458
     {
         value = 0f;
         if (!float.IsFinite(difficulty) || difficulty < .5f || difficulty > 4f) return false;
+        if (VanillaNpcGroundRoster1458.IsSupported(type))
+        {
+            if (!VanillaNpcGroundRoster1458.TryGet(type, net, out var definition)) return false;
+            var context = new VanillaNpcSpawnContext(difficulty, 1, false);
+            if (!VanillaNpcSpawnDefaults.TryResolveGroundRoster(in definition, in context,
+                    OperatingSystem.IsWindows(), out var ground) || ground.VerifiedMoneyValue is not float money)
+                return false;
+            value = money;
+            return true;
+        }
         if (net.Value < 0)
         {
             // Net variants have source integer truncation before or after scaling. Retain exact captured

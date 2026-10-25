@@ -87,11 +87,13 @@ public sealed class TownNpcStrikeReaction1458Tests
         else
             accepted = pipeline.TryStrikeServerPlayerMelee(lookup.Player, npc.Handle, 20, 0, false, 2f, direction) ==
                 RuntimeProjectileNpcDamageResult.Committed;
-        if (npc.Simulation.DontTakeDamage || npc.Simulation.LifeMax <= 0 ||
+        Assert.True(TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(
+            npc.TypeIdentity, npc.NetIdentity, out var definition));
+        if (!definition.SupportsRuntimeLifecycle || npc.Simulation.DontTakeDamage || npc.Simulation.LifeMax <= 0 ||
             (state == 3 && peerActive && type != 453))
         {
             // The source-only Old Man / Traveling Merchant rows retain their original outcomes;
-            // this runtime catalog does not admit their combat defaults yet.
+            // real creation defaults do not admit their separate combat lifecycle.
             // Vanilla mutates the active conversation peer as well. This current one-actor transaction
             // fences that physical writer instead of drawing its RNG and silently omitting the peer.
             Assert.False(accepted); Assert.True(npcs.TryGet(npc.Handle, out var unchanged)); Assert.Equal(npc, unchanged);
