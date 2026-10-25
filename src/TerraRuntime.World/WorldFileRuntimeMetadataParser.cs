@@ -331,6 +331,7 @@ public static class WorldFileRuntimeMetadataParser
                 return Finish(result, ref reader, out bytesConsumed);
         }
 
+        int seasonalFlagsOffset = reader.Offset;
         if (!ReadBool(ref reader, out bool forceHalloweenForToday) ||
             !ReadBool(ref reader, out bool forceXMasForToday) ||
             !TryReadInt16CompatibleInt32(ref reader, out short oreCopper, out result) ||
@@ -524,6 +525,7 @@ public static class WorldFileRuntimeMetadataParser
             TreeTopVariations = treeTopVariations,
             ForceHalloweenForToday = forceHalloweenForToday,
             ForceXMasForToday = forceXMasForToday,
+            SeasonalFlagsOffset = seasonalFlagsOffset,
             BoughtCat = boughtCat,
             BoughtDog = boughtDog,
             BoughtBunny = boughtBunny,

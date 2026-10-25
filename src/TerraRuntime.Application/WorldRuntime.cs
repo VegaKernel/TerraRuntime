@@ -269,13 +269,59 @@ public sealed partial class WorldRuntime : IDisposable
             State,
             (runtime, command) =>
             {
+                bool eventRequest = command is ClientBossSummonRuntimeCommand { NpcType: -4 or -5 or -6 or -10 };
+                var beforeEvent = eventRequest ? (WorldClock.PumpkinMoonActive, WorldClock.SnowMoonActive,
+                    WorldClock.BloodMoonActive, WorldClock.EclipseActive, WorldClock.MoonPhase) : default;
                 if (!SignCommands.TryApply(command) && !ChestCommands.TryApply(command))
                     runtime.Apply(command);
+                if (eventRequest && beforeEvent != (WorldClock.PumpkinMoonActive, WorldClock.SnowMoonActive,
+                        WorldClock.BloodMoonActive, WorldClock.EclipseActive, WorldClock.MoonPhase))
+                {
+                    // MessageBuffer61 publishes the accepted start before the next UpdateTime.
+                    // Polling only after Tick loses a paid invocation on the final night tick.
+                    RefreshWorldBootstrap();
+                    RuntimeConnections.BroadcastToPlaying(CreateLiveWorldInfoFrame());
+                    WorldClock.ConsumeWorldInfoSyncRequest();
+                    worldInfoSyncTicks = 0;
+                    lastWorldInfoDayTime = WorldClock.DayTime;
+                    lastWorldInfoMoonPhase = (byte)WorldClock.MoonPhase;
+                    sbyte icon = WorldClock.ConsumeMoonEventStartSyncRequest();
+                    if (icon != 0)
+                    {
+                        var initial = new TerrariaInvasionProgressState(0, 1, icon, 1);
+                        if (TerrariaInvasionProgressCodec.TryEncode(in initial, out var frame))
+                            RuntimeConnections.BroadcastToPlaying(frame);
+                        lastMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
+                    }
+                }
             },
             runtime =>
             {
                 runtime.Tick();
-                AdvanceInvasion();
+
+                if (WorldClock.ConsumeMoonEventDawnNotice() is { } dawn)
+                {
+                    // Main.UpdateTime_StartDay emits the retained score, Halloween change,
+                    // then Christmas change before packet7. All related clock flags are already adopted.
+                    RefreshWorldBootstrap();
+                    if (dawn.MoonIcon != 0 && !dawn.HadUnpublishedStart &&
+                        dawn.ProgressRevision != lastMoonEventProgressRevision)
+                    {
+                        // checkDead's last-night progress belongs before UpdateTime's score/reset.
+                        var finalProgress = new TerrariaInvasionProgressState(checked((int)dawn.WaveKills),
+                            dawn.WaveRequirement, dawn.MoonIcon, checked((sbyte)dawn.Wave));
+                        if (TerrariaInvasionProgressCodec.TryEncode(in finalProgress, out var frame))
+                            RuntimeConnections.BroadcastToPlaying(frame);
+                        lastMoonEventProgressRevision = dawn.ProgressRevision;
+                    }
+                    if (dawn.MoonIcon != 0)
+                        RuntimeConnections.BroadcastToPlaying(TerrariaMoonEventAnnouncementCodec1458.EncodeScore(
+                            dawn.MoonIcon == 1, dawn.TotalPoints));
+                    if (dawn.HalloweenForToday is { } halloween)
+                        RuntimeConnections.BroadcastToPlaying(TerrariaMoonEventAnnouncementCodec1458.EncodeSeasonChange(false, halloween));
+                    if (dawn.XMasForToday is { } christmas)
+                        RuntimeConnections.BroadcastToPlaying(TerrariaMoonEventAnnouncementCodec1458.EncodeSeasonChange(true, christmas));
+                }
 
                 worldInfoSyncTicks++;
                 byte liveMoonPhase = (byte)WorldClock.MoonPhase;
@@ -316,6 +362,8 @@ public sealed partial class WorldRuntime : IDisposable
                     lastMoonEventProgressRevision = liveMoonEventProgressRevision;
                 }
 
+                // Main.DoUpdate runs UpdateTime before UpdateWorld_WorldGenAndInvasion.
+                AdvanceInvasion();
                 sectionCacheRebuild.Tick();
                 if (autosave?.Tick() == true)
                     worldSave!.RequestSave();

@@ -191,6 +191,8 @@
     <EmbeddedResource Include="Fixtures/invasion-death-credit-official-1458.json.gz" LogicalName="InvasionDeathOrder1458" />
     <EmbeddedResource Include="Fixtures/invasion-death-zero-start-official-1458.json.gz" LogicalName="InvasionDeathZeroStart1458" />
     <EmbeddedResource Include="Fixtures/invasion-persistence-official-1458.json.gz" LogicalName="InvasionPersistence1458" />
+    <EmbeddedResource Include="Fixtures/moon-season-header-official-1458.json.gz" LogicalName="MoonSeasonHeader1458" />
+    <EmbeddedResource Include="Fixtures/progression-world-wire-official-1458.json.gz" LogicalName="ProgressionWorldWire1458" />
     <EmbeddedResource Include="Fixtures/lantern-pending-persistence-official-1458.json.gz" LogicalName="LanternPendingPersistence1458" />
     <EmbeddedResource Include="Fixtures/invasion-spawn-selection-official-1458.json.gz" LogicalName="InvasionSpawnSelection1458" />
     <EmbeddedResource Include="Fixtures/invasion-day-fighter-context-official-1458.json.gz" LogicalName="InvasionDayFighterContext1458" />

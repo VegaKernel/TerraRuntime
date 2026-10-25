@@ -45,6 +45,8 @@ public sealed partial class WorldRuntime
             WindSpeedTarget = WorldClock.WindSpeedTarget,
             Rain = WorldClock.NetworkRain,
             Eclipse = WorldClock.EclipseActive,
+            ForceHalloweenForToday = WorldClock.HasOwnedSeasonalState ? WorldClock.ForceHalloweenForToday : null,
+            ForceXMasForToday = WorldClock.HasOwnedSeasonalState ? WorldClock.ForceXMasForToday : null,
             InvasionType = invasionKnown ? checked((sbyte)invasion.State.Type) : null,
             ProgressionMutations = WorldProgression.CaptureSnapshot()
         };

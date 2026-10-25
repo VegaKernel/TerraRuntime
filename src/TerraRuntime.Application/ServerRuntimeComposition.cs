@@ -216,7 +216,9 @@ internal sealed class ServerRuntimeComposition
             pickupDifficulty >= 2f,
             pickupDifficulty >= 3f,
             townCommerceWorldFacts is { } ownedCalendar ? () => new VanillaSeasonalItemDropContext1458(
-                ownedCalendar.Halloween, ownedCalendar.XMas, ownedCalendar.TenthAnniversaryWorld) : null);
+                worldClock is { HasOwnedSeasonalState: true } ? worldClock.HalloweenActive : ownedCalendar.Halloween,
+                worldClock is { HasOwnedSeasonalState: true } ? worldClock.ChristmasActive : ownedCalendar.XMas,
+                ownedCalendar.TenthAnniversaryWorld) : null);
         worldItemStore.AttachOwnerFactsProvider(worldItemAuthority.SourceOwnerFacts);
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
         playersAuthority.SetNpcHealthGrapplingFacts(player => PlayerAuthority.CaptureNpcHealthGrappling(projectileStore, player));

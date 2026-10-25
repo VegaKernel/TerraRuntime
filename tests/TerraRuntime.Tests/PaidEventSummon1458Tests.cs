@@ -148,6 +148,30 @@ public sealed class PaidEventSummon1458Tests
         Assert.Equal(2, f.Notifications.Count);
     }
 
+    [Fact]
+    public void Moon_eclipse_and_blood_starts_keep_debit_when_inventory_observer_throws_and_replay_is_inert()
+    {
+        foreach (var (action, item) in Items.Where(row => row.Action is -4 or -5 or -6 or -10))
+        {
+            using var fixture = new Fixture(day: action == -6);
+            fixture.Grant(item, 2, 1);
+            fixture.OnNotification = () =>
+            {
+                fixture.AssertStarted(action);
+                Assert.Equal(1, fixture.Item.Stack);
+                Assert.Equal(0, fixture.Funded);
+                throw new InvalidOperationException("accepted inventory observer");
+            };
+            Assert.Throws<InvalidOperationException>(() => fixture.Request(action));
+            fixture.OnNotification = null;
+            fixture.Request(action);
+            fixture.AssertStarted(action);
+            Assert.Equal(1, fixture.Item.Stack);
+            Assert.Equal(0, fixture.Funded);
+            Assert.Equal(new[] { "inventory" }, fixture.Notifications);
+        }
+    }
+
     private sealed class Fixture : IDisposable, IRuntimePlayerEventSink
     {
         internal readonly RuntimeWorldInvasion1458 Owner = new(default(InvasionState1458), 100, 50);

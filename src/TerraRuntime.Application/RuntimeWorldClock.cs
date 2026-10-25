@@ -1,8 +1,19 @@
 using TerraRuntime.World;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Worlds;
+using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Application;
+
+internal readonly record struct MoonEventDawnNotice1458(
+    sbyte MoonIcon, float TotalPoints, bool? HalloweenForToday, bool? XMasForToday)
+{
+    internal long ProgressRevision { get; init; }
+    internal bool HadUnpublishedStart { get; init; }
+    internal int Wave { get; init; }
+    internal float WaveKills { get; init; }
+    internal int WaveRequirement { get; init; }
+}
 
 /// <summary>
 /// Narrow world-event projection consumed by admitted NPC behavior. Blood Moon is suppressed for restricted
@@ -86,6 +97,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     private readonly byte cloudCount;
     private Func<bool>? hasWeatherEligiblePlayer;
     private sbyte pendingMoonEventStartIcon;
+    private readonly Func<DateTime> seasonDateSource;
+    private MoonEventDawnNotice1458? pendingMoonEventDawnNotice;
 
     public RuntimeWorldClock(
         double time,
@@ -112,7 +125,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         bool pumpkinMoon = false,
         bool snowMoon = false,
         bool remixWorld = false,
-        bool eclipse = false)
+        bool eclipse = false,
+        bool? forceHalloweenForToday = null,
+        bool? forceXMasForToday = null,
+        bool? forceHalloweenForever = null,
+        bool? forceXMasForever = null,
+        Func<DateTime>? seasonDateSource = null)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -140,6 +158,14 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         PumpkinMoonActive = pumpkinMoon;
         SnowMoonActive = snowMoon;
         MoonEventWaveNumber = MoonEventActive ? 1 : 0;
+        HasOwnedSeasonalState = forceHalloweenForToday.HasValue && forceXMasForToday.HasValue &&
+            forceHalloweenForever.HasValue && forceXMasForever.HasValue;
+        ForceHalloweenForToday = forceHalloweenForToday ?? false;
+        ForceXMasForToday = forceXMasForToday ?? false;
+        ForceHalloweenForever = forceHalloweenForever ?? false;
+        ForceXMasForever = forceXMasForever ?? false;
+        this.seasonDateSource = seasonDateSource ?? (static () => DateTime.Now);
+        RefreshSeasons();
         GetGoodWorld = getGoodWorld;
         SlimeBlueSpawnUnlocked = slimeBlueSpawnUnlocked;
         WindSpeedCurrent = windSpeedCurrent;
@@ -209,6 +235,14 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public bool BloodMoonActive { get; private set; }
 
     public bool EclipseActive { get; private set; }
+
+    internal bool ForceHalloweenForToday { get; private set; }
+    internal bool ForceXMasForToday { get; private set; }
+    internal bool ForceHalloweenForever { get; }
+    internal bool ForceXMasForever { get; }
+    internal bool HalloweenActive { get; private set; }
+    internal bool ChristmasActive { get; private set; }
+    internal bool HasOwnedSeasonalState { get; }
 
     public bool PumpkinMoonActive { get; private set; }
 
@@ -296,7 +330,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public static RuntimeWorldClock FromWorld(
         WorldFileRuntimeMetadata metadata,
         WorldCreativePowersData creativePowers,
-        IRuntimeWorldClockObserver? observer = null)
+        IRuntimeWorldClockObserver? observer = null,
+        Func<DateTime>? seasonDateSource = null)
     {
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(creativePowers);
@@ -325,7 +360,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             cloudBackgroundActive: metadata.CloudBackgroundActive,
             cloudCount: metadata.CloudCount,
             remixWorld: metadata.RemixWorld,
-            eclipse: metadata.Eclipse);
+            eclipse: metadata.Eclipse,
+            forceHalloweenForToday: metadata.ForceHalloweenForToday,
+            forceXMasForToday: metadata.ForceXMasForToday,
+            forceHalloweenForever: metadata.ForceHalloweenForever,
+            forceXMasForever: metadata.ForceXMasForever,
+            seasonDateSource: seasonDateSource);
     }
 
     private bool worldInfoSyncRequested;
@@ -490,6 +530,51 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         RequestWorldInfoSync();
     }
 
+    internal MoonEventDawnNotice1458? ConsumeMoonEventDawnNotice()
+    {
+        var notice = pendingMoonEventDawnNotice;
+        pendingMoonEventDawnNotice = null;
+        return notice;
+    }
+
+    private void RefreshSeasons()
+    {
+        if (!HasOwnedSeasonalState) return;
+        // Main.checkXMas/checkHalloween run at world load and dawn, not at each loot request.
+        ChristmasActive = VanillaSeasonalCalendar1458.IsChristmas(seasonDateSource(), ForceXMasForToday || ForceXMasForever);
+        HalloweenActive = VanillaSeasonalCalendar1458.IsHalloween(seasonDateSource(), ForceHalloweenForToday || ForceHalloweenForever);
+    }
+
+    private void FinishMoonEventsAtDawn()
+    {
+        // Main.UpdateTime_StartDay retains score and wave before stopMoonEvent. A victory
+        // lasts through the following night, until this same decision at the next dawn.
+        bool priorHalloween = ForceHalloweenForToday;
+        bool priorChristmas = ForceXMasForToday;
+        if (HasOwnedSeasonalState)
+        {
+            ForceHalloweenForToday = PumpkinMoonActive && MoonEventWaveNumber >= 15 && !ForceHalloweenForever;
+            ForceXMasForToday = SnowMoonActive && MoonEventWaveNumber >= 15 && !ForceXMasForever;
+        }
+        RefreshSeasons();
+        if (MoonEventActive || priorHalloween != ForceHalloweenForToday || priorChristmas != ForceXMasForToday)
+        {
+            // The production world loop drains this bounded immutable notice after every Tick,
+            // before its next clock update. No observer sees partially adopted dawn state.
+            pendingMoonEventDawnNotice = new(SnowMoonActive ? (sbyte)1 : PumpkinMoonActive ? (sbyte)2 : (sbyte)0,
+                MoonEventTotalInvasionPoints,
+                priorHalloween != ForceHalloweenForToday ? ForceHalloweenForToday : null,
+                priorChristmas != ForceXMasForToday ? ForceXMasForToday : null)
+            {
+                ProgressRevision = MoonEventProgressRevision,
+                HadUnpublishedStart = pendingMoonEventStartIcon != 0,
+                Wave = MoonEventWaveNumber,
+                WaveKills = MoonEventWaveKills,
+                WaveRequirement = MoonEventWaveRequirement
+            };
+        }
+    }
+
     private bool ApplyMoonEventPoints(float points)
     {
         MoonEventWaveKills += points;
@@ -603,9 +688,10 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             if (Time > NightLength)
             {
                 Time = 0d;
-                DayTime = true;
                 BloodMoonActive = false;
+                FinishMoonEventsAtDawn();
                 StopMoonEvents();
+                DayTime = true;
                 MoonPhase = VanillaMoonPhases.Next(MoonPhase);
             }
         }

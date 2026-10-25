@@ -349,6 +349,14 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
                 throw new InvalidDataException($"Authoritative world clock header patch failed: {patchResult}.");
 
             headerSection = patchedHeader;
+            if (clock.ForceHalloweenForToday.HasValue || clock.ForceXMasForToday.HasValue)
+            {
+                var seasonResult = WorldFileSeasonHeaderPatcher1458.TryPatch(headerSection, sourceEnvelope,
+                    sourceHeader, out byte[] seasonHeader, clock.ForceHalloweenForToday, clock.ForceXMasForToday);
+                if (seasonResult != WorldFileSeasonHeaderPatchResult1458.Patched)
+                    throw new InvalidDataException($"Authoritative temporary-season header patch failed: {seasonResult}.");
+                headerSection = seasonHeader;
+            }
         }
 
         if (snapshot.Invasion is WorldInvasionSaveState1458 invasion)

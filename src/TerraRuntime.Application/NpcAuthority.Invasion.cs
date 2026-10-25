@@ -86,9 +86,12 @@ internal sealed partial class NpcAuthority
         };
         if (!started) throw new InvalidOperationException("A validated event start changed without a callback.");
         // Both payment and event scalars are committed before public notifications.
-        if (request == -10) npcReplication?.ProgressionEvent(4);
-        int key = request switch { -4 => 31, -5 => 34, -6 => naturalSpawnWorldFacts?.RemixWorld == true ? 106 : 20, _ => 8 };
-        npcReplication?.BossAnnouncement($"LegacyMisc.{key}");
-        payment.Publish();
+        try
+        {
+            npcReplication?.EventInvocation(request, naturalSpawnWorldFacts?.RemixWorld == true);
+            if (request is -4 or -5) npcReplication?.MoonFirstWave(request == -5);
+            if (request == -10) npcReplication?.ProgressionEvent(4);
+        }
+        finally { payment.Publish(); }
     }
 }

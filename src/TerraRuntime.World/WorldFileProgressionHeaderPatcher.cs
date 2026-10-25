@@ -22,6 +22,7 @@ public static class WorldFileProgressionHeaderPatcher
         (1UL << (int)VanillaWorldProgressionId.GoblinArmy) |
         (1UL << (int)VanillaWorldProgressionId.FrostLegion) |
         (1UL << (int)VanillaWorldProgressionId.PirateInvasion) |
+        (1UL << (int)VanillaWorldProgressionId.ShadowOrbSmashed) |
         (1UL << (int)VanillaWorldProgressionId.MartianMadness) |
         (1UL << (int)VanillaWorldProgressionId.EyeOfCthulhu) |
         (1UL << (int)VanillaWorldProgressionId.KingSlime) |
@@ -143,6 +144,9 @@ public static class WorldFileProgressionHeaderPatcher
         if (!invasionFlagsReader.TryReadBool(out _)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         int downedPiratesOffset = invasionFlagsReader.Offset;
         if (!invasionFlagsReader.TryReadBool(out _)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        // WorldFile.SaveWorldHeader 1.4.5.8 writes shadowOrbSmashed immediately after downedPirates.
+        int shadowOrbSmashedOffset = invasionFlagsReader.Offset;
+        if (!invasionFlagsReader.TryReadBool(out _)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         HeaderPrefixReader hardModeReader = reader;
         if (!hardModeReader.TrySkipBools(9) ||
@@ -175,6 +179,7 @@ public static class WorldFileProgressionHeaderPatcher
         if (mutations.IsCompleted(VanillaWorldProgressionId.GoblinArmy)) patchedHeader[downedGoblinsOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.FrostLegion)) patchedHeader[downedFrostOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.PirateInvasion)) patchedHeader[downedPiratesOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.ShadowOrbSmashed)) patchedHeader[shadowOrbSmashedOffset] = 1;
         // Source SaveWorldFlags places downedMartians directly after downedFishron.
         if (mutations.IsCompleted(VanillaWorldProgressionId.MartianMadness)) patchedHeader[townState.DukeFishronOffset + 1] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.EyeOfCthulhu) && !persistedDownedBoss1)

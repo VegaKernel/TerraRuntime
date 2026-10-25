@@ -14,6 +14,9 @@ internal readonly record struct RuntimeTownNpcMoveInConditions1458(
     int WorldUpdateRate)
 {
     public bool AllowsMoveIn => DayTime && !Eclipse && !InvasionActive && WorldUpdateRate > 0;
+    // A known false live season replaces a loaded Today=true baseline after dawn.
+    // Null retains explicit legacy-host facts rather than inventing a calendar owner.
+    public bool? Christmas { get; init; }
 }
 
 internal readonly record struct RuntimeTownNpcArrival1458(
@@ -126,8 +129,13 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         }
 
         NpcTypeId[] activeTypes = townNpcs.CaptureActiveTownTypes();
+        var currentWorld = worldFacts with
+        {
+            Christmas = conditions.Christmas ?? worldFacts.Christmas,
+            DownedFrost = worldFacts.DownedFrost || progression?.IsCompleted(VanillaWorldProgressionId.FrostLegion) == true
+        };
         VanillaTownSpawnEligibility1458 eligibility = VanillaTownNpcSpawnEligibility1458.Evaluate(
-            in worldFacts,
+            in currentWorld,
             players,
             activeTypes);
         if (eligibility.EligibleTypes.Length == 0 ||

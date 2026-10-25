@@ -243,7 +243,8 @@ internal sealed class TownNpcAuthority
                 DayTime: worldClock?.DayTime ?? true,
                 Eclipse: worldClock?.EclipseActive ?? initialEclipse,
                 InvasionActive: invasion is not null && invasionCapture.State.Type > 0,
-                WorldUpdateRate: 1);
+                WorldUpdateRate: 1)
+            { Christmas = worldClock is { HasOwnedSeasonalState: true } ? worldClock.ChristmasActive : null };
             moveIn.Tick(
                 in moveInConditions,
                 spawnPlayers.AsSpan(0, spawnPlayerCount),

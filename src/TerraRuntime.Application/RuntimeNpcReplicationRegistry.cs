@@ -240,6 +240,12 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     public void BossAnnouncement(string key, string? nameKey = null) =>
         Broadcast(TerrariaBossAnnouncementCodec1458.Encode(key, nameKey));
 
+    internal void EventInvocation(short action, bool remixWorld) =>
+        Broadcast(TerrariaMoonEventAnnouncementCodec1458.EncodeInvocation(action, remixWorld));
+
+    internal void MoonFirstWave(bool snowMoon) =>
+        Broadcast(TerrariaMoonEventAnnouncementCodec1458.EncodeFirstWave(snowMoon));
+
     internal void ProgressionEvent(short eventId) =>
         Broadcast(TerrariaProgressionEventCodec1458.Encode(eventId));
 

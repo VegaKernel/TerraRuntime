@@ -12,7 +12,9 @@ internal readonly record struct RuntimeWorldClockSaveState(
     int RainTime,
     float MaxRain,
     bool BloodMoon = false,
-    bool Eclipse = false);
+    bool Eclipse = false,
+    bool? ForceHalloweenForToday = null,
+    bool? ForceXMasForToday = null);
 
 /// <summary>
 /// Deliberately partial persistence snapshot containing the authoritative subsystems currently supported by the
@@ -110,7 +112,9 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
                 worldClock.RainTime,
                 worldClock.MaxRain,
                 worldClock.BloodMoonActive,
-                worldClock.EclipseActive);
+                worldClock.EclipseActive,
+                worldClock.HasOwnedSeasonalState ? worldClock.ForceHalloweenForToday : null,
+                worldClock.HasOwnedSeasonalState ? worldClock.ForceXMasForToday : null);
 
         WorldSign[]? signs = null;
         if (signStore is not null && signStore.TryCaptureCanonicalSnapshot(out WorldSign[] signSnapshot))
