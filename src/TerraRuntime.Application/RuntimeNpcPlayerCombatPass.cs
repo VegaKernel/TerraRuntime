@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Players;
+using TerraRuntime.Gameplay.Buffs;
 
 namespace TerraRuntime.Application;
 
@@ -24,6 +25,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
     private readonly PlayerStateSnapshot[] serverPlayerBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
     private readonly bool expertMode;
     private readonly bool masterMode;
+    private readonly bool goodWorld;
     private readonly long[] lastGodModeContactTick;
     private readonly NpcGeneration[] npcGenerations;
     private readonly PlayerSessionGeneration[] playerGenerations;
@@ -34,16 +36,19 @@ internal sealed class RuntimeNpcPlayerCombatPass
         Random? random = null,
         ServerPlayerAuthority? serverPlayers = null,
         bool expertMode = false,
-        bool masterMode = false)
+        bool masterMode = false,
+        bool goodWorld = false,
+        VanillaUnifiedRandom1458? sourceRandom = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.serverPlayers = serverPlayers;
-        this.random = random ?? Random.Shared;
+        this.random = sourceRandom is null ? random ?? Random.Shared : new ContactRandom(sourceRandom);
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode requires expert-mode player damage semantics.", nameof(masterMode));
         this.expertMode = expertMode;
         this.masterMode = masterMode;
+        this.goodWorld = goodWorld;
         npcBuffer = new NpcSnapshot[npcs.Capacity];
         int cells = checked(npcs.Capacity * PlayerSlotCount);
         lastGodModeContactTick = new long[cells];
@@ -101,8 +106,16 @@ internal sealed class RuntimeNpcPlayerCombatPass
 
                 if (!players.TryCaptureIncomingCombat(targetHandle, out var targetCapture) || !targetCapture.IsAlive)
                     continue;
+                if (!npcs.TryGet(npc.Handle, out var capturedNpc) || capturedNpc != npc) continue;
+                var contact = new NpcContactBuffSource1458(npc.TypeIdentity.Value, npc.NetIdentity.Value, npc.Ai.Ai1, goodWorld, random);
+                if (VanillaNpcContactBuffs1458.IsSlimeContactOnly(contact.Type, contact.Ai1) && !target.GodMode)
+                {
+                    players.TryApplySlimeContactBuff(in targetCapture, in contact);
+                    continue;
+                }
                 int rawDamage = ResolveContactDamage(in npc, in definition);
-                int damage = VanillaIncomingPlayerDamageFacts1458.ResolveNpcContactDamage(rawDamage, random.Next(-15, 16));
+                int damage = target.GodMode ? rawDamage :
+                    VanillaIncomingPlayerDamageFacts1458.ResolveNpcContactDamage(rawDamage, random.Next(-15, 16));
                 if (damage <= 0)
                     continue;
 
@@ -119,7 +132,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
                     damage,
                     hitDirection,
                     immunityChannel,
-                    out PlayerStateSnapshot committed, targetCapture);
+                    out PlayerStateSnapshot committed, targetCapture, contact);
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
 
@@ -141,6 +154,8 @@ internal sealed class RuntimeNpcPlayerCombatPass
             for (int targetIndex = 0; targetIndex < serverCount; targetIndex++)
             {
                 PlayerStateSnapshot target = serverPlayerBuffer[targetIndex];
+                if (!serverPlayers.TryGet(target.Player, out var liveServerTarget) || liveServerTarget != target ||
+                    !npcs.TryGet(npc.Handle, out var liveServerNpc) || liveServerNpc != npc) continue;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (immunityChannel == VanillaPlayerImmunityChannel1458.General && serverPlayers.IsGeneralPveImmune(target.Player, tick)) ||
                     !Intersects(npcLeft, npcTop, npcRight, npcBottom, target) ||
@@ -150,9 +165,19 @@ internal sealed class RuntimeNpcPlayerCombatPass
                 }
 
                 int rawDamage = ResolveContactDamage(in npc, in definition);
-                int damage = VanillaIncomingPlayerDamageFacts1458.ResolveNpcContactDamage(rawDamage, random.Next(-15, 16));
+                var contact = new NpcContactBuffSource1458(npc.TypeIdentity.Value, npc.NetIdentity.Value, npc.Ai.Ai1, goodWorld, random);
+                if (VanillaNpcContactBuffs1458.IsSlimeContactOnly(contact.Type, contact.Ai1) && !target.GodMode)
+                {
+                    serverPlayers.TryApplySlimeContactBuff(target.Player, in contact, expertMode, masterMode);
+                    continue;
+                }
+                int damage = target.GodMode ? rawDamage :
+                    VanillaIncomingPlayerDamageFacts1458.ResolveNpcContactDamage(rawDamage, random.Next(-15, 16));
                 if (damage <= 0)
                     continue;
+
+                if (!serverPlayers.TryGet(target.Player, out liveServerTarget) || liveServerTarget != target ||
+                    !npcs.TryGet(npc.Handle, out liveServerNpc) || liveServerNpc != npc) continue;
 
                 int hitDirection = npcLeft + hitbox.Width * 0.5f < target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f
                     ? 1
@@ -167,7 +192,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
                     immunityChannel,
                     expertMode,
                     masterMode,
-                    out PlayerStateSnapshot committed);
+                    out PlayerStateSnapshot committed, contact);
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
                 if (result == PlayerDamageCommitResult.AvoidedByGodMode)
@@ -186,6 +211,16 @@ internal sealed class RuntimeNpcPlayerCombatPass
     private static int ResolveContactDamage(in NpcSnapshot npc, in VanillaNpcDefinition definition) =>
         VanillaArmedZombieCombatFacts1458.ResolveMeleeDamage(
             npc.Simulation.DamageOverride ?? definition.Damage, npc.TypeIdentity, npc.Ai);
+
+    // Only translates the established Main.rand owner to the existing contact Random boundary.
+    // No independent seed/cursor is retained here.
+    private sealed class ContactRandom(VanillaUnifiedRandom1458 source) : Random
+    {
+        public override int Next() => source.Next();
+        public override int Next(int maxValue) => source.Next(maxValue);
+        public override int Next(int minValue, int maxValue) => source.Next(minValue, maxValue);
+        public override double NextDouble() => source.NextDouble();
+    }
 
     private bool IsGodModeCoolingDown(NpcHandle npc, PlayerHandle player, long tick)
     {

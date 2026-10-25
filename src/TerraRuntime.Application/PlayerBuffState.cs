@@ -53,8 +53,9 @@ internal sealed partial class PlayerBuffState
     }
 
     internal PlayerDebuffSnapshot1458 CaptureDebuffFlags() =>
-        new(CountActive(VanillaBuffIds.OnFire) != 0, CountActive(VanillaBuffIds.CursedInferno) != 0,
-            CountActive(VanillaBuffIds.Poisoned) != 0);
+        new(CountActive(VanillaBuffIds.OnFire) != 0 || contactDebuffsForUpdate.OnFire,
+            CountActive(VanillaBuffIds.CursedInferno) != 0 || contactDebuffsForUpdate.OnFire2,
+            CountActive(VanillaBuffIds.Poisoned) != 0 || contactDebuffsForUpdate.Poisoned);
 
     public bool HasNonPersistentBuffs()
     {
@@ -65,12 +66,14 @@ internal sealed partial class PlayerBuffState
 
     public bool ClearNonPersistentOnDeath()
     {
+        contactDebuffsForUpdate = default;
+        contactFrozenForUpdate = false;
         InvalidateFoodClockLineage();
         bool changed = false;
         // UpdateDead clears slots in place; don't move a preserved last slot into an earlier position.
         for (int i = 0; i < count; i++)
             if (types[i] != VanillaBuffIds.None && !VanillaBuffDefinitionCatalog.PersistsThroughPlayerDeath(types[i]))
-            { types[i] = VanillaBuffIds.None; durations[i] = 0; ownedFood[i] = false; changed = true; }
+            { types[i] = VanillaBuffIds.None; durations[i] = 0; ownedFood[i] = false; ownedNpcContact[i] = false; changed = true; }
         return changed;
     }
 
@@ -83,6 +86,7 @@ internal sealed partial class PlayerBuffState
         if (HasOwnedFood && snapshot.SequenceEqual(CaptureTypes())) return;
         InvalidateFoodClockLineage();
         ownedFood.AsSpan().Clear();
+        ownedNpcContact.AsSpan().Clear();
         snapshot.CopyTo(types);
         types.AsSpan(snapshot.Length).Clear();
         durations.AsSpan(0, snapshot.Length).Fill(60);
@@ -122,7 +126,7 @@ internal sealed partial class PlayerBuffState
         }
         for (int i = 0; i < count; i++)
             if (types[i] == VanillaBuffIds.None || durations[i] <= 0)
-            { types[i] = VanillaBuffIds.MoonLeech; durations[i] = duration; ownedFood[i] = false; return true; }
+            { types[i] = VanillaBuffIds.MoonLeech; durations[i] = duration; ownedFood[i] = false; ownedNpcContact[i] = false; return true; }
         if (count == Capacity)
         {
             int replace = 0;
@@ -135,13 +139,14 @@ internal sealed partial class PlayerBuffState
             Array.Copy(types, replace + 1, types, replace, shifted);
             Array.Copy(durations, replace + 1, durations, replace, shifted);
             Array.Copy(ownedFood, replace + 1, ownedFood, replace, shifted);
+            Array.Copy(ownedNpcContact, replace + 1, ownedNpcContact, replace, shifted);
             types[insert] = VanillaBuffIds.MoonLeech;
             durations[insert] = duration;
-            ownedFood[insert] = false;
+            ownedFood[insert] = false; ownedNpcContact[insert] = false;
             return true;
         }
         types[count] = VanillaBuffIds.MoonLeech;
-        ownedFood[count] = false;
+        ownedFood[count] = false; ownedNpcContact[count] = false;
         durations[count++] = duration;
         return true;
     }

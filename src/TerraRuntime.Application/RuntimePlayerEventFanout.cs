@@ -123,6 +123,12 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerPvpBuffApplied(player, buffType, durationTicks);
     }
 
+    public void PlayerNpcContactBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks)
+    {
+        first.PlayerNpcContactBuffApplied(player, buffType, durationTicks);
+        second.PlayerNpcContactBuffApplied(player, buffType, durationTicks);
+    }
+
     public void PlayerDisconnected(ConnectionHandle connection)
     {
         first.PlayerDisconnected(connection);

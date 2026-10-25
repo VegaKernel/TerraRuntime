@@ -1,5 +1,21 @@
 # TerraRuntime roadmap
 
+## NPC contact debuff application: isolated branch, 2026-10-25
+
+Independent worktree `TerraRuntime-combat-buffs`, branch `combat/npc-contact-buffs`, base `e0bbf65fc125e43d0a4d5495468cef6fc06d6d71`. No all-tools cache drafts were imported, edited or promoted. Existing contact collision/Hurt/HP/immunity owners now adopt source-ordered NPC statuses before observers; player slots retain contact provenance/timers and generation-checked packet 55 confirms adjusted duration. Server actors merge contact presence with lava/MoonLeech and use existing HP/regen for neutral poison/cursed/fire. Ankh Shield immunity is projected through the admitted equipment snapshot. Default contact RNG forwards the existing shared Main.rand owner.
+
+Independent original StatusFromNPC numeric corpus: 110016 rows per Windows/Linux edition, repeated exactly; source-platform rounding, FTW effective difficulty, all 694 identities and rare branches covered. This is helper evidence, not whole Player.Update/natural client parity. Validation details are recorded below; this is an isolated integration candidate, not full vanilla/platform acceptance.
+
+Validation on frozen source/test fingerprint `a53154fa1a4f7244f39f23a92b8114fd26151c7d24f9188ae1bbaad0bec74b38`: Release solution warnings-as-errors: 0 warnings, 0 errors; 41 focused/neighbor tests; mandatory fast 25,004/25,005 with 0 failures/errors and the known liquid skip; CI tools 61/61, documentation 104 pairs / 247 files, project graph 15/29 and domain audit 422. Final unfiltered fallback passes 1,563,297/1,563,298 cases with zero failures/errors and the one pre-existing canonical-liquid skip; all 5,001 methods selected, zero exclusions. Test time $923.931\,\mathrm{s}$. Complete XML/log/result remain in `.cache/validation/clock-guard-affected`. Source/test fingerprint and all frozen input hashes remain unchanged after the full run. Windows NativeAOT server/five smokes pass. All 16 unchanged new Facts also pass typed managed and fresh Windows Native with 1,024,679 assertion invocations and byte-identical per-Fact reports; this static harness is separate from the normal xUnit runner. Native CLR directory 0/0; 38 reference DLLs and linked test/resource hashes remain exact. Evidence `.cache/validation`, `.cache/npc-contact-native-v2/acceptance.json`, `.cache/windows-native-result.json`. Linux NativeAOT cannot run here: Windows target-OS publish guard rejects linux-x64, and no WSL distribution is installed; no Linux acceptance is claimed.
+
+The meaningful omission control removes only human contact application and yields 5 assertion failures / errors 0, then source restoration passes. The first fast result is preserved rejected: one old test expected a random callback during already-active GodMode contact; the verified source returns before DamageVar, so that branch now asserts zero draws and avoidance explicitly. The first CI-tools result is also preserved rejected: an unchanged baseline generated prefix table had a stale normal-table SHA comment. Reproduction against exact HEAD inputs confirmed the defect; regeneration changes only that comment, no numeric tables or predicates. No new dependency, merge, push or GitHub CI wait.
+
+The first complete full run is retained rejected: 1,563,296 passed / 1,563,298 total, one known skip and one WorkerCompletionCommandForwarder shutdown assertion after its one-second deadline (errors 0). The unchanged isolated class passes; its bounded shutdown allowance now matches the neighboring worker tests at five seconds, preserving all ownership/thread/result assertions. A subsequent retry was stopped after its passing fast tier to apply the measured empty-contact clock guard; it is not accepted full evidence. The final accepted run is recorded above; the rejected and aborted results remain separate.
+
+The clock now checks owned presence before any census/44-slot cloning. Same isolated workload, 1,000 warmup and 10,000 measured ticks: empty-contact one-player allocation falls from $848\,\mathrm{B/tick}$ to $40\,\mathrm{B/tick}$; ten-player allocation from $8264\,\mathrm{B/tick}$ to $40\,\mathrm{B/tick}$. Workload and project bytes are unchanged; old/new exact App inputs are pinned in `.cache/contact-clock-bench/comparison-manifest.json`. Timing is a concurrent-machine component sample, not a whole-tick/TPS claim. The first stale copied-DLL measurement is retained rejected; the accepted after run verifies the new App hash before/after.
+
+Remaining: DefinitionOnly NPC contact, full Hurt/banner/luck/dodge/parry and exceptional hitboxes; nonrepresented status consumers/cures, unsupported active status retirement of the shared remote phase (expiration does not recover RNG custody), broader hostile-projectile status and whole Main scheduling. Contact application and duration ownership are implemented; complete vanilla physiological parity is not claimed. Paired details: [EN](en/npc-contact-debuffs-1458.md) / [RU](ru/npc-contact-debuffs-1458.md).
+
 ## Gem staffs: accepted local checkpoint, 2026-10-25
 
 Seven retained staffs and seven effective robes now have independent official 1.4.5.8 item/prefix/ItemCheck/Shoot evidence, separate local/remote use clocks and bounded initial/twin/midpoint entitlements. Item6171 remains the verified deprecated-Air regression. Source-qualified AI29 motion, terrain, collision and same-projectile Kill effects are integrated with the existing actor and prepared damage owners; the new contact proof is bounded to NPC1/3/59 and luck0, with direct NPC1 source PVE fixtures.
@@ -1430,6 +1446,9 @@ Current pickup slice assigns the nearest eligible live player every five ticks a
 - [x] Internally use generation/revision handles so stale slot reuse cannot mutate a different entity.
 
 ### Combat integrity
+
+- [x] Apply authoritative NPC contact statuses after accepted surviving Hurt, using existing player buff slots/RNG and generation-safe notification. See [contact scope](en/npc-contact-debuffs-1458.md).
+- [ ] Complete the remaining contact-status stat/motion/cure consumers and unsupported shared remote-phase continuation; application coverage does not close these gaps.
 
 > **One gameplay formula. Anti-cheat must not maintain a separate copy of damage, ammo selection, projectile provenance, velocity, crit, or combat timing rules.**
 

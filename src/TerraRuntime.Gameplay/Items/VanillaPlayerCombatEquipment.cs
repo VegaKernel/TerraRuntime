@@ -30,6 +30,10 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     /// <summary>Player.ApplyEquipFunctional: represented lava protection, separate from fireWalk.</summary>
     public int LavaProtectionTicks { get; init; }
     public bool LavaRose { get; init; }
+    public bool AnkhShield { get; init; }
+    // Player.ApplyEquipFunctional 1.4.5.8: Ankh Shield includes Chilled, but not Frozen.
+    public bool IsImmuneToNpcContactBuff(BuffTypeId type) =>
+        AnkhShield && type.Value is 46 or 33 or 36 or 30 or 20 or 32 or 31 or 35 or 23 or 22 or 156;
     public bool WaterWalk { get; init; }
 
     public bool DiscountEquipped { get; init; }
@@ -356,7 +360,7 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
                 snapshot = snapshot with { RangedCrit = snapshot.RangedCrit + 10, RangedDamage = snapshot.RangedDamage + 0.10f };
                 break;
             case 1613: // Ankh Shield: Item.SetDefaults defense=5; UpdateEquips grants noKnockback.
-                snapshot = snapshot with { Defense = snapshot.Defense + 5, NoKnockback = true };
+                snapshot = snapshot with { Defense = snapshot.Defense + 5, NoKnockback = true, AnkhShield = true };
                 break;
             case 3110: // Celestial Shell / skyStoneEffects
                 snapshot = snapshot with

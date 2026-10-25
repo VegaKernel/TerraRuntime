@@ -118,6 +118,9 @@ internal sealed class RuntimePlayerTransferProfileStore
 
     internal PlayerBuffState? CaptureBuffState(ConnectionHandle connection) => Get(connection)?.Buffs?.Clone();
 
+    internal bool HasOwnedNpcContactBuffs(ConnectionHandle connection) =>
+        Get(connection)?.Buffs?.HasOwnedNpcContactBuffs ?? false;
+
     internal bool IsCurrentBuffState(ConnectionHandle connection, PlayerBuffState previous) =>
         Get(connection)?.Buffs?.HasSameSlots(previous) == true;
 

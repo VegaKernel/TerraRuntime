@@ -82,7 +82,8 @@ internal sealed partial class ServerPlayerAuthority
         VanillaPlayerImmunityChannel1458 immunityChannel,
         bool expertMode,
         bool masterMode,
-        out PlayerStateSnapshot committed) =>
+        out PlayerStateSnapshot committed,
+        NpcContactBuffSource1458? contactBuffs = null) =>
         TryCommitAuthoritativeDamage(
             tick,
             target,
@@ -93,7 +94,7 @@ internal sealed partial class ServerPlayerAuthority
             immunityChannel,
             expertMode,
             masterMode,
-            out committed);
+            out committed, contactBuffs: contactBuffs);
 
     internal PlayerDamageCommitResult TryCommitAuthoritativeNpcProjectileDamage(
         long tick,
@@ -138,7 +139,8 @@ internal sealed partial class ServerPlayerAuthority
         bool masterMode,
         out PlayerStateSnapshot committed,
         bool pvp = false,
-        bool critical = false)
+        bool critical = false,
+        NpcContactBuffSource1458? contactBuffs = null)
     {
         committed = default;
         if (!target.IsAssigned || !source.IsValid || damage <= 0 || damage > short.MaxValue ||
@@ -173,13 +175,15 @@ internal sealed partial class ServerPlayerAuthority
         }
 
         return CommitResolvedDamage(tick, in current, source, projectileType, in final, hitDirection,
-            immunityChannel, pvp, damageOverTime: false, out committed);
+            immunityChannel, pvp, damageOverTime: false, out committed, contactBuffs, targetCombat, expertMode, masterMode);
     }
 
     private PlayerDamageCommitResult CommitResolvedDamage(
         long tick, in PlayerStateSnapshot current, DamageSource source, ProjectileTypeId projectileType,
         in FinalDamageToHp final, int hitDirection, VanillaPlayerImmunityChannel1458 immunityChannel,
-        bool pvp, bool damageOverTime, out PlayerStateSnapshot committed)
+        bool pvp, bool damageOverTime, out PlayerStateSnapshot committed,
+        NpcContactBuffSource1458? contactBuffs = null, VanillaPlayerCombatSnapshot targetCombat = default,
+        bool expertMode = false, bool masterMode = false)
     {
         PlayerHandle target = current.Player;
         committed = default;
@@ -189,6 +193,7 @@ internal sealed partial class ServerPlayerAuthority
             return PlayerDamageCommitResult.Rejected;
 
         committed = afterVitals;
+        bool moved = false;
         if (!final.Mitigation.NoKnockback && hitDirection != 0 &&
             states.TrySetMotion(
                 target,
@@ -200,7 +205,7 @@ internal sealed partial class ServerPlayerAuthority
                 out PlayerStateSnapshot afterMotion))
         {
             committed = afterMotion;
-            events?.ServerPlayerMoved(in afterMotion);
+            moved = true;
         }
 
         if (pvp)
@@ -208,21 +213,38 @@ internal sealed partial class ServerPlayerAuthority
         else if (!damageOverTime)
             damageImmunity.RecordPve(target, immunityChannel,
                 tick + VanillaIncomingPlayerDamageFacts1458.ResolvePveImmunityTicks(final.Damage));
-        var committedVitals = new ServerPlayerVitalsState(
-            committed.Life,
-            committed.MaxLife,
-            committed.Mana,
-            committed.MaxMana);
-        events?.ServerPlayerVitalsUpdated(target, in committedVitals);
-        if (!current.IsDead && committed.IsDead)
+        // StatusFromNPC follows successful, nonlethal Hurt. Adopt every status before the first observer
+        // can disconnect or replace this generation, and keep RNG after the accepted-damage boundary.
+        bool buffsApplied = contactBuffs is { } status && !committed.IsDead &&
+            ApplyNpcContactBuffs(target, in status, in targetCombat, expertMode, masterMode);
+        bool died = !current.IsDead && committed.IsDead;
+        bool deathBuffsCleared = false;
+        if (died)
         {
             horizontalIntents.Remove(target);
             jumpIntents.Remove(target);
             jumpStates.Remove(target);
             movementIntents.Remove(target);
-            // Player.UpdateLifeRegen calls KillMe(ByOther(8), 10, 0), not Hurt's per-tick HP loss.
+            deathBuffsCleared = ResetPlayerBuffs(target, publish: false);
+        }
+        var committedVitals = new ServerPlayerVitalsState(
+            committed.Life,
+            committed.MaxLife,
+            committed.Mana,
+            committed.MaxMana);
+        if (moved) events?.ServerPlayerMoved(in committed);
+        // Observers can synchronously remove/reuse this slot or mutate the same generation. Later notifications
+        // describe the adopted snapshot only while that exact snapshot remains current; cleanup has already run.
+        if (!states.TryGet(target, out var afterMotionPublication) || afterMotionPublication != committed)
+            return PlayerDamageCommitResult.Committed;
+        if (buffsApplied || deathBuffsCleared) PublishBuffTypes(target);
+        if (!states.TryGet(target, out var afterBuffPublication) || afterBuffPublication != committed)
+            return PlayerDamageCommitResult.Committed;
+        events?.ServerPlayerVitalsUpdated(target, in committedVitals);
+        if (died && states.TryGet(target, out var afterVitalsPublication) && afterVitalsPublication == committed)
+        {
+            // UpdateLifeRegen reports damage10, with other9 for poison and other8 for fire.
             events?.ServerPlayerDied(target, source, projectileType, damageOverTime ? 10 : final.Damage, hitDirection);
-            ResetPlayerBuffs(target);
         }
         return PlayerDamageCommitResult.Committed;
     }

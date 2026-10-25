@@ -70,5 +70,10 @@ internal interface IRuntimePlayerEventSink
     {
     }
 
+    /// <summary>Notifies an exact target of a server-owned contact effect; duration is already difficulty-adjusted.</summary>
+    void PlayerNpcContactBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks)
+    {
+    }
+
     void PlayerDisconnected(ConnectionHandle connection);
 }

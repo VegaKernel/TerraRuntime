@@ -191,7 +191,12 @@ internal sealed partial class PlayerAuthority
         return false;
     }
 
-    public void AdvanceCombatTick(long tick) => currentCombatTick = tick;
+    public void AdvanceCombatTick(long tick)
+    {
+        if (tick == currentCombatTick) return;
+        currentCombatTick = tick;
+        AdvanceNpcContactBuffs();
+    }
 
     public bool IsCurrent(ConnectionHandle connection) => membership.IsCurrent(connection);
 
