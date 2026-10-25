@@ -1,5 +1,7 @@
 # Verified vanilla facts
 
+2026-10-25 TerrariaServer 1.4.5.8 `WorldGen` registered `Final Cleanup` grass-offer tail tests `TileID.Sets.Dirt`, whose source catalog is `{0,668}`. Selecting an already-present `668` counts toward the ordinary target even without a visible tile change. Source `Tile.ClearTile` clears slope and active/inactive only, preserving wall, liquid, wires, paint, coating, actuator and frames before type668 replacement. Three initial seed1458 Dirt/Dirtiest sites with wall/liquid/wire/paint in a `600x500` official full-pass fixture leave next RNG370853568 and six-field SHA-256 `8a59ce7099ee4244061b74e617a11f6cd193d35f1e5d2b32e08e864d0f05a04a`. This is an ordinary-tail fixture, not special-seed or real-prefix parity.
+
 ## Gem-staff block: accepted local checkpoint, 2026-10-25
 
 The connected block integrates all seven retained gem staffs/effective robes, funded mana/ManaFlower use, initial/twin/midpoint entitlements, source AI29 motion/terrain, prepared NPC contact and same-projectile Kill. It repairs Windows selector cutoff/tie arithmetic, active-NoItems paid midpoint and contact, exact-owner disconnect completion, terminal same-generation callback cleanup and stale composed-event network publication. The handwritten graph is Game240/Core176/App563 with52 numeric gem resources and six new normal public Facts including the existing-class network entrypoint. Contact remains NPC1/3/59/luck0 and represented effects; player-projectile tile cutting, summon/local mining and full vanilla parity remain separate gaps.

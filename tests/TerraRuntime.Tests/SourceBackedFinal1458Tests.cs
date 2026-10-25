@@ -946,6 +946,48 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_counts_existing_dirtiest_blocks_as_dirt_offers()
+    {
+        // TerrariaServer 1.4.5.8 TileID.Sets.Dirt = { 0, 668 }.
+        // The independent registered FinalCleanup seed1458 first offers these sites.
+        var workspace = new Workspace(600, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        (int x, int y)[] candidates = [(261, 205), (496, 239), (286, 225)];
+        for (int n = 0; n < candidates.Length; n++)
+        {
+            (int x, int y) = candidates[n];
+            var tile = new WorldTile
+            {
+                Type = n == 1 ? (ushort)0 : (ushort)668,
+                Flags = WorldTileFlags.Active | WorldTileFlags.WireRed,
+                TileColor = 5,
+                Wall = (ushort)(7 + n),
+                LiquidAmount = (byte)(80 + n)
+            };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 600, 500), workspace, random));
+
+        for (int n = 0; n < candidates.Length; n++)
+        {
+            (int x, int y) = candidates[n];
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            Assert.Equal((ushort)668, tile.Type);
+            Assert.True(tile.IsActive);
+            Assert.Equal(WorldTileFlags.WireRed, tile.Flags & WorldTileFlags.WireRed);
+            Assert.Equal((byte)5, tile.TileColor);
+            Assert.Equal((ushort)(7 + n), tile.Wall);
+            Assert.Equal((byte)(80 + n), tile.LiquidAmount);
+        }
+        Assert.Equal("8A59CE7099EE4244061B74E617A11F6CD193D35F1E5D2B32E08E864D0F05A04A", HashFixture(workspace));
+        Assert.Equal(370853568, random.Next());
+    }
+
+    [Fact]
     public void Final_cleanup_repairs_boulder_frames_then_replaces_boulders_blocked_by_a_heart()
     {
         // TerrariaServer 1.4.5.8 FinalCleanup first restores the frame-derived 2x2 boulder footprint;

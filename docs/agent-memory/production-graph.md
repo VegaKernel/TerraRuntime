@@ -1,5 +1,7 @@
 # Production graph
 
+2026-10-25 Final Cleanup ordinary grass-offer correction stays in `FinalPass1458` and uses the existing shared generation RNG. The source `TileID.Sets.Dirt` set includes type668, so an unchanged `668` cell can terminate the bounded offer loop. No project, dependency or ownership edge changes; row109 remains partial.
+
 ## Gem-staff block: accepted local checkpoint, 2026-10-25
 
 The connected block integrates all seven retained gem staffs/effective robes, funded mana/ManaFlower use, initial/twin/midpoint entitlements, source AI29 motion/terrain, prepared NPC contact and same-projectile Kill. It repairs Windows selector cutoff/tie arithmetic, active-NoItems paid midpoint and contact, exact-owner disconnect completion, terminal same-generation callback cleanup and stale composed-event network publication. The handwritten graph is Game240/Core176/App563 with52 numeric gem resources and six new normal public Facts including the existing-class network entrypoint. Contact remains NPC1/3/59/luck0 and represented effects; player-projectile tile cutting, summon/local mining and full vanilla parity remain separate gaps.

@@ -1269,10 +1269,17 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
             int x = random.Next(50, grid.Width - 50);
             int y = random.Next(50, grid.Height - 200);
             ref WorldTile tile = ref grid.At(x, y);
-            if (!tile.IsActive || tile.Type != 0)
+            // TileID.Sets.Dirt in 1.4.5.8 contains both Dirt (0) and
+            // Dirtiest Block (668). Re-selecting an existing 668 still counts
+            // as a successful offer and shortens this shared-RNG loop.
+            if (!tile.IsActive || tile.Type is not (0 or 668))
                 continue;
-            tile = default;
-            tile.Flags = WorldTileFlags.Active;
+            // Tile.ClearTile clears slope and Active/Inactive only. In particular,
+            // FinalCleanup's replacement preserves wall, liquid, wires, paint,
+            // coatings, actuator and any retained frame coordinates.
+            tile.Shape = 0;
+            tile.Flags &= ~WorldTileFlags.Inactive;
+            tile.Flags |= WorldTileFlags.Active;
             tile.Type = 668;
             placed++;
         }
