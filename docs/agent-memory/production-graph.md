@@ -1,5 +1,9 @@
 # Production graph
 
+## Isolated event authority integration
+
+`feature/events-invasion-progression` reuses Application player funding, invasion scalar, detached NPC death plans, progression journal, checkpoint and packet owners; no package/project added. Paid events adopt debit/RNG/state before observers. Frost2 joins save/progress/terminal ownership. Blood Moon/Eclipse use live clock/header values. Moon preview counters adopt with accepted death; ordinary admitted Goblin/Pirate deaths retain a local publication journal. Core projected terminal removal owns exact generation/revision; Application owns verified content admission. Live shop resolver overlays Frost/Pirate/Martian milestones. Final evidence and remaining natural/actor/loot/platform dependencies are tracked at the work-state head and in paired event guides.
+
 2026-10-25 ordinary Shell Piles row56 now uses the existing `SourceBackedPostSettle1458 -> PostSettlePass1458` owner, Beaches' two published `Workspace` shell anchors and the same shared vanilla RNG. The invented sampled single-tile placement is replaced by source `ShellPile` brush offers; no project, dependency, threading or persistence edge changes. Row56 is bounded `C` on eight registered official full-pass fixtures; special seeds still route through compatibility.
 
 2026-10-25 Waterfalls row58 now uses the existing `SourceBackedPostSettle1458 -> PostSettlePass1458` owner, shared vanilla RNG, collision catalog and `WorldSmoothingCatalog1458` pound/support predicates. The invented liquid-placement loop is removed. No project, dependency or ownership edge changes; row58 is bounded `C` on eight official registered full-pass fixtures.

@@ -79,6 +79,7 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
     public byte? GameMode { get; init; }
     public int? SpawnTileY { get; init; }
     public bool UseLocalSeasonCalendar { get; init; }
+    public bool DualDungeonsSeed { get; init; }
     // TerrariaServer 1.4.5.8 Main.onlyShimmerOceanWorlds uses retained seed flags only.
     public bool OnlyShimmerOceanWorlds => DrunkWorld && TenthAnniversaryWorld &&
         !RemixWorld && !ZenithWorld && !NotTheBeesWorld;
@@ -131,7 +132,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
             metadata.ZenithWorld,
             metadata.SandstormHappening,
             metadata.InvasionType is >= 1 and <= 4,
-            metadata.NoTrapsWorld) { GameMode = metadata.GameMode, UseLocalSeasonCalendar = true, SpawnTileY = metadata.SpawnY };
+            metadata.NoTrapsWorld) { GameMode = metadata.GameMode, UseLocalSeasonCalendar = true,
+                SpawnTileY = metadata.SpawnY, DualDungeonsSeed = metadata.DualDungeonsSeed };
     }
 }
 
@@ -329,15 +331,18 @@ internal sealed class RuntimeTownCommerceResolver1458
     private readonly RuntimeTownCommerceWorldFacts1458 world;
     private readonly VanillaTownSceneMetricsScanner1458 sceneScanner;
     private readonly RuntimeNpcBuffStatus1458? npcStatus;
+    private readonly RuntimeWorldProgressionMutations? progression;
 
     public RuntimeTownCommerceResolver1458(
         WorldTileStore tiles,
         RuntimeTownNpcStateStore? townNpcs,
         RuntimeNpcStore npcs,
         in RuntimeTownCommerceWorldFacts1458 world,
-        RuntimeNpcBuffStatus1458? npcStatus = null)
+        RuntimeNpcBuffStatus1458? npcStatus = null,
+        RuntimeWorldProgressionMutations? progression = null)
     {
         this.npcStatus = npcStatus;
+        this.progression = progression;
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         this.townNpcs = townNpcs;
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -385,9 +390,10 @@ internal sealed class RuntimeTownCommerceResolver1458
         VanillaMoonPhase moonPhase = clock?.MoonPhase ??
             (VanillaMoonPhase)Math.Clamp((int)world.InitialMoonPhase, 0, VanillaMoonPhases.Count - 1);
         double time = clock?.Time ?? world.InitialWorldTime;
+        bool Done(VanillaWorldProgressionId milestone, bool saved) => saved || progression?.IsCompleted(milestone) == true;
 
         var context = new VanillaTownShopContext(
-            HardMode: world.HardMode,
+            HardMode: Done(VanillaWorldProgressionId.Hardmode, world.HardMode),
             BloodMoon: bloodMoon,
             DayTime: dayTime,
             HappyWindyDay: clock?.HappyWindyDay ?? false,
@@ -398,12 +404,12 @@ internal sealed class RuntimeTownCommerceResolver1458
             ZoneGraveyard: scene.ZoneGraveyard,
             ZoneUnderworld: scene.ZoneUnderworld,
             ZoneGlowshroom: scene.ZoneGlowshroom,
-            DownedBoss1: world.DownedBoss1,
-            DownedBoss2: world.DownedBoss2,
-            DownedBoss3: world.DownedBoss3,
-            DownedSlimeKing: world.DownedSlimeKing,
-            DownedPlantera: world.DownedPlantera,
-            DownedPirates: world.DownedPirates,
+            DownedBoss1: Done(VanillaWorldProgressionId.EyeOfCthulhu, world.DownedBoss1),
+            DownedBoss2: Done(VanillaWorldProgressionId.EvilBoss, world.DownedBoss2),
+            DownedBoss3: Done(VanillaWorldProgressionId.Skeletron, world.DownedBoss3),
+            DownedSlimeKing: Done(VanillaWorldProgressionId.KingSlime, world.DownedSlimeKing),
+            DownedPlantera: Done(VanillaWorldProgressionId.Plantera, world.DownedPlantera),
+            DownedPirates: Done(VanillaWorldProgressionId.PirateInvasion, world.DownedPirates),
             Crimson: world.Crimson,
             RemixWorld: world.RemixWorld,
             TenthAnniversaryWorld: world.TenthAnniversaryWorld,
@@ -411,7 +417,7 @@ internal sealed class RuntimeTownCommerceResolver1458
             InfectedSeed: world.InfectedSeed,
             GoodWorld: world.GoodWorld,
             VampireSeed: world.VampireSeed,
-            Eclipse: world.Eclipse,
+            Eclipse: clock?.EclipseActive ?? world.Eclipse,
             LanternsUp: world.LanternsUp,
             ZoneBeach: scene.ZoneBeach,
             ZoneSky: scene.ZoneSky,
@@ -421,18 +427,18 @@ internal sealed class RuntimeTownCommerceResolver1458
             ZoneCrimson: scene.ZoneCrimson,
             ShoppingZoneForest: scene.ShoppingZoneForest,
             ShoppingZoneBelowSurface: scene.ShoppingZoneBelowSurface,
-            DownedClown: world.DownedClown,
-            DownedAncientCultist: world.DownedAncientCultist,
-            DownedFrost: world.DownedFrost,
-            DownedMechBossAny: world.DownedMechBossAny,
-            DownedMechBoss1: world.DownedMechBoss1,
-            DownedMechBoss2: world.DownedMechBoss2,
-            DownedMechBoss3: world.DownedMechBoss3,
-            DownedGolemBoss: world.DownedGolemBoss,
-            DownedMoonLord: world.DownedMoonLord,
-            DownedQueenSlime: world.DownedQueenSlime,
-            DownedTowerSolar: world.DownedTowerSolar,
-            DownedMartians: world.DownedMartians,
+            DownedClown: Done(VanillaWorldProgressionId.Clown, world.DownedClown),
+            DownedAncientCultist: Done(VanillaWorldProgressionId.LunaticCultist, world.DownedAncientCultist),
+            DownedFrost: Done(VanillaWorldProgressionId.FrostLegion, world.DownedFrost),
+            DownedMechBossAny: Done(VanillaWorldProgressionId.AnyMechanicalBoss, world.DownedMechBossAny),
+            DownedMechBoss1: Done(VanillaWorldProgressionId.Destroyer, world.DownedMechBoss1),
+            DownedMechBoss2: Done(VanillaWorldProgressionId.Twins, world.DownedMechBoss2),
+            DownedMechBoss3: Done(VanillaWorldProgressionId.SkeletronPrime, world.DownedMechBoss3),
+            DownedGolemBoss: Done(VanillaWorldProgressionId.Golem, world.DownedGolemBoss),
+            DownedMoonLord: Done(VanillaWorldProgressionId.MoonLord, world.DownedMoonLord),
+            DownedQueenSlime: Done(VanillaWorldProgressionId.QueenSlime, world.DownedQueenSlime),
+            DownedTowerSolar: Done(VanillaWorldProgressionId.SolarPillar, world.DownedTowerSolar),
+            DownedMartians: Done(VanillaWorldProgressionId.MartianMadness, world.DownedMartians),
             HasTaxCollector: HasTownNpc(VanillaNpcIds.TaxCollector),
             HasAngler: HasTownNpc(VanillaNpcIds.Angler),
             HasWizard: HasTownNpc(VanillaNpcIds.Wizard),

@@ -57,10 +57,12 @@ public sealed class MoonEventProgressReplicationTests
             .GetProperty("InnerQueue", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(outbound));
 
+        // Set up the accepted death before handing ownership to the running loop.
+        Assert.True(world.WorldClock.TryAdvanceMoonEventDeath(new NpcTypeId(338), expertMode: false, masterMode: false));
         world.Start();
         try
         {
-            Assert.True(world.WorldClock.TryAdvanceMoonEventDeath(new NpcTypeId(338), expertMode: false, masterMode: false));
+            bool sawInitial = false;
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             while (!deadline.IsCancellationRequested)
             {
@@ -69,6 +71,12 @@ public sealed class MoonEventProgressReplicationTests
                     if (received.Bytes.Span[2] != 78)
                         continue;
 
+                    if (!sawInitial)
+                    {
+                        Assert.Equal("0D004E00000000010000000101", Convert.ToHexString(received.Bytes.Span));
+                        sawInitial = true;
+                        continue;
+                    }
                     Assert.Equal("0D004E01000000190000000101", Convert.ToHexString(received.Bytes.Span));
                     return;
                 }

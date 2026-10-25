@@ -446,7 +446,7 @@ internal sealed partial class NpcAuthority
                     naturalSpawnSkyblockNoHellstone,
                     naturalSpawnSkyblockNoLifeCrystals,
                     naturalSpawnWorldFacts?.DownedBoss3 ?? false,
-                    naturalSpawnWorldFacts?.Eclipse ?? false);
+                    worldClock.EclipseActive);
                 vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive, worldClock.SnowMoonActive);
                 vanillaTargeting.SetInvasionType(invasion is null ? 0 :
                     invasion.TryCapture(out var activeInvasion) ? activeInvasion.State.Type : null);
@@ -703,71 +703,22 @@ internal sealed partial class NpcAuthority
         if (!command.Connection.IsAssigned || !players.IsCurrent(command.Connection))
             return;
 
-        if (command.NpcType is -1 or -3 or -7)
+        if (command.NpcType is -1 or -2 or -3)
         {
-            ApplyInvasionRequest(command.NpcType);
+            ApplyInvasionRequest(command.Connection, command.NpcType);
+            return;
+        }
+        if (command.NpcType == -7) return; // Only an authoritative Martian Probe may start this invasion.
+
+        if (command.NpcType is -4 or -5 or -6 or -10)
+        {
+            ApplyMoonEventRequest(command.Connection, command.NpcType);
             return;
         }
 
-        // MessageBuffer case 61 routes -16 to NPC.SpawnMechQueen before the ordinary MPAllowedEnemies
-        // gate. The special-seed predicate lives with the loaded world facts, not with a client packet.
-        if (command.NpcType == -16)
-        {
-            TrySpawnMechdusa(command.Connection.Player.Slot.Value);
-            return;
-        }
-
-        // Player.ItemCheck sends these two packet-61 action IDs only after its night/no-event item gate. Keep the
-        // active world state authoritative, including rejection of forged daytime or overlapping event requests.
-        if (command.NpcType == -4)
-        {
-            worldClock?.TryStartPumpkinMoon();
-            return;
-        }
-        if (command.NpcType == -5)
-        {
-            worldClock?.TryStartSnowMoon();
-            return;
-        }
-
-        if (!IsVanillaMultiplayerAllowedSummon(command.NpcType))
-            return;
-
-        var type = new NpcTypeId(command.NpcType);
-        // Packet 61 is gated by NPCID.Sets.MPAllowedEnemies in vanilla, not by the IsBoss flag.
-        // The allow-list also contains Skeletron Prime limbs, so rejecting non-boss definitions here
-        // diverges from the source and can break otherwise valid summon flows.
-        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition))
-            return;
-
-        int activeCount = npcs.CopyActive(naturalSpawnNpcBuffer);
-        for (int i = 0; i < activeCount; i++)
-        {
-            if (naturalSpawnNpcBuffer[i].TypeIdentity == type)
-                return;
-        }
-
-        if (!TryGetPlayerTarget(command.Connection.Player.Slot.Value, out VanillaNpcTargetCandidate player) ||
-            !TryFindBossSpawnPosition(player, definition, out float x, out float y))
-            return;
-
-        var update = new NpcStateUpdate(
-            Type: type.Value,
-            NetId: checked((short)type.Value),
-            PositionX: x,
-            PositionY: y,
-            VelocityX: 0f,
-            VelocityY: 0f,
-            Target: command.Connection.Player.Slot.Value,
-            Ai: default,
-            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
-        if (npcs.TrySpawnVanilla(in update, out _))
-        {
-            AppliedSpawns++;
-            AnnounceBossSpawn(type);
-        }
-        else
-            RejectedSpawns++;
+        // The vanilla MPAllowedEnemies allow-list describes a wire route, not payment or
+        // an owned boss birth. Unrepresented item/biome/batch producers remain closed.
+        ApplyPaidBossSummon(command.Connection, command.NpcType);
     }
 
     private void AnnounceBossSpawn(NpcTypeId type)
@@ -884,9 +835,6 @@ internal sealed partial class NpcAuthority
         AppliedSpawns++;
         return true;
     }
-
-    private static bool IsVanillaMultiplayerAllowedSummon(short npcType) => npcType is
-        4 or 13 or 50 or 125 or 126 or 127 or 128 or 129 or 130 or 131 or 134 or 222 or 245 or 266 or 370 or 657 or 668;
 
     private bool TryGetPlayerTarget(byte slot, out VanillaNpcTargetCandidate target)
     {
@@ -1247,7 +1195,7 @@ internal sealed partial class NpcAuthority
                 maxSpawns *= 2;
             }
         }
-        else if (naturalSpawnWorldFacts?.Eclipse == true)
+        else if (worldClock?.EclipseActive ?? naturalSpawnWorldFacts?.Eclipse == true)
         {
             spawnRate = (int)(spawnRate * .2d);
             maxSpawns = (int)(maxSpawns * 1.9f);
@@ -1873,7 +1821,7 @@ internal sealed partial class NpcAuthority
     {
         if (spawnTileY < 2 ||
             naturalSpawnWorldFacts is not RuntimeTownCommerceWorldFacts1458 facts ||
-            facts.HardMode || facts.Eclipse || facts.RemixWorld || facts.InfectedSeed ||
+            facts.HardMode || (worldClock?.EclipseActive ?? facts.Eclipse) || facts.RemixWorld || facts.InfectedSeed ||
             worldClock!.BloodMoonActive ||
             scene is not VanillaTownSceneMetrics1458 biome ||
             biome.ZoneJungle || biome.ZoneCorrupt || biome.ZoneCrimson || biome.ZoneDungeon ||

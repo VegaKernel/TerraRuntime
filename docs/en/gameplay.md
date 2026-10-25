@@ -407,6 +407,8 @@ These subsystems are order-sensitive and can touch large world areas, so their i
 
 Permanent milestones, active events and invasion identities now project from world metadata into separate typed gameplay state.
 
+Event invocation now requires an owned selected-item debit, and raw client damage cannot award event progress. Frost Legion shares the existing invasion state, completion and save owners. Blood Moon/Eclipse use live clock/save state; admitted early Moon deaths adopt wave counters before observers. See [paid event invocation and remaining encounter dependencies](paid-event-invocation-1458.md).
+
 Their simulation remains a major parity gap. Do not infer full support from a readable milestone or generic NPC infrastructure: transitions, waves, spawn rules, rewards and gameplay consequences still require source-backed implementations.
 
 As these systems become authoritative, each needs explicit persistence, synchronization and official behavior evidence.

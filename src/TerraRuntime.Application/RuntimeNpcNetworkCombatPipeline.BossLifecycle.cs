@@ -370,7 +370,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void AdvanceMoonEventDeath(in NpcSnapshot dead)
     {
-        // NPC.DoDeathEvents invokes both Moon-event progress checks after NPCLoot. RuntimeWorldClock owns their
+        // NPC.checkDead invokes both Moon-event progress checks after NPCLoot. RuntimeWorldClock owns their
         // shared transient wave state, while this boundary makes every authoritative kill path contribute once.
         DeathClock?.TryAdvanceMoonEventDeath(dead.TypeIdentity, expertMode, masterMode);
     }

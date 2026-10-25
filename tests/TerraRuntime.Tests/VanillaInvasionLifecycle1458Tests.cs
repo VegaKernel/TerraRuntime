@@ -110,7 +110,7 @@ public sealed class VanillaInvasionLifecycle1458Tests
         }
         Assert.True(VanillaInvasionLifecycle1458.TryRecoverLegacySizeStart(2, 121, out int frost));
         Assert.Equal(160, frost);
-        Assert.False(VanillaInvasionLifecycle1458.CanOwnLive(new(Type: 2, Size: 121, SizeStart: frost,
+        Assert.True(VanillaInvasionLifecycle1458.CanOwnLive(new(Type: 2, Size: 121, SizeStart: frost,
             Delay: 0, X: 1, Warning: 0, Progress: 0, ProgressMax: 0, ProgressIcon: 0,
             ProgressWave: 0, DownedGoblin: false, DownedPirate: false, DownedMartian: false, LanternNextNight: false)));
     }

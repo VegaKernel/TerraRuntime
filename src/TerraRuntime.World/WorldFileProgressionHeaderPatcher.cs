@@ -20,6 +20,7 @@ public static class WorldFileProgressionHeaderPatcher
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private const ulong SupportedMutationMask =
         (1UL << (int)VanillaWorldProgressionId.GoblinArmy) |
+        (1UL << (int)VanillaWorldProgressionId.FrostLegion) |
         (1UL << (int)VanillaWorldProgressionId.PirateInvasion) |
         (1UL << (int)VanillaWorldProgressionId.MartianMadness) |
         (1UL << (int)VanillaWorldProgressionId.EyeOfCthulhu) |
@@ -135,8 +136,11 @@ public static class WorldFileProgressionHeaderPatcher
         HeaderPrefixReader invasionFlagsReader = reader;
         if (!invasionFlagsReader.TrySkipBools(3)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         int downedGoblinsOffset = invasionFlagsReader.Offset;
-        if (!invasionFlagsReader.TryReadBool(out _) || !invasionFlagsReader.TrySkipBools(2))
+        if (!invasionFlagsReader.TryReadBool(out _) || !invasionFlagsReader.TryReadBool(out _))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        // WorldFile.SaveWorldHeader 1.4.5.8: Goblins, Clown, Frost, Pirates.
+        int downedFrostOffset = invasionFlagsReader.Offset;
+        if (!invasionFlagsReader.TryReadBool(out _)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         int downedPiratesOffset = invasionFlagsReader.Offset;
         if (!invasionFlagsReader.TryReadBool(out _)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
@@ -169,6 +173,7 @@ public static class WorldFileProgressionHeaderPatcher
 
         patchedHeader = sourceHeader.ToArray();
         if (mutations.IsCompleted(VanillaWorldProgressionId.GoblinArmy)) patchedHeader[downedGoblinsOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.FrostLegion)) patchedHeader[downedFrostOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.PirateInvasion)) patchedHeader[downedPiratesOffset] = 1;
         // Source SaveWorldFlags places downedMartians directly after downedFishron.
         if (mutations.IsCompleted(VanillaWorldProgressionId.MartianMadness)) patchedHeader[townState.DukeFishronOffset + 1] = 1;

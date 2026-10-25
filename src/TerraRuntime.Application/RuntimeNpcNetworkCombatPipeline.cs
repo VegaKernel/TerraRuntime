@@ -222,6 +222,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             return RuntimeNpcNetworkDamageResult.Rejected;
         }
 
+        // Packet 28 contains a claimed hit, not a server collision/death entitlement.
+        // Progression encounters and event participants use the owned projectile, melee or
+        // environment lanes; the compatibility fallback must never manufacture progress.
+        if (TerraRuntime.Gameplay.Worlds.VanillaInvasionLifecycle1458.GetGroup(current.Type) > 0 ||
+            RuntimeWorldClock.IsMoonEventParticipant(current.TypeIdentity) ||
+            RequiresOwnedProgressionStrike(current.TypeIdentity))
+            return RuntimeNpcNetworkDamageResult.Rejected;
+
         if (!CanAcceptBossDeathCapacity(in current))
             return RuntimeNpcNetworkDamageResult.Rejected;
 
@@ -538,7 +546,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
         { CancelPendingDeathPlan(); return RuntimeProjectileNpcDamageResult.Rejected; }
 
-        if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost))
+        if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost ||
+            RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity)))
             return RuntimeProjectileNpcDamageResult.Killed;
 
         if (result.Lethal && pendingDeathPlan?.IsAdoptedUnpublished == true)
@@ -662,7 +671,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
-        if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost))
+        if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost ||
+            RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity)))
             return RuntimeTownNpcMeleeDamageResult1458.Killed;
 
         if (result.Lethal && pendingDeathPlan?.IsAdoptedUnpublished == true)

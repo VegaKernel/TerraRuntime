@@ -342,7 +342,9 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
                 clock.Raining,
                 clock.RainTime,
                 clock.MaxRain,
-                out patchedHeader);
+                out patchedHeader,
+                bloodMoon: clock.BloodMoon,
+                eclipse: clock.Eclipse);
             if (patchResult != WorldFileClockHeaderPatchResult.Patched)
                 throw new InvalidDataException($"Authoritative world clock header patch failed: {patchResult}.");
 

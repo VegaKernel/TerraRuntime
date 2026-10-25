@@ -30,6 +30,9 @@ public readonly record struct WorldInfoRuntimeState(
     /// <summary>Live packet-7 rain intensity; absent callers retain the persisted header value.</summary>
     public float? Rain { get; init; }
 
+    /// <summary>Live solar eclipse; absent callers retain the persisted header value.</summary>
+    public bool? Eclipse { get; init; }
+
     /// <summary>Owned current invasion identity; null preserves the loaded header value.</summary>
     public sbyte? InvasionType { get; init; }
 
@@ -84,7 +87,7 @@ public static class WorldInfoPacketMapper
         return new WorldInfo
         {
             Time = live.Time,
-            DayandMoonInfo = Bits(live.DayTime, live.BloodMoon, state.Eclipse),
+            DayandMoonInfo = Bits(live.DayTime, live.BloodMoon, live.Eclipse ?? state.Eclipse),
             MoonPhase = live.MoonPhase,
             MaxTilesX = checked((short)header.Dimensions.WidthTiles),
             MaxTilesY = checked((short)header.Dimensions.HeightTiles),
@@ -170,7 +173,7 @@ public static class WorldInfoPacketMapper
                 state.PartyIsUp),
             EventInfo5 = Bits(
                 Done(VanillaWorldProgressionId.PirateInvasion, state.DownedPirates),
-                state.DownedFrost,
+                Done(VanillaWorldProgressionId.FrostLegion, state.DownedFrost),
                 Done(VanillaWorldProgressionId.GoblinArmy, state.DownedGoblins),
                 state.SandstormHappening,
                 transient.Dd2EventOngoing,

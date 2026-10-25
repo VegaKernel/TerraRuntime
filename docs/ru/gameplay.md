@@ -407,6 +407,8 @@ Live scheduler вычисляет slice TerrariaServer 1.4.5.8 по формул
 
 Permanent milestones, active events и invasion identities теперь проецируются из world metadata в отдельный typed gameplay state.
 
+Вызов события теперь требует расхода выбранного предмета из серверного бюджета; сырой клиентский урон не даёт прогресс событий. Frost Legion использует существующих владельцев состояния вторжений, завершения и сохранения. Blood Moon/Eclipse читают живое состояние часов и сохраняются; допущенные ранние лунные смерти принимают счётчики волн до уведомлений. См. [оплаченные вызовы и оставшиеся зависимости боевых событий](paid-event-invocation-1458.md).
+
 Их simulation остаётся major parity gap. Нельзя выводить full support из readable milestone или generic NPC infrastructure: transitions, waves, spawn rules, rewards и gameplay consequences всё ещё требуют source-backed implementations.
 
 При переходе этих systems в authoritative state каждой нужны explicit persistence, synchronization и official behavior evidence.

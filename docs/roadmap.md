@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Events / invasion / progression: isolated implementation
+
+Branch `feature/events-invasion-progression` starts at `add68351`, preserving merged contact debuffs. The connected block adds funded event/boss intents, refusal of client-authored event victories, Frost Legion scalar/save/wire/shop ownership, live saved Blood Moon/Eclipse and retained Moon/Goblin/Pirate death adoption before observers. Snow Globe refuses without charge while AI38 remains unadmitted; source selection/loot are ready behind the shared gate. See [EN](en/paid-event-invocation-1458.md) / [RU](ru/paid-event-invocation-1458.md). Accepted local checks: Release WAE0/0, focused201, four meaningful omission controls, fast25067/25068 and unfiltered full1563360/1563361 (all5050 methods, zero failures/errors, one old liquid skip), Windows NativeAOT/five smokes. Source SHA256 `d57299e0e1b87cf258a03bc375d652379518b1f1d3f6a333cc611282e7659eaa`. Linux Native and official-client evidence remain unverified. Natural shared-RNG scheduling, missing actors/producers and later Moon rewards/seasons remain open; this is not full parity acceptance. Historical notes below do not override current code or these limitations.
+
 ## NPC contact debuff application: isolated branch, 2026-10-25
 
 Independent worktree `TerraRuntime-combat-buffs`, branch `combat/npc-contact-buffs`, base `e0bbf65fc125e43d0a4d5495468cef6fc06d6d71`. No all-tools cache drafts were imported, edited or promoted. Existing contact collision/Hurt/HP/immunity owners now adopt source-ordered NPC statuses before observers; player slots retain contact provenance/timers and generation-checked packet 55 confirms adjusted duration. Server actors merge contact presence with lava/MoonLeech and use existing HP/regen for neutral poison/cursed/fire. Ankh Shield immunity is projected through the admitted equipment snapshot. Default contact RNG forwards the existing shared Main.rand owner.

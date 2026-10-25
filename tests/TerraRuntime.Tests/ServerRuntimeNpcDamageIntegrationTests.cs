@@ -28,9 +28,9 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
             HitDirectionWire: 1,
             CriticalRaw: 0);
 
-        fixture.State.Apply(new ClientNpcDamageRuntimeCommand(attacker, hit));
+        Assert.True(fixture.StrikeOwned(attacker.Player, king.Handle, hit.Damage));
 
-        Assert.Equal(1, fixture.State.AppliedClientNpcDamage);
+        Assert.Equal(0, fixture.State.AppliedClientNpcDamage);
         Assert.Equal(0, fixture.State.RejectedClientNpcDamage);
         Assert.False(fixture.Npcs.TryGet(king.Handle, out _));
         Span<WorldItemSnapshot> drops = stackalloc WorldItemSnapshot[VanillaBossRecovery1458.MaximumRecoveryDrops];
@@ -45,9 +45,9 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         Assert.InRange(recovery.Count(drop => drop.ItemNetId == VanillaKingSlimeItemIds.KingSlimeTrophy.Value), 0, 1);
         Assert.DoesNotContain(recovery, drop => drop.ItemNetId == VanillaKingSlimeItemIds.KingSlimeBossBag.Value);
         Assert.DoesNotContain(recovery, drop => drop.Handle.Slot == 0); // Addressed Boss Bag retains its unpublished lease.
-        Assert.Equal(9, fixture.NpcRelayedFrames); // ack + achievement97 + bestiary82 to both + peer28 + announcement and death23 to both.
+        Assert.Equal(9, fixture.NpcRelayedFrames); // achievement97 + bestiary82 + owned strike28 + announcement and death23.
         Assert.Equal(1, fixture.ItemRelayedFrames); // addressed packet 90 only to the interacting player.
-        Assert.Equal(8, fixture.QueuedFrames(attacker.Source)); // NPC/buff baseline + ack + achievement + bestiary + item90 + announcement + death.
+        Assert.Equal(8, fixture.QueuedFrames(attacker.Source)); // NPC/buff baseline + owned strike + achievement + bestiary + item90 + announcement + death.
         Assert.Equal(6, fixture.QueuedFrames(peer.Source)); // NPC/buff baseline + bestiary + packet28 + announcement + death.
 
         WorldItemStateUpdate ordinary = CreateWorldItem();
@@ -138,6 +138,10 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         public RuntimeNpcStore Npcs { get; }
         public RuntimeWorldItemStore WorldItems { get; }
         public ServerRuntimeState State { get; }
+        public bool StrikeOwned(PlayerHandle player, NpcHandle target, int damage) =>
+            ((ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(State)!)
+            .Npcs.TryStrikeBotPlayerMelee(player, target, damage, 0, false, 0, 1);
         public long NpcRelayedFrames => npcReplication.RelayedFrames;
         public long ItemRelayedFrames => itemReplication.RelayedFrames;
 
@@ -180,8 +184,7 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
 
-            // This fixture validates NPC death/loot/progression, not authoritative direct-melee calculation. Keep a
-            // canonical selected item present, but use a bow so combat integrity intentionally takes LegacyFallback.
+            // The owned server strike supplies damage; a selected bow does not grant raw packet-28 kill authority.
             var equipment = new PlayerEquipmentCommitRequest(
                 connection.Player.Slot,
                 SlotId: 0,

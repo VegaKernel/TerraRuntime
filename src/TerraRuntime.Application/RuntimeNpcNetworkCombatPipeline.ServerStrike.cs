@@ -41,7 +41,26 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return true;
         }
 
+        if (result.Lethal && plannedOrdinaryInvasionRemoval is not null)
+        {
+            AdoptOrdinaryInvasionOwners(in committed);
+            var eventWire = new TerrariaNpcDamageState(committed.Handle.Slot,
+                RuntimeNpcPacketProjection.ToProtocolGeneration(committed.Handle.Generation),
+                (short)Math.Min(request.BaseDamage, short.MaxValue), request.KnockBack,
+                checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
+            PublishOrdinaryInvasionDeath(in committed, in eventWire, prelude);
+            return true;
+        }
+
         bool preparedProjectile = pendingProjectileStrike is not null;
+        if (result.Lethal && pendingDeathPlan?.IsUnpublishedMode == true &&
+            !preparedProjectile && pendingDebuffPrelude is null)
+        {
+            // The admitted early Moon-event families share the existing detached death owner.
+            // Adopt their wave, loot and RNG before packet or loot observers can reenter.
+            preparedProjectileCommittedNpc = committed;
+            AdoptPreparedStrikeOwners();
+        }
         if (preparedProjectile || pendingDebuffPrelude is not null)
         {
             pendingProjectileResolvedDamage = result.ResolvedDamage;

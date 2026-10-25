@@ -240,8 +240,16 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     public void BossAnnouncement(string key, string? nameKey = null) =>
         Broadcast(TerrariaBossAnnouncementCodec1458.Encode(key, nameKey));
 
+    internal void ProgressionEvent(short eventId) =>
+        Broadcast(TerrariaProgressionEventCodec1458.Encode(eventId));
+
     public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)
     {
+        if (activeDeathPublication is { } death && death.Matches(kind, in snapshot))
+        {
+            death.TryPublishFrame(kind);
+            return;
+        }
         if (kind == NpcStateCommitKind.Spawn &&
             retainedBirthJournals[snapshot.Handle.Slot] is { } birthJournal && birthJournal.Matches(in snapshot))
         {

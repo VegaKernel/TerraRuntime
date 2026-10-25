@@ -49,7 +49,8 @@ public sealed partial class RuntimeNpcStore
         internal bool IsCurrentOwned() => !completed && !owner.mutationSerialExhausted &&
             owner.mutationSerial == serial && owner.IsSpawnRandomSource(live) && live.HasSameState(before);
 
-        internal bool TryStage(in NpcStateUpdate update, float centerX, float bottomY, out NpcSnapshot birth)
+        internal bool TryStage(in NpcStateUpdate update, float centerX, float bottomY, out NpcSnapshot birth,
+            byte startSlot = 0)
         {
             birth = default;
             if (child is not null || !IsCurrentOwned())
@@ -66,11 +67,26 @@ public sealed partial class RuntimeNpcStore
                 update.VelocityX, update.VelocityY, update.Target)
             {
                 InitialAi = update.Ai,
-                NetIdOverride = new(update.NetId)
+                NetIdOverride = new(update.NetId),
+                StartSlot = startSlot
             };
             // NewNPC overwrites SetDefaults ai[] with its explicit arguments, including all-zero AI.
             if (!detached.TrySpawnIntent(in intent, out birth) || !detached.TryRetainPendingBirth(in birth))
                 return false;
+            child = birth;
+            return true;
+        }
+
+        internal bool TryStageBoss(in NpcStateUpdate update, int centerX, int bottomY, out NpcSnapshot birth)
+        {
+            if (!TryStage(in update, centerX, bottomY, out birth, startSlot: 1)) return false;
+            // NPC.SpawnBoss 1.4.5.8 scales the accepted NewNPC lifetime before its first packet23.
+            ref SlotState state = ref detached!._slots[birth.Handle.Slot];
+            state.Update = state.Update with { Simulation = state.Update.Simulation with
+            {
+                TimeLeft = checked(state.Update.Simulation.TimeLeft * 20)
+            } };
+            birth = Capture(birth.Handle.Slot, in state);
             child = birth;
             return true;
         }

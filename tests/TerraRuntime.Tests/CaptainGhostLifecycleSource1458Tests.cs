@@ -20,6 +20,31 @@ namespace TerraRuntime.Tests;
 
 public sealed class CaptainGhostLifecycleSource1458Tests
 {
+    [Fact]
+    public void Captain_possible_or_unknown_dungeon_spirit_producer_refuses_before_ghost_loot_or_progress()
+    {
+        foreach (bool unknown in new[] { false, true })
+        {
+            var fixture = new Fixture(false, false, hardmode: true,
+                planteraDowned: unknown ? null : true, dungeon: unknown ? null : true);
+            var beforeRandom = fixture.Random.Clone();
+            var beforeInvasion = fixture.CaptureInvasion();
+            Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Rejected,
+                fixture.Pipeline.TryStrikeEnvironment(fixture.Captain.Handle, 100000));
+            Assert.True(fixture.Npcs.TryGet(fixture.Captain.Handle, out var current));
+            Assert.Equal(fixture.Captain, current);
+            Assert.Equal(1, fixture.Npcs.ActiveCount);
+            Assert.True(fixture.Random.HasSameState(beforeRandom));
+            Assert.Equal(beforeInvasion, fixture.CaptureInvasion());
+            Assert.Empty(fixture.Drops);
+            Assert.Empty(fixture.Events);
+        }
+        var neutralTarget = new Fixture(false, false, hardmode: true, planteraDowned: true, dungeon: false);
+        Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Killed,
+            neutralTarget.Pipeline.TryStrikeEnvironment(neutralTarget.Captain.Handle, 100000));
+        Assert.Equal(1, neutralTarget.CaptureInvasion().Size);
+        Assert.False(neutralTarget.Npcs.TryGet(neutralTarget.Captain.Handle, out _));
+    }
 
     // Configured original checkDead -> UpdateNPC -> UpdateInvasion component evidence.
     // Runtime environment entry contributes its own initial28; source fade negative HP is not owned.
@@ -528,7 +553,8 @@ public sealed class CaptainGhostLifecycleSource1458Tests
         private readonly PlayerStateSnapshot player;
         private readonly bool living;
 
-        internal Fixture(bool good, bool full, bool replicate = false, int invasionType = 3, bool attachInvasion = true, int invasionSize = 6, bool playerLiving = true, bool slimeRain = false)
+        internal Fixture(bool good, bool full, bool replicate = false, int invasionType = 3, bool attachInvasion = true, int invasionSize = 6, bool playerLiving = true, bool slimeRain = false,
+            bool hardmode = false, bool? planteraDowned = null, bool? dungeon = false)
         {
             living = playerLiving;
             Clock = new(0, true, 0, slimeRain ? 100 : 0, 0);
@@ -543,7 +569,7 @@ public sealed class CaptainGhostLifecycleSource1458Tests
                 Revision = new(1),
                 PositionX = 1000,
                 PositionY = 440,
-                Zones = new(0, 0, 0, 0, 0, 0),
+                Zones = dungeon is { } knownDungeon ? new((byte)(knownDungeon ? 1 : 0), 0, 0, 0, 0, 0) : null,
                 HasHealth = true,
                 Life = 400,
                 MaxLife = 400,
@@ -565,7 +591,8 @@ public sealed class CaptainGhostLifecycleSource1458Tests
             Pipeline = new(Npcs, items, this, new PlayerAuthority(null, null), () => 0,
                 replicate ? Registry : null, new(items), null, Clock, Progression, false, false,
                 lootRandom: Random, lootRemixWorld: false,
-                globalLootWorld: new(100, 80, 1, false, false, false, false, 35, 40, false, false),
+                planteraDownedBaseline: planteraDowned,
+                globalLootWorld: new(100, 80, 1, hardmode, false, false, false, 35, 40, false, false),
                 npcSpecificGoodWorld: good,
                 invasion: attachInvasion ? Owner : null, invasionProgressPublisher: accepted => Events.Add("78:" + accepted.State.Size));
             Events.Clear();

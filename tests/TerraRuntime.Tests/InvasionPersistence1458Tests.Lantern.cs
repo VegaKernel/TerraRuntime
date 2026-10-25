@@ -39,7 +39,7 @@ public sealed partial class InvasionPersistence1458Tests
     }
 
     [Fact]
-    public void Prepared_metadata_and_live_owner_retain_pending_flag_but_unknown_frost_keeps_raw_state()
+    public void Prepared_metadata_and_live_owner_retain_pending_flag_including_loaded_frost()
     {
         using var source = LoadLanternReference();
         foreach (var row in source.RootElement.GetProperty("rows").EnumerateArray())
@@ -69,8 +69,10 @@ public sealed partial class InvasionPersistence1458Tests
                 InvasionType = 2,
                 LanternNightNextNight = metadata.LanternNightNextNight
             }, 100);
-            Assert.False(frost.TryCapture(out _));
-            Assert.Null(frost.CaptureSaveState());
+            Assert.True(frost.TryCapture(out var frostCapture));
+            Assert.Equal(2, frostCapture.State.Type);
+            Assert.Equal(metadata.LanternNightNextNight, frostCapture.State.LanternNextNight);
+            Assert.Equal(metadata.LanternNightNextNight, frost.CaptureSaveState()!.Value.LanternNightNextNight);
         }
     }
 

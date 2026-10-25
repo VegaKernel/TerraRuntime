@@ -77,7 +77,8 @@ internal sealed partial class NpcAuthority
                 ? InvasionSpawnAttempt.Ordinary : InvasionSpawnAttempt.Continue;
         }
         // Martian selection and Skyblock's extra GetZombieSettings branch remain unowned.
-        if (captured.State.Type is not (1 or 3) || naturalSpawnSkyblockLowTiles)
+        if (captured.State.Type is not (1 or 2 or 3) || naturalSpawnSkyblockLowTiles ||
+            captured.State.Type == 2 && !RuntimeInvasionSpawn1458.IsFrostCohortReady())
             return InvasionSpawnAttempt.Stop;
         GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns, invaders: true);
         if (nearbyNpcCount >= maxSpawns || random.NextInt32(0, spawnRate) != 0)
@@ -85,10 +86,13 @@ internal sealed partial class NpcAuthority
         if (!TryFindVanillaNaturalSpawnFloor(in player, random, out int tileX, out int floorY))
             return AdoptNoBirth();
         bool hardMode = facts.HardMode || progression.IsCompleted(VanillaWorldProgressionId.Hardmode);
-        NpcTypeId selected = invasionState.Type == 1
-            ? RuntimeInvasionSpawn1458.SelectGoblin(hardMode, summonerActive, random)
-            : RuntimeInvasionSpawn1458.SelectPirate(in invasionState, shipActive, captainActive,
-                () => IsPirateShipRectangleBlocked(tileX, floorY), random);
+        NpcTypeId selected = invasionState.Type switch
+        {
+            1 => RuntimeInvasionSpawn1458.SelectGoblin(hardMode, summonerActive, random),
+            2 => RuntimeInvasionSpawn1458.SelectFrost(random),
+            _ => RuntimeInvasionSpawn1458.SelectPirate(in invasionState, shipActive, captainActive,
+                () => IsPirateShipRectangleBlocked(tileX, floorY), random)
+        };
         // Ships still require linked cannons. Captain now reaches the retained Ghost/death lifecycle.
         // Preserve an unsupported selected ship without resampling or adopting the speculative stream.
         if (selected.Value == 491)

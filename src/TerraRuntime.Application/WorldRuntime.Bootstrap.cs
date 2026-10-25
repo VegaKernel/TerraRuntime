@@ -44,6 +44,7 @@ public sealed partial class WorldRuntime
         {
             WindSpeedTarget = WorldClock.WindSpeedTarget,
             Rain = WorldClock.NetworkRain,
+            Eclipse = WorldClock.EclipseActive,
             InvasionType = invasionKnown ? checked((sbyte)invasion.State.Type) : null,
             ProgressionMutations = WorldProgression.CaptureSnapshot()
         };

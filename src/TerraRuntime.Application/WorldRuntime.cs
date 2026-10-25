@@ -277,23 +277,6 @@ public sealed partial class WorldRuntime : IDisposable
                 runtime.Tick();
                 AdvanceInvasion();
 
-                long liveMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
-                if (liveMoonEventProgressRevision != lastMoonEventProgressRevision)
-                {
-                    if (WorldClock.MoonEventActive)
-                    {
-                        var progress = new TerrariaInvasionProgressState(
-                            checked((int)WorldClock.MoonEventWaveKills),
-                            WorldClock.MoonEventWaveRequirement,
-                            WorldClock.SnowMoonActive ? (sbyte)1 : (sbyte)2,
-                            checked((sbyte)WorldClock.MoonEventWaveNumber));
-                        if (TerrariaInvasionProgressCodec.TryEncode(in progress, out byte[] progressFrame))
-                            RuntimeConnections.BroadcastToPlaying(progressFrame);
-                    }
-
-                    lastMoonEventProgressRevision = liveMoonEventProgressRevision;
-                }
-
                 worldInfoSyncTicks++;
                 byte liveMoonPhase = (byte)WorldClock.MoonPhase;
                 bool timeBoundaryChanged =
@@ -305,6 +288,32 @@ public sealed partial class WorldRuntime : IDisposable
                     worldInfoSyncTicks = 0;
                     lastWorldInfoDayTime = WorldClock.DayTime;
                     lastWorldInfoMoonPhase = liveMoonPhase;
+                }
+
+                long liveMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
+                sbyte moonStartIcon = WorldClock.ConsumeMoonEventStartSyncRequest();
+                if (moonStartIcon != 0)
+                {
+                    // MessageBuffer61 starts use 0/1; SyncAnInvasion/join uses the real wave requirement.
+                    var initial = new TerrariaInvasionProgressState(0, 1, moonStartIcon, 1);
+                    if (TerrariaInvasionProgressCodec.TryEncode(in initial, out var initialFrame))
+                        RuntimeConnections.BroadcastToPlaying(initialFrame);
+                }
+                if (liveMoonEventProgressRevision != lastMoonEventProgressRevision)
+                {
+                    if (WorldClock.MoonEventActive && (moonStartIcon == 0 ||
+                        WorldClock.MoonEventWaveNumber != 1 || WorldClock.MoonEventWaveKills != 0f))
+                    {
+                        var progress = new TerrariaInvasionProgressState(
+                            checked((int)WorldClock.MoonEventWaveKills),
+                            WorldClock.MoonEventWaveRequirement,
+                            WorldClock.SnowMoonActive ? (sbyte)1 : (sbyte)2,
+                            checked((sbyte)WorldClock.MoonEventWaveNumber));
+                        if (TerrariaInvasionProgressCodec.TryEncode(in progress, out byte[] progressFrame))
+                            RuntimeConnections.BroadcastToPlaying(progressFrame);
+                    }
+
+                    lastMoonEventProgressRevision = liveMoonEventProgressRevision;
                 }
 
                 sectionCacheRebuild.Tick();

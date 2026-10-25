@@ -3,7 +3,7 @@ namespace TerraRuntime.Gameplay.Worlds;
 public readonly record struct InvasionState1458(
     int Type, int Size, int SizeStart, int Delay, double X, int Warning,
     int Progress, int ProgressMax, int ProgressIcon, int ProgressWave,
-    bool DownedGoblin, bool DownedPirate, bool DownedMartian, bool LanternNextNight);
+    bool DownedGoblin, bool DownedPirate, bool DownedMartian, bool LanternNextNight, bool DownedFrost = false);
 
 public enum InvasionWarningPhase1458 : byte { None, Ended, West, East, Arrived }
 
@@ -20,7 +20,7 @@ public readonly record struct InvasionTransition1458(InvasionState1458 State, In
 public static class VanillaInvasionLifecycle1458
 {
     public static bool CanOwnLive(in InvasionState1458 state) =>
-        state.Type is 0 or 1 or 3 or 4 && double.IsFinite(state.X) && state.SizeStart >= 0;
+        state.Type is >= 0 and <= 4 && double.IsFinite(state.X) && state.SizeStart >= 0;
 
     public static bool CanStart(in InvasionState1458 state, int eligiblePlayers, bool ignoreDelay = false) =>
         CanOwnLive(in state) && state.Type == 0 && (ignoreDelay || state.Delay == 0) &&
@@ -31,7 +31,7 @@ public static class VanillaInvasionLifecycle1458
     {
         transition = default;
         ArgumentNullException.ThrowIfNull(next);
-        if (!CanOwnLive(in state) || type is not (1 or 3 or 4) || eligiblePlayers is < 0 or > 255 ||
+        if (!CanOwnLive(in state) || type is < 1 or > 4 || eligiblePlayers is < 0 or > 255 ||
             maximumTilesX <= 0 || spawnTileX < 0 || spawnTileX >= maximumTilesX) return false;
         var current = state.Type != 0 && state.Size == 0 ? state with { Type = 0 } : state;
         if (current.Type != 0 || eligiblePlayers == 0)
@@ -75,14 +75,15 @@ public static class VanillaInvasionLifecycle1458
         bool completed = state.Size <= 0;
         if (completed)
         {
-            bool first = state.Type switch { 1 => !state.DownedGoblin, 3 => !state.DownedPirate,
+            bool first = state.Type switch { 1 => !state.DownedGoblin, 2 => !state.DownedFrost, 3 => !state.DownedPirate,
                 _ => !state.DownedMartian };
             next = next with { Type = 0, Delay = 0,
                 DownedGoblin = state.DownedGoblin || state.Type == 1,
+                DownedFrost = state.DownedFrost || state.Type == 2,
                 DownedPirate = state.DownedPirate || state.Type == 3,
                 DownedMartian = state.DownedMartian || state.Type == 4,
                 LanternNextNight = state.LanternNextNight || first };
-            achievement = state.Type switch { 1 => 10, 3 => 11, _ => 13 };
+            achievement = state.Type switch { 1 => 10, 2 => 12, 3 => 11, _ => 13 };
             Warn(in state);
         }
         // Source does not return after clearing the invasion. Movement and warning cadence still run.

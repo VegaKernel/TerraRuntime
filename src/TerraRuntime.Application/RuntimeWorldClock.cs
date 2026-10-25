@@ -85,6 +85,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     private float windyDayCloudAlpha;
     private readonly byte cloudCount;
     private Func<bool>? hasWeatherEligiblePlayer;
+    private sbyte pendingMoonEventStartIcon;
 
     public RuntimeWorldClock(
         double time,
@@ -110,7 +111,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         byte cloudCount = 0,
         bool pumpkinMoon = false,
         bool snowMoon = false,
-        bool remixWorld = false)
+        bool remixWorld = false,
+        bool eclipse = false)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -134,6 +136,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         MoonPhase = moonPhase;
         SlimeRainTime = slimeRainTime;
         BloodMoonActive = bloodMoonActive && !dayTime;
+        EclipseActive = eclipse;
         PumpkinMoonActive = pumpkinMoon;
         SnowMoonActive = snowMoon;
         MoonEventWaveNumber = MoonEventActive ? 1 : 0;
@@ -180,11 +183,15 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         return preview;
     }
 
-    internal void AdoptSlimeRainDeathProgress(RuntimeWorldClock preview)
+    internal void AdoptDeathProgress(RuntimeWorldClock preview)
     {
-        // The retained canonical death lane can only change this counter. Time/event and spawn
-        // dependencies have already been checked before the callback-free adoption tail.
+        // The retained death plan owns these counters before any loot or entity observer runs.
+        // Time/event dependencies have already been checked by the callback-free adoption tail.
         SlimeRainKillCount = preview.SlimeRainKillCount;
+        MoonEventWaveNumber = preview.MoonEventWaveNumber;
+        MoonEventWaveKills = preview.MoonEventWaveKills;
+        MoonEventTotalInvasionPoints = preview.MoonEventTotalInvasionPoints;
+        MoonEventProgressRevision = preview.MoonEventProgressRevision;
     }
 
     public VanillaMoonPhase MoonPhase { get; private set; }
@@ -200,6 +207,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public int SlimeRainKillCount { get; private set; }
 
     public bool BloodMoonActive { get; private set; }
+
+    public bool EclipseActive { get; private set; }
 
     public bool PumpkinMoonActive { get; private set; }
 
@@ -315,7 +324,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             rainTime: metadata.RainTime,
             cloudBackgroundActive: metadata.CloudBackgroundActive,
             cloudCount: metadata.CloudCount,
-            remixWorld: metadata.RemixWorld);
+            remixWorld: metadata.RemixWorld,
+            eclipse: metadata.Eclipse);
     }
 
     private bool worldInfoSyncRequested;
@@ -339,6 +349,29 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public void SetBloodMoonActive(bool active)
     {
         BloodMoonActive = active && !DayTime;
+    }
+
+    /// <summary>Commits the paid Bloody Tear transition after the invocation owner accepts its debit.</summary>
+    public bool TryStartBloodMoon()
+    {
+        if (DayTime || BloodMoonActive)
+            return false;
+        BloodMoonActive = true;
+        // MessageBuffer case 61 action -10 changes an empty moon to waning crescent.
+        if ((byte)MoonPhase == 4)
+            MoonPhase = (VanillaMoonPhase)5;
+        RequestWorldInfoSync();
+        return true;
+    }
+
+    /// <summary>Commits the paid Solar Tablet transition; natural eligibility is a separate dawn decision.</summary>
+    public bool TryStartSolarEclipse()
+    {
+        if (!DayTime || EclipseActive)
+            return false;
+        EclipseActive = true;
+        RequestWorldInfoSync();
+        return true;
     }
 
     public void MarkSlimeBlueSpawnUnlocked() => SlimeBlueSpawnUnlocked = true;
@@ -404,6 +437,9 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         return advanced;
     }
 
+    internal static bool IsMoonEventParticipant(NpcTypeId type) =>
+        TryGetFrostMoonPoints(type, out _) || TryGetPumpkinMoonPoints(type, out _);
+
     /// <summary>
     /// Applies the server-side start boundary reached by packet 61 action <c>-4</c>. The item-use branch in
     /// TerrariaServer only emits that action at night while neither Moon event is already active; retaining those
@@ -414,6 +450,15 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     /// <summary>Applies the analogous packet 61 action <c>-5</c> for Frost Moon.</summary>
     public bool TryStartSnowMoon() => TryStartMoonEvent(pumpkin: false);
 
+    // MessageBuffer case 61 uses initial maximum 1; SyncAnInvasion uses the real wave requirement.
+    // Retain that one-time publication separately from the shared death-progress revision.
+    internal sbyte ConsumeMoonEventStartSyncRequest()
+    {
+        sbyte icon = pendingMoonEventStartIcon;
+        pendingMoonEventStartIcon = 0;
+        return icon;
+    }
+
     private bool TryStartMoonEvent(bool pumpkin)
     {
         if (DayTime || MoonEventActive)
@@ -421,9 +466,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
         PumpkinMoonActive = pumpkin;
         SnowMoonActive = !pumpkin;
+        BloodMoonActive = false;
         MoonEventWaveNumber = 1;
         MoonEventWaveKills = 0f;
         MoonEventTotalInvasionPoints = 0f;
+        MoonEventProgressRevision++;
+        pendingMoonEventStartIcon = pumpkin ? (sbyte)2 : (sbyte)1;
         RequestWorldInfoSync();
         return true;
     }
@@ -435,6 +483,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
         PumpkinMoonActive = false;
         SnowMoonActive = false;
+        pendingMoonEventStartIcon = 0;
         MoonEventWaveNumber = 0;
         MoonEventWaveKills = 0f;
         MoonEventTotalInvasionPoints = 0f;
@@ -545,6 +594,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
         if (!DayTime)
         {
+            // Main.UpdateTime clears eclipse on every night tick, including frozen time.
+            if (EclipseActive)
+            {
+                EclipseActive = false;
+                RequestWorldInfoSync();
+            }
             if (Time > NightLength)
             {
                 Time = 0d;
@@ -554,11 +609,20 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
                 MoonPhase = VanillaMoonPhases.Next(MoonPhase);
             }
         }
-        else if (Time > DayLength)
+        else
         {
-            Time = 0d;
-            DayTime = false;
-            BossRecoveryDailyState.Reset();
+            // Main.UpdateTime's daytime cleanup precedes the dusk transition, including
+            // while time is frozen. A stale daytime Moon must not survive into the next night.
+            BloodMoonActive = false;
+            StopMoonEvents();
+            if (Time > DayLength)
+            {
+                // Main.UpdateTime_StartNight clears the previous day's eclipse before night events.
+                EclipseActive = false;
+                Time = 0d;
+                DayTime = false;
+                BossRecoveryDailyState.Reset();
+            }
         }
 
         PublishCommittedState();

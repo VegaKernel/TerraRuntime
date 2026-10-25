@@ -42,6 +42,7 @@ public sealed partial class WorldRuntime
             var milestone = before.State.Type switch
             {
                 1 => VanillaWorldProgressionId.GoblinArmy,
+                2 => VanillaWorldProgressionId.FrostLegion,
                 3 => VanillaWorldProgressionId.PirateInvasion,
                 _ => VanillaWorldProgressionId.MartianMadness
             };
@@ -69,6 +70,10 @@ public sealed partial class WorldRuntime
             (1, InvasionWarningPhase1458.West) => 1,
             (1, InvasionWarningPhase1458.East) => 2,
             (1, InvasionWarningPhase1458.Arrived) => 3,
+            (2, InvasionWarningPhase1458.Ended) => 4,
+            (2, InvasionWarningPhase1458.West) => 5,
+            (2, InvasionWarningPhase1458.East) => 6,
+            (2, InvasionWarningPhase1458.Arrived) => 7,
             (3, InvasionWarningPhase1458.Ended) => 24,
             (3, InvasionWarningPhase1458.West) => 25,
             (3, InvasionWarningPhase1458.East) => 26,

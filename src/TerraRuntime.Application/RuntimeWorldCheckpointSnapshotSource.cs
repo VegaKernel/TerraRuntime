@@ -10,7 +10,9 @@ internal readonly record struct RuntimeWorldClockSaveState(
     float WindSpeedTarget,
     bool Raining,
     int RainTime,
-    float MaxRain);
+    float MaxRain,
+    bool BloodMoon = false,
+    bool Eclipse = false);
 
 /// <summary>
 /// Deliberately partial persistence snapshot containing the authoritative subsystems currently supported by the
@@ -106,7 +108,9 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
                 worldClock.WindSpeedTarget,
                 worldClock.Raining,
                 worldClock.RainTime,
-                worldClock.MaxRain);
+                worldClock.MaxRain,
+                worldClock.BloodMoonActive,
+                worldClock.EclipseActive);
 
         WorldSign[]? signs = null;
         if (signStore is not null && signStore.TryCaptureCanonicalSnapshot(out WorldSign[] signSnapshot))

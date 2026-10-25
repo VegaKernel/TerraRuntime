@@ -14,6 +14,12 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 
 ## Subsystem and engineering guides
 
+- [Frost Legion state and completion](frost-legion-state-1458.md)
+- [Paid boss intents and event prerequisites](paid-boss-summons-1458.md)
+- [Paid event invocation](paid-event-invocation-1458.md)
+- [Event clock authority](event-clock-authority-1458.md)
+- [Moon event death authority](moon-event-death-authority-1458.md)
+
 - [Original NPC identity inventory](npc-source-inventory-1458.md)
 - [Owned NPC health context and physical producers](npc-owned-health-and-producers-1458.md) — remote life clocks, whole admitted Guide Doll operation and source herb/web placement.
 - [Town NPC death rewards](town-npc-death-rewards-1458.md)

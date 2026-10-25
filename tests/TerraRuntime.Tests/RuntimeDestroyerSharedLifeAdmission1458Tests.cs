@@ -34,10 +34,24 @@ public sealed class RuntimeDestroyerSharedLifeAdmission1458Tests
 
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(2)]
-    public void Accepted_shared_life_uses_root_and_commits_segment_only_once(int ingress)
+    public void Shared_life_uses_owned_root_once_and_refuses_raw_packet_28(int ingress)
     {
         var f = new Fixture(); Assert.True(f.Npcs.TryRetainPendingBirth(in f.Segment));
         f.Sink.Events.Clear(); var random = f.Random.Clone(); var before = f.Segment;
+        if (ingress == 0)
+        {
+            var beforeRoot = f.Root;
+            f.Hit(ingress, 50, accepted: false);
+            Assert.True(f.Npcs.TryGet(beforeRoot.Handle, out var unchangedRoot));
+            Assert.True(f.Npcs.TryGet(before.Handle, out var unchangedSegment));
+            Assert.Equal(beforeRoot, unchangedRoot);
+            Assert.Equal(before, unchangedSegment);
+            Assert.True(f.Npcs.HasPendingBirth(before.Handle));
+            Assert.Empty(f.Sink.Events);
+            Assert.Equal(0, f.Items.ActiveCount);
+            Assert.True(random.HasSameState(f.Random));
+            return;
+        }
         f.Hit(ingress, 50, accepted: true);
         Assert.True(f.Npcs.TryGet(f.Root.Handle, out var root));
         Assert.True(f.Npcs.TryGet(before.Handle, out var segment));
@@ -45,7 +59,7 @@ public sealed class RuntimeDestroyerSharedLifeAdmission1458Tests
         Assert.Equal(before.Revision.Value + 1, segment.Revision.Value);
         Assert.False(f.Npcs.HasPendingBirth(segment.Handle));
         var birth = Assert.Single(f.Sink.Events, e => e.Kind == NpcStateCommitKind.Spawn);
-        Assert.Equal(ingress == 0 ? 50 : 10, birth.State.Simulation.Life);
+        Assert.Equal(10, birth.State.Simulation.Life);
         Assert.True(random.HasSameState(f.Random));
     }
 
@@ -106,7 +120,7 @@ public sealed class RuntimeDestroyerSharedLifeAdmission1458Tests
             Assert.True(owner.TryApply(new PlayerSpawnRuntimeCommand(connection, session,
                 new PlayerSpawnCommitRequest(session.Slot, 1000, 1000, 0, 0, 0, 0, 0))));
             Assert.Equal(PlayerSpawnCommitResult.Committed, owner.LastSpawnCommitResult);
-            // A genuine bow is outside the direct-melee calculation: client28 takes its explicit compatibility path.
+            // A genuine bow is outside direct-melee calculation; its raw packet28 must be refused for shared bosses.
             Assert.True(owner.TryApply(new PlayerEquipmentRuntimeCommand(connection,
                 new PlayerEquipmentCommitRequest(player.Slot, 0, 1, 0, (short)VanillaItemIds.WoodenBow.Value, 0))));
             Assert.Equal(0, owner.RejectedEquipmentUpdates);
