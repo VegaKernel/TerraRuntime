@@ -74,7 +74,8 @@ public static class VanillaWorldZombieObstacleMotion
         int height,
         int directionX,
         int directionY,
-        VanillaZombieObstacleMotionParameters parameters)
+        VanillaZombieObstacleMotionParameters parameters,
+        int? spriteDirection = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
@@ -95,14 +96,15 @@ public static class VanillaWorldZombieObstacleMotion
         if (velocityY != 0f || directionX == 0 || !HasGroundSupport(tiles, positionX, positionY, width, height))
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);
 
-        if ((velocityX < 0f && directionX != -1) ||
-            (velocityX > 0f && directionX != 1) ||
+        int facing = spriteDirection ?? directionX;
+        if ((velocityX < 0f && facing != -1) ||
+            (velocityX > 0f && facing != 1) ||
             velocityX == 0f)
         {
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);
         }
 
-        int tileX = (int)((positionX + width * 0.5f + 15f * directionX) / TileSize);
+        int tileX = (int)((positionX + width / 2 + 15f * directionX) / TileSize);
         int tileY = (int)((positionY + height - 15f) / TileSize);
         if (!InProbeBounds(tiles, tileX, tileY))
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);

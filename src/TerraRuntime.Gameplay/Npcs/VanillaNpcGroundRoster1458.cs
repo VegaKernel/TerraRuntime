@@ -12,6 +12,26 @@ public static class VanillaNpcGroundRoster1458
     public const int FighterVariantCount = 27;
     public const int TownStyleTypeCount = 82;
 
+    /// <summary>Exact independently verified undead lifecycle cohort; no style-wide admission.</summary>
+    public static bool IsUndeadRuntimeIdentity(NpcTypeId type, NpcNetId netId) => netId.Value switch
+    {
+        -13 or -14 => type.Value == 31,
+        -26 or -27 => type.Value == 3,
+        -28 or -29 => type.Value == 132,
+        -30 or -31 => type.Value == 186,
+        -32 or -33 => type.Value == 187,
+        -34 or -35 => type.Value == 188,
+        -36 or -37 => type.Value == 189,
+        -44 or -45 => type.Value == 200,
+        -46 or -47 => type.Value == 21,
+        -48 or -49 => type.Value == 201,
+        -50 or -51 => type.Value == 202,
+        -52 or -53 => type.Value == 203,
+        -54 or -55 => type.Value == 223,
+        201 or 202 or 203 or 635 => type.Value == netId.Value,
+        _ => false
+    };
+
     // Lookup is used by live geometry and dispatch callers. Only initialization walks the captured
     // metadata; immutable host-classic definitions are materialized once, without selecting any AI.
     private static readonly VanillaNpcDefinition?[] Sources = CreateSources();

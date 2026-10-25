@@ -12,10 +12,11 @@ public sealed partial class RuntimeNpcStore
     internal bool TryUpdateUnpublished(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot) =>
         TryUpdateCore(handle, in update, out snapshot, forceSync: false, publish: false);
 
-    internal bool TryPublishUpdate(in NpcSnapshot expected, bool forceSync = false)
+    internal bool TryPublishUpdate(in NpcSnapshot expected, bool forceSync = false, bool vanillaNetworkPhase = false,
+        bool lowPriority = false)
     {
         if (!TryGet(expected.Handle, out var current) || current.Revision != expected.Revision) return false;
-        PublishCurrentUpdate(ref _slots[expected.Handle.Slot], in current, forceSync);
+        PublishCurrentUpdate(ref _slots[expected.Handle.Slot], in current, forceSync, vanillaNetworkPhase, lowPriority);
         return true;
     }
 
@@ -41,11 +42,12 @@ public sealed partial class RuntimeNpcStore
             return false;
         }
 
-        state.Update = normalized;
+        state.Update = normalized with { RequiresImmediateSync = false, VanillaNetworkPhase = false, RequiresLowPrioritySync = false };
         MarkSlotMutation();
         snapshot = Capture(handle.Slot, in state);
         if (publish)
-            PublishCurrentUpdate(ref state, in snapshot, forceSync);
+            PublishCurrentUpdate(ref state, in snapshot, forceSync || update.RequiresImmediateSync,
+                update.VanillaNetworkPhase, update.RequiresLowPrioritySync);
         return true;
     }
 

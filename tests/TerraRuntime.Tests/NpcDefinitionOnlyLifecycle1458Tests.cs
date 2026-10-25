@@ -904,6 +904,8 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
                 typeInfo.Properties.Remove(townFlag);
                 var stairFall = typeInfo.Properties.Single(property => property.Name == "StairFall");
                 typeInfo.Properties.Remove(stairFall);
+                foreach (string name in new[] { "HomeTileX", "HomeTileY", "Homeless", "CatchableNpcTempImmunityCounter", "ReleaseOwner" })
+                    typeInfo.Properties.Remove(typeInfo.Properties.Single(property => property.Name == name));
             }
         });
         Assert.Equal(0f, NpcSimulationState.Initial.ShimmerTransparency);
@@ -913,6 +915,11 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
         Assert.Equal(NpcSimulationState.Initial.TownNpc, after.Simulation.TownNpc);
         Assert.False(after.Simulation.StairFall);
         Assert.Null(default(NpcSimulationState).StairFall);
+        Assert.Equal(-1, after.Simulation.HomeTileX);
+        Assert.Equal(-1, after.Simulation.HomeTileY);
+        Assert.False(after.Simulation.Homeless);
+        Assert.Null(after.Simulation.CatchableNpcTempImmunityCounter);
+        Assert.Null(after.Simulation.ReleaseOwner);
         string serialized = JsonSerializer.Serialize(new { summary, log, after },
             new JsonSerializerOptions { TypeInfoResolver = oldSchema });
         // Baseline binaries reproduce the prior Old Man golden exactly; the same independent

@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## AI3/AI7 runtime branch active, 2026-10-26
+
+Isolated `feature/npc-ai3-ai7-runtime` starts at fetched `origin/main` `ed1021ee`. Explicit30 undead identities and seven nonresident gem bunnies now have sequential runtime proof through creation, target/terrain/liquid updates, interactions, damage/death, capture, generation reuse and source packet chronology. Lifecycle totals become468 globally and204/300 within AI3/AI7;96 identities remain creation-only. Post-grace Release WAE0/0,33679 focused cases, fast25134/25135(one unchanged allowed skip), fresh WindowsNative+five smokes and typedNative6 pass. The unfiltered5065-method full suite passes1566547/1566548 with the same single allowed skip. This is the locally accepted first37 checkpoint; commit stays on the feature branch. Shared owners/RNG/collision are retained. Ordinary spawn selectors and NPC-sensitive world switches retain explicit dependencies; no new spawn pool or parallel wiring runtime is invented. See [runtime scope EN](en/npc-ai3-ai7-runtime-1458.md), [RU](ru/npc-ai3-ai7-runtime-1458.md), and the [NPC roadmap](roadmap/npc-ai-parity.md). FullVanillaAiParity remains false; LinuxNative is locally unverified. No merge/push to main.
+
 ## NPC contact debuff application: isolated branch, 2026-10-25
 
 Independent worktree `TerraRuntime-combat-buffs`, branch `combat/npc-contact-buffs`, base `e0bbf65fc125e43d0a4d5495468cef6fc06d6d71`. No all-tools cache drafts were imported, edited or promoted. Existing contact collision/Hurt/HP/immunity owners now adopt source-ordered NPC statuses before observers; player slots retain contact provenance/timers and generation-checked packet 55 confirms adjusted duration. Server actors merge contact presence with lava/MoonLeech and use existing HP/regen for neutral poison/cursed/fire. Ankh Shield immunity is projected through the admitted equipment snapshot. Default contact RNG forwards the existing shared Main.rand owner.

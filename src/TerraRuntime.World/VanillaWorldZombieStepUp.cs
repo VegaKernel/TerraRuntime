@@ -42,7 +42,7 @@ public static class VanillaWorldZombieStepUp
 
         int movementDirection = velocityX < 0f ? -1 : velocityX > 0f ? 1 : 0;
         float projectedX = positionX + velocityX;
-        int tileX = (int)((projectedX + width * 0.5f + (width * 0.5f + 1f) * movementDirection) / TileSize);
+        int tileX = (int)((projectedX + width / 2 + (width / 2 + 1) * movementDirection) / TileSize);
         int tileY = (int)((positionY + height - 1f) / TileSize);
         if (!InWorldWithMargin(tiles, tileX, tileY, margin: 4))
             return new VanillaZombieStepUpResult(positionY, false);

@@ -4,7 +4,11 @@ namespace TerraRuntime.Gameplay.Npcs.Loot;
 
 // Execute against a cloned RNG and a bounded planning sink, never live state.
 public readonly record struct VanillaNpcMoneyContext1458(
-    float Value, int ExtraValue, float Luck, bool Midas, bool BloodMoon);
+    float Value, int ExtraValue, float Luck, bool Midas, bool BloodMoon)
+{
+    /// <summary>Explicitly admitted original Windows x86 percentage arithmetic; false preserves the existing float slice.</summary>
+    public bool WindowsArithmetic { get; init; }
+}
 
 public interface INpcMoneyRandom1458
 {
@@ -33,15 +37,15 @@ public static class VanillaNpcMoneyLoot1458
         {
             float candidate = context.Value;
             if (context.Midas)
-                candidate *= 1f + random.NextInt32(30, 51) * 0.01f;
-            candidate *= 1f + random.NextInt32(-20, 76) * 0.01f;
-            if (random.NextInt32(0, 2) == 0) candidate *= 1f + random.NextInt32(5, 11) * 0.01f;
-            if (random.NextInt32(0, 4) == 0) candidate *= 1f + random.NextInt32(10, 21) * 0.01f;
-            if (random.NextInt32(0, 8) == 0) candidate *= 1f + random.NextInt32(15, 31) * 0.01f;
-            if (random.NextInt32(0, 16) == 0) candidate *= 1f + random.NextInt32(20, 41) * 0.01f;
-            if (random.NextInt32(0, 32) == 0) candidate *= 1f + random.NextInt32(25, 51) * 0.01f;
-            if (random.NextInt32(0, 64) == 0) candidate *= 1f + random.NextInt32(50, 101) * 0.01f;
-            if (context.BloodMoon) candidate *= 1f + random.NextInt32(0, 101) * 0.01f;
+                candidate = ApplyPercentage(candidate, random.NextInt32(30, 51), context.WindowsArithmetic);
+            candidate = ApplyPercentage(candidate, random.NextInt32(-20, 76), context.WindowsArithmetic);
+            if (random.NextInt32(0, 2) == 0) candidate = ApplyPercentage(candidate, random.NextInt32(5, 11), context.WindowsArithmetic);
+            if (random.NextInt32(0, 4) == 0) candidate = ApplyPercentage(candidate, random.NextInt32(10, 21), context.WindowsArithmetic);
+            if (random.NextInt32(0, 8) == 0) candidate = ApplyPercentage(candidate, random.NextInt32(15, 31), context.WindowsArithmetic);
+            if (random.NextInt32(0, 16) == 0) candidate = ApplyPercentage(candidate, random.NextInt32(20, 41), context.WindowsArithmetic);
+            if (random.NextInt32(0, 32) == 0) candidate = ApplyPercentage(candidate, random.NextInt32(25, 51), context.WindowsArithmetic);
+            if (random.NextInt32(0, 64) == 0) candidate = ApplyPercentage(candidate, random.NextInt32(50, 101), context.WindowsArithmetic);
+            if (context.BloodMoon) candidate = ApplyPercentage(candidate, random.NextInt32(0, 101), context.WindowsArithmetic);
             if (iteration == 0 || (context.Luck < 0f ? candidate < amount : candidate > amount))
                 amount = candidate;
         }
@@ -77,4 +81,11 @@ public static class VanillaNpcMoneyLoot1458
         }
         return true;
     }
+
+    // NPC.NPCLoot_DropMoney (1.4.5.8) on the original Windows x86 CLR keeps the
+    // factor/product wider until each candidate assignment. Admission is caller-owned;
+    // wider Windows coverage for legacy actors remains separate source evidence debt.
+    private static float ApplyPercentage(float value, int percentage, bool windowsArithmetic) => windowsArithmetic
+        ? (float)((double)value * (1d + percentage * (double)0.01f))
+        : value * (1f + percentage * 0.01f);
 }

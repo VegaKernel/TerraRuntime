@@ -243,12 +243,14 @@ public static class VanillaNpcDefinitionCatalog
         bool found = TryGetRegistered(type, out definition);
         if (VanillaNpcGroundRoster1458.TryGet(type, new((short)type.Value), out var source))
         {
+            bool gemBunny = type.Value is >= 646 and <= 652;
             definition = source with
             {
                 BehaviorFamily = definition.DefinitionOnly ? VanillaNpcBehaviorFamily.None : definition.BehaviorFamily,
-                PhysicsFamily = definition.DefinitionOnly ? VanillaNpcPhysicsFamily.None : definition.PhysicsFamily,
+                PhysicsFamily = gemBunny ? VanillaNpcPhysicsFamily.GenericGround :
+                    definition.DefinitionOnly ? VanillaNpcPhysicsFamily.None : definition.PhysicsFamily,
                 Role = definition.DefinitionOnly ? source.Role : definition.Role,
-                CreationDefaultsOnly = definition.DefinitionOnly
+                CreationDefaultsOnly = definition.DefinitionOnly && !gemBunny
             };
             return true;
         }
@@ -798,7 +800,11 @@ public static class VanillaNpcDefinitionCatalog
             {
                 BehaviorFamily = baseDefinition.BehaviorFamily,
                 PhysicsFamily = baseDefinition.PhysicsFamily,
-                Role = baseDefinition.Role
+                Role = baseDefinition.Role,
+                // These signed identities share the verified undead AI/death path, including their
+                // own body, speed scaling and money. A shared style or base type is not admission.
+                CreationDefaultsOnly = !baseDefinition.SupportsRuntimeLifecycle ||
+                    !VanillaNpcGroundRoster1458.IsUndeadRuntimeIdentity(type, netId)
             };
             return true;
         }

@@ -17,10 +17,25 @@ internal sealed partial class RuntimeTownNpcCombat1458
     internal readonly record struct ContactStrike(int VariedDamage, float KnockBack, int HitDirection);
 
     internal bool TryPlanContact(in NpcSnapshot source, in NpcStateUpdate accelerated,
-        ReadOnlySpan<NpcSnapshot> peers, bool canTransactRandom, out NpcStateUpdate next, out ContactStrike? strike)
+        ReadOnlySpan<NpcSnapshot> peers, bool canTransactRandom, out NpcStateUpdate next, out ContactStrike? strike) =>
+        TryPlanFriendlyContact(in source, in accelerated, peers, canTransactRandom, out next, out strike,
+            expertMode, random, null, false);
+
+    internal static bool TryPlanCritterContact(in NpcSnapshot source, in NpcStateUpdate accelerated,
+        ReadOnlySpan<NpcSnapshot> peers, IVanillaNpcRandom phaseRandom, bool expert,
+        out NpcStateUpdate next, out ContactStrike? strike) =>
+        TryPlanFriendlyContact(in source, in accelerated, peers, true, out next, out strike,
+            expert, null, phaseRandom, true);
+
+    private static bool TryPlanFriendlyContact(in NpcSnapshot source, in NpcStateUpdate accelerated,
+        ReadOnlySpan<NpcSnapshot> peers, bool canTransactRandom, out NpcStateUpdate next, out ContactStrike? strike,
+        bool expertMode, IRuntimeTownNpcCombatRandom1458? random,
+        IVanillaNpcRandom? phaseRandom, bool nonresidentCritter)
     {
         next = accelerated;
         strike = null;
+        if (!nonresidentCritter && phaseRandom is not null || nonresidentCritter && (!VanillaGemBunnyAi1458.IsSupported(source.Type) ||
+                source.Simulation.TownNpc != false || phaseRandom is null)) return false;
         if (next.Simulation.DontTakeDamage || next.Simulation.Immortal == true ||
             next.Simulation.HostileContactImmunity > 0) return true;
         if (next.Simulation.Immortal is null || !TryRectangle(next.PositionX, next.PositionY,
@@ -48,8 +63,8 @@ internal sealed partial class RuntimeTownNpcCombat1458
                 (int)Math.Round(damage * 1.15f), KnockBack: ContactKnockBack, HitDirection: 1);
             // Town death requires source chat/tombstone/loot ownership; do not admit a potentially lethal strike.
             if (!VanillaNpcDamageResolver.TryResolve(defense, in maximum, out _, out int maximumDamage) ||
-                maximumDamage >= next.Simulation.Life) return false;
-            int varied = (int)Math.Round(damage * (1f + (random.Next(31) - 15) * .01f));
+                !nonresidentCritter && maximumDamage >= next.Simulation.Life) return false;
+            int varied = (int)Math.Round(damage * (1f + ((phaseRandom?.NextInt32(0, 31) ?? random!.Next(31)) - 15) * .01f));
             if (varied > short.MaxValue) return false;
             int direction = attackerCenterX > next.PositionX + victim.Width * .5f ? -1 : 1;
             var request = maximum with { BaseDamage = varied, HitDirection = direction };
@@ -59,26 +74,31 @@ internal sealed partial class RuntimeTownNpcCombat1458
                 next.Simulation.KnockBackResist ?? definition.KnockBackResist,
                 ContactKnockBack, direction, resolved, false, expertMode);
             next = next with { VelocityX = knockback.VelocityX, VelocityY = knockback.VelocityY,
-                Ai = next.Ai with { Ai0 = 1f, Ai1 = 300 + random.Next(300), Ai2 = 0f },
-                Simulation = next.Simulation with { Life = next.Simulation.Life - resolved,
-                    JustHit = true, DirectionX = direction, HostileContactImmunity = HostileContactDuration,
-                    LocalAi = next.Simulation.LocalAi with { Ai3 = 0f } } };
+                Ai = nonresidentCritter ? next.Ai : next.Ai with { Ai0 = 1f, Ai1 = 300 + random!.Next(300), Ai2 = 0f },
+                Simulation = next.Simulation with { Life = Math.Max(0, next.Simulation.Life - resolved),
+                    JustHit = true, DirectionX = nonresidentCritter ? next.Simulation.DirectionX : direction,
+                    HostileContactImmunity = HostileContactDuration,
+                    LocalAi = nonresidentCritter ? next.Simulation.LocalAi : next.Simulation.LocalAi with { Ai3 = 0f } } };
             strike = new ContactStrike(varied, ContactKnockBack, direction);
             return true; // Source slot order: only the first admitted hostile strikes this resident.
         }
         return true;
     }
 
-    internal void PublishContact(in NpcSnapshot committed, in ContactStrike strike)
+    internal void PublishContact(in NpcSnapshot committed, in ContactStrike strike) =>
+        PublishFriendlyContact(in committed, in strike, contactReplication);
+
+    internal static void PublishFriendlyContact(in NpcSnapshot committed, in ContactStrike strike,
+        RuntimeNpcReplicationRegistry? replication)
     {
-        if (contactReplication is null) return;
+        if (replication is null) return;
         var wire = new TerrariaNpcDamageState(committed.Handle.Slot,
             RuntimeNpcPacketProjection.ToProtocolGeneration(committed.Handle.Generation),
             checked((short)strike.VariedDamage), strike.KnockBack,
             checked((byte)(strike.HitDirection + 1)), 0);
         // StrikeNPC sends28 before its inner mutation. Our accepted transaction publishes the same
         // strike first, followed by its sole final23, after unpublished state and RNG have been adopted.
-        contactReplication.TryPublishDamage(default, in wire);
+        replication.TryPublishDamage(default, in wire);
     }
 
     internal static NpcStateUpdate PlanFriendlyRegeneration(in NpcStateUpdate state)

@@ -35,6 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
+        _gemBunny.RequiresForcedUpdate(in before, in finalized) ||
         _flyingEye.RequiresRetainedForcedUpdate(in before, in finalized) ||
         _bigMimic.RequiresForcedUpdate(in before, in finalized) ||
         _mothron.RequiresForcedUpdate(in before, in finalized) ||
@@ -45,6 +46,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          _context.TryFindCandidate((byte)finalized.Target, out var target) && target.Active && !target.Dead));
 
     public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
+        _gemBunny.Deactivates(in before, in completed) ||
         _slimeGround.DeactivatesContainedAfterCompletion(in before, in completed) ||
         _flyingEye.DeactivatesRetainedAfterCompletion(in before, in completed) ||
         _bee.Deactivates(in before, in completed);
@@ -75,6 +77,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaSlimeGroundNpcBehaviorStrategy _slimeGround;
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
     private readonly VanillaBeeAccepted1458 _bee = new();
+    private readonly VanillaGemBunnyAccepted1458 _gemBunny = new();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter;
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
@@ -318,6 +321,12 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     internal bool HasBeePlan(in NpcSnapshot before) => _bee.HasPlan(in before);
 
+    internal VanillaGemBunnyAccepted1458 GemBunny => _gemBunny;
+
+    internal void SetGemBunnyOwner(RuntimeNpcStore owner, IVanillaGemBunnyEnvironment1458 environment,
+        int widthTiles, double surfaceTiles) =>
+        _gemBunny.Configure(owner, environment, _random, widthTiles, surfaceTiles);
+
     internal bool TryGetBeePlan(in NpcSnapshot before, in NpcSnapshot accepted, out NpcStateUpdate planned) =>
         _bee.TryGetPlan(in before, in accepted, out planned);
 
@@ -398,6 +407,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     public bool TryGetCandidate(byte slot, out VanillaNpcTargetCandidate candidate) =>
         _context.TryFindCandidate(slot, out candidate);
 
+    internal bool GroundFighterExpertMode => _context.ExpertMode;
+
     internal bool TryPlanPirateGhost(in NpcSnapshot before, out NpcStateUpdate plannedAi, out bool fadeStrike, bool windowsVectorArithmetic = false) =>
         VanillaPirateGhostNpcBehaviorStrategy1458.TryPlan(in before,
             VanillaPirateGhostNpcCatalog1458.Definition, _context, out plannedAi, out fadeStrike, windowsVectorArithmetic);
@@ -425,6 +436,11 @@ public sealed class VanillaNpcTargetingAiStepper :
             next = default;
             return false;
         }
+
+        // These seven nonresident AI007 subtypes use the retained serial/RNG transaction;
+        // AI style membership never grants another critter the same lifecycle.
+        if (VanillaGemBunnyAi1458.IsSupported(npc.Type))
+            return _gemBunny.TryStep(in npc, in definition, _context, out next);
 
         // AI_069's ocean/enrage guard requires both loaded world dimensions. Do not let an unavailable
         // world context fall through to a generic AI stepper and manufacture an unverified Duke transition.
@@ -2561,6 +2577,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          _flyingEye.HasRetainedPlan(in before) ||
          _bee.HasPlan(in before) ||
+         _gemBunny.HasPlan(in before) ||
          _slimeGround.HasContainedPlan(in before) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 

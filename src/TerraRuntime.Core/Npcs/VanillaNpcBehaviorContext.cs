@@ -586,7 +586,9 @@ internal sealed class VanillaNpcBehaviorContext
             return true;
         if (rawPlayerSlots is null ||
             (definition.Type != VanillaNpcIds.BlueSlime && definition.Type != VanillaNpcIds.LavaSlime &&
-             definition.AiStyle != VanillaNpcAiStyles.DemonEye))
+             definition.AiStyle != VanillaNpcAiStyles.DemonEye &&
+             !VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) &&
+             !VanillaGemBunnyAi1458.IsSupported(definition.Type.Value)))
             return false;
         foreach (var candidate in Candidates)
             if (candidate.Active && !candidate.Dead && !candidate.Ghost)
@@ -609,12 +611,14 @@ internal sealed class VanillaNpcBehaviorContext
             return false;
         }
 
-        float playerLeft = candidate.CenterX - candidate.Width * 0.5f;
-        float playerTop = candidate.CenterY - candidate.Height * 0.5f;
-        return npc.PositionX < playerLeft + candidate.Width &&
-               npc.PositionX + hitbox.Width > playerLeft &&
-               npc.PositionY < playerTop + candidate.Height &&
-               npc.PositionY + hitbox.Height > playerTop;
+        // AI_003 tests Entity.Hitbox rectangles, whose origins truncate before intersection.
+        int playerLeft = (int)(candidate.CenterX - candidate.Width * .5f);
+        int playerTop = (int)(candidate.CenterY - candidate.Height * .5f);
+        int npcLeft = (int)npc.PositionX, npcTop = (int)npc.PositionY;
+        return npcLeft < playerLeft + (int)candidate.Width &&
+               npcLeft + hitbox.Width > playerLeft &&
+               npcTop < playerTop + (int)candidate.Height &&
+               npcTop + hitbox.Height > playerTop;
     }
 
     public bool AnyLivingPlayerIntersects(int left, int top, int width, int height)

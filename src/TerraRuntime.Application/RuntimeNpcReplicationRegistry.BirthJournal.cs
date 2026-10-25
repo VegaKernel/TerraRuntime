@@ -33,6 +33,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
 
     internal void RetirePreparedDeathBaseline(NpcHandle parent)
     {
+        RetireGemBunnyHome(parent);
         // The containing sealed death transaction has already removed this exact generation.
         // No callback occurs between removal and retiring its replay baseline.
         Volatile.Write(ref baselineFrames[parent.Slot], null);
@@ -81,6 +82,8 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         {
             if (!sealedRecipients || adopted || published ||
                 !store.TryGet(birth.Handle, out var current) || current != birth) return false;
+            owner.ObserveCatchSlotOwner(in birth);
+            owner.ObserveGemBunnyHome(NpcStateCommitKind.Spawn, in birth);
             Volatile.Write(ref owner.baselineFrames[birth.Handle.Slot], encoded);
             Volatile.Write(ref owner.despawnFrames[birth.Handle.Slot], retired);
             owner.ClearLiveFrame(birth.Handle);

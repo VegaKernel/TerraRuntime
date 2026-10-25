@@ -259,6 +259,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 in npc,
                 in next,
                 _projectileIntentBuffer.AsSpan(0, projectileCount)) ?? false;
+            forceUpdate |= next.RequiresImmediateSync;
             if (!_npcs.TryGet(npc.Handle, out currentSource) || currentSource.Revision != npc.Revision)
             {
                 rejected++;
@@ -274,7 +275,9 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 {
                     var completed = postCommitEffect!.CompleteCommittedState(in npc, in committed, this);
                     if (completed.Handle != committed.Handle || !_npcs.TryGet(completed.Handle, out var finalized) ||
-                        finalized.Revision != completed.Revision || !_npcs.TryPublishUpdate(in finalized, forceSync: forceUpdate || (forcedUpdatePlanner?.RequiresForcedUpdateAfterCompletion(in npc, in finalized) ?? false)))
+                        finalized.Revision != completed.Revision || !_npcs.TryPublishUpdate(in finalized,
+                            forceSync: forceUpdate || (forcedUpdatePlanner?.RequiresForcedUpdateAfterCompletion(in npc, in finalized) ?? false),
+                            vanillaNetworkPhase: next.VanillaNetworkPhase, lowPriority: next.RequiresLowPrioritySync))
                         continue;
                     committed = finalized;
                     if (!_npcs.TryGet(committed.Handle, out var published) || published.Revision != committed.Revision)

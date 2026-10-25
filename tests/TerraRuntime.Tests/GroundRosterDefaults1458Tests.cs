@@ -31,7 +31,7 @@ public sealed class GroundRosterDefaults1458Tests
             Assert.False(definition.DefinitionOnly);
             if (definition.SupportsRuntimeLifecycle) lifecycle++; else creationOnly++;
             Assert.Equal(!definition.CreationDefaultsOnly, definition.SupportsRuntimeLifecycle);
-            if (net < 0) Assert.True(definition.CreationDefaultsOnly);
+            if (net < 0) Assert.Equal(net == -15, definition.CreationDefaultsOnly);
             Assert.True(definition.BaseWidth > 0 && definition.BaseHeight > 0);
             Assert.Equal(row.GetProperty("width").GetInt32(), definition.Width);
             Assert.Equal(row.GetProperty("height").GetInt32(), definition.Height);
@@ -56,8 +56,8 @@ public sealed class GroundRosterDefaults1458Tests
         Assert.Equal(191, fighters);
         Assert.Equal(27, variants);
         Assert.Equal(82, town);
-        Assert.Equal(167, lifecycle);
-        Assert.Equal(133, creationOnly);
+        Assert.Equal(204, lifecycle);
+        Assert.Equal(96, creationOnly);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(624), out var legacyGnome) &&
             legacyGnome.SupportsRuntimeLifecycle);
         Assert.False(VanillaNpcGroundRoster1458.TryGet(new(3), new(-13), out _));

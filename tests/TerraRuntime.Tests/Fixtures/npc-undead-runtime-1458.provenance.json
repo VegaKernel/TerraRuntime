@@ -1,0 +1,148 @@
+{
+  "game": "Terraria 1.4.5.8",
+  "formatVersion": 1,
+  "scope": "Numeric state and independent protocol bytes from actual original NewNPC, UpdateNPC and StrikeNPC calls. No original code or game assets.",
+  "execution": {
+    "Linux": "Original Linux assembly under Windows CoreCLR; not Linux NativeAOT acceptance.",
+    "Windows": "Original Windows x86 assembly under .NET Framework."
+  },
+  "originalBinarySha256": {
+    "Linux": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "Windows": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+  },
+  "identities": [
+    201,
+    202,
+    203,
+    635,
+    -13,
+    -14,
+    -37,
+    -36,
+    -35,
+    -34,
+    -33,
+    -32,
+    -31,
+    -30,
+    -29,
+    -28,
+    -27,
+    -26,
+    -55,
+    -54,
+    -53,
+    -52,
+    -51,
+    -50,
+    -49,
+    -48,
+    -47,
+    -46,
+    -45,
+    -44
+  ],
+  "bootstrap": {
+    "ContentSamplesNpcsByNetId": 762,
+    "signedSamples": 65,
+    "ordering": "All original samples initialized before ItemDropDatabase.Populate.",
+    "surfaceRule": "Main.isThereAWorldSurface is worldSurface > 50; full lifecycle retains both 40 and 60."
+  },
+  "rejectedEvidence": "Earlier negative-death captures without signed ContentSamples bootstrap are not retained as death fixtures. Final Runtime corpus is v3.",
+  "records": [
+    {
+      "file": "UndeadVariantsRuntimeLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "groups": 240,
+      "actualNpcUpdates": 1920,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "b1dcd1d290815a14150d5e30a2dad7aa17980c28db5030c954d2cd2c89686680",
+      "uncompressedSha256": "beb9daa33bcc2d70733284639b48d23e74722a001c861bfbd306134c67e2efc1"
+    },
+    {
+      "file": "UndeadVariantsRuntimeWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "groups": 240,
+      "actualNpcUpdates": 1920,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "0d9577b18411c0be68120fce4e9c254d69df3685c56c332521d45db60f63d1f5",
+      "uncompressedSha256": "7e2ac03935ca94ba2356353f4bc09425177e2060b4c518e78d0d05c6eac17801"
+    },
+    {
+      "file": "UndeadVariantsTransitionsLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "groups": 300,
+      "actualNpcUpdates": 13688,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "3d822639c682012c5b59b5a0fa79d6a34eb63ef86598b3ff285cd5a47ae87297",
+      "uncompressedSha256": "adc91ac847fd1770d2863a2ac58f9627cb2c24317c48768389ea6027c6434cf5"
+    },
+    {
+      "file": "UndeadVariantsTransitionsWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "groups": 300,
+      "actualNpcUpdates": 13688,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "3eccca8056ab57935e7b4d93be912db15ff5b8e3231e0e218f4d80c735295ad3",
+      "uncompressedSha256": "d5d9252fa3f3d5cb4d6892e5c6807c77817428058c82d7a21632213f9ef3a781"
+    },
+    {
+      "file": "UndeadVariantsElevatedLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "groups": 1440,
+      "actualNpcUpdates": 19104,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "12ccb06603e36954b13ec8ff00b5960d3da9dbcf27afd8a3af129cbb57bdb968",
+      "uncompressedSha256": "cabc7349f4b618faf30675d84d3a001649031899f145d22fbd0050a3dbb3f4a2"
+    },
+    {
+      "file": "UndeadVariantsElevatedWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "groups": 1440,
+      "actualNpcUpdates": 19104,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "47e28ed7f38f06fccd3bb0c6d9e5cdccfc2e5d5ac05451dd5e6e4b83d33d2f19",
+      "uncompressedSha256": "e9182e04b595f42858c03a796413b78c4284c50bba94d76bc454b873d6a83786"
+    },
+    {
+      "file": "UndeadVariantsPostHitLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "groups": 90,
+      "actualNpcUpdates": 6210,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "68a065077f69dbb4a264ec2a1d531e46b48939a24f4c229fcd34652518e8c7c3",
+      "uncompressedSha256": "b654691441e841446f6dead2c6e0f13819c6faf79c99b7b1ead750e316fb3aea"
+    },
+    {
+      "file": "UndeadVariantsPostHitWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "groups": 90,
+      "actualNpcUpdates": 6210,
+      "repeatedExactly": true,
+      "sourceErrors": 0,
+      "gzipSha256": "79894247e753efe5533ec78f529a0b2ba32ca13c3e89988976242be479ebea66",
+      "uncompressedSha256": "f3bb4b7a62515bdd5973dcb284343f4fa45460b224155357b0d17de4084ce95f"
+    }
+  ],
+  "collisionBoundaryEvidence": {
+    "file": "NpcWetCollisionBoundaries1458.json.gz",
+    "rowsPerEdition": 5824,
+    "originalMethods": [
+      "Collision.WetCollision",
+      "Collision.LavaCollision"
+    ],
+    "repeatedExactly": true,
+    "editionsNumericallyIdentical": true,
+    "sizes": "19x19 projectile, 18x20 Gem Bunny, fourteen odd scaled undead source bodies",
+    "scenarios": "Four liquid kinds and fill levels, four edges, epsilon offsets, inherited slopes including actuation and first-hit mixed-liquid order.",
+    "gzipSha256": "ef38bc42296ecde6907a6e66250a569ec8f23b74089127a9362d2f1f7ec7bdd0",
+    "uncompressedSha256": "47c92f9591fbd79ae322bba396f2beffba7f71bf5147dc8bf3487a0bdd3a5298"
+  }
+}

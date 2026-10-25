@@ -40,14 +40,16 @@ Definitions feed the existing `RuntimeNpcStore` creation paths and `RuntimeNpcSt
 
 | Definition state | Identities | Creation/defaults | Vanilla runtime lifecycle |
 | --- | ---: | --- | --- |
-| Existing explicit admission | 431 | supported | existing bounded slices |
-| `CreationDefaultsOnly` | 133 | supported | fenced pending independent behavior evidence |
+| Explicit admission | 468 | supported | existing slices, 30 undead identities and seven nonresident gem bunnies |
+| `CreationDefaultsOnly` | 96 | supported | fenced pending independent behavior evidence |
 | `DefinitionOnly` | 192 | classic metadata/manual retention | fenced |
 
 `SupportsRuntimeLifecycle` requires both markers to be false. AI/prepasses, status, targeting, combat, death/loot and role/interaction boundaries use that explicit gate. This preserves the previous 431 registrations, including the narrow Gnome contact/danger definition; it does not derive lifecycle from AI style or family metadata. Newly created actors can be retained and projected with correct defaults while their unproved lifecycle stays disabled. Explicit registered custom behavior retains its separate owner.
 
 
 `NpcSimulationState.StairFall` is nullable: omission in an update retains committed history, fresh slot creation owns `false`, and source `SetDefaults`/Transform preserves history. The existing revision/snapshot comparisons include this state. `VanillaNpcDefinition.SourceNetId` retains signed creation identity independently of the positive type. Host arithmetic follows separately captured original Windows and Linux defaults; their integer truncation is not assumed identical.
+
+The original definition checkpoint fenced all 133 additions. The subsequent [runtime admission pass](npc-ai3-ai7-runtime-1458.md) admits four positive skeletons, 26 explicit signed undead identities and seven nonresident gem bunnies through the existing owners, with sequential source evidence. The other 96 identities retain their fences. This is 204 admitted identities among the 300 AI3/AI7 identities; source-proof limits remain explicit and `FullVanillaAiParity` stays false.
 
 ## Shared staircase descent
 

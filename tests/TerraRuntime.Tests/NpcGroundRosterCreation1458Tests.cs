@@ -147,7 +147,7 @@ public sealed class NpcGroundRosterCreation1458Tests
     [Fact]
     public void Newly_materialized_definitions_keep_unproved_runtime_lifecycle_fenced()
     {
-        // Independent starting-main census, rather than deriving expectations from the new gate.
+        // Independent starting-main census, minus the separately verified undead and gem-bunny cohorts.
         int[] promoted = [44,104,140,181,185,196,197,198,201,202,203,236,379,380,381,382,383,
             385,386,389,391,409,411,415,419,424,425,426,427,428,429,449,450,451,452,464,470,
             471,480,481,482,489,508,518,520,524,525,526,527,528,529,530,532,534,536,580,582,
@@ -161,7 +161,10 @@ public sealed class NpcGroundRosterCreation1458Tests
         {
             int net = Number(row, "requested"), type = Number(row, "type");
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), new((short)net), out var definition));
-            bool expected = promoted.Contains(net);
+            bool undeadRuntime = net is 201 or 202 or 203 or 635 or -13 or -14 or
+                >= -37 and <= -26 or >= -55 and <= -44;
+            bool gemBunnyRuntime = net is >= 646 and <= 652;
+            bool expected = promoted.Contains(net) && !undeadRuntime && !gemBunnyRuntime;
             Assert.Equal(expected, definition.CreationDefaultsOnly);
             Assert.Equal(!expected, definition.SupportsRuntimeLifecycle);
             if (!expected) continue;
@@ -189,7 +192,7 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(store.TryGet(born.Handle, out retained));
             Assert.Equal(retainedDead, retained);
         }
-        Assert.Equal(133, fenced);
+        Assert.Equal(96, fenced);
     }
 
     private sealed class CountingLifecycle : INpcAiStateStepper, INpcAiPrepass1458

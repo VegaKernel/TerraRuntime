@@ -44,8 +44,14 @@ public static class VanillaNpcKnockbackResolver
         else
         {
             float verticalFactor = noGravity ? -0.5f : -0.75f;
-            velocityY = strength * verticalFactor * knockBackResist;
-            velocityX = strength * hitDirection * knockBackResist;
+            // Original Windows x86 keeps the weak-impulse product wider until the velocity
+            // field assignment. Source strike->UpdateNPC sequences distinguish the .75 tail.
+            velocityY = OperatingSystem.IsWindows()
+                ? (float)((double)strength * verticalFactor * knockBackResist)
+                : strength * verticalFactor * knockBackResist;
+            velocityX = OperatingSystem.IsWindows()
+                ? (float)((double)strength * hitDirection * knockBackResist)
+                : strength * hitDirection * knockBackResist;
         }
 
         return new VanillaNpcKnockbackResult(velocityX, velocityY);

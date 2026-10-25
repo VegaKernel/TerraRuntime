@@ -9,6 +9,37 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeLinux1458.json.gz" LogicalName="UndeadVariantsRuntimeLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyRuntimeLinux1458.json.gz" LogicalName="GemBunnyRuntimeLinux1458" />
+    <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeWindows1458.json.gz" LogicalName="UndeadVariantsRuntimeWindows1458" />
+    <EmbeddedResource Include="Fixtures/UndeadVariantsTransitionsLinux1458.json.gz" LogicalName="UndeadVariantsTransitionsLinux1458" />
+    <EmbeddedResource Include="Fixtures/UndeadVariantsTransitionsWindows1458.json.gz" LogicalName="UndeadVariantsTransitionsWindows1458" />
+    <EmbeddedResource Include="Fixtures/UndeadVariantsElevatedLinux1458.json.gz" LogicalName="UndeadVariantsElevatedLinux1458" />
+    <EmbeddedResource Include="Fixtures/UndeadVariantsElevatedWindows1458.json.gz" LogicalName="UndeadVariantsElevatedWindows1458" />
+    <EmbeddedResource Include="Fixtures/UndeadVariantsPostHitLinux1458.json.gz" LogicalName="UndeadVariantsPostHitLinux1458" />
+    <EmbeddedResource Include="Fixtures/UndeadVariantsPostHitWindows1458.json.gz" LogicalName="UndeadVariantsPostHitWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyInteractionsLinux1458.json.gz" LogicalName="GemBunnyInteractionsLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyWireRuntimeLinux1458.json.gz" LogicalName="GemBunnyWireRuntimeLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyWireInteractionsLinux1458.json.gz" LogicalName="GemBunnyWireInteractionsLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyWireRuntimeWindows1458.json.gz" LogicalName="GemBunnyWireRuntimeWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyWireInteractionsWindows1458.json.gz" LogicalName="GemBunnyWireInteractionsWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyStinkyLinux1458.json.gz" LogicalName="GemBunnyStinkyLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyStinkyWindows1458.json.gz" LogicalName="GemBunnyStinkyWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyTerrainLinux1458.json.gz" LogicalName="GemBunnyTerrainLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyTerrainWindows1458.json.gz" LogicalName="GemBunnyTerrainWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyFreshLinux1458.json.gz" LogicalName="GemBunnyFreshLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyFreshWindows1458.json.gz" LogicalName="GemBunnyFreshWindows1458" />
+    <EmbeddedResource Include="Fixtures/NpcWetCollisionBoundaries1458.json.gz" LogicalName="NpcWetCollisionBoundaries1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyImmunityLinux1458.json.gz" LogicalName="GemBunnyImmunityLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyImmunityWindows1458.json.gz" LogicalName="GemBunnyImmunityWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyWetStatusLinux1458.json.gz" LogicalName="GemBunnyWetStatusLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyWetStatusWindows1458.json.gz" LogicalName="GemBunnyWetStatusWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyStatueCatchLinux1458.json.gz" LogicalName="GemBunnyStatueCatchLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyStatueCatchWindows1458.json.gz" LogicalName="GemBunnyStatueCatchWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemPendingCatchLinux1458.json.gz" LogicalName="GemPendingCatchLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemPendingCatchWindows1458.json.gz" LogicalName="GemPendingCatchWindows1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyGraceMovementLinux1458.json.gz" LogicalName="GemBunnyGraceMovementLinux1458" />
+    <EmbeddedResource Include="Fixtures/GemBunnyGraceMovementWindows1458.json.gz" LogicalName="GemBunnyGraceMovementWindows1458" />
     <EmbeddedResource Include="Fixtures/NpcContactBuffLinux1458.csv.gz" LogicalName="NpcContactBuffLinux1458" />
     <EmbeddedResource Include="Fixtures/NpcContactBuffWindows1458.csv.gz" LogicalName="NpcContactBuffWindows1458" />
     <EmbeddedResource Include="Fixtures/GroundRosterLinux1458.json.gz" LogicalName="GroundRosterLinux1458" />

@@ -17,10 +17,16 @@ public static class VanillaGroundFighterNpcCatalog
     [
         Fighter(VanillaNpcIds.Zombie, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.Skeleton, 18, 40, 20, 8, 60, 0.5f, 1f, 1.5f, scaleAdjustsSpeed: true),
+        // AI_003_Fighters gives these skeletons separate speed bands, then applies 2 - scale.
+        Fighter(new(201), 18, 40, 20, 12, 55, .5f, 1f, 1.1f, scaleAdjustsSpeed: true),
+        Fighter(new(202), 18, 40, 18, 8, 65, .5f, 1f, .9f, scaleAdjustsSpeed: true),
+        Fighter(new(203), 18, 40, 22, 8, 60, .5f, 1f, 1.2f, scaleAdjustsSpeed: true),
+        Fighter(new(635), 18, 40, 20, 8, 60, .5f, 1f, 1.5f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.GoblinPeon, 18, 38, 12, 4, 60, 0.8f, 0.9f, 1.5f),
         Fighter(VanillaNpcIds.GoblinThief, 18, 38, 20, 6, 80, 0.7f, 0.95f, 2f),
         Fighter(VanillaNpcIds.GoblinWarrior, 18, 38, 25, 8, 110, 0.5f, 1.1f, 1f),
-        Fighter(VanillaNpcIds.AngryBones, 18, 40, 26, 8, 80, 0.8f, 1f, 1.5f, closeRangeLunge: true),
+        Fighter(VanillaNpcIds.AngryBones, 18, 40, 26, 8, 80, 0.8f, 1f, 1.5f, closeRangeLunge: true,
+            daySurfaceEncouragesDespawn: false),
         Fighter(VanillaNpcIds.DoctorBones, 18, 40, 20, 10, 500, 0.5f, 1f, 1f),
         Fighter(VanillaNpcIds.TheGroom, 18, 40, 14, 8, 200, 0.5f, 1f, 1f),
         Fighter(VanillaNpcIds.GoblinScout, 18, 40, 20, 6, 80, 0.7f, 0.95f, 1.5f),
@@ -209,6 +215,7 @@ public static class VanillaGroundFighterNpcCatalog
 
     private static readonly NpcTypeId[] AdditionalTypes =
     [
+        new(201), new(202), new(203), new(635),
         VanillaNpcIds.GoblinPeon,
         VanillaNpcIds.GoblinThief,
         VanillaNpcIds.GoblinWarrior,
@@ -293,6 +300,10 @@ public static class VanillaGroundFighterNpcCatalog
     public static int DefinitionCount => Entries.Length;
     public static int AdditionalDefinitionCount => AdditionalTypes.Length;
     public static ReadOnlySpan<NpcTypeId> AdditionalHostileTypes => AdditionalTypes;
+
+    /// <summary>The explicit positive parents of the verified signed undead runtime cohort.</summary>
+    public static bool IsUndeadVariantParent(NpcTypeId type) => type.Value is
+        3 or 21 or 31 or 132 or 186 or 187 or 188 or 189 or 200 or 201 or 202 or 203 or 223 or 635;
 
     public static bool TryGetDefinition(NpcTypeId type, out VanillaNpcDefinition definition)
     {

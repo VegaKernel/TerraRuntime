@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "count": 28,
+  "scope": "actual original NewNPC then immediate CatchNPC before first AI; ordinary/statue; authenticated-playable player pose",
+  "player0": {
+    "active": true,
+    "x": 900,
+    "y": 438,
+    "width": 20,
+    "height": 42
+  },
+  "npcBirth": "center809,bottom480,target255",
+  "repeat": "byte-exact both editions",
+  "source": {
+    "linux": {
+      "sha256": "0d25129090d2ef8b0ef02e470a329724ce7164c39b73f08a804a754a3176d08b",
+      "compressedBytes": 1227,
+      "originalBinarySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "helperSha256": "27dfbbc684828bfc9df43d1e5aa19248693eab045414696c3058ca0ebba6a05b",
+      "file": "GemPendingCatchLinux1458.json.gz",
+      "gzipSha256": "0041054103f85efda114242de5d11b396a3c04e085aa44ef3cb4b08f5a607a9b"
+    },
+    "windows": {
+      "sha256": "563bc2c4e47baffe3ff2f287392858d8ee0d8200f77e6e26d2ba187c48143e06",
+      "compressedBytes": 1255,
+      "originalBinarySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+      "helperSha256": "7f5b9a9bb700b2f4bebd517305ca9d3469dc596f664c1ff75cc1f0a61df92465",
+      "file": "GemPendingCatchWindows1458.json.gz",
+      "gzipSha256": "480b38a7f86106e0fbde2f55bbe2292530f4d113b9bfe04899bcc087fd7ab167"
+    }
+  },
+  "game": "Terraria 1.4.5.8",
+  "execution": {
+    "linux": "Original Linux assembly under Windows CoreCLR; not Linux NativeAOT.",
+    "windows": "Original Windows x86 assembly under .NET Framework."
+  },
+  "publication": "One inactive23 retaining spawnNeedsSyncing; ordinary item21/owner22 precede it, statue smoke106 follows it. No preceding active23.",
+  "setupLimit": "Statue flag is explicit source setup after actual NewNPC; this does not prove a statue spawn producer.",
+  "rejectedAsIngressEvidence": "Earlier constructor-pose player(0,0) is valid source diagnostic only; owned movement correctly rejects that world-bounds position. Production guards were retained."
+}

@@ -7,8 +7,10 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaZombieWorldMotionIntegrationTests
 {
-    [Fact]
-    public void Obstacle_jump_is_applied_before_gravity_and_collision_capture()
+    [Theory]
+    [InlineData(1, -5.925f)]
+    [InlineData(-1, 0.075f)]
+    public void Obstacle_jump_is_applied_before_gravity_and_collision_capture(int spriteDirection, float expectedVelocityY)
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         tiles.Set(6, 7, SolidTile());
@@ -26,6 +28,9 @@ public sealed class VanillaZombieWorldMotionIntegrationTests
             Simulation: NpcSimulationState.Initial with
             {
                 DirectionX = 1,
+                // AI_003 requires movement to agree with spriteDirection before obstacle jumps.
+                // This custom inner stepper bypasses AI; make both source facing cases explicit.
+                SpriteDirection = spriteDirection,
                 DirectionY = -1,
                 NoGravity = false,
                 OldPositionX = 95f,
@@ -40,8 +45,8 @@ public sealed class VanillaZombieWorldMotionIntegrationTests
         executor.Tick(stepper);
 
         Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot updated));
-        Assert.Equal(-5.925f, updated.Simulation.OldVelocityY, 5);
-        Assert.True(updated.Simulation.OldVelocityY < -5f);
+        Assert.Equal(expectedVelocityY, updated.Simulation.OldVelocityY, 5);
+        Assert.Equal(spriteDirection == 1, updated.Simulation.OldVelocityY < -5f);
     }
 
     private static WorldTile SolidTile() => new()

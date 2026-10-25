@@ -27,19 +27,19 @@ public sealed class UndeadLootDeath1458Tests
     }
 
     [Fact]
-    public void Admitted_death_inventory_retains_the_pre_roster_lifecycle_scope()
+    public void Admitted_death_inventory_includes_the_verified_skeleton_runtime_cohort()
     {
         // Independent accepted14 catalog selection over the unchanged original source corpus.
         var rows = OriginalAdmittedDeaths().ToArray();
-        Assert.Equal(30_306, rows.Length);
+        Assert.Equal(33_426, rows.Length);
         int[] types = rows.Select(data =>
         {
             using var document = JsonDocument.Parse((string)data[0]);
             return document.RootElement.GetProperty("profile").GetProperty("Type").GetInt32();
         }).Distinct().Order().ToArray();
-        Assert.Equal(new[] { 3, 21, 31, 32, 110, 132, 161, 186, 187, 188, 189, 200, 223,
+        Assert.Equal(new[] { 3, 21, 31, 32, 110, 132, 161, 186, 187, 188, 189, 200, 201, 202, 203, 223,
             294, 295, 296, 319, 320, 321, 322, 323, 324, 331, 332, 430, 431, 432, 433,
-            434, 435, 436, 591 }, types);
+            434, 435, 436, 591, 635 }, types);
     }
 
     [Theory, MemberData(nameof(OriginalAdmittedDeaths))]

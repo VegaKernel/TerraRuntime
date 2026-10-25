@@ -260,10 +260,12 @@ public static class VanillaWorldCollision
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        float probeWidth = Math.Min(10, width);
-        float probeHeight = height / 2;
-        float probeX = positionX + width / 2f - probeWidth / 2f;
-        float probeY = positionY + height / 2f - probeHeight / 2f;
+        // Collision.WetCollision (1.4.5.8) divides physical dimensions and probe
+        // dimensions as integers before adding them to the floating position.
+        int probeWidth = Math.Min(10, width);
+        int probeHeight = height / 2;
+        float probeX = positionX + width / 2 - probeWidth / 2;
+        float probeY = positionY + height / 2 - probeHeight / 2;
 
         GetScanBounds(
             tiles,
@@ -325,10 +327,10 @@ public static class VanillaWorldCollision
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        float probeWidth = Math.Min(10, width);
-        float probeHeight = height / 2;
-        float probeX = positionX + width / 2f - probeWidth / 2f;
-        float probeY = positionY + height / 2f - probeHeight / 2f;
+        int probeWidth = Math.Min(10, width);
+        int probeHeight = height / 2;
+        float probeX = positionX + width / 2 - probeWidth / 2;
+        float probeY = positionY + height / 2 - probeHeight / 2;
 
         GetScanBounds(
             tiles,

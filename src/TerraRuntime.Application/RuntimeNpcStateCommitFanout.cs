@@ -20,6 +20,18 @@ internal sealed class RuntimeNpcStateCommitFanout(
         second.NpcStateCommitted(kind, in snapshot);
     }
 
+    public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false)
+    {
+        first.NpcVanillaAiStateCommitted(kind, in snapshot, lowPriority);
+        second.NpcVanillaAiStateCommitted(kind, in snapshot, lowPriority);
+    }
+
+    public void NpcCatchCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing)
+    {
+        first.NpcCatchCommitted(in snapshot, spawnNeedsSyncing);
+        second.NpcCatchCommitted(in snapshot, spawnNeedsSyncing);
+    }
+
     public void NpcBirthRetained(in NpcSnapshot snapshot)
     {
         if (first is INpcBirthRetentionSink firstRetained)

@@ -162,7 +162,7 @@ public static class VanillaWorldZombieDoorContact
         if (!groundSupported)
             return ResetDoorProgress(velocityX, ai, groundSupported: false);
 
-        int tileX = (int)((positionX + width * 0.5f + 15f * directionX) / TileSize);
+        int tileX = (int)((positionX + width / 2 + 15f * directionX) / TileSize);
         int tileY = (int)((positionY + height - 15f) / TileSize);
         if (!InProbeBounds(tiles, tileX, tileY))
             return ResetDoorProgress(velocityX, ai, groundSupported: true);

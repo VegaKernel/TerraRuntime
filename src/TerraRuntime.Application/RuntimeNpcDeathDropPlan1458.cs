@@ -60,11 +60,13 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
         if (unpublishedMode || failed || !accepted || borrowedAllocation || nextPhase != 0 ||
             expected.Handle != Owner || expected.Revision != Revision || expected.NetId != expected.Type ||
             (expected.TypeIdentity != VanillaNpcIds.Zombie && expected.TypeIdentity != VanillaNpcIds.BlueSlime &&
-             expected.TypeIdentity != VanillaNpcIds.LavaSlime && expected.TypeIdentity != VanillaNpcIds.PirateCaptain && expected.TypeIdentity != VanillaNpcIds.PirateGhost)) return false;
+             expected.TypeIdentity != VanillaNpcIds.LavaSlime && expected.TypeIdentity != VanillaNpcIds.PirateCaptain &&
+             expected.TypeIdentity != VanillaNpcIds.PirateGhost && !VanillaGemBunnyAi1458.IsSupported(expected.Type))) return false;
         // Client-local rewards require their own unpublished lease adoption; this lane owns ordinary drops only.
         foreach (var drop in drops.AsSpan(0, count))
             if (drop.LeaseTicks != 0 || drop.Recipients.Length != 0) return false;
-        drainPublication = expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost);
+        drainPublication = expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain ||
+            linked == VanillaNpcIds.PirateGhost || VanillaGemBunnyAi1458.IsSupported(expected.Type));
         unpublishedMode = true;
         return CanAdoptUnpublished();
     }

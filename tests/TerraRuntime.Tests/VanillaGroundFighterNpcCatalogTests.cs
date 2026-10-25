@@ -18,6 +18,10 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.BaldZombie, 18, 40, 15, 5, 40, 0.5f, 1f, 0.95f, true, false],
         [VanillaNpcIds.ZombieEskimo, 18, 40, 16, 8, 50, 0.45f, 1f, 1f, false, false],
         [VanillaNpcIds.UndeadViking, 18, 40, 24, 10, 70, 0.5f, 1f, 1.5f, false, false],
+        [new NpcTypeId(201), 18, 40, 20, 12, 55, .5f, 1f, 1.1f, true, false],
+        [new NpcTypeId(202), 18, 40, 18, 8, 65, .5f, 1f, .9f, true, false],
+        [new NpcTypeId(203), 18, 40, 22, 8, 60, .5f, 1f, 1.2f, true, false],
+        [new NpcTypeId(635), 18, 40, 20, 8, 60, .5f, 1f, 1.5f, true, false],
         [VanillaNpcIds.PincushionZombie, 18, 40, 16, 8, 50, 0.45f, 1f, 1.1f, true, false],
         [VanillaNpcIds.SlimedZombie, 18, 40, 13, 6, 40, 0.55f, 1f, 0.9f, true, false],
         [VanillaNpcIds.SwampZombie, 18, 40, 13, 8, 45, 0.45f, 1f, 1.2f, true, false],
@@ -125,8 +129,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(110, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(108, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(114, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(112, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);

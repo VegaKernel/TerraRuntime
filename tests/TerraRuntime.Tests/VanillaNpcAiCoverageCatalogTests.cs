@@ -22,12 +22,25 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
             VanillaMimicNpcCatalog1458.DefinitionCount - 1;
         expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14 + VanillaMothronNpcCatalog1458.DefinitionCount + VanillaBigMimicNpcCatalog1458.DefinitionCount;
+        expected += 7; // The exact nonresident Gem Bunny dispatcher, independently exercised end to end.
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition));
-            Assert.NotEqual(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
+            if (coverage.Type.Value is >= 646 and <= 652)
+            {
+                // None is explicit here: AI7 is dispatched by the accepted nonresident owner,
+                // not a town behavior family. No other AI7 identity inherits this exception.
+                Assert.Equal(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
+                Assert.Equal(VanillaNpcPhysicsFamily.GenericGround, definition.PhysicsFamily);
+                Assert.Equal(NpcArchetypeRole.Ordinary, definition.Role);
+                Assert.True(definition.SupportsRuntimeLifecycle);
+                Assert.Equal(VanillaNpcAiCapability.DefinitionDefaults | VanillaNpcAiCapability.TargetingSlice |
+                    VanillaNpcAiCapability.StateTransitionSlice | VanillaNpcAiCapability.WorldPhysicsSlice |
+                    VanillaNpcAiCapability.CheckActiveSlice | VanillaNpcAiCapability.PacketSync, coverage.Capabilities);
+            }
+            else Assert.NotEqual(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
             Assert.NotEqual(VanillaNpcPhysicsFamily.None, definition.PhysicsFamily);
             Assert.True(coverage.Has(VanillaNpcAiCapability.DefinitionDefaults));
             Assert.True(coverage.Has(VanillaNpcAiCapability.PacketSync));

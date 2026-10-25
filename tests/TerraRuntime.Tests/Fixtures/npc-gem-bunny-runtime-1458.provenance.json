@@ -1,0 +1,515 @@
+{
+  "game": "Terraria 1.4.5.8",
+  "formatVersion": 1,
+  "scope": "Original numeric states, shared RNG readback and independently recorded ISocket bytes for exact NPC types646..652; no source bodies, assets or game text.",
+  "identities": [
+    646,
+    647,
+    648,
+    649,
+    650,
+    651,
+    652
+  ],
+  "execution": {
+    "Linux": "Original Linux dedicated-server assembly, executed by .NET11 CoreCLR x64 on Windows10.0.19045; this is not Linux-host or Linux NativeAOT acceptance.",
+    "Windows": "Original Windows dedicated-server assembly in a net48 helper with PlatformTarget=x86, executed by Windows .NET Framework."
+  },
+  "originalBinarySha256": {
+    "Linux": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "Windows": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e"
+  },
+  "bootstrap": {
+    "ordinaryWorld": "100x200 tiles, solid floor100, worldSurface80, rockLayer120; fresh actual-NewNPC capsule uses1000x200 so distant player remains inside the world.",
+    "sourceArrays": "201 NPCs,256 players,257 NetMessage buffers,256 RemoteClients;401 WorldItems where interactions need them;1001 projectiles for actual NewNPC slot reset;6001 Dust and601 Gore objects where dedicated visual helpers still dereference inert slots.",
+    "contentFacts": "Verified source Main.Initialize_TileAndNPCData facts: catchable646..652; solid1, platform19/solidTop19 and solid666 in their relevant capsules. Classic GameMode and dedicated netMode2.",
+    "generation": "Configured wire actors use generation1. Fresh capsule invokes actual NewNPC and retains its actual initial generation/timeLeft937.",
+    "rng": "Actual source Main.rand reset per scenario/seed; next-value readback clones original state and does not advance its live stream."
+  },
+  "uniqueCensusPerEdition": {
+    "UpdateNPC": 6286,
+    "AI_007_TownEntities": 252,
+    "CatchNPC": 42,
+    "rows": 6580,
+    "rule": "Count each canonicalCaseSet once per edition; the two Linux mechanical copies duplicate Runtime/Interactions wire capsules. Pending NewNPC immediate-Catch source28-row capsules belong to the separate GemPendingCatch evidence and are excluded here."
+  },
+  "crossEditionComparison": "After parsing Single fields to Float32, all retained paired canonical sets agree exactly in state bits, frameCounter double, RNG and literal wire bytes; JSON decimal formatting and raw hashes can differ.",
+  "repeatedEvidence": "Each record was independently executed again or compared with the separately retained first capture; the final compressed bytes match the shipping artifact exactly. Source errors0 in every final capsule.",
+  "rejectedEvidence": "Initial diagnostic captures with missing NetMessage/Dust/Gore bootstrap or uninitialized solid666 are excluded. Earlier state schemas did not observe the catchable counter; the1974-row completion capsule explicitly fills that evidence gap. The initial first37 acceptance snapshot missed danger/drowning after temporary Friendly expiry; the168-row GraceMovement capsule now crosses the pre-AI/post-SubAI boundary and its old-runtime control fails.",
+  "admittedScope": "Exact nonresident seven only; existing dispatcher/store generations/shared RNG/collision/status/combat/death/catch/replication owners. FullVanillaAiParity remains false.",
+  "fences": [
+    "First Shimmer/Faeling overlap and Shimmer history reject the whole phase before live random/status/motion adoption.",
+    "Conveyor edge collision remains unsupported and explicitly rejects the whole phase.",
+    "Imported non5 lifeMax, wider DOT histories, unknown AI/counter/release-owner states remain unsupported.",
+    "Bee/SmallBee reciprocal contact and other unowned frame-dependent hostile collision branches retain existing linked-actor guards.",
+    "Ordered natural gem spawn pools remain disabled until earlier gem-squirrel and other critter selectors are supported; no unsupported outcome is skipped or rerolled."
+  ],
+  "omissionControls": [
+    {
+      "removed": "Exact Gem dispatcher call",
+      "detectedBy": "Default ServerRuntimeState create/update/catch source replay"
+    },
+    {
+      "removed": "Tile666 repeated Stinky addition",
+      "detectedBy": "Source expected180 duration versus missing buff"
+    },
+    {
+      "removed": "Post-loot lower-world Stinky VFX draws",
+      "detectedBy": "Source shared RNG next-value mismatch"
+    },
+    {
+      "removed": "Friendly flip while retaining counter decrement",
+      "detectedBy": "Update91 expectedFriendlyfalse versus actualtrue with counter0"
+    },
+    {
+      "removed": "Collision wet Stinky deletion",
+      "detectedBy": "Source expected absent buff versus retained duration1"
+    },
+    {
+      "removed": "Pre-AI Friendly condition on danger/drowning speed",
+      "detectedBy": "GraceMovement third update source x641.070007 versus unguarded x641.099976"
+    }
+  ],
+  "records": [
+    {
+      "file": "GemBunnyFreshLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Fresh",
+      "rows": 98,
+      "groups": 21,
+      "actualCalls": {
+        "UpdateNPC": 98,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "45a33ecd167015a1c9f89701483b55e01a3133f839237e9430b9c325704a4550",
+      "uncompressedSha256": "1c884cd100efd7047c9f770d331bf99536c924be44517a197e065424661b8d6e",
+      "localProbe": ".cache/ai7-gembunny/fresh-linux/Program.cs",
+      "localProbeSha256": "66a02165a030e3a020193fc936cfbf700b043c95ec4b348b19d3a63e2d3a75e1"
+    },
+    {
+      "file": "GemBunnyFreshWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "Fresh",
+      "rows": 98,
+      "groups": 21,
+      "actualCalls": {
+        "UpdateNPC": 98,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "8540d108c39d737f0d796595d5b3147b103aa207ca775550edca4bd8133e3a7b",
+      "uncompressedSha256": "d36eec79c736fc097908bb88c1cc4ebae0521df70eb0b7d1c38412affb768ebb",
+      "localProbe": ".cache/ai7-gembunny/fresh-windows/Program.cs",
+      "localProbeSha256": "c7b0b3686026d2396f76d6e258c4938f9dc56dddf99f355440cba591f746e57d"
+    },
+    {
+      "file": "GemBunnyImmunityLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Immunity",
+      "rows": 1974,
+      "groups": 21,
+      "actualCalls": {
+        "UpdateNPC": 1974,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": true,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "e2d71ef45d415202aa66db404b122d00ac22880117586b41b93b385619304cb0",
+      "uncompressedSha256": "e8a2f4de77e8384630747e089a17a0d610decf716e596a706d556d3a8b7c8cd1",
+      "localProbe": ".cache/ai7-gembunny/immunity-linux/Program.cs",
+      "localProbeSha256": "16b241e04fc48aff10e6d06e433ac14a11cf3265893ad6c3b4b6a7fba484250e"
+    },
+    {
+      "file": "GemBunnyImmunityWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "Immunity",
+      "rows": 1974,
+      "groups": 21,
+      "actualCalls": {
+        "UpdateNPC": 1974,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": true,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "5b1f79cf4bbf9697026a3a9c642c89f38b78b9163efb633d0940c4d24740b548",
+      "uncompressedSha256": "2b0db167df74d62b786eefcbe8dda7c4365f75b8d22113de1cba116fdfc55bf5",
+      "localProbe": ".cache/ai7-gembunny/immunity-windows/Program.cs",
+      "localProbeSha256": "a997f4027fc191b6f438844c21099f0d1d34a2c3801f82de0aeffa5bb0409ba6"
+    },
+    {
+      "file": "GemBunnyInteractionsLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Interactions",
+      "rows": 336,
+      "groups": 168,
+      "actualCalls": {
+        "UpdateNPC": 315,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 21
+      },
+      "wireCaptured": false,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": "GemBunnyWireInteractionsLinux1458.json.gz",
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "cfe57d1af88e7889583b03cfd528488e4fd8cd5b4367296db0c5f9fc65b87c1d",
+      "uncompressedSha256": "fa91eaeeb0d319e777545cb41e200728ab38c2cf45734de2388d6273ada6219b",
+      "localProbe": ".cache/ai7-gembunny/interaction/Program.cs",
+      "localProbeSha256": "d3006e148ec43e93ca3af3e9173d866a6353e07ed3bc14e224e12af106f24153"
+    },
+    {
+      "file": "GemBunnyRuntimeLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Runtime",
+      "rows": 1260,
+      "groups": 168,
+      "actualCalls": {
+        "UpdateNPC": 1008,
+        "AI_007_TownEntities": 252,
+        "CatchNPC": 0
+      },
+      "wireCaptured": false,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": "GemBunnyWireRuntimeLinux1458.json.gz",
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "7cd5a0f6a2f419704e8112ede01439a451e018f918ecfa49118861e9fcc32945",
+      "uncompressedSha256": "12e6461c2442e9e0a11e4b344f3af04d041c302aa72c05ed6564691a41d69356",
+      "localProbe": ".cache/ai7-gembunny/Program.cs",
+      "localProbeSha256": "ec1ae181354c637f1e23121daa39138f144ebd08df5104ed3d09e61c1b97158f"
+    },
+    {
+      "file": "GemBunnyStatueCatchLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "StatueCatch",
+      "rows": 42,
+      "groups": 21,
+      "actualCalls": {
+        "UpdateNPC": 21,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 21
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "7804d2f7a5857c7a330690c297d24d553ee24d307a7ceba51c73afe2118e7b30",
+      "uncompressedSha256": "365474856010748ef8efd4459e0034c986036916bac4677a6e0341b59b7ab379",
+      "localProbe": ".cache/ai7-gembunny/statue-catch-linux/Program.cs",
+      "localProbeSha256": "42ad6405fa84cac6037c480ab228a873be3640e8db9f25687746625d5d539dd4"
+    },
+    {
+      "file": "GemBunnyStatueCatchWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "StatueCatch",
+      "rows": 42,
+      "groups": 21,
+      "actualCalls": {
+        "UpdateNPC": 21,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 21
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "4705779a037b4a45d9bd8109c02bd8d4d6c63f0c0e0c2591e3e317f4e9338bba",
+      "uncompressedSha256": "f8650e1141f00ccf6c94c2f89d5641393c0584ec1dc39f566fff8af991853c6c",
+      "localProbe": ".cache/ai7-gembunny/statue-catch-windows/Program.cs",
+      "localProbeSha256": "56a56141c97970bb0697dfbd76eb36ef4c53fa1255e5a1cddb5b3d0cebe19b3b"
+    },
+    {
+      "file": "GemBunnyStinkyLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Stinky",
+      "rows": 1302,
+      "groups": 147,
+      "actualCalls": {
+        "UpdateNPC": 1302,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": true,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "b5b7e5313f7bf5004ac99542ba5a37245ec0299e7f8e18c808a2bdbdf5bcf2ec",
+      "uncompressedSha256": "eca73ff226822fd5cf93f618ba087bd4f8871b09ab0c672f3015eb6d68d489bb",
+      "localProbe": ".cache/ai7-gembunny/stinky-linux/Program.cs",
+      "localProbeSha256": "bce14bc523755e95c367b9cc23256c28cab71f666029306993aabf64d7cc1ebd"
+    },
+    {
+      "file": "GemBunnyStinkyWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "Stinky",
+      "rows": 1302,
+      "groups": 147,
+      "actualCalls": {
+        "UpdateNPC": 1302,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": true,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "6f3e4e575b9d6d0a64894d6c740c427f1909e9d9bce69773de6d02ad44763e22",
+      "uncompressedSha256": "07432bd643dfffb9b1d02a915b0f33c2b282257d5559f940cc23c59c43ca589c",
+      "localProbe": ".cache/ai7-gembunny/stinky-windows/Program.cs",
+      "localProbeSha256": "a0c67bee62942ef461ba4fb3946b081d9dc6ea9453c986838f674cc3293e94d8"
+    },
+    {
+      "file": "GemBunnyTerrainLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Terrain",
+      "rows": 854,
+      "groups": 49,
+      "actualCalls": {
+        "UpdateNPC": 854,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "d46758b542dd000da27a80790265065bfc5913b41e64f5c2db35c94c2c5ca79b",
+      "uncompressedSha256": "2f1885bdbaf401eaa75098a65d66c1f9df8a78b30894e4696b620a92108e64a1",
+      "localProbe": ".cache/ai7-gembunny/terrain-linux/Program.cs",
+      "localProbeSha256": "d5821a4e9e22a0a8874abb36974c34c1296708056f25d1780dfe067b1ea9050a"
+    },
+    {
+      "file": "GemBunnyTerrainWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "Terrain",
+      "rows": 854,
+      "groups": 49,
+      "actualCalls": {
+        "UpdateNPC": 854,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "fe8ec9dd8f5362bab0050cd02c30e2aa90b0e94f74dcea895ee0e92ca08f234b",
+      "uncompressedSha256": "ab6d90c34dd0b0217a465eb597fbb8f62444ed83068bd65c2057a844e6df831b",
+      "localProbe": ".cache/ai7-gembunny/terrain-windows/Program.cs",
+      "localProbeSha256": "46262a6ff78c81163c61f9e9177317b3e1855ae51c05d256ad423053ecbbee55"
+    },
+    {
+      "file": "GemBunnyWetStatusLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "WetStatus",
+      "rows": 546,
+      "groups": 84,
+      "actualCalls": {
+        "UpdateNPC": 546,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": true,
+      "observesBuffSlots": true,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "336de40ae46345991622b40d781e164373810a46feccc0471d9acb783a144f8e",
+      "uncompressedSha256": "8b6b701865c4fadaaf114c3d556e5899f25403cb48542811cbdcfbd26a607dca",
+      "localProbe": ".cache/ai7-gembunny/wet-status-linux/Program.cs",
+      "localProbeSha256": "bfd3948f6039f54dccf7366c1c5b37ec60f396fc9a25b70f7f4f222e3ae7ef9c"
+    },
+    {
+      "file": "GemBunnyWetStatusWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "WetStatus",
+      "rows": 546,
+      "groups": 84,
+      "actualCalls": {
+        "UpdateNPC": 546,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": true,
+      "observesBuffSlots": true,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "54ee45eec0c56de640b3d24890dd8acf2e6c3718624d302ace4bc5a6c3dd7883",
+      "uncompressedSha256": "cd8d4547920e4f2a202f6b7b7d87de701ec76b087d106bdfd7c51f8ae2028089",
+      "localProbe": ".cache/ai7-gembunny/wet-status-windows/Program.cs",
+      "localProbeSha256": "9164d24ed6e0bdfa2c9c148f0e1172d096a29d4d4cca91bdbbb2aaaedb394fa5"
+    },
+    {
+      "file": "GemBunnyWireInteractionsLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Interactions",
+      "rows": 336,
+      "groups": 168,
+      "actualCalls": {
+        "UpdateNPC": 315,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 21
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "80c8ef644c970384058e3194b8f16067d6aeba678d33b887da4daff86fc16d60",
+      "uncompressedSha256": "a392d4c1e3be1547572e6571bd271479d1687973dbbd58f3d8ca1322f7d2022b",
+      "localProbe": ".cache/ai7-gembunny/wire-interactions/Program.cs",
+      "localProbeSha256": "a99bfe37ea94ce56f10db415861002d810843af60a4dbca67f95aed1e0134fb4"
+    },
+    {
+      "file": "GemBunnyWireInteractionsWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "Interactions",
+      "rows": 336,
+      "groups": 168,
+      "actualCalls": {
+        "UpdateNPC": 315,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 21
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "4b9d6b6aaa5982bcb3298d041649fd74f20688c1f146a8498a303a40da40931f",
+      "uncompressedSha256": "504d438f5b4bfbc4d757cf5dcf53106a3d31f6d936a99693d137b37d514a36e4",
+      "localProbe": ".cache/ai7-gembunny/windows-wire-interactions/Program.cs",
+      "localProbeSha256": "87f33e131c6673debfd82a56057189e785d3ab8382f34859b61732a14e3b01d9"
+    },
+    {
+      "file": "GemBunnyWireRuntimeLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "Runtime",
+      "rows": 1260,
+      "groups": 168,
+      "actualCalls": {
+        "UpdateNPC": 1008,
+        "AI_007_TownEntities": 252,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "2f868ab1d47093d6ef3b310adeaea427c9dfd314ad2ee7e594b81a2fe02c0a80",
+      "uncompressedSha256": "f594a7344c3c27fb7e6b4f811d4f7ca710c20621e05007bce3cad2db7bc31797",
+      "localProbe": ".cache/ai7-gembunny/wire-runtime/Program.cs",
+      "localProbeSha256": "fe9cba4f24dd2d1fcc29878d6937dded591c2ce492b45372f06b044807f5d896"
+    },
+    {
+      "file": "GemBunnyWireRuntimeWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "Runtime",
+      "rows": 1260,
+      "groups": 168,
+      "actualCalls": {
+        "UpdateNPC": 1008,
+        "AI_007_TownEntities": 252,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": false,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "ecc8f857c5fcab5676e1c9b3da3c41f859b604d08625aa8bff42cd6a431654f8",
+      "uncompressedSha256": "2c1689f461cba5d28b72af0c1a835059450e498d13cdc5f3f9c8651f3ccaa25e",
+      "localProbe": ".cache/ai7-gembunny/windows-wire-runtime/Program.cs",
+      "localProbeSha256": "27e55eeeeed78e0031dd9c96ece6bd7fc942ac863174b636e32de58f34c3eeda"
+    },
+    {
+      "file": "GemBunnyGraceMovementLinux1458.json.gz",
+      "originalEdition": "Linux",
+      "canonicalCaseSet": "GraceMovement",
+      "rows": 168,
+      "groups": 14,
+      "actualCalls": {
+        "UpdateNPC": 168,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": true,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "37c51e84f62f1570aee948f531c640b0577122ffa8ba1a42548273605583522e",
+      "uncompressedSha256": "e4fa9e8f3c439baa5250b6e9afa4efe9fa6115da66d58dd1b7533760f8a7497f",
+      "localProbe": ".cache/ai7-next-animals/grace-linux/Program.cs",
+      "localProbeSha256": "879af8bed05e9431eda5efd029d5b5e61bb743d3ab9b9487fa32d28f4e9e4f00"
+    },
+    {
+      "file": "GemBunnyGraceMovementWindows1458.json.gz",
+      "originalEdition": "Windows",
+      "canonicalCaseSet": "GraceMovement",
+      "rows": 168,
+      "groups": 14,
+      "actualCalls": {
+        "UpdateNPC": 168,
+        "AI_007_TownEntities": 0,
+        "CatchNPC": 0
+      },
+      "wireCaptured": true,
+      "observesFriendlyCounterReleaseOwner": true,
+      "observesBuffSlots": false,
+      "duplicateMechanicalCopyOf": null,
+      "sourceErrors": 0,
+      "repeatedExactly": true,
+      "gzipSha256": "c8ecd1026ef025afec054be868fad762ab86ad1a27fb232c73a6da185805ffc9",
+      "uncompressedSha256": "20c9d38ccae524af3b13d97a628da5149b3ea9367212e67b45be37fb9a8760b2",
+      "localProbe": ".cache/ai7-next-animals/grace-windows/Program.cs",
+      "localProbeSha256": "c46192bcedacbc0f1b32f899eac6d1bcc7b46e6bd53f33e66750b06c66c26974"
+    }
+  ]
+}

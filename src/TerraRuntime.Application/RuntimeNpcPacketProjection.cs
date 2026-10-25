@@ -69,7 +69,10 @@ internal static class RuntimeNpcPacketProjection
             Life: life,
             LifeMax: lifeMax,
             SpawnNeedsSyncing: kind == RuntimeNpcSyncKind.Spawn,
-            SpawnDifficulty: simulation.SpawnDifficulty ?? 1f);
+            SpawnDifficulty: simulation.SpawnDifficulty ?? 1f,
+            ReleaseOwner: simulation.ReleaseOwner is short releaseOwner && releaseOwner is >= 0 and <= byte.MaxValue
+                ? (byte)releaseOwner : byte.MaxValue,
+            SpawnedFromStatue: simulation.SpawnedFromStatue);
         return state.IsValid;
     }
 
