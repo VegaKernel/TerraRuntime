@@ -1,5 +1,7 @@
 # NativeAOT and CoreCLR hosting baseline
 
+2026-10-27 merged cave-house checkpoint: fresh Windows NativeAOT executable SHA256 `14890564e24fc0e1438451a967138a1f9271618e905a190ebf7168d4026343f9` passes exercised loop/protocol/network/world/TUI smokes on merge `96b4488c`. Release WAE0/0, fast `25,432/25,432` and unfiltered full `1,566,846/1,566,846` pass without skips; all5,314 methods are selected. No new dependency/project edge was added by the cave-house slice. Linux NativeAOT and full pass parity remain unverified.
+
 2026-10-27 Buried Chests cave-house boundary: fresh Windows NativeAOT executable SHA256 `09371fa44c86a4e3519d68be1a756e407b6bfb7b25da1729199e4e89a4ee3286` passes exercised loop/protocol/network/world/TUI smokes. Release solution warnings-as-errors and unfiltered full `1,566,765/1,566,765` pass with zero skips. No new production dependency or project edge. Linux NativeAOT remains locally unverified; this is scoped candidate/beam evidence, not complete Buried Chests parity.
 ## Final concurrent fishing successor union, 2026-10-27
 

@@ -1,5 +1,7 @@
 # Complete vanilla worldgen pass audit — 2026-09-08
 
+Merged cave-house boundary gate (2026-10-27): row63's scoped source corrections pass fast `25,432/25,432`, unfiltered full `1,566,846/1,566,846` without skips, and fresh Windows NativeAOT with five smokes on the merged fishing/paid-ammo tree. Row63 remains `P` until the full registered-pass and house-builder evidence exists; Linux NativeAOT is locally unverified.
+
 Buried Chests cave-house boundary acceptance (2026-10-27): the source-scoped offer/beam corrections below pass Release fast `25,352/25,352`, unfiltered full `1,566,765/1,566,765` with zero skips, and fresh Windows NativeAOT with five smokes. Row 63 stays `P` pending complete house furniture/aging/protected-structure parity and a registered-pass differential; Linux NativeAOT is locally unverified.
 
 Buried Chests cave-house boundary (2026-10-27): row 63 remains `P`. The ordinary house loop now rejects ocean offers before the builder, the additional-desert loop samples the source-adjusted full rectangle, and a direct official `HouseBuilder.PlaceSupportBeams` fixture pins forced short-gap beams and the exact top-platform veto. These are source-backed sub-boundaries, not a complete registered-pass differential; furniture, aging and earlier protected `StructureMap` rectangles remain open.

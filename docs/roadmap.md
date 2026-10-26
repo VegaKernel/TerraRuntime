@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+Merged cave-house boundary acceptance (2026-10-27): the row63 scoped corrections are verified on the tree also containing concurrent fishing/paid-ammo changes. Release WAE0/0, fast `25,432/25,432`, unfiltered full `1,566,846/1,566,846` with zero skips, fresh Windows NativeAOT and five smokes pass. Row63 remains `P`: complete house decoration/aging, cross-pass protected structures and a registered-pass differential are still required. Previous pre-merge numbers below remain historical.
+
 Buried Chests cave-house boundary acceptance (2026-10-27): the source-scoped candidate/beam corrections below pass Release solution warnings-as-errors, focused two new boundary tests plus ten existing official chest-loop comparisons and 33 canonical/startup integration cases, fast `25,352/25,352`, one unfiltered full `1,566,765/1,566,765` with zero skips, and fresh Windows NativeAOT with five smokes. Row 63 remains `P` until the complete house builder and registered-pass differential are verified; Linux NativeAOT is locally unverified. The pending-gate wording below is historical.
 
 ## Buried Chests cave-house boundary, 2026-10-27
