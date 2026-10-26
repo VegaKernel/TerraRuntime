@@ -1,5 +1,9 @@
 # Production graph
 
+## Corrected character ownership boundary, 2026-10-26
+
+User target is an OTAPI-like multiplayer server core with ordinary client-owned characters, not mandatory SSC. Missing server `.plr` storage is not a missing graph owner. The actual integration edge is character bootstrap/session state -> canonical inventory/count baseline -> validated in-session fishing/quest transactions. Existing transfer preservation does not replace normal reconnect. FishingFrameSink currently discards76 character counter imports and starts fresh count0; that is a compatibility gap to repair through the existing owner. Initial inventory funding must be traced at normal bootstrap; source-earned fixture stock alone is insufficient evidence. No second economy/character database is authorized or needed. Earlier graph references demanding a durable character owner for vanilla fishing are superseded.
+
 ## Fishing freeze and pending integration gates, 2026-10-26
 
 The connected fishing graph is committed as `8bcd2109` + `ca6c935f`; no dependency/project edge added and no main integration performed. Release WAE and focused532 plus mandatoryfast25315/25316 pass. Full planned5229methods was stopped explicitly by the user to release the shared heavy slot; no fullXML/acceptance, Native or live evidence exists for this candidate. Source3973 SHA05a6ab49b447b1af1189950d8c8ff6288082d3d3f878b1b0a380ec7960e9d15f and197canonical DLLs remain frozen. Resume heavy gates only after slot coordination; interrupted evidence is not a successful checkpoint.

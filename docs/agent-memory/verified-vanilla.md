@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Vanilla character ownership: correction, 2026-10-26
+
+Official1.4.5.8 MessageBuffer.GetData case5 authenticates inventory sender as whoAmI on netMode2 and imports item identity/stack/prefix; case76 authenticates whoAmI, imports anglerQuestsFinished and golferScoreAccumulated and relays76. Player character-file write/read persists anglerQuestsFinished. Therefore ordinary character persistence belongs to the client; missing server `.plr` persistence is not a vanilla-server compatibility defect. Authoritative new quest payment/rewards must be distinguished from imported character baseline. Current branch's blanket76 refusal/reset is not faithful reconnect behavior. Runtime fixes and normal-client entry evidence remain outstanding; the source check does not establish an already corrected implementation.
+
 ## Fishing evidence boundary after interrupted acceptance, 2026-10-26
 
 Source/component proof and normal runtime532 plus mandatoryfast25315/25316 are retained. Crate07-v3 actual XML TrueException/TrueException/EqualException controls are valid; earlier InvalidProgram attempts are rejected. SpecialNPC quantization05 and source/test bridge07 remain scoped component proof. The user's shared-slot decision interrupted the only full run before XML creation, so no full case totals, broad acceptance or Native/live fishing claim follows. Typed fishing replay currently has managed-only9methods/37484assertions. Original Linux-edition assembly observations on Windows are not LinuxNative execution. See work-state for exact source pins, interruption record, supported chains and remaining gates.

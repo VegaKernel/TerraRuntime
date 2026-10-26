@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Fishing scope correction: client-owned characters, 2026-10-26
+
+The target is the multiplayer server core, analogous to OTAPI, with vanilla client-owned `.plr` characters. A server character-save subsystem is not required. Earlier fishing checkpoint text listing its absence as an unfinished dependency is superseded. The real remaining work is normal character bootstrap/reconnect: restore the legitimate character counter through the existing session owner and verify initial inventory admission, while continuing to validate in-session bait/fish/crate payment and rewards. Current blanket76 refusal/count reset is a compatibility bug. Source-earned fixture scenarios do not prove normal character entry. No SSC/database/parallel inventory is to be added. Code checks remain scoped to the previous implementation; full/Native/live stay pending the shared slot.
+
 ## Connected fishing: code checkpoint, acceptance slot released, 2026-10-26
 
 Isolated `feature/fishing-authority-1458` contains commits `8bcd2109` (source rules/world state) and `ca6c935f` (owned runtime chain/tests/paired guides). Release WAE0/0, focused532/532 and mandatoryfast25315/25316 pass; the one skip is the existing canonical-liquid case. The user explicitly stopped our only full run to free the slot for the main chat; all5229methods were planned, but no finalXML or acceptedfull result exists. Fresh WindowsNative/typedNative/live and genuineLinuxNative remain pending. No main merge/push, new dependency or complete vanilla-compatibility claim.

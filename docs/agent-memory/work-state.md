@@ -1,5 +1,13 @@
 # Work state
 
+## User scope correction: vanilla multiplayer server, no required SSC, 2026-10-26
+
+The user clarified that TerraRuntime is the multiplayer server core, analogous to OTAPI. Vanilla `.plr` ownership remains on the client; the server saves the world and keeps session state. Earlier entries framing absent server `.plr` persistence as an unmet fishing dependency are incorrect and superseded. Do not add a character database, SSC requirement or parallel inventory/reward ledger to solve this.
+
+Confirmed official1458 source: MessageBuffer.GetData case5 imports physical inventory for whoAmI; case76 imports anglerQuestsFinished+golferScoreAccumulated for whoAmI and relays to peers. Player writes/reads anglerQuestsFinished in its character file. Current FishingFrameSink1458 ignores all imported76 counters, requires Playing even for76 and publishes the runtime count instead; a fresh member starts0. Count reset on ordinary character reconnect is therefore a real synchronization compatibility bug, not absence of server disk persistence. Normal initial inventory admission also needs tracing through the existing owner: current fishing fixtures obtain funded bait/fish/crates by actual world pickup and do not establish ordinary `.plr` bootstrap compatibility.
+
+Next connected code block must handle normal character join/reconnect through existing bootstrap/session/inventory owners, preserving the vanilla character boundary while keeping later action debit/RNG/reward and daily quest completion authoritative. Initial character state and a new paid quest completion are separate operations. Do not merely rename the gap or treat a client completion flag as payment. Shipping code and all prior check pins remain unchanged by this documentation correction; previous532focused/fast results do not cover this missing normal-character scenario. Heavy full/Native/live remain held because the user freed the slot for the main chat.
+
 ## Fishing handoff: heavy acceptance interrupted at user request, 2026-10-26
 
 Branch `feature/fishing-authority-1458`, isolated worktree `TerraRuntime-fishing`, code commits `8bcd2109` and `ca6c935f`; no main merge/push. Source SHA `05a6ab49b447b1af1189950d8c8ff6288082d3d3f878b1b0a380ec7960e9d15f`,3973 source/test/CI inputs and197 Test+Server DLL paths remain frozen. Release WAE0/0 and focused532/532 pass. Mandatoryfast passes25315/25316,0failures/0errors,one existing canonical-liquid skip (725.143testseconds/727.799wallseconds).
