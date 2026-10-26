@@ -28,6 +28,7 @@ internal sealed record ClientProjectileUpdateRuntimeCommand(
     // An authenticated report may wait for adjacent13. It grants no caller
     // role, source clock, stock, entropy or projectile by itself.
     internal bool LocalItemReportIntent { get; init; }
+    internal bool ValidateVanillaFishingClient { get; init; }
 }
 
 internal sealed record ClientProjectileDestroyRuntimeCommand(

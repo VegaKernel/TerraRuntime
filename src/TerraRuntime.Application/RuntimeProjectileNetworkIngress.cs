@@ -46,7 +46,8 @@ internal sealed class RuntimeProjectileNetworkIngress :
 
         return Ingress.TryPost(
             connection.Source,
-            new ClientProjectileUpdateRuntimeCommand(connection, state) {LocalItemReportIntent=localItemReportIntent});
+            new ClientProjectileUpdateRuntimeCommand(connection, state)
+            { LocalItemReportIntent = localItemReportIntent, ValidateVanillaFishingClient = TerraRuntime.Gameplay.Players.FishingRules1458.IsBobber(state.ProjectileType) });
     }
 
     public bool TryPostDestroy(ConnectionHandle connection, in TerrariaProjectileDestroyState state)

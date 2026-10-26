@@ -134,7 +134,8 @@ public sealed partial class FishingAuthority1458Tests
         internal FishingFixture(short bait, short baitType = 2674,
             WorldLiquidKind liquid = WorldLiquidKind.Water, short poleType = 2294,
             RuntimeWorldClock? worldClock = null, bool importedBait = false,
-            IReadOnlyDictionary<short, RuntimePlayerInventoryItem>? initialItems = null)
+            IReadOnlyDictionary<short, RuntimePlayerInventoryItem>? initialItems = null,
+            IRuntimePlayerEventSink? observer = null, INpcStateCommitSink? npcSink = null)
         {
             Assert.True(FishingRules1458.TryGetPole(poleType, out pole));
             for (int x = 0; x < 400; x++) Tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
@@ -145,9 +146,12 @@ public sealed partial class FishingAuthority1458Tests
                 foreach (int x in new[] { 111, 147 }) Tiles.Set(x, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             for (int x = 111; x <= 147; x++) Tiles.Set(x, 117, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             Shots = new(1001, Replication); Items = new(ItemReplication);
-            State = new(worldTiles: Tiles, worldItems: Items, projectiles: Shots,
+            IRuntimePlayerEventSink playerEvents = new RuntimePlayerEventFanout(ItemReplication, Replication);
+            if (observer is not null) playerEvents = new RuntimePlayerEventFanout(playerEvents, observer);
+            State = new(npcs: npcSink is null ? null : new RuntimeNpcStore(200, npcSink),
+                worldTiles: Tiles, worldItems: Items, projectiles: Shots,
                 worldItemReplication: ItemReplication, projectileReplication: Replication,
-                playerEvents: new RuntimePlayerEventFanout(ItemReplication, Replication),
+                playerEvents: playerEvents,
                 naturalSpawnRandom: new SystemVanillaNpcRandom(Random),
                 worldItemSpawnRandom: new SystemWorldItemSpawnRandom(Random),
                 worldClock: worldClock ?? new RuntimeWorldClock(10000, true, default, 0, 1, freezeWind: true, freezeRain: true),

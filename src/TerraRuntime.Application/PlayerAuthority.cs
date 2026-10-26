@@ -76,11 +76,16 @@ internal sealed partial class PlayerAuthority
     {
         switch (command)
         {
+            case FishingNpcClientRequestRuntimeCommand npc:
+                toolProjectiles?.TryObserveFishingClientNpc(npc.Connection, npc.Request.NpcType, npc.Request.TileX, npc.Request.TileY);
+                TryCompleteFishingClientReports(npc.Connection);
+                return true;
             case CaptureFishingCrateRuntimeCommand crate:
                 crate.Completion.TrySetResult(CaptureFishingCrate(crate.Connection, crate.Slot));
                 return true;
             case CompleteAnglerQuestRuntimeCommand quest:
-                TryCompleteAnglerQuest(quest.Connection);
+                if (quest.ValidateClientReports) TryBeginAnglerClientQuest(quest.Connection);
+                else TryCompleteAnglerQuest(quest.Connection);
                 PublishAnglerState(quest.Connection);
                 return true;
             case PublishAnglerStateRuntimeCommand quest:
@@ -532,6 +537,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryObservePendingFishingReport(equipment)) return;
         if (TryObserveFishingCrateOpen(equipment)) return;
         if (TryAcknowledgePlacementInventory(equipment)) return;
         if (TryRetainPlacementInventory(equipment)) return;

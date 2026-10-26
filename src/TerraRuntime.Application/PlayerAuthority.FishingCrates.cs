@@ -50,7 +50,7 @@ internal sealed partial class PlayerAuthority
         PendingCursorMove receipt, PendingShopJournal journal)
     {
         bool Current() => ReferenceEquals(member.CursorMove?.Shop, journal) && journal.Capture.IsCurrent &&
-            IsCurrentShopActor(member, receipt) && !journal.IsSealed && !journal.Invalid;
+            IsCurrentShopActor(member, receipt) && !journal.IsSealed;
         _ = TryFishingRewards(connection, -1, 0, false, _ => true, Current,
             () => DropBankBatchAlternative(member, journal), journal.Capture);
         RejectedEquipmentUpdates++;
@@ -140,10 +140,12 @@ internal sealed partial class PlayerAuthority
         bool Current() => ReferenceEquals(member.CursorMove?.Shop, journal) && journal.Capture.IsCurrent &&
             IsCurrentShopActor(member, receipt) && !journal.IsSealed && !journal.Invalid;
         bool accepted = !multipleDebits && lost == 1 && PickupWorld is { } world &&
-            (type is not (3206 or 3985) || fishingCrateLowTiles.HasValue) && TryFishingRewards(connection, selected, type, true,
-                rewards => VanillaFishingCrate1458.TryOpen(type, world.RemixWorld, fishingCrateLowTiles == true,
-                    rewards.Random.Next, rewards.QuickSpawn) && rewards.MatchesReports(journal.Reports, journal.Seen),
-                Current, () => DropBankBatchAlternative(member, journal), journal.Capture);
+            (type is not (3206 or 3985) || fishingCrateLowTiles.HasValue) &&
+            TryExtractFishingReportRewards(journal, selected, type, out var candidate) && candidate is not null &&
+            VanillaFishingCrate1458.TryValidateOutcome(type, world.RemixWorld, fishingCrateLowTiles == true,
+                candidate.Unordered, out var witness) &&
+            TryAdoptFishingReportWitness(connection, member, receipt, journal, selected, type, true,
+                witness, candidate, naturalPrefix: true, Current);
         if (!accepted)
         {
             // Early ordinary reports may have min-debited a source slot while

@@ -4,7 +4,10 @@ using TerraRuntime.Gameplay.Players;
 namespace TerraRuntime.Application;
 
 internal sealed record FishingPlayerCapture1458(RuntimePlayerProjectileUseCapture Actor,
-    FishingConditions1458 Conditions, float Luck, bool CratePotion, bool SonarPotion);
+    FishingConditions1458 Conditions, float Luck, bool CratePotion, bool SonarPotion)
+{
+    internal FishingPowerContext1458 PowerContext { get; init; }
+}
 
 internal sealed partial class PlayerAuthority
 {
@@ -36,20 +39,21 @@ internal sealed partial class PlayerAuthority
             WeaponShootHistory: { Uses.Length: > 0 } } };
 
     internal bool TryCaptureFishingPlayer(RuntimePlayerMember member, FishingPowerContext1458 weather,
-        out FishingPlayerCapture1458? capture, bool ending = false)
+        out FishingPlayerCapture1458? capture, bool ending = false,
+        ReadOnlySpan<RuntimePlayerInventoryItem> inventoryImage = default)
     {
         capture = null;
         if (!TryCaptureProjectileUse(member.Connection, out var actor) || actor is null ||
             !ReferenceEquals(actor.Member, member) || member.IsDead || member.HasMount ||
             transferProfiles.CaptureBuffState(member.Connection) is not { } buffs ||
             !ending && (member.ItemPhase is null || IsAmmoDeliveryOnlyFishingPhase(member.ItemPhase) || buffs.IsItemUseCrowdControlled || buffs.HasNoItemsEffect) ||
-            !inventory.TryGet(member.Connection, member.SelectedItem, out var selected) ||
+            !TryGetFishingConditionItem(member.Connection, member.SelectedItem, inventoryImage, out var selected) ||
             !ending && (!FishingRules1458.TryGetPole(selected.ItemType.Value, out _) || selected.Prefix.Value != 0))
             return false;
         Span<FishingInventorySlot1458> image = stackalloc FishingInventorySlot1458[59];
         for (int i = 0; i < image.Length; i++)
         {
-            if (!inventory.TryGet(member.Connection, i, out var item)) return false;
+            if (!TryGetFishingConditionItem(member.Connection, i, inventoryImage, out var item)) return false;
             image[i] = new(item.ItemType.Value, item.Stack);
         }
         byte effects = buffs.CaptureFishingEffects(currentCombatTick);
@@ -59,8 +63,18 @@ internal sealed partial class PlayerAuthority
             ((effects & 1) != 0 ? 15 : 0) };
         var conditions = FishingRules1458.GetConditions(image, member.SelectedItem, weather);
         capture = new(actor, conditions, member.Luck,
-            (effects & 4) != 0, (effects & 2) != 0);
+            (effects & 4) != 0, (effects & 2) != 0) { PowerContext = weather };
         return true;
+    }
+
+    private bool TryGetFishingConditionItem(ConnectionHandle connection, int slot,
+        ReadOnlySpan<RuntimePlayerInventoryItem> image, out RuntimePlayerInventoryItem item)
+    {
+        if (image.IsEmpty) return inventory.TryGet(connection, slot, out item);
+        item = default;
+        if (image.Length != 59 || slot is < 0 or >= 59) return false;
+        item = image[slot];
+        return item.IsCanonical;
     }
 
     internal int CaptureFishingQuestFish(ConnectionHandle connection)

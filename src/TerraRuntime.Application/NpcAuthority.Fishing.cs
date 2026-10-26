@@ -8,6 +8,15 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class NpcAuthority
 {
+    internal bool HasActiveFishingAngler
+    {
+        get
+        {
+            for (int slot = 0; slot < npcs.Capacity; slot++)
+                if (npcs.TryGetActive((byte)slot, out var npc) && npc.Type == 369 && npc.Simulation.Life > 0) return true;
+            return false;
+        }
+    }
     private readonly bool fishingCombatBookUsed;
     private readonly Action? fishingWorldStateAdopted;
     private Action? fishingWorldInfoPublisher;
@@ -100,6 +109,7 @@ internal sealed partial class NpcAuthority
             !naturalSpawnProgression.MarkSlimeRedSpawnUnlocked()))
             throw new InvalidOperationException("Preflighted fished resident lost callback-free town/progression adoption.");
         AppliedSpawns++;
+        Exception? failure = null;
         try
         {
             if (type == 682)
@@ -108,16 +118,22 @@ internal sealed partial class NpcAuthority
                 else fishingWorldStateAdopted?.Invoke();
             }
         }
-        finally
+        catch (Exception exception) { failure = exception; }
+        // These are independent publications after callback-free physical/town
+        // adoption. Failure in one observer cannot suppress the later channels.
+        try { publication.PublishRetention(); }
+        catch (Exception exception) { failure ??= exception; }
+        if (npcs.TryGet(staged.Handle, out var current) && current == staged)
         {
-            publication.PublishRetention();
-            if (npcs.TryGet(staged.Handle, out var current) && current == staged)
+            try { npcs.TryPublishPendingBirth(staged.Handle); }
+            catch (Exception exception) { failure ??= exception; }
+            if (type == 370 && npcs.TryGet(staged.Handle, out current) && current == staged)
             {
-                npcs.TryPublishPendingBirth(staged.Handle);
-                if (type == 370 && npcs.TryGet(staged.Handle, out current) && current == staged)
-                    AnnounceBossSpawn(new(370));
+                try { AnnounceBossSpawn(new(370)); }
+                catch (Exception exception) { failure ??= exception; }
             }
         }
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
         return true;
     }
 }

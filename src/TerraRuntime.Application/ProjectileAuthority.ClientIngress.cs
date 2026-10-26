@@ -48,6 +48,8 @@ internal sealed partial class ProjectileAuthority
             // termination remain runtime-owned. aiStyle-9 controlled missiles are the deliberate exception for input:
             // vanilla packet 27 ai[0]/ai[1] carries MouseWorld intent. We accept only that bounded intent and never
             // copy the packet's position/velocity into the trusted generation.
+            if (TryObserveFishingClientUpdate(command.Connection, in current, in packet))
+            { players.TryCompleteFishingClientReports(command.Connection); return; }
             if (projectiles.IsCombatTrusted(projectile))
             {
                 if (TryRetainTrustedToolInput(command.Connection, projectile, in current, in packet))
@@ -82,7 +84,7 @@ internal sealed partial class ProjectileAuthority
             return;
         }
 
-        var fishingObservation = players.ObserveFishingShoot(command.Connection, in packet);
+        var fishingObservation = players.ObserveFishingShoot(command.Connection, in packet, command.ValidateVanillaFishingClient);
         if (fishingObservation != ToolReportObservationResult1458.NotApplicable)
         {
             if (fishingObservation == ToolReportObservationResult1458.Rejected)
@@ -220,6 +222,8 @@ internal sealed partial class ProjectileAuthority
 
         // Trusted projectiles die only through authoritative lifetime/collision/penetration/behavior paths.
         // Accepting packet 29 here would let an owning client erase a server-owned combat generation early.
+        if (TryObserveFishingClientDestroy(command.Connection, in current, in packet))
+        { players.TryCompleteFishingClientReports(command.Connection); return; }
         if (projectiles.IsCombatTrusted(projectile))
         {
             if (TryRetainTrustedToolStop(command.Connection, projectile, in current)) return;

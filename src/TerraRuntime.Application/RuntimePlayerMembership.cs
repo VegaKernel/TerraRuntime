@@ -249,6 +249,8 @@ internal sealed class RuntimePlayerMember
     internal bool OwnsLifeMaximum { get; set; }
     internal byte OwnedPermanentUpgradeMask { get; set; }
     internal int AnglerQuestsFinished { get; set; }
+    internal TerraRuntime.Gameplay.Players.AnglerQuestCountEvidence1458 AnglerQuestCounts { get; set; } =
+        TerraRuntime.Gameplay.Players.AnglerQuestCountEvidence1458.Unknown;
     internal int GolferScoreAccumulated { get; set; }
     internal bool OwnsAnglerQuestsFinished { get; set; }
     internal ulong AnglerCompletedDay { get; set; }
