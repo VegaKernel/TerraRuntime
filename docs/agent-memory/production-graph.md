@@ -1,5 +1,11 @@
 # Production graph
 
+## Vanilla client outcome validation candidate, 2026-10-26
+
+Client action and source-owned actor facts establish a bounded candidate in the existing inventory journal. The complete5/138 image and retained21 overflow must match a possible correlated source reward sequence and its original storage order. Existing inventory/private quantities/copper/world-item allocation adopt together; only then can daily Angler progression or the exact-generation fishing receipt commit. Client75 alone pays nothing. Candidate validation never guesses or advances the client's RNG using the independent server stream. Angler count possibilities are progression evidence on the existing member/transfer owner, not a separate reward ledger. The player/file remains client-owned under the classic initial-character trust boundary.
+
+The new crate grammar, Angler stage verifier and FishDropsDB reachability replace exact-RNG equality only for real network clients. Existing trusted-host source generators reuse the same rules. Fresh candidate gates are pending; `0d48670b` acceptance below attests the previous source.
+
 ## Fishing character boundary follow-up, 2026-10-26
 
 At the first accepted spawn, the initial packet5 character image establishes physical fishing-stock ceilings in the existing `RuntimePlayerInventoryStore`, covering the main inventory and four banks. No private quantity or copper grant occurs. The existing cursor/sort/bank owners move those ceilings; respawn and transfer never reseed them. Bait, three fishing potions, quest fish and crates spend canonical physical stock within known ceilings; actual rewards alone add private quantities. Reward-first crate reports are held in the existing `PendingShopJournal`, with no physical/cap/RNG adoption until the existing source138 exact cohort matcher pays.

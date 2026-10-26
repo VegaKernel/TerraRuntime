@@ -8,6 +8,15 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class NpcAuthority
 {
+    internal bool HasActiveFishingAngler
+    {
+        get
+        {
+            for (int slot = 0; slot < npcs.Capacity; slot++)
+                if (npcs.TryGetActive((byte)slot, out var npc) && npc.Type == 369 && npc.Simulation.Life > 0) return true;
+            return false;
+        }
+    }
     private readonly bool fishingCombatBookUsed;
     private readonly Action? fishingWorldStateAdopted;
     private Action? fishingWorldInfoPublisher;

@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Vanilla-client fishing legality candidate, 2026-10-26
+
+The user selected classic client roles plus mandatory complete server checks. The new candidate replaces client/server RNG equality with shared source-grammar validation of correlated outcomes, true paid inventory changes, original storage/overflow order and one-shot action ownership. It also stages Angler75 until5/138 and retains narrowed unknown lifetime-count evidence. Ordinary fishing client27/29/130/61 uses known world/scene/timing/bait facts rather than independently rerolling the client's catch. Existing owners remain authoritative; no second inventory, reward database or SSC storage is added. Preliminary Release and focused checks are in progress. Prior accepted `0d48670b` gates below do not attest this candidate; no status advance to full vanilla compatibility.
+
 ## Fishing character boundary follow-up, 2026-10-26
 
 The follow-up admits legitimate first-spawn character fishing stock through existing physical ceilings without minting private pickup/copper budgets, and preserves those ceilings across existing cursor/sort/bank and managed transfer owners. Explicit76 imports current character Angler/golf snapshots; paid quests lock the session milestone. Reward-first crate cohorts stay untrusted until the existing paid source138 matcher accepts. Source probes establish NO76 at ordinary join and no counter-only regular sync; source GUI rewards precede75, own76 is ignored without SSC, and own5 is ignored for an unlocked non-SSC inventory. Ordinary GUI inventory/lifetime/reconnect/reward-RNG parity therefore remains open, alongside the exact client/server crate-RNG limitation. Server `.plr`/SSC storage is not required or introduced.

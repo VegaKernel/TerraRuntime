@@ -1,5 +1,11 @@
 # Verified vanilla facts
 
+## Ordinary-client legality contract, 2026-10-26
+
+User decision: retain vanilla client roles and require complete server legality/payment/replay validation. Source client RNG outcomes must not be compared to an unrelated server RNG cursor. The client performs bait decisions, local catch/reward rolls and inventory QuickSpawn before its later5/138 reports. Negative bite27 contains no selected bait/result; pull return27 carries the item, NPC130/61 precedes that return, overflow21 precedes29 or the end-of-frame inventory image. Existing source fixtures and direct probes support these roles; new audit `.cache/fishing-client-validation/source-fishing/` explicitly distinguishes static tracing from reused source executions.
+
+The candidate crate grammar keeps3328 old/new draw/grant trace comparisons and416independent original outcomes; the Angler stage refactor retains480original inventory/next-RNG observations and adds known/unknown-count legality. Copied controls detect mutually exclusive crate rewards, assumed-zero lifetime and immediate75 server rewards. Current candidate checks are preliminary, with fresh full/Native/live pending. No claim of detecting biased selection among otherwise valid client RNG outcomes, authenticating imported local characters, or forcing own5/76 correction without SSC is made.
+
 ## Fishing character role correction, 2026-10-26
 
 The official Linux1458 assembly SHA256 `4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034` was executed in a private BCL probe. Nine actual MessageBuffer76 rows establish the dedicated authenticated sender remap, exact signed-counter wire layout, source255 ignore, peer relay and client own/peer/SSC roles. Relay for authenticated slot3, Angler29/golf1234 is `0C004C031D000000D2040000`. Negative values are accepted by the original wire handler; this runtime deliberately refuses them semantically. Pre-playing source kicks can still mutate afterward; that source fall-through is not a legal import path here.

@@ -120,6 +120,12 @@ public static partial class FishingRules1458
                     pole = other;
         int baitSlot = SelectBait(inventory);
         int baitType = baitSlot < 0 ? 0 : inventory[baitSlot].ItemType;
+        return GetConditionsForPoleAndBait(pole.ItemType, baitType, context);
+    }
+
+    public static FishingConditions1458 GetConditionsForPoleAndBait(int poleType, int baitType, in FishingPowerContext1458 context)
+    {
+        TryGetPole(poleType, out var pole);
         int baitPower = GetBaitPower(baitType);
         if (baitType == 2673 || baitPower == 0 || pole.Power == 0)
             return new(pole.ItemType, pole.Power, baitType, baitPower, 0, 0);

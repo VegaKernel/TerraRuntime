@@ -23,7 +23,10 @@ internal sealed record ProjectileDespawnRuntimeCommand(
 
 internal sealed record ClientProjectileUpdateRuntimeCommand(
     ConnectionHandle Connection,
-    TerrariaProjectileUpdateState State) : RuntimeCommand;
+    TerrariaProjectileUpdateState State) : RuntimeCommand
+{
+    internal bool ValidateVanillaFishingClient { get; init; }
+}
 
 internal sealed record ClientProjectileDestroyRuntimeCommand(
     ConnectionHandle Connection,

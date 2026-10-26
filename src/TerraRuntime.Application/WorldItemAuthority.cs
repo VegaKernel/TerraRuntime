@@ -203,6 +203,7 @@ internal sealed partial class WorldItemAuthority
         }
 
         if (!ownedPickupTransactionRunning && players.TryRetainSortOverflow(this, command)) return;
+        if (!ownedPickupTransactionRunning && players.TryRetainFishingOverflow(this, command)) return;
         if (players.HasDropFunding(command.Connection))
         {
             if (TryApplyFundedDrop(command, out var owned))
