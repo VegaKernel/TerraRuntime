@@ -22,6 +22,8 @@ internal sealed record RuntimePlayerTransferState(
     internal bool OwnsLifeMaximum { get; init; }
     internal byte OwnedPermanentUpgradeMask { get; init; }
     internal int AnglerQuestsFinished { get; init; }
+    internal TerraRuntime.Gameplay.Players.AnglerQuestCountEvidence1458 AnglerQuestCounts { get; init; } =
+        TerraRuntime.Gameplay.Players.AnglerQuestCountEvidence1458.Unknown;
     internal int GolferScoreAccumulated { get; init; }
     internal bool OwnsAnglerQuestsFinished { get; init; }
     internal bool OwnsFishingLadyBugLuck { get; init; }

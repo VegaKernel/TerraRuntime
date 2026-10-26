@@ -49,6 +49,9 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     public bool AmmoCost80 { get; init; }
     public bool AmmoCost75 { get; init; }
 
+    public AmmoCyclingMode1458 AmmoCyclingMode { get; init; }
+    public bool AmmoCyclerDamage { get; init; }
+
     public bool Archery { get; init; }
     public float MinionDamage { get; init; } = 1f;
     public float MinionKnockback { get; init; }
@@ -102,6 +105,9 @@ public readonly record struct VanillaPlayerCombatEquipmentContext(bool? ExtraAcc
     /// <summary>Actual source Main.LocalPlayer vanity armor; absent ownership is not empty armor.</summary>
     public VanillaPlayerLocalVanityArmor1458? LocalVanityArmor { get; init; }
 
+    // Pure projection capability. Only callers retaining the source selector
+    // state opt in; generic/bot component callers keep their existing fence.
+    public bool EnableAmmoCyclingAccessories { get; init; }
     public bool GameMenu { get; init; }
 
     public bool TryIsSlotUsable(int armorIndex, out bool usable)
@@ -144,7 +150,7 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
         out VanillaPlayerCombatSnapshot snapshot, out int manaMaximumBonus)
     {
         manaMaximumBonus = 0;
-        snapshot = initial;
+        snapshot = initial with { AmmoCyclingMode = AmmoCyclingMode1458.None, AmmoCyclerDamage = false };
         if (!VanillaPlayerCombatBuffs1458.TryApply(in initial, ReadOnlySpan<BuffTypeId>.Empty, out _)) return false;
         if (context.MasterMode && !context.ExpertMode) return false;
         Span<PlayerEquipmentCommitRequest> effective = stackalloc PlayerEquipmentCommitRequest[VanillaPlayerItemSlotCatalog.FunctionalArmorCount];
@@ -187,10 +193,23 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
                 continue;
             }
 
-            if (!TryApplyAccessory(type, request.PrefixId, ref snapshot))
+            if (!TryApplyAccessoryPrefix(request.PrefixId, ref snapshot, context.EnableAmmoCyclingAccessories && VanillaAmmoCycling1458.TryGetAccessoryMode(type, out _)))
                 return false;
             if (request.PrefixId.Value == 66)
                 manaMaximumBonus += 20;
+        }
+
+        // UpdateEquips first grants all usable prefixes/armor benefits, then
+        // functional accessories. Their additions are not interchangeable at
+        // Single precision; post-loop flags below have their own source order.
+        bool skyStoneEffects = false;
+        for (int i = 3; i < effective.Length; i++)
+        {
+            var request = effective[i];
+            if (request.Stack <= 0 || request.ItemNetId <= 0) continue;
+            if (!request.TryGetCanonicalItemType(out var type) ||
+                !context.EnableAmmoCyclingAccessories && VanillaAmmoCycling1458.TryGetAccessoryMode(type, out _) ||
+                !TryApplyAccessory(type, VanillaPrefixIds.None, ref snapshot, ref skyStoneEffects)) return false;
         }
 
         // ArmorSetBonuses.Initialize (1.4.5.8): the ordinary metal sets and their ancient
@@ -218,8 +237,21 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
             return false;
         }
 
+        snapshot = VanillaAmmoCycling1458.ApplyEquipmentDamageBonus(in snapshot, snapshot.AmmoCyclerDamage);
         if (snapshot.ManaFlower)
             snapshot = snapshot with { ManaCostMultiplier = snapshot.ManaCostMultiplier - 0.08f };
+        if (skyStoneEffects)
+            snapshot = snapshot with
+            {
+                Defense = snapshot.Defense + 4,
+                MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.10f,
+                MeleeDamage = snapshot.MeleeDamage + 0.10f,
+                RangedDamage = snapshot.RangedDamage + 0.10f,
+                MagicDamage = snapshot.MagicDamage + 0.10f,
+                MeleeCrit = snapshot.MeleeCrit + 2,
+                RangedCrit = snapshot.RangedCrit + 2,
+                MagicCrit = snapshot.MagicCrit + 2
+            };
         return true;
     }
 
@@ -297,7 +329,7 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
     private static bool TryApplyAccessory(
         ItemTypeId type,
         PrefixId prefix,
-        ref VanillaPlayerCombatSnapshot snapshot)
+        ref VanillaPlayerCombatSnapshot snapshot, ref bool skyStoneEffects)
     {
         switch (type.Value)
         {
@@ -312,6 +344,13 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
                 break;
             case 3035: // Greedy Ring combines all four source flags.
                 snapshot = snapshot with { GoldRing = true, HasLuckyCoin = true, HasLuckLuckyCoin = true, DiscountEquipped = true };
+                break;
+            case 6168:
+            case 6169:
+            case 6193:
+            case 6194:
+                if (!VanillaAmmoCycling1458.TryGetAccessoryMode(type, out var ammoMode)) return false;
+                snapshot = snapshot with { AmmoCyclingMode = ammoMode, AmmoCyclerDamage = true };
                 break;
             case 555: // ApplyEquipFunctional owns a flag; UpdateEquips subtracts once.
                 snapshot = snapshot with { ManaFlower = true };
@@ -362,18 +401,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
             case 1613: // Ankh Shield: Item.SetDefaults defense=5; UpdateEquips grants noKnockback.
                 snapshot = snapshot with { Defense = snapshot.Defense + 5, NoKnockback = true, AnkhShield = true };
                 break;
-            case 3110: // Celestial Shell / skyStoneEffects
-                snapshot = snapshot with
-                {
-                    Defense = snapshot.Defense + 4,
-                    MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.10f,
-                    MeleeDamage = snapshot.MeleeDamage + 0.10f,
-                    RangedDamage = snapshot.RangedDamage + 0.10f,
-                    MagicDamage = snapshot.MagicDamage + 0.10f,
-                    MeleeCrit = snapshot.MeleeCrit + 2,
-                    RangedCrit = snapshot.RangedCrit + 2,
-                    MagicCrit = snapshot.MagicCrit + 2
-                };
+            case 3110: // UpdateEquips applies skyStoneEffects after cycler/manaFlower.
+                skyStoneEffects = true;
                 break;
             case 2609: // Fishron Wings: movement only for the represented combat slice.
             case 4989: // Soaring Insignia: movement/jump/flight only, no combat modifier.
@@ -389,7 +418,7 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
         return TryApplyAccessoryPrefix(prefix, ref snapshot);
     }
 
-    private static bool TryApplyAccessoryPrefix(PrefixId prefix, ref VanillaPlayerCombatSnapshot snapshot)
+    private static bool TryApplyAccessoryPrefix(PrefixId prefix, ref VanillaPlayerCombatSnapshot snapshot, bool projectMovement = false)
     {
         if (prefix == VanillaPrefixIds.None)
             return true;
@@ -411,11 +440,10 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
             case 70: return AddDamage(0.02f, ref snapshot);
             case 71: return AddDamage(0.03f, ref snapshot);
             case 72: return AddDamage(0.04f, ref snapshot);
-            case 73:
-            case 74:
-            case 75:
-            case 76:
-                return true; // movement-only prefixes
+            case 73: if (projectMovement) snapshot = snapshot with { MoveSpeed = snapshot.MoveSpeed + 0.01f }; return true;
+            case 74: if (projectMovement) snapshot = snapshot with { MoveSpeed = snapshot.MoveSpeed + 0.02f }; return true;
+            case 75: if (projectMovement) snapshot = snapshot with { MoveSpeed = snapshot.MoveSpeed + 0.03f }; return true;
+            case 76: if (projectMovement) snapshot = snapshot with { MoveSpeed = snapshot.MoveSpeed + 0.04f }; return true;
             case 77: snapshot = snapshot with { MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.01f }; return true;
             case 78: snapshot = snapshot with { MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.02f }; return true;
             case 79: snapshot = snapshot with { MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.03f }; return true;

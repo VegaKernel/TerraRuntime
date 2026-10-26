@@ -126,13 +126,28 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
     RuntimeCultistLightningArcTrailRegistry lightningTrails,
     PlayerAuthority? players = null,
     RuntimeProjectileNpcHealing1458? npcHealing = null,
-    RuntimeProjectileCollisionTileCut1458? collisionTileCuts = null) : IProjectileSimulationCommitSink, IProjectileSimulationPrePublicationCommitSink
+    RuntimeProjectileCollisionTileCut1458? collisionTileCuts = null,
+    VanillaUnifiedRandom1458? ordinaryAmmoRandom = null) : IProjectileSimulationCommitSink, IProjectileSimulationPrePublicationCommitSink
 {
     public bool OwnsCollisionTileCutOffers => collisionTileCuts is not null;
+    public bool OwnsOrdinaryAmmoSourceOffers => ordinaryAmmoRandom is not null;
     public void ProjectileSimulationCommittedBeforePublication(ReadOnlySpan<ProjectileSimulationStepResult> subupdates)
     {
-        if (collisionTileCuts is null) return;
-        foreach (ref readonly ProjectileSimulationStepResult step in subupdates) collisionTileCuts.Evaluate(in step);
+        foreach (ref readonly ProjectileSimulationStepResult step in subupdates)
+        {
+            collisionTileCuts?.Evaluate(in step);
+            if (!step.OrdinaryAmmoSourceUpdate || ordinaryAmmoRandom is null) continue;
+            // AI precedes HandleMovement. A terminal collision returns before the
+            // ordinary Unholy/Jester post-move offers. Jester Kill still offers
+            // all sixty arguments when dedicated Dust performs no visual work.
+            if (step.State.Type.Value == 981) ordinaryAmmoRandom.Next(6);
+            if (step.TerminationReason == ProjectileSimulationTerminationReason.TileCollision)
+                ordinaryAmmoRandom.Next(3);
+            else if (step.State.Type.Value is 4 or 5)
+                ordinaryAmmoRandom.Next(step.State.Type.Value == 4 ? 5 : 3);
+            if (step.TimeLeft <= 0 && step.State.Type.Value == 5)
+                for (int index = 0; index < 60; index++) ordinaryAmmoRandom.Next(3);
+        }
     }
     public void ProjectileSimulationCommitted(
         in ProjectileSnapshot initialProjectile,

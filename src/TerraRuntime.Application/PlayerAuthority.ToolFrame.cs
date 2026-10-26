@@ -1,3 +1,4 @@
+using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Players;
 
@@ -143,7 +144,15 @@ internal sealed partial class PlayerAuthority
             SourcePlacement = deferred ? before.SourcePlacement : null,
             PlacementReady = deferred ? before.PlacementReady : null,
             WeaponShoot = null,
-            ReleaseWitness = changedIdentity ? null : before.ReleaseWitness,
+            // A source released pick/axe/shovel can enable a subsequent hammer.
+            // Keep only this direct known tool selector lineage. An eligible
+            // intervening nonhammer use with no qualified target explanation is
+            // not evidence that its source pounding flag survived.
+            ReleaseWitness = changedIdentity && tool.Hammer <= 0 ||
+                sourceFacts.ControlUseItem && local.LocalToolStage && localDefinition.Hammer <= 0 &&
+                (localDefinition.Pick > 0 || localDefinition.Axe > 0) &&
+                localState.ToolTime == 0 && localState.Selected.Animation > 0
+                ? null : before.ReleaseWitness,
             LastUseSuccess = local.LastUseSuccess,
             UseEpoch = local.BeganActualUse ? before.UseEpoch + 1 : before.UseEpoch,
             LastFrameUpdate = update,
@@ -152,4 +161,41 @@ internal sealed partial class PlayerAuthority
         };
         return true;
     }
+    private RuntimePlayerReleasedToolClockAlternative1458? CaptureReleasedBufferedToolClock(
+        in ToolDefinition1458 tool, RuntimePlayerToolUse1458 before, RuntimePlayerToolUse1458 after,
+        in ToolFrameFacts1458 facts, int critRoll, RuntimePlayerMember member, PlayerBuffState buffs,
+        in RuntimePlayerUpdateWorld1458 world, VanillaUnifiedRandom1458 random, int remoteCrit)
+    {
+        if (facts.ControlUseItem || facts.SelectionBuffered || !tool.AutoReuse || tool.Channel || tool.Shoot != 0 ||
+            before.Clocks.Selected.Animation != 1 || after.Clocks.Selected.Animation != 0 ||
+            !before.SelectionInitialized || !before.LocalClocksKnown || !after.LocalClocksKnown ||
+            before.SourceSlot != member.SelectedItem || before.SourceItem != tool.Item || before.SourcePrefix != tool.Prefix ||
+            before.DeferredSelectionSlot is not null || after.DeferredSelectionSlot is not null ||
+            before.WeaponShoot is not null || after.WeaponShoot is not null || before.SourcePlacement is not null ||
+            before.PlacementAlternative is not null || before.PlacementReady is not null ||
+            after.Input is not null || member.CursorMove is not null || after.BuildingPermission is not { IsCurrent: true, NoBuilding: false } ||
+            buffs.HadOwnedFoodEffect(currentCombatTick)) return null;
+        foreach (var actor in membership.Members) if (!ReferenceEquals(actor, member)) return null;
+        foreach (var buff in buffs.CaptureTypes()) if (buff != default) return null;
+        if (!inventory.TryCaptureShopJournal(member.Connection, out var image) || image is null) return null;
+        ulong possible = 0;
+        for (byte slot = 0; slot < 59; slot++)
+        {
+            var item = image.Before[slot];
+            if (slot != member.SelectedItem && !item.IsEmpty && item.IsCanonical &&
+                VanillaToolCatalog1458.TryResolve(item.ItemType, item.Prefix, world.RemixWorld,
+                    world.WindowsItemPrefixArithmetic, out var selected) && selected.Hammer > 0) possible |= 1UL << slot;
+        }
+        if (possible == 0) return null;
+        var buffered = facts with { LocalOwner = true, LastUseSuccess = before.LastUseSuccess, SelectionBuffered = true };
+        if (!VanillaToolUse1458.TryAdvanceFrame(tool, before.Clocks, buffered, critRoll, out var branch) ||
+            branch.BeganActualUse || branch.ShootBoundary || branch.AttemptedUse ||
+            !VanillaToolUse1458.TryEnterToolStage(tool, branch.State, branch.LocalToolStage, out var alternate) ||
+            alternate.Selected.Animation != 0 || alternate.Selected.AnimationMax == after.Clocks.Selected.AnimationMax ||
+            (alternate with { Selected = alternate.Selected with { AnimationMax = after.Clocks.Selected.AnimationMax } }) != after.Clocks)
+            return null;
+        return new(after, alternate, image, buffs, random, world, member.Connection,
+            currentCombatTick, remoteCrit, possible);
+    }
+
 }

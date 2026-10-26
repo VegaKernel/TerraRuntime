@@ -12,7 +12,7 @@ internal sealed partial class PlayerAuthority
 
     // Protocol 5 has no UI intent. This bounded authority policy accepts only a paired,
     // source-valid conserved context-0/coin-1 transition over existing quantity custody.
-    private bool TryReconcileOwnedCursorMove(PlayerEquipmentRuntimeCommand command)
+    private bool TryReconcileOwnedCursorMove(PlayerEquipmentRuntimeCommand command, bool allowNewCandidate)
     {
         var request = command.Request;
         if (!membership.TryGet(command.Connection, out var member)) return false;
@@ -24,7 +24,7 @@ internal sealed partial class PlayerAuthority
         // Source PickupItem followed by a coin-slot LeftClick may emit only cursor58:
         // the client slot began and ended Air before its next sync. Match all four
         // stored coin sources; two possible source lanes have different full images.
-        if (pending?.Inventory is null && pending?.Shop is null &&
+        if (allowNewCandidate && pending?.Inventory is null && pending?.Shop is null &&
             request.SlotId == VanillaPlayerItemSlotCatalog.InventoryMouseItem &&
             HasOwnedPickupContext && !member.IsDead && member.ItemPhase is not null &&
             TryCursorReport(in request, out var firstCursor))
@@ -69,7 +69,8 @@ internal sealed partial class PlayerAuthority
                 { RejectedEquipmentUpdates++; return true; }
                 member.TryAdvanceRevision();
                 ObserveAcceptedBankBatchImage(command.Connection, completion);
-                AppliedEquipmentUpdates += pending.Inventory.DebitApplied ? 1 : 2;
+                AppliedEquipmentUpdates += pending.Inventory.DebitApplied ||
+                    IsHistoricalAmmoAcknowledgement(member,pending.Inventory.Slot,pending.Inventory.AfterSlot) ? 1 : 2;
                 Exception? failure = null;
                 cursorMovePublishing = true;
                 try
@@ -91,11 +92,16 @@ internal sealed partial class PlayerAuthority
                 return true;
             }
         }
+        if (!allowNewCandidate) return false;
         if (!HasOwnedPickupContext || member.IsDead || member.ItemPhase is null ||
             request.SlotId is < 0 or >= 58 || !TryCursorReport(in request, out var reported) ||
             !inventory.TryPrepareReportedCursorMove(command.Connection, request.SlotId, reported, member.ItemAnimation, member.ItemPhase.Value.Selected.ItemTime, out var prepared) || prepared is null)
             return false;
-        if (prepared.CanEagerDebit)
+        // A historical Air ACK can also be the first half of a new cursor
+        // move over refilled stock. Retain the existing bounded alternative,
+        // but require its exact58 companion before changing that stock.
+        bool historicalAmmoAck=IsHistoricalAmmoAcknowledgement(member,request.SlotId,reported);
+        if (prepared.CanEagerDebit && !historicalAmmoAck)
         {
             var observation = BeginBankBatchAlternative(command, in request);
             if (member.Revision >= ulong.MaxValue - 1 || !prepared.TryAdoptDebitUnpublished())
@@ -112,7 +118,7 @@ internal sealed partial class PlayerAuthority
             return true;
         }
         member.CursorMove = new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, prepared, Shop: member.CursorMove?.Shop);
-        return true;
+        return !historicalAmmoAck;
     }
 
     private bool IsCurrentCursorActor(RuntimePlayerMember member, PendingCursorMove pending)

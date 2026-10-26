@@ -13,13 +13,13 @@ internal sealed partial class ProjectileAuthority
         in VanillaProjectileAmmoCombatDefinition ammo, in RuntimePlayerInventoryItem ammoItem,
         in VanillaPlayerCombatSnapshot combat, int ammoSlot, bool ammoBox, bool ammoPotion,
         float playerCenterX, float playerCenterY, long tick, VanillaUnifiedRandom1458 plannedRandom,
-        out AuthoritativeClientProjectileSpawn authoritative)
+        out AuthoritativeClientProjectileSpawn authoritative, bool sourcePaid=false)
     {
         authoritative = default;
         if (packet.OriginalDamage != 0 || packet.BannerIdToRespondTo != 0 ||
             packet.Ai0 != 0f || packet.Ai1 != 0f || packet.Ai2 != 0f ||
             !VanillaOrdinaryBowLaunch1458.IsValidSpawnCenter(packet.PositionX + 5f, packet.PositionY + 5f,
-                playerCenterX, playerCenterY) || trustedClientUseCadence.IsOnCooldown(connection.Player, tick))
+                playerCenterX, playerCenterY) || !sourcePaid && trustedClientUseCadence.IsOnCooldown(connection.Player, tick))
             return ClientProjectileProvenanceResolveResult.Rejected;
 
         VanillaOrdinaryBowLaunchFacts1458? accepted = null;

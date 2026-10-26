@@ -23,7 +23,13 @@ internal sealed record ProjectileDespawnRuntimeCommand(
 
 internal sealed record ClientProjectileUpdateRuntimeCommand(
     ConnectionHandle Connection,
-    TerrariaProjectileUpdateState State) : RuntimeCommand;
+    TerrariaProjectileUpdateState State) : RuntimeCommand
+{
+    // An authenticated report may wait for adjacent13. It grants no caller
+    // role, source clock, stock, entropy or projectile by itself.
+    internal bool LocalItemReportIntent { get; init; }
+    internal bool ValidateVanillaFishingClient { get; init; }
+}
 
 internal sealed record ClientProjectileDestroyRuntimeCommand(
     ConnectionHandle Connection,

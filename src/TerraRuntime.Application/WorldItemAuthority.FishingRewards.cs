@@ -11,7 +11,8 @@ internal sealed partial class WorldItemAuthority
 {
     internal bool TryFishingRewards(ConnectionHandle connection, short debitSlot, int debitType,
         bool debitAfterRewards, Func<FishingRewardSession, bool> roll, Func<bool>? guard = null, Action? adopt = null,
-        RuntimePlayerInventoryStore.ShopJournalCapture? sourceCapture = null)
+        RuntimePlayerInventoryStore.ShopJournalCapture? sourceCapture = null,
+        IReadOnlyList<WorldItemDropStateUpdate>? clientOverflow = null, bool clientOwnedRolls = false)
     {
         if (ownedPickupTransactionRunning || SpawnRandom is not SystemWorldItemSpawnRandom source ||
             !players.TryPrepareFishingRewardInventory(connection, debitSlot, debitType, out var capture, out var inventory, sourceCapture) ||
@@ -25,9 +26,11 @@ internal sealed partial class WorldItemAuthority
             return new WorldItemAllocationPlayer1458(c.State.Player.Slot.Value, c.State.PositionX, c.State.PositionY, (int)body.Width, (int)body.Height);
         }).ToArray();
         using var allocation = worldItems.CreateAllocationPreview(views);
-        var session = new FishingRewardSession(after, inventory, allocation, capture.Player, world, windows);
+        var session = new FishingRewardSession(after, inventory, allocation, capture.Player, world, windows,
+            this, clientOwnedRolls ? clientOverflow ?? [] : null);
         if ((!debitAfterRewards && !inventory.TryDebit()) || !roll(session) || session.Failed ||
-            (debitAfterRewards && !inventory.TryDebit()) || !inventory.TrySeal() ||
+            (debitAfterRewards && !inventory.TryDebit()) || !session.AllClientOverflowMatched || !inventory.TrySeal() ||
+            clientOwnedRolls && !after.HasSameState(before) ||
             guard?.Invoke() == false || !allocation.TryClaim() || guard?.Invoke() == false ||
             !players.IsCurrentItemOwnerPlayers(captures) || !players.IsCurrentProjectileUse(capture) ||
             !inventory.IsCurrent || !live.HasSameState(before))
@@ -53,9 +56,12 @@ internal sealed partial class WorldItemAuthority
     internal sealed class FishingRewardSession(VanillaUnifiedRandom1458 random,
         RuntimePlayerInventoryStore.FishingRewardPreparation inventory,
         RuntimeWorldItemStore.AllocationPreview allocation, PlayerStateSnapshot player,
-        VanillaItemPrefixWorld1458 world, bool windows)
+        VanillaItemPrefixWorld1458 world, bool windows, WorldItemAuthority owner,
+        IReadOnlyList<WorldItemDropStateUpdate>? clientOverflow)
     {
         private int grants;
+        private int overflowIndex;
+        internal bool AllClientOverflowMatched => clientOverflow is null || overflowIndex == clientOverflow.Count;
         internal VanillaUnifiedRandom1458 Random => random;
         internal bool Failed { get; private set; }
         internal bool MatchesReports(ReadOnlySpan<RuntimePlayerInventoryItem> reports, ReadOnlySpan<bool> seen) =>
@@ -76,6 +82,14 @@ internal sealed partial class WorldItemAuthority
                 !VanillaDefinitionCatalog.IsValidKnownStack(itemType, checked((short)stack)) ||
                 !inventory.TryGrant(new(type, stack, prefix, false), world, canGoIntoVoidVault, out var residual)) return Fail();
             if (residual.Type == 0 || residual.Stack <= 0) return true;
+            if (clientOverflow is not null)
+            {
+                if (overflowIndex >= clientOverflow.Count) return Fail();
+                var offer = clientOverflow[overflowIndex++];
+                return owner.IsValidFishingOverflowOffer(player, offer, residual) &&
+                    allocation.TrySpawnSource(offer, 0, out short clientSlot, player.Player.Slot.Value) &&
+                    clientSlot < RuntimeWorldItemStore.VanillaCapacity || Fail();
+            }
             if (!VanillaWorldItemOwner1458.TryGetSourceCreationNoGravity(itemType, out bool noGravity)) return Fail();
             var body = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (Width: 20f, Height: 42f);
             var drop = new WorldItemDropStateUpdate(player.PositionX + body.Width / 2f - VanillaWorldItemOwner1458.PhysicalWidth / 2f,
@@ -86,5 +100,20 @@ internal sealed partial class WorldItemAuthority
             return allocation.TrySpawnSource(drop, 0, out short slot, player.Player.Slot.Value) && slot < RuntimeWorldItemStore.VanillaCapacity || Fail();
         }
         private bool Fail() { Failed = true; return false; }
+    }
+
+    internal bool IsValidFishingOverflowOffer(in PlayerStateSnapshot player, in WorldItemDropStateUpdate offer,
+        WorldItemPickupSlot1458 expected)
+    {
+        if (expected.Type <= 0 || expected.Stack is <= 0 or > short.MaxValue || expected.Favorite ||
+            !VanillaWorldItemOwner1458.TryGetSourceCreationNoGravity(new(expected.Type), out bool noGravity) ||
+            !IsSourceSpawnVelocity(offer.VelocityX, -30, 31) ||
+            !IsSourceSpawnVelocity(offer.VelocityY, noGravity ? -30 : -40, noGravity ? 31 : -15)) return false;
+        var body = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (Width: 20f, Height: 42f);
+        var exact = new WorldItemDropStateUpdate(player.PositionX + body.Width / 2f - VanillaWorldItemOwner1458.PhysicalWidth / 2f,
+            player.PositionY + body.Height / 2f - VanillaWorldItemOwner1458.PhysicalHeight / 2f,
+            offer.VelocityX, offer.VelocityY, checked((short)expected.Stack), checked((byte)expected.Prefix),
+            WorldItemOwnershipMode.ReserveForLocalPlayer, checked((short)expected.Type), false, 0, 100);
+        return offer == exact;
     }
 }

@@ -5,6 +5,24 @@ Buried Chests cave-house boundary acceptance (2026-10-27): the source-scoped can
 ## Buried Chests cave-house boundary, 2026-10-27
 
 Row 63 remains `P`, but its ordinary house-loop candidate search now applies the source `oceanDepths` rejection before calling `CaveHouseBiome`, and its additional-desert loop samples the adjusted full `GenVars.UndergroundDesertHiveLocation` instead of clipping the bottom to the ordinary-house height ceiling. The structural house slice also reproduces `HouseBuilder.CreateSupportBeamList`'s forced bridges to a lower room at gaps shorter than $50\,\text{tiles}$, overwriting objects in the path except where the top cell is a platform. A direct official `HouseBuilder.PlaceSupportBeams` fixture, focused chest-loop and canonical-world integration regressions cover these boundaries. Furniture, aging, earlier protected `StructureMap` regions and a complete registered-pass differential remain open; do not mark row 63 `C` yet.
+## Current-block shipment with concurrent fishing successor, 2026-10-27
+
+Paid-ammo/tools/cycling and the scoped retirement-shell fix now compose with concurrent main f4f70be3 client fishing validation/lifetime fixes. Fresh WAE0/0 and110/110 tests across7affected classes pass on4056unchanged inputs/158DLL. User requested merging what is ready; no new full/Native or next feature block is started. Earlier full/Native/TCP results below identify earlier snapshots, not this final union. Full compatibility remains unfinished.
+
+## Large ammo/equipment checkpoint and fishing union, 2026-10-27
+
+The user requested shipping the current union. Combined focused453/453 passed before the final scoped fishing-shell fix; fresh WAE0/0 and all16 fishing/constructor tests pass afterward. The regression fails both intended assertions on old production and passes with the fix. No new full/Native pass was started after the merge-now request; candidate06 acceptance below remains snapshot-specific. Whole parity remains unfinished, and no next feature block is included.
+
+The integration candidate now combines the existing17 phase-paid weapons, bounded delivery/ACK history, source-qualified released-tool witness, ordinary Update timeout/tile-collision RNG and all four cycling accessories on the known human source phase. Selector offset/cooldown, last-effective equipment mode and once-only ranged bonus share existing player state, inventory custody and RNG. Unknown/generic callers retain their fences; no new weapon roster or recovered-ammo producer is implied.
+
+Root independently verified component manifests and causal XML. Candidate06 passes fresh WAE0/0, fast25,323/25,323 and unfiltered full1,566,737/1,566,737, with all5,235 discovered methods executed and zero failures/errors/skips. Fresh Windows NativeAOT/five smokes and actual Release/Native TCP pass. Commit5a845c08 preserves that scoped checkpoint. Concurrent main fishing0d48670b is now composed additively; its new combined acceptance is tracked in work-state and must not inherit old snapshot claims. The337920-phase oracle remains complete in full/item-player matrices without sampling. Earlier status entries below are historical. See [cycling EN](en/ammo-cycling-equipment-1458.md)/[RU](ru/ammo-cycling-equipment-1458.md). Linux Native, full gameplay and AI compatibility remain unfinished.
+## Fishing client final-gate candidate, 2026-10-27
+
+The legality/payment implementation now also drains adopted catch/NPC publications under observer exceptions, excludes client actors from the host timeout generator, and prevents expired capabilities from revival through late29. Release WAE0/0 and eight genuine old-DLL regression controls pass; the old code generates an extra item in timeout/late-report controls. Source `be606776` is frozen for new focused/fast/full, exact104-case managed/Windows Native and actual TCP acceptance. These gates are pending; earlier597/96 candidate results and0d48670b acceptance do not attest this corrected tree. Linux Native, graphical-client economic correction, classic character import trust and broader fishing admission remain explicit limits.
+
+## Vanilla-client fishing legality candidate, 2026-10-26
+
+The user selected classic client roles plus mandatory complete server checks. The new candidate replaces client/server RNG equality with shared source-grammar validation of correlated outcomes, true paid inventory changes, original storage/overflow order and one-shot action ownership. It also stages Angler75 until5/138 and retains narrowed unknown lifetime-count evidence. Ordinary fishing client27/29/130/61 uses known world/scene/timing/bait facts rather than independently rerolling the client's catch. Existing owners remain authoritative; no second inventory, reward database or SSC storage is added. Preliminary Release and focused checks are in progress. Prior accepted `0d48670b` gates below do not attest this candidate; no status advance to full vanilla compatibility.
 
 ## Fishing character boundary follow-up, 2026-10-26
 
@@ -33,6 +51,11 @@ Rows 53 and 102 advance from `P` to bounded `C`. Three independent official regi
 ## Vanilla liquid settlement: canonical ordinary differential, 2026-10-26
 
 Rows 53 and 102 remain `P`, but the same ordinary `4200 × 1200` three-basin fixture now matches independent official registered `PassLegacy` output for both passes. The row-102 canonical regression is no longer skipped. Source `Liquid.DelWater` clears stable low-volume water at retirement; preserving it fixes the previously observed one-unit gap. An omission control fails the canonical digest. Consolidated Release fast `25,287/25,287` and unfiltered full `1,566,700/1,566,700` both pass with zero skips; fresh Windows NativeAOT and five exercised smokes pass. This is a bounded ordinary-water result, not full liquid-kind, extra-liquid special-seed, real-prefix, or Linux NativeAOT parity.
+## Paid ammo and released-tool integration candidate, 2026-10-26
+
+The next candidate is composed over shipped565e3b00: source-ordered paid use for the existing nine bows/eight guns, bounded delayed birth/ACK history, and source-qualified released-tool to hammer continuity. Root independently verifies135 ammo package pins,3980 private-tree files/158 executed DLLs,129 actual normal tests/six causal assertion controls and1907 released-tool pins/seven assertion controls. Those are component results; fresh combined root build/focused/full/Native/TCP acceptance remains pending.
+
+Semantic composition review found two concrete blockers before that gate: metadata-only ammo witness rebinding can suppress same-phase HP publication, and historical ammo-slot reports can intercept a current placement/craft/cursor participant. A minimal successor and actual regressions are in progress. The four ammo cycling accessories remain outside represented equipment admission pending complete state, update-order and RNG integration. Current main/origin stays565e3b00; no complete gameplay/vanilla claim follows. Scope: [ammo EN](en/paid-ammo-use-continuity-1458.md)/[RU](ru/paid-ammo-use-continuity-1458.md), [tool continuity EN](en/released-tool-pound-continuity-1458.md)/[RU](ru/released-tool-pound-continuity-1458.md).
 
 ## Ordinary placement and paid furniture: final local acceptance, 2026-10-26
 

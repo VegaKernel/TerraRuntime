@@ -31,6 +31,20 @@ public static class VanillaItemPrefixNormalization1458
     // must discard the planned cursor and never adopt a partial resolution.
     public const int MaximumAttempts = 256;
 
+    /// <summary>Whether an outcome is reachable by source Prefix(-1), without choosing or replaying a client RNG cursor.</summary>
+    public static bool CanProduceNaturally(ItemTypeId item, PrefixId prefix, bool windowsItemPrefixArithmetic,
+        VanillaItemPrefixWorld1458? world = null)
+    {
+        if (!IsSupported(item, prefix, world) || PrefixWorldRecords1458.HasVariant(item.Value) && !world.HasValue)
+            return false;
+        bool prefixable = PrefixWorldRecords1458.HasVariant(item.Value)
+            ? PrefixWorldRecords1458.TryGet(item, world!.Value, out var record)
+            : VanillaItemPrefixTable1458.TryGet(item, out record);
+        if (!prefixable) return prefix.Value == 0;
+        return (prefix.Value == 0 || VanillaItemPrefixTable1458.GetFamily(record.Family).Contains((byte)prefix.Value)) &&
+            VanillaItemPrefixTable1458.Accepts(record, prefix.Value, windowsItemPrefixArithmetic);
+    }
+
     /// <summary>Bounded source Prefix(-1), including world variants and the natural reduced-chance draw.</summary>
     public static VanillaItemPrefixNormalizationStatus1458 ResolveNatural(ItemTypeId item, Func<int, int> next,
         bool windowsItemPrefixArithmetic, out PrefixId prefix, VanillaItemPrefixWorld1458? world = null)

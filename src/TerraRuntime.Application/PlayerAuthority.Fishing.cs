@@ -11,14 +11,14 @@ internal sealed record FishingItemAction1458(ulong Epoch, FishingPole1458 Pole,
     bool Caught = false, bool ConsumedBait = false, bool BrokeLine = false);
 
 internal sealed record FishingLaunchReport1458(ConnectionHandle Connection,
-    TerrariaProjectileUpdateState State, long Tick);
+    TerrariaProjectileUpdateState State, long Tick, bool ClientClaims = false);
 
 internal sealed partial class PlayerAuthority
 {
     private readonly FishingLaunchReport1458?[] fishingLaunchReports = new FishingLaunchReport1458?[256];
 
     internal ToolReportObservationResult1458 ObserveFishingShoot(ConnectionHandle connection,
-        in TerrariaProjectileUpdateState packet)
+        in TerrariaProjectileUpdateState packet, bool clientClaims = false)
     {
         if (!FishingRules1458.IsBobber(packet.ProjectileType)) return ToolReportObservationResult1458.NotApplicable;
         if (!membership.TryGet(connection, out var member) || member.IsDead ||
@@ -35,7 +35,7 @@ internal sealed partial class PlayerAuthority
         var retained = fishingLaunchReports[member.Slot.Value];
         if (retained is not null && retained.Connection == connection && retained.State != packet &&
             retained.Tick == currentCombatTick) return ToolReportObservationResult1458.Rejected;
-        fishingLaunchReports[member.Slot.Value] = new(connection, packet, currentCombatTick);
+        fishingLaunchReports[member.Slot.Value] = new(connection, packet, currentCombatTick, clientClaims);
         toolProjectiles?.TryCommitFishingBirth(connection);
         return ToolReportObservationResult1458.Retained;
     }
@@ -83,7 +83,7 @@ internal sealed partial class PlayerAuthority
             // Source CanUseItem pulls existing bobbers even though it refuses a
             // second cast. Payment/line-break draws belong inside UpdatePlayers.
             plan.FishingBefore = bobber;
-            bool caught = bobber.Result.HasBite && bobber.BiteClock < 0;
+            bool caught = bobber.Client is null && bobber.Result.HasBite && bobber.BiteClock < 0;
             bool consume = false, line = false;
             if (caught)
             {
@@ -139,6 +139,9 @@ internal sealed partial class PlayerAuthority
         action = offered; report = packet.State; return true;
     }
 
+    internal bool IsFishingClientLaunch(ConnectionHandle connection) =>
+        fishingLaunchReports[connection.Player.Slot.Value] is { ClientClaims: true } report && report.Connection == connection;
+
     internal void AdoptFishingLaunch(RuntimePlayerMember member, FishingItemAction1458 action)
     {
         if (member.ItemPhase is not { ToolUse: { } tools } phase || !ReferenceEquals(tools.FishingAction, action))
@@ -155,6 +158,7 @@ internal sealed partial class PlayerAuthority
             if (member.ItemPhase?.ToolUse?.FishingAction is not { } action) continue;
             if (action.Pull is not null) toolProjectiles?.CommitFishingPull(member.Connection, action);
             else toolProjectiles?.TryCommitFishingBirth(member.Connection);
+            TryCompleteFishingClientReports(member.Connection);
         }
     }
 }

@@ -76,11 +76,16 @@ internal sealed partial class PlayerAuthority
     {
         switch (command)
         {
+            case FishingNpcClientRequestRuntimeCommand npc:
+                toolProjectiles?.TryObserveFishingClientNpc(npc.Connection, npc.Request.NpcType, npc.Request.TileX, npc.Request.TileY);
+                TryCompleteFishingClientReports(npc.Connection);
+                return true;
             case CaptureFishingCrateRuntimeCommand crate:
                 crate.Completion.TrySetResult(CaptureFishingCrate(crate.Connection, crate.Slot));
                 return true;
             case CompleteAnglerQuestRuntimeCommand quest:
-                TryCompleteAnglerQuest(quest.Connection);
+                if (quest.ValidateClientReports) TryBeginAnglerClientQuest(quest.Connection);
+                else TryCompleteAnglerQuest(quest.Connection);
                 PublishAnglerState(quest.Connection);
                 return true;
             case PublishAnglerStateRuntimeCommand quest:
@@ -411,7 +416,10 @@ internal sealed partial class PlayerAuthority
         bool? extraAccessory = appearance is { } owned
             ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
         var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
-        { LocalVanityArmor = combatEquipmentLocalVanityArmor };
+        {
+            LocalVanityArmor = combatEquipmentLocalVanityArmor,
+            EnableAmmoCyclingAccessories = membership.TryGet(connection, out var equipmentOwner) && equipmentOwner.ItemPhase?.AmmoCycling is not null
+        };
         return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out snapshot);
     }
 
@@ -529,6 +537,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryObservePendingFishingReport(equipment)) return;
         if (TryObserveFishingCrateOpen(equipment)) return;
         if (TryAcknowledgePlacementInventory(equipment)) return;
         if (TryRetainPlacementInventory(equipment)) return;
@@ -536,7 +545,15 @@ internal sealed partial class PlayerAuthority
         if (TryAcknowledgeSelectedPotionInventory(equipment)) return;
         if (TryReconcileShopInventoryReport(equipment)) return;
         if (TryReconcileFavoriteCursorReturn(equipment)) return;
-        if (TryReconcileOwnedCursorMove(equipment)) return;
+        if (TryReconcileOwnedCursorMove(equipment, allowNewCandidate: false)) return;
+        // Existing operation ownership precedes ammo reports. A merely
+        // speculative cursor debit must wait for the qualified unpaid ammo
+        // offer too; packet5 alone does not identify a new cursor operation.
+        if (TryObserveOrderedAmmoInventory(equipment, unpaidOfferOnly: true)) return;
+        if (TryReconcileOwnedCursorMove(equipment, allowNewCandidate: true)) return;
+        // Historical Air may have staged a non-debiting cursor alternative;
+        // acknowledge it only after retaining that exact58 companion path.
+        if (TryObserveOrderedAmmoInventory(equipment)) return;
         if (TryStageFishingCrateReward(equipment)) return;
         if (!inventory.CanAcceptOwnedQuantityReport(equipment.Connection, in request))
         {
@@ -993,6 +1010,8 @@ internal sealed partial class PlayerAuthority
 
     private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)
     {
+        if(movement.ItemUseCaller is not (RuntimeItemUseCaller1458.Unknown or RuntimeItemUseCaller1458.DedicatedRemote or RuntimeItemUseCaller1458.LocalOwnerProjection))
+        {RejectedMovements++;return;}
         PlayerMovementCommitRequest submitted = movement.Request;
         if (!VanillaPlayerMovementNormalizer.TryNormalize(
                 in submitted,
@@ -1023,6 +1042,7 @@ internal sealed partial class PlayerAuthority
 
         var placementSelection = CapturePlacementSelection(player, in request);
         var orderedMagicMovement=CaptureOrderedMagicMovement(player,in request);
+        var orderedAmmoMovement=CaptureOrderedAmmoMovement(player);
         var quickBuffMovement = CaptureQuickBuffMovement(player, in request);
         if (!player.TryAdvanceRevision())
         {
@@ -1034,6 +1054,8 @@ internal sealed partial class PlayerAuthority
             ((request.ControlFlags & 32) == 0 || player.SelectedItem != request.SelectedItem))
             player.ItemPhase = paymentPhase with
             { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
+        if(movement.ItemUseCaller!=RuntimeItemUseCaller1458.Unknown)
+            player.ItemUseCaller=movement.ItemUseCaller;
         CaptureManaCrystalIntent(player, in request);
         player.ControlFlags = request.ControlFlags;
         player.MovementFlags = request.MovementFlags;
@@ -1065,6 +1087,7 @@ internal sealed partial class PlayerAuthority
 
         ObservePlacementSelection(player, placementSelection);
         ObserveOrderedMagicMovement(player,orderedMagicMovement);
+        ObserveOrderedAmmoMovement(player,orderedAmmoMovement);
         ObserveQuickBuffMovement(player, quickBuffMovement);
         AppliedMovements++;
         LastMovementSlot = request.PlayerSlot;

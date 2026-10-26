@@ -9,8 +9,9 @@ internal sealed partial class PlayerAuthority
     internal bool TryFishingRewards(ConnectionHandle connection, short debitSlot, int debitType,
         bool debitAfterRewards, Func<WorldItemAuthority.FishingRewardSession, bool> roll,
         Func<bool>? guard = null, Action? adopt = null,
-        RuntimePlayerInventoryStore.ShopJournalCapture? sourceCapture = null) => fishingRewards?.TryFishingRewards(connection,
-            debitSlot, debitType, debitAfterRewards, roll, guard, adopt, sourceCapture) == true;
+        RuntimePlayerInventoryStore.ShopJournalCapture? sourceCapture = null,
+        IReadOnlyList<WorldItemDropStateUpdate>? clientOverflow = null, bool clientOwnedRolls = false) => fishingRewards?.TryFishingRewards(connection,
+            debitSlot, debitType, debitAfterRewards, roll, guard, adopt, sourceCapture, clientOverflow, clientOwnedRolls) == true;
 
     internal bool TryPrepareFishingRewardInventory(ConnectionHandle connection, short slot, int type,
         out RuntimePlayerProjectileUseCapture? capture,

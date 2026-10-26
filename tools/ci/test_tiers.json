@@ -158,6 +158,16 @@
   ],
   "heavy_methods": [
     {
+      "method": "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Original_four_accessories_own_repeated_paid_selection_and_entropy",
+      "file": "tests/TerraRuntime.Tests/OwnedAmmoUseContinuity1458Tests.Cycling.cs",
+      "domains": [
+        "items",
+        "players"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 204.894634
+    },
+    {
       "method": "TerraRuntime.Tests.BannerClosest1458Tests.Actual_banner_boundary_matches_original_squared_float_body_dead_ghost_and_ties",
       "file": "tests/TerraRuntime.Tests/BannerClosest1458Tests.cs",
       "domains": [

@@ -63,10 +63,13 @@ internal sealed partial class PlayerAuthority
         // session commits a real quest, later reports cannot rewrite that paid
         // milestone. Golf remains a separate client-owned character field.
         int count = member.OwnsAnglerQuestsFinished ? member.AnglerQuestsFinished : progress.AnglerQuestsFinished;
-        if (count != member.AnglerQuestsFinished || progress.GolferScoreAccumulated != member.GolferScoreAccumulated)
+        bool changesEvidence = !member.OwnsAnglerQuestsFinished &&
+            (!member.AnglerQuestCounts.TryGetKnown(out int knownCount) || knownCount != count);
+        if (count != member.AnglerQuestsFinished || progress.GolferScoreAccumulated != member.GolferScoreAccumulated || changesEvidence)
         {
             if (!member.TryAdvanceRevision()) return;
             member.AnglerQuestsFinished = count;
+            if (changesEvidence) member.AnglerQuestCounts = AnglerQuestCountEvidence1458.FromKnown(count);
             member.GolferScoreAccumulated = progress.GolferScoreAccumulated;
             member.MarkRemotePhaseSnapshot();
         }
@@ -93,8 +96,13 @@ internal sealed partial class PlayerAuthority
         return true;
     }
 
-    internal bool TryCompleteAnglerQuest(ConnectionHandle connection)
+    internal bool TryCompleteAnglerQuest(ConnectionHandle connection, PendingShopJournal? clientJournal = null)
     {
+        // A trusted host can supply an initial character baseline. Once ordinary
+        // client evidence is ambiguous, its display counter cannot select RNG
+        // rewards for a later host-triggered transaction.
+        if (clientJournal is null && membership.TryGet(connection, out var hostMember) &&
+            hostMember.OwnsAnglerQuestsFinished && !hostMember.AnglerQuestCounts.TryGetKnown(out _)) return false;
         if (anglerState is not { } before || anglerRevision == ulong.MaxValue ||
             !membership.TryGet(connection, out var member) || member.IsDead || !member.HasHealth ||
             member.AnglerQuestsFinished is < 0 or >= int.MaxValue - 50 ||
@@ -117,14 +125,16 @@ internal sealed partial class PlayerAuthority
         var ownedItems = new List<int>();
         for (short slot = 0; slot < 59; slot++)
         {
-            if (!inventory.TryGet(connection, slot, out var item)) return false;
+            RuntimePlayerInventoryItem item;
+            if (clientJournal is not null) item = clientJournal.Capture.Before[slot];
+            else if (!inventory.TryGet(connection, slot, out item)) return false;
             if (item.IsEmpty) continue;
             ownedItems.Add(item.ItemType.Value);
             // FindItem returns the first physical slot. An unfunded earlier fish
             // cannot be skipped in favor of a later funded stack.
             if (slot < 58 && item.ItemType.Value == fish && fishSlot < 0) fishSlot = slot;
         }
-        if (fishSlot < 0 || !inventory.CanSpendFishingStock(connection, fishSlot, fish))
+        if (fishSlot < 0 || !inventory.CanSpendFishingStock(connection, fishSlot, fish, clientJournal?.Capture))
             return false;
         var banks = new RuntimePlayerInventoryItem[160];
         var copper = new long[160];
@@ -146,8 +156,33 @@ internal sealed partial class PlayerAuthority
             session.VendorStore.TryGet(session.VendorHandle, out var currentVendor) && currentVendor == vendor &&
             transferProfiles.TryCapture(connection, out var currentAppearance, out _, out _) && currentAppearance == appearance;
         bool adopted = false;
+        void AdoptPaid(AnglerQuestCountEvidence1458 evidence)
+        {
+            member.AnglerQuestCounts = evidence;
+            member.AnglerQuestsFinished = evidence.TryGetKnown(out int known) ? known : oldCount + 1;
+            member.OwnsAnglerQuestsFinished = true;
+            member.AnglerCompletedDay = anglerDay;
+            anglerState = nextState;
+            anglerRevision++;
+            adopted = true;
+        }
         try
         {
+            if (clientJournal is not null)
+            {
+                if (member.CursorMove is not { } receipt || !ReferenceEquals(receipt.Shop, clientJournal) ||
+                    clientJournal.AnglerClient is not { Intent: true } pending ||
+                    !ReferenceEquals(pending.Quest, before) || pending.Revision != revision ||
+                    !TryExtractFishingReportRewards(clientJournal, fishSlot, fish, out var candidate) || candidate is null)
+                    return false;
+                var context = new AnglerOutcomeContext1458(fish, conditions.HardMode, expertMode, session.PriceAdjustment, ownedItems);
+                var raw = candidate.Unordered.Select(value => new AnglerReward1458(value.Type, value.Stack)).ToArray();
+                if (!VanillaAnglerReward1458.ValidateOutcome(context, member.AnglerQuestCounts, raw,
+                    out var witness, out var counts)) return false;
+                return TryAdoptFishingReportWitness(connection, member, receipt, clientJournal, fishSlot, fish, false,
+                    witness.Select(value => new TerraRuntime.Gameplay.Items.FishingReward1458(value.Type, value.Stack)).ToArray(),
+                    candidate, naturalPrefix: false, Current, () => AdoptPaid(counts));
+            }
             return TryFishingRewards(connection, fishSlot, fish, debitAfterRewards: false, roll: rewards =>
             {
                 foreach (var reward in VanillaAnglerReward1458.Roll(new FishingRandom1458(rewards.Random), rewardContext))
@@ -155,12 +190,7 @@ internal sealed partial class PlayerAuthority
                 return true;
             }, guard: Current, adopt: () =>
             {
-                member.AnglerQuestsFinished = oldCount + 1;
-                member.OwnsAnglerQuestsFinished = true;
-                member.AnglerCompletedDay = anglerDay;
-                anglerState = nextState;
-                anglerRevision++;
-                adopted = true;
+                AdoptPaid(AnglerQuestCountEvidence1458.FromKnown(oldCount + 1));
             });
         }
         finally

@@ -203,9 +203,46 @@ public static class VanillaBulletWeaponLaunch1458
         return true;
     }
 
+    /// <summary>
+    /// Advances only source Shoot spread/count entropy, without constructing aim or a body.
+    /// PickAmmo conservation precedes this call; the caller owns both detached checkpoints.
+    /// </summary>
+    public static bool TryAdvanceSourceRandom(ItemTypeId weapon,
+        Func<int, int, int> next, Func<double> nextDouble, out int count)
+    {
+        count = 0;
+        if (!Supports(weapon)) return false;
+        ArgumentNullException.ThrowIfNull(next);
+        ArgumentNullException.ThrowIfNull(nextDouble);
+        if (weapon == VanillaItemIds.ChainGun)
+        {
+            next(-50, 51);
+            next(-50, 51);
+        }
+        count = GetCount(weapon, next);
+        if (count is < 1 or > MaximumShotCount) return false;
+        GetJitter(weapon, out int minimum, out int maximum, out float strength);
+        for (int child = 0; child < count; child++)
+        {
+            if (weapon == VanillaItemIds.QuadBarrelShotgun && child != 0)
+            {
+                nextDouble();
+                nextDouble();
+                next(-40, 41);
+                next(-40, 41);
+            }
+            else if (strength != 0f)
+            {
+                next(minimum, maximum);
+                next(minimum, maximum);
+            }
+        }
+        return true;
+    }
+
     private static bool IsValid(ItemTypeId weapon, float speed, ProjectileTypeId projectile,
         Span<VanillaBulletLaunchShot1458> shots) =>
-        Supports(weapon) && projectile.Value is 14 or 15 &&
+        Supports(weapon) && projectile.Value is 14 or 15 or 981 &&
         float.IsFinite(speed) && speed > 0f && speed <= 64f && shots.Length >= MaximumShotCount;
 
     private static int GetCount(ItemTypeId weapon, Func<int, int, int> next) => weapon.Value switch

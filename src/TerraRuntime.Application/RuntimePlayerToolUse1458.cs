@@ -22,6 +22,8 @@ internal sealed record RuntimePlayerToolUse1458(ToolClockState1458 Clocks,
     internal RuntimePlayerToolReach1458? Reach { get; init; }
     internal bool SelectionInitialized { get; init; }
     internal RuntimePlayerWeaponShoot1458? WeaponShoot { get; init; }
+    // Paid delayed reports extend the same WeaponShoot participant across frames.
+    internal RuntimePlayerAmmoShootHistory1458? WeaponShootHistory { get; init; }
     internal FishingItemAction1458? FishingAction { get; init; }
     // Retained local mana caller role; selection changes do not make it remote.
     internal bool LocalManaFeedbackOwned { get; init; }

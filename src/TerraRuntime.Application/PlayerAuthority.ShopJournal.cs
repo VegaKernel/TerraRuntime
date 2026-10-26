@@ -24,6 +24,10 @@ internal sealed partial class PlayerAuthority
         internal bool StagedCursorDebit;
         internal bool StagedQuantityImage;
         internal bool FishingCrateCredit;
+        internal FishingOverflowReports? FishingOverflow;
+        internal PendingAnglerClientQuest? AnglerClient;
+        internal FishingClientClaim1458? ClientFishing;
+        internal bool FishingBoundarySeen;
         internal bool MainSortOnly;
         internal bool CraftCandidate;
         internal CraftResolution? CraftResult;
@@ -500,6 +504,9 @@ internal sealed partial class PlayerAuthority
 
     private void ApplyInventorySyncComplete(ConnectionHandle connection)
     {
+        RefreshFishingClientBaitAlternative(connection);
+        if (TrySealFishingClientReports(connection)) return;
+        if (TrySealAnglerClientReports(connection)) return;
         if (TrySealFishingCrateReports(connection)) return;
         if (TryRetainRemoteCraftBoundary(connection)) return;
         if (membership.TryGet(connection, out var quickMember) && quickMember.CursorMove is { Shop: { } quickJournal } quickReceipt &&

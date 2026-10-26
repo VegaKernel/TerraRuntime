@@ -162,6 +162,9 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     internal int? OwnedChannelExpectedType { get; init; }
     internal bool SlowMagicUse { get; init; }
     internal RuntimePlayerMagicPayment1458? MagicPayment { get; init; }
+    // Constructor-owned persistent local selector state. Reports cannot seed it.
+    // Null remains unknown after a retired/unrepresented source phase.
+    internal AmmoCyclingState1458? AmmoCycling { get; init; }
     internal RuntimePlayerToolUse1458? ToolUse { get; init; }
     internal int? ToolTime { get; init; }
     internal int? AttackCD { get; init; }
@@ -171,6 +174,7 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     internal static RuntimePlayerItemPhase1458 Constructor => new(
         20, new(0, 0, 0f, 0, 0), new(0, 0, 0, 0, false, 0, 0), 0f)
     {
+        AmmoCycling = new(0, 0),
         ToolTime = 0, ToolUse = RuntimePlayerToolUse1458.Constructor,
         AttackCD = 0, DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
     };

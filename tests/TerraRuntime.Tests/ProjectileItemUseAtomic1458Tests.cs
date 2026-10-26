@@ -183,7 +183,10 @@ public sealed class ProjectileItemUseAtomic1458Tests
                 f.SetItem(0, 39, 1);
                 f.SetItem(VanillaPlayerItemSlotCatalog.AmmoSlotStart, 3103, 1);
                 f.SetItem((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3), 1321, 1);
-                packet = f.Packet(701, 1, 9, 2f, 10.01f);
+                f.Move(100f,movement:16);
+                // Source ordinary arrows are born at MountedCenter minus5;
+                // the generic bullet fixture origin is not an arrow origin.
+                packet = f.Packet(701, 1, 9, 2f, 10.01f) with {PositionX=105f,PositionY=116f};
                 expected.Next(5);
             }
             else
@@ -330,8 +333,8 @@ public sealed class ProjectileItemUseAtomic1458Tests
         public void SetItem(short slot, int id, short stack) => Players.TryApply(new PlayerEquipmentRuntimeCommand(
             Connection, new PlayerEquipmentCommitRequest(Connection.Player.Slot, slot, stack, 0, checked((short)id), 0)));
 
-        public void Move(float x, byte control = 0) => Players.TryApply(new PlayerMovementRuntimeCommand(Connection,
-            new PlayerMovementCommitRequest(Connection.Player.Slot, control, 0, 0, 0, 0, x, 100f,
+        public void Move(float x, byte control = 0, byte movement = 0) => Players.TryApply(new PlayerMovementRuntimeCommand(Connection,
+            new PlayerMovementCommitRequest(Connection.Player.Slot, control, movement, 0, 0, 0, x, 100f,
                 false, 0f, 0f, false, 0, false, 0f, 0f, 0f, 0f, false, 0f, 0f)));
 
         public TerrariaProjectileUpdateState Packet(ushort key, int type, short damage, float knockBack, float speed) =>

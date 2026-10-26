@@ -27,6 +27,8 @@ internal sealed record RuntimePlayerToolRelease1458(ConnectionHandle Connection,
     RuntimePlayerToolStagePose1458 Pose, RuntimePlayerToolReach1458 Reach,
     RuntimeToolBuildingCapture1458 Building, ToolDefinition1458 Tool, byte Slot, long Update)
 {
+    // One bounded source-UI afterimage. It is never a clock or action grant.
+    internal RuntimePlayerReleasedToolClockAlternative1458? BufferedClockAlternative { get; init; }
     internal bool IsCurrent => Building.IsCurrent && !Building.NoBuilding;
 }
 

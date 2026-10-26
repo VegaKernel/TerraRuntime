@@ -15,7 +15,7 @@ internal sealed partial class PlayerAuthority
             inventory.CanAcceptOwnedQuantityReport(command.Connection, in request) ||
             !RuntimePlayerInventoryItem.TryFromNormalized(request, out var reported) ||
             !membership.TryGet(command.Connection, out var member) || !HasOwnedPickupContext ||
-            member.IsDead || member.ItemAnimation > 0 || member.ItemPhase is not { ShopOpen: false }) return false;
+            member.IsDead || member.ItemAnimation > 0 || member.ItemPhase is not { ShopOpen: false } || IsAmmoDeliveryOnlyFishingPhase(member.ItemPhase)) return false;
         var receipt = member.CursorMove;
         var journal = receipt?.Shop;
         if (journal is not null && (!journal.ObservedBatch || journal.IsSealed || journal.Invalid ||
@@ -50,7 +50,7 @@ internal sealed partial class PlayerAuthority
         PendingCursorMove receipt, PendingShopJournal journal)
     {
         bool Current() => ReferenceEquals(member.CursorMove?.Shop, journal) && journal.Capture.IsCurrent &&
-            IsCurrentShopActor(member, receipt) && !journal.IsSealed && !journal.Invalid;
+            IsCurrentShopActor(member, receipt) && !journal.IsSealed;
         _ = TryFishingRewards(connection, -1, 0, false, _ => true, Current,
             () => DropBankBatchAlternative(member, journal), journal.Capture);
         RejectedEquipmentUpdates++;
@@ -95,7 +95,7 @@ internal sealed partial class PlayerAuthority
             member.CursorMove is not { Shop: { ObservedBatch: true } journal } receipt ||
             journal.IsSealed || journal.Invalid || !journal.Capture.IsCurrent ||
             !IsCurrentShopActor(member, receipt) || member.ItemAnimation > 0 ||
-            member.ItemPhase is not { ShopOpen: false } || journal.Capture.Before[58] != journal.Reports[58]) return false;
+            member.ItemPhase is not { ShopOpen: false } || IsAmmoDeliveryOnlyFishingPhase(member.ItemPhase) || journal.Capture.Before[58] != journal.Reports[58]) return false;
         short selected = -1; int type = 0; bool multipleDebits = false;
         var source = journal.Capture.Before;
         var lostTypes = new HashSet<int>();
@@ -140,10 +140,12 @@ internal sealed partial class PlayerAuthority
         bool Current() => ReferenceEquals(member.CursorMove?.Shop, journal) && journal.Capture.IsCurrent &&
             IsCurrentShopActor(member, receipt) && !journal.IsSealed && !journal.Invalid;
         bool accepted = !multipleDebits && lost == 1 && PickupWorld is { } world &&
-            (type is not (3206 or 3985) || fishingCrateLowTiles.HasValue) && TryFishingRewards(connection, selected, type, true,
-                rewards => VanillaFishingCrate1458.TryOpen(type, world.RemixWorld, fishingCrateLowTiles == true,
-                    rewards.Random.Next, rewards.QuickSpawn) && rewards.MatchesReports(journal.Reports, journal.Seen),
-                Current, () => DropBankBatchAlternative(member, journal), journal.Capture);
+            (type is not (3206 or 3985) || fishingCrateLowTiles.HasValue) &&
+            TryExtractFishingReportRewards(journal, selected, type, out var candidate) && candidate is not null &&
+            VanillaFishingCrate1458.TryValidateOutcome(type, world.RemixWorld, fishingCrateLowTiles == true,
+                candidate.Unordered, out var witness) &&
+            TryAdoptFishingReportWitness(connection, member, receipt, journal, selected, type, true,
+                witness, candidate, naturalPrefix: true, Current);
         if (!accepted)
         {
             // Early ordinary reports may have min-debited a source slot while
@@ -157,7 +159,7 @@ internal sealed partial class PlayerAuthority
     internal bool TryOpenFishingCrate(ConnectionHandle connection, short slot, ulong expectedInventorySerial)
     {
         if (slot is < 0 or >= 58 || inventory.Serial != expectedInventorySerial ||
-            !membership.TryGet(connection, out var member) || member.ItemPhase is not { ShopOpen: false } || member.ItemAnimation > 0 ||
+            !membership.TryGet(connection, out var member) || member.ItemPhase is not { ShopOpen: false } || IsAmmoDeliveryOnlyFishingPhase(member.ItemPhase) || member.ItemAnimation > 0 ||
             !inventory.TryGet(connection, slot, out var crate) || crate.IsEmpty || crate.Prefix.Value != 0 ||
             !VanillaFishingCrate1458.IsCrate(crate.ItemType.Value) || PickupWorld is not { } world ||
             playerUpdateWorld is not { } sourceWorld ||

@@ -1,6 +1,20 @@
 # NativeAOT and CoreCLR hosting baseline
 
 2026-10-27 Buried Chests cave-house boundary: fresh Windows NativeAOT executable SHA256 `09371fa44c86a4e3519d68be1a756e407b6bfb7b25da1729199e4e89a4ee3286` passes exercised loop/protocol/network/world/TUI smokes. Release solution warnings-as-errors and unfiltered full `1,566,765/1,566,765` pass with zero skips. No new production dependency or project edge. Linux NativeAOT remains locally unverified; this is scoped candidate/beam evidence, not complete Buried Chests parity.
+## Final concurrent fishing successor union, 2026-10-27
+
+The user-requested shipment also preserves main f4f70be3 client fishing validation/lifetime fixes. Its exact final union passes a fresh warnings-as-errors build and110/110 affected tests (69methods/seven classes), with4056inputs/158DLL unchanged. No further full or Native publish was started at the renewed merge-now request. Earlier candidate06/character Native evidence remains scoped to those earlier snapshots; final-union Linux Native and official GUI are unverified.
+
+## Player-use and fishing merge checkpoint, 2026-10-27
+
+User-requested current-block shipment combines paid ammo/tools/cycling checkpoint5a845c08 with main fishing0d48670b. Candidate06 passed fast25323/25323, unfiltered full1566737/1566737/all5235methods, fresh Windows NativeAOT/five smokes and actual Release/Native TCP. Those gates identify the pre-fishing snapshot. The composed union passes453/453 focused tests; a final narrow fishing retirement-shell correction then passes a fresh warnings-as-errors build and all16 fishing/constructor tests. Its real old-production regression fails the two intended assertions, fixed production passes, but the two referenced builds produce different TestDLL hashes; no same-binary causal claim is made. The user's renewed merge-now instruction closes this checkpoint without another full or Native publish. Linux Native, official GUI and whole vanilla parity remain unverified.
+## Fishing client publication/lifetime candidate, 2026-10-27
+
+Frozen source `be606776eb59636105983ffd95bd0d122093ab600bfad8df52966002bab5f685` includes exception-safe adopted publications and strict client capability expiration, using existing owners and BCL code. Release build10 WAE0/0 passes; eight unchanged canonical cases pass with fixed DLL, fail by assertion with saved old9dd App, then pass restored, with source/canonical graph unchanged. Final104-case typed managed replay, mandatory fast/one unfiltered full and fresh Windows Native/live gates remain pending. No new package, project edge or reflection discovery is introduced. The earlier96-case/597-focused and accepted0d Native results below belong to earlier source. Linux Native remains unverified.
+
+## Vanilla-client fishing validation candidate, 2026-10-26
+
+`feature/fishing-client-validation-1458` starts from accepted `0d48670b`. Candidate neutral reward grammar, bounded Angler count evidence and client fishing capabilities use BCL/static code and existing owners; no production package, dynamic generation or reflection-discovery surface is added. Frozen Release warnings-as-errors0/0 and focused597/597 pass; mandatory fast and one full are queued sequentially in `.cache/fishing-client-validation/managed.py`. New exact-test typed managed replay96/96cases across70methods passes428733assertions plus3adapter self-checks with29linked/1795production/197canonical DLL inputs exact before/after. Source fingerprint `cfad7e53539ae06ec17a20aaa16c9e27052a821e4023388c04284b77f364cc54`,4138inputs. Fresh Windows Native/live remain pending; the existing accepted Native binaries and source8fae below belong to the previous checkpoint. Genuine Linux Native and raw-client RNG honesty remain distinct limitations.
 
 ## Fishing character boundary follow-up, 2026-10-26
 

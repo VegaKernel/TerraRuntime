@@ -203,6 +203,13 @@ public sealed class FishingCrateAuthority1458Tests
         random.CopyStateFrom(new(0)); var beforeRandom = random.Clone();
         Assert.True(f.Players.HasOwnedPickupContext);
         Assert.True(Store(f.Players).TryCaptureShopJournal(f.Connection, out _));
+        // Source QuickSpawn emits the overflowing bait21 before end-of-frame5/138.
+        Assert.True(f.Players.TryGet(f.Connection, out var overflowOwner));
+        var overflowActor = overflowOwner.CaptureSnapshot();
+        f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection,
+            new(overflowActor.PositionX + 10 - VanillaWorldItemOwner1458.PhysicalWidth / 2f,
+                overflowActor.PositionY + 21 - VanillaWorldItemOwner1458.PhysicalHeight / 2f,
+                0, -2, 4, 0, WorldItemOwnershipMode.ReserveForLocalPlayer, 2674, false, 0, 100)));
         f.Set(0, 2323, forged ? (short)4 : (short)3);
         f.Set(49, 0, 0); // Reports ascend: the real reward precedes the crate debit.
         Assert.Equal(2334, f.ItemImage()[49].ItemType.Value);

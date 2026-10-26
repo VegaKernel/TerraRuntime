@@ -9,6 +9,7 @@ internal readonly record struct RemotePhaseInventoryMutation(
     ConnectionHandle Connection, short Slot, RuntimePlayerInventoryItem Before, RuntimePlayerInventoryItem After)
 {
     internal bool ConsumeFundedQuantity { get; init; }
+    internal bool SourceAmmoConsumption { get; init; }
     internal bool FishingBait { get; init; }
     // Set only by the qualified placement world/clock participant. A wall fill
     // may place five cells while exhausting two units; it cannot credit stock.
@@ -134,6 +135,12 @@ internal sealed partial class RuntimePlayerInventoryStore
     private static bool IsOwnedConsumption(in RemotePhaseInventoryMutation mutation)
     {
         var before = mutation.Before;
+        if(mutation.SourceAmmoConsumption)
+            return !mutation.ConsumeFundedQuantity && mutation.PlacementQuantity==0 && mutation.CursorSourceDebit is null &&
+                before.IsCanonical && !before.IsEmpty && before.Prefix.Value==0 &&
+                (VanillaProjectileWeaponCombatCatalog.IsAmmoType(VanillaProjectileAmmoFamily.Arrow,before.ItemType) ||
+                 VanillaProjectileWeaponCombatCatalog.IsAmmoType(VanillaProjectileAmmoFamily.Bullet,before.ItemType)) &&
+                mutation.After==(before.Stack==1?default:before with {Stack=(short)(before.Stack-1)});
         if (mutation.PlacementQuantity != 0)
         {
             int consumed = mutation.PlacementQuantity;
@@ -156,6 +163,8 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     private bool CanConsumeOwnedQuantity(in RemotePhaseInventoryMutation mutation)
     {
+        if(mutation.SourceAmmoConsumption)
+            return IsOwnedConsumption(mutation) && fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]>=0;
         if (mutation.PlacementQuantity != 0)
             return IsOwnedConsumption(mutation) && fundedQuantities[
                 GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] >= mutation.PlacementQuantity;
@@ -206,6 +215,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                     owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=(short)Math.Max(0,frozenSourceFunding[index]-1);
                     source.AdoptSelectedPotionDebit();
                 }
+                else if(mutation.SourceAmmoConsumption)
+                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=
+                        (short)Math.Max(0,owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]-1);
                 else if (mutation.ConsumeFundedQuantity)
                 {
                     int offset = GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot);

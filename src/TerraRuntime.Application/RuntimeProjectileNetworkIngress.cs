@@ -28,9 +28,15 @@ internal sealed class RuntimeProjectileNetworkIngress :
     INpcDamageNetworkIngress,
     IObjectPlacementNetworkIngress
 {
+    private readonly bool localItemReportIntent;
     public RuntimeProjectileNetworkIngress(IGameCommandIngress<RuntimeCommand> ingress)
+        : this(ingress,true)
+    {
+    }
+    internal RuntimeProjectileNetworkIngress(IGameCommandIngress<RuntimeCommand> ingress,bool localItemReportIntent)
         : base(ingress)
     {
+        this.localItemReportIntent=localItemReportIntent;
     }
 
     public bool TryPostUpdate(ConnectionHandle connection, in TerrariaProjectileUpdateState state)
@@ -40,7 +46,8 @@ internal sealed class RuntimeProjectileNetworkIngress :
 
         return Ingress.TryPost(
             connection.Source,
-            new ClientProjectileUpdateRuntimeCommand(connection, state));
+            new ClientProjectileUpdateRuntimeCommand(connection, state)
+            { LocalItemReportIntent = localItemReportIntent, ValidateVanillaFishingClient = TerraRuntime.Gameplay.Players.FishingRules1458.IsBobber(state.ProjectileType) });
     }
 
     public bool TryPostDestroy(ConnectionHandle connection, in TerrariaProjectileDestroyState state)

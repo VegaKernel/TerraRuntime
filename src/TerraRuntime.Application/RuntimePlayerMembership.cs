@@ -209,6 +209,9 @@ internal sealed class RuntimePendingPlayerVitals(ConnectionHandle connection)
 
 internal sealed class RuntimePlayerMember
 {
+    // Only normalized owned input writes this provenance alongside its revision.
+    // It cannot initialize clocks, stock, mana or a paid source stage by itself.
+    internal RuntimeItemUseCaller1458 ItemUseCaller { get; set; }
     public ConnectionHandle Connection { get; init; }
     public ulong Revision { get; set; }
     public PlayerSlotId Slot { get; init; }
@@ -246,6 +249,8 @@ internal sealed class RuntimePlayerMember
     internal bool OwnsLifeMaximum { get; set; }
     internal byte OwnedPermanentUpgradeMask { get; set; }
     internal int AnglerQuestsFinished { get; set; }
+    internal TerraRuntime.Gameplay.Players.AnglerQuestCountEvidence1458 AnglerQuestCounts { get; set; } =
+        TerraRuntime.Gameplay.Players.AnglerQuestCountEvidence1458.Unknown;
     internal int GolferScoreAccumulated { get; set; }
     internal bool OwnsAnglerQuestsFinished { get; set; }
     internal ulong AnglerCompletedDay { get; set; }

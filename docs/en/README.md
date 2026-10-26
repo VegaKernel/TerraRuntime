@@ -40,6 +40,10 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Save pipeline timing telemetry](save-pipeline-telemetry.md) — authoritative snapshot, serializer and full atomic-write timing boundaries and interpretation rules.
 - [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.
 - [Tool use authority](tool-use-authority-1458.md) — source tool phases, RNG, world actions, replant and projectile publication.
+- [Released tool to hammer continuity](released-tool-pound-continuity-1458.md) — qualified release witnesses, buffered selection histories and explicit support limits.
+- [Paid ammo use and delayed reports](paid-ammo-use-continuity-1458.md) — ordered source phases, paid projectile delivery and historical inventory acknowledgements.
+- [Ammo cycling equipment](ammo-cycling-equipment-1458.md) — four source accessories, persistent selector state, equipment priority and phase-owned conservation/launch RNG.
+- [Ordinary ammo projectile death](ammo-projectile-death-1458.md) — source Update/Kill entropy and the verified absence of recovered items for the represented bodies.
 - [Larva tools and Queen Bee birth](larva-boss-tool-boundary-1458.md) — joint framed-object destruction, owned boss preparation and source publication.
 - [Town NPC housing and shops](town-npc-housing-shops.md) — authoritative residents, housing packet 60, persistent rooms, NPC talk, ordinary/special shops, pylons and happiness pricing.
 - [Vanilla AI_006 worm lifecycle parity](npc-worm-ai-parity.md) — source-pinned chain slots, Eater of Worlds active/style link semantics, root propagation and remaining lifecycle gaps.

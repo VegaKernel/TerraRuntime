@@ -34,7 +34,7 @@ internal sealed partial class PlayerAuthority
             if(!inventory.TryGet(member.Connection,slot,out var stored) || !stored.IsCanonical)return false;
             openVoid|=VanillaVoidStorageCatalog1458.OpensVoidStorage(stored.ItemType);
         }
-        if(!TryCaptureProvenRemoteEquipment(equipment,appearance,out _,out int manaBonus,openVoid))return false;
+        if(!TryCaptureProvenRemoteEquipment(equipment,appearance,out _,out int manaBonus,openVoid,phase.AmmoCycling is not null))return false;
         int maximum=(int)Math.Min((long)phase.BaseManaMaximum+manaBonus,400);
         if(maximum<=0)return false;
         var facts=new PlayerManaRegenerationFacts1458(member.VelocityX,member.VelocityY,hooked,false,

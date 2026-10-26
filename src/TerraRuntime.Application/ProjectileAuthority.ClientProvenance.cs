@@ -122,6 +122,11 @@ internal sealed partial class ProjectileAuthority
 
         if (phaseOwned)
             attackerCombat = phaseCombat;
+        // Stateful cycling belongs to the ordered source phase. An unqualified
+        // strict component cannot assume default selection or spend its entropy.
+        if (attackerCombat.AmmoCyclingMode != AmmoCyclingMode1458.None)
+            return ClientProjectileProvenanceResolveResult.Rejected;
+
         // Bound source profiles consume retained phase-owned combat. Never-bound component
         // runtimes retain the existing equipment-only projection. Unsupported quiver or other
         // modifier shapes keep the existing generic component prefix capability boundary.

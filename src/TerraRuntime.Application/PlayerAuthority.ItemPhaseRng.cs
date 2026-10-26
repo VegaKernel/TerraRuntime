@@ -54,7 +54,7 @@ internal sealed partial class PlayerAuthority
         playerUpdateRandomOwned = false;
         foreach (var member in membership.Members)
         {
-            member.ItemPhase = null;
+            member.ItemPhase = RetainPaidAmmoDeliveryAfterPhaseRetirement(member.ItemPhase);
             member.PhysicsPhase = null;
             member.ClearRemotePhaseSnapshot();
         }

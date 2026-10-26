@@ -10,7 +10,7 @@ namespace TerraRuntime.Application;
 // It contains no inventory or reward budget; payment remains in PlayerAuthority.
 internal sealed record FishingBobber1458(ProjectileSnapshot Snapshot, RuntimePlayerMember Member,
     ConnectionHandle Connection, bool Returning = false, float WaitTimer = 0,
-    float BiteClock = 0, FishingResult1458 Result = default, bool PaidCatch = false);
+    float BiteClock = 0, FishingResult1458 Result = default, bool PaidCatch = false, FishingClientActor1458? Client = null);
 
 internal sealed partial class ProjectileAuthority
 {
@@ -54,8 +54,10 @@ internal sealed partial class ProjectileAuthority
             journal is null || !spawn.IsCurrent || !journal.IsCurrentOwned || !players.IsCurrentProjectileUse(actor)) return false;
         if (!spawn.TryCommitUnpublished(out var born) || !projectiles.TryMarkCombatTrusted(born.Handle, connection.Player))
             throw new InvalidOperationException("Prepared fishing birth lost projectile ownership.");
+        bool clientClaims = players.IsFishingClientLaunch(connection);
         players.AdoptFishingLaunch(member, action);
-        fishingBobbers[born.Handle.Slot] = new(born, member, connection);
+        fishingBobbers[born.Handle.Slot] = new(born, member, connection,
+            Client: clientClaims ? new(tickProvider(), action.Pole.ShootSpeed) : null);
         if (!journal.TryAdoptBaselines(projectiles)) throw new InvalidOperationException("Fishing birth lost its wire identity.");
         AppliedSpawns++; PromotedClientProjectileSpawns++;
         journal.TryPublish(projectiles);
@@ -69,6 +71,12 @@ internal sealed partial class ProjectileAuthority
         if (action.Pull is not { } before || before.Connection != connection || !IsFishingCurrent(before) ||
             !players.TryGet(connection, out var member) || !ReferenceEquals(member, before.Member) ||
             member.ItemPhase?.ToolUse?.FishingAction != action) return;
+        if (before.Client is not null)
+        {
+            players.AdoptFishingLaunch(member, action);
+            AdmitPendingFishingClientPull(before);
+            return;
+        }
         var snapshot = before.Snapshot;
         bool caught = action.Caught && !action.BrokeLine;
         bool npc = caught && before.Result.NpcType != 0;
@@ -100,6 +108,10 @@ internal sealed partial class ProjectileAuthority
             !projectiles.TryGetLifecycle(initial.Handle, out var lifecycle) || fishingNpcs is null)
             return ProjectileActorSimulationResult.Rejected;
         bool alive = players.TryGet(before.Connection, out var member) && ReferenceEquals(member, before.Member) && !member.IsDead;
+        // Return arrival is client-reported, but withholding29 cannot retain a
+        // capability forever or renew it later by resetting its closed grace.
+        if (before.Client?.Claim is { } clientClaim && !IsFishingClientClaimWithinLifetime(clientClaim))
+            return EndFishingBobber(initial, before, false, 0);
         bool supported = alive &&
             (member!.MovementFlags & 1) == 0 &&
             players.TryPrepareHeldToolLifecycle(member!, before.Connection.Player, 0, out var held) && held is not null &&
@@ -108,9 +120,12 @@ internal sealed partial class ProjectileAuthority
             (pole.ProjectileType == initial.Type.Value || initial.Type.Value is >= 986 and <= 993);
         if (!supported)
         {
+            if (alive && before.Client?.Claim is { PullReported: true } pending &&
+                tickProvider() - (pending.ClientClosed ? pending.ClosedTick : pending.CreatedTick) <= FishingClientClosedGraceTicks)
+                return ProjectileActorSimulationResult.Applied;
             // Source AI61 Kill still runs GiveItem for an already paid positive
             // ai1 when selection changes. A pending bite has no such entitlement.
-            if (alive && before.PaidCatch && fishingNpcs.TryCaptureFishingWorld(member!, out _, out var endingWeather, out _) &&
+            if (before.Client is null && alive && before.PaidCatch && fishingNpcs.TryCaptureFishingWorld(member!, out _, out var endingWeather, out _) &&
                 players.TryCaptureFishingPlayer(member!, endingWeather, out var endingOwner, ending: true) && endingOwner is not null)
                 return EndFishingBobber(initial, before, true, endingOwner.Conditions.FinalFishingLevel);
             return EndFishingBobber(initial, before, false, 0);
@@ -118,6 +133,14 @@ internal sealed partial class ProjectileAuthority
         if (!fishingNpcs.TryCaptureFishingWorld(member!, out var world, out var weather, out var biomes) ||
             !players.TryCaptureFishingPlayer(member!, weather, out var owner) || owner is null)
             return ProjectileActorSimulationResult.Rejected;
+        if (before.Client is { } clientOwner)
+        {
+            clientOwner.MaximumPower = Math.Max(clientOwner.MaximumPower, (int)Math.Ceiling(owner.Conditions.FinalFishingLevel * 1.1) + 2);
+            if (clientOwner.Claim is { PullReported: false } waiting && tickProvider() - waiting.CreatedTick > -waiting.InitialBiteClock + 2)
+            { clientOwner.Claim = null; clientOwner.NpcCandidate = null; clientOwner.SettledFrames = 0; }
+            if (clientOwner.Claim is { ClientClosed: true })
+                return ProjectileActorSimulationResult.Applied;
+        }
         var randomBefore = projectileRandom.Clone(); var random = randomBefore.Clone();
         var dropBefore = fishingDropRandom.Clone(); var drop = dropBefore.Clone();
         var draws = new FishingRandom1458(random);
@@ -136,8 +159,12 @@ internal sealed partial class ProjectileAuthority
         {
             if (distance > 3000 || x < member.PositionX + 20 && x + 14 > member.PositionX &&
                 y < member.PositionY + 42 && y + 14 > member.PositionY)
+            {
+                if (before.Client is not null) return ProjectileActorSimulationResult.Applied;
                 return EndFishingBobber(initial, before, before.PaidCatch, owner.Conditions.FinalFishingLevel);
-            if (distance == 0) return EndFishingBobber(initial, before, before.PaidCatch, owner.Conditions.FinalFishingLevel);
+            }
+            if (distance == 0) return before.Client is not null ? ProjectileActorSimulationResult.Applied :
+                EndFishingBobber(initial, before, before.PaidCatch, owner.Conditions.FinalFishingLevel);
             vx = (vx * 9 + dx * 15.9f / distance) / 10;
             vy = (vy * 9 + dy * 15.9f / distance) / 10;
         }
@@ -164,7 +191,11 @@ internal sealed partial class ProjectileAuthority
                 if (vy == 0) vx *= .95f;
                 vx *= .98f; vy = Math.Min(15.9f, vy + .2f);
             }
-            if (before.BiteClock < 0)
+            if (before.Client is { } clientMotion)
+            {
+                if (settled && clientMotion.SettledFrames < int.MaxValue) clientMotion.SettledFrames++;
+            }
+            else if (before.BiteClock < 0)
             {
                 if (vy == 0 || lifecycle.Liquid.HoneyWet && Math.Abs(vy) <= .01f)
                 {
@@ -219,7 +250,7 @@ internal sealed partial class ProjectileAuthority
             return EndFishingBobber(initial, before, false, 0);
         var state = SnapshotToUpdate(initial) with { PositionX = x, PositionY = y, VelocityX = vx, VelocityY = vy,
             Ai = new(next.Returning ? returning ? initial.Ai.Ai0 == 2 ? 3 : Math.Max(1, initial.Ai.Ai0) : 1 : 0,
-                returning ? initial.Ai.Ai1 : next.BiteClock, 0) };
+                before.Client is not null ? initial.Ai.Ai1 : returning ? initial.Ai.Ai1 : next.BiteClock, 0) };
         var life = lifecycle with { TimeLeft = 59, Liquid = terrain.Liquid, SourceWetCount = terrain.WetCount };
         if (!projectiles.TryPrepareSimulation(initial, out var plan) || plan is null ||
             !plan.TryStageMotion(state, life) || !plan.TryQueuePublication() || !plan.IsCurrent ||
