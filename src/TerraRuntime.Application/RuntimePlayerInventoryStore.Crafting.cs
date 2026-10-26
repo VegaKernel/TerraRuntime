@@ -147,9 +147,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                 if (!TryCraftItem(plan.After[slot], out var final) || next[slot] != final) return false;
             ReconcileFinalBankCaps(image, next, nextCaps);
             if (!AreValidRetainedMainShopImage(next.AsSpan(0,59), nextQuantity.AsSpan(0,59).ToArray(),
-                    nextCopper.AsSpan(0,59).ToArray(), nextCaps.AsSpan(0,295)) ||
+                    nextCopper.AsSpan(0,59).ToArray(), nextCaps.AsSpan(0,(59 * QuantityLaneCount))) ||
                 !AreValidShopBanks(next.AsSpan(59), nextCopper.AsSpan(59)) ||
-                !AreValidShopBankOwnership(next.AsSpan(59), nextQuantity.AsSpan(59), nextCaps.AsSpan(295))) return false;
+                !AreValidShopBankOwnership(next.AsSpan(59), nextQuantity.AsSpan(59), nextCaps.AsSpan((59 * QuantityLaneCount)))) return false;
             image = next; copper = nextCopper; quantity = nextQuantity; caps = nextCaps;
             return true;
         }

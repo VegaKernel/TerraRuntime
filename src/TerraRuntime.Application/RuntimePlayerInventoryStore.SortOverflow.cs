@@ -43,9 +43,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                     out var ground)||!replayed.AsSpan().SequenceEqual(after))continue;
                 ReconcileFinalBankCaps(capture.Before,after,caps);
                 if(!AreValidRetainedMainShopImage(after.AsSpan(0,59),quantity.AsSpan(0,59).ToArray(),
-                    copper.AsSpan(0,59).ToArray(),caps.AsSpan(0,59*5))||
+                    copper.AsSpan(0,59).ToArray(),caps.AsSpan(0,59* QuantityLaneCount))||
                     !AreValidShopBanks(after.AsSpan(59),copper.AsSpan(59))||
-                    !AreValidShopBankOwnership(after.AsSpan(59),quantity.AsSpan(59),caps.AsSpan(59*5)))continue;
+                    !AreValidShopBankOwnership(after.AsSpan(59),quantity.AsSpan(59),caps.AsSpan(59* QuantityLaneCount)))continue;
                 var candidate=new SortOverflowPreparation(new(this,connection,capture,after,copper,quantity,caps),ground);
                 if(result.Accepted is not null&&!result.Accepted.HasSameAcceptedImage(candidate))
                 {result.Ambiguous=true;result.Accepted=null;yield break;}

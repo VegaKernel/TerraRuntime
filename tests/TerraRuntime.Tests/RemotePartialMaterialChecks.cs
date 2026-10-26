@@ -68,7 +68,7 @@ foreach(var spec in new (int Type,int Amount,int Quantity,long Copper,int Result
     Check(image.Items[58].ItemType.Value==spec.ResultType && image.Items[58].Stack==spec.ResultStack,"exact resultphysical");
     Check(image.Quantity[58]==spec.ResultQ && image.Copper[58]==spec.ResultCopper,"exactexternalfunding");
     for(int slot=0;slot<219;slot++)if(slot!=58){Check(image.Items[slot]==(spec.LocalStack>0 && slot==0?default:before.Items[slot]),"otherphysical"+slot);Check(image.Quantity[slot]==(spec.LocalStack>0 && slot==0?0:before.Quantity[slot]) && image.Copper[slot]==before.Copper[slot],"otherfunding"+slot);}
-    for(int lane=0;lane<219*5;lane++)Check(image.Caps[lane]==(spec.LocalStack>0 && lane<5 && before.Caps[lane]>=0 ? (short)Math.Max(0,before.Caps[lane]-spec.LocalStack):before.Caps[lane]),"caps"+lane);
+    for(int lane=0;lane<219* RuntimePlayerInventoryStore.QuantityLaneCount;lane++)Check(image.Caps[lane]==(spec.LocalStack>0 && lane<RuntimePlayerInventoryStore.QuantityLaneCount && before.Caps[lane]>=0 ? (short)Math.Max(0,before.Caps[lane]-spec.LocalStack):before.Caps[lane]),"caps"+lane);
     Check(!certificate.TryConsumeUnpublished(fixture.Connection),"no secondcostconsumption");
     Console.WriteLine("PASS "+spec+" callbacks="+callbacks);cases++;
 }

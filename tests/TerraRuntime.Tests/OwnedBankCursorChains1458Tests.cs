@@ -63,7 +63,7 @@ for (int platform = 0; platform < 2; platform++)
         }
         items.AdoptFundedQuantities(connection,q,money);
         var bankImage = before.GetProperty("banks").EnumerateArray().SelectMany(x=>x.EnumerateArray()).Select(Item).ToArray();
-        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps,(short)-1);
+        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps,(short)-1);
         for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType,out long unit)) bankCopper[i] = unit * Math.Max(0,(int)bankImage[i].Stack);
         for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0,bankImage[i].Stack);
         Check(items.TryAdoptShopBanks(connection,bankImage,bankCopper,bankQuantity,bankCaps),name+" configured banks");
@@ -113,7 +113,7 @@ for (int platform = 0; platform < 2; platform++)
      }
      invalidStore.AdoptFundedQuantities(invalidConnection, invalidQuantity);
      var fullBanks = new RuntimePlayerInventoryItem[160]; var fullFunding = new short[160];
-     var fullCaps = new short[800]; Array.Fill(fullCaps, (short)-1);
+     var fullCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(fullCaps, (short)-1);
      for (int slot = 0; slot < fullBanks.Length; slot++)
      { fullBanks[slot] = new(new(identities[slot % identities.Length]), 100, new(0), 0); fullFunding[slot] = 100; }
      Assert.True(invalidStore.TryAdoptShopBanks(invalidConnection, fullBanks, new long[160], fullFunding, fullCaps));
@@ -138,7 +138,7 @@ for (int platform = 0; platform < 2; platform++)
      Assert.True(relayStore.TryAttach(relayConnection));
      var relayBanks = new RuntimePlayerInventoryItem[160]; relayBanks[120] = new(new(109), 1, new(0), 1);
      var relayQuantity = new short[160]; relayQuantity[120] = 1;
-     var relayCaps = new short[800]; Array.Fill(relayCaps, (short)-1);
+     var relayCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(relayCaps, (short)-1);
      Assert.True(relayStore.TryAdoptShopBanks(relayConnection, relayBanks, new long[160], relayQuantity, relayCaps));
      Assert.True(relayStore.TryCaptureShopJournal(relayConnection, out var relayCapture));
      var relayTarget = relayCapture!.Before.ToArray(); relayTarget[179] = default; relayTarget[180] = new(new(109), 1, new(0), 0);
@@ -155,10 +155,10 @@ for (int platform = 0; platform < 2; platform++)
          Assert.True(store.TryAttach(connection));
          var banks = new RuntimePlayerInventoryItem[160];
          banks[0] = new(new(coin ? 74 : 109), coin ? (short)1 : (short)3, new(0), 0);
-         var money = new long[160]; var quantities = new short[160]; var caps = new short[800];
+         var money = new long[160]; var quantities = new short[160]; var caps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];
          Array.Fill(caps, (short)-1);
          if (coin) money[0] = funding;
-         else { quantities[0] = funding; caps[0] = 3; caps[40 * 5] = 0; }
+         else { quantities[0] = funding; caps[0] = 3; caps[40 * RuntimePlayerInventoryStore.QuantityLaneCount] = 0; }
          Assert.True(store.TryAdoptShopBanks(connection, banks, money, quantities, caps));
          Assert.True(store.TryCaptureShopJournal(connection, out var capture));
          var target = capture!.Before.ToArray(); target[99] = target[59]; target[59] = default;
@@ -176,7 +176,7 @@ for (int platform = 0; platform < 2; platform++)
          Assert.Equal(coin ? funding : 0, copper[40]);
          Assert.Equal(coin ? (short)0 : funding, q[40]);
          Assert.Equal(funding, coin ? copper.Sum() : q.Sum(x => (long)x));
-         if (!coin) { Assert.Equal(0, ceilings[0]); Assert.Equal(3, ceilings[40 * 5]); }
+         if (!coin) { Assert.Equal(0, ceilings[0]); Assert.Equal(3, ceilings[40 * RuntimePlayerInventoryStore.QuantityLaneCount]); }
          Assert.False(work.Preparation.TryAdoptUnpublished());
 
          Assert.True(store.TryCaptureShopJournal(connection, out var stale));

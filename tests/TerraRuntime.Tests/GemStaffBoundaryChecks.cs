@@ -466,7 +466,7 @@ public static class GemStaffBoundaryChecks
                             Stack = 2
                         };
                         expectedQ[1] = 0;
-                        expectedCaps[6] = 2;
+                        expectedCaps[RuntimePlayerInventoryStore.QuantityLaneCount + 1] = 2;
                     }
 
                     Assert.Equal(expectedImage, after.Before);

@@ -92,7 +92,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (!owner.items.AsSpan(player * 59, 59).SequenceEqual(acceptedBankImage) ||
                 !owner.fundedQuantities.AsSpan(player * 59, 59).SequenceEqual(acceptedBankQuantity) ||
                 !owner.coinFundedValues.AsSpan(player * 59, 59).SequenceEqual(acceptedBankCopper) ||
-                !owner.ownedQuantityCaps.AsSpan(player * 59 * 5, 59 * 5).SequenceEqual(acceptedBankCaps)) return false;
+                !owner.ownedQuantityCaps.AsSpan(player * 59 * QuantityLaneCount, 59 * QuantityLaneCount).SequenceEqual(acceptedBankCaps)) return false;
             acceptedBankImage.CopyTo(image); acceptedBankCopper.CopyTo(copper);
             acceptedBankQuantity.CopyTo(quantity); acceptedBankCaps.CopyTo(ceilings);
             return true;
@@ -218,7 +218,7 @@ internal sealed partial class RuntimePlayerInventoryStore
                 acceptedBankImage = before.ToArray(); acceptedBankImage[slot] = afterSlot; acceptedBankImage[58] = selectedCursor;
                 acceptedBankQuantity = funding.ToArray(); acceptedBankQuantity[slot] = slotFunding; acceptedBankQuantity[58] = cursorFunding;
                 acceptedBankCopper = coinFunding.ToArray(); acceptedBankCopper[slot] = slotCoinFunding; acceptedBankCopper[58] = cursorCoinFunding;
-                acceptedBankCaps = new short[59 * 5];
+                acceptedBankCaps = new short[59 * QuantityLaneCount];
             }
             adopted = true;
             // Each identity's old ceiling follows the real moved quantity. Other historical
@@ -241,7 +241,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             owner.Changed(connection.Player.Slot.Value);
             if (acceptedBankCaps is not null)
             {
-                owner.ownedQuantityCaps.AsSpan(player * 59 * 5, 59 * 5).CopyTo(acceptedBankCaps);
+                owner.ownedQuantityCaps.AsSpan(player * 59 * QuantityLaneCount, 59 * QuantityLaneCount).CopyTo(acceptedBankCaps);
                 acceptedBankStamp = owner.playerMutationStamps[player];
             }
             return true;

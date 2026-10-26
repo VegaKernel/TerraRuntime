@@ -10,11 +10,14 @@ internal sealed partial class PlayerAuthority
     {
         if (!command.Factors.IsFinite || lanternsUp is null ||
             !membership.TryGet(command.Connection, out RuntimePlayerMember? member)) return;
-        float luck = CalculatePlayerLuck(member, command.Factors);
+        var factors = member.OwnsFishingLadyBugLuck
+            ? command.Factors with { LadyBugLuckTimeLeft = member.LuckComponents?.LadyBugLuckTimeLeft ?? 0 }
+            : command.Factors;
+        float luck = CalculatePlayerLuck(member, factors);
         if (!float.IsFinite(luck) || !member.TryAdvanceRevision()) return;
-        member.LuckComponents = command.Factors;
+        member.LuckComponents = factors;
         member.Luck = luck;
-        events?.PlayerLuckFactorsUpdated(command.Connection, command.Factors);
+        events?.PlayerLuckFactorsUpdated(command.Connection, factors);
     }
 
     private float CalculatePlayerLuck(RuntimePlayerMember member, in VanillaPlayerLuckComponents1458 factors) =>
@@ -42,10 +45,21 @@ internal sealed partial class PlayerAuthority
             VanillaPlayerLuckComponents1458 old = member.LuckComponents ?? default;
             // Source remote UpdateLuckFactors; ordinary runtime time progression owns dayRate=1.
             VanillaPlayerLuckComponents1458 next = VanillaPlayerLuckFacts1458.AdvanceRemoteFactors(old, 1);
-            float luck = CalculatePlayerLuck(member, next);
+            var calculated = next;
+            if (member.FishingLadyBugAppliedTick == currentCombatTick)
+            {
+                // Local UpdateLuck precedes ItemCheck/ConsumeBait. Preserve the
+                // newly written timer and the pre-use calculated luck this tick,
+                // while unrelated remote factor work still advances normally.
+                next = next with { LadyBugLuckTimeLeft = old.LadyBugLuckTimeLeft };
+                calculated = VanillaPlayerLuckFacts1458.AdvanceRemoteFactors(
+                    old with { LadyBugLuckTimeLeft = member.FishingLadyBugPriorTimer }, 1);
+            }
+            float luck = CalculatePlayerLuck(member, calculated);
             if ((!member.LuckComponents.HasValue || old == next) && member.Luck == luck) continue;
             if (!float.IsFinite(luck) || !member.TryAdvanceRevision()) continue;
             if (member.LuckComponents.HasValue) member.LuckComponents = next;
+            if (next.LadyBugLuckTimeLeft >= 0) member.OwnsFishingLadyBugLuck = false;
             member.Luck = luck;
         }
     }

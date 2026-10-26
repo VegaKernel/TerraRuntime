@@ -78,7 +78,7 @@ public sealed class OwnedBankSortAuthority1458Tests
                     if (mainCaps)
                         items.AdoptOwnedQuantities(connection, [new(18, new(110), 2), new(15, new(110), 0), new(2, new(500), 0)]);
                     var bankImage = before.GetProperty("banks").EnumerateArray().SelectMany(x => x.EnumerateArray()).Select(Item).ToArray();
-                    var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps, (short)-1);
+                    var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps, (short)-1);
                     for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType, out long unit)) bankCopper[i] = unit * Math.Max(0, (int)bankImage[i].Stack);
                     for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0, bankImage[i].Stack);
                     Check(items.TryAdoptShopBanks(connection, bankImage, bankCopper, bankQuantity, bankCaps), name + " configured banks");
@@ -193,7 +193,7 @@ public sealed class OwnedBankSortAuthority1458Tests
         inventory.AdoptFundedQuantities(connection, before.Select(item => item.Stack).ToArray());
         inventory.AdoptOwnedQuantities(connection,
             [new(2, new(500), 0), new(10, new(109), 9), new(11, new(109), 3), new(58, new(109), 3)]);
-        var bankCaps = new short[800];
+        var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];
         Array.Fill(bankCaps, (short)-1);
         Xunit.Assert.True(inventory.TryAdoptShopBanks(connection, new RuntimePlayerInventoryItem[160],
             new long[160], new short[160], bankCaps));
@@ -275,7 +275,7 @@ public sealed class OwnedBankSortAuthority1458Tests
                 Xunit.Assert.True(owner.TrySet(connection, main[slot].ToCommitRequest(connection.Player.Slot, slot)));
             var quantity = main.Select(item => item.Stack).ToArray();
             owner.AdoptFundedQuantities(connection, quantity);
-            var bankCaps = new short[800];
+            var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];
             Array.Fill(bankCaps, (short)-1);
             Xunit.Assert.True(owner.TryAdoptShopBanks(connection, banks, new long[160],
                 banks.Select(item => item.Stack).ToArray(), bankCaps));

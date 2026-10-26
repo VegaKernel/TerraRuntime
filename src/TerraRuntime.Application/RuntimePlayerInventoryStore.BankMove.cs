@@ -20,14 +20,14 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (!next.IsCanonical || (next.IsEmpty && next != default) ||
                 (next.ItemFlags & ~PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0) return false;
             int lane = QuantityLane(next.ItemType);
-            if (lane >= 0 && caps[i * 5 + lane] >= 0 && next.Stack > caps[i * 5 + lane]) return false;
+            if (lane >= 0 && caps[i * QuantityLaneCount + lane] >= 0 && next.Stack > caps[i * QuantityLaneCount + lane]) return false;
             bool same = old.ItemType == next.ItemType && old.Prefix == next.Prefix;
             copper[i] = same ? Math.Min(copper[i], CoinValue(next)) : 0;
             quantity[i] = same && CoinValue(next) == 0 ? (short)Math.Min(quantity[i], Math.Max(0,(int)next.Stack)) : (short)0;
             after[i] = next;
         }
         if (!after.AsSpan().SequenceEqual(reports) || !AreValidShopBanks(after.AsSpan(59), copper.AsSpan(59)) ||
-            !AreValidShopBankOwnership(after.AsSpan(59), quantity.AsSpan(59), caps.AsSpan(59 * 5))) return false;
+            !AreValidShopBankOwnership(after.AsSpan(59), quantity.AsSpan(59), caps.AsSpan(59 * QuantityLaneCount))) return false;
         prepared = new(this, connection, capture, after, copper, quantity, caps);
         return true;
     }
@@ -76,9 +76,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                     if (final[i] != capture.Before[i] && !seen[i]) allChangesReported = false;
                 finalCaps = capture.Caps;
                 ReconcileFinalBankCaps(capture.Before, final, finalCaps);
-                if (!allChangesReported || !AreValidRetainedMainShopImage(final.AsSpan(0, 59), finalQuantity.AsSpan(0, 59).ToArray(), finalCopper.AsSpan(0, 59).ToArray(), finalCaps.AsSpan(0, 59 * 5)) ||
+                if (!allChangesReported || !AreValidRetainedMainShopImage(final.AsSpan(0, 59), finalQuantity.AsSpan(0, 59).ToArray(), finalCopper.AsSpan(0, 59).ToArray(), finalCaps.AsSpan(0, 59 * QuantityLaneCount)) ||
                     !AreValidShopBanks(final.AsSpan(59), finalCopper.AsSpan(59)) ||
-                    !AreValidShopBankOwnership(final.AsSpan(59), finalQuantity.AsSpan(59), finalCaps.AsSpan(59 * 5))) continue;
+                    !AreValidShopBankOwnership(final.AsSpan(59), finalQuantity.AsSpan(59), finalCaps.AsSpan(59 * QuantityLaneCount))) continue;
                 var candidate = new ShopBankMovePreparation(this, connection, capture, final,
                     finalCopper, finalQuantity, finalCaps);
                 if (prepared is not null && !prepared.HasSameAcceptedImage(candidate)) { prepared = null; ambiguous = true; return false; }
@@ -142,9 +142,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                     var funding = capture.Copper.ToArray(); var quantities = capture.Quantity; var ceilings = capture.Caps;
                     if (!TryApplyBankStorageFunding(capture.Before, plan.Steps, start, funding, quantities)) continue;
                     ReconcileFinalBankCaps(capture.Before, after, ceilings);
-                    if (!AreValidRetainedMainShopImage(after.AsSpan(0, 59), quantities.AsSpan(0, 59).ToArray(), funding.AsSpan(0, 59).ToArray(), ceilings.AsSpan(0, 59 * 5)) ||
+                    if (!AreValidRetainedMainShopImage(after.AsSpan(0, 59), quantities.AsSpan(0, 59).ToArray(), funding.AsSpan(0, 59).ToArray(), ceilings.AsSpan(0, 59 * QuantityLaneCount)) ||
                         !AreValidShopBanks(after.AsSpan(59), funding.AsSpan(59)) ||
-                        !AreValidShopBankOwnership(after.AsSpan(59), quantities.AsSpan(59), ceilings.AsSpan(59 * 5))) continue;
+                        !AreValidShopBankOwnership(after.AsSpan(59), quantities.AsSpan(59), ceilings.AsSpan(59 * QuantityLaneCount))) continue;
                     var candidate = new ShopBankMovePreparation(this, connection, capture, after, funding, quantities, ceilings);
                     if (prepared is not null && !prepared.HasSameAcceptedImage(candidate)) { result.Ambiguous = true; result.Preparation = null; yield break; }
                     prepared = candidate;
@@ -281,9 +281,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                         copper, quantity, out var replayed) || !replayed.AsSpan().SequenceEqual(after)) continue;
                     ReconcileFinalBankCaps(capture.Before, after, caps);
                     if (!AreValidRetainedMainShopImage(after.AsSpan(0, 59), quantity.AsSpan(0, 59).ToArray(),
-                        copper.AsSpan(0, 59).ToArray(), caps.AsSpan(0, 59 * 5)) ||
+                        copper.AsSpan(0, 59).ToArray(), caps.AsSpan(0, 59 * QuantityLaneCount)) ||
                         !AreValidShopBanks(after.AsSpan(59), copper.AsSpan(59)) ||
-                        !AreValidShopBankOwnership(after.AsSpan(59), quantity.AsSpan(59), caps.AsSpan(59 * 5))) continue;
+                        !AreValidShopBankOwnership(after.AsSpan(59), quantity.AsSpan(59), caps.AsSpan(59 * QuantityLaneCount))) continue;
                     var candidate = new ShopBankMovePreparation(this, connection, capture, after, copper, quantity, caps);
                     if (accepted is not null && !accepted.HasSameAcceptedImage(candidate))
                     { result.Preparation = null; result.Ambiguous = true; yield break; }
@@ -363,7 +363,7 @@ internal sealed partial class RuntimePlayerInventoryStore
                 int type = OwnedQuantityTypes[lane];
                 int oldQuantity = before[i].ItemType.Value == type ? before[i].Stack : 0;
                 int nextQuantity = after[i].ItemType.Value == type ? after[i].Stack : 0;
-                ref short cap = ref caps[i * 5 + lane];
+                ref short cap = ref caps[i * QuantityLaneCount + lane];
                 if (nextQuantity < oldQuantity && cap >= 0) cap = checked((short)Math.Max(0, cap - (oldQuantity - nextQuantity)));
                 if (nextQuantity > oldQuantity) cap = checked((short)nextQuantity);
             }
@@ -417,12 +417,12 @@ internal sealed partial class RuntimePlayerInventoryStore
             int oldB = oldCursor.ItemType.Value == type ? oldCursor.Stack : 0;
             int nextA = afterSlot.ItemType.Value == type ? afterSlot.Stack : 0;
             int nextB = afterCursor.ItemType.Value == type ? afterCursor.Stack : 0;
-            if (nextA < oldA && caps[slot * 5 + lane] >= 0)
-                caps[slot * 5 + lane] = checked((short)Math.Max(0, caps[slot * 5 + lane] - (oldA - nextA)));
-            if (nextB < oldB && caps[58 * 5 + lane] >= 0)
-                caps[58 * 5 + lane] = checked((short)Math.Max(0, caps[58 * 5 + lane] - (oldB - nextB)));
-            if (nextA > oldA) caps[slot * 5 + lane] = checked((short)nextA);
-            if (nextB > oldB) caps[58 * 5 + lane] = checked((short)nextB);
+            if (nextA < oldA && caps[slot * QuantityLaneCount + lane] >= 0)
+                caps[slot * QuantityLaneCount + lane] = checked((short)Math.Max(0, caps[slot * QuantityLaneCount + lane] - (oldA - nextA)));
+            if (nextB < oldB && caps[58 * QuantityLaneCount + lane] >= 0)
+                caps[58 * QuantityLaneCount + lane] = checked((short)Math.Max(0, caps[58 * QuantityLaneCount + lane] - (oldB - nextB)));
+            if (nextA > oldA) caps[slot * QuantityLaneCount + lane] = checked((short)nextA);
+            if (nextB > oldB) caps[58 * QuantityLaneCount + lane] = checked((short)nextB);
         }
         image[slot] = afterSlot; image[58] = afterCursor;
         quantity[slot] = aQuantity; quantity[58] = bQuantity;
@@ -530,8 +530,8 @@ internal sealed partial class RuntimePlayerInventoryStore
             copper.AsSpan(59).CopyTo(owner.shopBankFundedCopper.AsSpan(player * 160, 160));
             quantity.AsSpan(0, 59).CopyTo(owner.fundedQuantities.AsSpan(player * 59, 59));
             quantity.AsSpan(59).CopyTo(owner.shopBankFundedQuantities.AsSpan(player * 160, 160));
-            caps.AsSpan(0, 59 * 5).CopyTo(owner.ownedQuantityCaps.AsSpan(player * 59 * 5, 59 * 5));
-            caps.AsSpan(59 * 5).CopyTo(owner.shopBankQuantityCaps.AsSpan(player * 160 * 5, 160 * 5));
+            caps.AsSpan(0, 59 * QuantityLaneCount).CopyTo(owner.ownedQuantityCaps.AsSpan(player * 59 * QuantityLaneCount, 59 * QuantityLaneCount));
+            caps.AsSpan(59 * QuantityLaneCount).CopyTo(owner.shopBankQuantityCaps.AsSpan(player * 160 * QuantityLaneCount, 160 * QuantityLaneCount));
             owner.Changed(player);
             return true;
         }
@@ -545,13 +545,13 @@ internal sealed partial class RuntimePlayerInventoryStore
                 index = protocolSlot; offset = player * 59 + index;
                 return owner.items[offset] == after[index] && owner.coinFundedValues[offset] == copper[index] &&
                     owner.fundedQuantities[offset] == quantity[index] &&
-                    owner.ownedQuantityCaps.AsSpan(offset * 5, 5).SequenceEqual(caps.AsSpan(index * 5, 5));
+                    owner.ownedQuantityCaps.AsSpan(offset * QuantityLaneCount, QuantityLaneCount).SequenceEqual(caps.AsSpan(index * QuantityLaneCount, QuantityLaneCount));
             }
             if (!TryGetShopBankOffset(protocolSlot, out int bank)) return false;
             index = 59 + bank; offset = player * 160 + bank;
             return owner.shopBankItems[offset] == after[index] && owner.shopBankFundedCopper[offset] == copper[index] &&
                 owner.shopBankFundedQuantities[offset] == quantity[index] &&
-                owner.shopBankQuantityCaps.AsSpan(offset * 5, 5).SequenceEqual(caps.AsSpan(index * 5, 5));
+                owner.shopBankQuantityCaps.AsSpan(offset * QuantityLaneCount, QuantityLaneCount).SequenceEqual(caps.AsSpan(index * QuantityLaneCount, QuantityLaneCount));
         }
     }
 }

@@ -73,7 +73,8 @@ internal sealed partial class PlayerBuffState
 
     internal PlayerBuffState Clone()
     {
-        var copy = new PlayerBuffState { count = count, lastOwnedFoodTick = lastOwnedFoodTick, ownedFoodEffectAtTick = ownedFoodEffectAtTick, foodClockLineage = foodClockLineage };
+        var copy = new PlayerBuffState { count = count, lastOwnedFoodTick = lastOwnedFoodTick, ownedFoodEffectAtTick = ownedFoodEffectAtTick,
+            ownedFishingEffectsAtTick = ownedFishingEffectsAtTick, foodClockLineage = foodClockLineage };
         types.CopyTo(copy.types, 0);
         durations.CopyTo(copy.durations, 0);
         ownedFood.CopyTo(copy.ownedFood, 0);
@@ -96,7 +97,8 @@ internal sealed partial class PlayerBuffState
         contactCrowdControlForUpdate == other.contactCrowdControlForUpdate &&
         (!(HasOwnedFoodSlots || other.HasOwnedFoodSlots) || ReferenceEquals(foodClockLineage, other.foodClockLineage)) &&
         foodClockOrigins.AsSpan().SequenceEqual(other.foodClockOrigins) &&
-        lastOwnedFoodTick == other.lastOwnedFoodTick && ownedFoodEffectAtTick == other.ownedFoodEffectAtTick;
+        lastOwnedFoodTick == other.lastOwnedFoodTick && ownedFoodEffectAtTick == other.ownedFoodEffectAtTick &&
+        ownedFishingEffectsAtTick == other.ownedFishingEffectsAtTick;
 
     internal void CaptureSlots(out BuffTypeId[] slotTypes, out int[] slotDurations)
     {
@@ -136,7 +138,7 @@ internal sealed partial class PlayerBuffState
 
     private bool TryApplySelectedConsumableCore(BuffTypeId type, int duration, bool immune, bool npcContact = false)
     {
-        if (immune || duration <= 0 || (!npcContact && type.Value is not (21 or 94 or 5 or 16 or 112 or 114 or 115 or 117 or 26 or 206 or 207))) return false;
+        if (immune || duration <= 0 || (!npcContact && type.Value is not (21 or 94 or 5 or 16 or 112 or 114 or 115 or 117 or 26 or 206 or 207 or 121 or 122 or 123))) return false;
         // Player.AddBuff removes fed-state entries before looking for an existing timer.
         // Forward iteration deliberately follows original DelBuff compaction, including slot43.
         if (type.Value is 26 or 206 or 207)
@@ -153,7 +155,7 @@ internal sealed partial class PlayerBuffState
                     durations[i] = Math.Min(durations[i] + duration, 600);
                 }
                 else durations[i] = Math.Max(durations[i], duration);
-                if (type.Value is 26 or 206 or 207) ownedFood[i] = true;
+                if (IsOwnedConsumableClockType(type.Value)) ownedFood[i] = true;
                 return true;
             }
 
@@ -167,7 +169,7 @@ internal sealed partial class PlayerBuffState
                 {
                     types[i] = type;
                     durations[i] = duration;
-                    ownedFood[i] = type.Value is 26 or 206 or 207;
+                    ownedFood[i] = IsOwnedConsumableClockType(type.Value);
                     ownedNpcContact[i] = npcContact;
                     count = Capacity;
                     return true;
@@ -227,6 +229,9 @@ internal sealed partial class PlayerBuffState
     internal bool AdvanceOwnedFoodClock(long tick, bool compactExpired)
     {
         if (!HasOwnedFoodSlots || lastOwnedFoodTick == tick) return false;
+        // UpdateBuffs applies a time1 slot during this update after decrementing
+        // it to0. Projectile fishing runs later in the same world update.
+        ownedFishingEffectsAtTick = CaptureFishingEffects(tick);
         lastOwnedFoodTick = tick;
         ownedFoodEffectAtTick = HasOwnedFood;
         bool expired = false;
@@ -243,6 +248,7 @@ internal sealed partial class PlayerBuffState
         if (lastOwnedFoodTick == tick) return;
         lastOwnedFoodTick = tick;
         ownedFoodEffectAtTick = false;
+        ownedFishingEffectsAtTick = 0;
     }
 
     internal void ClearOwnedFood()
@@ -251,6 +257,7 @@ internal sealed partial class PlayerBuffState
         for (int i = Capacity - 1; i >= 0; i--)
             if (ownedFood[i]) RemoveFedStateSlot(i);
         ownedFoodEffectAtTick = false;
+        ownedFishingEffectsAtTick = 0;
     }
 
 }

@@ -168,7 +168,8 @@ public sealed partial class WorldRuntime : IDisposable
                 townNpcStore: TownNpcs,
                 progressionMutations: WorldProgression,
                 checkpointValidationLimits: persistence.LoadLimits, deathPrelude: DeathPrelude,
-                invasionSaveStateSource: Invasion.CaptureSaveState, managedCustody: persistence.ManagedCustody);
+                invasionSaveStateSource: Invasion.CaptureSaveState, managedCustody: persistence.ManagedCustody,
+                anglerSaveStateSource: () => State?.CaptureAnglerSaveState());
             autosave = new VanillaWorldAutosaveScheduler();
         }
 
@@ -257,6 +258,12 @@ public sealed partial class WorldRuntime : IDisposable
                 world.RuntimeMetadata.SkyblockWorld),
             sourcePlayerWorld: RuntimePlayerUpdateWorld1458.FromMetadata(world.Tiles.Dimensions, world.RuntimeMetadata),
             worldStateAdopted: RefreshWorldBootstrap);
+        State.BindAnglerWorld(world.RuntimeMetadata, RuntimeConnections.PublishAnglerState);
+        State.BindFishingWorldInfoPublisher(() =>
+        {
+            RefreshWorldBootstrap();
+            RuntimeConnections.BroadcastToPlaying(CreateLiveWorldInfoFrame());
+        });
         toolBuildingPermission = RuntimeToolBuildingPermission1458.FromLoadedWorld(world.Tiles);
         State.BindToolBuildingPermission(toolBuildingPermission);
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
