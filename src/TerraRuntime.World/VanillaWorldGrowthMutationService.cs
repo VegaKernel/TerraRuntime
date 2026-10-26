@@ -78,7 +78,7 @@ public sealed class VanillaWorldGrowthMutationService
             return Rejected(WorldGrowthMutationStatus.InvalidContent, in before);
         after.FrameX = 0;
         after.FrameY = 0;
-        after.Shape = 0;
+        after.ClearSourceShape();
         _tiles.Set(request.X, request.Y, in after);
         return new WorldGrowthMutationResult(WorldGrowthMutationStatus.Applied, before, after);
     }

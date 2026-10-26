@@ -239,9 +239,9 @@ public static class VanillaWorldPlayerStepCollision
     private static bool IsActive(in WorldTile tile) =>
         tile.IsActive && (tile.Flags & WorldTileFlags.Inactive) == 0;
 
-    private static bool IsHalfBrick(in WorldTile tile) => tile.Shape == 1;
+    private static bool IsHalfBrick(in WorldTile tile) => tile.IsHalfBrick;
 
-    private static int GetSlope(in WorldTile tile) => tile.Shape >= 2 ? tile.Shape - 1 : 0;
+    private static int GetSlope(in WorldTile tile) => tile.SourceSlope;
 
     private static bool InWorldWithMargin(WorldTileStore tiles, int x, int y, int margin) =>
         x >= margin && x < tiles.Dimensions.WidthTiles - margin &&

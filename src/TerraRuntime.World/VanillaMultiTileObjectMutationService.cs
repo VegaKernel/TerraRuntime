@@ -183,6 +183,96 @@ public sealed class VanillaMultiTileObjectMutationService
             changed);
     }
 
+    /// <summary>Stages the complete existing object footprint without removing metadata or tiles.</summary>
+    public bool TryPrepareBreakAt(int tileX, int tileY,
+        IVanillaMultiTileObjectMetadataLifecycle metadata,
+        out BreakPreparation? preparation, out VanillaMultiTileObjectMutationResult result)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        preparation = null;
+        var resolved = TryResolveObjectAt(tileX, tileY, out var descriptor);
+        if (resolved != VanillaMultiTileObjectMutationStatus.Applied)
+        {
+            result = Rejected(resolved);
+            return false;
+        }
+        var candidate = new BreakPreparation(this, metadata, in descriptor);
+        if (!candidate.ValidateMetadata())
+        {
+            result = Rejected(VanillaMultiTileObjectMutationStatus.MetadataRejected, in descriptor);
+            return false;
+        }
+        preparation = candidate;
+        result = new(VanillaMultiTileObjectMutationStatus.Applied, descriptor, 0);
+        return true;
+    }
+
+    /// <summary>
+    /// A bounded, single-use object removal. Metadata validation may query the concrete
+    /// metadata owner; the caller runs its final pure player/drop guards afterward.
+    /// Metadata TryCommitRemove retains the existing nonthrowing single-writer contract.
+    /// </summary>
+    public sealed class BreakPreparation
+    {
+        private readonly VanillaMultiTileObjectMutationService owner;
+        private readonly IVanillaMultiTileObjectMetadataLifecycle metadata;
+        private readonly (WorldSectionId Section, long Version)[] sections;
+        private bool adopted;
+
+        internal BreakPreparation(VanillaMultiTileObjectMutationService owner,
+            IVanillaMultiTileObjectMetadataLifecycle metadata,
+            in VanillaMultiTileObjectMutationDescriptor descriptor)
+        {
+            this.owner = owner;
+            this.metadata = metadata;
+            Descriptor = descriptor;
+            var bounds = descriptor.Bounds;
+            var first = TerrariaSectionGeometry.FromTile(owner._tiles.Dimensions,
+                Math.Max(0, bounds.X - 2), Math.Max(0, bounds.Y - 2));
+            var last = TerrariaSectionGeometry.FromTile(owner._tiles.Dimensions,
+                Math.Min(owner._tiles.Dimensions.WidthTiles - 1, bounds.X + bounds.Width + 1),
+                Math.Min(owner._tiles.Dimensions.HeightTiles - 1, bounds.Y + bounds.Height + 1));
+            sections = new (WorldSectionId, long)[(last.X - first.X + 1) * (last.Y - first.Y + 1)];
+            int index = 0;
+            for (int sectionX = first.X; sectionX <= last.X; sectionX++)
+                for (int sectionY = first.Y; sectionY <= last.Y; sectionY++)
+                {
+                    var section = new WorldSectionId(sectionX, sectionY);
+                    sections[index++] = (section, owner._tiles.GetSectionVersion(section));
+                }
+        }
+
+        public VanillaMultiTileObjectMutationDescriptor Descriptor { get; }
+
+        public bool IsCurrentOwned
+        {
+            get
+            {
+                if (adopted) return false;
+                foreach (var section in sections)
+                    if ((section.Version & 1L) != 0 || owner._tiles.GetSectionVersion(section.Section) != section.Version)
+                        return false;
+                return true;
+            }
+        }
+
+        public bool ValidateMetadata() => metadata.CanRemove(Descriptor) && IsCurrentOwned;
+
+        public bool TryAdoptUnpublished(out VanillaMultiTileObjectMutationResult result)
+        {
+            result = default;
+            if (!IsCurrentOwned || !metadata.TryCommitRemove(Descriptor)) return false;
+            adopted = true;
+            int changed = owner.CommitBreak(Descriptor);
+            var bounds = Descriptor.Bounds;
+            VanillaWorldLiquidWakeup1458.WakeRegion(owner._tiles,
+                bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            owner.MarkFrameNeighborhoodDirty(bounds);
+            result = new(VanillaMultiTileObjectMutationStatus.Applied, Descriptor, changed);
+            return true;
+        }
+    }
+
     /// <summary>
     /// Resolves an arbitrary cell of a coherent catalogued object to the top-left metadata anchor. Style offsets are
     /// accepted through modulo-width/height frame cells; every footprint cell is then verified before a descriptor is
@@ -312,10 +402,9 @@ public sealed class VanillaMultiTileObjectMutationService
                 placed.FrameX = checked((short)(objectX * FrameCellSize));
                 placed.FrameY = checked((short)(objectY * FrameCellSize));
                 placed.TileColor = 0;
-                placed.Shape = 0;
+                placed.ClearSourceShape();
                 placed.Flags &= ~(
-                    WorldTileFlags.Actuator |
-                    WorldTileFlags.Inactive |
+                            WorldTileFlags.Inactive |
                     WorldTileFlags.InvisibleBlock |
                     WorldTileFlags.FullbrightBlock);
                 placed.Flags |= WorldTileFlags.Active;
@@ -339,11 +428,10 @@ public sealed class VanillaMultiTileObjectMutationService
                 cleared.FrameX = 0;
                 cleared.FrameY = 0;
                 cleared.TileColor = 0;
-                cleared.Shape = 0;
+                cleared.ClearSourceShape();
                 cleared.Flags &= ~(
                     WorldTileFlags.Active |
-                    WorldTileFlags.Actuator |
-                    WorldTileFlags.Inactive |
+                            WorldTileFlags.Inactive |
                     WorldTileFlags.InvisibleBlock |
                     WorldTileFlags.FullbrightBlock);
                 _tiles.Set(x, y, in cleared);

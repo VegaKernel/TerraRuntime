@@ -80,6 +80,21 @@ public readonly record struct ProjectileLifecycleState(
 
     /// <summary>Owns the source Kill body through its area damage and final removal.</summary>
     public bool GemStaffKillInProgress { get; init; }
+
+    /// <summary>Source Projectile.wetCount; SetDefaults starts at zero and packet27 cannot write it.</summary>
+    public byte SourceWetCount { get; init; }
+
+    /// <summary>Source-owned held-tool birth/AI state; packet27 cannot initialize this field.</summary>
+    public HeldToolProjectileState1458? HeldTool { get; init; }
+
+    /// <summary>Separate AI3 thrown-axe birth/AI state; never interpreted as a held AI20 tool.</summary>
+    public ThrownAxeState1458? ThrownAxe { get; init; }
+
+    /// <summary>Source-owned Projectile.npcProj; never initialized by packet 27.</summary>
+    public bool NpcProjectile { get; init; }
+
+    /// <summary>Private retained Kill stage for source-owned world bombs; never packet initialized.</summary>
+    public bool WorldToolBombKillInProgress { get; init; }
 }
 
 /// <summary>
@@ -111,6 +126,9 @@ public sealed partial class RuntimeProjectileStore
             throw new ArgumentOutOfRangeException(nameof(capacity));
 
         _slots = new SlotState[capacity];
+        // Entity constructor direction is1. SetDefaults does not reset it
+        // when NewProjectile reuses the physical object.
+        for (int slot = 0; slot < _slots.Length; slot++) _slots[slot].SourceDirection = 1;
         _commitSink = commitSink;
     }
 

@@ -313,10 +313,11 @@ public sealed class RemoteStyle1AndRangedPrefixPhase1458Tests
             for (int x = 0; x < 400; x++) tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             State = new(playerEvents: Events, worldTiles: tiles, projectiles: Projectiles,
                 playerUpdateRandomSeed: new(I(source, "seed")));
+            ToolPhaseWorldFixture1458.BindFreshInactiveEvent(State, tiles);
             Players = ((ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(State)!).Players;
             Random = (VanillaUnifiedRandom1458)typeof(PlayerAuthority).GetField("playerUpdateRandom", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Players)!;
             Players.SetPlayerUpdateWorldFacts(new RuntimePlayerUpdateWorld1458(400, 300, 80, false, false)
-                { WindowsItemPrefixArithmetic = windowsArithmetic });
+                { WindowsItemPrefixArithmetic = windowsArithmetic, JourneyMode = false });
             Players.SetRemotePlayerEnvironment(new(false, false), Projectiles);
             var pool = new PlayerSlotPool(1);
             Assert.True(pool.TryAcquireConnection(out var lease));

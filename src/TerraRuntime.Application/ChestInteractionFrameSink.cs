@@ -14,7 +14,7 @@ public enum ChestInteractionFrameStopReason : byte
 }
 
 /// <summary>
-/// Connection-owned protocol-326 chest boundary for packets 31, 32, 33 and 69. The socket thread decodes only;
+/// Connection-owned protocol-326 chest boundary for packets 31, 32, 33, 34 and 69. The socket thread decodes only;
 /// every world-chest decision is posted with the exact playing-session identity to the authoritative game loop.
 /// </summary>
 public sealed class ChestInteractionFrameSink :
@@ -81,6 +81,7 @@ public sealed class ChestInteractionFrameSink :
         if (messageId is not TerrariaMessageId.RequestChestOpen and
             not TerrariaMessageId.SyncChestItem and
             not TerrariaMessageId.SyncPlayerChest and
+            not TerrariaMessageId.ChestUpdates and
             not TerrariaMessageId.ChestName)
         {
             return inner.OnFrame(in frame);
@@ -93,6 +94,15 @@ public sealed class ChestInteractionFrameSink :
         bool retryableReadRequest = false;
         switch (messageId)
         {
+            case TerrariaMessageId.ChestUpdates:
+            {
+                if (TerrariaChestUpdatesCodec1458.TryDecode(in frame, out var state) !=
+                    TerrariaChestUpdatesDecodeResult1458.Decoded)
+                    return Stop(ChestInteractionFrameStopReason.MalformedChestPacket);
+                posted = ingress.TryPostToolChestUpdate(connection, in state);
+                break;
+            }
+
             case TerrariaMessageId.RequestChestOpen:
             {
                 TerrariaChestDecodeResult decode = TerrariaChestCodec.TryDecodeOpenRequest(in frame, out TerrariaChestOpenRequest request);

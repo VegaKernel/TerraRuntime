@@ -1,7 +1,9 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Network;
+using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -16,18 +18,21 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         WorldItemDropReservation held = fixture.FillWorldItemPoolBeforePlayers();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9501);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9502);
-        fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        WorldTile before = fixture.Tiles.Get(10, 10);
+        fixture.SetSelectedPickaxe(origin,oneHit:true);
+        fixture.BeginMeasuredReplication();
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        WorldTile before = fixture.Tiles.Get(60, 60);
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 0)));
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 0)));
 
         Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
-        Assert.Equal(1, fixture.State.RejectedWorldItemAllocations);
+        // A refused speculative candidate never counts as a live allocation.
+        Assert.Equal(0, fixture.State.RejectedWorldItemAllocations);
+        MiningSourceScene1458.AssertRetainedWithoutAuthority(fixture.State,fixture.Tiles,origin,60,60);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(RuntimeWorldItemStore.VanillaCapacity - 1, fixture.Items.ActiveCount);
-        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(before, fixture.Tiles.Get(60, 60));
         fixture.AssertOnlyOriginCorrection(origin, peer);
         Assert.True(fixture.Items.TryReleaseDropReservation(in held));
     }
@@ -38,21 +43,30 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9511);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9512);
-        fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        WorldTile before = fixture.Tiles.Get(10, 10);
+        fixture.SetSelectedPickaxe(origin);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        WorldTile before = fixture.Tiles.Get(60, 60);
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
 
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(0, fixture.Items.ActiveCount);
-        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(before, fixture.Tiles.Get(60, 60));
         Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
-        Assert.Equal(1, fixture.Outbound(peer).QueuedFrames);
-        Assert.Equal(1, fixture.TileReplication.RelayedFrames);
+        Assert.Equal(2, fixture.Outbound(peer).QueuedFrames);
+        var failed = MiningSourceScene1458.TakeFrame(fixture.Outbound(peer));
+        Assert.Equal((byte)17,failed.MessageId);
+        Assert.Equal(TerrariaTileManipulationDecodeResult.Decoded,
+            TerrariaTileManipulationCodec.TryDecode(failed,out var failedReport));
+        Assert.Equal(KillRequest(1),failedReport);
+        var picking = MiningSourceScene1458.TakeFrame(fixture.Outbound(peer));
+        Assert.Equal(TerrariaTilePickingDecodeResult1458.Decoded,
+            TerrariaTilePickingCodec1458.TryDecode(picking,out var progress));
+        Assert.Equal(new TerrariaTilePickingState1458(origin.Player.Slot.Value,60,60,70),progress);
+        Assert.Equal(2, fixture.TileReplication.RelayedFrames);
         Assert.Equal(0, fixture.TileReplication.RejectedFrames);
         Assert.Equal(0, fixture.TileReplication.EncodeFailures);
         Assert.Equal(0, fixture.WorldItemReplication.RelayedFrames);
@@ -66,17 +80,17 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9513);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9514);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        WorldTile before = fixture.Tiles.Get(10, 10);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        WorldTile before = fixture.Tiles.Get(60, 60);
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 1)));
 
         Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(0, fixture.Items.ActiveCount);
-        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(before, fixture.Tiles.Get(60, 60));
         fixture.AssertOnlyOriginCorrection(origin, peer);
     }
 
@@ -86,19 +100,19 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9521);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9522);
-        fixture.SetSelectedCopperPickaxe(origin);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 11, 10));
-        WorldTile before = fixture.Tiles.Get(10, 10);
+        fixture.SetSelectedPickaxe(origin);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 61, 60));
+        WorldTile before = fixture.Tiles.Get(60, 60);
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 0)));
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 0)));
 
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(0, fixture.State.RejectedWorldItemAllocations);
-        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(2, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(1, fixture.Items.ActiveCount);
-        Assert.False(fixture.Tiles.Get(10, 10).IsActive);
-        Assert.NotEqual(before, fixture.Tiles.Get(10, 10));
+        Assert.False(fixture.Tiles.Get(60, 60).IsActive);
+        Assert.NotEqual(before, fixture.Tiles.Get(60, 60));
         Assert.True(fixture.Items.TryGetActive(0, out WorldItemSnapshot allocated));
         Assert.Equal((short)0, allocated.Handle.Slot);
         Assert.Equal((ulong)1, allocated.Handle.Generation.Value);
@@ -107,8 +121,8 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
     private static TerrariaTileManipulationState KillRequest(short data) =>
         new(
             (byte)TerrariaTileManipulationAction.KillTile,
-            TileX: 10,
-            TileY: 10,
+            TileX: 60,
+            TileY: 60,
             Data: data,
             Style: 0);
 
@@ -131,6 +145,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         private readonly PlayerSlotPool slots = new(2);
         private readonly List<PlayerJoinSession> sessions = [];
         private readonly Dictionary<GameCommandSourceId, TerrariaConnectionOutboundQueue> outbound = [];
+        private long initialItemFrames;
 
         public Fixture()
         {
@@ -143,7 +158,14 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
                 playerEvents: playerEvents,
                 worldTiles: Tiles,
                 worldItems: Items,
-                tileManipulationReplication: TileReplication);
+                tileManipulationReplication: TileReplication,
+                worldItemReplication: WorldItemReplication,
+                sourcePlayerWorld: MiningSourceScene1458.Facts(Tiles),
+                worldClock: new RuntimeWorldClock(1000,true,default,0,0), playerUpdateRandomSeed: new(0),
+                townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+                townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with {WorldSurface=80});
+            ToolPhaseWorldFixture1458.BindFreshInactiveEvent(State,Tiles);
+            for(int x=55;x<=65;x++) Tiles.Set(x,63,new WorldTile{Type=1,Flags=WorldTileFlags.Active});
         }
 
         public WorldTileStore Tiles { get; }
@@ -177,31 +199,51 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
 
             GameCommandSourceId source = GameCommandSourceId.FromConnection(connectionId);
             var queue = new TerrariaConnectionOutboundQueue(
-                new OutboundQueueOptions(maxFrames: 8, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
+                new OutboundQueueOptions(maxFrames: 512, maxQueuedBytes: 65_536, maxFrameBytes: 1_024));
             Assert.True(TileReplication.TryRegister(source, queue));
             Assert.True(WorldItemReplication.TryRegister(source, queue));
             outbound.Add(source, queue);
 
             var connection = new ConnectionHandle(source, session.Handle);
-            var spawn = new PlayerSpawnCommitRequest(session.Slot, 20, 20, 0, 0, 0, 0, 0);
+            var spawn = new PlayerSpawnCommitRequest(session.Slot, 57, 63, 0, 0, 0, 0, 0);
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, spawn));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
+            State.Apply(new PlayerHealthRuntimeCommand(connection,new(session.Slot,100,100)));
+            State.Apply(new PlayerManaRuntimeCommand(connection,new(session.Slot,0,20)));
+            State.Apply(new PlayerInventorySyncCompleteRuntimeCommand(connection));
             return connection;
         }
 
         public TerrariaConnectionOutboundQueue Outbound(ConnectionHandle connection) => outbound[connection.Source];
 
-        public void SetSelectedCopperPickaxe(ConnectionHandle connection)
+        public void SetSelectedPickaxe(ConnectionHandle connection, bool oneHit = false)
         {
             var equipment = new PlayerEquipmentCommitRequest(
                 connection.Player.Slot,
                 SlotId: 0,
                 Stack: 1,
                 Prefix: 0,
-                ItemNetId: checked((short)VanillaItemIds.CopperPickaxe.Value),
+                ItemNetId: checked((short)(oneHit ? VanillaItemIds.VortexPickaxe.Value : VanillaItemIds.CopperPickaxe.Value)),
                 ItemFlags: 0);
             State.Apply(new PlayerEquipmentRuntimeCommand(connection, equipment));
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
+            MiningSourceScene1458.Start(State,connection);
+        }
+
+        public void BeginMeasuredReplication()
+        {
+            // Real source-clock setup also discovers owners for the399
+            // pre-existing physical items. Consume that bounded setup22 stream
+            // before measuring denial of the separate mining action.
+            foreach (var queue in outbound.Values)
+                while (queue.QueuedFrames > 0)
+                {
+                    var frame = MiningSourceScene1458.TakeFrame(queue);
+                    Assert.Equal((byte)22,frame.MessageId);
+                }
+            Assert.Equal(0,WorldItemReplication.RejectedFrames);
+            Assert.Equal(0,WorldItemReplication.UnsupportedCommits);
+            initialItemFrames = WorldItemReplication.RelayedFrames;
         }
 
         public void AssertOnlyOriginCorrection(ConnectionHandle origin, ConnectionHandle peer)
@@ -211,7 +253,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
             Assert.Equal(1, TileReplication.RelayedFrames);
             Assert.Equal(0, TileReplication.RejectedFrames);
             Assert.Equal(0, TileReplication.EncodeFailures);
-            Assert.Equal(0, WorldItemReplication.RelayedFrames);
+            Assert.Equal(initialItemFrames, WorldItemReplication.RelayedFrames);
             Assert.Equal(0, WorldItemReplication.RejectedFrames);
             Assert.Equal(0, WorldItemReplication.UnsupportedCommits);
         }

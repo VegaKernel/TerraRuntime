@@ -22,6 +22,10 @@ public static partial class RuntimeWorldSnapshotCache
     private const int TargetShardBytes = 8 * 1024 * 1024;
     private const int TilesPerShard = TargetShardBytes / TileRecordSize;
 
+    // Deliberately excludes HalfBrickWithSlope. Startup snapshots are rebuilt
+    // from canonical .wld plus post-load preparation; the canonical encoder
+    // already applied source half-brick precedence. Reject a raw live dual
+    // tile here rather than preserve a warm-only slope lost on cold load.
     private const WorldTileFlags KnownFlags =
         WorldTileFlags.Active |
         WorldTileFlags.WireRed |

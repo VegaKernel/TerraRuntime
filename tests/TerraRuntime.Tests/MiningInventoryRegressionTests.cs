@@ -5,6 +5,7 @@ using TerraRuntime.Application;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
@@ -41,15 +42,15 @@ public sealed class MiningInventoryRegressionTests
         using var f = new Fixture(false);
         f.Equip(7, 4711, 1); // ItemCheck_UseMiningTools special tool, NOT an ordinary pick.
         f.Select(7);
-        for (short x = 49; x <= 51; x++)
-        for (short y = 51; y <= 53; y++)
-        {
+        for (short x = 49; x <= 51; x++) for (short y = 51; y <= 53; y++)
             Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles, x, y));
-            f.Kill(x, y, 1); // Intermediate PickTile failure is relayed, not a completed break.
+        f.Shovel();
+        for (short x = 49; x <= 51; x++) for (short y = 51; y <= 53; y++)
             Assert.True(f.Tiles.Get(x, y).IsActive);
-            f.Kill(x, y);
+        Assert.Equal(0, f.Items.ActiveCount);
+        f.Shovel();
+        for (short x = 49; x <= 51; x++) for (short y = 51; y <= 53; y++)
             Assert.False(f.Tiles.Get(x, y).IsActive);
-        }
         Assert.Equal(9, f.Items.ActiveCount);
         Assert.Equal(0, f.State.RejectedClientTileManipulations);
         Assert.Equal(18, f.State.AppliedClientTileManipulations);
@@ -67,7 +68,8 @@ public sealed class MiningInventoryRegressionTests
         f.Kill();
         Assert.Equal(before, f.Tiles.Get(50, 52));
         Assert.Equal(0, f.Items.ActiveCount);
-        Assert.Equal(1, f.State.RejectedClientTileManipulations);
+        MiningSourceScene1458.AssertRetainedWithoutAuthority(f.State, f.Tiles,
+            MiningSourceScene1458.Connection(f.State, f.Player), 50, 52);
     }
 
     [Theory]
@@ -101,7 +103,8 @@ public sealed class MiningInventoryRegressionTests
             // Ordinary vanilla client syncs the resulting inventory; no server-side fabricated GetItem.
             f.Equip(49, 2, checked((short)(i + 2)));
         }
-        Assert.Equal(900, f.State.AppliedClientTileManipulations);
+        Assert.InRange(f.ReportedToolCalls, 900, 1800);
+        Assert.Equal(f.ReportedToolCalls, f.State.AppliedClientTileManipulations);
         Assert.Equal(900, f.State.AppliedWorldItemRemovals);
         Assert.Equal(0, f.State.RejectedClientTileManipulations);
         Assert.Equal(0, f.State.RejectedWorldItemAllocations);
@@ -164,15 +167,16 @@ public sealed class MiningInventoryRegressionTests
     public void Full_source_table_publishes_transient_drop_then_owner_removal_allows_a_physical_retry()
     {
         using var f = new Fixture(fullInventory: false);
-        f.Equip(7, 3509, 1);
+        f.Equip(7, 2776, 1);
         f.Select(7);
+        MiningSourceScene1458.Start(f.State, MiningSourceScene1458.Connection(f.State, f.Player));
         // Full age-zero stacks select the source transient index400. Once an owner removes a physical
         // item, a subsequent producer must reuse that slot with a fresh generation.
         var drop = new WorldItemDropStateUpdate(800, 800, 0, 0, 9999, 0,
             WorldItemOwnershipMode.None, 1, false, 0, 0);
         for (int i = 0; i < 400; i++)
         {
-            Assert.True(f.Items.TryAllocateDrop(in drop, out _));
+            Assert.True(f.SpawnSourceDrop(in drop, out _));
             f.Drain();
         }
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles, 50, 52));
@@ -184,6 +188,7 @@ public sealed class MiningInventoryRegressionTests
         f.Drain();
         f.Remove(0);
         Assert.Equal(399, f.Items.ActiveCount);
+        f.Select(7); // Return to the safe source mining stance before the next placed cell.
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles, 50, 52));
         f.Kill();
         Assert.False(f.Tiles.Get(50, 52).IsActive);
@@ -213,11 +218,12 @@ public sealed class MiningInventoryRegressionTests
         using var f = new Fixture(fullInventory: false);
         var drop = new WorldItemDropStateUpdate(800, 800, 0, 0, 1, 0,
             WorldItemOwnershipMode.None, 2, false, 0, 0);
-        Assert.True(f.Items.TryAllocateDrop(in drop, out var first));
+        Assert.True(f.SpawnSourceDrop(in drop, out var first));
         f.DiscoverOwner();
         RuntimeCommand delayed = f.CaptureRemoval(first.Handle.Slot);
         f.Remove(first.Handle.Slot);
-        Assert.True(f.Items.TryAllocateDrop(in drop, out var second));
+        f.Select(7); // Move out of contact before observing the next generation.
+        Assert.True(f.SpawnSourceDrop(in drop, out var second));
         Assert.Equal(first.Handle.Slot, second.Handle.Slot);
         Assert.NotEqual(first.Handle.Generation, second.Handle.Generation);
         f.DiscoverOwner();
@@ -239,6 +245,7 @@ public sealed class MiningInventoryRegressionTests
             new OutboundQueueOptions(maxFrames: 1024, maxQueuedBytes: 131072, maxFrameBytes: 2048));
         public WorldTileStore Tiles { get; } = new(new WorldDimensions(200, 150));
         public RuntimeWorldItemReplicationRegistry Replication { get; } = new();
+        private readonly RuntimeProjectileReplicationRegistry projectileReplication = new();
         public RuntimeWorldItemStore Items { get; }
         public ServerRuntimeState State { get; }
         public WorldItemFrameSink ItemSink { get; }
@@ -247,7 +254,15 @@ public sealed class MiningInventoryRegressionTests
         public Fixture(bool fullInventory)
         {
             Items = new(Replication);
-            State = new(playerEvents: Replication, worldItems: Items, worldTiles: Tiles, worldItemReplication: Replication);
+            State = new(playerEvents: new RuntimePlayerEventFanout(Replication, projectileReplication),
+                projectileReplication: projectileReplication, worldItems: Items, worldTiles: Tiles, worldItemReplication: Replication,
+                sourcePlayerWorld: MiningSourceScene1458.Facts(Tiles),
+                worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+                playerUpdateRandomSeed: new(0),
+                townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+                townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80 });
+            ToolPhaseWorldFixture1458.BindFreshInactiveEvent(State, Tiles);
+            for (int x = 43; x <= 55; x++) Tiles.Set(x, 54, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             var source = GameCommandSourceId.FromConnection(9740);
             Assert.True(Replication.TryRegister(source, outbound));
             var ingress = new ApplyingIngress(State);
@@ -261,7 +276,8 @@ public sealed class MiningInventoryRegressionTests
                 [11, (byte)'T', (byte)'e', (byte)'r', (byte)'r', (byte)'a', (byte)'r', (byte)'i', (byte)'a', (byte)'3', (byte)'2', (byte)'6'])));
             // Every packet 5 precedes packet 6, as the real client does after receiving its slot.
             for (short slot = 0; slot < 59; slot++)
-                Equip(slot, fullInventory ? (short)3509 : (short)0, fullInventory ? (short)9999 : (short)0);
+                Equip(slot, fullInventory && slot < 58 ? (short)3509 : (short)0,
+                    fullInventory && slot < 58 ? (short)9999 : (short)0);
             Equip(49, 2, 1);
             Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(6, [])));
             Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(8, new byte[9])));
@@ -270,12 +286,21 @@ public sealed class MiningInventoryRegressionTests
             BinaryPrimitives.WriteInt16LittleEndian(spawn.AsSpan(3), 52);
             Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(12, spawn)));
             Assert.Equal(PlayerJoinState.Playing, bootstrap.JoinState);
+            var connection = MiningSourceScene1458.Connection(State, Player);
+            State.Apply(new PlayerHealthRuntimeCommand(connection, new(Player.Slot, 100, 100)));
+            State.Apply(new PlayerManaRuntimeCommand(connection, new(Player.Slot, 0, 20)));
+            State.Apply(new PlayerInventorySyncCompleteRuntimeCommand(connection));
             Select(7);
             Drain();
         }
 
+        public long ReportedToolCalls { get; private set; }
+
         public void Equip(short slot, short type, short stack, byte prefix = 0, bool favorite = false)
         {
+            if (bootstrap.JoinState == PlayerJoinState.Playing &&
+                State.TryCapturePlayerSnapshot(Player, out var before) && before.SelectedItem == slot)
+                MiningSourceScene1458.FinishUse(State, MiningSourceScene1458.Connection(State, Player));
             byte[] payload = new byte[9];
             BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(1), slot);
             BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(3), stack);
@@ -284,6 +309,11 @@ public sealed class MiningInventoryRegressionTests
             payload[8] = favorite ? (byte)1 : (byte)0;
             Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(5, payload)));
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
+            // Each fixture operation is one complete source inventory sync.
+            // A later changed image of the same slot belongs AFTER138, not to
+            // a contradictory second image inside the previous observed batch.
+            if (bootstrap.JoinState == PlayerJoinState.Playing)
+                Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(138, [])));
         }
 
         public void SeedRetainedItemSpaceFixture(short slot, short type, short stack, byte prefix, bool favorite)
@@ -302,26 +332,55 @@ public sealed class MiningInventoryRegressionTests
 
         public void Select(byte slot)
         {
+            if (bootstrap.JoinState == PlayerJoinState.Playing &&
+                State.TryCapturePlayerSnapshot(Player, out var before) && before.SelectedItem != slot)
+                MiningSourceScene1458.FinishUse(State, MiningSourceScene1458.Connection(State, Player));
             byte[] payload = new byte[14];
             payload[1] = 32;
             payload[2] = 16;
             payload[5] = slot;
-            BinaryPrimitives.WriteSingleLittleEndian(payload.AsSpan(6), 800);
-            BinaryPrimitives.WriteSingleLittleEndian(payload.AsSpan(10), 800);
+            BinaryPrimitives.WriteSingleLittleEndian(payload.AsSpan(6), 736);
+            BinaryPrimitives.WriteSingleLittleEndian(payload.AsSpan(10), 822);
             Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(13, payload)));
         }
 
         public void Kill(short x = 50, short y = 52, short fail = 0)
         {
-            byte[] payload = new byte[8];
-            BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(1), x);
-            BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(3), y);
-            BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(5), fail);
-            Assert.Equal(TerrariaFrameSinkResult.Continue, tileSink.OnFrame(Frame(17, payload)));
+            var connection = MiningSourceScene1458.Connection(State, Player);
+            MiningSourceScene1458.Apply(State, Tiles,
+                new ClientTileManipulationRuntimeCommand(connection, new(0, x, y, fail, 0)), SendTool);
+            ReportedToolCalls += MiningSourceScene1458.ReportedCalls(State, connection);
+        }
+
+        public void Shovel()
+        {
+            var connection = MiningSourceScene1458.Connection(State, Player);
+            MiningSourceScene1458.ShovelAction(State, Tiles, connection, 50, 52, SendTool);
+            ReportedToolCalls += MiningSourceScene1458.ReportedCalls(State, connection);
+        }
+
+        private void SendTool(RuntimeCommand command) =>
+            Assert.Equal(TerrariaFrameSinkResult.Continue, tileSink.OnFrame(MiningSourceScene1458.ObservationFrame(command)));
+
+        public bool SpawnSourceDrop(in WorldItemDropStateUpdate drop, out WorldItemSnapshot item)
+        {
+            item = default;
+            return Items.TryReserveDrop(drop,out var reserved) && Items.TryCommitReservedDrop(reserved,out item);
         }
 
         public void Remove(short slot)
         {
+            // Reservation22 chooses an owner; actual151 still needs the owned
+            // body inside the source grab region. Approach through real13,
+            // rather than treating an ownership label as remote pickup power.
+            if (Items.TryGetActive(slot, out var item) && State.TryCapturePlayerSnapshot(Player, out var body))
+            {
+                byte[] approach = new byte[14]; approach[1] = 64; approach[2] = 16;
+                approach[5] = body.SelectedItem;
+                BinaryPrimitives.WriteSingleLittleEndian(approach.AsSpan(6), Math.Max(640f, item.PositionX - 16f));
+                BinaryPrimitives.WriteSingleLittleEndian(approach.AsSpan(10), Math.Max(640f, Math.Min(body.PositionY, item.PositionY)));
+                Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(13, approach)));
+            }
             byte[] payload = new byte[2];
             BinaryPrimitives.WriteInt16LittleEndian(payload, slot);
             Assert.Equal(TerrariaFrameSinkResult.Continue, ItemSink.OnFrame(Frame(151, payload)));

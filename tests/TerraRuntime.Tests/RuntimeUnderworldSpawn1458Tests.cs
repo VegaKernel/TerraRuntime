@@ -38,7 +38,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { Eclipse = true, WorldSurface = 350, RockLayer = 500 };
         var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
-            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0, eclipse: true),
             townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
             naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
         var slots = new PlayerSlotPool(1);

@@ -123,6 +123,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                     LocalAi = next.LocalAi ?? life.LocalAi,
                     OldVelocityX = current.VelocityX, OldVelocityY = current.VelocityY };
                 if (!actor.TryStageMotion(next.State, motionLife) ||
+                    !actor.TryStageSourceDirection(next.SourceDirection) ||
                     !VanillaArrowSourceOffers1458.TryApply(initial.Type,
                         VanillaArrowSourcePhase1458.PostMovementBeforeDamage, afterRandom.Next)) return false;
                 for (int i = 0; i < count; i++)

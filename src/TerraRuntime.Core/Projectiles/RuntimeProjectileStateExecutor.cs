@@ -28,6 +28,9 @@ public readonly record struct ProjectileSimulationStepContext(
     ProjectileKillOrigin? KillOrigin = null,
     ProjectileNpcHealingApplication? NpcHealing = null)
 {
+    /// <summary>Source motion observation carried through staged behavior composition.</summary>
+    public int? SourceDirection { get; init; }
+
     public int VanillaNumUpdates => SubupdatesPerWorldTick - SubupdateIndex - 2;
 
     public bool IsFinalSubupdate => VanillaNumUpdates == -1;
@@ -50,7 +53,11 @@ public readonly record struct ProjectileSimulationStepResult(
     ProjectileKillOrigin? KillOrigin = null,
     ProjectileNpcHealingApplication? NpcHealing = null,
     int? PenetrateOverride = null,
-    ProjectileCollisionTileCutOffer? CollisionTileCutOffer = null);
+    ProjectileCollisionTileCutOffer? CollisionTileCutOffer = null)
+{
+    /// <summary>Known physical direction after source motion; null means unrepresented.</summary>
+    public int? SourceDirection { get; init; }
+}
 
 /// <summary>Runtime-only top-left at the source Kill boundary before a remaining position-update tail.</summary>
 public readonly record struct ProjectileKillOrigin(float X, float Y)
@@ -114,7 +121,11 @@ public readonly record struct ProjectileTerminationCommit(
     bool CombatTrusted,
     PlayerHandle TrustedOwner,
     NpcHandle SourceNpc = default,
-    ProjectileKillOrigin? KillOrigin = null);
+    ProjectileKillOrigin? KillOrigin = null)
+{
+    /// <summary>Retained source-owned npcProj; never inferred from a network owner byte.</summary>
+    public bool NpcProjectile { get; init; }
+}
 
 public interface IProjectileTerminationCommitSink
 {
@@ -300,6 +311,9 @@ public sealed class RuntimeProjectileStateExecutor
                     out bool expired,
                     currentLifecycle.PenetrateOverride))
             {
+                if (finalResult.TerminationReason != ProjectileSimulationTerminationReason.WorldBounds &&
+                    !_projectiles.TrySetSourceDirectionAfterSimulation(in committed, expired, finalResult.SourceDirection))
+                    throw new InvalidOperationException("Accepted simulation lost its source direction owner.");
                 applied++;
                 if (_commitSink is IProjectileSimulationPrePublicationCommitSink beforePublication)
                     beforePublication.ProjectileSimulationCommittedBeforePublication(_stepBuffer.AsSpan(0, recordedSubupdates));
@@ -323,7 +337,10 @@ public sealed class RuntimeProjectileStateExecutor
                         wasCombatTrusted,
                         trustedOwner,
                         sourceNpc,
-                        finalResult.KillOrigin);
+                        finalResult.KillOrigin)
+                    {
+                        NpcProjectile = lifecycle.NpcProjectile
+                    };
                     _terminationSink.ProjectileTerminated(in termination);
                 }
             }
@@ -346,7 +363,8 @@ public sealed class RuntimeProjectileStateExecutor
             normalized = default;
             return false;
         }
-        if (proposed.PenetrateOverride is < -1 || proposed.NpcHealing is { } heal &&
+        if (proposed.SourceDirection is not (null or -1 or 1) ||
+            proposed.PenetrateOverride is < -1 || proposed.NpcHealing is { } heal &&
             (!heal.Target.IsAssigned || !heal.Revision.IsAssigned || heal.Amount <= 0 ||
              proposed.TimeLeft > 0 || proposed.TerminationReason != ProjectileSimulationTerminationReason.BehaviorKill))
         {
@@ -433,7 +451,9 @@ public sealed class RuntimeProjectileStateExecutor
             OldVelocityY = previous.OldVelocityY,
             Reflected = previous.Reflected,
             PenetrateOverride = penetrateOverride ?? previous.PenetrateOverride,
-            LocalAi = localAi ?? previous.LocalAi
+            LocalAi = localAi ?? previous.LocalAi,
+            HeldTool = previousType == nextType ? previous.HeldTool : null,
+            ThrownAxe = previousType == nextType ? previous.ThrownAxe : null
         };
         return true;
     }

@@ -1,6 +1,8 @@
 using System.Buffers;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Npcs;
+using TerraRuntime.Core.Worlds;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
@@ -189,7 +191,20 @@ public sealed class ProductionTileSinkCompositionTests
         bool drillMount)
     {
         var tiles = new TerraRuntime.World.WorldTileStore(new TerraRuntime.World.WorldDimensions(200, 150));
-        var state = new ServerRuntimeState(worldTiles: tiles);
+        // Source-owned world/clock; socket observations do not create either.
+        var sourceMain = new VanillaUnifiedRandom1458(0);
+        var state = new ServerRuntimeState(worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            playerUpdateRandomSeed: new(0),
+            projectileReplication: new RuntimeProjectileReplicationRegistry(),
+            naturalSpawnRandom: new SystemVanillaNpcRandom(sourceMain),
+            worldItemSpawnRandom: new SystemWorldItemSpawnRandom(sourceMain),
+            townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80 },
+            sourcePlayerWorld: MiningSourceScene1458.Facts(tiles));
+        MiningSourceScene1458.World(state).BindToolBuildingPermission(
+            RuntimeToolBuildingPermission1458.FromLoadedWorld(tiles));
+        for (int x = 0; x < 200; x++)
+            tiles.Set(x, 54, new TerraRuntime.World.WorldTile { Type = 1, Flags = TerraRuntime.World.WorldTileFlags.Active });
         var slots = new PlayerSlotPool(1);
         GameCommandSourceId source = GameCommandSourceId.FromConnection(907);
         var immediate = new ApplyingCommandIngress(state);
@@ -244,8 +259,8 @@ public sealed class ProductionTileSinkCompositionTests
             MiscFlags1: 0,
             MiscFlags2: 0,
             SelectedItem: drillMount ? (byte)0 : (byte)miningSlot,
-            PositionX: 800f,
-            PositionY: 800f,
+            PositionX: 736f,
+            PositionY: 822f,
             HasVelocity: false,
             VelocityX: 0f,
             VelocityY: 0f,
@@ -269,6 +284,12 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.True(state.TryCapturePlayerInventoryItem(player, miningSlot, out RuntimePlayerInventoryItem liveItem));
         Assert.Equal(miningItemType, liveItem.ItemType.Value);
 
+        var connection = new ConnectionHandle(source, player);
+        // Initial movement still traverses the actual bootstrap above. Subsequent
+        // source-generated 27/17/125 observations traverse this production sink.
+        void Transport(RuntimeCommand command) => Assert.Equal(TerrariaFrameSinkResult.Continue,
+            projectileSink.OnFrame(MiningSourceScene1458.ObservationFrame(command)));
+        if (!drillMount) MiningSourceScene1458.Start(state, connection, Transport);
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, 50, 52));
         var kill = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.KillTile,
@@ -276,10 +297,16 @@ public sealed class ProductionTileSinkCompositionTests
             TileY: 52,
             Data: 0,
             Style: 0);
-        Assert.Equal(TerrariaFrameSinkResult.Continue, projectileSink.OnFrame(Packet17(in kill)));
+        if (drillMount)
+            Assert.Equal(TerrariaFrameSinkResult.Continue, projectileSink.OnFrame(Packet17(in kill)));
+        else MiningSourceScene1458.Apply(state, tiles,
+            new ClientTileManipulationRuntimeCommand(connection, kill), Transport);
 
-        Assert.Equal(default, tiles.Get(50, 52));
-        Assert.Equal(1, state.AppliedClientTileManipulations);
+        // WorldGen.KillTile 1.4.5.8 clears physical tile identity/shape and
+        // leaves both source frame sentinels at-1, rather than default(WorldTile).
+        Assert.Equal(drillMount ? default : new TerraRuntime.World.WorldTile { FrameX = -1, FrameY = -1 }, tiles.Get(50, 52));
+        Assert.Equal(drillMount ? 1 : MiningSourceScene1458.ReportedCalls(state, connection),
+            state.AppliedClientTileManipulations);
         Assert.Equal(0, state.RejectedClientTileManipulations);
     }
 

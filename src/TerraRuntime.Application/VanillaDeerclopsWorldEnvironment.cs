@@ -119,7 +119,7 @@ internal sealed class VanillaDeerclopsWorldEnvironment : IVanillaDeerclopsEnviro
                 float tileX = x * 16f;
                 float tileY = y * 16f;
                 int tileHeight = 16;
-                if (tile.Shape == 1)
+                if (tile.IsHalfBrick)
                 {
                     tileY += 8f;
                     tileHeight = 8;

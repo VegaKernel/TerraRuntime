@@ -32,7 +32,9 @@ public static class WorldFileClockHeaderPatcher
         bool raining,
         int rainTime,
         float maxRain,
-        out byte[] patchedHeader)
+        out byte[] patchedHeader,
+        bool? bloodMoon = null,
+        bool? eclipse = null)
     {
         ArgumentNullException.ThrowIfNull(header);
         patchedHeader = [];
@@ -113,7 +115,10 @@ public static class WorldFileClockHeaderPatcher
         if (!reader.TrySkip(sizeof(int)))
             return WorldFileClockHeaderPatchResult.InvalidHeader;
 
-        // bloodMoon, eclipse, dungeon X/Y.
+        // WorldFile.SaveWorldHeader (1.4.5.8) writes _tempBloodMoon and _tempEclipse
+        // immediately after _tempMoonPhase, before dungeon X/Y.
+        int bloodMoonOffset = reader.Offset;
+        int eclipseOffset = bloodMoonOffset + sizeof(byte);
         if (!reader.TrySkip(2 + (sizeof(int) * 2)))
             return WorldFileClockHeaderPatchResult.InvalidHeader;
 
@@ -168,6 +173,10 @@ public static class WorldFileClockHeaderPatcher
         BinaryPrimitives.WriteInt32LittleEndian(
             patchedHeader.AsSpan(moonPhaseOffset, sizeof(int)),
             moonPhase);
+        if (bloodMoon is { } bloodMoonValue)
+            patchedHeader[bloodMoonOffset] = bloodMoonValue ? (byte)1 : (byte)0;
+        if (eclipse is { } eclipseValue)
+            patchedHeader[eclipseOffset] = eclipseValue ? (byte)1 : (byte)0;
         BinaryPrimitives.WriteInt64LittleEndian(
             patchedHeader.AsSpan(slimeRainOffset, sizeof(long)),
             BitConverter.DoubleToInt64Bits(slimeRainTime));

@@ -249,7 +249,10 @@ public sealed partial class WorldRuntime : IDisposable
             invasionProgressPublisher: PublishInvasionProgress, invasionStartPublisher: PublishInvasionStart,
             playerUpdateRandomSeed: new(WorldGenerationRequest.ResolveVanillaSeed1458(world.Header.SeedText)),
             itemPrefixWorld: new(world.RuntimeMetadata.RemixWorld, world.RuntimeMetadata.GetGoodWorld,
-                world.RuntimeMetadata.SkyblockWorld));
+                world.RuntimeMetadata.SkyblockWorld),
+            sourcePlayerWorld: RuntimePlayerUpdateWorld1458.FromMetadata(world.Tiles.Dimensions, world.RuntimeMetadata));
+        toolBuildingPermission = RuntimeToolBuildingPermission1458.FromLoadedWorld(world.Tiles);
+        State.BindToolBuildingPermission(toolBuildingPermission);
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
         RefreshWorldBootstrap();
 
@@ -269,29 +272,58 @@ public sealed partial class WorldRuntime : IDisposable
             State,
             (runtime, command) =>
             {
+                bool eventRequest = command is ClientBossSummonRuntimeCommand { NpcType: -4 or -5 or -6 or -10 };
+                var beforeEvent = eventRequest ? (WorldClock.PumpkinMoonActive, WorldClock.SnowMoonActive,
+                    WorldClock.BloodMoonActive, WorldClock.EclipseActive, WorldClock.MoonPhase) : default;
                 if (!SignCommands.TryApply(command) && !ChestCommands.TryApply(command))
                     runtime.Apply(command);
+                if (eventRequest && beforeEvent != (WorldClock.PumpkinMoonActive, WorldClock.SnowMoonActive,
+                        WorldClock.BloodMoonActive, WorldClock.EclipseActive, WorldClock.MoonPhase))
+                {
+                    // MessageBuffer61 publishes the accepted start before the next UpdateTime.
+                    // Polling only after Tick loses a paid invocation on the final night tick.
+                    RefreshWorldBootstrap();
+                    RuntimeConnections.BroadcastToPlaying(CreateLiveWorldInfoFrame());
+                    WorldClock.ConsumeWorldInfoSyncRequest();
+                    worldInfoSyncTicks = 0;
+                    lastWorldInfoDayTime = WorldClock.DayTime;
+                    lastWorldInfoMoonPhase = (byte)WorldClock.MoonPhase;
+                    sbyte icon = WorldClock.ConsumeMoonEventStartSyncRequest();
+                    if (icon != 0)
+                    {
+                        var initial = new TerrariaInvasionProgressState(0, 1, icon, 1);
+                        if (TerrariaInvasionProgressCodec.TryEncode(in initial, out var frame))
+                            RuntimeConnections.BroadcastToPlaying(frame);
+                        lastMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
+                    }
+                }
             },
             runtime =>
             {
                 runtime.Tick();
-                AdvanceInvasion();
 
-                long liveMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
-                if (liveMoonEventProgressRevision != lastMoonEventProgressRevision)
+                if (WorldClock.ConsumeMoonEventDawnNotice() is { } dawn)
                 {
-                    if (WorldClock.MoonEventActive)
+                    // Main.UpdateTime_StartDay emits the retained score, Halloween change,
+                    // then Christmas change before packet7. All related clock flags are already adopted.
+                    RefreshWorldBootstrap();
+                    if (dawn.MoonIcon != 0 && !dawn.HadUnpublishedStart &&
+                        dawn.ProgressRevision != lastMoonEventProgressRevision)
                     {
-                        var progress = new TerrariaInvasionProgressState(
-                            checked((int)WorldClock.MoonEventWaveKills),
-                            WorldClock.MoonEventWaveRequirement,
-                            WorldClock.SnowMoonActive ? (sbyte)1 : (sbyte)2,
-                            checked((sbyte)WorldClock.MoonEventWaveNumber));
-                        if (TerrariaInvasionProgressCodec.TryEncode(in progress, out byte[] progressFrame))
-                            RuntimeConnections.BroadcastToPlaying(progressFrame);
+                        // checkDead's last-night progress belongs before UpdateTime's score/reset.
+                        var finalProgress = new TerrariaInvasionProgressState(checked((int)dawn.WaveKills),
+                            dawn.WaveRequirement, dawn.MoonIcon, checked((sbyte)dawn.Wave));
+                        if (TerrariaInvasionProgressCodec.TryEncode(in finalProgress, out var frame))
+                            RuntimeConnections.BroadcastToPlaying(frame);
+                        lastMoonEventProgressRevision = dawn.ProgressRevision;
                     }
-
-                    lastMoonEventProgressRevision = liveMoonEventProgressRevision;
+                    if (dawn.MoonIcon != 0)
+                        RuntimeConnections.BroadcastToPlaying(TerrariaMoonEventAnnouncementCodec1458.EncodeScore(
+                            dawn.MoonIcon == 1, dawn.TotalPoints));
+                    if (dawn.HalloweenForToday is { } halloween)
+                        RuntimeConnections.BroadcastToPlaying(TerrariaMoonEventAnnouncementCodec1458.EncodeSeasonChange(false, halloween));
+                    if (dawn.XMasForToday is { } christmas)
+                        RuntimeConnections.BroadcastToPlaying(TerrariaMoonEventAnnouncementCodec1458.EncodeSeasonChange(true, christmas));
                 }
 
                 worldInfoSyncTicks++;
@@ -307,6 +339,34 @@ public sealed partial class WorldRuntime : IDisposable
                     lastWorldInfoMoonPhase = liveMoonPhase;
                 }
 
+                long liveMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
+                sbyte moonStartIcon = WorldClock.ConsumeMoonEventStartSyncRequest();
+                if (moonStartIcon != 0)
+                {
+                    // MessageBuffer61 starts use 0/1; SyncAnInvasion/join uses the real wave requirement.
+                    var initial = new TerrariaInvasionProgressState(0, 1, moonStartIcon, 1);
+                    if (TerrariaInvasionProgressCodec.TryEncode(in initial, out var initialFrame))
+                        RuntimeConnections.BroadcastToPlaying(initialFrame);
+                }
+                if (liveMoonEventProgressRevision != lastMoonEventProgressRevision)
+                {
+                    if (WorldClock.MoonEventActive && (moonStartIcon == 0 ||
+                        WorldClock.MoonEventWaveNumber != 1 || WorldClock.MoonEventWaveKills != 0f))
+                    {
+                        var progress = new TerrariaInvasionProgressState(
+                            checked((int)WorldClock.MoonEventWaveKills),
+                            WorldClock.MoonEventWaveRequirement,
+                            WorldClock.SnowMoonActive ? (sbyte)1 : (sbyte)2,
+                            checked((sbyte)WorldClock.MoonEventWaveNumber));
+                        if (TerrariaInvasionProgressCodec.TryEncode(in progress, out byte[] progressFrame))
+                            RuntimeConnections.BroadcastToPlaying(progressFrame);
+                    }
+
+                    lastMoonEventProgressRevision = liveMoonEventProgressRevision;
+                }
+
+                // Main.DoUpdate runs UpdateTime before UpdateWorld_WorldGenAndInvasion.
+                AdvanceInvasion();
                 sectionCacheRebuild.Tick();
                 if (autosave?.Tick() == true)
                     worldSave!.RequestSave();

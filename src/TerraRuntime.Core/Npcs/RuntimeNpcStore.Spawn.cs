@@ -198,6 +198,8 @@ public sealed partial class RuntimeNpcStore
         if (_spawnContext is null) return true;
         context = _spawnContext();
         if (!context.IsValid) return false;
+        if (selectedDefinition.CreationDefaultsOnly &&
+            !VanillaNpcSpawnDefaults.TryResolve(in selectedDefinition, in context, out _)) return false;
         if (context.GoodWorld)
         {
             // Original NewNPC consumes this draw before allocation, including a full/protected table.

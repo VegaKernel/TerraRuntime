@@ -107,6 +107,16 @@ public static class VanillaCombatFacts
         return true;
     }
 
+    /// <summary>Source-owned npcProj Bomb28: no player crit, luck, tag or armor-penetration projection.</summary>
+    public static bool TryResolveWorldToolBombPveHit(ProjectileTypeId type, int projectileDamage,
+        int damageVariationPercent, out VanillaProjectileResolvedHit hit)
+    {
+        hit = default;
+        if (type.Value != 28 || projectileDamage != 100 || damageVariationPercent is < -15 or > 15) return false;
+        hit = new(ApplyDamageVariation(projectileDamage, damageVariationPercent), false, 0);
+        return true;
+    }
+
     public static bool TryResolveGemStaffPveHit(ProjectileTypeId type, int capturedProjectileDamage,
         in VanillaPlayerCombatSnapshot owner, GemStaffFeatures1458 features,
         int critRollPercent, int damageVariationPercent, out VanillaProjectileResolvedHit hit)

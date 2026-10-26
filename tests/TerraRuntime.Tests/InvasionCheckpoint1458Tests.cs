@@ -55,13 +55,42 @@ public sealed class InvasionCheckpoint1458Tests
     }
 
     [Fact]
+    public async Task Loaded_frost_completion_survives_checkpoint_reload_and_prepared_cache()
+    {
+        var fixture = new Fixture(new WorldInvasionSaveState1458(0, 0, 2, 50, 211));
+        var owner = RuntimeWorldInvasion1458.FromMetadata(fixture.World.RuntimeMetadata, 100);
+        Assert.True(owner.TryCapture(out var before));
+        Assert.True(TerraRuntime.Gameplay.Worlds.VanillaInvasionLifecycle1458.TryAdvance(
+            before.State, 50, 1, out var transition));
+        Assert.True(owner.TryAdopt(in before, in transition, out _));
+        var progression = new RuntimeWorldProgressionMutations();
+        Assert.True(progression.MarkCompleted(VanillaWorldProgressionId.FrostLegion));
+        var source = new RuntimeWorldCheckpointSnapshotSource(fixture.World.Tiles, new RuntimeChestStore([]), 8,
+            progressionMutations: progression, invasionSaveStateSource: owner.CaptureSaveState);
+        source.CaptureTileBootstrap(8);
+        Assert.True(source.TryCapture(out var snapshot));
+        var saved = await fixture.Serialize(snapshot!);
+        Assert.True(saved.RuntimeMetadata.DownedFrost);
+        Assert.Equal(0, saved.RuntimeMetadata.InvasionType);
+        Assert.Equal(211, saved.RuntimeMetadata.InvasionSizeStart);
+        Assert.Equal(transition.State.LanternNextNight, saved.RuntimeMetadata.LanternNightNextNight);
+        byte[] payload = RuntimeWorldPreparedStateCodec.Encode(saved);
+        Assert.True(RuntimeWorldPreparedStateCodec.TryDecode(payload, saved.Tiles, out var cached));
+        var resumed = RuntimeWorldInvasion1458.FromMetadata(cached!.RuntimeMetadata, 100);
+        Assert.True(resumed.TryCapture(out var reloaded));
+        Assert.True(reloaded.State.DownedFrost);
+        Assert.Equal(transition.State.LanternNextNight, reloaded.State.LanternNextNight);
+        Assert.Equal(0, reloaded.State.Type);
+    }
+
+    [Fact]
     public async Task Missing_mutable_invasion_owner_preserves_existing_raw_header_values()
     {
         int unknownCaptures = 0;
         Func<WorldInvasionSaveState1458?>?[] providers = [null, () => { unknownCaptures++; return null; }];
         foreach (var provider in providers)
         {
-            // Existing raw Frost2 is not a newly admitted mutable lifecycle. Both missing binding
+            // An unsupported raw identity is not a newly admitted mutable lifecycle. Both missing binding
             // and a concrete owner reporting unknown must preserve it, rather than write type0.
             var fixture = new Fixture(new WorldInvasionSaveState1458(5, 17, 2, -1.5, 211));
             var source = new RuntimeWorldCheckpointSnapshotSource(fixture.World.Tiles, new RuntimeChestStore([]), 8,
@@ -76,9 +105,9 @@ public sealed class InvasionCheckpoint1458Tests
     }
 
     [Fact]
-    public async Task Queued_pending_lantern_flag_survives_save_and_unknown_loaded_frost_preserves_it()
+    public async Task Queued_pending_lantern_flag_survives_save_and_unknown_loaded_identity_preserves_it()
     {
-        var fixture = new Fixture(new WorldInvasionSaveState1458(5, 17, 2, -1.5, 211, true));
+        var fixture = new Fixture(new WorldInvasionSaveState1458(5, 17, 5, -1.5, 211, true));
         var owner = RuntimeWorldInvasion1458.FromMetadata(fixture.World.RuntimeMetadata, 100);
         Assert.Null(owner.CaptureSaveState());
         var source = new RuntimeWorldCheckpointSnapshotSource(fixture.World.Tiles, new RuntimeChestStore([]), 8,
@@ -88,7 +117,7 @@ public sealed class InvasionCheckpoint1458Tests
         Assert.Null(unknown!.Invasion);
         var preserved = await fixture.Serialize(unknown);
         Assert.True(preserved.RuntimeMetadata.LanternNightNextNight);
-        Assert.Equal(2, preserved.RuntimeMetadata.InvasionType);
+        Assert.Equal(5, preserved.RuntimeMetadata.InvasionType);
 
         WorldInvasionSaveState1458 live = new(0, 0, 0, 12.75, 120, true);
         var knownSource = new RuntimeWorldCheckpointSnapshotSource(fixture.World.Tiles, new RuntimeChestStore([]), 8,

@@ -17,7 +17,9 @@ public enum WorldTileFlags : ushort
     InvisibleBlock = 1 << 7,
     InvisibleWall = 1 << 8,
     FullbrightBlock = 1 << 9,
-    FullbrightWall = 1 << 10
+    FullbrightWall = 1 << 10,
+    // Runtime-only independent half-brick state when Shape also retains a slope.
+    HalfBrickWithSlope = 1 << 11
 }
 
 /// <summary>
@@ -49,7 +51,8 @@ public static class WorldTileFlagMasks
         Wires |
         Actuation |
         Visibility |
-        Fullbright;
+        Fullbright |
+        WorldTileFlags.HalfBrickWithSlope;
 }
 
 public enum WorldLiquidKind : byte
@@ -63,6 +66,8 @@ public enum WorldLiquidKind : byte
 /// <summary>
 /// Normalized runtime tile state. This is deliberately independent from the variable-length .wld encoding.
 /// Shape is 0 for full/ordinary, 1 for half-brick, and 2..5 for the four vanilla slope values plus one.
+/// HalfBrickWithSlope retains an independent half-brick bit beside Shape2..5. Terraria1458 can keep both
+/// after PoundTile/framing; packet20 preserves both, while .wld and packet10 project half-brick first.
 /// The explicit 16-byte sequential layout is the TerraRuntime snapshot ABI; the final byte is reserved and
 /// must remain zero so verified snapshot shards can be copied directly into the runtime tile array.
 /// Raw ushort fields remain the packed storage ABI; gameplay should prefer the typed content accessors.
@@ -83,6 +88,32 @@ public struct WorldTile
     internal byte Reserved;
 
     public readonly bool IsActive => (Flags & WorldTileFlags.Active) != 0;
+
+    public readonly bool IsHalfBrick => Shape == 1 || (Flags & WorldTileFlags.HalfBrickWithSlope) != 0;
+
+    public readonly byte SourceSlope => Shape >= 2 ? (byte)(Shape - 1) : (byte)0;
+
+    /// <summary>Half-brick precedence in Terraria1458 .wld and compressed packet10 shape bits.</summary>
+    public readonly byte SourcePackedShape => IsHalfBrick ? (byte)1 : Shape;
+
+    public readonly bool HasValidSourceShape => Shape <= 5 &&
+        ((Flags & WorldTileFlags.HalfBrickWithSlope) == 0 || Shape >= 2);
+
+    /// <summary>Retains independent source Tile.halfBrick and Tile.slope values without changing the16-byte ABI.</summary>
+    public bool TrySetSourceShape(bool halfBrick, byte slope)
+    {
+        if (slope > 4) return false;
+        Shape = slope == 0 ? (halfBrick ? (byte)1 : (byte)0) : (byte)(slope + 1);
+        Flags &= ~WorldTileFlags.HalfBrickWithSlope;
+        if (halfBrick && slope != 0) Flags |= WorldTileFlags.HalfBrickWithSlope;
+        return true;
+    }
+
+    public void ClearSourceShape()
+    {
+        Shape = 0;
+        Flags &= ~WorldTileFlags.HalfBrickWithSlope;
+    }
 
     /// <summary>True when at least one named vanilla wire channel is present on the tile.</summary>
     public readonly bool HasAnyWire => (Flags & WorldTileFlagMasks.Wires) != 0;
@@ -113,7 +144,8 @@ public struct WorldTile
     /// </summary>
     public bool TrySetFlags(WorldTileFlags flags, bool enabled)
     {
-        if ((flags & ~WorldTileFlagMasks.Known) != 0)
+        if ((flags & ~WorldTileFlagMasks.Known) != 0 ||
+            enabled && (flags & WorldTileFlags.HalfBrickWithSlope) != 0 && Shape is not (>= 2 and <= 5))
             return false;
 
         Flags = enabled

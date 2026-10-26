@@ -15,7 +15,7 @@ namespace TerraRuntime.Application;
 /// transitions fan out to every playing endpoint. Join baselines are intentionally omitted because packet 10 carries
 /// authoritative tile state.
 /// </summary>
-internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlayerEventSink
+internal sealed partial class RuntimeTileManipulationReplicationRegistry : IRuntimePlayerEventSink
 {
     // A liquid simulation slice may touch 2,500 cells. Never turn that implementation budget directly
     // into a client-controlled outbound burst: retain the latest state per cell and drain a small, fixed
@@ -144,6 +144,12 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
             return false;
         }
 
+        return TryPublishEncodedTileSquare(encoded, tiles, startX, startY, width, height, respectSectionRange);
+    }
+
+    private bool TryPublishEncodedTileSquare(byte[] encoded, WorldTileStore tiles, int startX, int startY,
+        byte width, byte height, bool respectSectionRange)
+    {
         if (!respectSectionRange) return TryPublishFrameToAll(encoded);
         var frame = new OutboundFrame(encoded);
         int size = Math.Max(width, height);

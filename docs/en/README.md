@@ -14,6 +14,13 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 
 ## Subsystem and engineering guides
 
+- [Frost Legion state and completion](frost-legion-state-1458.md)
+- [Paid boss intents and event prerequisites](paid-boss-summons-1458.md)
+- [Paid event invocation](paid-event-invocation-1458.md)
+- [Event clock authority](event-clock-authority-1458.md)
+- [Moon rewards and seasonal progression](moon-season-progression-1458.md)
+- [Moon event death authority](moon-event-death-authority-1458.md)
+
 - [Original NPC identity inventory](npc-source-inventory-1458.md)
 - [AI3/AI7 definition roster and shared staircase descent](npc-ai3-ai7-roster-1458.md)
 - [Owned NPC health context and physical producers](npc-owned-health-and-producers-1458.md) — remote life clocks, whole admitted Guide Doll operation and source herb/web placement.
@@ -27,6 +34,8 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Interrupted-save recovery](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, roll-forward preconditions, conflict quarantine and crash windows.
 - [Save pipeline timing telemetry](save-pipeline-telemetry.md) — authoritative snapshot, serializer and full atomic-write timing boundaries and interpretation rules.
 - [Gameplay and vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat and explicit parity gaps.
+- [Tool use authority](tool-use-authority-1458.md) — source tool phases, RNG, world actions, replant and projectile publication.
+- [Larva tools and Queen Bee birth](larva-boss-tool-boundary-1458.md) — joint framed-object destruction, owned boss preparation and source publication.
 - [Town NPC housing and shops](town-npc-housing-shops.md) — authoritative residents, housing packet 60, persistent rooms, NPC talk, ordinary/special shops, pylons and happiness pricing.
 - [Vanilla AI_006 worm lifecycle parity](npc-worm-ai-parity.md) — source-pinned chain slots, Eater of Worlds active/style link semantics, root propagation and remaining lifecycle gaps.
 - [Synchronization and interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis and current passthrough policy.

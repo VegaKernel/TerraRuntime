@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.World;
 
@@ -9,21 +10,22 @@ namespace TerraRuntime.Tests;
 public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
 {
     [Fact]
-    public void Detachment_uses_ClearTile_and_preserves_source_cell_paint_actuator_and_wires()
+    public void Detachment_frames_clear_block_paint_and_coatings_preserving_actuator_wires_and_wall()
     {
         var tiles = Scene(); tiles.EnableFallingBlockUpdates();
         var before = new WorldTile { Type = 53, Shape = 1, TileColor = 12, Wall = 1, WallColor = 7,
             Flags = WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.Actuator |
                 WorldTileFlags.WireRed | WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock };
         tiles.Set(30, 20, before);
-        var runtime = new ServerRuntimeState(worldTiles: tiles, projectiles: new RuntimeProjectileStore(),
+        var runtime = CreateRuntime(worldTiles: tiles, projectiles: new RuntimeProjectileStore(),
             projectileStepper: new VanillaProjectileWorldStateStepper(tiles));
         runtime.Tick();
         var after = tiles.Get(30, 20);
         Assert.Equal(before.Type, after.Type);
         Assert.Equal(0, after.Shape);
-        Assert.Equal(before.Flags & ~(WorldTileFlags.Active | WorldTileFlags.Inactive), after.Flags);
-        Assert.Equal(before.TileColor, after.TileColor);
+        Assert.Equal(before.Flags & ~(WorldTileFlags.Active | WorldTileFlags.Inactive |
+            WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock), after.Flags);
+        Assert.Equal(0, after.TileColor);
         Assert.Equal(before.Wall, after.Wall);
         Assert.Equal(before.WallColor, after.WallColor);
     }
@@ -39,11 +41,13 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
             Assert.True(items.TryAllocate(new(100, 100, 0, 0, 9999, 0, WorldItemOwnershipMode.None, 1,
                 false, 0, 0, byte.MaxValue, 0, byte.MaxValue, 0), out _));
         Assert.True(items.TryReserveDropSlot(out var held));
-        var runtime = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles, worldItems: items,
+        var runtime = CreateRuntime(worldTiles: tiles, projectiles: projectiles, worldItems: items,
             projectileStepper: new VanillaProjectileWorldStateStepper(tiles));
         for (int i = 0; i < 100; i++) runtime.Tick();
         Assert.False(tiles.Get(30, 39).IsActive);
-        Assert.Equal(0, projectiles.ActiveCount);
+        // The coupled actor keeps the material while its source landing/drop
+        // participant cannot reserve an exact slot. It does not retire early.
+        Assert.Equal(1, projectiles.ActiveCount);
         Assert.True(items.TryReleaseDropReservation(in held));
         runtime.Tick();
         Assert.True(items.TryGetActive(399, out var drop));
@@ -84,8 +88,13 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
         var tiles=Scene();tiles.EnableFallingBlockUpdates();
         for(int x=10;x<90;x++)for(int y=19;y<=20;y++)tiles.Set(x,y,new WorldTile{Type=53,Flags=WorldTileFlags.Active});
         var projectiles=new RuntimeProjectileStore();var items=new RuntimeWorldItemStore();
-        var runtime=new ServerRuntimeState(worldTiles:tiles,projectiles:projectiles,worldItems:items,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
-        runtime.Tick();Assert.InRange(projectiles.ActiveCount,1,WorldTileAuthority.FallingSpawnsPerTick);
+        var runtime=CreateRuntime(worldTiles:tiles,projectiles:projectiles,worldItems:items,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
+        runtime.Tick();
+        // The scheduling budget bounds origin calls. One source Frame origin
+        // can recursively detach its connected pile into the same joint plan.
+        Assert.InRange(projectiles.ActiveCount, 1, 160);
+        Assert.InRange(MiningSourceScene1458.World(runtime).LastFallingSpawns, 1, WorldTileAuthority.FallingSpawnsPerTick);
+        Assert.InRange(MiningSourceScene1458.World(runtime).LastFallingChecks, 1, WorldTileAuthority.FallingChecksPerTick);
         long allocated = GC.GetAllocatedBytesForCurrentThread();
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         for(int n=0;n<300;n++){runtime.Tick();Assert.InRange(projectiles.ActiveCount,0,RuntimeFallingBlockProjectiles.Capacity);}
@@ -108,7 +117,7 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
         var updates = tiles.EnableFallingBlockUpdates();
         tiles.Set(30,20,new WorldTile {Type=(ushort)tile,Flags=WorldTileFlags.Active});
         var projectiles = new RuntimeProjectileStore(); var items = new RuntimeWorldItemStore();
-        var runtime = new ServerRuntimeState(worldTiles:tiles,projectiles:projectiles,worldItems:items,
+        var runtime = CreateRuntime(worldTiles:tiles,projectiles:projectiles,worldItems:items,
             projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
         runtime.Tick();
         Assert.False(tiles.Get(30,20).IsActive);
@@ -134,7 +143,7 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
         tiles.Set(30,40,new WorldTile{Type=(ushort)support,Flags=WorldTileFlags.Active,Shape=(byte)(support==1?1:0)});
         tiles.Set(30,20,new WorldTile{Type=53,Flags=WorldTileFlags.Active});
         var projectiles=new RuntimeProjectileStore();
-        var runtime=new ServerRuntimeState(worldTiles:tiles,projectiles:projectiles,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
+        var runtime=CreateRuntime(worldTiles:tiles,projectiles:projectiles,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
         for(int n=0;n<100;n++)runtime.Tick();
         Assert.True(tiles.Get(30,39).IsActive);
         Assert.Equal(53,tiles.Get(30,39).Type);
@@ -148,7 +157,7 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
         tiles.Set(30,20,new WorldTile{Type=53,Flags=WorldTileFlags.Active});
         tiles.Set(30,19,new WorldTile{Type=21,Flags=WorldTileFlags.Active});
         var projectiles=new RuntimeProjectileStore(1);
-        var runtime=new ServerRuntimeState(worldTiles:tiles,projectiles:projectiles,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
+        var runtime=CreateRuntime(worldTiles:tiles,projectiles:projectiles,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
         runtime.Tick();Assert.True(tiles.Get(30,20).IsActive);
         tiles.Set(30,19,default);
         Assert.True(projectiles.TrySpawnVanilla(new(new ProjectileTypeId(714),255,100,100,0,0,default,0,0,0,0),out _));
@@ -160,7 +169,7 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
     {
         var tiles=Scene();var projectiles=new RuntimeProjectileStore();
         Assert.True(projectiles.TrySpawnVanilla(new(new ProjectileTypeId(31),255,483,325,0,.5f,default,0,10,0,10),out _));
-        var runtime=new ServerRuntimeState(worldTiles:tiles,projectiles:projectiles,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
+        var runtime=CreateRuntime(worldTiles:tiles,projectiles:projectiles,projectileStepper:new VanillaProjectileWorldStateStepper(tiles));
         for(int n=0;n<100;n++)runtime.Tick();
         Assert.False(tiles.Get(30,39).IsActive);
     }
@@ -174,6 +183,29 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
         var seen=new bool[10000];int work=0;
         while(queue.TryTake(10000,out int index)){seen[index]=true;Assert.True(++work<=30000);}
         Assert.All(seen,Assert.True);
+    }
+
+    // A fresh ordinary source world. Falling source framing needs the same
+    // owned seed/season/clock context as natural WorldGen, even without humans.
+    private static ServerRuntimeState CreateRuntime(WorldTileStore worldTiles,
+        RuntimeProjectileStore projectiles,
+        VanillaProjectileWorldStateStepper projectileStepper,
+        RuntimeWorldItemStore? worldItems = null)
+    {
+        var world = new RuntimePlayerUpdateWorld1458(worldTiles.Dimensions.WidthTiles,
+            worldTiles.Dimensions.HeightTiles, 30, false, false)
+        {
+            GetGoodWorld = false, InfectedSeed = false, NotTheBeesWorld = false,
+            NoTrapsWorld = false, TenthAnniversaryWorld = false, DontStarveWorld = false,
+            DrunkWorld = false, JourneyMode = false, OnlyShimmerOceanWorlds = false,
+            HallowBackground = 0
+        };
+        return new ServerRuntimeState(worldTiles: worldTiles, projectiles: projectiles,
+            projectileStepper: projectileStepper, worldItems: worldItems,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            sourcePlayerWorld: world,
+            townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 30 });
     }
 
     private static WorldTileStore Scene()

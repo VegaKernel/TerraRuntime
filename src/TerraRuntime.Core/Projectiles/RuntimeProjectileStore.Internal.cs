@@ -78,6 +78,9 @@ public sealed partial class RuntimeProjectileStore
 
     private struct SlotState
     {
+        // Retained physical-object state, deliberately preserved by Initialize/Clear.
+        // Null means a previous unrepresented manual-direction AI invalidated ownership.
+        public int? SourceDirection;
         public bool Active;
         public ulong Generation;
         public ulong Revision;

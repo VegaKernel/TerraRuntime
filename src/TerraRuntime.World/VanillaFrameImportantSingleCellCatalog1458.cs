@@ -9,7 +9,15 @@ namespace TerraRuntime.World;
 /// </summary>
 public static class VanillaFrameImportantSingleCellCatalog1458
 {
+    // Original1458 WirePipe and ProjectilePressurePad are1x1, fixed drops
+    // 3616 and3707. Their source TileFrame checks can kill malformed/unsupported
+    // orientations after an owned hammer20; this is not a generic important-tile path.
+    private static readonly TileTypeId WirePipe = new(424);
+    private static readonly TileTypeId ProjectilePressurePad = new(442);
+
     public static bool IsSupported(TileTypeId type) =>
+        type == WirePipe ||
+        type == ProjectilePressurePad ||
         type == VanillaTileIds.WaterCandle ||
         type == VanillaTileIds.Switches ||
         type == VanillaTileIds.TeamBlockRedPlatform ||

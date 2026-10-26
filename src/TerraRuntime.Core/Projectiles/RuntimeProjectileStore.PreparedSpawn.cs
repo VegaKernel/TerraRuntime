@@ -68,6 +68,8 @@ public sealed partial class RuntimeProjectileStore
         private bool adopted;
         private bool published;
 
+        internal ProjectileSnapshot PreparedBirth { get; }
+
         internal SpawnPreparation(
             RuntimeProjectileStore owner,
             ushort slot,
@@ -79,6 +81,10 @@ public sealed partial class RuntimeProjectileStore
             baseline = owner._slots[slot];
             this.update = update;
             this.lifecycle = lifecycle;
+            var predicted = baseline;
+            predicted.Generation++;
+            InitializeSlot(ref predicted, in update, in lifecycle);
+            PreparedBirth = Capture(slot, in predicted);
         }
 
         internal bool IsCurrent
@@ -101,7 +107,7 @@ public sealed partial class RuntimeProjectileStore
                     current.Lifecycle == baseline.Lifecycle &&
                     current.CombatTrusted == baseline.CombatTrusted &&
                     current.CombatTrustedOwner == baseline.CombatTrustedOwner &&
-                    current.SourceNpc == baseline.SourceNpc;
+                    current.SourceNpc == baseline.SourceNpc && current.SourceDirection == baseline.SourceDirection;
             }
         }
 

@@ -15,7 +15,7 @@ namespace TerraRuntime.Tests;
 public sealed class InvasionRequest1458Tests
 {
     [Fact]
-    public void Real_typed_requests_use_source_base_life_census_including_dead_players()
+    public void Paid_typed_requests_use_source_census_and_refuse_dead_requesters_and_client_martians()
     {
         using var source = OpenSource();
         int compared = 0;
@@ -25,9 +25,18 @@ public sealed class InvasionRequest1458Tests
             foreach (bool dead in new[] { false, true })
             {
                 using var fixture = new Fixture();
+                short request = row.GetProperty("request").GetInt16();
+                fixture.Grant(request == -3 ? 1315 : 361);
                 if (dead) fixture.State.Apply(new PlayerHealthRuntimeCommand(fixture.Connection,
                     new(fixture.Session.Slot, 0, 200)));
-                fixture.Request(row.GetProperty("request").GetInt16());
+                fixture.Request(request);
+                if (dead || request == -7)
+                {
+                    Assert.Empty(fixture.Published);
+                    Assert.True(fixture.Owner.TryCapture(out var denied));
+                    Assert.Equal(0, denied.State.Type);
+                    continue;
+                }
                 var accepted = Assert.Single(fixture.Published);
                 Assert.Equal(row.GetProperty("after").GetProperty("type").GetInt32(), accepted.State.Type);
                 Assert.Equal(row.GetProperty("after").GetProperty("size").GetInt32(), accepted.State.Size);
@@ -40,32 +49,35 @@ public sealed class InvasionRequest1458Tests
                 compared++;
             }
         }
-        Assert.Equal(6, compared);
+        Assert.Equal(2, compared);
     }
 
     [Fact]
-    public void Generic_requests_preserve_active_event_but_minus_seven_restarts_an_empty_one()
+    public void Replayed_requests_preserve_active_events_and_minus_seven_cannot_restart_one()
     {
         foreach (short request in new short[] { -1, -3, -7 })
         {
             using var fixture = new Fixture();
+            fixture.Grant(request == -3 ? 1315 : 361);
             fixture.SetEvent(new(1, 12, 120, 9, 50, 2, 0, 120, 4, 0, false, false, false, false));
             var randomBefore = fixture.Random.Clone();
             fixture.Request(request);
-            var accepted = Assert.Single(fixture.Published);
+            Assert.Empty(fixture.Published);
+            Assert.True(fixture.Owner.TryCapture(out var accepted));
             Assert.Equal(1, accepted.State.Type);
             Assert.Equal(12, accepted.State.Size);
-            Assert.Equal(request == -7 ? 0 : 9, accepted.State.Delay);
+            Assert.Equal(9, accepted.State.Delay);
             Assert.True(fixture.Random.HasSameState(randomBefore));
         }
         using var restart = new Fixture();
         restart.SetEvent(new(1, 0, 120, 9, 50, 2, 0, 120, 4, 0, false, false, false, false));
         var beforeRestart = restart.Random.Clone();
         restart.Request(-7);
-        var restarted = Assert.Single(restart.Published);
-        Assert.Equal(4, restarted.State.Type);
-        Assert.Equal(200, restarted.State.Size);
-        Assert.Equal(49, restarted.State.X);
+        Assert.Empty(restart.Published);
+        Assert.True(restart.Owner.TryCapture(out var restarted));
+        Assert.Equal(1, restarted.State.Type);
+        Assert.Equal(0, restarted.State.Size);
+        Assert.Equal(50, restarted.State.X);
         Assert.True(restart.Random.HasSameState(beforeRestart));
     }
 
@@ -73,6 +85,7 @@ public sealed class InvasionRequest1458Tests
     public void Unknown_base_life_and_unassigned_requester_are_not_a_trusted_start_census()
     {
         using var fixture = new Fixture();
+        fixture.Grant(361);
         Assert.True(fixture.Graph.Players.TryGet(fixture.Connection, out var player));
         player.BaseLifeMax = null; // Explicit unknown import, not a constructor assumption.
         fixture.SetEvent(default(InvasionState1458) with { Delay = 7 });
@@ -92,12 +105,15 @@ public sealed class InvasionRequest1458Tests
     public void Derived_maximum_does_not_replace_the_source_base_maximum()
     {
         using var fixture = new Fixture();
+        fixture.Grant(361);
         fixture.State.Apply(new PlayerHealthRuntimeCommand(fixture.Connection, new(fixture.Session.Slot, 199, 199)));
         Assert.True(fixture.Graph.Players.TryGet(fixture.Connection, out var player));
         player.DerivedLifeMax = 280; // Same represented base/derived distinction as the source census probe.
         var beforeRandom = fixture.Random.Clone();
         fixture.Request(-1);
-        Assert.Equal(0, Assert.Single(fixture.Published).State.Type);
+        Assert.Empty(fixture.Published);
+        Assert.True(fixture.Owner.TryCapture(out var denied));
+        Assert.Equal(0, denied.State.Type);
         Assert.True(fixture.Random.HasSameState(beforeRandom));
     }
 
@@ -105,6 +121,7 @@ public sealed class InvasionRequest1458Tests
     public void Accepted_start_adopts_rng_before_publication_and_preserves_publication_reentry()
     {
         using var fixture = new Fixture();
+        fixture.Grant(361);
         var expectedRandom = fixture.Random.Clone();
         expectedRandom.Next(0, 2);
         expectedRandom.Next();
@@ -129,6 +146,7 @@ public sealed class InvasionRequest1458Tests
         foreach (bool changeRandom in new[] { false, true })
         {
             using var fixture = new Fixture();
+            fixture.Grant(361);
             var expectedRandom = fixture.Random.Clone();
             if (changeRandom) expectedRandom.Next();
             bool called = false;
@@ -189,6 +207,17 @@ public sealed class InvasionRequest1458Tests
         }
 
         internal void Request(short request) => State.Apply(new ClientBossSummonRuntimeCommand(Connection, request));
+
+        internal void Grant(int item)
+        {
+            // Explicit owned test grant; a packet5 report alone deliberately cannot fund a summon.
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Graph.Players)!;
+            Assert.True(store.TrySet(Connection, new(Session.Slot, 0, 1, 0, checked((short)item), 0)));
+            var funded = store.CaptureFundedQuantities(Connection);
+            funded[0] = 1;
+            store.AdoptFundedQuantities(Connection, funded);
+        }
 
         internal void SetEvent(InvasionState1458 state)
         {

@@ -114,6 +114,8 @@ A catalog contains only facts actually needed by current behavior. TerraRuntime 
 
 ## 6. Current parity status
 
+The [tool authority checkpoint](tool-use-authority-1458.md) covers106 definitions, source-qualified tool phases, world mutation, replant and held/returning/falling/world-bomb actors. Its explicit remaining furniture, rare-spawn and progression boundaries remain part of the broader gameplay backlog.
+
 The following table is deliberately conservative.
 
 | Area | Current state | Meaning |
@@ -406,6 +408,8 @@ These subsystems are order-sensitive and can touch large world areas, so their i
 ## 22. Progression, events, town NPCs and bosses
 
 Permanent milestones, active events and invasion identities now project from world metadata into separate typed gameplay state.
+
+Event invocation now requires an owned selected-item debit, and raw client damage cannot award event progress. Frost Legion shares the existing invasion state, completion and save owners. Blood Moon/Eclipse use live clock/save state; admitted early Moon deaths adopt wave counters before observers. See [paid event invocation and remaining encounter dependencies](paid-event-invocation-1458.md).
 
 Their simulation remains a major parity gap. Do not infer full support from a readable milestone or generic NPC infrastructure: transitions, waves, spawn rules, rewards and gameplay consequences still require source-backed implementations.
 

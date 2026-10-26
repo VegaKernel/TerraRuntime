@@ -25,7 +25,8 @@ internal sealed class RuntimeWorldInvasion1458
     internal static RuntimeWorldInvasion1458 FromMetadata(WorldFileRuntimeMetadata metadata, int maximumTilesX) => new(
         new InvasionState1458(metadata.InvasionType, metadata.InvasionSize, metadata.InvasionSizeStart,
             metadata.InvasionDelay, metadata.InvasionX, 0, 0, 0, 0, 0,
-            metadata.DownedGoblins, metadata.DownedPirates, metadata.DownedMartians, metadata.LanternNightNextNight),
+            metadata.DownedGoblins, metadata.DownedPirates, metadata.DownedMartians, metadata.LanternNightNextNight,
+            metadata.DownedFrost),
         maximumTilesX, metadata.SpawnX);
 
     internal bool TryCapture(out RuntimeInvasionCapture1458 capture)

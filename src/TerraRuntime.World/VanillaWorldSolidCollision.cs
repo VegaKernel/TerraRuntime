@@ -44,7 +44,7 @@ public static class VanillaWorldSolidCollision
                 float tileX = x * TileSize;
                 float tileY = y * TileSize;
                 int tileHeight = 16;
-                if (tile.Shape == 1)
+                if (tile.IsHalfBrick)
                 {
                     tileY += 8f;
                     tileHeight = 8;

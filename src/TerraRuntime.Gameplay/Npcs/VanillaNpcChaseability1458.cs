@@ -6,7 +6,8 @@ namespace TerraRuntime.Gameplay.Npcs;
 /// Type defaults are used only when materializing a verified definition, never in place of live instance state.</summary>
 public static class VanillaNpcChaseability1458
 {
-    public static bool FriendlyAtSpawn(int type) => type is
+    public static bool FriendlyAtSpawn(int type) =>
+        VanillaNpcSourceDefaultRoster1458.TryGetCreationRow(new(type), out var source) && source.Friendly || type is
         17 or 18 or 19 or 20 or 22 or 37 or 38 or 46 or 54 or 105 or 106 or 107 or 108 or 123 or 124 or 614 or
         142 or 160 or 178 or 207 or 208 or 209 or 227 or 228 or 229 or 353 or 354 or 357 or 368 or
         369 or 376 or 377 or 441 or 446 or 448 or 453 or 484 or 485 or 486 or 487 or 548 or 550 or

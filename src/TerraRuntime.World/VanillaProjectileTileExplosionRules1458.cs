@@ -25,6 +25,13 @@ public static class VanillaProjectileTileExplosionRules1458
             return false;
 
         WorldTile tile = tiles.Get(x, y);
+        return CanExplodeTile(in tile, y, tiles.Dimensions.HeightTiles, explodeHardmodeOres, hardMode, goodWorld, golemDowned);
+    }
+
+    /// <summary>Same source policy over an already guarded virtual afterimage.</summary>
+    public static bool CanExplodeTile(in WorldTile tile, int y, int worldHeight,
+        bool explodeHardmodeOres, bool hardMode, bool goodWorld, bool golemDowned)
+    {
         if (!tile.IsActive)
             return true;
 
@@ -72,7 +79,7 @@ public static class VanillaProjectileTileExplosionRules1458
                 break;
 
             case 77:
-                if (!hardMode && y >= tiles.Dimensions.HeightTiles - 200)
+                if (!hardMode && y >= worldHeight - 200)
                     return false;
                 break;
 

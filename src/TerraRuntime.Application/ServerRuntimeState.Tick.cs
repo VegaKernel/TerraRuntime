@@ -23,6 +23,7 @@ internal sealed partial class ServerRuntimeState
         _runtime.Bots?.Tick();
         _runtime.ServerPlayers?.TickBuffs();
         bool remotePlayerPhase = _runtime.Players.TickRemotePlayerPhase();
+        if (!remotePlayerPhase) _runtime.Players.PublishCollectedToolBaselineHealth();
         if (!remotePlayerPhase) _runtime.Players.TickHealthContext();
         if (_runtime.WorldTiles is { } healthTiles)
             _runtime.ServerPlayers?.TickHealthContext(healthTiles);

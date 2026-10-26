@@ -14,6 +14,13 @@
 
 ## Руководства по подсистемам и инженерным правилам
 
+- [Состояние и завершение Морозного легиона](frost-legion-state-1458.md)
+- [Оплаченные вызовы боссов и предпосылки событий](paid-boss-summons-1458.md)
+- [Оплаченные вызовы событий](paid-event-invocation-1458.md)
+- [Авторитетность часов событий](event-clock-authority-1458.md)
+- [Награды Moon и сезонная progression](moon-season-progression-1458.md)
+- [Авторитетность смертей лунных событий](moon-event-death-authority-1458.md)
+
 - [Инвентаризация идентификаторов NPC оригинала](npc-source-inventory-1458.md)
 - [Каталог definitions AI3/AI7 и общий спуск по лестницам](npc-ai3-ai7-roster-1458.md)
 - [Управляемый контекст здоровья NPC и физические эффекты](npc-owned-health-and-producers-1458.md) — часы удалённого здоровья, целая допущенная операция куклы Гида и исходное размещение травы/паутины.
@@ -27,6 +34,8 @@
 - [Recovery прерванного save](interrupted-save-recovery.md) — durable recovery markers, SHA-256 sealing, preconditions roll-forward, conflict quarantine и crash windows.
 - [Телеметрия времени save pipeline](save-pipeline-telemetry.md) — границы времени authoritative snapshot, serializer и полной atomic-write транзакции и правила их интерпретации.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
+- [Авторитетность инструментов](tool-use-authority-1458.md) — исходные фазы, RNG, действия мира, перепосадка и публикация снарядов.
+- [Инструменты, личинка и появление Королевы пчёл](larva-boss-tool-boundary-1458.md) — совместное разрушение объекта, авторитетная подготовка босса и публикация по исходнику.
 - [Town NPC: жильё и магазины](town-npc-housing-shops.md) — authoritative residents, packet 60 для жилья, сохранение комнат, NPC talk, обычные/специальные магазины, pylons и happiness pricing.
 - [Vanilla parity жизненного цикла червей AI_006](npc-worm-ai-parity.md) — source-pinned chain slots, active/style semantics Eater of Worlds, root propagation и оставшиеся lifecycle gaps.
 - [Synchronization и interest management](synchronization.md) — bootstrap, sections, replication registries, spatial tracking, hysteresis и текущая passthrough policy.

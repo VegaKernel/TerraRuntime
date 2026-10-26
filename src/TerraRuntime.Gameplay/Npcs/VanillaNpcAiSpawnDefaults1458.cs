@@ -14,7 +14,8 @@ public static class VanillaNpcAiSpawnDefaults1458
         IVanillaNpcRandom random)
     {
         ArgumentNullException.ThrowIfNull(random);
-        if (supplied != default || definition.AiStyle != VanillaNpcAiStyles.Caster)
+        // Newly materialized definitions own SetDefaults/NewNPC's supplied AI, not a caster's later hit reaction.
+        if (supplied != default || definition.CreationDefaultsOnly || definition.AiStyle != VanillaNpcAiStyles.Caster)
             return supplied;
 
         if (type == VanillaNpcIds.RuneWizard)

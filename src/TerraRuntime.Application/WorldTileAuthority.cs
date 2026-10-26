@@ -132,6 +132,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
     public bool TryApply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (TryApplyToolObservation(command)) return true;
 
         if (objectPlacement?.TryApply(command) == true)
             return true;
@@ -1394,17 +1395,19 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         }
 
         var tileState = command.State;
-        if (ClientTileManipulationAdmissionPolicy.Evaluate(tileState, out var action) !=
-            ClientTileManipulationAdmissionResult.Admitted)
-        {
-            UnsupportedWithCorrection(command, in tileState);
-            return;
-        }
-
         if (projectileExplosionEchoes.TryConsume(command.Connection.Player, in tileState))
         {
             ValidatedClientManipulations++;
             AcceptedProjectileExplosionEchoes++;
+            return;
+        }
+
+        if (TryObserveClientToolTile(command)) return;
+
+        if (ClientTileManipulationAdmissionPolicy.Evaluate(tileState, out var action) !=
+            ClientTileManipulationAdmissionResult.Admitted)
+        {
+            UnsupportedWithCorrection(command, in tileState);
             return;
         }
 

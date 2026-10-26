@@ -14,7 +14,7 @@ internal sealed partial class ProjectileAuthority
 {
     public bool TryTickState(RuntimeProjectileNpcCombatPass? ordinaryArrowCombat = null)
     {
-        if (activeOrdinaryArrowCombat is not null) return false;
+        if (activeToolAwareTick || activeOrdinaryArrowCombat is not null) return false;
         if (stepper is null)
         {
             ExpirePendingBulletVolleys();
@@ -25,6 +25,7 @@ internal sealed partial class ProjectileAuthority
             throw new ArgumentException("Arrow simulation must use this world's stores and source RNG.", nameof(ordinaryArrowCombat));
         if (ordinaryArrowCombat is not null && !ordinaryArrowCombat.BeginOrdinaryArrowSimulation()) return false;
         activeOrdinaryArrowCombat = ordinaryArrowCombat;
+        activeToolAwareTick = true;
         try
         {
             ExpirePendingBulletVolleys();
@@ -33,7 +34,7 @@ internal sealed partial class ProjectileAuthority
             childSpawns.Reset();
             liveChildSpawns.Reset();
             SynchronizeControlledProjectileReleaseInputs();
-            LastTick = ordinaryArrowCombat is not null && stepper is VanillaProjectileWorldStateStepper
+            LastTick = stepper is VanillaProjectileWorldStateStepper
                 ? executor.Tick(stepper, ordinaryArrowActor ??= TrySimulateOrdinaryArrowActor)
                 : executor.Tick(stepper);
             replication?.AdvanceNetSpamBudget();
@@ -45,6 +46,7 @@ internal sealed partial class ProjectileAuthority
         finally
         {
             activeOrdinaryArrowCombat = null;
+            activeToolAwareTick = false;
             ordinaryArrowCombat?.EndOrdinaryArrowSimulation();
         }
     }

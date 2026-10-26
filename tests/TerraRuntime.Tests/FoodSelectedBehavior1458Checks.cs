@@ -59,6 +59,9 @@ internal static class FoodSelectedBehavior1458Checks
                             before.GetProperty("noItems").GetBoolean(), random.Next, random.NextDouble, out actual), "admitted");
                     else Check(VanillaSelectedConsumable1458.TryStep(state, in facts, random.Next, random.NextDouble, out actual), "Air tail");
                     Check(actual.State == State(expected), "clocks " + actual.State + " expected " + State(expected));
+                    if (local)
+                        Check((actual.OwnerToolTime ?? I(before, "toolTime")) == I(expected, "toolTime"),
+                            $"owner toolTime item={item}, actual={actual.OwnerToolTime}, expected={I(expected, "toolTime")}");
                     int expectedStack = I(expected.GetProperty("inventory")[0], "stack");
                     bool consumed = local && stack > expectedStack;
                     Check(actual.Consumed == consumed, "source consumption");

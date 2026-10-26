@@ -56,7 +56,7 @@ public sealed class KingSlimeClassicMaterialization1458Tests
         var owner = new ConnectionHandle(GameCommandSourceId.FromConnection(99), session.Handle);
         state.Apply(new PlayerSpawnRuntimeCommand(owner, session, new PlayerSpawnCommitRequest(session.Slot, 10, 10, 0, 0, 0, 0, 0)));
         Assert.Equal(PlayerSpawnCommitResult.Committed, state.LastSpawnCommitResult);
-        // This request exercises death/loot delivery through the existing compatibility path, not melee math.
+        // A selected bow does not authorize a boss kill reported by packet 28.
         state.Apply(new PlayerEquipmentRuntimeCommand(owner, new PlayerEquipmentCommitRequest(owner.Player.Slot, 0, 1, 0, 39, 0)));
         var spawn = new NpcStateUpdate(50, 50, 100f, 100f, 0f, 0f, 255, default,
             NpcSimulationState.Initial with { Life = 1, LifeMax = 1, Scale = 1f });
@@ -64,7 +64,14 @@ public sealed class KingSlimeClassicMaterialization1458Tests
         var wire = new TerrariaNpcDamageState(king.Handle.Slot,
             RuntimeNpcPacketProjection.ToProtocolGeneration(king.Handle.Generation), 1, 0f, 2, 0);
         state.Apply(new ClientNpcDamageRuntimeCommand(owner, wire));
-        Assert.Equal(1, state.AppliedClientNpcDamage);
+        Assert.Equal(0, state.AppliedClientNpcDamage);
+        Assert.Equal(1, state.RejectedClientNpcDamage);
+        Assert.True(npcs.TryGet(king.Handle, out var unchanged));
+        Assert.Equal(king, unchanged);
+        Assert.Equal(0, items.ActiveCount);
+        var graph = (ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(state)!;
+        Assert.True(graph.Npcs.TryStrikeBotPlayerMelee(owner.Player, king.Handle, 1, 0, false, 0, 1));
         Assert.False(npcs.TryGet(king.Handle, out _));
         Span<WorldItemSnapshot> drops = stackalloc WorldItemSnapshot[
             items.Capacity];
@@ -81,8 +88,10 @@ public sealed class KingSlimeClassicMaterialization1458Tests
         Assert.Single(ids, id => id is 256 or 257 or 258);
         Assert.Single(ids, id => id is 2585 or 2610);
         Assert.Contains((short)998, ids);
+        Assert.False(graph.Npcs.TryStrikeBotPlayerMelee(owner.Player, king.Handle, 1, 0, false, 0, 1));
         state.Apply(new ClientNpcDamageRuntimeCommand(owner, wire));
-        Assert.Equal(1, state.AppliedClientNpcDamage);
+        Assert.Equal(0, state.AppliedClientNpcDamage);
+        Assert.Equal(2, state.RejectedClientNpcDamage);
         Assert.Equal(count, items.ActiveCount);
     }
 

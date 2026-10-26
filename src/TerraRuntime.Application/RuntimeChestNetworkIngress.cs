@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
@@ -7,6 +8,7 @@ namespace TerraRuntime.Application;
 internal interface IChestNetworkIngress
 {
     bool TryPostCrafting(ConnectionHandle connection, TerrariaCraftingRequest1458 request) => false;
+    bool TryPostToolChestUpdate(ConnectionHandle connection, in TerrariaChestUpdatesState1458 state) => false;
 
     bool TryPostOpen(ConnectionHandle connection, in TerrariaChestOpenRequest request);
 
@@ -30,6 +32,10 @@ internal sealed class RuntimeChestNetworkIngress : IChestNetworkIngress
         ArgumentNullException.ThrowIfNull(ingress);
         this.ingress = ingress;
     }
+
+    public bool TryPostToolChestUpdate(ConnectionHandle connection, in TerrariaChestUpdatesState1458 state) =>
+        connection.IsAssigned && ingress.TryPost(connection.Source,
+            new ClientToolChestUpdatesRuntimeCommand1458(connection, state));
 
     public bool TryPostCrafting(ConnectionHandle connection, TerrariaCraftingRequest1458 request) =>
         connection.IsAssigned && request is not null &&

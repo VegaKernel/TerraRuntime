@@ -689,7 +689,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         tile.FrameX = -1;
         tile.FrameY = -1;
         tile.TileColor = 0;
-        tile.Shape = 0;
+        tile.ClearSourceShape();
         tile.Flags &= ~(
             WorldTileFlags.Active |
             WorldTileFlags.Inactive |

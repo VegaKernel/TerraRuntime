@@ -13,6 +13,26 @@ internal sealed class RuntimeWorldItemOwnerFactsProvider1458(PlayerAuthority pla
 {
     public IWorldItemOwnerFactsSnapshot1458 Capture() => new Snapshot(players, tiles, expertMode, masterMode);
 
+    internal bool TryCaptureToolProjection(PlayerAuthority expectedPlayers, WorldTileStore expectedTiles,
+        ToolWorldTileOverlay1458 overlay, ReadOnlySpan<ToolTreeActor1458> projection,
+        out IWorldItemOwnerFactsSnapshot1458? snapshot)
+    {
+        snapshot = null;
+        if (!ReferenceEquals(players, expectedPlayers) || !ReferenceEquals(tiles, expectedTiles) ||
+            !ReferenceEquals(expectedTiles, overlay.Tiles) || projection.Length > byte.MaxValue) return false;
+        int previous = -1;
+        foreach (var actor in projection)
+        {
+            if (actor.Slot <= previous || actor.Slot == byte.MaxValue ||
+                actor.Active && (!float.IsFinite(actor.X) || !float.IsFinite(actor.Y) || actor.Width <= 0 || actor.Height <= 0)) return false;
+            previous = actor.Slot;
+        }
+        var result = new Snapshot(players, tiles, expertMode, masterMode, overlay, projection.ToArray());
+        if (!result.HasCompleteToolProjection || !result.IsCurrent) return false;
+        snapshot = result;
+        return true;
+    }
+
     private sealed class Snapshot : IWorldItemOwnerFactsSnapshot1458
     {
         private readonly PlayerAuthority owner;
@@ -20,15 +40,28 @@ internal sealed class RuntimeWorldItemOwnerFactsProvider1458(PlayerAuthority pla
         private readonly bool expert, master;
         private readonly RuntimeItemOwnerPlayerCapture1458[] players;
         private readonly List<(int X, int Y, bool Hopper)> terrain = new();
+        private readonly ToolWorldTileOverlay1458? toolOverlay;
+        private readonly Dictionary<byte, ToolTreeActor1458>? toolProjection;
+        internal bool HasCompleteToolProjection => toolProjection is null ||
+            players.All(capture => toolProjection.TryGetValue(capture.State.Player.Slot.Value, out var actor) && actor.Active);
 
         public Snapshot(PlayerAuthority owner, WorldTileStore? tiles, bool expert, bool master)
-        { this.owner = owner; this.tiles = tiles; this.expert = expert; this.master = master; players = owner.CaptureItemOwnerPlayers(); }
+            : this(owner, tiles, expert, master, null, null) { }
+
+        internal Snapshot(PlayerAuthority owner, WorldTileStore? tiles, bool expert, bool master,
+            ToolWorldTileOverlay1458? toolOverlay, ToolTreeActor1458[]? projection)
+        {
+            this.owner = owner; this.tiles = tiles; this.expert = expert; this.master = master;
+            players = owner.CaptureItemOwnerPlayers();
+            this.toolOverlay = toolOverlay;
+            if (projection is not null) toolProjection = projection.ToDictionary(static actor => actor.Slot);
+        }
 
         public bool IsCurrent
         {
             get
             {
-                if (!owner.IsCurrentItemOwnerPlayers(players)) return false;
+                if (!owner.IsCurrentItemOwnerPlayers(players) || toolOverlay is not null && !toolOverlay.IsCurrentOwned) return false;
                 foreach (var cell in terrain)
                     if (tiles is null || IsHopper(tiles.Get(cell.X, cell.Y)) != cell.Hopper) return false;
                 return true;
@@ -44,7 +77,8 @@ internal sealed class RuntimeWorldItemOwnerFactsProvider1458(PlayerAuthority pla
             for (int index = 0; index < players.Length; index++)
             {
                 var capture = players[index]; var state = capture.State;
-                if (state.IsDead || (grabDelay > 0 && (grabPlayer == state.Player.Slot.Value || grabPlayer == byte.MaxValue))) continue;
+                ToolTreeActor1458? projected = toolProjection is not null && toolProjection.TryGetValue(state.Player.Slot.Value, out var actor) ? actor : null;
+                if ((projected?.Dead ?? state.IsDead) || (grabDelay > 0 && (grabPlayer == state.Player.Slot.Value || grabPlayer == byte.MaxValue))) continue;
                 if (!capture.HasInventory) return false;
                 var inventory = capture.Inventory.Select(static i => new WorldItemPickupSlot1458(i.ItemType.Value, i.Stack,
                     i.Prefix.Value, (i.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0)).ToArray();
@@ -92,8 +126,8 @@ internal sealed class RuntimeWorldItemOwnerFactsProvider1458(PlayerAuthority pla
                 if (treasure) range += VanillaWorldItemOwner1458.TreasureMagnetRange;
                 if (drop.ItemNetId == 3822) range += 50;
                 if (facts.Nebula) range += 100;
-                candidates[index] = new(state.Player.Slot.Value, state.PositionX, state.PositionY, (int)body.Item1,
-                    (int)body.Item2, false, true, mana, life, range);
+                candidates[index] = new(state.Player.Slot.Value, projected?.X ?? state.PositionX, projected?.Y ?? state.PositionY,
+                    projected?.Width ?? (int)body.Item1, projected?.Height ?? (int)body.Item2, false, true, mana, life, range);
             }
             selected = VanillaWorldItemOwner1458.Select(drop.ItemNetId, drop.PositionX, drop.PositionY, grabDelay, grabPlayer, candidates);
             if (selected == byte.MaxValue) return true;
@@ -123,8 +157,14 @@ internal sealed class RuntimeWorldItemOwnerFactsProvider1458(PlayerAuthority pla
             for (int tx = left; tx <= right; tx++) for (int ty = top; ty <= bottom; ty++)
             {
                 if (terrain.Count == RuntimeWorldItemStore.VanillaCapacity * 196) return false; // At most 14x14 cells for each admitted allocation.
-                bool hopper = IsHopper(tiles.Get(tx, ty));
-                terrain.Add((tx, ty, hopper)); found |= hopper;
+                bool originalHopper = IsHopper(tiles.Get(tx, ty));
+                bool hopper = originalHopper;
+                if (toolOverlay is not null)
+                {
+                    if (!toolOverlay.TryRead(tx, ty, out var virtualTile)) return false;
+                    hopper = IsHopper(in virtualTile);
+                }
+                terrain.Add((tx, ty, originalHopper)); found |= hopper;
             }
             return true;
         }

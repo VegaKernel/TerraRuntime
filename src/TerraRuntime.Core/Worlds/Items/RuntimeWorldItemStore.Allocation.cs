@@ -101,6 +101,11 @@ public sealed partial class RuntimeWorldItemStore
     public AllocationPreview CreateAllocationPreview(ReadOnlySpan<WorldItemAllocationPlayer1458> players = default)
         => new(this, players);
 
+    internal IWorldItemOwnerFactsProvider1458? SourceOwnerFactsProvider => ownerFactsProvider;
+
+    internal AllocationPreview CreateProjectedAllocationPreview(ReadOnlySpan<WorldItemAllocationPlayer1458> players,
+        IWorldItemOwnerFactsSnapshot1458 projectedOwnerFacts) => new(this, players, projectedOwnerFacts);
+
     public bool TryAllocateSourceDrop(in WorldItemDropStateUpdate drop, ReadOnlySpan<WorldItemAllocationPlayer1458> players,
         out WorldItemSnapshot snapshot, out short selectedSlot, byte? sourceLocalPlayerId = null,
         WorldItemCreationSource1458 creationSource = WorldItemCreationSource1458.NewItem)
@@ -170,10 +175,14 @@ public sealed partial class RuntimeWorldItemStore
         private bool claimed, failed, disposed;
 
         internal AllocationPreview(RuntimeWorldItemStore owner, ReadOnlySpan<WorldItemAllocationPlayer1458> players)
+            : this(owner, players, null) { }
+
+        internal AllocationPreview(RuntimeWorldItemStore owner, ReadOnlySpan<WorldItemAllocationPlayer1458> players,
+            IWorldItemOwnerFactsSnapshot1458? projectedOwnerFacts)
         {
             this.owner = owner; this.players = players.ToArray();
             capturedProvider = owner.ownerFactsProvider;
-            ownerFacts = capturedProvider?.Capture(); // Outside store locks, on the authoritative world thread.
+            ownerFacts = projectedOwnerFacts ?? capturedProvider?.Capture(); // Outside store locks, on the authoritative world thread.
             if (players.Length > byte.MaxValue) throw new ArgumentOutOfRangeException(nameof(players));
             foreach (var player in players)
                 if (!float.IsFinite(player.X) || !float.IsFinite(player.Y) || player.Width <= 0 || player.Height <= 0 ||
@@ -184,6 +193,26 @@ public sealed partial class RuntimeWorldItemStore
             baseline = (SlotState[])owner._slots.Clone(); working = (SlotState[])baseline.Clone(); expected = (SlotState[])baseline.Clone();
             expectedTransfers = (WorldItemStackTransfer1458[])owner.sourceTransfers.Clone();
             pending = (WorldItemStackTransfer1458[])owner.sourceTransfers.Clone(); expectedPending = baselinePending = pendingCount = owner.sourceTransferCount;
+        }
+
+        internal bool HasSameSourceEffects(AllocationPreview other)
+        {
+            if (!ReferenceEquals(owner, other.owner) || failed || disposed || other.failed || other.disposed ||
+                !ReferenceEquals(capturedProvider, other.capturedProvider) ||
+                !baseline.AsSpan().SequenceEqual(other.baseline) || !working.AsSpan().SequenceEqual(other.working) ||
+                !players.AsSpan().SequenceEqual(other.players) || pendingCount != other.pendingCount ||
+                !pending.AsSpan(0, pendingCount).SequenceEqual(other.pending.AsSpan(0, other.pendingCount)) ||
+                operations.Count != other.operations.Count || steps.Count != other.steps.Count) return false;
+            for (int index = 0; index < operations.Count; index++)
+                if (operations[index] != other.operations[index]) return false;
+            for (int index = 0; index < steps.Count; index++)
+            {
+                var left = steps[index]; var right = other.steps[index];
+                if (left.Start != right.Start || left.End != right.End || left.Slot != right.Slot ||
+                    left.LeaseTicks != right.LeaseTicks || left.Transient != right.Transient ||
+                    !left.Pending.AsSpan().SequenceEqual(right.Pending)) return false;
+            }
+            return true;
         }
 
         public int Count => steps.Count;

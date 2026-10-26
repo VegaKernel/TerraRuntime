@@ -21,6 +21,9 @@ public readonly record struct PlayerSelectedConsumableTransition1458(
     public int RemainingStack { get; init; }
     public bool PendingItemReuse { get; init; }
     public bool ResetItemRotation { get; init; }
+    // ItemCheck_OwnerOnlyCode samples itemTime before potion/buff/permanent
+    // effects and before last-stack consumption replaces it with itemAnimation.
+    public int? OwnerToolTime { get; init; }
 }
 
 public readonly record struct PlayerPermanentConsumableTransition1458(
@@ -134,6 +137,7 @@ public static class VanillaSelectedConsumable1458
         int manaSickness = 0;
         int buffOffer = 0;
         int buffDuration = 0;
+        int? ownerToolTime = facts.AllowedToHoldItems ? time : null;
         if (facts.AllowedToHoldItems)
         {
             if (animation > 0 && item.FoodColourCount > 0 && nextInteger(0, 2) != 0)
@@ -175,6 +179,7 @@ public static class VanillaSelectedConsumable1458
         {
             BuffOfferType = new BuffTypeId((short)buffOffer),
             BuffDurationOffer = buffDuration,
+            OwnerToolTime = ownerToolTime,
             PendingItemReuse = pending,
             ResetItemRotation = resetItemRotation
         };

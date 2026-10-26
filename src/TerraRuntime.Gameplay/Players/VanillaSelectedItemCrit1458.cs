@@ -8,6 +8,10 @@ public static class VanillaSelectedItemCrit1458
 {
     public static bool TryResolve(ItemTypeId item, PrefixId prefix,
         VanillaBulletSourceArithmetic1458 arithmetic, out int itemCrit)
+        => TryResolve(item, prefix, arithmetic, false, out itemCrit);
+
+    public static bool TryResolve(ItemTypeId item, PrefixId prefix,
+        VanillaBulletSourceArithmetic1458 arithmetic, bool remixWorld, out int itemCrit)
     {
         itemCrit = 0;
         if (arithmetic is not (VanillaBulletSourceArithmetic1458.CoreClrSingle or
@@ -19,6 +23,13 @@ public static class VanillaSelectedItemCrit1458
         if (VanillaGemStaff1458.TryGetWeapon(item, out _))
             return VanillaGemStaff1458.TryResolveWeapon(item, prefix,
                 arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86, out _, out itemCrit);
+        if (VanillaToolCatalog1458.TryGet(item, out _))
+        {
+            if (!VanillaToolCatalog1458.TryResolve(item, prefix, remixWorld,
+                arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86, out var tool)) return false;
+            itemCrit = tool.Crit;
+            return true;
+        }
         if (VanillaSelectedConsumableCatalog1458.TryGet(item, out _))
             return prefix.Value == 0;
         if (VanillaRemotePassiveItemCatalog1458.TryGet(item, prefix, out _))

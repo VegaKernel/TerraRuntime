@@ -178,10 +178,13 @@ internal static class FoodConsumerBoundaryChecks
             Assert.True(m.ItemPhase.HasValue);
 
             Assert.Equal(BitConverter.SingleToInt32Bits(1.32f), BitConverter.SingleToInt32Bits(m.ItemPhase.Value.DerivedCombat!.Value.RangedDamage));
+            Assert.True(m.ItemPhase.Value.ToolUse!.LocalClocksKnown);
             f.Apply(new PlayerMovementRuntimeCommand(c, new(c.Player.Slot, 32, (byte)(m.MovementFlags | 16), 0, 64, 1, m.PositionX, m.PositionY, false, 0, 0, false, 0, false, 0, 0, 0, 0, false, 0, 0)));
             f.Tick();
             Assert.True(m.ItemPhase.HasValue);
             Assert.Equal(18, m.ItemPhase.Value.Selected.AnimationMax);
+            Assert.True(m.ItemPhase.Value.ToolUse!.LocalClocksKnown);
+            Assert.True(m.ItemPhase.Value.ToolUse.UseEpoch > 0);
             Console.WriteLine($"PASS source-capped Pick1 food+gear cadence={m.ItemPhase.Value.Selected.AnimationMax}");
             f.Move(2, false);
             for (int i = 0; i < 25; i++)
@@ -276,7 +279,10 @@ internal static class FoodConsumerBoundaryChecks
                     {
                         WorldSurface = 80
                     },
-                    playerUpdateRandomSeed: new(0));
+                    playerUpdateRandomSeed: new(0),
+                    sourcePlayerWorld: new(400, 300, 80, false, false)
+                    { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows(), JourneyMode = false });
+                ToolPhaseWorldFixture1458.BindFreshInactiveEvent(state, Tiles);
                 Players = Composition(state).Players;
                 Random = UpdateRandom(Players)!;
             }
@@ -288,7 +294,7 @@ internal static class FoodConsumerBoundaryChecks
             // These prefix-none references have identical clocks on both source platforms.
             Players.SetPlayerUpdateWorldFacts(new(400, 300, 80, false, false)
             {
-                WindowsItemPrefixArithmetic = OperatingSystem.IsWindows()
+                WindowsItemPrefixArithmetic = OperatingSystem.IsWindows(), JourneyMode = false
             });
             Players.SetPlayerUpdateRandom(Random);
             Players.SetRemotePlayerEnvironment(new(expert, false), projectiles);

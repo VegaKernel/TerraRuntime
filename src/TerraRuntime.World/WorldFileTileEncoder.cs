@@ -32,7 +32,8 @@ public static class WorldFileTileEncoder
         WorldTileFlags.InvisibleBlock |
         WorldTileFlags.InvisibleWall |
         WorldTileFlags.FullbrightBlock |
-        WorldTileFlags.FullbrightWall;
+        WorldTileFlags.FullbrightWall |
+        WorldTileFlags.HalfBrickWithSlope;
 
     public static WorldFileTileEncodeResult TryEncode(
         WorldTileStore source,
@@ -188,7 +189,7 @@ public static class WorldFileTileEncoder
 
     private static WorldFileTileEncodeResult ValidateTile(in WorldTile tile)
     {
-        if ((tile.Flags & ~KnownFlags) != 0 || tile.Shape > 7 || !Enum.IsDefined(tile.LiquidKind))
+        if ((tile.Flags & ~KnownFlags) != 0 || tile.Shape > 7 || ((tile.Flags & WorldTileFlags.HalfBrickWithSlope) != 0 && !tile.HasValidSourceShape) || !Enum.IsDefined(tile.LiquidKind))
             return WorldFileTileEncodeResult.InvalidTileState;
 
         if (tile.IsActive && tile.Type >= VanillaWorldFormat326.TileTypeCount)
@@ -278,7 +279,7 @@ public static class WorldFileTileEncoder
             header2 |= 0x04;
         if ((tile.Flags & WorldTileFlags.WireGreen) != 0)
             header2 |= 0x08;
-        header2 |= (byte)((tile.Shape & 0x07) << 4);
+        header2 |= (byte)((tile.SourcePackedShape & 0x07) << 4);
 
         if ((tile.Flags & WorldTileFlags.Actuator) != 0)
             header3 |= 0x02;

@@ -145,6 +145,8 @@ public sealed class WorldFileRuntimeMetadata
     public byte[] TreeTopVariations { get; init; } = new byte[13];
     public bool ForceHalloweenForToday { get; init; }
     public bool ForceXMasForToday { get; init; }
+    /// <summary>Validated section-local cursor for the two Today flags; a raw-header patch reparses it.</summary>
+    public int SeasonalFlagsOffset { get; init; }
 
     public bool BoughtCat { get; init; }
     public bool BoughtDog { get; init; }

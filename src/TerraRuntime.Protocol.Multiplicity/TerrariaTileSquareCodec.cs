@@ -9,7 +9,7 @@ namespace TerraRuntime.Protocol.Multiplicity;
 /// Source-backed TerrariaServer 1.4.5.8 packet-20 encoder used for authoritative tile correction. Packet 20 writes
 /// three fixed tile flag bytes followed by optional color/type/frame/wall/liquid fields for every cell in x/y order.
 /// </summary>
-public static class TerrariaTileSquareCodec
+public static partial class TerrariaTileSquareCodec
 {
     public const byte DefaultCorrectionSize = 5;
     private const int MaximumEncodedBytesPerTile = 15;
@@ -110,7 +110,7 @@ public static class TerrariaTileSquareCodec
 
     private static bool TryEncodeTile(in WorldTile tile, byte[] destination, ref int offset)
     {
-        if (!tile.HasOnlyKnownFlags || tile.Shape > 5 ||
+        if (!tile.HasOnlyKnownFlags || !tile.HasValidSourceShape ||
             (tile.IsActive && tile.Type >= VanillaWorldFrameImportance326.Count) ||
             (tile.LiquidAmount != 0 && (byte)tile.LiquidKind > 3))
         {
@@ -126,7 +126,7 @@ public static class TerrariaTileSquareCodec
         if (tile.Wall != 0) flags1 |= 1 << 2;
         if (tile.LiquidAmount != 0) flags1 |= 1 << 3;
         if ((flags & WorldTileFlags.WireRed) != 0) flags1 |= 1 << 4;
-        if (tile.Shape == 1) flags1 |= 1 << 5;
+        if (tile.IsHalfBrick) flags1 |= 1 << 5;
         if ((flags & WorldTileFlags.Actuator) != 0) flags1 |= 1 << 6;
         if ((flags & WorldTileFlags.Inactive) != 0) flags1 |= 1 << 7;
 
@@ -134,7 +134,7 @@ public static class TerrariaTileSquareCodec
         if ((flags & WorldTileFlags.WireGreen) != 0) flags2 |= 1 << 1;
         if (tile.IsActive && tile.TileColor != 0) flags2 |= 1 << 2;
         if (tile.Wall != 0 && tile.WallColor != 0) flags2 |= 1 << 3;
-        if (tile.Shape >= 2) flags2 |= checked((byte)((tile.Shape - 1) << 4));
+        if (tile.SourceSlope != 0) flags2 |= checked((byte)(tile.SourceSlope << 4));
         if ((flags & WorldTileFlags.WireYellow) != 0) flags2 |= 1 << 7;
 
         if ((flags & WorldTileFlags.FullbrightBlock) != 0) flags3 |= 1 << 0;

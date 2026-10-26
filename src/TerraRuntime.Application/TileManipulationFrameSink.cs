@@ -60,11 +60,44 @@ public sealed class TileManipulationFrameSink : ITerrariaFrameSink, ITerrariaFra
             return TerrariaFrameSinkResult.Stop;
 
         TerrariaMessageId messageId = (TerrariaMessageId)frame.MessageId;
-        if (messageId is not (TerrariaMessageId.TileManipulation or TerrariaMessageId.LiquidSet))
+        if (messageId == TerrariaMessageId.TileSquare)
+        {
+            var decoded = TerrariaTileSquareCodec.TryDecodeToolFrame(in frame, out var square);
+            if (decoded == TerrariaToolTileSquareDecodeResult1458.NotApplicable) return inner.OnFrame(in frame);
+            if (!TryGetPlayingConnection(out ConnectionHandle sourceConnection))
+                return Stop(TileManipulationFrameStopReason.InvalidJoinState);
+            if (decoded != TerrariaToolTileSquareDecodeResult1458.Decoded)
+                return Stop(TileManipulationFrameStopReason.MalformedManipulation);
+            if (ingress is IToolTileSquareIngress1458 tools)
+                _ = tools.TryPostToolSquare(sourceConnection, in square);
+            return TerrariaFrameSinkResult.Continue;
+        }
+
+        if (messageId is not (TerrariaMessageId.TileManipulation or TerrariaMessageId.LiquidSet or TerrariaMessageId.TilePicking or TerrariaMessageId.LucyAxeMessage))
             return inner.OnFrame(in frame);
 
         if (!TryGetPlayingConnection(out ConnectionHandle connection))
             return Stop(TileManipulationFrameStopReason.InvalidJoinState);
+
+        if (messageId == TerrariaMessageId.LucyAxeMessage)
+        {
+            if (TerrariaLucyAxeMessageCodec1458.TryDecode(in frame, out var lucy) !=
+                TerrariaLucyAxeMessageDecodeResult1458.Decoded)
+                return Stop(TileManipulationFrameStopReason.MalformedManipulation);
+            if (ingress is ILucyAxeMessageIngress1458 lucyIngress)
+                _ = lucyIngress.TryPostLucy(connection, in lucy);
+            return TerrariaFrameSinkResult.Continue;
+        }
+
+        if (messageId == TerrariaMessageId.TilePicking)
+        {
+            if (TerrariaTilePickingCodec1458.TryDecode(in frame, out var picking) !=
+                TerrariaTilePickingDecodeResult1458.Decoded)
+                return Stop(TileManipulationFrameStopReason.MalformedManipulation);
+            if (ingress is ITilePickingNetworkIngress1458 pickingIngress)
+                _ = pickingIngress.TryPostPicking(connection, in picking);
+            return TerrariaFrameSinkResult.Continue;
+        }
 
         if (messageId == TerrariaMessageId.LiquidSet)
         {

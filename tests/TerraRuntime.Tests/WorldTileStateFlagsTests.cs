@@ -20,7 +20,8 @@ public sealed class WorldTileStateFlagsTests
         Assert.Equal((WorldTileFlags)0x0100, WorldTileFlags.InvisibleWall);
         Assert.Equal((WorldTileFlags)0x0200, WorldTileFlags.FullbrightBlock);
         Assert.Equal((WorldTileFlags)0x0400, WorldTileFlags.FullbrightWall);
-        Assert.Equal((WorldTileFlags)0x07FF, WorldTileFlagMasks.Known);
+        Assert.Equal((WorldTileFlags)0x0800, WorldTileFlags.HalfBrickWithSlope);
+        Assert.Equal((WorldTileFlags)0x0FFF, WorldTileFlagMasks.Known);
     }
 
     [Fact]

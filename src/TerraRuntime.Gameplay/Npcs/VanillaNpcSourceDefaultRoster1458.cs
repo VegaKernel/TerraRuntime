@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>Classic source defaults only. Presence never admits autonomous NPC lifecycle.</summary>
-public static class VanillaNpcSourceDefaultRoster1458
+public static partial class VanillaNpcSourceDefaultRoster1458
 {
     private readonly record struct Row(short NetId, int Type, int AiStyle, int Width, int Height,
         int Life, int Damage, int Defense, float Scale, float KnockBack, int Alpha,

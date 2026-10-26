@@ -34,8 +34,13 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         // All seven represented gem types have source WindPhysicsImmunity=true.
         _ = wind;
         var contact = VanillaWorldCollision.GetLiquidContacts(tiles, x, y, physicalWidth, physicalHeight);
-        var liquid = new ProjectileLiquidState(contact.Wet, beforeLiquid.LavaWet || contact.Lava,
-            beforeLiquid.HoneyWet || contact.Honey, beforeLiquid.ShimmerWet || contact.Shimmer);
+        // Projectile.Update1458 clears all retained liquid kinds on a dry
+        // update, before HandleMovement. Otherwise honey survives a dry
+        // gap and incorrectly slows a later ordinary water contact.
+        var liquid = new ProjectileLiquidState(contact.Wet,
+            contact.Wet && (beforeLiquid.LavaWet || contact.Lava),
+            contact.Wet && (beforeLiquid.HoneyWet || contact.Honey),
+            contact.Wet && (beforeLiquid.ShimmerWet || contact.Shimmer));
         float collisionX = x + definition.CollisionOffsetX;
         float collisionY = y + definition.CollisionOffsetY;
         var first = VanillaWorldCollision.TileCollision(tiles, collisionX, collisionY,

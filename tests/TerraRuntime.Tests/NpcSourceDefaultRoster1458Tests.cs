@@ -37,7 +37,7 @@ public sealed class NpcSourceDefaultRoster1458Tests
     public void Public_roster_retains_verified_definitions_and_adds_exact_classic_metadata_without_behavior_admission()
     {
         using var facts = Read();
-        int positive = 0, signed = 0, definitionOnly = 0;
+        int positive = 0, signed = 0, definitionOnly = 0, creationOnly = 0;
         foreach (var row in facts.RootElement.EnumerateArray())
         {
             int requested = row.GetProperty("requested").GetInt32();
@@ -51,7 +51,19 @@ public sealed class NpcSourceDefaultRoster1458Tests
             Assert.True(found, $"Source identity {requested} missing");
             if (requested > 0) positive++; else signed++;
             Assert.Equal(row.GetProperty("aiStyle").GetInt32(), definition.AiStyle.Value);
-            if (!definition.DefinitionOnly) continue;
+            if (definition.SupportsRuntimeLifecycle) continue;
+            if (definition.CreationDefaultsOnly)
+            {
+                creationOnly++;
+                Assert.False(definition.DefinitionOnly);
+                Assert.False(VanillaNpcAiCoverageCatalog.TryGet(type, out var creationCoverage) && creationCoverage.FullVanillaAiParity);
+                // This constructor-only Linux census proves identity, not initialized,
+                // platform-specific creation metadata. GroundRosterDefaults1458Tests and
+                // NpcRemainingDefinitions1458Tests compare those independent official captures:
+                // e.g. -13 has Windows life71/Linux72, and initialized catchable74 is friendly.
+                continue;
+            }
+            Assert.True(definition.DefinitionOnly);
             definitionOnly++;
             Assert.Equal(0, definition.BaseWidth);
             Assert.Equal(0, definition.BaseHeight);
@@ -79,14 +91,17 @@ public sealed class NpcSourceDefaultRoster1458Tests
         }
         Assert.Equal(691, positive);
         Assert.Equal(65, signed);
-        Assert.Equal(192, definitionOnly);
+        Assert.Equal(1, definitionOnly);
+        Assert.Equal(324, creationOnly);
     }
 
     [Fact]
     public void Definition_only_marker_prevents_shared_ai_style_from_claiming_an_actor_and_preserves_zero_body()
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(74), out var bird));
-        Assert.True(bird.DefinitionOnly);
+        Assert.False(bird.DefinitionOnly);
+        Assert.True(bird.CreationDefaultsOnly);
+        Assert.False(bird.SupportsRuntimeLifecycle);
         Assert.Equal(VanillaNpcBehaviorFamily.None, bird.BehaviorFamily);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(664), out var placeholder));
         Assert.True(placeholder.DefinitionOnly);
@@ -113,7 +128,9 @@ public sealed class NpcSourceDefaultRoster1458Tests
                 !definition.DefinitionOnly) continue;
             Assert.True(VanillaNpcSourceMetadata1458.TryGet(new(type), out bool boss, out _));
             Assert.Equal(row.GetProperty("boss").GetBoolean(), boss);
-            Assert.Equal(row.GetProperty("friendly").GetBoolean(), VanillaNpcChaseability1458.FriendlyAtSpawn(type));
+            bool friendly = VanillaNpcChaseability1458.FriendlyAtSpawn(type);
+            Assert.True(row.GetProperty("friendly").GetBoolean() == friendly,
+                $"Original NPC {requested}/type{type}: friendly={row.GetProperty("friendly").GetBoolean()}, actual={friendly}");
             Assert.Equal(row.GetProperty("immortal").GetBoolean(), VanillaNpcChaseability1458.ImmortalAtSpawn(type));
             Assert.Equal(row.GetProperty("chaseable").GetBoolean(), VanillaNpcChaseability1458.ChaseableAtSpawn(type));
         }

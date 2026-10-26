@@ -118,7 +118,7 @@ internal sealed partial class ProjectileAuthority
                 if (impact.MustKill && !killed && !Kill()) return ProjectileActorSimulationResult.Rejected;
             }
             motion = VanillaProjectileWorldMotionResolver.CompleteGemStaffPosition(in motion, in terrain);
-            if (!Commit(in motion, in lifecycle, null, false, killed, false))
+            if (!Commit(in motion, in lifecycle, null, false, killed, false, sourceMotionCompleted: true))
                 return ProjectileActorSimulationResult.Rejected;
             if (!killed)
             {
@@ -227,13 +227,15 @@ internal sealed partial class ProjectileAuthority
         }
 
         bool Commit(in GemStaffMotionState1458 pose, in ProjectileLifecycleState nextLifecycle,
-            VanillaUnifiedRandom1458? nextRandom, bool publish, bool killedMotion, bool remove)
+            VanillaUnifiedRandom1458? nextRandom, bool publish, bool killedMotion, bool remove, bool sourceMotionCompleted = false)
         {
             if (!projectiles.TryPrepareSimulation(in current, out var preparation) || preparation is null) return false;
             var update = Update(in current, in pose);
             bool staged = killedMotion ? preparation.TryStageGemStaffKilledMotion(in update, in nextLifecycle) :
                 preparation.TryStageMotion(in update, in nextLifecycle);
-            if (!staged || publish && !(remove && !ownerInactive ? preparation.TryQueueGemStaffDespawn(killOrigin) : preparation.TryQueuePublication()) ||
+            if (!staged || sourceMotionCompleted && !preparation.TryStageSourceDirection(
+                VanillaProjectileSourceDirection1458.TryResolveAfterMotion(update.Type, update.Ai,
+                    update.VelocityX, out int direction) ? direction : null) || publish && !(remove && !ownerInactive ? preparation.TryQueueGemStaffDespawn(killOrigin) : preparation.TryQueuePublication()) ||
                 !preparation.IsCurrent || !preparation.TryAdoptUnpublished(out current, out bool expired)) return false;
             lifecycle = nextLifecycle;
             if (nextRandom is not null) projectileRandom.CopyStateFrom(nextRandom);

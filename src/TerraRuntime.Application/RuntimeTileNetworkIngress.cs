@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Application;
 
@@ -8,6 +9,21 @@ internal interface ITileNetworkIngress
 {
     bool TryPost(ConnectionHandle connection, in TerrariaTileManipulationState state);
     bool TryPostLiquid(ConnectionHandle connection, in TerrariaLiquidState state);
+}
+
+internal interface ITilePickingNetworkIngress1458
+{
+    bool TryPostPicking(ConnectionHandle connection, in TerrariaTilePickingState1458 state);
+}
+
+internal interface IToolTileSquareIngress1458
+{
+    bool TryPostToolSquare(ConnectionHandle connection, in TerrariaToolTileSquareState1458 state);
+}
+
+internal interface ILucyAxeMessageIngress1458
+{
+    bool TryPostLucy(ConnectionHandle connection, in TerrariaLucyAxeMessageState1458 state);
 }
 
 internal interface ITempleDoorUnlockNetworkIngress
@@ -28,7 +44,7 @@ internal interface IPlayerDoorToggleNetworkIngress
 /// bounded command queue; all current-session, world-bounds and gameplay-authority decisions remain on the single
 /// authoritative writer thread.
 /// </summary>
-internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITempleDoorUnlockNetworkIngress, IPlayerDoorToggleNetworkIngress
+internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITilePickingNetworkIngress1458, ILucyAxeMessageIngress1458, IToolTileSquareIngress1458, ITempleDoorUnlockNetworkIngress, IPlayerDoorToggleNetworkIngress
 {
     protected IGameCommandIngress<RuntimeCommand> Ingress { get; }
 
@@ -46,6 +62,27 @@ internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITempleDoorUnloc
         return Ingress.TryPost(
             connection.Source,
             new ClientTileManipulationRuntimeCommand(connection, state));
+    }
+
+    public bool TryPostPicking(ConnectionHandle connection, in TerrariaTilePickingState1458 state)
+    {
+        if (!connection.IsAssigned) return false;
+        // Source case125 replaces the client player byte with whoAmI. No tile,
+        // clock, item or private progress state is changed by this relay command.
+        var authenticated = state with { PlayerSlot = connection.Player.Slot.Value };
+        return Ingress.TryPost(connection.Source, new ClientTilePickingRuntimeCommand1458(connection, authenticated));
+    }
+
+    public bool TryPostToolSquare(ConnectionHandle connection, in TerrariaToolTileSquareState1458 state)
+    {
+        if (!connection.IsAssigned || !TerrariaTileSquareCodec.TryEncodeToolFrame(in state, out _)) return false;
+        return Ingress.TryPost(connection.Source, new ClientToolTileSquareRuntimeCommand1458(connection, state));
+    }
+
+    public bool TryPostLucy(ConnectionHandle connection, in TerrariaLucyAxeMessageState1458 state)
+    {
+        if (!connection.IsAssigned || !state.IsValid) return false;
+        return Ingress.TryPost(connection.Source, new ClientLucyAxeMessageRuntimeCommand1458(connection, state));
     }
 
     public bool TryPostLiquid(ConnectionHandle connection, in TerrariaLiquidState state)

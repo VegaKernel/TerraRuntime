@@ -252,6 +252,11 @@ public static class VanillaNpcDefinitionCatalog
             };
             return true;
         }
+        if (definition.DefinitionOnly && VanillaNpcSourceDefaultRoster1458.TryGetCreation(type, new((short)type.Value), out var creation))
+        {
+            definition = creation;
+            return true;
+        }
         return found;
     }
 
@@ -789,6 +794,12 @@ public static class VanillaNpcDefinitionCatalog
             }
 
             definition = baseDefinition;
+            return true;
+        }
+
+        if (VanillaNpcSourceDefaultRoster1458.TryGetCreation(type, netId, out var sourceCreation))
+        {
+            definition = sourceCreation;
             return true;
         }
 

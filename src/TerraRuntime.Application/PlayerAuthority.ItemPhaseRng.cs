@@ -40,7 +40,6 @@ internal sealed partial class PlayerAuthority
     {
         if (TryTickRemotePlayerPhase()) return true;
         RetireRemotePlayerPhase();
-        AdvanceOwnedFoodAfterFailedPhase();
         return false;
     }
 
@@ -48,6 +47,10 @@ internal sealed partial class PlayerAuthority
     {
         // One unsupported actor changes the shared source cursor for every later player.
         // A reconnect or new packet cannot recover that missing history by reseeding.
+        var healthPublications = new List<ToolHealthPublication1458>();
+        Exception? first = null;
+        try { CollectToolBaselineHealthPublications(healthPublications); }
+        catch (Exception error) { first = error; }
         playerUpdateRandomOwned = false;
         foreach (var member in membership.Members)
         {
@@ -55,5 +58,10 @@ internal sealed partial class PlayerAuthority
             member.PhysicsPhase = null;
             member.ClearRemotePhaseSnapshot();
         }
+        // Keep the pre-existing failed-phase food budget advance, exactly once,
+        // before any new fallback observer can reenter the cleared census.
+        try { AdvanceOwnedFoodAfterFailedPhase(); } catch (Exception error) { first ??= error; }
+        try { PublishToolBaselineHealthBatch(healthPublications); } catch (Exception error) { first ??= error; }
+        if (first is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(first).Throw();
     }
 }

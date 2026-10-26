@@ -57,6 +57,12 @@ public sealed class NpcDefinitionManifest1458Tests
         using var ground = JsonDocument.Parse(gzip);
         var groundRows = ground.RootElement.GetProperty("classic").EnumerateArray()
             .ToDictionary(r => r.GetProperty("requested").GetInt32());
+        using var remainingStream = typeof(NpcDefinitionManifest1458Tests).Assembly.GetManifestResourceStream(
+            OperatingSystem.IsWindows() ? "NpcRemainingWindows1458.json.gz" : "NpcRemainingLinux1458.json.gz")!;
+        using var remainingGzip = new GZipStream(remainingStream, CompressionMode.Decompress);
+        using var remaining = JsonDocument.Parse(remainingGzip);
+        var remainingRows = remaining.RootElement.GetProperty("classic").EnumerateArray()
+            .ToDictionary(r => r.GetProperty("requested").GetInt32());
         foreach (var row in facts.RootElement.EnumerateArray())
         {
             int requested = row.GetProperty("requested").GetInt32();
@@ -66,7 +72,8 @@ public sealed class NpcDefinitionManifest1458Tests
                 continue;
             // The earlier complete inventory was captured from the Linux original. Signed fighters
             // additionally have an independent Windows x86 capture with distinct integer truncation.
-            var expected = groundRows.TryGetValue(requested, out var hostGround) ? hostGround : row;
+            var expected = groundRows.TryGetValue(requested, out var hostGround) ? hostGround :
+                remainingRows.TryGetValue(requested, out var hostRemaining) ? hostRemaining : row;
             Assert.Equal(requested, row.GetProperty("netId").GetInt32());
             Assert.Equal(row.GetProperty("aiStyle").GetInt32(), definition.AiStyle.Value);
             Assert.Equal(expected.GetProperty("lifeMax").GetInt32(), definition.LifeMax);

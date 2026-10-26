@@ -9,7 +9,7 @@ internal sealed partial class WorldTileAuthority
 {
     private ItemDropRandomPreview CreateItemDropRandomPreview() => new(worldItemSpawnRandom);
 
-    private sealed class ItemDropRandomPreview
+    internal sealed class ItemDropRandomPreview
     {
         private readonly VanillaUnifiedRandom1458? live;
         private readonly VanillaUnifiedRandom1458? before;

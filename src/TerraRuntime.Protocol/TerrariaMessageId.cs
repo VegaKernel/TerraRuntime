@@ -35,6 +35,7 @@ public enum TerrariaMessageId : byte
     RequestChestOpen = 31,
     SyncChestItem = 32,
     SyncPlayerChest = 33,
+    ChestUpdates = 34,
     PlayerHealEffect = 35,
     SyncPlayerZone = 36,
     ReleaseWorldItem = 39,
@@ -67,12 +68,15 @@ public enum TerrariaMessageId : byte
     WorldItemTweaker = 88,
     PlayerHurt = 117,
     PlayerDeathV2 = 118,
+    // MessageBuffer case125 relays bounded visual pick progress, never tool permission.
+    TilePicking = 125,
     FinishedConnectingToServer = 129,
     NpcKillAchievement = 97,
     NotifyProgressionEvent = 98,
     PlayerLuckFactors = 134,
     // Main.TrySyncingMyPlayer 1.4.5.8 sends this empty frame after all changed inventory/bank images.
     ClientSyncedInventory = 138,
+    LucyAxeMessage = 141,
     WorldItemRemove = 151,
 
     /// <summary>

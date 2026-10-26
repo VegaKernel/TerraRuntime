@@ -12,7 +12,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     internal bool TryCommitPirateGhostPhase(in NpcSnapshot before, in NpcStateUpdate motion,
         bool fadeStrike, ReadOnlySpan<VanillaNpcTargetCandidate> players, Func<bool> captureCurrentPlayers, Func<bool> retainedPhaseIsCurrent)
     {
-        if (before.TypeIdentity != VanillaNpcIds.PirateGhost || before.Simulation.Life <= 0 ||
+        // A failed nested fade must never cancel the pending death journal of its caller.
+        if (pendingDeathPlan is not null || pendingProjectileStrike is not null || pendingDebuffPrelude is not null ||
+            before.TypeIdentity != VanillaNpcIds.PirateGhost || before.Simulation.Life <= 0 ||
             !npcs.TryGet(before.Handle, out var live) || live != before ||
             !npcs.TryCaptureDeathMutationSerial(out ulong serial) || serial > ulong.MaxValue - 2 ||
             before.Revision.Value == ulong.MaxValue || !RuntimeNpcStore.IsValid(in motion) ||

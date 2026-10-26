@@ -85,6 +85,24 @@ public static class VanillaWorldCollision
         int gravDir = 1)
     {
         ArgumentNullException.ThrowIfNull(tiles);
+        return TileCollision(tiles, positionX, positionY, velocityX, velocityY, width, height, fallThrough, fall2, tiles.Get, gravDir);
+    }
+
+    public static VanillaTileCollisionResult TileCollision(
+        WorldTileStore tiles,
+        float positionX,
+        float positionY,
+        float velocityX,
+        float velocityY,
+        int width,
+        int height,
+        bool fallThrough,
+        bool fall2,
+        Func<int, int, WorldTile> readTile,
+        int gravDir = 1)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(readTile);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
         if (gravDir is not (-1 or 1))
@@ -118,7 +136,7 @@ public static class VanillaWorldCollision
         {
             for (int y = minY; y < maxY; y++)
             {
-                WorldTile tile = tiles.Get(x, y);
+                WorldTile tile = readTile(x, y);
                 if (!IsCollisionActive(in tile))
                     continue;
 
@@ -131,7 +149,7 @@ public static class VanillaWorldCollision
                 float tileX = x * TileSize;
                 float tileY = y * TileSize;
                 int tileHeight = 16;
-                if (tile.Shape == 1)
+                if (tile.IsHalfBrick)
                 {
                     tileY += 8f;
                     tileHeight = 8;
@@ -186,7 +204,7 @@ public static class VanillaWorldCollision
                 }
                 else if (positionX + width <= tileX && !solidTop)
                 {
-                    int neighborSlope = GetSlopeOrZero(tiles, x - 1, y);
+                    int neighborSlope = GetSlopeOrZero(tiles, readTile, x - 1, y);
                     if (x < 1 || (neighborSlope != 2 && neighborSlope != 4))
                     {
                         sideTileX = x;
@@ -199,7 +217,7 @@ public static class VanillaWorldCollision
                 }
                 else if (positionX >= tileX + TileSize && !solidTop)
                 {
-                    int neighborSlope = GetSlopeOrZero(tiles, x + 1, y);
+                    int neighborSlope = GetSlopeOrZero(tiles, readTile, x + 1, y);
                     if (neighborSlope != 1 && neighborSlope != 3)
                     {
                         sideTileX = x;
@@ -229,6 +247,13 @@ public static class VanillaWorldCollision
     public static bool LavaCollision(WorldTileStore tiles, float positionX, float positionY, int width, int height)
     {
         ArgumentNullException.ThrowIfNull(tiles);
+        return LavaCollision(tiles, positionX, positionY, width, height, tiles.Get);
+    }
+
+    public static bool LavaCollision(WorldTileStore tiles, float positionX, float positionY, int width, int height, Func<int, int, WorldTile> readTile)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(readTile);
         if (!float.IsFinite(positionX) || !float.IsFinite(positionY) || width <= 0 || height <= 0)
             return false;
         int worldWidth = tiles.Dimensions.WidthTiles;
@@ -240,7 +265,7 @@ public static class VanillaWorldCollision
         for (int x = left; x < right; x++)
         for (int y = top; y < bottom; y++)
         {
-            WorldTile tile = tiles.Get(x, y);
+            WorldTile tile = readTile(x, y);
             if (tile.LiquidAmount == 0 || tile.LiquidKind != WorldLiquidKind.Lava) continue;
             float emptyHeight = (256 - tile.LiquidAmount) / 32f * 2f;
             if (Intersects(positionX, positionY, width, height, x * 16f, y * 16f + emptyHeight,
@@ -257,6 +282,19 @@ public static class VanillaWorldCollision
         int height)
     {
         ArgumentNullException.ThrowIfNull(tiles);
+        return GetLiquidContacts(tiles, positionX, positionY, width, height, tiles.Get);
+    }
+
+    public static VanillaLiquidContactState GetLiquidContacts(
+        WorldTileStore tiles,
+        float positionX,
+        float positionY,
+        int width,
+        int height,
+        Func<int, int, WorldTile> readTile)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(readTile);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
@@ -285,7 +323,7 @@ public static class VanillaWorldCollision
         {
             for (int y = minY; y < maxY; y++)
             {
-                WorldTile tile = tiles.Get(x, y);
+                WorldTile tile = readTile(x, y);
                 if (tile.LiquidAmount > 0)
                 {
                     float liquidX = x * TileSize;
@@ -298,7 +336,7 @@ public static class VanillaWorldCollision
                 }
                 else if (tile.IsActive && GetSlope(in tile) != 0 && y > 0)
                 {
-                    WorldTile above = tiles.Get(x, y - 1);
+                    WorldTile above = readTile(x, y - 1);
                     if (above.LiquidAmount <= 0)
                         continue;
 
@@ -405,7 +443,7 @@ public static class VanillaWorldCollision
     private static bool IsCollisionActive(in WorldTile tile) =>
         tile.IsActive && (tile.Flags & WorldTileFlags.Inactive) == 0;
 
-    private static int GetSlope(in WorldTile tile) => tile.Shape >= 2 ? tile.Shape - 1 : 0;
+    private static int GetSlope(in WorldTile tile) => tile.SourceSlope;
 
     private static int GetSlopeOrZero(WorldTileStore tiles, int x, int y)
     {
@@ -413,6 +451,15 @@ public static class VanillaWorldCollision
             return 0;
 
         WorldTile tile = tiles.Get(x, y);
+        return GetSlope(in tile);
+    }
+
+    private static int GetSlopeOrZero(WorldTileStore tiles, Func<int, int, WorldTile> readTile, int x, int y)
+    {
+        if ((uint)x >= (uint)tiles.Dimensions.WidthTiles || (uint)y >= (uint)tiles.Dimensions.HeightTiles)
+            return 0;
+
+        WorldTile tile = readTile(x, y);
         return GetSlope(in tile);
     }
 

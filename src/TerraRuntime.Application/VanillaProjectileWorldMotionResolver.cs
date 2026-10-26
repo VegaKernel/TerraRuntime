@@ -36,8 +36,21 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         in VanillaProjectileDefinition definition,
         in VanillaProjectileBehaviorResult behavior,
         in VanillaProjectileBehaviorContext behaviorContext,
-        out ProjectileSimulationStepResult next)
+        out ProjectileSimulationStepResult next) =>
+        TryResolve(in projectile, in definition, in behavior, in behaviorContext, out next, out _);
+
+    // Optional source caller readback. Existing steppers keep their original
+    // result/API; the world-bomb actor owns the collision's Next3 before its
+    // CanCutTiles/damage short-circuits (Projectile.HandleMovement,1458).
+    internal bool TryResolve(
+        in ProjectileSimulationStepContext projectile,
+        in VanillaProjectileDefinition definition,
+        in VanillaProjectileBehaviorResult behavior,
+        in VanillaProjectileBehaviorContext behaviorContext,
+        out ProjectileSimulationStepResult next,
+        out bool sourceTileImpact)
     {
+        sourceTileImpact = false;
         ProjectileSnapshot current = projectile.Projectile;
         bool fallingBlock = VanillaFallingBlock1458.TryGetTile(current.Type, out _) &&
             !(current.Type == VanillaProjectileIds.AntlionSand && current.Ai.Ai0 == 2f);
@@ -185,6 +198,9 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         }
 
         bool tileImpact = collideX || collideY;
+        sourceTileImpact = tileCollide && (tileImpact ||
+            behaviorPositionX != (behavior.PositionXOverride ?? current.PositionX) ||
+            behaviorPositionY != (behavior.PositionYOverride ?? current.PositionY));
         bool nurseCollisionHandled = false;
         int? nursePenetration = null;
         if (tileImpact && current.Type == VanillaProjectileIds.NurseSyringeHeal)
@@ -485,7 +501,11 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             KillOrigin: killOrigin,
             PenetrateOverride: nursePenetration,
             CollisionTileCutOffer: current.Type == VanillaProjectileIds.NurseSyringeHeal && tileImpact
-                ? new ProjectileCollisionTileCutOffer() : null);
+                ? new ProjectileCollisionTileCutOffer() : null)
+        {
+            SourceDirection = VanillaProjectileSourceDirection1458.TryResolveAfterMotion(
+                state.Type, state.Ai, state.VelocityX, out int direction) ? direction : null
+        };
         if (current.Type == VanillaProjectileIds.NurseSyringeHeal &&
             (nursePenetration ?? projectile.Lifecycle.PenetrateOverride ?? 3) == 0)
             next = next with { TimeLeft = 0, TerminationReason = tileImpact

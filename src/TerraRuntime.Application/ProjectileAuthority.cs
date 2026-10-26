@@ -149,7 +149,9 @@ internal sealed partial class ProjectileAuthority
             out var type))
             return false;
         // WorldGen.SpawnFallingBlockProjectile dedicated branch: center(8,10), 10x10 body, Y velocity .5.
-        var state = new ProjectileStateUpdate(type, byte.MaxValue, x * 16f + 3, y * 16f + 5, 0, .5f, default, 0, 10, 0, 10);
+        if (!VanillaFallingBlock1458.TryGetSourceDamage(type, out short sourceDamage)) return false;
+        var state = new ProjectileStateUpdate(type, byte.MaxValue, x * 16f + 3, y * 16f + 5, 0, .5f,
+            default, 0, sourceDamage, 0, 0);
         if (!projectiles.TrySpawnVanilla(state, out spawned))
             return false;
         if (!projectiles.TryMarkCombatTrusted(spawned.Handle))

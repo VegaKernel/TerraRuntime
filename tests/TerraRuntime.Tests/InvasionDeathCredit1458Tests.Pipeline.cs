@@ -112,21 +112,25 @@ public sealed partial class InvasionDeathCredit1458Tests
     }
 
     [Fact]
-    public void Actual_loot_callback_cannot_overwrite_newer_event_or_revived_npc()
+    public void Actual_loot_callback_observes_accepted_credit_and_cannot_revive_the_terminal_generation()
     {
         foreach (bool reviveNpc in new[] { false, true })
         {
             var fixture = new PipelineFixture(27, 1, 1, true);
             bool invoked = false;
+            NpcSnapshot replacement = default;
             fixture.OnDrop = () =>
             {
                 if (invoked) return;
                 invoked = true;
+                Assert.False(fixture.Npcs.TryGet(fixture.Npc.Handle, out _));
+                Assert.True(fixture.Owner.TryCapture(out var accepted));
+                Assert.Equal(11, accepted.State.Size);
                 if (reviveNpc)
                 {
-                    Assert.True(fixture.Npcs.TryGet(fixture.Npc.Handle, out var current));
-                    var revived = Update(current) with { Simulation = current.Simulation with { Life = 10 } };
-                    Assert.True(fixture.Npcs.TryUpdate(current.Handle, in revived, out _));
+                    var revived = Update(fixture.Npc) with { Simulation = fixture.Npc.Simulation with { Life = 10 } };
+                    Assert.False(fixture.Npcs.TryUpdate(fixture.Npc.Handle, in revived, out _));
+                    Assert.True(fixture.Npcs.TrySpawn(fixture.Npc.Handle.Slot, in revived, out replacement));
                 }
                 else
                 {
@@ -137,11 +141,19 @@ public sealed partial class InvasionDeathCredit1458Tests
             };
             Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Killed,
                 fixture.Pipeline.TryStrikeEnvironment(fixture.Npc.Handle, 100000));
-            Assert.True(invoked); Assert.Null(fixture.ProgressFrame);
+            Assert.True(invoked);
+            if (reviveNpc) Assert.NotNull(fixture.ProgressFrame);
+            else Assert.Null(fixture.ProgressFrame);
             Assert.True(fixture.Owner.TryCapture(out var state));
-            Assert.Equal(reviveNpc ? 12 : 8, state.State.Size);
-            Assert.Equal(reviveNpc, fixture.Npcs.TryGet(fixture.Npc.Handle, out var survivor));
-            if (reviveNpc) Assert.Equal(10, survivor.Simulation.Life);
+            Assert.Equal(reviveNpc ? 11 : 8, state.State.Size);
+            Assert.False(fixture.Npcs.TryGet(fixture.Npc.Handle, out _));
+            if (reviveNpc)
+            {
+                Assert.Equal(fixture.Npc.Handle.Slot, replacement.Handle.Slot);
+                Assert.NotEqual(fixture.Npc.Handle.Generation, replacement.Handle.Generation);
+                Assert.True(fixture.Npcs.TryGet(replacement.Handle, out var survivor));
+                Assert.Equal(10, survivor.Simulation.Life);
+            }
         }
     }
 
@@ -171,6 +183,7 @@ public sealed partial class InvasionDeathCredit1458Tests
         internal readonly RuntimeNpcStore Npcs;
         internal readonly RuntimeNpcNetworkCombatPipeline Pipeline;
         internal readonly RuntimeWorldInvasion1458 Owner;
+        internal readonly RuntimeWorldProgressionMutations Progression = new();
         internal readonly VanillaUnifiedRandom1458 Random;
         internal readonly NpcSnapshot Npc;
         internal readonly List<int> Events = [];
@@ -179,16 +192,18 @@ public sealed partial class InvasionDeathCredit1458Tests
         internal byte[]? ProgressFrame;
         internal Action? OnDrop;
         internal Action? OnProgress;
+        internal Action? OnPlayerRead;
         private readonly PlayerStateSnapshot player;
 
-        internal PipelineFixture(int type, int group, int seed, bool injured)
+        internal PipelineFixture(int type, int group, int seed, bool injured,
+            bool hardmode = false, bool? planteraDowned = null, bool? dungeon = false)
         {
             Owner = new(State(group)); Random = new(seed);
             Npcs = new(10, this); var items = new RuntimeWorldItemStore(this);
             player = default(PlayerStateSnapshot) with
             {
                 Player = new(new PlayerSlotId(0), new PlayerSessionGeneration(1)), Revision = new(1),
-                Zones = new(0, 0, 0, 0, 0, 0),
+                Zones = dungeon is { } knownDungeon ? new((byte)(knownDungeon ? 1 : 0), 0, 0, 0, 0, 0) : null,
                 HasHealth = true, Life = injured ? (short)100 : (short)400, MaxLife = 400, DerivedLifeMax = 400,
                 HasMana = true, Mana = injured ? (short)20 : (short)200, MaxMana = 200, NpcLifeCurrent = true
             };
@@ -196,9 +211,10 @@ public sealed partial class InvasionDeathCredit1458Tests
                 NpcSimulationState.Initial);
             Assert.True(Npcs.TrySpawnVanilla(in update, out Npc), $"Source actor {type} must have owned vanilla creation.");
             Pipeline = new(Npcs, items, this, new PlayerAuthority(null, null), () => 0,
-                null, new(items), null, new(0, true, 0, 0, 0), new(), false, false,
+                null, new(items), null, new(0, true, 0, 0, 0), Progression, false, false,
                 lootRandom: Random, lootRemixWorld: false,
-                globalLootWorld: new(100, 80, 1, false, false, false, false, 35, 40, false, false),
+                planteraDownedBaseline: planteraDowned,
+                globalLootWorld: new(100, 80, 1, hardmode, false, false, false, 35, 40, false, false),
                 invasion: Owner, invasionProgressPublisher: accepted =>
                 {
                     Assert.False(Npcs.TryGet(Npc.Handle, out _));
@@ -211,7 +227,7 @@ public sealed partial class InvasionDeathCredit1458Tests
         }
 
         public bool TryGetPlayer(PlayerSlotId slot, out PlayerStateSnapshot snapshot)
-        { snapshot = player; return slot.Value == 0; }
+        { OnPlayerRead?.Invoke(); snapshot = player; return slot.Value == 0; }
 
         public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot npc)
         {

@@ -205,6 +205,7 @@ internal sealed partial class PlayerAuthority
             (transfer.ItemPhase?.MagicPayment is { } importedPayment &&
             (!importedPayment.IsValid ||
             !transfer.OwnsManaMaximum)) ||
+            (transfer.ItemPhase?.ToolUse is { } importedTools && !importedTools.Clocks.IsValid) ||
             (transfer.ItemPhase?.DerivedCombat is { } derivedCombat &&
             !IsValidDerivedCombat(in derivedCombat)))
         {
@@ -338,6 +339,34 @@ internal sealed partial class PlayerAuthority
                 ManaCrystalIntent = null,
                 SelectedPotionUse = null,
                 QuickBuffExplanation = null,
+                // HitTile coordinates belong to the old world. Retain known remaining
+                // local clocks, but neither damage credit nor the old world's update stamp
+                // may become a new-world tool entitlement on the replacement generation.
+                ToolUse = phase.ToolUse is { } transferredTools ? transferredTools with
+                {
+                    Hits = ToolHitState1458.Constructor,
+                    LastActionUpdate = long.MinValue,
+                    Input = null,
+                    HeldProjectile = null,
+                    HeldProjectileType = 0,
+                    HeldUseEpoch = 0,
+                    HeldItem = default,
+                    HeldPrefix = default,
+                    HeldSlot = 0,
+                    ShootEligible = false,
+                    ToolStagePending = false,
+                    LastFrameUpdate = long.MinValue,
+                    SourceStagePose = null,
+                    BuildingPermission = null,
+                    ReleaseWitness = null,
+                    DeferredHealthPublication = null,
+                    Reach = null,
+                    SourceDefinition = null,
+                    SelectionInitialized = false,
+                    DeferredSelectionSlot = null,
+                    Clocks = transferredTools.Clocks with { PoundRelease = false, Channel = false },
+                    RequiresFreshUse = true
+                } : null,
                 Selected = phase.Selected with
                 {
                     Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0

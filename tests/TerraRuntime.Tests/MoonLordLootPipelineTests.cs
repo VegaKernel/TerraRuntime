@@ -45,7 +45,7 @@ public sealed class MoonLordLootPipelineTests
         Assert.True(playerAuthority.TryApply(new PlayerSpawnRuntimeCommand(connection,session,
             new(participant.Slot,100,200,0,0,0,0,0))));
         Assert.Equal(PlayerSpawnCommitResult.Committed,playerAuthority.LastSpawnCommitResult);
-        // Packet-28 compatibility path: this fixture tests credit/loot, not direct-melee validation.
+        // This bow deliberately selects the unowned compatibility path for the forged-hit regression.
         Assert.True(playerAuthority.TryApply(new PlayerEquipmentRuntimeCommand(connection,
             new(participant.Slot,0,1,0,checked((short)VanillaItemIds.WoodenBow.Value),0))));
         Assert.Equal(0,playerAuthority.RejectedEquipmentUpdates);
@@ -59,14 +59,14 @@ public sealed class MoonLordLootPipelineTests
         {
             var hit = new TerrariaNpcDamageState(part.Handle.Slot,
                 RuntimeNpcPacketProjection.ToProtocolGeneration(part.Handle.Generation),1,0,1,0);
-            Assert.NotEqual(RuntimeNpcNetworkDamageResult.Rejected,
+            Assert.Equal(RuntimeNpcNetworkDamageResult.Rejected,
                 pipeline.TryApply(new(GameCommandSourceId.FromConnection(8001),participant),in hit));
+            Assert.False(pipeline.Interactions.HasInteraction(core.Handle,participant.Slot));
+            Assert.True(npcs.TryGet(part.Handle,out var unchanged));
+            Assert.Equal(part,unchanged);
         }
-        else
-        {
-            Assert.Equal(RuntimeProjectileNpcDamageResult.Committed,
-                pipeline.TryStrikeServerPlayerMelee(participant,part.Handle,1,0,false,0,1));
-        }
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Committed,
+            pipeline.TryStrikeServerPlayerMelee(participant,part.Handle,1,0,false,0,1));
         Assert.True(pipeline.Interactions.HasInteraction(core.Handle,participant.Slot));
         Assert.False(pipeline.Interactions.HasInteraction(core.Handle,observer.Slot));
         Assert.Equal(RuntimeProjectileNpcDamageResult.Committed,

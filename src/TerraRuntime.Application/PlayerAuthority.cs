@@ -596,15 +596,22 @@ internal sealed partial class PlayerAuthority
         events?.PlayerEquipmentUpdated(equipment.Connection, in request);
     }
 
-    private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health)
+    private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health) =>
+        ApplyPlayerHealth(health, allowToolRetention: true);
+
+    private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health, bool allowToolRetention) =>
+        ApplyPlayerHealthCore(health, allowToolRetention, deferPublication: false);
+
+    private ToolHealthPublication1458? ApplyPlayerHealthCore(PlayerHealthRuntimeCommand health,
+        bool allowToolRetention, bool deferPublication, bool preserveToolInput = false)
     {
-        if (TryAcknowledgeSelectedPotionHealth(health)) return;
+        if (allowToolRetention && TryAcknowledgeSelectedPotionHealth(health)) return null;
         PlayerHealthCommitRequest received = health.Request;
         PlayerHealthCommitRequest request = VanillaVitalsRules.NormalizeHealth(in received);
         if (!health.Connection.IsAssigned || health.Connection.Player.Slot != request.PlayerSlot)
         {
             RejectedHealthUpdates++;
-            return;
+            return null;
         }
 
         if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
@@ -612,7 +619,7 @@ internal sealed partial class PlayerAuthority
             if (activePlayer.Connection != health.Connection)
             {
                 RejectedHealthUpdates++;
-                return;
+                return null;
             }
 
             // Initial unrelated character imports retain the established policy.
@@ -621,15 +628,20 @@ internal sealed partial class PlayerAuthority
             if (activePlayer.OwnsLifeMaximum && request.MaxLife != activePlayer.BaseLifeMax)
             {
                 RejectedHealthUpdates++;
-                return;
+                return null;
             }
+
+            if (allowToolRetention && TryRetainToolHealth(health, in request, activePlayer)) return null;
 
             if (!activePlayer.TryAdvanceRevision())
             {
                 RejectedHealthUpdates++;
-                return;
+                return null;
             }
 
+            if (!preserveToolInput) RetireToolHealthBeforeLegacyApply(activePlayer, in request);
+            else if (activePlayer.ItemPhase is { ToolUse: { } tools } kept)
+                activePlayer.ItemPhase = kept with { ToolUse = tools with { DeferredHealthPublication = null } };
             activePlayer.HasHealth = true;
             activePlayer.Life = request.Life;
             activePlayer.NpcHealth = activePlayer.NpcHealth is { } healthState
@@ -655,7 +667,9 @@ internal sealed partial class PlayerAuthority
         }
 
         AppliedHealthUpdates++;
+        if (deferPublication) return activePlayer is not null ? new(this, health.Connection, request, activePlayer) : null;
         events?.PlayerHealthUpdated(health.Connection, in request);
+        return null;
     }
 
     private void ApplyPlayerMana(PlayerManaRuntimeCommand mana)

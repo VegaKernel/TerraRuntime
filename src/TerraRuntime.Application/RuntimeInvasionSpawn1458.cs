@@ -1,6 +1,7 @@
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Worlds;
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Application;
 
@@ -92,5 +93,28 @@ internal static class RuntimeInvasionSpawn1458
         if (random.NextInt32(0, 3) == 0)
             return VanillaNpcIds.PirateCorsair;
         return VanillaNpcIds.PirateDeckhand;
+    }
+
+    internal static NpcTypeId SelectFrost(IVanillaNpcRandom random)
+    {
+        _ = random.NextInt32(0, 7); // Shared GetZombieSettings precedes the separate Frost offer.
+        if (random.NextInt32(0, 7) == 0) return new(145);
+        return new(random.NextInt32(0, 3) == 0 ? 143 : 144);
+    }
+
+    internal static bool IsFrostCohortReady()
+    {
+        const VanillaNpcAiCapability required = VanillaNpcAiCapability.DefinitionDefaults |
+            VanillaNpcAiCapability.TargetingSlice | VanillaNpcAiCapability.StateTransitionSlice |
+            VanillaNpcAiCapability.WorldPhysicsSlice | VanillaNpcAiCapability.PacketSync;
+        // The current AI38 entries are source-roster definitions only, so this is false.
+        // NPC-owner admission must cover both shooters' projectile producers as part of AI38;
+        // the event layer never turns classic roster presence into autonomous actors.
+        foreach (int type in new[] { 143, 144, 145 })
+            if (!VanillaNpcDefinitionCatalog.TryGet(new(type), out var definition) || definition.DefinitionOnly ||
+                definition.AiStyle.Value != 38 || !VanillaNpcAiCoverageCatalog.TryGet(new(type), out var coverage) ||
+                !coverage.Has(required) || !VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(new(type), out var loot) ||
+                !loot.IsValid) return false;
+        return VanillaDefinitionCatalog.TryGetWorldDrop(new(593), out _);
     }
 }

@@ -32,7 +32,7 @@ public sealed class BossAnnouncement1458Tests
     [InlineData(128, "Announcement.HasAwoken", "NPCName.PrimeCannon")]
     [InlineData(657, "Announcement.HasAwoken", "NPCName.QueenSlimeBoss")]
     [InlineData(-16, "LegacyMisc.107", null)]
-    public void Successful_owned_summon_announces_once_to_playing_peers(int action, string key, string? name)
+    public void Unpaid_client_boss_intents_cannot_create_births_or_announcements(int action, string key, string? name)
     {
         var replication = new RuntimeNpcReplicationRegistry();
         var queue = Register(replication, playing: true);
@@ -49,10 +49,13 @@ public sealed class BossAnnouncement1458Tests
         state.Apply(new PlayerSpawnRuntimeCommand(connection, session, new(session.Slot, 200, 120, 0, 0, 0, 0, 0)));
         Drain(queue);
         state.Apply(new ClientBossSummonRuntimeCommand(connection, checked((short)action)));
-        AssertAnnouncement(Assert.Single(Drain(queue)), key, name);
+        Assert.Empty(Drain(queue));
+        Assert.Equal(0, npcs.ActiveCount);
         Assert.Empty(Drain(joining));
         state.Apply(new ClientBossSummonRuntimeCommand(connection, checked((short)action)));
         Assert.Empty(Drain(queue));
+        // Retain source announcement identity coverage independently of the rejected packet intent.
+        Assert.NotEmpty(TerrariaBossAnnouncementCodec1458.Encode(key, name));
     }
 
     [Fact]

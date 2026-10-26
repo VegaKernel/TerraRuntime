@@ -12,6 +12,9 @@ public enum VanillaPlayerImmunityChannel1458 : byte
 {
     General = 0,
     BossNoCheese = 1,
+    // Semantic runtime identity, not a source cooldown array index.
+    // Terraria1458 uses General=-1 and TileContactDamage=0.
+    TileContact = 2,
     Lava = 4
 }
 
@@ -73,6 +76,25 @@ public static class VanillaIncomingPlayerDamageFacts1458
             return 0;
         int varied = ApplyDamageVariation(projectileDamage, variationPercent);
         return varied > int.MaxValue / 2 ? int.MaxValue : varied * 2;
+    }
+
+    /// <summary>
+    /// Source Damage_EVP's default hostile curve at an owned non-Journey integer
+    /// difficulty. Variation precedes scaling and scaling precedes the x2 factor.
+    /// The caller resolves Good World and the curve's Master clamp; no world
+    /// difficulty or Journey slider is inferred from player presentation.
+    /// </summary>
+    public static int ResolveHostileProjectileDamage(int projectileDamage, int variationPercent,
+        int hostileDifficultyMultiplier)
+    {
+        if (hostileDifficultyMultiplier is < 1 or > 3) return 0;
+        if (hostileDifficultyMultiplier == 1)
+            return ResolveHostileProjectileDamage(projectileDamage, variationPercent);
+        if (projectileDamage <= 0) return 0;
+        int varied = ApplyDamageVariation(projectileDamage, variationPercent);
+        float scaled = varied * (float)hostileDifficultyMultiplier;
+        if (scaled >= int.MaxValue / 2f) return int.MaxValue;
+        return (int)scaled * 2;
     }
 
     public static int ResolveNpcContactDamage(int npcDamage, int variationPercent) =>

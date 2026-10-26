@@ -882,12 +882,12 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
         })
         {
             Assert.Equal(GameplayBehaviorRegistrationResult.Registered,
-                registry.TryRegister(new GameplayExtensionId("roster:" + id), new NpcTypeId(74), stage, 0,
+                registry.TryRegister(new GameplayExtensionId("roster:" + id), new NpcTypeId(76), stage, 0,
                     new Move(id, delta, log), out _));
         }
         registry.CommitPending();
         var store = new RuntimeNpcStore(2);
-        var initial = new NpcStateUpdate(74, 74, 1000, 1000, 0, 0, 255, default,
+        var initial = new NpcStateUpdate(76, 76, 1000, 1000, 0, 0, 255, default,
             NpcSimulationState.Initial with { Life = 40, LifeMax = 40, HitboxOverride = new(17, 23) });
         Assert.True(store.TrySpawn(0, in initial, out var before));
         var wrapper = new RuntimeNpcBehaviorStateStepper(new Move("vanilla", 1000, log), registry);
@@ -915,10 +915,11 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
         Assert.Null(default(NpcSimulationState).StairFall);
         string serialized = JsonSerializer.Serialize(new { summary, log, after },
             new JsonSerializerOptions { TypeInfoResolver = oldSchema });
-        // Baseline binaries reproduce the prior Old Man golden exactly; the same independent
-        // capture uses Bird74 now that Old Man37 has real definition defaults.
+        // The unchanged pre-extension baseline verifies Bird74's historical hash, then captures
+        // source-zero-life76 as an explicitly registered custom fixture. Bird74 now owns creation defaults.
+        // The same76 fixture/hash preserves this custom composition check across the feature extension.
         // Added retained fields are asserted separately and excluded from the historical schema.
-        Assert.Equal("8c3e630b6a90cebf00702d8c64b461b0319142a68f0e8b80f91e2ae85158964a",
+        Assert.Equal("389180c53e1a6bc178f597bf918edb62bc54fc51dea9d5f1aaaa172f3270f60d",
             Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(serialized))));
     }
 

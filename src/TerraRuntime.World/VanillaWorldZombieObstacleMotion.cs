@@ -200,7 +200,7 @@ public static class VanillaWorldZombieObstacleMotion
             return true;
 
         WorldTile tile = tiles.Get(x, y);
-        if (!tile.IsActive || (tile.Flags & WorldTileFlags.Inactive) != 0 || tile.Shape == 1)
+        if (!tile.IsActive || (tile.Flags & WorldTileFlags.Inactive) != 0 || tile.IsHalfBrick)
             return false;
 
         bool solid = VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||

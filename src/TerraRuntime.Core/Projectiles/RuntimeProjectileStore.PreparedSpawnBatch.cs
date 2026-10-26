@@ -49,8 +49,8 @@ public sealed partial class RuntimeProjectileStore
         internal SpawnBatchPreparation(RuntimeProjectileStore owner, int count)
         {
             this.owner = owner;
-            // The measured eight-child preparation otherwise allocates two complete 1,001-slot arrays
-            // (305,672 bytes per preparation). Reuse value-only scratch; the immutable journal is never pooled.
+            // The original allocation measurement justified reusing these two complete slot arrays.
+            // Element size grows with source lifecycle fields; immutable journals remain unpooled.
             baseline = ArrayPool<SlotState>.Shared.Rent(owner.Capacity);
             shadow = ArrayPool<SlotState>.Shared.Rent(owner.Capacity);
             owner._slots.CopyTo(baseline, 0);
@@ -149,6 +149,6 @@ public sealed partial class RuntimeProjectileStore
             before.Active == current.Active && before.Generation == current.Generation &&
             before.Revision == current.Revision && before.Update == current.Update &&
             before.Lifecycle == current.Lifecycle && before.CombatTrusted == current.CombatTrusted &&
-            before.CombatTrustedOwner == current.CombatTrustedOwner && before.SourceNpc == current.SourceNpc;
+            before.CombatTrustedOwner == current.CombatTrustedOwner && before.SourceNpc == current.SourceNpc && before.SourceDirection == current.SourceDirection;
     }
 }

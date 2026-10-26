@@ -171,7 +171,7 @@ public static class VanillaWorldShimmerLanding1458
                 float tileX = x * tileSize;
                 float tileY = y * tileSize;
                 int tileHeight = 16;
-                if (tile.Shape == 1)
+                if (tile.IsHalfBrick)
                 {
                     tileY += 8f;
                     tileHeight = 8;

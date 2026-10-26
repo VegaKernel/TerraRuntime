@@ -1005,7 +1005,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         after.FrameX = -1;
         after.FrameY = -1;
         after.TileColor = 0;
-        after.Shape = 0;
+        after.ClearSourceShape();
         after.Flags &= ~(
             WorldTileFlags.Active |
             WorldTileFlags.Inactive |

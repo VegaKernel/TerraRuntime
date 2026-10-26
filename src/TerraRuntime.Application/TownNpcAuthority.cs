@@ -99,7 +99,7 @@ internal sealed class TownNpcAuthority
                 townSpawnWorldFacts?.InfectedSeed ?? false)
             : null;
         commerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
-            ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, npcs, in commerceFacts, this.npcStatus)
+            ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, npcs, in commerceFacts, this.npcStatus, progression)
             : null;
         combat = worldTiles is not null &&
             townNpcs is not null
@@ -241,9 +241,10 @@ internal sealed class TownNpcAuthority
         {
             var moveInConditions = new RuntimeTownNpcMoveInConditions1458(
                 DayTime: worldClock?.DayTime ?? true,
-                Eclipse: initialEclipse,
+                Eclipse: worldClock?.EclipseActive ?? initialEclipse,
                 InvasionActive: invasion is not null && invasionCapture.State.Type > 0,
-                WorldUpdateRate: 1);
+                WorldUpdateRate: 1)
+            { Christmas = worldClock is { HasOwnedSeasonalState: true } ? worldClock.ChristmasActive : null };
             moveIn.Tick(
                 in moveInConditions,
                 spawnPlayers.AsSpan(0, spawnPlayerCount),
@@ -262,7 +263,7 @@ internal sealed class TownNpcAuthority
             var scheduleConditions = new RuntimeTownNpcScheduleConditions1458(
                 DayTime: worldClock?.DayTime ?? true,
                 Raining: worldClock?.Raining ?? initialRaining,
-                Eclipse: initialEclipse,
+                Eclipse: worldClock?.EclipseActive ?? initialEclipse,
                 SlimeRain: worldClock?.SlimeRainActive ?? false,
                 StormingAboveSurface: false) { PartyIsUp = partyIsUp,
                     InvasionActive = invasion is not null && invasionCapture.State.Type > 0 };

@@ -181,7 +181,7 @@ public static class WorldSectionPayloadEncoder
     {
         if (tile.Type >= VanillaWorldFormat326.TileTypeCount || tile.Wall >= VanillaWorldFormat326.WallTypeCount)
             return false;
-        if (tile.Shape > 5)
+        if (!tile.HasOnlyKnownFlags || !tile.HasValidSourceShape)
             return false;
         if (tile.LiquidAmount == 0)
             return true;
@@ -279,7 +279,7 @@ public static class WorldSectionPayloadEncoder
         if ((flags & WorldTileFlags.WireRed) != 0) header2 |= 0x02;
         if ((flags & WorldTileFlags.WireBlue) != 0) header2 |= 0x04;
         if ((flags & WorldTileFlags.WireGreen) != 0) header2 |= 0x08;
-        header2 |= checked((byte)(tile.Shape << 4));
+        header2 |= checked((byte)(tile.SourcePackedShape << 4));
         if ((flags & WorldTileFlags.Actuator) != 0) header3 |= 0x02;
         if ((flags & WorldTileFlags.Inactive) != 0) header3 |= 0x04;
         if ((flags & WorldTileFlags.WireYellow) != 0) header3 |= 0x20;

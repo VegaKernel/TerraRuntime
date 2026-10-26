@@ -16,7 +16,7 @@ public sealed class VanillaWorldTileMutationServiceTests
         var result = new VanillaWorldTileMutationService(tiles).Apply(new(WorldTileMutationKind.ClearTile, 10, 10));
         Assert.True(result.Applied);
         var expected = before;
-        expected.Shape = 0;
+        expected.ClearSourceShape();
         expected.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive);
         Assert.Equal(expected, tiles.Get(10, 10));
     }

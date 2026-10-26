@@ -89,6 +89,49 @@ public sealed class RuntimeTownCommerce1458Tests
     }
 
     [Fact]
+    public void Accepted_invasion_milestones_unlock_existing_vendor_offers_before_reload()
+    {
+        foreach (var row in new[]
+                 {
+                     (Npc: 54, Milestone: VanillaWorldProgressionId.FrostLegion, Item: 1275),
+                     (Npc: 38, Milestone: VanillaWorldProgressionId.PirateInvasion, Item: 937),
+                     (Npc: 209, Milestone: VanillaWorldProgressionId.MartianMadness, Item: 4445)
+                 })
+        {
+            var tiles = new WorldTileStore(new WorldDimensions(500, 300));
+            Assert.True(tiles.TryAttachWorldSurface(100));
+            var npcs = new RuntimeNpcStore();
+            var town = new RuntimeTownNpcStateStore(new WorldNpcPersistence([], [
+                new WorldTownNpc(row.Npc, "Vendor", 1600f, 1600f, false, 100, 100, null, false)
+            ], []), [], tiles.Dimensions);
+            Assert.True(town.TryReserveRuntimeSlots(npcs));
+            RuntimeTownCommerceWorldFacts1458 facts = Facts(false) with
+                { HardMode = row.Npc != 38, DownedPlantera = row.Npc != 38 };
+            var progression = new RuntimeWorldProgressionMutations();
+            var resolver = new RuntimeTownCommerceResolver1458(tiles, town, npcs, in facts, progression: progression);
+            var player = new RuntimeTownCommercePlayer1458(1600f, 1600f, 400, 200, 0);
+            var items = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+            Assert.True(resolver.TryResolve(items, in player, 0, null, out var before));
+            Assert.DoesNotContain(before.Offers, offer => offer.Item.Value == row.Item);
+            Assert.True(progression.MarkCompleted(row.Milestone));
+            if (row.Npc == 38)
+            {
+                Assert.True(resolver.TryResolve(items, in player, 0, null, out var invasionOnly));
+                Assert.DoesNotContain(invasionOnly.Offers, offer => offer.Item.Value == row.Item);
+                Assert.True(progression.MarkCompleted(VanillaWorldProgressionId.Hardmode));
+                Assert.True(resolver.TryResolve(items, in player, 0, null, out var hardmode));
+                Assert.DoesNotContain(hardmode.Offers, offer => offer.Item.Value == row.Item);
+                Assert.True(progression.MarkCompleted(VanillaWorldProgressionId.Plantera));
+            }
+            Assert.True(resolver.TryResolve(items, in player, 0, null, out var after));
+            Assert.Contains(after.Offers, offer => offer.Item.Value == row.Item);
+            Assert.False(progression.MarkCompleted(row.Milestone));
+            Assert.True(resolver.TryResolve(items, in player, 0, null, out var repeat));
+            Assert.Equal(after.Offers, repeat.Offers);
+        }
+    }
+
+    [Fact]
     public void Metadata_projection_preserves_no_traps_world_for_npc_ai_consumers()
     {
         RuntimeTownCommerceWorldFacts1458 facts = RuntimeTownCommerceWorldFacts1458.FromMetadata(

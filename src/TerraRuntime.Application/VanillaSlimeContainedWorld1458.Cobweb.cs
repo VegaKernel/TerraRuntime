@@ -64,7 +64,7 @@ internal sealed partial class VanillaSlimeContainedWorld1458
             webCenter = (x, y);
             var placed = before;
             placed.Type = (ushort)VanillaTileIds.Cobweb.Value; placed.FrameX = placed.FrameY = 0;
-            placed.Shape = 0; placed.TileColor = 0;
+            placed.ClearSourceShape(); placed.TileColor = 0;
             placed.Flags = (placed.Flags & ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock)) | WorldTileFlags.Active;
             StageWebTile(x, y, in placed);
             return PlanWebSquare(x, y, random);
@@ -108,7 +108,7 @@ internal sealed partial class VanillaSlimeContainedWorld1458
             var cell = ReadWebTile(x, y);
             if (!cell.IsActive)
             {
-                cell.Shape = 0; cell.TileColor = 0;
+                cell.ClearSourceShape(); cell.TileColor = 0;
                 cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
                 StageWebTile(x, y, in cell);
             }
@@ -209,7 +209,7 @@ internal sealed partial class VanillaSlimeContainedWorld1458
             }
             var dead = before;
             dead.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-            dead.Type = 0; dead.Shape = 0; dead.TileColor = 0; dead.FrameX = dead.FrameY = -1;
+            dead.Type = 0; dead.ClearSourceShape(); dead.TileColor = 0; dead.FrameX = dead.FrameY = -1;
             webBanks[(x, y)] = 0;
             StageWebTile(x, y, in dead, 0);
             if (!PlanWebSquare(x, y, random)) return false;

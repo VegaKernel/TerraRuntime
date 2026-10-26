@@ -7,9 +7,9 @@ public sealed partial class RuntimeNpcStore
     internal bool TryPrepareProjectedTerminalRemoval(in NpcSnapshot projected, out TerminalRemoval? removal)
     {
         removal = null;
-        if ((projected.TypeIdentity != TerraRuntime.Contracts.Gameplay.VanillaNpcIds.PirateCaptain &&
-             projected.TypeIdentity != TerraRuntime.Contracts.Gameplay.VanillaNpcIds.PirateGhost) ||
-            projected.Simulation.Life != 0 || !TryGet(projected.Handle, out var current) ||
+        // Content/death-producer admission belongs to the caller. This owner only
+        // retains the exact revision produced by one forthcoming unpublished HP write.
+        if (projected.Simulation.Life != 0 || !TryGet(projected.Handle, out var current) ||
             current.Revision != projected.Revision || current.Revision.Value == ulong.MaxValue)
             return false;
         removal = new(this, projected, true);
@@ -28,15 +28,18 @@ public sealed partial class RuntimeNpcStore
     {
         private readonly RuntimeNpcStore owner;
         private readonly NpcSnapshot expected;
+        private readonly NpcSnapshot beforeStrike;
         private readonly SlotState before;
         private SlotState after;
         private bool adopted;
         private bool published;
+        private bool pendingBirthPublished;
 
         internal TerminalRemoval(RuntimeNpcStore owner, NpcSnapshot expected, bool projected = false)
         {
             this.owner = owner;
             var retained = owner._slots[expected.Handle.Slot];
+            beforeStrike = Capture(expected.Handle.Slot, retained);
             if (projected)
             {
                 retained.Revision++;
@@ -58,6 +61,23 @@ public sealed partial class RuntimeNpcStore
 
         internal bool IsAcceptedCurrent => adopted && Same(owner._slots[expected.Handle.Slot], after);
 
+        internal NpcSnapshot Expected => expected;
+
+        internal bool TryCapturePendingBirth(out NpcSnapshot snapshot)
+        {
+            snapshot = beforeStrike;
+            return before.BirthPending;
+        }
+
+        internal bool TryPublishPendingBirthBeforeStrike()
+        {
+            if (!adopted || pendingBirthPublished) return false;
+            pendingBirthPublished = true;
+            if (before.BirthPending && IsAcceptedCurrent)
+                owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in beforeStrike);
+            return true;
+        }
+
         internal bool TryAdoptUnpublished()
         {
             if (!IsCurrent) return false;
@@ -77,8 +97,9 @@ public sealed partial class RuntimeNpcStore
             if (!adopted || published) return false;
             published = true;
             if (!Same(owner._slots[expected.Handle.Slot], after)) return true;
-            if (before.BirthPending)
+            if (before.BirthPending && !pendingBirthPublished)
             {
+                pendingBirthPublished = true;
                 owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in expected);
                 if (!Same(owner._slots[expected.Handle.Slot], after)) return true;
             }

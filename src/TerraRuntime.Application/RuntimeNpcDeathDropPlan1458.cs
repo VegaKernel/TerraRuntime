@@ -60,14 +60,28 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
         if (unpublishedMode || failed || !accepted || borrowedAllocation || nextPhase != 0 ||
             expected.Handle != Owner || expected.Revision != Revision || expected.NetId != expected.Type ||
             (expected.TypeIdentity != VanillaNpcIds.Zombie && expected.TypeIdentity != VanillaNpcIds.BlueSlime &&
-             expected.TypeIdentity != VanillaNpcIds.LavaSlime && expected.TypeIdentity != VanillaNpcIds.PirateCaptain && expected.TypeIdentity != VanillaNpcIds.PirateGhost)) return false;
+             expected.TypeIdentity != VanillaNpcIds.LavaSlime && expected.TypeIdentity != VanillaNpcIds.PirateCaptain &&
+             expected.TypeIdentity != VanillaNpcIds.PirateGhost && !CanOwnMoonDeath(expected.TypeIdentity) &&
+             !CanOwnOrdinaryInvasionDeath(expected.TypeIdentity))) return false;
         // Client-local rewards require their own unpublished lease adoption; this lane owns ordinary drops only.
         foreach (var drop in drops.AsSpan(0, count))
             if (drop.LeaseTicks != 0 || drop.Recipients.Length != 0) return false;
-        drainPublication = expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost);
+        drainPublication = CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) ||
+            expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost);
         unpublishedMode = true;
         return CanAdoptUnpublished();
     }
+
+    // NPC.HitEffect (1.4.5.8): these two families only call dedicated no-op Dust/Gore
+    // with fixed arguments. Additional event actors retain their existing death lane until
+    // all source death producers and client-local rewards have an unpublished owner.
+    internal static bool CanOwnMoonDeath(NpcTypeId type) => type.Value is >= 305 and <= 314 or >= 338 and <= 340;
+
+    // NPC.HitEffect and the type-specific DoDeathEvents switch (1.4.5.8) have no
+    // retained producer for these bodies. The generic Dungeon Spirit gate is
+    // checked separately by the retained death planner; Captain/Ghost stay separate.
+    internal static bool CanOwnOrdinaryInvasionDeath(NpcTypeId type) =>
+        type.Value is 26 or 27 or 28 or 29 or 111 or 212 or 213 or 214 or 215 or 252;
 
     internal bool ValidateUnpublishedOwnerFacts() => unpublishedMode && !adoptedUnpublished &&
         allocation?.ValidateOwnerFacts() == true;

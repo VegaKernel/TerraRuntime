@@ -136,6 +136,6 @@ public sealed partial class RuntimeProjectileStore
             left.Active == right.Active && left.Generation == right.Generation &&
             left.Revision == right.Revision && left.Update == right.Update &&
             left.Lifecycle == right.Lifecycle && left.CombatTrusted == right.CombatTrusted &&
-            left.CombatTrustedOwner == right.CombatTrustedOwner && left.SourceNpc == right.SourceNpc;
+            left.CombatTrustedOwner == right.CombatTrustedOwner && left.SourceNpc == right.SourceNpc && left.SourceDirection == right.SourceDirection;
     }
 }

@@ -43,8 +43,8 @@ public sealed class NpcDefinitionOnlyWireRetention1458Tests
             Assert.Equal(update.Simulation.SpawnDifficulty, updated.Simulation.SpawnDifficulty);
             Assert.Equal(update.Simulation.HitboxOverride, updated.Simulation.HitboxOverride);
         }
-        // The complete AI003/AI007 definitions and Ghost662 have left this metadata-only cohort.
-        Assert.Equal(192, identities);
+        // Source664 alone retains metadata-only status because its original physical body is zero-sized.
+        Assert.Equal(1, identities);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class NpcDefinitionOnlyWireRetention1458Tests
             Assert.True(store.TryUpdate(imported.Handle, in state, out NpcSnapshot updated));
             CheckUnknown(updated);
         }
-        Assert.Equal(192, identities);
+        Assert.Equal(1, identities);
     }
 
     [Fact]
@@ -75,7 +75,9 @@ public sealed class NpcDefinitionOnlyWireRetention1458Tests
         foreach (JsonElement wire in Read("npc-definition-wire-official-1458.json.gz"))
         {
             JsonElement row = metadata[Int(wire, "requested")];
-            if (!Selected(row) || Int(wire, "mode") == 2) continue;
+            // Keep the full previous192-identity wire oracle, including newly materialized creation-only definitions.
+            if (!(Selected(row) || VanillaNpcSourceDefaultRoster1458.TryGetCreation(
+                    new(Int(row, "type")), new((short)Int(row, "netId")), out _)) || Int(wire, "mode") == 2) continue;
             frames++;
             int mode = Int(wire, "mode");
             var store = new RuntimeNpcStore(1);

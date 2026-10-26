@@ -17,7 +17,7 @@ public sealed class MothronAcceptedOwnership1458Tests
         for (int x = 0; x < 600; x++) tiles.Set(x, 80, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         var store = new RuntimeNpcStore();
         var runtime = new ServerRuntimeState(npcs: store, worldTiles: tiles,
-            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0, eclipse: true),
             townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with
             { Eclipse = true, WorldSurface = 140, RockLayer = 200 },
             townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458), naturalSpawnRandom: new SystemVanillaNpcRandom(1458));

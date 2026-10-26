@@ -142,7 +142,8 @@ internal sealed class ServerRuntimeComposition
         Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null,
         PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null,
         IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned,
-        VanillaItemPrefixWorld1458? itemPrefixWorld = null)
+        VanillaItemPrefixWorld1458? itemPrefixWorld = null,
+        RuntimePlayerUpdateWorld1458? sourcePlayerWorld = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -168,6 +169,14 @@ internal sealed class ServerRuntimeComposition
             var sourceWorld = new RuntimePlayerUpdateWorld1458(worldTiles.Dimensions.WidthTiles,
                 worldTiles.Dimensions.HeightTiles, playerWorld.WorldSurface, playerWorld.RemixWorld, playerWorld.SkyblockWorld)
             { WindowsItemPrefixArithmetic = itemPrefixArithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86 };
+            if (sourcePlayerWorld is { } exactWorld)
+            {
+                if (!exactWorld.IsValid || exactWorld.MaxTilesX != sourceWorld.MaxTilesX ||
+                    exactWorld.MaxTilesY != sourceWorld.MaxTilesY || exactWorld.WorldSurface != sourceWorld.WorldSurface ||
+                    exactWorld.RemixWorld != sourceWorld.RemixWorld || exactWorld.SkyblockWorld != sourceWorld.SkyblockWorld)
+                    throw new ArgumentException("Player tool and motion facts belong to different worlds.", nameof(sourcePlayerWorld));
+                sourceWorld = exactWorld with { WindowsItemPrefixArithmetic = sourceWorld.WindowsItemPrefixArithmetic };
+            }
             if (sourceWorld.IsValid) playersAuthority.SetPlayerUpdateWorldFacts(in sourceWorld);
         }
         if (townCommerceWorldFacts is { } healthWorld)
@@ -216,7 +225,9 @@ internal sealed class ServerRuntimeComposition
             pickupDifficulty >= 2f,
             pickupDifficulty >= 3f,
             townCommerceWorldFacts is { } ownedCalendar ? () => new VanillaSeasonalItemDropContext1458(
-                ownedCalendar.Halloween, ownedCalendar.XMas, ownedCalendar.TenthAnniversaryWorld) : null);
+                worldClock is { HasOwnedSeasonalState: true } ? worldClock.HalloweenActive : ownedCalendar.Halloween,
+                worldClock is { HasOwnedSeasonalState: true } ? worldClock.ChristmasActive : ownedCalendar.XMas,
+                ownedCalendar.TenthAnniversaryWorld) : null);
         worldItemStore.AttachOwnerFactsProvider(worldItemAuthority.SourceOwnerFacts);
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
         playersAuthority.SetNpcHealthGrapplingFacts(player => PlayerAuthority.CaptureNpcHealthGrappling(projectileStore, player));
@@ -306,6 +317,8 @@ internal sealed class ServerRuntimeComposition
             townCommerceWorldFacts?.HardMode ?? false,
             worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
             tileManipulationReplication);
+        worldClock?.BindToolTreeShakeOwner(worldTileAuthority);
+        playersAuthority.BindToolActions(worldTileAuthority, projectileAuthority);
         RuntimeBotAuthority? botAuthority = serverPlayers is not null && botTelemetry is not null && worldTiles is not null
             ? new RuntimeBotAuthority(
                 serverPlayers,

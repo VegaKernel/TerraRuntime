@@ -2,13 +2,14 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.Gameplay.Npcs;
+using System.Reflection;
 
 namespace TerraRuntime.Tests;
 
 public sealed class MechdusaBossSummonTests
 {
     [Fact]
-    public void Zenith_packet_61_minus_16_creates_the_source_ordered_mechanical_batch()
+    public void Trusted_zenith_producer_retains_source_ordered_batch_but_packet_61_cannot_create_it_free()
     {
         var npcs = new RuntimeNpcStore();
         var state = new ServerRuntimeState(
@@ -21,6 +22,8 @@ public sealed class MechdusaBossSummonTests
             player, session, new PlayerSpawnCommitRequest(session.Slot, 200, 120, 0, 0, 0, 0, 0)));
 
         state.Apply(new ClientBossSummonRuntimeCommand(player, -16));
+        Assert.Equal(0, npcs.ActiveCount);
+        TrustedMechdusa(state, player.Player.Slot.Value);
 
         NpcSnapshot[] active = new NpcSnapshot[10];
         Assert.Equal(6, npcs.CopyActive(active));
@@ -52,6 +55,7 @@ public sealed class MechdusaBossSummonTests
 
         // NPC.SpawnMechQueen first rejects any active Prime, Destroyer or Twin.
         state.Apply(new ClientBossSummonRuntimeCommand(player, -16));
+        TrustedMechdusa(state, player.Player.Slot.Value);
         Assert.Equal(6, npcs.CopyActive(active));
     }
 
@@ -74,7 +78,7 @@ public sealed class MechdusaBossSummonTests
     }
 
     [Fact]
-    public void Packet_61_moon_actions_start_only_the_source_eligible_night_event()
+    public void Packet_61_moon_actions_require_payment_even_at_the_source_eligible_time()
     {
         var clock = new RuntimeWorldClock(100d, false, default, 0d, dayRate: 0);
         var state = new ServerRuntimeState(worldClock: clock);
@@ -86,12 +90,13 @@ public sealed class MechdusaBossSummonTests
 
         state.Apply(new ClientBossSummonRuntimeCommand(player, -4));
 
-        Assert.True(clock.PumpkinMoonActive);
+        Assert.False(clock.PumpkinMoonActive);
         Assert.False(clock.SnowMoonActive);
-        Assert.Equal(1, clock.MoonEventWaveNumber);
+        Assert.Equal(0, clock.MoonEventWaveNumber);
 
         state.Apply(new ClientBossSummonRuntimeCommand(player, -5));
-        Assert.True(clock.PumpkinMoonActive);
+        Assert.False(clock.PumpkinMoonActive);
+        Assert.False(clock.SnowMoonActive);
 
         var dayClock = new RuntimeWorldClock(100d, true, default, 0d, dayRate: 0);
         Assert.False(dayClock.TryStartSnowMoon());
@@ -100,6 +105,14 @@ public sealed class MechdusaBossSummonTests
 
     private static NpcSnapshot Single(NpcSnapshot[] snapshots, NpcTypeId type) =>
         Assert.Single(snapshots, npc => npc.TypeIdentity == type);
+
+    private static void TrustedMechdusa(ServerRuntimeState state, byte slot)
+    {
+        var graph = (ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(state)!;
+        typeof(NpcAuthority).GetMethod("TrySpawnMechdusa", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(graph.Npcs, [slot]);
+    }
 
     private static PlayerJoinSession CreatePlayingSession(PlayerSlotPool slots)
     {

@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/NpcRemainingLinux1458.json.gz" LogicalName="NpcRemainingLinux1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/NpcRemainingWindows1458.json.gz" LogicalName="NpcRemainingWindows1458.json.gz" />
     <EmbeddedResource Include="Fixtures/NpcContactBuffLinux1458.csv.gz" LogicalName="NpcContactBuffLinux1458" />
     <EmbeddedResource Include="Fixtures/NpcContactBuffWindows1458.csv.gz" LogicalName="NpcContactBuffWindows1458" />
     <EmbeddedResource Include="Fixtures/GroundRosterLinux1458.json.gz" LogicalName="GroundRosterLinux1458" />
@@ -193,6 +195,8 @@
     <EmbeddedResource Include="Fixtures/invasion-death-credit-official-1458.json.gz" LogicalName="InvasionDeathOrder1458" />
     <EmbeddedResource Include="Fixtures/invasion-death-zero-start-official-1458.json.gz" LogicalName="InvasionDeathZeroStart1458" />
     <EmbeddedResource Include="Fixtures/invasion-persistence-official-1458.json.gz" LogicalName="InvasionPersistence1458" />
+    <EmbeddedResource Include="Fixtures/moon-season-header-official-1458.json.gz" LogicalName="MoonSeasonHeader1458" />
+    <EmbeddedResource Include="Fixtures/progression-world-wire-official-1458.json.gz" LogicalName="ProgressionWorldWire1458" />
     <EmbeddedResource Include="Fixtures/lantern-pending-persistence-official-1458.json.gz" LogicalName="LanternPendingPersistence1458" />
     <EmbeddedResource Include="Fixtures/invasion-spawn-selection-official-1458.json.gz" LogicalName="InvasionSpawnSelection1458" />
     <EmbeddedResource Include="Fixtures/invasion-day-fighter-context-official-1458.json.gz" LogicalName="InvasionDayFighterContext1458" />
@@ -726,4 +730,159 @@
   </ItemGroup>
 
 <ItemGroup><EmbeddedResource Include="Fixtures/FoodBehaviorLinux1458.json.gz" LogicalName="FoodBehaviorLinux1458" /><EmbeddedResource Include="Fixtures/FoodBehaviorWindows1458.json.gz" LogicalName="FoodBehaviorWindows1458" /><EmbeddedResource Include="Fixtures/FoodConsumersLinux1458.json.gz" LogicalName="FoodConsumersLinux1458" /><EmbeddedResource Include="Fixtures/FoodConsumersWindows1458.json.gz" LogicalName="FoodConsumersWindows1458" /><EmbeddedResource Include="Fixtures/FoodInputLinux1458.json.gz" LogicalName="FoodInputLinux1458" /><EmbeddedResource Include="Fixtures/FoodInputWindows1458.json.gz" LogicalName="FoodInputWindows1458" /><EmbeddedResource Include="Fixtures/FoodMetadataLinux1458.json.gz" LogicalName="FoodMetadataLinux1458" /><EmbeddedResource Include="Fixtures/FoodMetadataWindows1458.json.gz" LogicalName="FoodMetadataWindows1458" /><EmbeddedResource Include="Fixtures/FoodSevenLinux1458.json.gz" LogicalName="FoodSevenLinux1458" /><EmbeddedResource Include="Fixtures/FoodSevenWindows1458.json.gz" LogicalName="FoodSevenWindows1458" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-player-linux.json.gz" LogicalName="ToolPlayerSourceLinux1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-player-windows.json.gz" LogicalName="ToolPlayerSourceWindows1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-lucy-linux.json.gz" LogicalName="ToolLucySourceLinux1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-lucy-windows.json.gz" LogicalName="ToolLucySourceWindows1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorTerrainLinuxFirst1458.json.gz" LogicalName="AllToolActorTerrainLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorTerrainLinuxRepeat1458.json.gz" LogicalName="AllToolActorTerrainLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorTerrainWindowsFirst1458.json.gz" LogicalName="AllToolActorTerrainWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorTerrainWindowsRepeat1458.json.gz" LogicalName="AllToolActorTerrainWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorCutsLinuxFirst1458.json.gz" LogicalName="AllToolActorCutsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorCutsLinuxRepeat1458.json.gz" LogicalName="AllToolActorCutsLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorCutsWindowsFirst1458.json.gz" LogicalName="AllToolActorCutsWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolActorCutsWindowsRepeat1458.json.gz" LogicalName="AllToolActorCutsWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AllToolFallingLandingLinuxFirst1458.json.gz" LogicalName="AllToolFallingLandingLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolFallingLandingLinuxRepeat1458.json.gz" LogicalName="AllToolFallingLandingLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AllToolFallingLandingWindowsFirst1458.json.gz" LogicalName="AllToolFallingLandingWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolFallingLandingWindowsRepeat1458.json.gz" LogicalName="AllToolFallingLandingWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AllToolsExtensionLinuxFirst1458.json.gz" LogicalName="AllToolsExtensionLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolsExtensionWindowsFirst1458.json.gz" LogicalName="AllToolsExtensionWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolsHeldLinuxFirst1458.json.gz" LogicalName="AllToolsHeldLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AllToolsHeldWindowsFirst1458.json.gz" LogicalName="AllToolsHeldWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombsLinuxFirst.json.gz" LogicalName="AllToolWorldBombsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombsLinuxRepeat.json.gz" LogicalName="AllToolWorldBombsLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombsWindowsFirst.json.gz" LogicalName="AllToolWorldBombsWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombsWindowsRepeat.json.gz" LogicalName="AllToolWorldBombsWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombTailLinuxFirst.json.gz" LogicalName="AllToolWorldBombTailLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombTailLinuxRepeat.json.gz" LogicalName="AllToolWorldBombTailLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombTailWindowsFirst.json.gz" LogicalName="AllToolWorldBombTailWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombTailWindowsRepeat.json.gz" LogicalName="AllToolWorldBombTailWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombFuseLinuxFirst.json.gz" LogicalName="AllToolWorldBombFuseLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombFuseLinuxRepeat.json.gz" LogicalName="AllToolWorldBombFuseLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombFuseWindowsFirst.json.gz" LogicalName="AllToolWorldBombFuseWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Tools1458/BombFuseWindowsRepeat.json.gz" LogicalName="AllToolWorldBombFuseWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-replant-linux.json.gz" LogicalName="ToolReplantSourceLinux1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-replant-windows.json.gz" LogicalName="ToolReplantSourceWindows1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsMetadataLinuxFirst1458.json.gz" LogicalName="AllToolsMetadataLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsMetadataLinuxRepeat1458.json.gz" LogicalName="AllToolsMetadataLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsMetadataWindowsFirst1458.json.gz" LogicalName="AllToolsMetadataWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsMetadataWindowsRepeat1458.json.gz" LogicalName="AllToolsMetadataWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsExtraItemsLinuxFirst1458.json.gz" LogicalName="AllToolsExtraItemsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsExtraItemsLinuxRepeat1458.json.gz" LogicalName="AllToolsExtraItemsLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsExtraItemsWindowsFirst1458.json.gz" LogicalName="AllToolsExtraItemsWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsExtraItemsWindowsRepeat1458.json.gz" LogicalName="AllToolsExtraItemsWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixesLinuxFirst1458.json.gz" LogicalName="AllToolsPrefixesLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixesLinuxRepeat1458.json.gz" LogicalName="AllToolsPrefixesLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixesWindowsFirst1458.json.gz" LogicalName="AllToolsPrefixesWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixesWindowsRepeat1458.json.gz" LogicalName="AllToolsPrefixesWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixes85LinuxFirst1458.json.gz" LogicalName="AllToolsPrefixes85LinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixes85LinuxRepeat1458.json.gz" LogicalName="AllToolsPrefixes85LinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixes85WindowsFirst1458.json.gz" LogicalName="AllToolsPrefixes85WindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPrefixes85WindowsRepeat1458.json.gz" LogicalName="AllToolsPrefixes85WindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsVariantsLinuxFirst1458.json.gz" LogicalName="AllToolsVariantsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsVariantsLinuxRepeat1458.json.gz" LogicalName="AllToolsVariantsLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsVariantsWindowsFirst1458.json.gz" LogicalName="AllToolsVariantsWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsVariantsWindowsRepeat1458.json.gz" LogicalName="AllToolsVariantsWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileArraysLinuxFirst1458.json.gz" LogicalName="AllToolsTileArraysLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileArraysLinuxRepeat1458.json.gz" LogicalName="AllToolsTileArraysLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileArraysWindowsFirst1458.json.gz" LogicalName="AllToolsTileArraysWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileArraysWindowsRepeat1458.json.gz" LogicalName="AllToolsTileArraysWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileSetsLinuxFirst1458.json.gz" LogicalName="AllToolsTileSetsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileSetsLinuxRepeat1458.json.gz" LogicalName="AllToolsTileSetsLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileSetsWindowsFirst1458.json.gz" LogicalName="AllToolsTileSetsWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsTileSetsWindowsRepeat1458.json.gz" LogicalName="AllToolsTileSetsWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsConversionLinuxFirst1458.json.gz" LogicalName="AllToolsConversionLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsConversionLinuxRepeat1458.json.gz" LogicalName="AllToolsConversionLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsConversionWindowsFirst1458.json.gz" LogicalName="AllToolsConversionWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsConversionWindowsRepeat1458.json.gz" LogicalName="AllToolsConversionWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsJungleGrassLinuxFirst1458.json.gz" LogicalName="AllToolsJungleGrassLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsJungleGrassLinuxRepeat1458.json.gz" LogicalName="AllToolsJungleGrassLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsJungleGrassWindowsFirst1458.json.gz" LogicalName="AllToolsJungleGrassWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsJungleGrassWindowsRepeat1458.json.gz" LogicalName="AllToolsJungleGrassWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsHitLinuxFirst1458.json.gz" LogicalName="AllToolsHitLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsHitLinuxRepeat1458.json.gz" LogicalName="AllToolsHitLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsHitWindowsFirst1458.json.gz" LogicalName="AllToolsHitWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsHitWindowsRepeat1458.json.gz" LogicalName="AllToolsHitWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerContextLinuxFirst1458.json.gz" LogicalName="AllToolsPowerContextLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerContextLinuxRepeat1458.json.gz" LogicalName="AllToolsPowerContextLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerContextWindowsFirst1458.json.gz" LogicalName="AllToolsPowerContextWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerContextWindowsRepeat1458.json.gz" LogicalName="AllToolsPowerContextWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerLinuxFirst1458.json.gz" LogicalName="AllToolsPowerLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerLinuxRepeat1458.json.gz" LogicalName="AllToolsPowerLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerWindowsFirst1458.json.gz" LogicalName="AllToolsPowerWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerWindowsRepeat1458.json.gz" LogicalName="AllToolsPowerWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerFramesLinuxFirst1458.json.gz" LogicalName="AllToolsPowerFramesLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerFramesLinuxRepeat1458.json.gz" LogicalName="AllToolsPowerFramesLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerFramesWindowsFirst1458.json.gz" LogicalName="AllToolsPowerFramesWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPowerFramesWindowsRepeat1458.json.gz" LogicalName="AllToolsPowerFramesWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsItemCheckLinuxFirst1458.json.gz" LogicalName="AllToolsItemCheckLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsItemCheckLinuxRepeat1458.json.gz" LogicalName="AllToolsItemCheckLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsItemCheckWindowsFirst1458.json.gz" LogicalName="AllToolsItemCheckWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsItemCheckWindowsRepeat1458.json.gz" LogicalName="AllToolsItemCheckWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsHeldLinuxRepeat1458.json.gz" LogicalName="AllToolsHeldLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsHeldWindowsRepeat1458.json.gz" LogicalName="AllToolsHeldWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsExtensionLinuxRepeat1458.json.gz" LogicalName="AllToolsExtensionLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsExtensionWindowsRepeat1458.json.gz" LogicalName="AllToolsExtensionWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsProjectileMetadataLinuxFirst1458.json.gz" LogicalName="AllToolsProjectileMetadataLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsProjectileMetadataLinuxRepeat1458.json.gz" LogicalName="AllToolsProjectileMetadataLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsProjectileMetadataWindowsFirst1458.json.gz" LogicalName="AllToolsProjectileMetadataWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsProjectileMetadataWindowsRepeat1458.json.gz" LogicalName="AllToolsProjectileMetadataWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsCapsuleLinuxFirst1458.json.gz" LogicalName="AllToolsCapsuleLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsCapsuleLinuxRepeat1458.json.gz" LogicalName="AllToolsCapsuleLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsCapsuleWindowsFirst1458.json.gz" LogicalName="AllToolsCapsuleWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsCapsuleWindowsRepeat1458.json.gz" LogicalName="AllToolsCapsuleWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDirectionsLinuxFirst1458.json.gz" LogicalName="AllToolsDirectionsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDirectionsLinuxRepeat1458.json.gz" LogicalName="AllToolsDirectionsLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDirectionsWindowsFirst1458.json.gz" LogicalName="AllToolsDirectionsWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDirectionsWindowsRepeat1458.json.gz" LogicalName="AllToolsDirectionsWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDustLinuxFirst1458.json.gz" LogicalName="AllToolsDustLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDustLinuxRepeat1458.json.gz" LogicalName="AllToolsDustLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDustWindowsFirst1458.json.gz" LogicalName="AllToolsDustWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsDustWindowsRepeat1458.json.gz" LogicalName="AllToolsDustWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallDustLinuxFirst1458.json.gz" LogicalName="AllToolsWallDustLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallDustLinuxRepeat1458.json.gz" LogicalName="AllToolsWallDustLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallDustWindowsFirst1458.json.gz" LogicalName="AllToolsWallDustWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallDustWindowsRepeat1458.json.gz" LogicalName="AllToolsWallDustWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPredicatesLinuxFirst1458.json.gz" LogicalName="AllToolsPredicatesLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPredicatesLinuxRepeat1458.json.gz" LogicalName="AllToolsPredicatesLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPredicatesWindowsFirst1458.json.gz" LogicalName="AllToolsPredicatesWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsPredicatesWindowsRepeat1458.json.gz" LogicalName="AllToolsPredicatesWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallFramesLinuxFirst1458.json.gz" LogicalName="AllToolsWallFramesLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallFramesLinuxRepeat1458.json.gz" LogicalName="AllToolsWallFramesLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallFramesWindowsFirst1458.json.gz" LogicalName="AllToolsWallFramesWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsWallFramesWindowsRepeat1458.json.gz" LogicalName="AllToolsWallFramesWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActionClockLinuxFirst1458.json.gz" LogicalName="AllToolsActionClockLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActionClockLinuxRepeat1458.json.gz" LogicalName="AllToolsActionClockLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActionClockWindowsFirst1458.json.gz" LogicalName="AllToolsActionClockWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActionClockWindowsRepeat1458.json.gz" LogicalName="AllToolsActionClockWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsFinalPowerLinuxFirst1458.json.gz" LogicalName="AllToolsFinalPowerLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsFinalPowerLinuxRepeat1458.json.gz" LogicalName="AllToolsFinalPowerLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsFinalPowerWindowsFirst1458.json.gz" LogicalName="AllToolsFinalPowerWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsFinalPowerWindowsRepeat1458.json.gz" LogicalName="AllToolsFinalPowerWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActivePowerLinuxFirst1458.json.gz" LogicalName="AllToolsActivePowerLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActivePowerLinuxRepeat1458.json.gz" LogicalName="AllToolsActivePowerLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActivePowerWindowsFirst1458.json.gz" LogicalName="AllToolsActivePowerWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ToolsGame1458/AllToolsActivePowerWindowsRepeat1458.json.gz" LogicalName="AllToolsActivePowerWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/NaturalFallingLinuxFirst1458.json.gz" LogicalName="NaturalFallingLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/NaturalFallingLinuxRepeat1458.json.gz" LogicalName="NaturalFallingLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/NaturalFallingWindowsFirst1458.json.gz" LogicalName="NaturalFallingWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/NaturalFallingWindowsRepeat1458.json.gz" LogicalName="NaturalFallingWindowsRepeat1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-furniture-linux.json.gz" LogicalName="ToolFurnitureSourceLinux1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/tool-furniture-windows.json.gz" LogicalName="ToolFurnitureSourceWindows1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/single-cell-linux.json.gz" LogicalName="ToolSingleCellLinux1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/single-cell-tables.json.gz" LogicalName="ToolSingleCellTables1458" />
+    <EmbeddedResource Include="Fixtures/Vanilla1458/Tools/single-cell-windows.json.gz" LogicalName="ToolSingleCellWindows1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/LarvaLinuxfirst.json.gz" LogicalName="LarvaLinuxfirst" />
+    <EmbeddedResource Include="Fixtures/LarvaLinuxrepeat.json.gz" LogicalName="LarvaLinuxrepeat" />
+    <EmbeddedResource Include="Fixtures/LarvaWindowsfirst.json.gz" LogicalName="LarvaWindowsfirst" />
+    <EmbeddedResource Include="Fixtures/LarvaWindowsrepeat.json.gz" LogicalName="LarvaWindowsrepeat" />
+  </ItemGroup>
 </Project>

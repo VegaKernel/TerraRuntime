@@ -44,11 +44,14 @@ public sealed partial class WorldRuntime
         {
             WindSpeedTarget = WorldClock.WindSpeedTarget,
             Rain = WorldClock.NetworkRain,
+            Eclipse = WorldClock.EclipseActive,
+            ForceHalloweenForToday = WorldClock.HasOwnedSeasonalState ? WorldClock.ForceHalloweenForToday : null,
+            ForceXMasForToday = WorldClock.HasOwnedSeasonalState ? WorldClock.ForceXMasForToday : null,
             InvasionType = invasionKnown ? checked((sbyte)invasion.State.Type) : null,
             ProgressionMutations = WorldProgression.CaptureSnapshot()
         };
         var transient = new WorldInfoTransientState(WorldClock.PumpkinMoonActive, WorldClock.SnowMoonActive,
-            false, false, bootstrapSkyblockLowTiles, 0);
+            toolBuildingPermission.KnownEventOngoing == true, false, bootstrapSkyblockLowTiles, 0);
         TerrariaInvasionProgressState? progress = null;
         // Main.SyncAnInvasion prioritizes Snow Moon, Pumpkin Moon, DD2, then ordinary invasions.
         // DD2 and unsupported loaded invasion identities have no fabricated progress projection here.

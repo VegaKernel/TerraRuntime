@@ -10,6 +10,10 @@ public readonly record struct VanillaNpcSpawnContext(float Difficulty, int Activ
     public bool SkeletronActive { get; init; }
     public bool TenthAnniversaryWorld { get; init; }
     public bool RemixWorld { get; init; }
+    /// <summary>Source Main.Difficulty, independently of an explicit per-spawn strength override.</summary>
+    public float? WorldDifficulty { get; init; }
+    public bool? DownedAnyMechanicalBoss { get; init; }
+    public bool? DownedGolem { get; init; }
     public bool IsValid => float.IsFinite(Difficulty) && Difficulty is >= .5f and <= 4f &&
         ActivePlayers is >= 0 and <= 255;
 }
@@ -64,6 +68,11 @@ public readonly partial record struct VanillaNpcSpawnDefaults(
         bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
+        if (definition.Type == VanillaNpcIds.QueenBee)
+            return TryResolveQueenBee(in definition, in context, windowsArithmetic, out defaults);
+        if (VanillaNpcSourceDefaultRoster1458.TryGetCreationRow(definition.Type, out _) &&
+            (definition.Type.Value != 183 || definition.SourceNetId.Value < 0))
+            return TryResolveRemainingSourceRoster(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && VanillaNpcGroundRoster1458.IsSupported(definition.Type))
             return TryResolveGroundRoster(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && definition.Type == VanillaNpcIds.BlueSlime)

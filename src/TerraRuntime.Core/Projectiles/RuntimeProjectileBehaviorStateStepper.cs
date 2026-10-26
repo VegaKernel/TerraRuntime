@@ -310,7 +310,8 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             current.SubupdatesPerWorldTick,
             normalized.TerminationReason,
             normalized.PlayerBuff ?? current.PlayerBuff,
-            normalized.KillOrigin ?? current.KillOrigin);
+            normalized.KillOrigin ?? current.KillOrigin)
+        { SourceDirection = normalized.SourceDirection };
         return true;
     }
 
@@ -359,7 +360,9 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             OldVelocityY = previous.OldVelocityY,
             Reflected = previous.Reflected,
             PenetrateOverride = previous.PenetrateOverride,
-            LocalAi = localAi ?? previous.LocalAi
+            LocalAi = localAi ?? previous.LocalAi,
+            HeldTool = previousType == nextType ? previous.HeldTool : null,
+            ThrownAxe = previousType == nextType ? previous.ThrownAxe : null
         };
         return true;
     }
@@ -383,5 +386,5 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             current.TerminationReason,
             current.Lifecycle.LocalAi,
             current.PlayerBuff,
-            current.KillOrigin);
+            current.KillOrigin) { SourceDirection = current.SourceDirection };
 }

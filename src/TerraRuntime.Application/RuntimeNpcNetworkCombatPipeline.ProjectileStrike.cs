@@ -63,7 +63,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 throw new InvalidOperationException("An admitted projectile death lost its retained owners.");
             if (plannedDaily is not null) bossRecoveryDaily.CopyFrom(plannedDaily);
             if (worldClock is not null && plannedUnpublishedClock is not null)
-                worldClock.AdoptSlimeRainDeathProgress(plannedUnpublishedClock);
+                worldClock.AdoptDeathProgress(plannedUnpublishedClock);
         }
         else if (pendingProjectileStrike is { } projectile)
         {

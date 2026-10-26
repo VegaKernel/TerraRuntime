@@ -118,7 +118,7 @@ public static class VanillaWorldZombieStepUp
     private static bool IsActive(in WorldTile tile) =>
         tile.IsActive && (tile.Flags & WorldTileFlags.Inactive) == 0;
 
-    private static bool IsHalfBrick(in WorldTile tile) => tile.Shape == 1;
+    private static bool IsHalfBrick(in WorldTile tile) => tile.IsHalfBrick;
 
     private static bool IsTopSlope(in WorldTile tile) => tile.Shape is 2 or 3;
 

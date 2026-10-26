@@ -60,7 +60,7 @@ public static class VanillaWorldWalkDownSlope
                     continue;
                 }
 
-                float tileTop = y * TileSize + (tile.Shape == 1 ? 8f : 0f);
+                float tileTop = y * TileSize + (tile.IsHalfBrick ? 8f : 0f);
                 if (!Intersects(
                         x * 16,
                         y * 16 - 17,
@@ -119,7 +119,7 @@ public static class VanillaWorldWalkDownSlope
         return velocityY;
     }
 
-    private static int GetSlope(in WorldTile tile) => tile.Shape >= 2 ? tile.Shape - 1 : 0;
+    private static int GetSlope(in WorldTile tile) => tile.SourceSlope;
 
     private static bool Intersects(
         int leftA,

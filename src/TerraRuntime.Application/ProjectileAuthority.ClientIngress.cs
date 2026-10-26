@@ -50,6 +50,12 @@ internal sealed partial class ProjectileAuthority
             // copy the packet's position/velocity into the trusted generation.
             if (projectiles.IsCombatTrusted(projectile))
             {
+                if (TryRetainTrustedToolInput(command.Connection, projectile, in current, in packet))
+                {
+                    AcceptedTrustedSteeringInputs++;
+                    AppliedUpdates++;
+                    return;
+                }
                 if (VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeaponForProjectile(
                         current.Type, out VanillaChanneledMagicProjectileWeaponCombatDefinition controlledWeapon) &&
                     TryApplyTrustedControlledMagicInput(command.Connection, projectile, in current, in controlledWeapon, in packet))
@@ -73,6 +79,22 @@ internal sealed partial class ProjectileAuthority
 
             RejectedUpdates++;
             RejectedClientUpdates++;
+            return;
+        }
+
+        // A retained source tool report is input to the existing tool owner,
+        // never permission for the raw unknown-projectile fallback. A packet-first
+        // birth waits for its owned ItemCheck frame; a phase-first birth can commit.
+        var toolObservation = players.ObserveToolShoot(command.Connection, in packet, out _);
+        if (toolObservation != ToolReportObservationResult1458.NotApplicable)
+        {
+            if (toolObservation == ToolReportObservationResult1458.Rejected)
+            {
+                RejectedClientProjectileProvenance++;
+                RejectedClientUpdates++;
+            }
+            else
+                TryCommitPendingToolBirth(command.Connection);
             return;
         }
 
@@ -175,6 +197,7 @@ internal sealed partial class ProjectileAuthority
         // Accepting packet 29 here would let an owning client erase a server-owned combat generation early.
         if (projectiles.IsCombatTrusted(projectile))
         {
+            if (TryRetainTrustedToolStop(command.Connection, projectile, in current)) return;
             RejectedTrustedClientDestroys++;
             RejectedClientDestroys++;
             return;

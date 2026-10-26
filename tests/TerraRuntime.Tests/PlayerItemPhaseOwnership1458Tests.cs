@@ -21,7 +21,8 @@ public sealed class PlayerItemPhaseOwnership1458Tests
         // The older fixture omitted these fields; its other retained imports stay nullable.
         var constructor = Phase(Row(source, "constructor").GetProperty("constructor")) with
         {
-            ToolTime = 0, AttackCD = 0, DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
+            ToolTime = 0, ToolUse = RuntimePlayerToolUse1458.Constructor,
+            AttackCD = 0, DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
         };
         foreach (bool reportZero in new[] { false, true })
         {

@@ -6,6 +6,9 @@ internal sealed partial class NpcAuthority
 {
     private VanillaSeasonalItemDropContext1458 CaptureSeasonalItemContext()
     {
+        if (worldClock is { HasOwnedSeasonalState: true } clock)
+            return new(clock.HalloweenActive, clock.ChristmasActive,
+                naturalSpawnWorldFacts?.TenthAnniversaryWorld == true);
         if (naturalSpawnWorldFacts is not { UseLocalSeasonCalendar: true })
             return new(naturalSpawnWorldFacts?.Halloween == true, naturalSpawnWorldFacts?.XMas == true,
                 naturalSpawnWorldFacts?.TenthAnniversaryWorld == true);

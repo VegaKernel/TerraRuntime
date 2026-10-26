@@ -162,6 +162,7 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     internal int? OwnedChannelExpectedType { get; init; }
     internal bool SlowMagicUse { get; init; }
     internal RuntimePlayerMagicPayment1458? MagicPayment { get; init; }
+    internal RuntimePlayerToolUse1458? ToolUse { get; init; }
     internal int? ToolTime { get; init; }
     internal int? AttackCD { get; init; }
     internal VanillaPlayerCombatSnapshot? DerivedCombat { get; init; }
@@ -170,6 +171,7 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     internal static RuntimePlayerItemPhase1458 Constructor => new(
         20, new(0, 0, 0f, 0, 0), new(0, 0, 0, 0, false, 0, 0), 0f)
     {
-        ToolTime = 0, AttackCD = 0, DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
+        ToolTime = 0, ToolUse = RuntimePlayerToolUse1458.Constructor,
+        AttackCD = 0, DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
     };
 }

@@ -10,6 +10,14 @@ internal sealed partial class ProjectileAuthority
 
     private ProjectileActorSimulationResult TrySimulateOrdinaryArrowActor(ProjectileSnapshot initial)
     {
+        var worldBomb = TrySimulateWorldToolBombActor(initial);
+        if (worldBomb != ProjectileActorSimulationResult.NotApplicable) return worldBomb;
+        if (TerraRuntime.Gameplay.Projectiles.VanillaFallingBlock1458.TryGetTile(initial.Type, out _) &&
+            FallingBlocks.Contains(initial.Handle))
+            return TrySimulateFallingBlockActor(initial);
+        if (TerraRuntime.Gameplay.Projectiles.VanillaHeldToolProjectile1458.IsSupported(initial.Type) ||
+            initial.Type.Value == TerraRuntime.Gameplay.Projectiles.VanillaThrownAxeProjectile1458.ProjectileType)
+            return TrySimulateHeldToolActor(initial);
         if (TerraRuntime.Gameplay.Projectiles.VanillaGemStaffProjectile1458.IsGemStaffProjectile(initial.Type))
             return TrySimulateGemStaffActor(initial);
         var combat = activeOrdinaryArrowCombat;

@@ -16,6 +16,7 @@ internal sealed partial class WorldTileAuthority
 
     internal void TickFallingBlocks(ProjectileAuthority projectiles)
     {
+        if (fallingOriginInProgress) return;
         LastFallingChecks = LastFallingSpawns = 0;
         if (tiles is null || mutations is null) return;
         var queue = tiles.EnableFallingBlockUpdates();
@@ -34,12 +35,8 @@ internal sealed partial class WorldTileAuthority
             if (!before.IsActive || !VanillaFallingBlock1458.TryGetProjectile(before.TileType, out _) || !BelowMakesFall(x, y)) continue;
             var above = tiles.Get(x, y - 1);
             if (above.IsActive && VanillaFallingBlock1458.PreventsFallAbove(above.TileType)) continue;
-            if (!projectiles.TrySpawnFallingBlock(before.TileType, x, y, out var projectile)) { queue.Wake(index); break; }
-            if (!ApplyTileMutation(mutations, WorldTileMutationKind.ClearTile, x, y))
-            { projectiles.CancelFallingSpawn(projectile.Handle); continue; }
-            // ClearTile with no KillTile drop: material now belongs to the trusted projectile generation.
-            LastFallingSpawns++;
-            replication?.TryPublishTileSquareToAll(tiles, x, y);
+            if (!TryCommitFallingOrigin(x, y, in before, out bool fell)) { queue.Wake(index); break; }
+            if (fell) LastFallingSpawns++;
         }
     }
 
@@ -59,7 +56,7 @@ internal sealed partial class WorldTileAuthority
         if (x < 1 || y < 1 || x >= tiles!.Dimensions.WidthTiles - 1 || y >= tiles.Dimensions.HeightTiles - 2)
             return true; // Source world-edge deactivation has no Kill/terrain restoration.
         WorldTile target = tiles.Get(x, y);
-        if (target.IsActive && (target.Flags & WorldTileFlags.Inactive) == 0 && target.Shape == 1 &&
+        if (target.IsActive && (target.Flags & WorldTileFlags.Inactive) == 0 && target.IsHalfBrick &&
             projectile.VelocityY > 0 && Math.Abs(projectile.VelocityY) > Math.Abs(projectile.VelocityX)) target = tiles.Get(x, --y);
         var support = tiles.Get(x, y + 1);
         bool itemOnly = support.IsActive && (VanillaFallingBlock1458.ConvertsLandingToItem(support.TileType) || BelowMakesFall(x, y));

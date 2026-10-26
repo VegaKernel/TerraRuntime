@@ -2,6 +2,7 @@ using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Core.Players;
 using TerraRuntime.HostContracts;
@@ -112,7 +113,7 @@ public sealed class RuntimeBotAuthorityTests
     [InlineData(false)] [InlineData(true)]
     public async Task Falling_sand_uses_normal_server_player_damage_and_respects_godmode(bool godMode)
     {
-        using var fixture=new Fixture(480,600,simulateProjectiles:true);
+        using var fixture=new Fixture(480,600,simulateProjectiles:true,sourceSurface:30);
         var bot=Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
         Assert.NotNull(await fixture.ConfigureAsync(bot.Id,bot.Configuration with {GodMode=godMode}));
         fixture.Tiles.EnableFallingBlockUpdates();
@@ -236,22 +237,29 @@ public sealed class RuntimeBotAuthorityTests
     [InlineData(60, false)]
     public async Task Follow_assistance_uses_existing_tile_authority_and_never_mines_surface(int surface, bool allowed)
     {
-        using var fixture = new Fixture(botSpawnX: 480f, botSpawnY: 800f);
+        using var fixture = new Fixture(botSpawnX: 800f, botSpawnY: 800f, sourceSurface: surface > 0 ? surface : null);
         Assert.True(fixture.Tiles.TryAttachWorldSurface(surface));
-        ConnectionHandle target = fixture.SpawnConnectionPlayer(34, 53);
-        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
-        fixture.Tiles.Set(33, 51, new WorldTile { Type = 0, Flags = WorldTileFlags.Active });
-        for (int y = 50; y <= 52; y++) fixture.Tiles.Set(32, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(55, 53);
+        fixture.Tiles.Set(53, 51, new WorldTile { Type = 0, Flags = WorldTileFlags.Active });
+        for (int y = 50; y <= 52; y++) fixture.Tiles.Set(52, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         fixture.State.Apply(new PlayerEquipmentRuntimeCommand(target, new PlayerEquipmentCommitRequest(
             target.Player.Slot, SlotId: 0, Stack: 1, Prefix: 0, ItemNetId: checked((short)VanillaItemIds.CopperPickaxe.Value), ItemFlags: 0)));
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(target,
-            new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillTile, 33, 51, Data: 0, Style: 0)));
+        if (surface > 0)
+        {
+            fixture.State.Apply(new PlayerManaRuntimeCommand(target,new(target.Player.Slot,0,20)));
+            fixture.State.Apply(new PlayerInventorySyncCompleteRuntimeCommand(target));
+            for(int x=54;x<=57;x++) fixture.Tiles.Set(x,53,new WorldTile{Type=1,Flags=WorldTileFlags.Active});
+            MiningSourceScene1458.Start(fixture.State,target);
+        }
+        MiningSourceScene1458.Apply(fixture.State,fixture.Tiles,new ClientTileManipulationRuntimeCommand(target,
+            new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillTile, 53, 51, Data: 0, Style: 0)));
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
         Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with
         {
             Mode = RuntimeBotMode.Follow, Target = new(target.Player, "miner")
         }));
         fixture.State.Tick();
-        Assert.Equal(!allowed, fixture.Tiles.Get(32, 50).IsActive);
+        Assert.Equal(!allowed, fixture.Tiles.Get(52, 50).IsActive);
         Assert.Equal(allowed ? 2 : 1, fixture.State.AppliedWorldItemAllocations);
         if (allowed)
         {
@@ -262,11 +270,11 @@ public sealed class RuntimeBotAuthorityTests
             // move the actor around it between swings; navigation is covered by separate traversal tests.
             for (int tick = 0; tick < 11; tick++)
             {
-                Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 480f, 800f));
+                Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 800f, 800f));
                 fixture.Tick(1);
             }
             Assert.Equal(2, fixture.State.AppliedWorldItemAllocations); // No accelerated excavation between swings.
-            Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 480f, 800f));
+            Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 800f, 800f));
             fixture.Tick(1);
             Assert.False(fixture.Tiles.Get(32, 51).IsActive);
             Assert.Equal(3, fixture.State.AppliedWorldItemAllocations); // The next action actually executes.
@@ -373,32 +381,43 @@ public sealed class RuntimeBotAuthorityTests
     [InlineData(30, 5, false)]
     public async Task Mining_assistance_requires_recent_completed_underground_mining(int surface, int observation, bool shouldMine)
     {
-        using var fixture = new Fixture(botSpawnX: 480f, botSpawnY: 800f);
+        using var fixture = new Fixture(botSpawnX: 800f, botSpawnY: 800f, sourceSurface: surface > 0 ? surface : null);
         if (surface > 0) Assert.True(fixture.Tiles.TryAttachWorldSurface(surface));
-        ConnectionHandle target = fixture.SpawnConnectionPlayer(34, 53);
-        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
-        fixture.Tiles.Set(33, 51, new WorldTile { Type = 0, Flags = WorldTileFlags.Active });
-        for (int y = 50; y <= 52; y++) fixture.Tiles.Set(32, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(55, 53);
+        fixture.Tiles.Set(53, 51, new WorldTile { Type = 0, Flags = WorldTileFlags.Active });
+        for (int y = 50; y <= 52; y++) fixture.Tiles.Set(52, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         fixture.State.Apply(new PlayerEquipmentRuntimeCommand(target, new PlayerEquipmentCommitRequest(
             target.Player.Slot, SlotId: 0, Stack: 1, Prefix: 0, ItemNetId: checked((short)VanillaItemIds.CopperPickaxe.Value), ItemFlags: 0)));
+        if (surface > 0)
+        {
+            fixture.State.Apply(new PlayerManaRuntimeCommand(target,new(target.Player.Slot,0,20)));
+            fixture.State.Apply(new PlayerInventorySyncCompleteRuntimeCommand(target));
+            for(int x=54;x<=57;x++) fixture.Tiles.Set(x,53,new WorldTile{Type=1,Flags=WorldTileFlags.Active});
+            MiningSourceScene1458.Start(fixture.State,target);
+        }
         if (observation >= 0)
-            fixture.State.Apply(new ClientTileManipulationRuntimeCommand(target,
-                new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillTile, 33, 51,
-                    Data: observation == 1 ? (short)1 : (short)0, Style: 0)));
+        {
+            var report = new ClientTileManipulationRuntimeCommand(target,
+                new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillTile, 53, 51,
+                    Data: observation == 1 ? (short)1 : (short)0, Style: 0));
+            if (surface > 0) MiningSourceScene1458.Apply(fixture.State,fixture.Tiles,report);
+            else fixture.State.Apply(report); // Deliberately unknown source world cannot certify a hit.
+        }
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
         if (observation == 2)
         {
             fixture.Tick(121);
-            Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 480f, 800f));
+            Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 800f, 800f));
         }
-        if (observation == 3) target = fixture.SpawnConnectionPlayer(34, 53); // another player did the mining
-        if (observation == 4) fixture.Tiles.Set(32, 50, new WorldTile { Type = 1, Wall = 1, Flags = WorldTileFlags.Active });
-        if (observation == 5) fixture.Tiles.Set(32, 50, new WorldTile { Type = 226, Flags = WorldTileFlags.Active });
+        if (observation == 3) target = fixture.SpawnConnectionPlayer(55, 53); // another player did the mining
+        if (observation == 4) fixture.Tiles.Set(52, 50, new WorldTile { Type = 1, Wall = 1, Flags = WorldTileFlags.Active });
+        if (observation == 5) fixture.Tiles.Set(52, 50, new WorldTile { Type = 226, Flags = WorldTileFlags.Active });
         _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
         {
             Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(target.Player, "miner")
         });
         fixture.State.Tick();
-        Assert.Equal(!shouldMine, fixture.Tiles.Get(32, 50).IsActive);
+        Assert.Equal(!shouldMine, fixture.Tiles.Get(52, 50).IsActive);
         Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 6, out var pick));
         Assert.Equal(VanillaItemIds.VortexPickaxe, pick.ItemType);
         if (shouldMine)
@@ -408,7 +427,7 @@ public sealed class RuntimeBotAuthorityTests
             Assert.NotEqual(0, self.ControlFlags & (1 << 5));
             Assert.Equal(2, fixture.State.AppliedWorldItemAllocations); // human dirt + bot stone, exactly once each
             fixture.State.Tick();
-            Assert.True(fixture.Tiles.Get(32, 51).IsActive); // full animation cadence, no burst excavation
+            Assert.True(fixture.Tiles.Get(52, 51).IsActive); // full animation cadence, no burst excavation
         }
     }
 
@@ -1238,7 +1257,7 @@ public sealed class RuntimeBotAuthorityTests
         private readonly List<PlayerJoinSession> sessions = [];
         private long nextConnectionId = 1;
 
-        public Fixture(float botSpawnX = 32f, float botSpawnY = 32f, bool simulateProjectiles = false)
+        public Fixture(float botSpawnX = 32f, float botSpawnY = 32f, bool simulateProjectiles = false, int? sourceSurface = null)
         {
             var identities = new ServerPlayerSlotRegistry(slots);
             var states = new ServerPlayerStateStore(identities, slots.Capacity);
@@ -1255,7 +1274,14 @@ public sealed class RuntimeBotAuthorityTests
                 serverPlayers: ServerPlayers,
                 botTelemetry: Telemetry,
                 botSpawnX: botSpawnX,
-                botSpawnY: botSpawnY);
+                botSpawnY: botSpawnY,
+                sourcePlayerWorld: sourceSurface is { } surface ? MiningSourceScene1458.Facts(Tiles, surface) : null,
+                worldClock: sourceSurface.HasValue ? new RuntimeWorldClock(1000,true,default,0,0) : null,
+                playerUpdateRandomSeed: sourceSurface.HasValue ? new PlayerUpdateRandomSeed1458(0) : null,
+                townSpawnWorldFacts: sourceSurface.HasValue ? default(VanillaTownSpawnWorldFacts1458) : null,
+                townCommerceWorldFacts: sourceSurface is { } commerceSurface
+                    ? default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface=commerceSurface } : null);
+            if(sourceSurface.HasValue) ToolPhaseWorldFixture1458.BindFreshInactiveEvent(State,Tiles);
         }
 
         public ServerRuntimeState State { get; }

@@ -15,6 +15,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private InvasionTransition1458 plannedCaptainCredit;
     private RuntimeInvasionCapture1458 acceptedCaptainInvasion;
     private RuntimeNpcReplicationRegistry.RetainedBirthJournal? plannedCaptainBirthJournal;
+    private RuntimeNpcReplicationRegistry.RetainedDeathPublication? plannedCaptainDeathPublication;
 
     private bool CaptureCaptainInvasion(int type = 216)
     {
@@ -31,10 +32,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool TryRetainCaptainOwners(in NpcSnapshot projected)
     {
+        plannedCaptainDeathPublication = null;
         if (!(plannedDeathSpawnSerial is { } serial && previewDeathNpcs is not null &&
             IsCaptainInvasionCurrent() && npcs.TryPrepareCaptainDeathBirth(in projected,
                 previewDeathNpcs, serial, out plannedCaptainBirth) &&
             npcs.TryPrepareProjectedTerminalRemoval(in projected, out plannedCaptainRemoval))) return false;
+        if (npcReplication is not null && !npcReplication.TryPrepareRetainedDeath(
+                plannedCaptainRemoval!, out plannedCaptainDeathPublication)) return false;
         return npcReplication is null || plannedCaptainBirth!.Child is not { } child ||
             npcReplication.TryPrepareRetainedBirth(in child, out plannedCaptainBirthJournal);
     }
@@ -59,7 +63,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             throw new InvalidOperationException("Validated Captain owners changed without a callback.");
         if (plannedDaily is not null) bossRecoveryDaily.CopyFrom(plannedDaily);
         if (worldClock is not null && plannedUnpublishedClock is not null)
-            worldClock.AdoptSlimeRainDeathProgress(plannedUnpublishedClock);
+            worldClock.AdoptDeathProgress(plannedUnpublishedClock);
         if (plannedCaptainBirthJournal is not null && !plannedCaptainBirthJournal.TryAdoptBaseline(npcs))
             throw new InvalidOperationException("Validated Captain child baseline could not be adopted.");
         npcReplication?.RetirePreparedDeathBaseline(committed.Handle);
@@ -86,6 +90,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var birth = plannedCaptainBirth!;
         var birthJournal = plannedCaptainBirthJournal;
         var removal = plannedCaptainRemoval!;
+        var terminalPublication = plannedCaptainDeathPublication;
         var credit = plannedCaptainCredit;
         var acceptedInvasion = acceptedCaptainInvasion;
         // Accepted owners now belong to the local journal. A nested command can prepare a
@@ -95,8 +100,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedCaptainBirth = null;
         plannedCaptainRemoval = null;
         plannedCaptainBirthJournal = null;
+        plannedCaptainDeathPublication = null;
         preparedDeathPreludePublication = null;
         Drain(() => prelude?.PublishBeforeStrike(capturedCommitted));
+        if (terminalPublication is not null) Drain(() => terminalPublication.TryPublishPendingBirth());
+        else Drain(() => removal.TryPublishPendingBirthBeforeStrike());
         if (removal.IsAcceptedCurrent)
             Drain(() => npcReplication?.TryPublishDamage(excludedSource, in retainedWire));
         Drain(() => drops.TryPublishPhase(NpcDeathDropPhase1458.Prelude, lootDelivery.Adopt));
@@ -112,7 +120,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         Drain(() => drops.TryPublishPhase(NpcDeathDropPhase1458.Healing, lootDelivery.Adopt));
         if (credit.Effects.Progress && invasion!.IsCurrent(in acceptedInvasion))
             Drain(() => invasionProgressPublisher!(acceptedInvasion));
-        Drain(() => removal.TryPublish());
+        if (terminalPublication is not null) Drain(() => terminalPublication.TryPublishTerminal());
+        else Drain(() => removal.TryPublish());
         interactions.Forget(committed.Handle);
         drops.Dispose();
         failure?.Throw();

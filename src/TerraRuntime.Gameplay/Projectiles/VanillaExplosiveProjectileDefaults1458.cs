@@ -169,7 +169,7 @@ public static class VanillaExplosiveProjectileFacts1458
     {
         timeLeft = type.Value switch
         {
-            28 or 37 or 516 or 519 or 133 or 136 or 139 or 142 or 794 or 797 or 800 => 180,
+            28 or 37 or 75 or 516 or 519 or 133 or 136 or 139 or 142 or 794 or 797 or 800 => 180,
             29 or 470 or 637 => 300,
             _ => 0
         };

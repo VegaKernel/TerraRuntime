@@ -1004,6 +1004,7 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
+        if (VanillaToolProjectileDefinition1458.TryGet(type, out definition)) return true;
         if (VanillaGemStaffProjectile1458.IsGemStaffProjectile(type))
         {
             definition = new(10, 10, VanillaProjectileAiStyles.GemStaff, true, false, true, 2, 2);
@@ -1164,8 +1165,8 @@ public static class VanillaDefinitionCatalog
                 explosive.TileCollide,
                 explosive.IgnoreWater,
                 CanCutTiles: true,
-                CollisionWidth: explosive.Width,
-                CollisionHeight: explosive.Height);
+                CollisionWidth: type == VanillaProjectileIds.Bomb ? explosive.Width - 8 : explosive.Width,
+                CollisionHeight: type == VanillaProjectileIds.Bomb ? explosive.Height - 8 : explosive.Height);
             return true;
         }
 

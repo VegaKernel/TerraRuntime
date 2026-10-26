@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -14,32 +15,32 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9301);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 60, 60);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(
             connection,
             new TerrariaTileManipulationState(
                 (byte)TerrariaTileManipulationAction.KillTile,
-                TileX: 10,
-                TileY: 10,
+                TileX: 60,
+                TileY: 60,
                 Data: 0,
                 Style: 0)));
 
-        Assert.Equal(default, fixture.Tiles.Get(10, 10));
+        Assert.Equal(new WorldTile { FrameX = -1, FrameY = -1 }, fixture.Tiles.Get(60, 60));
         Assert.Equal(beforeVersion + 2, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(1, fixture.Tiles.DirtySections.DirtyCount);
-        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(2, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(1, fixture.Items.ActiveCount);
         Assert.True(fixture.Items.TryGetActive(0, out WorldItemSnapshot drop));
-        Assert.Equal(160f, drop.PositionX);
-        Assert.Equal(160f, drop.PositionY);
+        Assert.Equal(960f, drop.PositionX);
+        Assert.Equal(960f, drop.PositionY);
         Assert.InRange(drop.VelocityX, -3f, 3f);
         Assert.InRange(drop.VelocityY, -4f, -1.6f);
         Assert.Equal(1, drop.Stack);
@@ -57,26 +58,26 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9305);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
-        fixture.SetActiveDirt(10, 10);
-        fixture.SetActiveDirt(9, 10);
-        fixture.SetActiveDirt(11, 10);
-        fixture.SetActiveDirt(10, 11);
+        fixture.SetActiveDirt(60, 60);
+        fixture.SetActiveDirt(59, 60);
+        fixture.SetActiveDirt(61, 60);
+        fixture.SetActiveDirt(60, 61);
         fixture.DrainTileDirty();
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(
             connection,
             new TerrariaTileManipulationState(
                 (byte)TerrariaTileManipulationAction.KillTile,
-                TileX: 10,
-                TileY: 10,
+                TileX: 60,
+                TileY: 60,
                 Data: 0,
                 Style: 0)));
 
-        Assert.False(fixture.Tiles.Get(10, 10).IsActive);
-        Assert.True(fixture.Tiles.Get(9, 10).IsActive);
-        Assert.True(fixture.Tiles.Get(11, 10).IsActive);
-        Assert.True(fixture.Tiles.Get(10, 11).IsActive);
-        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.False(fixture.Tiles.Get(60, 60).IsActive);
+        Assert.True(fixture.Tiles.Get(59, 60).IsActive);
+        Assert.True(fixture.Tiles.Get(61, 60).IsActive);
+        Assert.True(fixture.Tiles.Get(60, 61).IsActive);
+        Assert.Equal(2, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
         Assert.True(fixture.Items.TryGetActive(0, out WorldItemSnapshot drop));
@@ -88,33 +89,36 @@ public sealed class ServerRuntimeDirtKillDropTests
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9302);
-        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.VortexPickaxe, stack: 1);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 60, 60);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
-        WorldTile before = fixture.Tiles.Get(10, 10);
+        WorldTile before = fixture.Tiles.Get(60, 60);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
         WorldItemDropReservation held = FillWorldItemPool(fixture.Items);
+        Assert.True(MiningSourceScene1458.World(fixture.State).TryPrepareWorldProjectileRandom(out var random));
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(
             connection,
             new TerrariaTileManipulationState(
                 (byte)TerrariaTileManipulationAction.KillTile,
-                TileX: 10,
-                TileY: 10,
+                TileX: 60,
+                TileY: 60,
                 Data: 0,
                 Style: 0)));
 
-        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(before, fixture.Tiles.Get(60, 60));
         Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
         Assert.Equal(RuntimeWorldItemStore.VanillaCapacity - 1, fixture.Items.ActiveCount);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
-        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.True(random!.IsCurrent);
+        MiningSourceScene1458.AssertRetainedWithoutAuthority(fixture.State, fixture.Tiles, connection, 60, 60);
         Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
-        Assert.Equal(1, fixture.State.RejectedWorldItemAllocations);
+        // A speculative candidate is not an adopted allocation failure metric.
+        Assert.Equal(0, fixture.State.RejectedWorldItemAllocations);
         Assert.True(fixture.Items.TryReleaseDropReservation(in held));
     }
 
@@ -124,23 +128,23 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9303);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 60, 60);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
-        WorldTile before = fixture.Tiles.Get(10, 10);
+        WorldTile before = fixture.Tiles.Get(60, 60);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(
             connection,
             new TerrariaTileManipulationState(
                 (byte)TerrariaTileManipulationAction.KillTile,
-                TileX: 10,
-                TileY: 10,
+                TileX: 60,
+                TileY: 60,
                 Data: 1,
                 Style: 0)));
 
-        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(before, fixture.Tiles.Get(60, 60));
         Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
         Assert.Equal(0, fixture.Items.ActiveCount);
@@ -155,23 +159,23 @@ public sealed class ServerRuntimeDirtKillDropTests
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9304);
         fixture.SetSelectedInventoryItem(connection, VanillaItemIds.DirtBlock, stack: 1);
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 10, 10));
-        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 10, 10);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(fixture.Tiles, 60, 60));
+        WorldSectionId section = TerrariaSectionGeometry.FromTile(fixture.Tiles.Dimensions, 60, 60);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
-        WorldTile before = fixture.Tiles.Get(10, 10);
+        WorldTile before = fixture.Tiles.Get(60, 60);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
 
-        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+        MiningSourceScene1458.Apply(fixture.State, fixture.Tiles, new ClientTileManipulationRuntimeCommand(
             connection,
             new TerrariaTileManipulationState(
                 (byte)TerrariaTileManipulationAction.KillTile,
-                TileX: 10,
-                TileY: 10,
+                TileX: 60,
+                TileY: 60,
                 Data: 0,
                 Style: 0)));
 
-        Assert.Equal(before, fixture.Tiles.Get(10, 10));
+        Assert.Equal(before, fixture.Tiles.Get(60, 60));
         Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
         Assert.Equal(0, fixture.Items.ActiveCount);
@@ -210,7 +214,14 @@ public sealed class ServerRuntimeDirtKillDropTests
         {
             Tiles = new WorldTileStore(new WorldDimensions(200, 150));
             Items = new RuntimeWorldItemStore();
-            State = new ServerRuntimeState(worldTiles: Tiles, worldItems: Items);
+            State = new ServerRuntimeState(worldTiles: Tiles, worldItems: Items,
+                sourcePlayerWorld: MiningSourceScene1458.Facts(Tiles),
+                worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+                playerUpdateRandomSeed: new(0),
+                townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+                townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80 });
+            ToolPhaseWorldFixture1458.BindFreshInactiveEvent(State, Tiles);
+            for (int x = 55; x <= 65; x++) Tiles.Set(x, 63, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         }
 
         public WorldTileStore Tiles { get; }
@@ -227,7 +238,7 @@ public sealed class ServerRuntimeDirtKillDropTests
             var connection = new ConnectionHandle(
                 GameCommandSourceId.FromConnection(connectionId),
                 session.Handle);
-            var request = new PlayerSpawnCommitRequest(session.Slot, 20, 20, 0, 0, 0, 0, 0);
+            var request = new PlayerSpawnCommitRequest(session.Slot, 57, 63, 0, 0, 0, 0, 0);
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
             return connection;
@@ -244,6 +255,7 @@ public sealed class ServerRuntimeDirtKillDropTests
                 ItemFlags: 0);
             State.Apply(new PlayerEquipmentRuntimeCommand(connection, request));
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
+            MiningSourceScene1458.Start(State, connection);
         }
 
         public void SetActiveDirt(int x, int y)

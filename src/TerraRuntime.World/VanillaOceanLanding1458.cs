@@ -130,7 +130,7 @@ public static class VanillaOceanLanding1458
             WorldTile tile = tiles.Get(tx, ty);
             if (!tile.IsActive || tile.IsActuated || !Hurts(tile.Type)) continue;
             int inset = Suffocates(tile.TileType) ? 2 : 0;
-            float top = ty * 16 + (tile.Shape == 1 ? 8 : 0);
+            float top = ty * 16 + (tile.IsHalfBrick ? 8 : 0);
             if (px + 20 - inset >= tx * 16 && px + inset <= tx * 16 + 16 &&
                 py + 42 - inset >= top - .5f && py + inset <= ty * 16 + 16.5f)
                 return true;

@@ -17,7 +17,7 @@ public sealed partial class RuntimeProjectileStore
         return true;
     }
 
-    internal sealed class SimulationPreparation
+    internal sealed partial class SimulationPreparation
     {
         private readonly RuntimeProjectileStore owner;
         private readonly ushort slot;
@@ -47,6 +47,13 @@ public sealed partial class RuntimeProjectileStore
         internal bool IsCurrent => !adopted && Same(in owner._slots[slot], in before);
         internal bool IsPublicationCurrent => adopted && Same(in owner._slots[slot], in shadow);
         internal int PublicationCount => publications.Count;
+
+        internal bool TryStageSourceDirection(int? direction)
+        {
+            if (adopted || direction is not (null or -1 or 1)) return false;
+            shadow.SourceDirection = direction;
+            return true;
+        }
 
         internal bool TryStageMotion(in ProjectileStateUpdate update, in ProjectileLifecycleState lifecycle) =>
             TryStageMotion(in update, in lifecycle, false);
@@ -148,6 +155,33 @@ public sealed partial class RuntimeProjectileStore
             return true;
         }
 
+        internal bool TryQueueToolDespawn(ProjectileKillOrigin? sourceKillOrigin = null)
+        {
+            if (adopted || shadow.Active || terminalPublicationQueued || !before.CombatTrusted ||
+                !before.CombatTrustedOwner.IsAssigned ||
+                !(terminalLifecycle.HeldTool is not null && VanillaHeldToolProjectile1458.IsSupported(before.Update.Type) ||
+                  terminalLifecycle.ThrownAxe is not null && before.Update.Type.Value == VanillaThrownAxeProjectile1458.ProjectileType) ||
+                sourceKillOrigin is { IsValid: false }) return false;
+            var publication = sourceKillOrigin is { } origin
+                ? Snapshot with { PositionX = origin.X, PositionY = origin.Y } : Snapshot;
+            publications.Add((ProjectileStateCommitKind.Despawn, publication));
+            terminalPublicationQueued = true;
+            return true;
+        }
+
+        internal bool TryQueueFallingDespawn(ProjectileKillOrigin sourceKillOrigin)
+        {
+            if (adopted || shadow.Active || terminalPublicationQueued || !sourceKillOrigin.IsValid ||
+                !VanillaProjectileOwnership.IsServerOwned(before.Update.Spawner) ||
+                !VanillaFallingBlock1458.TryGetTile(before.Update.Type, out _)) return false;
+            // Kill may retain an inactive movement tail. Packet29 still belongs
+            // to the saved source Kill origin, not that final physical position.
+            var publication = Snapshot with { PositionX = sourceKillOrigin.X, PositionY = sourceKillOrigin.Y };
+            publications.Add((ProjectileStateCommitKind.Despawn, publication));
+            terminalPublicationQueued = true;
+            return true;
+        }
+
         internal bool TryQueueGemStaffDespawn() => TryQueueGemStaffDespawn(null);
 
         internal bool TryQueueGemStaffDespawn(ProjectileKillOrigin? sourceKillOrigin)
@@ -215,6 +249,6 @@ public sealed partial class RuntimeProjectileStore
             left.Active == right.Active && left.Generation == right.Generation &&
             left.Revision == right.Revision && left.Update == right.Update &&
             left.Lifecycle == right.Lifecycle && left.CombatTrusted == right.CombatTrusted &&
-            left.CombatTrustedOwner == right.CombatTrustedOwner && left.SourceNpc == right.SourceNpc;
+            left.CombatTrustedOwner == right.CombatTrustedOwner && left.SourceNpc == right.SourceNpc && left.SourceDirection == right.SourceDirection;
     }
 }

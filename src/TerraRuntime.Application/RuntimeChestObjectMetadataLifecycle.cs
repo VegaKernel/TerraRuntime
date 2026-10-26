@@ -15,6 +15,12 @@ internal sealed class RuntimeChestObjectMetadataLifecycle : IVanillaMultiTileObj
     public RuntimeChestObjectMetadataLifecycle(RuntimeChestStore chests) =>
         this.chests = chests ?? throw new ArgumentNullException(nameof(chests));
 
+    internal bool TryCaptureSourceContainerPermission(int x, int y, out RuntimeChestStore.SourceContainerPermission? permission) =>
+        chests.TryCaptureSourceContainerPermission(x, y, out permission);
+
+    internal RuntimeChestStore.ToolObjectRemovalPreparation? TryPrepareToolObjectRemovals() =>
+        chests.TryPrepareToolObjectRemovals();
+
     public bool CanCreate(in VanillaMultiTileObjectMutationDescriptor descriptor) =>
         descriptor.MetadataKind == VanillaTileObjectMetadataKind.Chest &&
         chests.CanCreateAt(descriptor.TopLeftX, descriptor.TopLeftY);

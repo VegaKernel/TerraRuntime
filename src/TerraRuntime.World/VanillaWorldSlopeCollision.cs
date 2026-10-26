@@ -82,7 +82,7 @@ public static class VanillaWorldSlopeCollision
                 float tileX = x * TileSize;
                 float tileY = y * TileSize;
                 int tileHeight = 16;
-                if (tile.Shape == 1)
+                if (tile.IsHalfBrick)
                 {
                     tileY += 8f;
                     tileHeight = 8;
@@ -248,7 +248,7 @@ public static class VanillaWorldSlopeCollision
             stairFall);
     }
 
-    private static int GetSlope(in WorldTile tile) => tile.Shape >= 2 ? tile.Shape - 1 : 0;
+    private static int GetSlope(in WorldTile tile) => tile.SourceSlope;
 
     private static void SetSlopeFlag(
         int slope,

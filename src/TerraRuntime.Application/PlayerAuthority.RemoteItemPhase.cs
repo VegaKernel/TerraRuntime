@@ -33,6 +33,10 @@ internal sealed partial class PlayerAuthority
             inventory.Serial == ulong.MaxValue ||
             tiles.Dimensions.SectionCount > 4_096)
             return false;
+        // A retired observation is not an unrepresented Player.Update. Controls,
+        // selection and other ingress may cancel pending input without poisoning
+        // the known shared frame stream or replaying a raw world mutation.
+        foreach (var member in members) RetireStaleToolInput(member);
         ulong memberSerial = membership.Serial;
         ulong inventorySerial = inventory.Serial;
         var favorPrelude = torchFavorPrelude;
@@ -171,6 +175,10 @@ internal sealed partial class PlayerAuthority
                 member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum ||
                 member.OwnsLifeMaximum != plan.BeforeOwnsLifeMaximum ||
                 member.Revision == ulong.MaxValue ||
+                plan.ToolSourceQuery is { IsCurrentOwned: false } ||
+                plan.Item?.ToolUse?.BuildingPermission is { IsCurrent: false } ||
+                plan.BeforeToolInput is { } input &&
+                    !IsCurrentToolInput(input, plan.BeforeToolInputRevision) ||
                 !transferProfiles.TryCapture(member.Connection,
                 out var appearance,
                 out var equipment,
@@ -251,14 +259,46 @@ internal sealed partial class PlayerAuthority
         }
 
         random.CopyStateFrom(plannedRandom);
+        foreach (var plan in plans)
+        {
+            // Rebind only an exact receipt whose complete before-image and
+            // observation revision passed the final preflight above. The saved
+            // ItemCheck-stage pose stays in ToolUse; currentness follows the
+            // accepted whole-phase actor image, not an arbitrary client rewrite.
+            if (plan.BeforeToolInput is not { } input ||
+                plan.BeforeToolInputActor is not { } inputActor ||
+                plan.Member.ItemPhase is not { ToolUse: { } tools }) continue;
+            if (!ReferenceEquals(tools.Input, input))
+            {
+                continue;
+            }
+            if (tools.SourceStagePose is null || tools.LastFrameUpdate != currentCombatTick ||
+                !TryCaptureToolActor(plan.Member.Connection, out var accepted) || accepted is null ||
+                !input.TryRebaseAfterOwnedPhase(inputActor, plan.BeforeToolInputRevision, accepted))
+            {
+                RetireToolInput(plan.Member, input);
+            }
+        }
         Exception? first = null;
+        using var toolPublications = toolWorld?.PrepareToolBirthsAfterOwnedPhase();
+        if (toolPublications is { } toolBatch)
+        {
+            try { CollectToolBaselineHealthPublications(toolBatch.HealthPublications); }
+            catch (Exception error) { first ??= error; }
+            try { toolWorld!.DrainToolActionsAfterOwnedPhase(toolBatch); }
+            catch (Exception error) { first ??= error; }
+            try { CollectToolBaselineHealthPublications(toolBatch.HealthPublications); }
+            catch (Exception error) { first ??= error; }
+            try { toolBatch.TryPublishAll(); }
+            catch (Exception error) { first ??= error; }
+        }
         try
         {
             favorPublication?.TryPublish();
         }
         catch (Exception error)
         {
-            first = error;
+            first ??= error;
         }
 
         int mutationIndex = 0;
@@ -457,7 +497,17 @@ internal sealed partial class PlayerAuthority
                 {
                     Animation = 0,
                     PotionDelay = delay
-                }
+                },
+                ToolUse = item.ToolUse is { } outsideTool ? outsideTool with
+                {
+                    Clocks = outsideTool.Clocks with
+                    {
+                        Selected = outsideTool.Clocks.Selected with { Animation = 0 }
+                    },
+                    Input = outsideTool.Input,
+                    ShootEligible = false,
+                    ToolStagePending = false
+                } : null
             };
             plan.Changed = true;
             return true;
@@ -509,6 +559,17 @@ internal sealed partial class PlayerAuthority
                 {
                     ManaHeat = 1f,
                     Channel = false,
+                    ToolUse = item.ToolUse is { } deadTool ? deadTool with
+                    {
+                        Clocks = deadTool.Clocks with
+                        {
+                            Selected = deadTool.Clocks.Selected with { Animation = 0 },
+                            Channel = false
+                        },
+                        Input = deadTool.Input,
+                        ShootEligible = false,
+                        ToolStagePending = false
+                    } : null,
                     ManaPotionDelay = 0,
                     DeadTime = item.DeadTime + 1,
                     RespawnTimer = Math.Clamp(item.RespawnTimer - 1, 0, 3_600),
@@ -567,7 +628,7 @@ internal sealed partial class PlayerAuthority
             selected.Prefix,
             world.WindowsItemPrefixArithmetic) &&
             !VanillaGemStaff1458.TryGetWeapon(selected.ItemType,
-            out _)))
+            out _) && !VanillaToolCatalog1458.TryGet(selected.ItemType, out _)))
             return false;
         if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType,
             selected.Prefix,
@@ -576,8 +637,22 @@ internal sealed partial class PlayerAuthority
             item.MagicPayment is { } malformedPayment &&
             !malformedPayment.IsValid))
             return false;
+        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) && item.ToolUse is { } unusedTools &&
+            (!unusedTools.SourceItem.IsNone || unusedTools.BuildingPermission is not null ||
+                unusedTools.SourceStagePose is not null || unusedTools.ShootEligible || unusedTools.ToolStagePending))
+            item = item with
+            {
+                ToolUse = unusedTools with
+                {
+                    BuildingPermission = null,
+                    SourceStagePose = null,
+                    RequiresFreshUse = true,
+                    ShootEligible = false,
+                    ToolStagePending = false
+                }
+            };
         var critArithmetic = world.WindowsItemPrefixArithmetic ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
-        if (!VanillaSelectedItemCrit1458.TryResolve(selected.ItemType, selected.Prefix, critArithmetic, out int itemCrit))
+        if (!VanillaSelectedItemCrit1458.TryResolve(selected.ItemType, selected.Prefix, critArithmetic, world.RemixWorld, out int itemCrit))
             return false;
         // ResetEffects derives all three fields from this phase's selected Item.crit.
         // Later selection/equipment reports must not reconstruct these retained values.
@@ -648,6 +723,16 @@ internal sealed partial class PlayerAuthority
         }
 
         ).AdvanceShopDiscount(derivedCombat.DiscountEquipped);
+        // DD2's source NoBuilding derivation precedes movement and ItemCheck.
+        // Retain that independent owned context, not a post-movement arena query
+        // or raw buff199. The later tool stage retains its own moved pose.
+        if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
+        {
+            if (item.ToolUse is not { } toolBefore ||
+                !TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
+                    plan.Y + VanillaBasePlayerHeight * 0.5f, out var permission)) return false;
+            item = item with { ToolUse = toolBefore with { BuildingPermission = permission } };
+        }
         if (plan.Maximum is not { } maximum ||
             plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member,
@@ -725,7 +810,63 @@ internal sealed partial class PlayerAuthority
         PlayerSelectedConsumableTransition1458 use;
         bool beganActualUse;
         bool mining = false;
-        if (VanillaManaCrystalUse1458.IsSupported(selected.ItemType, selected.Prefix))
+        bool ownedConsumableClock = false;
+        if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
+        {
+            if (item.ToolUse is not { } tools || item.ToolTime is not { } remoteToolTime ||
+                !VanillaToolCatalog1458.TryResolve(selected.ItemType, selected.Prefix,
+                    world.RemixWorld, world.WindowsItemPrefixArithmetic, out var tool))
+                return false;
+            bool sourceAllowed = true;
+            if (tool.Shoot == 1052)
+            {
+                if (remotePlayerProjectiles is not { } projectileOwner ||
+                    !projectileOwner.TryPrepareSourceOwnerTypeQuery(member.Slot.Value,
+                        new(1052), out var query) || query is null) return false;
+                plan.ToolSourceQuery = query;
+                sourceAllowed = !query.Contains;
+            }
+            var toolFacts = new ToolFrameFacts1458(true, facts.ControlUseItem,
+                facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled,
+                facts.SelectionBuffered, false,
+                tool.NoMeleeSpeedBonus ? 1f : derivedCombat.MeleeAnimationMultiplier)
+            { SourceUseAllowed = sourceAllowed };
+            var sourceToolPose = new RuntimePlayerToolStagePose1458(plan.Before with
+            {
+                PositionX = plan.X, PositionY = plan.Y,
+                VelocityX = plan.Vx, VelocityY = plan.Vy
+            }, (int)VanillaBasePlayerWidth, (int)VanillaBasePlayerHeight, physical.GravityDirection);
+            if (!TryResolveToolReach(in world, in tool, plan.Equipment, out var toolReach)) return false;
+            var remoteToolClocks = new ToolClockState1458(clocks, remoteToolTime, false, item.Channel);
+            int critRoll = random.Next(3);
+            if (!TryAdvanceToolFrame(in tool, tools, in remoteToolClocks, in toolFacts,
+                in sourceToolPose, currentCombatTick, critRoll, out var toolAfter, out var remoteTool))
+                return false;
+            toolAfter = toolAfter with { Reach = toolReach };
+            if (!facts.ControlUseItem && tool.Hammer > 0 && toolAfter.DeferredSelectionSlot is null &&
+                toolAfter.BuildingPermission is { IsCurrent: true, NoBuilding: false } releasedBuilding)
+                toolAfter = toolAfter with
+                {
+                    ReleaseWitness = new(member.Connection, sourceToolPose, toolReach,
+                        releasedBuilding, tool, member.SelectedItem, currentCombatTick)
+                };
+            item = item with
+            {
+                ToolUse = toolAfter,
+                ToolTime = remoteTool.State.ToolTime,
+                Channel = remoteTool.State.Channel
+            };
+            use = new(remoteTool.State.Selected, facts.Life, facts.Mana, false, 0, 0)
+            {
+                PendingItemReuse = remoteTool.PendingItemReuse,
+                ResetItemRotation = remoteTool.AttemptedUse && tool.Shoot == 0
+            };
+            // These common retained fields belong to the dedicated remote
+            // ItemCheck. Local selection may start a separate owned tool epoch
+            // while the remote animation is still active.
+            beganActualUse = remoteTool.BeganActualUse;
+        }
+        else if (VanillaManaCrystalUse1458.IsSupported(selected.ItemType, selected.Prefix))
         {
             if (!TryPlanManaCrystal(plan, selected, item, clocks, in facts, random, out use, out item))
                 return false;
@@ -735,18 +876,21 @@ internal sealed partial class PlayerAuthority
                     Maximum = item.Mana.Maximum
                 };
             beganActualUse = use.BeganUse;
+            ownedConsumableClock = true;
         }
         else if (selected.ItemType.Value == 5043)
         {
             if (!TryPlanOwnedTorchFavor(plan, selected, item, clocks, in facts, random, out use, out item))
                 return false;
             beganActualUse = use.BeganUse;
+            ownedConsumableClock = true;
         }
         else if (PermanentUpgradeBit(selected.ItemType.Value) != 0)
         {
             if (!TryPlanOwnedPermanentUpgrade(plan, selected, item, clocks, in facts, random, out use, out item))
                 return false;
             beganActualUse = use.BeganUse;
+            ownedConsumableClock = true;
         }
         else if (VanillaGemStaff1458.TryGetWeapon(selected.ItemType, out _))
         {
@@ -1099,6 +1243,7 @@ internal sealed partial class PlayerAuthority
             if (!TryPlanOwnedSelectedPotion(plan, selected, item, clocks, in facts, random, out use, out item))
                 return false;
             beganActualUse = use.BeganUse;
+            ownedConsumableClock = true;
         }
         else
         {
@@ -1119,6 +1264,19 @@ internal sealed partial class PlayerAuthority
             plan.Buffs.TryApplySelectedConsumable(use.BuffOfferType, use.BuffDurationOffer, false);
         if (use.Consumed && use.BuffOfferType.Value is 26 or 206 or 207)
             plan.Buffs.StampOwnedFoodGrant(currentCombatTick);
+        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) && item.ToolUse is { } nonToolShadow)
+            item = item with { ToolUse = TrackNonToolLocalClock(nonToolShadow, member.SelectedItem,
+                in selected, in facts, in clocks, in use, item.MagicPayment, ownedConsumableClock) };
+        else if (toolWorld is null && item.ToolUse is { } unboundTool)
+            // A standalone remote ItemCheck projection owns no local cursor or
+            // world action. Keep its established remote clock behavior without
+            // retaining constructor-zero local clocks for a future world bind.
+            item = item with { ToolUse = unboundTool with
+            {
+                LocalClocksKnown = false, SourceStagePose = null, Reach = null,
+                BuildingPermission = null, ReleaseWitness = null,
+                RequiresFreshUse = true, ShootEligible = false, ToolStagePending = false
+            } };
         plan.Health = knownHealth with
         {
             Life = use.Life
@@ -1185,6 +1343,10 @@ internal sealed partial class PlayerAuthority
         bool ownsManaMaximum,
         bool ownsLifeMaximum)
     {
+        internal TerraRuntime.Core.Projectiles.RuntimeProjectileStore.SourceOwnerTypeQueryPreparation? ToolSourceQuery;
+        internal RuntimePlayerToolInput1458? BeforeToolInput { get; } = item?.ToolUse?.Input;
+        internal RuntimePlayerToolActorCapture1458? BeforeToolInputActor { get; } = item?.ToolUse?.Input?.Actor;
+        internal ulong BeforeToolInputRevision { get; } = item?.ToolUse?.Input?.Revision ?? 0;
         internal bool VoidStorageOpen { get; set; }
         internal RuntimeTownShopSession1458? BeforeShopSession { get; set; }
         internal RuntimePlayerInventoryItem[] InventoryBefore { get; } = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];

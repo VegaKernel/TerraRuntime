@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Remaining creation-default roster, cache component 2026-10-26
+
+189 positive definitions and the final2 signed variants now have source-backed creation/default rules in the isolated component:690/691 positive creation coverage and65/65 signed. Source664 remains queryable metadata with source0x0 body. All431 previous runtime registrations stay unchanged;324 creation-only identities remain fenced. Coherent38 normal cases and five actual omission/restoration controls pass; no new full/Native/shipping claim. Detailed source boundaries: [EN](../en/npc-source-definition-roster-1458.md), [RU](../ru/npc-source-definition-roster-1458.md). The501/63 counts below describe the earlier AI3/AI7 checkpoint.
+
 ## AI3/AI7 definition roster and shared staircase state, 2026-10-25
 
 The complete official 1.4.5.8 census is AI3 **191 positive + 27 signed** identities and AI7 **82 positive + 0 signed**, 300 identities in total. Source-backed creation defaults now cover both families: 106 positive definitions and 27 signed variants leave the metadata-only cohort. Global source lookup stays 691 positive / 65 signed; materialized-default support becomes **501 positive / 63 signed**, with **190 positive / 2 signed** still metadata-only. Existing explicit AI/physics admission is preserved; unsupported subtypes do not inherit a generic style handler. `FullVanillaAiParity` remains false.

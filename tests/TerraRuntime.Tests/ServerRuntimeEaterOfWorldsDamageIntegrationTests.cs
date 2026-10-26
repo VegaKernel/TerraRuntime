@@ -25,9 +25,9 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         fixture.AssertJoinBaseline(firstPlayer.Source, head.Handle.Slot, body.Handle.Slot);
         fixture.AssertJoinBaseline(secondPlayer.Source, head.Handle.Slot, body.Handle.Slot);
 
-        fixture.State.Apply(new ClientNpcDamageRuntimeCommand(firstPlayer, Lethal(head)));
+        Assert.True(fixture.StrikeOwned(firstPlayer.Player, head.Handle));
 
-        Assert.Equal(1, fixture.State.AppliedClientNpcDamage);
+        Assert.Equal(0, fixture.State.AppliedClientNpcDamage);
         Assert.Equal(0, fixture.State.RejectedClientNpcDamage);
         Assert.False(fixture.Npcs.TryGet(head.Handle, out _));
         Assert.True(fixture.Npcs.TryGet(body.Handle, out _));
@@ -36,9 +36,9 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         Assert.False(fixture.Clock.MeteorSpawnPending);
         Assert.Equal(0, fixture.ItemRelayedFrames); // non-final segment never owns the Expert bag.
 
-        fixture.State.Apply(new ClientNpcDamageRuntimeCommand(secondPlayer, Lethal(body)));
+        Assert.True(fixture.StrikeOwned(secondPlayer.Player, body.Handle));
 
-        Assert.Equal(2, fixture.State.AppliedClientNpcDamage);
+        Assert.Equal(0, fixture.State.AppliedClientNpcDamage);
         Assert.Equal(0, fixture.State.RejectedClientNpcDamage);
         Assert.False(fixture.Npcs.TryGet(body.Handle, out _));
         Assert.True(progression.IsCompleted(VanillaWorldProgressionId.EvilBoss));
@@ -46,15 +46,6 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         Assert.True(fixture.Clock.MeteorSpawnPending); // first victory with a world surface schedules the source meteor event.
         Assert.Equal(2, fixture.ItemRelayedFrames); // final Boss Bag packet 90 addressed to both credited players.
     }
-
-    private static TerrariaNpcDamageState Lethal(in NpcSnapshot npc) =>
-        new(
-            NpcSlot: npc.Handle.Slot,
-            Generation: RuntimeNpcPacketProjection.ToProtocolGeneration(npc.Handle.Generation),
-            Damage: short.MaxValue,
-            KnockBack: 0f,
-            HitDirectionWire: 1,
-            CriticalRaw: 0);
 
     private sealed class Fixture : IDisposable
     {
@@ -95,6 +86,10 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         public RuntimeWorldItemStore WorldItems { get; }
         public RuntimeWorldClock Clock { get; }
         public ServerRuntimeState State { get; }
+        public bool StrikeOwned(PlayerHandle player, NpcHandle target) =>
+            ((ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(State)!)
+            .Npcs.TryStrikeBotPlayerMelee(player, target, short.MaxValue, 0, false, 0, 1);
         public long ItemRelayedFrames => itemReplication.RelayedFrames;
 
         public NpcSnapshot SpawnEater(byte slot, NpcTypeId type, float positionX)
@@ -140,8 +135,7 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
             // Synchronize the vitals read by the selected source heart offer before lethal ingress.
             State.Apply(new PlayerHealthRuntimeCommand(connection, new(session.Slot, 100, 100)));
 
-            // This fixture validates NPC death/loot/progression, not authoritative direct-melee calculation. Keep a
-            // canonical selected item present, but use a bow so combat integrity intentionally takes LegacyFallback.
+            // The owned server strike supplies damage; a selected bow does not grant raw packet-28 kill authority.
             var equipment = new PlayerEquipmentCommitRequest(
                 connection.Player.Slot,
                 SlotId: 0,

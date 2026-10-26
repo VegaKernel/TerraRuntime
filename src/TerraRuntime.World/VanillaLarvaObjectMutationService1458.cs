@@ -51,7 +51,7 @@ public sealed class VanillaLarvaObjectMutationService1458
                 cleared.FrameX = 0;
                 cleared.FrameY = 0;
                 cleared.TileColor = 0;
-                cleared.Shape = 0;
+                cleared.ClearSourceShape();
                 cleared.Flags &= ~(
                     WorldTileFlags.Active |
                     WorldTileFlags.Actuator |

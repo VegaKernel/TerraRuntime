@@ -41,6 +41,12 @@ public static class PermanentEightBoundaryChecks
                     f.Apply(new PlayerAppearanceRuntimeCommand(c, appearance));
                     // Prior source input arrived while the selected slot was still Air.
                     // Its later packet4 use batch contains no new initial13.
+                    var configuredTool = member.ItemPhase!.Value.ToolUse!;
+                    member.ItemPhase = member.ItemPhase.Value with { ToolUse = configuredTool with
+                    {
+                        Clocks = configuredTool.Clocks with { Selected = configuredTool.Clocks.Selected with
+                            { ReleaseUseItem = true, Animation = 0, ItemTime = 0 } }
+                    } };
                     member.ItemPhase = member.ItemPhase!.Value with { Selected = member.ItemPhase.Value.Selected with { ReleaseUseItem = true, Animation = 0, ItemTime = 0 } };
                     f.Apply(new PlayerMovementRuntimeCommand(c, new(c.Player.Slot, 32, (byte)(member.MovementFlags | 16), 0, 64, 0, member.PositionX, member.PositionY, false, 0, 0, false, 0, false, 0, 0, 0, 0, false, 0, 0)));
                     f.Apply(new PlayerEquipmentRuntimeCommand(c, new(c.Player.Slot, 0, initialStack, 0, (short)identity, 0)));
@@ -335,14 +341,17 @@ public static class PermanentEightBoundaryChecks
             {
                 state = new(playerEvents: Events, worldTiles: Tiles, projectiles: projectiles,
                     townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80 },
-                    playerUpdateRandomSeed: new(0));
+                    playerUpdateRandomSeed: new(0),
+                    sourcePlayerWorld: new(400, 300, 80, false, false)
+                    { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows(), JourneyMode = false });
+                ToolPhaseWorldFixture1458.BindFreshInactiveEvent(state, Tiles);
                 Players = Composition(state).Players;
                 Random = UpdateRandom(Players)!;
             }
             else { Players = new(Events, Tiles); Random = new(0); }
             // These prefix-none references have identical clocks on both source platforms.
             Players.SetPlayerUpdateWorldFacts(new(400, 300, 80, false, false)
-            { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows() });
+            { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows(), JourneyMode = false });
             Players.SetPlayerUpdateRandom(Random);
             Players.SetRemotePlayerEnvironment(new(false, false), projectiles);
             Players.SetNpcHealthWorldFacts(() => new(false, false));

@@ -8,6 +8,15 @@ public static class VanillaNpcMoneyDefaults1458
     {
         value = 0f;
         if (!float.IsFinite(difficulty) || difficulty < .5f || difficulty > 4f) return false;
+        if (VanillaNpcSourceDefaultRoster1458.TryGetCreation(type, net, out var creation))
+        {
+            var context = new VanillaNpcSpawnContext(difficulty, 1, false)
+                { WorldDifficulty = 1f, DownedAnyMechanicalBoss = false, DownedGolem = false };
+            if (!VanillaNpcSpawnDefaults.TryResolveRemainingSourceRoster(in creation, in context,
+                    OperatingSystem.IsWindows(), out var source) || source.VerifiedMoneyValue is not float money) return false;
+            value = money;
+            return true;
+        }
         if (VanillaNpcGroundRoster1458.IsSupported(type))
         {
             if (!VanillaNpcGroundRoster1458.TryGet(type, net, out var definition)) return false;

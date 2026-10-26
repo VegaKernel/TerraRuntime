@@ -193,6 +193,7 @@ public sealed class HumanDefensiveCritBuffPhase1458Tests
             for (int x = 0; x < 400; x++)
                 tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             State = new(worldTiles: tiles, projectiles: Projectiles, playerUpdateRandomSeed: new(0));
+            ToolPhaseWorldFixture1458.BindFreshInactiveEvent(State, tiles);
             Players = ((ServerRuntimeComposition)typeof(ServerRuntimeState)
                 .GetField("_runtime", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(State)!).Players;
             Random = (VanillaUnifiedRandom1458)typeof(PlayerAuthority)
@@ -200,7 +201,7 @@ public sealed class HumanDefensiveCritBuffPhase1458Tests
             spec = row.GetProperty("spec");
             branch = spec.GetProperty("branch").GetString()!;
             Players.SetPlayerUpdateWorldFacts(new RuntimePlayerUpdateWorld1458(400, 300, 80, false, false)
-                { WindowsItemPrefixArithmetic = windows });
+                { WindowsItemPrefixArithmetic = windows, JourneyMode = false });
             Players.SetRemotePlayerEnvironment(new(false, false), Projectiles);
             Assert.True(pool.TryAcquireConnection(out var lease));
             session = new(lease!);
