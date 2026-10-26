@@ -90,6 +90,8 @@ internal sealed partial class PlayerAuthority
             OwnsManaMaximum = player.OwnsManaMaximum,
             OwnsLifeMaximum = player.OwnsLifeMaximum,
             OwnedPermanentUpgradeMask = player.OwnedPermanentUpgradeMask,
+            AnglerQuestsFinished = player.AnglerQuestsFinished,
+            OwnsFishingLadyBugLuck = player.OwnsFishingLadyBugLuck,
             OwnsTorchFavor = player.OwnsTorchFavor,
             PaidTorchFavor = player.PaidTorchFavor,
             ItemPhase = player.ItemPhase,
@@ -245,6 +247,7 @@ internal sealed partial class PlayerAuthority
         }
 
         if (!connection.IsAssigned ||
+            transfer.AnglerQuestsFinished < 0 ||
             transfer.Slot != connection.Player.Slot ||
             membership.Contains(connection.Player.Slot) ||
             transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
@@ -332,6 +335,8 @@ internal sealed partial class PlayerAuthority
             OwnsManaMaximum = transfer.OwnsManaMaximum,
             OwnsLifeMaximum = transfer.OwnsLifeMaximum,
             OwnedPermanentUpgradeMask = transfer.OwnedPermanentUpgradeMask,
+            AnglerQuestsFinished = transfer.AnglerQuestsFinished,
+            OwnsFishingLadyBugLuck = transfer.OwnsFishingLadyBugLuck,
             OwnsTorchFavor = transfer.OwnsTorchFavor,
             PaidTorchFavor = transfer.PaidTorchFavor,
             ItemPhase = transferredPhase is { } phase ? phase with

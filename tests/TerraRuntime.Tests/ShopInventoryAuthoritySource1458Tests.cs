@@ -352,7 +352,7 @@ for (int platform = 0; platform < 2; platform++)
         }
         items.AdoptFundedQuantities(connection,q,money);
         var bankImage = before.GetProperty("banks").EnumerateArray().SelectMany(x=>x.EnumerateArray()).Select(Item).ToArray();
-        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps,(short)-1);
+        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps,(short)-1);
         for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType,out long unit)) bankCopper[i] = unit * Math.Max(0,(int)bankImage[i].Stack);
         for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0,bankImage[i].Stack);
         Check(items.TryAdoptShopBanks(connection,bankImage,bankCopper,bankQuantity,bankCaps),name+" configured banks");
@@ -416,7 +416,7 @@ for (int mode = 0; mode < 11; mode++)
     members.Commit(new RuntimePlayerMember { Connection=other,Slot=other.Player.Slot,Revision=1,HasHealth=true,Life=400,MaxLife=400 });
     Check(items.TryAttach(other),"attach disjoint");
     var bank = new RuntimePlayerInventoryItem[160]; var bankCopper = new long[160]; var bankQuantity = new short[160];
-    var bankCaps = new short[800]; Array.Fill(bankCaps,(short)-1);
+    var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps,(short)-1);
     var mainQuantity = new short[59]; var mainCopper = new long[59];
     bool chain = mode is 4 or 5 or 6;
     bool deposit = mode == 3;
@@ -434,7 +434,7 @@ for (int mode = 0; mode < 11; mode++)
     else
     {
         bank[bankIndex]=source;
-        if(mode==1) bankCopper[bankIndex]=1; else { bankQuantity[bankIndex]=funded; bankCaps[bankIndex*5]=source.Stack; }
+        if(mode==1) bankCopper[bankIndex]=1; else { bankQuantity[bankIndex]=funded; bankCaps[bankIndex* RuntimePlayerInventoryStore.QuantityLaneCount]=source.Stack; }
     }
     items.AdoptFundedQuantities(connection,mainQuantity,mainCopper);
     Check(items.TryAdoptShopBanks(connection,bank,bankCopper,bankQuantity,bankCaps),"configured bank ownership");
@@ -517,7 +517,7 @@ for (int mode = 0; mode < 11; mode++)
         Check(sink.Slots.Count==events,"no duplicate publication");
         if(!chain&&!deposit&&mode!=1&&mode!=9)
         {
-            Check(actualCaps[bankIndex*5]==0,"historical consumed-type cap follows bank debit");
+            Check(actualCaps[bankIndex* RuntimePlayerInventoryStore.QuantityLaneCount]==0,"historical consumed-type cap follows bank debit");
             var restore=source with { Stack=1 };
             Check(!items.TrySetShopBankReport(connection,protocol,in restore),"raw report cannot restore consumed bank cap");
         }
@@ -552,10 +552,10 @@ for(int mode=0;mode<7;mode++)
  var c=Handle(0);var other=Handle(1);
  var member=new RuntimePlayerMember {Connection=c,Slot=c.Player.Slot,Revision=1,HasHealth=true,Life=400,MaxLife=400};membership.Commit(member);Check(store.TryAttach(c),"attach");
  membership.Commit(new RuntimePlayerMember{Connection=other,Slot=other.Player.Slot,Revision=1,HasHealth=true,Life=400,MaxLife=400});Check(store.TryAttach(other),"other attach");
- var banks=new RuntimePlayerInventoryItem[160];var funds=new long[160];var quantity=new short[160];var caps=new short[800];Array.Fill(caps,(short)-1);
+ var banks=new RuntimePlayerInventoryItem[160];var funds=new long[160];var quantity=new short[160];var caps=new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];Array.Fill(caps,(short)-1);
  if(mode==1) {banks[120]=new(new(72),1,new(0),0);funds[120]=1;}
- if(mode==2) {banks[120]=new(new(109),3,new(0),0);quantity[120]=2;caps[600]=3;}
- if(mode==3) caps[600]=0;
+ if(mode==2) {banks[120]=new(new(109),3,new(0),0);quantity[120]=2;caps[120 * RuntimePlayerInventoryStore.QuantityLaneCount]=3;}
+ if(mode==3) caps[120 * RuntimePlayerInventoryStore.QuantityLaneCount]=0;
  Check(store.TryAdoptShopBanks(c,banks,funds,quantity,caps),"configured budget/cap");
     if (mode is 4 or 6)
     {
@@ -594,7 +594,7 @@ for(int mode=0;mode<7;mode++)
   Check(store.TryCaptureShopBankOwnership(c,out var immediateQuantity,out var immediateCaps),"immediate raw custody");
   Check(immediateMoney[120]==(mode==1?1:0)&&immediateQuantity[120]==(mode==2?1:0),
     "immediate raw normalization cannot mint bank funds");
-  Check(immediateCaps[600]==caps[600],"immediate raw cannot erase historical cap");
+  Check(immediateCaps[120 * RuntimePlayerInventoryStore.QuantityLaneCount]==caps[120 * RuntimePlayerInventoryStore.QuantityLaneCount],"immediate raw cannot erase historical cap");
  }
  Check(store.TryCaptureShopBanks(c,new RuntimePlayerInventoryItem[160],new long[160]),"pending query available");
  if(mode==4) Check(p.TryApply(new PlayerEquipmentRuntimeCommand(c,new(c.Player.Slot,701,1,0,3,0))),"second raw image");
@@ -610,7 +610,7 @@ for(int mode=0;mode<7;mode++)
   Check(result[120]==reported,"legitimate raw initialization/decrease/increase image");
   Check(moneyAfter[120]==(mode==1?1:0),"raw copper min preserve no mint");
   Check(quantityAfter[120]==(mode==2?1:0),"raw quantity min preserve no grant");
-  Check(capsAfter[600]==caps[600],"raw cannot erase historical quantity cap");
+  Check(capsAfter[120 * RuntimePlayerInventoryStore.QuantityLaneCount]==caps[120 * RuntimePlayerInventoryStore.QuantityLaneCount],"raw cannot erase historical quantity cap");
   if(mode==4) Check(sink.Slots.SequenceEqual(new short[]{700,701}),"throw drains raw bank notification tail");
  }
  int count=sink.Slots.Count;Check(Complete(p, c),"duplicate138");Check(sink.Slots.Count==count,"raw batch once");
@@ -640,10 +640,10 @@ for(int mode=0;mode<13;mode++) {
  member.ItemPhase=member.ItemPhase!.Value.ApplyAcceptedShopPriceContexts(9);
  Check(member.ItemPhase.Value.CapturedShopPriceContextMask==9,"nonrectangular source contexts");
  m.Commit(member);Check(s.TryAttach(c),"source attach");
- var banks=new RuntimePlayerInventoryItem[160];var copper=new long[160];var quantity=new short[160];var caps=new short[800];Array.Fill(caps,(short)-1);
+ var banks=new RuntimePlayerInventoryItem[160];var copper=new long[160];var quantity=new short[160];var caps=new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];Array.Fill(caps,(short)-1);
  banks[0]=new(new(72),1,new(0),0);copper[0]=1;
- banks[39]=new(new(109),3,new(0),0);quantity[39]=2;caps[195]=3;
- caps[799]=0;
+ banks[39]=new(new(109),3,new(0),0);quantity[39]=2;caps[39 * RuntimePlayerInventoryStore.QuantityLaneCount]=3;
+ caps[159 * RuntimePlayerInventoryStore.QuantityLaneCount + 4]=0;
  Check(s.TryAdoptShopBanks(c,banks,copper,quantity,caps),"configured banks/funding/caps");
  var done=new TaskCompletionSource<RuntimePlayerTransferState?>();Check(p.TryApply(new PlayerTransferDetachRuntimeCommand(c,done)),"actual detach command");
  var transfer=done.Task.GetAwaiter().GetResult();Check(transfer is not null,"detached DTO");
@@ -653,11 +653,11 @@ for(int mode=0;mode<13;mode++) {
  if(mode==2) transfer=transfer with {FundedShopBankCopper=new long[159]};
  if(mode==3) {var a=copper.ToArray();a[0]=101;transfer=transfer with {FundedShopBankCopper=a};}
  if(mode==4) {var a=quantity.ToArray();a[39]=4;transfer=transfer with {FundedShopBankQuantities=a};}
- if(mode==5) {var a=caps.ToArray();a[195]=2;transfer=transfer with {OwnedShopBankQuantityCaps=a};}
- if(mode==6) transfer=transfer with {OwnedShopBankQuantityCaps=new short[799]};
- if(mode==7) {var a=caps.ToArray();a[195]=10000;transfer=transfer with {OwnedShopBankQuantityCaps=a};}
+ if(mode==5) {var a=caps.ToArray();a[39 * RuntimePlayerInventoryStore.QuantityLaneCount]=2;transfer=transfer with {OwnedShopBankQuantityCaps=a};}
+ if(mode==6) transfer=transfer with {OwnedShopBankQuantityCaps=new short[159 * RuntimePlayerInventoryStore.QuantityLaneCount + 4]};
+ if(mode==7) {var a=caps.ToArray();a[39 * RuntimePlayerInventoryStore.QuantityLaneCount]=10000;transfer=transfer with {OwnedShopBankQuantityCaps=a};}
  if(mode==8) {var a=quantity.ToArray();a[0]=1;transfer=transfer with {FundedShopBankQuantities=a};}
- if(mode==9) {var a=caps.ToArray();a[195]=9999;transfer=transfer with {OwnedShopBankQuantityCaps=a};}
+ if(mode==9) {var a=caps.ToArray();a[39 * RuntimePlayerInventoryStore.QuantityLaneCount]=9999;transfer=transfer with {OwnedShopBankQuantityCaps=a};}
  if(mode==10) transfer=transfer with {OwnedInventoryQuantities=[new(0,new(109),10000)]};
  if(mode==11) transfer=transfer with {OwnedInventoryQuantities=[new(0,new(109),9999)]};
  if(mode==12) transfer=transfer with {OwnedInventoryQuantities=[new(0,new(109),-1)]};
@@ -816,7 +816,7 @@ for(int mode=0;mode<3;mode++) {
  Check(VanillaItemStoreValue1458.TryGet(new(110),new(0),out int value),"source value");stock[0]=new(new(110,1,0,false),value,false,true);var context=new ShopPriceContext1458(1f,false);
  RuntimePlayerInventoryItem[] Physical(WorldItemPickupSlot1458[] a,WorldItemPickupSlot1458[] b)=>a.Concat(b).Select(x=>x.Type==0?default:new RuntimePlayerInventoryItem(new(x.Type),(short)x.Stack,new(x.Prefix),0)).ToArray();
  var before=Physical(original,banks);var budget=new long[219];budget[50]=mode==1?9999000000:999900;if(mode==1)budget[0]=9900;
- var q=new short[59];var caps=new short[295];Array.Fill(caps,(short)-1);var scratch=new RuntimePlayerInventoryStore.ShopFundingComparison(before,budget,q,caps);
+ var q=new short[59];var caps=new short[59 * RuntimePlayerInventoryStore.QuantityLaneCount];Array.Fill(caps,(short)-1);var scratch=new RuntimePlayerInventoryStore.ShopFundingComparison(before,budget,q,caps);
  long[]? first=null;RuntimePlayerInventoryItem[]? firstPhysical=null;
  foreach(int n in new[]{1,2,7,100}) {
   Check(VanillaShopTransaction1458.TryPlanBuy(original,banks,stock,[],default,0,n,context,out var bought)&&bought is not null,"buy prefix");
@@ -1253,7 +1253,7 @@ players.SetPlayerUpdateRandom(new(0));players.SetPlayerUpdateWorldFacts(new(400,
 T Owner<T>(string name)=>(T)typeof(PlayerAuthority).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(players)!;
 var members=Owner<RuntimePlayerMembership>("membership");var items=Owner<RuntimePlayerInventoryStore>("inventory");var c=new ConnectionHandle(GameCommandSourceId.FromConnection(9001),new(new(0),new(1)));
 var member=new RuntimePlayerMember{Connection=c,Slot=c.Player.Slot,Revision=1,HasHealth=true,Life=400,MaxLife=400};members.Commit(member);items.TryAttach(c);
-var bank=new RuntimePlayerInventoryItem[160];bank[0]=new(new(109),20,new(0),0);var quantity=new short[160];quantity[0]=20;var caps=new short[800];Array.Fill(caps,(short)-1);items.TryAdoptShopBanks(c,bank,new long[160],quantity,caps);
+var bank=new RuntimePlayerInventoryItem[160];bank[0]=new(new(109),20,new(0),0);var quantity=new short[160];quantity[0]=20;var caps=new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];Array.Fill(caps,(short)-1);items.TryAdoptShopBanks(c,bank,new long[160],quantity,caps);
 if(mode==2) {
  var other=new ConnectionHandle(GameCommandSourceId.FromConnection(9002),new(new(1),new(1)));
  members.Commit(new RuntimePlayerMember{Connection=other,Slot=other.Player.Slot,Revision=1,HasHealth=true,Life=400,MaxLife=400});items.TryAttach(other);

@@ -12,7 +12,8 @@ public static class WorldFileSeasonHeaderPatcher1458
 {
     private const int MaximumHeaderBytes = 16 * 1024 * 1024;
     private static readonly WorldFileRuntimeMetadataLimits Limits = new(
-        16 * 1024, MaximumHeaderBytes, 255, WorldBannerData1458.MaximumEntries, 255, MaximumHeaderBytes);
+        16 * 1024, MaximumHeaderBytes, WorldAnglerQuestData1458.MaximumCompletedNames,
+        WorldBannerData1458.MaximumEntries, 255, MaximumHeaderBytes);
 
     public static WorldFileSeasonHeaderPatchResult1458 TryPatch(ReadOnlySpan<byte> sourceHeader,
         WorldFileEnvelope envelope, WorldFileHeader header, out byte[] patchedHeader,

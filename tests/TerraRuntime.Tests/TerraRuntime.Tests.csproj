@@ -1014,4 +1014,10 @@
     <EmbeddedResource Include="Fixtures/PaidFurniture/IdOrder-Linux.json.gz" LogicalName="PaidFurnitureIdOrderLinux1458" />
     <EmbeddedResource Include="Fixtures/PaidFurniture/IdOrder-Windows.json.gz" LogicalName="PaidFurnitureIdOrderWindows1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/FishingRulesLinux1458.json.gz" LogicalName="FishingRulesLinux1458" />
+    <EmbeddedResource Include="Fixtures/OriginalFishingCrate1458.json.gz" LogicalName="OriginalFishingCrate1458" />
+    <EmbeddedResource Include="Fixtures/AnglerOriginal1458.json.gz" LogicalName="AnglerOriginal1458" />
+    <EmbeddedResource Include="Fixtures/FishingNpcBirthOriginal1458.json.gz" LogicalName="FishingNpcBirthOriginal1458" />
+  </ItemGroup>
 </Project>

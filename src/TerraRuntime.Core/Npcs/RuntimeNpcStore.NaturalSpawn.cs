@@ -94,7 +94,18 @@ public sealed partial class RuntimeNpcStore
 
         internal bool TryAdoptOwned(out NpcSnapshot? birth)
         {
+            if (!TryAdoptUnpublished(out birth, out var publication) || publication is null) return false;
+            publication.PublishRetention();
+            return true;
+        }
+
+        // Coupled owners may adopt their pure state after the physical table/RNG,
+        // before baseline retention can observe the new actor. Existing callers
+        // retain TryAdoptOwned's immediate retention contract through the wrapper.
+        internal bool TryAdoptUnpublished(out NpcSnapshot? birth, out NaturalSpawnPublication? publication)
+        {
             birth = null;
+            publication = null;
             if (!IsCurrentOwned())
                 return false;
             NpcSnapshot? replaced = null;
@@ -113,11 +124,21 @@ public sealed partial class RuntimeNpcStore
             }
             live.CopyStateFrom(Random);
             completed = true;
-            if (replaced is { } old)
-                owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in old);
+            publication = new(owner, replaced, birth);
+            return true;
+        }
+    }
+
+    internal sealed class NaturalSpawnPublication(RuntimeNpcStore owner, NpcSnapshot? replaced, NpcSnapshot? birth)
+    {
+        private bool published;
+        internal void PublishRetention()
+        {
+            if (published) return;
+            published = true;
+            if (replaced is { } old) owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in old);
             if (birth is { } born && owner._commitSink is INpcBirthRetentionSink retention && owner.MatchesSource(in born))
                 retention.NpcBirthRetained(in born);
-            return true;
         }
     }
 }

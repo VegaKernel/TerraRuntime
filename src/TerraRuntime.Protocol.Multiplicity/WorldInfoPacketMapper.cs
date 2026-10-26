@@ -216,7 +216,7 @@ public static class WorldInfoPacketMapper
                 state.UnlockedSlimeOldSpawn,
                 state.UnlockedSlimePurpleSpawn,
                 state.UnlockedSlimeRainbowSpawn,
-                state.UnlockedSlimeRedSpawn,
+                state.UnlockedSlimeRedSpawn || live.ProgressionMutations?.UnlockSlimeRedSpawn == true,
                 state.UnlockedSlimeYellowSpawn || live.ProgressionMutations?.UnlockSlimeYellowSpawn == true,
                 state.UnlockedSlimeCopperSpawn,
                 state.FastForwardTimeToDusk),

@@ -23,7 +23,7 @@ for(byte player=0;player<3;player++){
  int[] types=[3,9,23,109,110,189,500,2209];var q=new short[59];
  for(short slot=0;slot<58;slot++){int type=types[slot%types.Length];Check(inventory.TrySet(c,new(c.Player.Slot,slot,100,0,(short)type,0)),"source-shaped main seed");q[slot]=100;}
  inventory.AdoptFundedQuantities(c,q);
- var banks=new RuntimePlayerInventoryItem[160];var bankq=new short[160];var caps=new short[800];Array.Fill(caps,(short)-1);
+ var banks=new RuntimePlayerInventoryItem[160];var bankq=new short[160];var caps=new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];Array.Fill(caps,(short)-1);
  for(int slot=0;slot<160;slot++){banks[slot]=new(new(types[slot%types.Length]),100,new(0),0);bankq[slot]=100;}
  Check(inventory.TryAdoptShopBanks(c,banks,new long[160],bankq,caps),"source-shaped full banks");
 }

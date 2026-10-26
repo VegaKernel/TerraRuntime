@@ -23,7 +23,7 @@ foreach(int type in lanes){
  Run(type+"-other-historical-lane0",type,3,0,true,historicalType:lanes[(Array.IndexOf(lanes,type)+1)%5]);
 }
 Run("mouse58-body3-cap0",109,3,0,false,slot:58);
-Run("malformed-cap-negative",109,3,null,false,o=>Fields.Caps(o)[10*5]=-2);
+Run("malformed-cap-negative",109,3,null,false,o=>Fields.Caps(o)[10* RuntimePlayerInventoryStore.QuantityLaneCount]=-2);
 Run("malformed-funded-over-stack",109,3,null,false,o=>Fields.Quantity(o)[10]=4);
 Run("malformed-funded-negative",109,3,null,false,o=>Fields.Quantity(o)[10]=-1);
 Run("coin-noncoin-quantity",71,3,null,false,o=>Fields.Quantity(o)[10]=1);

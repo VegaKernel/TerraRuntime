@@ -12,7 +12,10 @@ internal sealed partial class PlayerBuffState
     private readonly BuffTypeId[] types = new BuffTypeId[Capacity];
     private readonly int[] durations = new int[Capacity];
     private int count;
+    // The original food clock now also carries the three paid fishing potions:
+    // they use the same indexed local UpdateBuffs countdown and DelBuff owner.
     private readonly bool[] ownedFood = new bool[Capacity];
+    private static bool IsOwnedConsumableClockType(int type) => type is 26 or 206 or 207 or 121 or 122 or 123;
     // Clone-carried semantic identity: only the owned clock may preserve it across changes.
     private object foodClockLineage = new();
     private readonly byte[] foodClockOrigins = Enumerable.Range(0, Capacity).Select(i => (byte)i).ToArray();
@@ -23,6 +26,16 @@ internal sealed partial class PlayerBuffState
     }
     private long lastOwnedFoodTick = long.MinValue;
     private bool ownedFoodEffectAtTick;
+    private byte ownedFishingEffectsAtTick;
+    internal byte CaptureFishingEffects(long tick)
+    {
+        if (lastOwnedFoodTick == tick) return ownedFishingEffectsAtTick;
+        byte result = 0;
+        for (int i = 0; i < Capacity; i++)
+            if (ownedFood[i] && durations[i] > 0 && types[i].Value is >= 121 and <= 123)
+                result |= (byte)(1 << (types[i].Value - 121));
+        return result;
+    }
     internal bool HasOwnedFoodSlots => ownedFood.Contains(true);
     internal bool HadOwnedFoodEffect(long tick) => lastOwnedFoodTick == tick ? ownedFoodEffectAtTick : HasOwnedFood;
     internal void ResetOwnedFoodClockForTransfer() { InvalidateFoodClockLineage(); lastOwnedFoodTick = long.MinValue; ownedFoodEffectAtTick = false; }
@@ -32,7 +45,7 @@ internal sealed partial class PlayerBuffState
 
     internal BuffTypeId[] CaptureEffectTypes() => Enumerable.Range(0, count)
         .Where(i => types[i] != VanillaBuffIds.None && durations[i] > 0 &&
-            (types[i].Value is not (26 or 206 or 207) || ownedFood[i]))
+            (!IsOwnedConsumableClockType(types[i].Value) || ownedFood[i]))
         .Select(i => types[i]).ToArray();
 
     public BuffTypeId[] CaptureTypes()
@@ -93,9 +106,10 @@ internal sealed partial class PlayerBuffState
         foreach (BuffTypeId type in snapshot)
             if (type == VanillaBuffIds.None || !VanillaBuffIds.TryCreate(type.Value, out _))
                 throw new ArgumentException("Invalid player buff identity.", nameof(snapshot));
-        if (HasOwnedFood && snapshot.SequenceEqual(CaptureTypes())) return;
+        if (HasOwnedFoodSlots && snapshot.SequenceEqual(CaptureTypes())) return;
         InvalidateFoodClockLineage();
         ownedFood.AsSpan().Clear();
+        ownedFishingEffectsAtTick = 0;
         ownedNpcContact.AsSpan().Clear();
         snapshot.CopyTo(types);
         types.AsSpan(snapshot.Length).Clear();

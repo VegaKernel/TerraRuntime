@@ -34,8 +34,12 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     private bool TryPlanCoinFunding(ConnectionHandle connection, RuntimePlayerInventoryItem[] before,
         RemotePhaseInventoryMutation[] mutations, long credit, out long[] afterFunding)
+        => TryPlanCoinFunding(before, mutations, credit, CaptureFundedCoinValues(connection), out afterFunding);
+
+    private static bool TryPlanCoinFunding(RuntimePlayerInventoryItem[] before,
+        RemotePhaseInventoryMutation[] mutations, long credit, long[] capturedFunding, out long[] afterFunding)
     {
-        afterFunding = CaptureFundedCoinValues(connection);
+        afterFunding = capturedFunding.ToArray();
         if (!AreValidFundedCoinValues(afterFunding, before) || credit < 0) return false;
         long beforeBudget = 0, pool = credit;
         foreach (long value in afterFunding) beforeBudget = checked(beforeBudget + value);

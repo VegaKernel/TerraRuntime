@@ -325,7 +325,7 @@ public sealed class OwnedBankClosedExchange1458Tests
             }
             // Caps remain the existing original->final lane policy. They are
             // never swapped with a source object or pooled across destinations.
-            for (int lane = 0; lane < 219 * 5; lane++) Assert.Equal(before.Caps[lane], after.Caps[lane]);
+            for (int lane = 0; lane < 219 * RuntimePlayerInventoryStore.QuantityLaneCount; lane++) Assert.Equal(before.Caps[lane], after.Caps[lane]);
         }
         finally
         {

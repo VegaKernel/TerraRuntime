@@ -13,6 +13,9 @@ public readonly record struct WorldOreTiers(
 
 public sealed class WorldFileRuntimeMetadata
 {
+    public WorldAnglerQuestData1458 AnglerQuest { get; init; } = WorldAnglerQuestData1458.Empty;
+    public int AnglerSectionOffset { get; init; }
+    public int AnglerSectionLength { get; init; }
     public WorldBannerData1458 Banners { get; init; } = WorldBannerData1458.Empty;
     public int BannerSectionOffset { get; init; }
     public int BannerSectionLength { get; init; }

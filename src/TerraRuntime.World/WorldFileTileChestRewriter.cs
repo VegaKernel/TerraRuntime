@@ -48,7 +48,7 @@ public static class WorldFileTileChestRewriter
             out bytesWritten);
 
     /// <summary>
-    /// Rewrites using a same-length validated replacement for the opaque preserved header. This lets callers patch
+    /// Rewrites using a validated replacement for the opaque preserved header. This lets callers patch
     /// runtime-owned header fields such as the world clock without cloning the other preserved sections or exposing
     /// unmodelled vanilla save flags to a lossy semantic encoder.
     /// </summary>
@@ -146,8 +146,21 @@ public static class WorldFileTileChestRewriter
         ArgumentNullException.ThrowIfNull(destination);
         bytesWritten = 0;
 
-        if (headerSection.Length != preserved.Header.Length || headerSection.IsEmpty)
+        if (headerSection.IsEmpty || headerSection.Length > 16 * 1024 * 1024)
             return WorldFileTileChestRewriteResult.InvalidHeaderSection;
+        if (headerSection.Length != preserved.Header.Length)
+        {
+            // Angler names and banners are variable-length canonical header fields.
+            // A changed length is admitted only after the complete version-pinned
+            // parser verifies identity, dimensions, every following field and end cursor.
+            var localEnvelope = new WorldFileEnvelope(sourceEnvelope.FormatVersion, sourceEnvelope.Revision,
+                sourceEnvelope.FavoriteFlags, [0, headerSection.Length], 0, []);
+            var limits = new WorldFileRuntimeMetadataLimits(16 * 1024, 16 * 1024 * 1024,
+                WorldAnglerQuestData1458.MaximumCompletedNames, WorldBannerData1458.MaximumEntries, 100_000, 16 * 1024 * 1024);
+            if (WorldFileRuntimeMetadataParser.TryParse(headerSection, localEnvelope, header, limits, out _, out _) !=
+                WorldFileRuntimeMetadataParseResult.Parsed)
+                return WorldFileTileChestRewriteResult.InvalidHeaderSection;
+        }
         byte[]? patchedBannerHeader = null;
         if (banners is not null)
         {

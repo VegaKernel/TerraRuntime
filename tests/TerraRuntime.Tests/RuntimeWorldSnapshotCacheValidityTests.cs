@@ -7,9 +7,10 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldSnapshotCacheValidityTests
 {
     [Fact]
-    public void Runtime_cache_layout_revision_tracks_lunar_banner_and_invasion_metadata()
+    public void Runtime_cache_layout_revision_tracks_lunar_banner_invasion_and_angler_metadata()
     {
-        Assert.Equal(5, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
+        // Angler section offsets and the variable completed-name list change the disposable payload layout.
+        Assert.Equal(6, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
     }
 
     [Fact]

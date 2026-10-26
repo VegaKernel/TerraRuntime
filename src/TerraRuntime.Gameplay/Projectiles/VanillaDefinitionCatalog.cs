@@ -1004,6 +1004,11 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
+        if (TerraRuntime.Gameplay.Players.FishingRules1458.IsBobber(type.Value))
+        {
+            definition = new(14, 14, new(61), true, false, false, 14, 14);
+            return true;
+        }
         if (VanillaToolProjectileDefinition1458.TryGet(type, out definition)) return true;
         if (VanillaGemStaffProjectile1458.IsGemStaffProjectile(type))
         {

@@ -1,5 +1,7 @@
 # TerraRuntime documentation
 
+Connected fishing: [pole, bait and catch](fishing-authority-1458.md), [Angler quests](angler-quest-authority-1458.md), [crate opening](fishing-crates-authority-1458.md).
+
 [Русский](../ru/README.md) · [Repository README](../../README.md) · [Roadmap](../roadmap.md)
 
 This directory contains the English TerraRuntime documentation. The Russian version is maintained in parallel under `docs/ru/` and must describe the same actual code state.

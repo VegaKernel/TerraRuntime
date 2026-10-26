@@ -232,6 +232,11 @@ internal static class RuntimeWorldPreparedStateCodec
         writer.Write(m.CloudBackgroundActive);
         writer.Write(m.CloudCount);
         writer.Write(m.WindSpeed);
+        writer.Write(m.AnglerSectionOffset);
+        writer.Write(m.AnglerSectionLength);
+        writer.Write(m.AnglerQuest.Quest);
+        writer.Write(m.AnglerQuest.CompletedNames.Count);
+        foreach (string name in m.AnglerQuest.CompletedNames) writer.Write(name);
 
         WriteBools(writer,
             m.FastForwardTimeToDawn, m.DownedFishron, m.DownedMartians, m.DownedAncientCultist,
@@ -323,6 +328,11 @@ internal static class RuntimeWorldPreparedStateCodec
         bool cloudBackgroundActive = reader.ReadBoolean();
         byte cloudCount = reader.ReadByte();
         float windSpeed = reader.ReadSingle();
+        int anglerOffset = reader.ReadInt32();
+        int anglerLength = reader.ReadInt32();
+        int anglerQuest = reader.ReadInt32();
+        string[] anglerNames = ReadStrings(reader, WorldAnglerQuestData1458.MaximumCompletedNames);
+        var angler = new WorldAnglerQuestData1458(anglerQuest, anglerNames);
 
         bool[] eventFlags = ReadBools(reader, 27);
         float sandstormIntendedSeverity = reader.ReadSingle();
@@ -430,6 +440,9 @@ internal static class RuntimeWorldPreparedStateCodec
             CloudBackgroundActive = cloudBackgroundActive,
             CloudCount = cloudCount,
             WindSpeed = windSpeed,
+            AnglerQuest = angler,
+            AnglerSectionOffset = anglerOffset,
+            AnglerSectionLength = anglerLength,
             FastForwardTimeToDawn = eventFlags[0],
             DownedFishron = eventFlags[1],
             DownedMartians = eventFlags[2],
