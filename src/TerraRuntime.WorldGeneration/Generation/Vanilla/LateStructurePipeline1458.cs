@@ -748,7 +748,10 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         return true;
     }
 
-    private static bool IsSolidOrSloped(in WorldTile tile) => tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType);
+    // WorldGen.templePart2 keeps Main.tileSolid[232] false from its chest loop through spikes and furniture.
+    // Floor search still stops on an active 232, but support and mayanTrap predicates must not treat it as solid.
+    private static bool IsSolidOrSloped(in WorldTile tile) =>
+        tile.IsActive && tile.Type != 232 && VanillaTileCollisionCatalog.IsSolid(tile.TileType);
 
     private void ApplyCaveWalls(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {

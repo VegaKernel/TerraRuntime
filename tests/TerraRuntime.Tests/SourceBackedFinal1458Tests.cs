@@ -1240,8 +1240,74 @@ public sealed class SourceBackedFinal1458Tests
         Assert.Equal("0B0F5A4265C269D93B40FC4D9E026134B1FA0B42CFD92FAC304E105515D6D6F4", HashFixture(workspace));
     }
 
-    [Fact(Skip = "Official canonical three-basin fixture with curMaxLiquid=25000 finds row-102 quick-settle rounding gap at 1989,799.")]
+    [Fact]
     public void Settle_liquids_again_canonical_multi_basin_matches_official_passlegacy()
+    {
+        var workspace = CreateCanonicalLiquidBasins();
+        const int width = 4200;
+        const int height = 1200;
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalLiquids", 1458, width, height), workspace, random));
+
+        Assert.Equal(906992634, random.Next());
+        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+    }
+
+    [Fact]
+    public void First_settle_liquids_canonical_multi_basin_matches_official_passlegacy()
+    {
+        var workspace = CreateCanonicalLiquidBasins();
+        JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+
+        // The two registered ordinary-world passes share the source's settlement sequence on this
+        // no-special-seed terrain. The first pass has its own independently run official PassLegacy oracle.
+        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Settle_liquids_canonical_four_kinds_match_official_passlegacy(bool laterPass)
+    {
+        var workspace = CreateCanonicalMixedLiquidBasins();
+        if (laterPass)
+        {
+            var random = new RandomAdapter(1458);
+            new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
+                .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalMixedLiquids", 1458, 4200, 1200), workspace, random));
+            Assert.Equal(906992634, random.Next());
+        }
+        else
+        {
+            JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+        }
+
+        Assert.Equal("953EE58D1120E82E52F00182E8FE3AFE4869456F095F87007128687695BDB6C8", HashLiquidKindFixture(workspace));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Settle_liquids_canonical_interacting_kinds_match_official_passlegacy(bool laterPass)
+    {
+        var workspace = CreateCanonicalMixedLiquidBasins(interacting: true);
+        if (laterPass)
+        {
+            var random = new RandomAdapter(1458);
+            new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
+                .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "InteractingLiquids", 1458, 4200, 1200), workspace, random));
+            Assert.Equal(906992634, random.Next());
+        }
+        else
+        {
+            JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+        }
+
+        Assert.Equal("3132D18ED04FBEE14B3D1701398843FBE8C0727484040D6C68DF7E5D3E344251", HashLiquidKindFixture(workspace));
+    }
+
+    private static Workspace CreateCanonicalLiquidBasins()
     {
         const int width = 4200;
         const int height = 1200;
@@ -1266,13 +1332,43 @@ public sealed class SourceBackedFinal1458Tests
             var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
             workspace.TileStore.Set(centerX, sourceY, in water);
         }
+        return workspace;
+    }
 
-        var random = new RandomAdapter(1458);
-        new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
-            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalLiquids", 1458, width, height), workspace, random));
-
-        Assert.Equal(906992634, random.Next());
-        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+    private static Workspace CreateCanonicalMixedLiquidBasins(bool interacting = false)
+    {
+        const int width = 4200;
+        const int height = 1200;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(300, 500));
+        workspace.SetVanillaLiquidLines(600, 1000);
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        foreach ((int centerX, int sourceY, int floorY, WorldLiquidKind kind) in interacting
+            ? new[] { (1000, 450, 600, WorldLiquidKind.Lava), (2000, 650, 800, WorldLiquidKind.Honey),
+                      (3000, 900, 1050, WorldLiquidKind.Shimmer) }
+            : new[] { (500, 450, 600, WorldLiquidKind.Water), (1500, 450, 600, WorldLiquidKind.Lava),
+                      (2500, 650, 800, WorldLiquidKind.Honey), (3500, 650, 800, WorldLiquidKind.Shimmer) })
+        {
+            for (int x = centerX - 12; x <= centerX + 12; x++)
+            {
+                var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, floorY, in floor);
+            }
+            for (int y = sourceY - 5; y <= floorY; y++)
+            foreach (int x in new[] { centerX - 12, centerX + 12 })
+            {
+                var wall = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in wall);
+            }
+            var liquid = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = kind };
+            workspace.TileStore.Set(interacting ? centerX + 4 : centerX, sourceY, in liquid);
+            if (interacting)
+            {
+                var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+                workspace.TileStore.Set(centerX - 4, sourceY, in water);
+            }
+        }
+        return workspace;
     }
 
     [Fact]
@@ -2418,6 +2514,20 @@ public sealed class SourceBackedFinal1458Tests
             WorldTile tile = workspace.TileStore.Get(x, y);
             snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
                 .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
+    }
+
+    private static string HashLiquidKindFixture(Workspace workspace)
+    {
+        var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 22);
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        {
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
+                .Append((byte)tile.LiquidKind).Append(';');
         }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }

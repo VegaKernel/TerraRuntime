@@ -58,6 +58,8 @@ This early `JungleShrines` pass builds hut shells, cavities, Mud supports, stepp
 
 The pass follows ordinary TerrariaServer 1.4.5.8 generation settlement: `QuickWater`, `WaterCheck`, ten bounded quick-settle rounds with another `WaterCheck` after each round, then clearing transient queues. Each round permits five updates per entry queued at its start. Generation's temporary tile solidity remains distinct from ordinary runtime collision.
 
+Three independent official canonical full-pass fixtures now agree on every tile: water basins, isolated water/lava/honey/shimmer basins, and interacting water-versus-lava/honey/shimmer basins. Stable `Liquid.DelWater` retirement clears low-volume cells for every liquid kind and resets an empty cell's kind to water. This is bounded ordinary-world coverage; extra-liquid special seeds, the remaining retirement side effects and real-prefix parity are not established.
+
 Damaged Antlion Larva (`485`) objects can occur before settlement. Their generation-only death path follows `KillTile`/`CheckSuper`: remove active matching larva cells within the frame-derived two-by-two footprint, preserve foreign and inactive siblings, and suppress NPC children. Conflicting live frame anchors still fail closed. A direct original-binary fixture independently pins this partial-object behavior.
 
 The same generation boundary admits damaged closed-door (`10`) columns through source `CheckDoorClosed`: only the surviving active door cells within the three frame-derived rows are removed, while foreign siblings and outside supports remain. Conflicting row anchors and locked temple doors remain rejected, and the loading boundary keeps its existing policy. An original-binary fixture verifies the foreign-top-cell case.
