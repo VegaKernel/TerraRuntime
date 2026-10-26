@@ -43,7 +43,7 @@ Loot remains deliberately separate. Unique Floating Island item ordering, second
 
 `Spider Caves` carves bounded cavern pockets, assigns unsafe spider walls, and seeds cobwebs without cutting through temple, hive, granite, or marble structures. `Gem Caves` converts exposed cavern stone into the six vanilla gem-stone identities. `Moss` decorates exposed stone rather than replacing arbitrary biome material.
 
-`Temple` is a refinement pass over the Lihzahrd structure created earlier. It discovers the existing brick bounds and fills missing unsafe interior wall cells adjacent to temple brick. `Cave Walls` adds bounded natural wall patches only to ordinary cave backgrounds.
+`Temple` is the registered `templePart2` refinement over the earlier Lihzahrd structure. It consumes the retained `GenVars` bounds and room count rather than rediscovering brick bounds from the tile grid. Trap, Lihzahrd chest, spike, furniture and painting offers retain source RNG order. Tile `232` is temporarily non-solid from the chest loop through spike and furniture support checks, while active-cell floor search still stops at it. Two official canonical whole-pass fixtures match every cell and next RNG, including an obstructed cavity; this does not prove real-prefix or every TileObjectData combination. `Cave Walls` adds bounded natural wall patches only to ordinary cave backgrounds.
 
 `Jungle Trees` uses Living Mahogany block geometry so this intermediate implementation does not invent incomplete frame-important tree sprites. `Floating Island Houses` discovers cloud-supported sky islands, adds Sunplate/Disc-wall rooms, and couples each successfully placed Skyware Chest to persistent chest metadata.
 

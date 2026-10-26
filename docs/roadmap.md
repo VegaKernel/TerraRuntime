@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+Late Temple acceptance (2026-10-26): row 70 is bounded `C`. Release solution warnings-as-errors, focused Temple `35/35`, fast `25,293/25,293`, one unfiltered full `1,566,706/1,566,706` with zero skips, and fresh Windows NativeAOT with five smokes pass. The pending-gate wording in the candidate note below is historical; real-prefix and exhaustive TileObjectData parity remain open.
+
+## Late Temple canonical differential, 2026-10-26
+
+Row 70 advances from `P` to bounded `C`. The registered `templePart2` pass matches two direct official `4200 × 1200`, seed-`1458` full-grid/RNG fixtures with eight retained rooms: a broad plain cavity (SHA-256 `74aac25e70298cba5fdc54ba6b2569e79c3fc717983a8338b30367c5c17f0357`, next RNG `425056706`) and a cavity with stone partitions, missing temple-wall bands and tile-`232` floor interruptions (SHA-256 `8112f030f7fa0f32be9d68a4f0d6659be4f393cc90b4dfba30707cfd9b7b994f`, next RNG `873817261`). The obstructed fixture caught the source-scoped `Main.tileSolid[232] = false` gate across trap, spike and furniture placement; the old predicate fails the differential. This is a synthetic complete-pass proof, not real-prefix parity or every TileObjectData combination. Consolidated gates are pending.
+
 Current mixed-liquid acceptance (2026-10-26): rows 53 and 102 are bounded `C` after Release fast `25,291/25,291`, unfiltered full `1,566,704/1,566,704` with zero skips, fresh Windows NativeAOT and five exercised smokes. The earlier pending-gate wording immediately below records the pre-acceptance candidate; limitations remain unchanged.
 
 ## Vanilla liquid settlement: ordinary mixed-kind differential, 2026-10-26

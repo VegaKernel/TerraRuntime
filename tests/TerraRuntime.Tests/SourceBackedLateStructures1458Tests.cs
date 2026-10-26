@@ -407,6 +407,37 @@ public sealed class SourceBackedLateStructures1458Tests
         Assert.Equal("814231d07b6ce34b009a9d0d8ca832e4ed136ec2869374940c05439d92ad6c6c", HashFixture(workspace));
     }
 
+    [Fact]
+    public void Temple_canonical_multi_room_pass_matches_the_official_delegate()
+    {
+        Workspace workspace = CreateCanonicalTempleWorkspace();
+        workspace.SetVanillaTemplePart2State(new VanillaTemplePart2State1458(1600, 2600, 400, 900, 8));
+        var random = new SpiderFixtureRandom(1458);
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalTemple", 1458, 4200, 1200);
+        var context = new SpiderContext(request, workspace, random);
+
+        new LateStructurePass1458(LateStructureStage1458.Temple, new LateStructureState1458()).Execute(context);
+
+        Assert.Equal(425056706, random.Next());
+        Assert.Equal("74aac25e70298cba5fdc54ba6b2569e79c3fc717983a8338b30367c5c17f0357", HashFixture(workspace));
+    }
+
+    [Fact]
+    public void Temple_canonical_obstructed_pass_matches_the_official_delegate()
+    {
+        Workspace workspace = CreateCanonicalTempleWorkspace(obstructed: true);
+        workspace.SetVanillaTemplePart2State(new VanillaTemplePart2State1458(1600, 2600, 400, 900, 8));
+        var random = new SpiderFixtureRandom(1458);
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "ObstructedTemple", 1458, 4200, 1200);
+        var context = new SpiderContext(request, workspace, random);
+
+        new LateStructurePass1458(LateStructureStage1458.Temple, new LateStructureState1458()).Execute(context);
+
+        string actualHash = HashFixture(workspace);
+        Assert.Equal(873817261, random.Next());
+        Assert.Equal("8112f030f7fa0f32be9d68a4f0d6659be4f393cc90b4dfba30707cfd9b7b994f", actualHash);
+    }
+
     private static Workspace CreateSpiderPassWorkspace(bool chambers)
     {
         var workspace = new Workspace(600, 500);
@@ -453,6 +484,59 @@ public sealed class SourceBackedLateStructures1458Tests
             var emptyTemple = new WorldTile { Wall = 87 };
             workspace.TileStore.Set(x, y, in emptyTemple);
         }
+        return workspace;
+    }
+
+    private static Workspace CreateCanonicalTempleWorkspace(bool obstructed = false)
+    {
+        var workspace = new Workspace(4200, 1200);
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        {
+            var tile = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        for (int x = 1600; x < 2600; x++)
+        for (int y = 400; y < 900; y++)
+        {
+            var tile = new WorldTile { Wall = 87 };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        if (obstructed)
+        {
+            for (int x = 1750; x <= 2450; x += 175)
+            for (int dx = 0; dx < 5; dx++)
+            for (int y = 760; y < 900; y++)
+            {
+                var stone = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x + dx, y, in stone);
+            }
+            for (int x = 1950; x < 2050; x++)
+            for (int y = 400; y < 900; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                tile.Wall = 0;
+                workspace.TileStore.Set(x, y, in tile);
+            }
+            for (int x = 1600; x < 2600; x += 31)
+            {
+                var support = new WorldTile { Type = 232, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, 900, in support);
+            }
+        }
+        Assert.True(workspace.TrySetLayers(300d, 500d));
+        workspace.SetVanillaLiquidLines(600, 600);
+        workspace.SetVanillaBootstrapState(new VanillaWorldGenerationBootstrapState1458
+        {
+            HellChestItems = [220, 274, 275],
+            TreeX = [], TreeStyle = [], CaveBackX = [], CaveBackStyle = [], ForestBackgroundStyles = []
+        });
+        workspace.SetVanillaBuriedChestContext(new BuriedChestContext1458
+        {
+            Height = 1200, WorldSurface = 300d, RockLayer = 500d, LavaLine = 600,
+            CopperBar = 20, IronBar = 22, SilverBar = 21, GoldBar = 19, TungstenIsSilverTier = false,
+            DesertHiveLow = 0, DesertHiveHigh = 0, HellChestItem = [220, 274, 275]
+        });
         return workspace;
     }
 

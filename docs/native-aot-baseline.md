@@ -1,5 +1,7 @@
 # NativeAOT and CoreCLR hosting baseline
 
+2026-10-26 Late Temple checkpoint: fresh Windows NativeAOT executable SHA256 `942369d37e333c196d9d209a45f1d3966826e95f7907d4146bb81ad1541779b2` passes exercised loop/protocol/network/world/TUI smokes. Release solution warnings-as-errors and unfiltered full `1,566,706/1,566,706` pass with zero skips. No production dependency or project edge changed. Linux NativeAOT remains locally unverified; the source/fixture scope is recorded in work-state and the bilingual pass audit.
+
 ## Ordinary placement and paid furniture: local validation, 2026-10-26
 
 Source fingerprint `e59b2d5086f402a8c380643690fd33849d2158c656a26b562ba8cb9076233687` passes fresh Release warnings-as-errors, 191 connected cases across46classes, fast25,285/25,286 and one unfiltered full1,566,698/1,566,699. Both suites have zero failures/errors and the same known canonical-liquid skip. The actual full XML contains all5,204 discovered methods, zero missing/unplanned; all3,969 inputs and158 executed DLLs remain unchanged. Full test time is $1141.041\,\mathrm{s}$ and wall time is $1161.037\,\mathrm{s}$.

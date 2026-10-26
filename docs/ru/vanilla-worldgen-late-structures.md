@@ -43,7 +43,7 @@ Loot остаётся отдельной задачей. Unique-item ordering Fl
 
 `Spider Caves` формирует ограниченные cavern pockets, unsafe spider walls и cobwebs, не прорезая temple, hive, granite и marble structures. `Gem Caves` заменяет exposed cavern stone шестью vanilla gemstone-stone types. `Moss` работает только по exposed stone и не перекрашивает произвольные biome blocks.
 
-`Temple` является refinement-pass над Lihzahrd structure, созданной раньше: существующие brick bounds находятся из tile store, после чего недостающие unsafe interior wall cells заполняются только рядом с Lihzahrd Brick. `Cave Walls` добавляет bounded patches естественных cave backgrounds.
+`Temple` — зарегистрированный refinement-pass `templePart2` над ранее созданной Lihzahrd structure. Он использует сохранённые границы и число комнат `GenVars`, а не ищет brick bounds заново по сетке. Предложения ловушек, сундуков, шипов, мебели и картин сохраняют исходный порядок RNG. Tile `232` временно нетвёрдый от цикла сундуков до проверок опоры для шипов и мебели, хотя поиск пола по активным клеткам на нём останавливается. Две официальные canonical-фикстуры полного прохода совпадают по всем клеткам и следующему RNG, включая перекрытую камеру; это не доказывает реальный prefix или все варианты TileObjectData. `Cave Walls` добавляет bounded patches естественных cave backgrounds.
 
 `Jungle Trees` пока строит геометрию из Living Mahogany blocks. Это сознательно безопаснее, чем генерировать недостоверные frame-important tree sprites. `Floating Island Houses` находит cloud-supported islands, добавляет комнаты из Sunplate/Disc Wall и связывает каждый успешно размещённый Skyware Chest с persistence metadata.
 

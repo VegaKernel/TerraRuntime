@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Temple Part 2 temporary solidity, 2026-10-26
+
+TerrariaServer 1.4.5.8 `WorldGen.templePart2` sets `Main.tileSolid[232] = false` immediately before its Lihzahrd chest loop and restores it only after the trap, spike, furniture and painting loops. Source floor search still stops on an active tile-232 cell, but `SolidOrSlopedTile` and TileObjectData support tests see that cell as non-solid throughout the later loops. A direct eight-room `4200x1200` obstructed fixture at seed1458 produces all-cell SHA256 `8112f030f7fa0f32be9d68a4f0d6659be4f393cc90b4dfba30707cfd9b7b994f`, next RNG873817261; the old default-solid runtime instead left next RNG1073686676 and first differed at `(1609,611)`. The plain fixture produces SHA256 `74aac25e70298cba5fdc54ba6b2569e79c3fc717983a8338b30367c5c17f0357`, next RNG425056706. These are synthetic complete-pass fixtures, not real-prefix equivalence.
+
 ## Mixed-kind settle retirement, 2026-10-26
 
 The TerrariaServer 1.4.5.8 `Liquid.DelWater` low-volume (<20) retirement rule applies to all liquid kinds, not just water, and calls `liquidType(0)` when the retiring cell's amount reaches zero. Direct registered first and second `Settle Liquids` `PassLegacy` canonical `4200x1200` probes yield seven-field grid SHA256 `953ee58d1120e82e52f00182e8fe3afe4869456f095f87007128687695bdb6c8` for isolated water/lava/honey/shimmer and `3132d18ed04fbee14b3d1701398843fbe8c0727484040d6c68df7e5d3e344251` for separated water+lava, water+honey and water+shimmer interactions. The latter first differs from water-only runtime at `(1989,799)` (official honey11/runtime13); generic retirement removes that difference and yields full seven-field equality. Next later-pass RNG is `906992634`. These fixtures do not exercise every `DelWater` wake, reaction or object-framing tail.
