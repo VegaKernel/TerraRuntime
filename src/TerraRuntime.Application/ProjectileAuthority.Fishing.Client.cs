@@ -56,6 +56,16 @@ internal sealed class FishingClientActor1458(long tick, float launchSpeed)
 
 internal sealed partial class ProjectileAuthority
 {
+    internal const int FishingClientClaimMaximumTicks = 2400;
+    internal const int FishingClientClosedGraceTicks = 240;
+
+    private bool IsFishingClientClaimWithinLifetime(FishingClientClaim1458 claim)
+    {
+        long now = tickProvider();
+        return now >= claim.CreatedTick && now - claim.CreatedTick <= FishingClientClaimMaximumTicks &&
+            (!claim.ClientClosed || now >= claim.ClosedTick && now - claim.ClosedTick <= FishingClientClosedGraceTicks);
+    }
+
     internal bool TryCaptureFishingClientClaim(ConnectionHandle connection, out FishingClientClaim1458? claim)
     {
         claim = CaptureFishingBobber(connection)?.Client?.Claim;
@@ -80,7 +90,7 @@ internal sealed partial class ProjectileAuthority
         ReferenceEquals(bobber.Client?.Claim, claim) && bobber.Snapshot.Handle == claim.Projectile &&
         bobber.Connection == claim.Connection && IsFishingCurrent(bobber) && !claim.RewardAdopted &&
         players.TryGet(claim.Connection, out var member) && ReferenceEquals(member, bobber.Member) && !member.IsDead &&
-        tickProvider() - (claim.ClientClosed ? claim.ClosedTick : claim.CreatedTick) <= 2400;
+        IsFishingClientClaimWithinLifetime(claim);
 
     internal void AdoptFishingClientPayment(FishingClientClaim1458 claim, bool consumed)
     {
@@ -297,6 +307,8 @@ internal sealed partial class ProjectileAuthority
         if (before.Connection != connection || before.Snapshot != current || !IsFishingCurrent(before)) return true;
         if (client.Claim is not { PullReported: true } claim)
         { _ = EndFishingBobber(current, before, false, 0); return true; }
+        if (!IsFishingClientClaimWithinLifetime(claim))
+        { _ = EndFishingBobber(current, before, false, 0); return true; }
         if (claim.ClientClosed) return true;
         bool atPlayer = packet.PositionX < before.Member.PositionX + 20 && packet.PositionX + 14 > before.Member.PositionX &&
             packet.PositionY < before.Member.PositionY + 42 && packet.PositionY + 14 > before.Member.PositionY;
@@ -382,19 +394,28 @@ internal sealed partial class ProjectileAuthority
 
     internal void PublishFishingClientEffects(FishingClientClaim1458 claim)
     {
-        TryPublishFishingClientNpc(claim);
-        if (claim.TerminalPublication is { } terminal)
+        Exception? failure = null;
+        try { TryPublishFishingClientNpc(claim); }
+        catch (Exception exception) { failure = exception; }
+        // NPC birth and bobber termination are independent adopted publications.
+        // A throwing NPC sink cannot strand the terminal wire identity.
+        try
         {
-            claim.TerminalPublication = null;
-            PublishFishing(terminal, false);
+            if (claim.TerminalPublication is { } terminal)
+            {
+                claim.TerminalPublication = null;
+                PublishFishing(terminal, false);
+            }
+            else if (claim is { ClientClosed: true, PaymentCommitted: true, NpcType: > 0 } && IsFishingClientClaimCurrent(claim))
+            {
+                var before = fishingBobbers[claim.Projectile.Slot]!;
+                AdoptFishingClientTerminal(before, claim);
+                if (claim.TerminalPublication is { } despawn)
+                { claim.TerminalPublication = null; PublishFishing(despawn, false); }
+            }
         }
-        else if (claim is { ClientClosed: true, PaymentCommitted: true, NpcType: > 0 } && IsFishingClientClaimCurrent(claim))
-        {
-            var before = fishingBobbers[claim.Projectile.Slot]!;
-            AdoptFishingClientTerminal(before, claim);
-            if (claim.TerminalPublication is { } despawn)
-            { claim.TerminalPublication = null; PublishFishing(despawn, false); }
-        }
+        catch (Exception exception) { failure ??= exception; }
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
     private void AdoptFishingClientTerminal(FishingBobber1458 before, FishingClientClaim1458 claim)

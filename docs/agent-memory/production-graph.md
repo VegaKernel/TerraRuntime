@@ -1,5 +1,9 @@
 # Production graph
 
+## Fishing adopted-publication and client lifetime correction, 2026-10-27
+
+The same existing item/projectile/NPC owners now complete independent publications after callback-free adoption even if an earlier observer throws, preserving the first exception. A client-paid pull can never use the trusted-host timeout reward generator. Capability lifetime remains anchored to creation as well as closed grace, including supported returns that withhold29. No new owner, inventory, journal or dependency is introduced. Release WAE0/0 and eight fixed/old/fixed canonical causal cases pass (old DLL eight assertion failures, zero runner errors); final source `be606776` still needs its fresh managed/full/Native/live acceptance. Earlier candidate numbers below are historical.
+
 ## Vanilla client outcome validation candidate, 2026-10-26
 
 Client action and source-owned actor facts establish a bounded candidate in the existing inventory journal. The complete5/138 image and retained21 overflow must match a possible correlated source reward sequence and its original storage order. Existing inventory/private quantities/copper/world-item allocation adopt together; only then can daily Angler progression or the exact-generation fishing receipt commit. Client75 alone pays nothing. Candidate validation never guesses or advances the client's RNG using the independent server stream. Angler count possibilities are progression evidence on the existing member/transfer owner, not a separate reward ledger. The player/file remains client-owned under the classic initial-character trust boundary.

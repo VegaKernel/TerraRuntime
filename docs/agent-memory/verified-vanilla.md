@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Fishing role regressions and bounded lifetime, 2026-10-27
+
+The server's trusted-host AI61 GiveItem path is not permission to generate a second reward for an ordinary client-owned fishing actor. Copied real9dd8acd5 App DLL plus unchanged new canonical tests produces actual extra items after unsupported-held timeout and after a late29 revives the old time anchor; the corrected source refuses both. Reward/NPC observer controls additionally detect lost terminal/birth publication. Eight fixed/old/fixed cases pass/fail/pass with zero runner errors. Unknown29 still has the existing vanilla peer relay; tests distinguish that relay from authoritative actor termination and economic adoption. The named2400creation/240closed limits are runtime admission bounds, not newly asserted vanilla constants. Fresh full/Native/live for source `be606776` remain pending; existing independent source observations retain their original bounded scope.
+
 ## Ordinary-client legality contract, 2026-10-26
 
 User decision: retain vanilla client roles and require complete server legality/payment/replay validation. Source client RNG outcomes must not be compared to an unrelated server RNG cursor. The client performs bait decisions, local catch/reward rolls and inventory QuickSpawn before its later5/138 reports. Negative bite27 contains no selected bait/result; pull return27 carries the item, NPC130/61 precedes that return, overflow21 precedes29 or the end-of-frame inventory image. Existing source fixtures and direct probes support these roles; new audit `.cache/fishing-client-validation/source-fishing/` explicitly distinguishes static tracing from reused source executions.

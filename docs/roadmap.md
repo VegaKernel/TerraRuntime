@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Fishing client final-gate candidate, 2026-10-27
+
+The legality/payment implementation now also drains adopted catch/NPC publications under observer exceptions, excludes client actors from the host timeout generator, and prevents expired capabilities from revival through late29. Release WAE0/0 and eight genuine old-DLL regression controls pass; the old code generates an extra item in timeout/late-report controls. Source `be606776` is frozen for new focused/fast/full, exact104-case managed/Windows Native and actual TCP acceptance. These gates are pending; earlier597/96 candidate results and0d48670b acceptance do not attest this corrected tree. Linux Native, graphical-client economic correction, classic character import trust and broader fishing admission remain explicit limits.
+
 ## Vanilla-client fishing legality candidate, 2026-10-26
 
 The user selected classic client roles plus mandatory complete server checks. The new candidate replaces client/server RNG equality with shared source-grammar validation of correlated outcomes, true paid inventory changes, original storage/overflow order and one-shot action ownership. It also stages Angler75 until5/138 and retains narrowed unknown lifetime-count evidence. Ordinary fishing client27/29/130/61 uses known world/scene/timing/bait facts rather than independently rerolling the client's catch. Existing owners remain authoritative; no second inventory, reward database or SSC storage is added. Preliminary Release and focused checks are in progress. Prior accepted `0d48670b` gates below do not attest this candidate; no status advance to full vanilla compatibility.

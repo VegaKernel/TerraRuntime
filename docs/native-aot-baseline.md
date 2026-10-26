@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Fishing client publication/lifetime candidate, 2026-10-27
+
+Frozen source `be606776eb59636105983ffd95bd0d122093ab600bfad8df52966002bab5f685` includes exception-safe adopted publications and strict client capability expiration, using existing owners and BCL code. Release build10 WAE0/0 passes; eight unchanged canonical cases pass with fixed DLL, fail by assertion with saved old9dd App, then pass restored, with source/canonical graph unchanged. Final104-case typed managed replay, mandatory fast/one unfiltered full and fresh Windows Native/live gates remain pending. No new package, project edge or reflection discovery is introduced. The earlier96-case/597-focused and accepted0d Native results below belong to earlier source. Linux Native remains unverified.
+
 ## Vanilla-client fishing validation candidate, 2026-10-26
 
 `feature/fishing-client-validation-1458` starts from accepted `0d48670b`. Candidate neutral reward grammar, bounded Angler count evidence and client fishing capabilities use BCL/static code and existing owners; no production package, dynamic generation or reflection-discovery surface is added. Frozen Release warnings-as-errors0/0 and focused597/597 pass; mandatory fast and one full are queued sequentially in `.cache/fishing-client-validation/managed.py`. New exact-test typed managed replay96/96cases across70methods passes428733assertions plus3adapter self-checks with29linked/1795production/197canonical DLL inputs exact before/after. Source fingerprint `cfad7e53539ae06ec17a20aaa16c9e27052a821e4023388c04284b77f364cc54`,4138inputs. Fresh Windows Native/live remain pending; the existing accepted Native binaries and source8fae below belong to the previous checkpoint. Genuine Linux Native and raw-client RNG honesty remain distinct limitations.

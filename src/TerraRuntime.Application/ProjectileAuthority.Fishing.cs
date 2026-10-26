@@ -108,6 +108,10 @@ internal sealed partial class ProjectileAuthority
             !projectiles.TryGetLifecycle(initial.Handle, out var lifecycle) || fishingNpcs is null)
             return ProjectileActorSimulationResult.Rejected;
         bool alive = players.TryGet(before.Connection, out var member) && ReferenceEquals(member, before.Member) && !member.IsDead;
+        // Return arrival is client-reported, but withholding29 cannot retain a
+        // capability forever or renew it later by resetting its closed grace.
+        if (before.Client?.Claim is { } clientClaim && !IsFishingClientClaimWithinLifetime(clientClaim))
+            return EndFishingBobber(initial, before, false, 0);
         bool supported = alive &&
             (member!.MovementFlags & 1) == 0 &&
             players.TryPrepareHeldToolLifecycle(member!, before.Connection.Player, 0, out var held) && held is not null &&
@@ -117,11 +121,11 @@ internal sealed partial class ProjectileAuthority
         if (!supported)
         {
             if (alive && before.Client?.Claim is { PullReported: true } pending &&
-                tickProvider() - (pending.ClientClosed ? pending.ClosedTick : pending.CreatedTick) <= 240)
+                tickProvider() - (pending.ClientClosed ? pending.ClosedTick : pending.CreatedTick) <= FishingClientClosedGraceTicks)
                 return ProjectileActorSimulationResult.Applied;
             // Source AI61 Kill still runs GiveItem for an already paid positive
             // ai1 when selection changes. A pending bite has no such entitlement.
-            if (alive && before.PaidCatch && fishingNpcs.TryCaptureFishingWorld(member!, out _, out var endingWeather, out _) &&
+            if (before.Client is null && alive && before.PaidCatch && fishingNpcs.TryCaptureFishingWorld(member!, out _, out var endingWeather, out _) &&
                 players.TryCaptureFishingPlayer(member!, endingWeather, out var endingOwner, ending: true) && endingOwner is not null)
                 return EndFishingBobber(initial, before, true, endingOwner.Conditions.FinalFishingLevel);
             return EndFishingBobber(initial, before, false, 0);
@@ -134,11 +138,8 @@ internal sealed partial class ProjectileAuthority
             clientOwner.MaximumPower = Math.Max(clientOwner.MaximumPower, (int)Math.Ceiling(owner.Conditions.FinalFishingLevel * 1.1) + 2);
             if (clientOwner.Claim is { PullReported: false } waiting && tickProvider() - waiting.CreatedTick > -waiting.InitialBiteClock + 2)
             { clientOwner.Claim = null; clientOwner.NpcCandidate = null; clientOwner.SettledFrames = 0; }
-            if (clientOwner.Claim is { ClientClosed: true } closed)
-            {
-                if (tickProvider() - closed.ClosedTick > 240) return EndFishingBobber(initial, before, false, 0);
+            if (clientOwner.Claim is { ClientClosed: true })
                 return ProjectileActorSimulationResult.Applied;
-            }
         }
         var randomBefore = projectileRandom.Clone(); var random = randomBefore.Clone();
         var dropBefore = fishingDropRandom.Clone(); var drop = dropBefore.Clone();
