@@ -15,7 +15,7 @@ internal sealed partial class WorldTileAuthority
             if (step.Index == 9)
             {
                 fossilBreak = false;
-                return Push(step with { Kind = StepKind.KillAfterPreEffects });
+                return step.FossilOnly || Push(step with { Kind = StepKind.KillAfterPreEffects });
             }
             int x = step.X - 1 + step.Index / 3, y = step.Y - 1 + step.Index % 3;
             if (!Overlay.TryReadSourceSafely(x, y + 1, out var below) ||

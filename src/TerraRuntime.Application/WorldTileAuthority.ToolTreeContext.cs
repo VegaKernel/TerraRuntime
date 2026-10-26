@@ -6,6 +6,7 @@ internal readonly record struct ToolTreeWorldFacts1458(int WorldWidth,
     bool DayTime, bool Raining, bool Halloween, bool TooWindyForButterflies)
 {
     internal int? HallowBackground { get; init; }
+    internal bool? OnlyShimmerOceanWorlds { get; init; }
     // WorldGen.IsPalmOasisTree, Terraria1458; beachDistance is380.
     internal bool IsPalmOasis(int x) => x >= 380 && x <= WorldWidth - 380;
 }
@@ -40,7 +41,7 @@ internal sealed partial class WorldTileAuthority
         var facts = new ToolTreeWorldFacts1458(world.MaxTilesX, good, drunk, world.RemixWorld,
             bees, tenth, constant, toolClock.DayTime, toolClock.Raining, season.Halloween,
             MathF.Abs(toolClock.WindSpeedTarget) >= .4f)
-        { HallowBackground = world.HallowBackground };
+        { HallowBackground = world.HallowBackground, OnlyShimmerOceanWorlds = world.OnlyShimmerOceanWorlds };
         capture = new(this, actor, world, toolClock, facts,
             hardModeBaseline || progression.IsCompleted(TerraRuntime.World.VanillaWorldProgressionId.Hardmode));
         return capture.IsCurrent;

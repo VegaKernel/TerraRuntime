@@ -57,6 +57,9 @@ internal sealed class RuntimePlayerToolActorCapture1458
     internal bool HasCurrentSourceStage => owner.HasCurrentToolSourceStage(this);
     internal bool IsHeldToolUseAuthorized => owner.IsHeldToolUseAuthorized(this);
     internal VanillaUnifiedRandom1458 CreateRandomPreview() => beforeRandom.Clone();
+    internal bool HasPreservedPlacementEndpoint(RuntimePlayerToolActorCapture1458 source, int movements)
+        => owner.IsPreservedPlacementEndpoint(source, this, movements);
+    internal bool IsRandomDistinctFrom(VanillaUnifiedRandom1458 other) => !ReferenceEquals(randomOwner, other);
     internal bool IsCurrentRandom(VanillaUnifiedRandom1458? current, bool owned) =>
         owned && ReferenceEquals(current, randomOwner) && randomOwner.HasSameState(beforeRandom);
     internal bool MatchesOwnedRandomBefore(VanillaUnifiedRandom1458 current,
@@ -66,6 +69,35 @@ internal sealed class RuntimePlayerToolActorCapture1458
 
 internal sealed partial class PlayerAuthority
 {
+    internal bool IsPreservedPlacementEndpoint(RuntimePlayerToolActorCapture1458 source,
+        RuntimePlayerToolActorCapture1458 observed, int movements)
+    {
+        if (movements is < 1 or > RuntimePlayerToolInput1458.MaximumObservations ||
+            !observed.IsCurrent || source.Connection != observed.Connection || source.World != observed.World ||
+            source.CapturedUpdate != observed.CapturedUpdate || source.CapturedUpdate != currentCombatTick ||
+            source.Phase != observed.Phase ||
+            source.Selected != observed.Selected || !source.Inventory.IsCurrent ||
+            source.Actor.Player.Revision.Value > ulong.MaxValue - (ulong)movements ||
+            source.Actor.InputRevision > ulong.MaxValue - (ulong)movements ||
+            observed.Actor.Player.Revision.Value != source.Actor.Player.Revision.Value + (ulong)movements ||
+            observed.Actor.InputRevision != source.Actor.InputRevision + (ulong)movements ||
+            (observed.Actor.Player.ControlFlags & 32) != 0 ||
+            (source.Actor.Player.ControlFlags & ~32) != (observed.Actor.Player.ControlFlags & ~32) ||
+            observed.Actor.Player != (source.Actor.Player with { Revision = observed.Actor.Player.Revision,
+                ControlFlags = observed.Actor.Player.ControlFlags }) ||
+            !source.CreateRandomPreview().HasSameState(observed.CreateRandomPreview()) ||
+            playerUpdateRandom is null) return false;
+        // Keep EVERY old private participant and rebind only the proven public
+        // control/revision successor. This checks equipment/buffs/providers,
+        // full219/private funding/caps, physics and world identity against live
+        // ownership; equal visible inventory alone cannot preserve the stage.
+        var reboundActor = source.Actor with { Player = observed.Actor.Player,
+            InputRevision = observed.Actor.InputRevision };
+        var rebound = new RuntimePlayerToolActorCapture1458(this, reboundActor, source.Inventory,
+            source.BeforeBuffs, source.Selected, source.CapturedUpdate, playerUpdateRandom, source.World);
+        return rebound.IsCurrent && observed.IsCurrent;
+    }
+
     internal bool TryCaptureToolActor(ConnectionHandle connection,
         out RuntimePlayerToolActorCapture1458? capture, bool allowDead = false)
     {
@@ -202,9 +234,18 @@ internal sealed class PlayerToolAttemptPreparation
     internal bool TryStageSourceResult(in ToolClockState1458 clocks,
         ToolHitState1458 hits, bool actionOccurred, VanillaUnifiedRandom1458 actionRandom,
         bool consumePoundRelease = false, bool invalidatePoundRelease = false,
-        ToolHitState1458? replacementHits = null)
+        ToolHitState1458? replacementHits = null) =>
+        TryStageSourceResultCore(in clocks, hits, actionOccurred, actionRandom,
+            consumePoundRelease, invalidatePoundRelease, replacementHits, null);
+
+    private bool TryStageSourceResultCore(in ToolClockState1458 clocks,
+        ToolHitState1458 hits, bool actionOccurred, VanillaUnifiedRandom1458 actionRandom,
+        bool consumePoundRelease, bool invalidatePoundRelease,
+        ToolHitState1458? replacementHits, RuntimePlayerToolInput1458? placementStage)
     {
-        if (next is not null || !IsCurrent || !capture.HasCurrentSourceStage ||
+        if (next is not null || !IsCurrent ||
+            !(capture.HasCurrentSourceStage || placementStage is { IsPlacement: true } &&
+                placementStage.HasKnownPlacementStage(capture)) ||
             Before.ToolStagePending || actionOccurred && Before.RequiresFreshUse || !clocks.IsValid ||
             Before.Input?.DeferredHealthPublication is not null ||
             hits is null || actionRandom is null ||
@@ -230,10 +271,11 @@ internal sealed class PlayerToolAttemptPreparation
     }
 
     internal bool TryStagePlacementResult(in LocalPlacementTail1458 tail,
-        in RuntimePlayerInventoryItem inventoryAfter, VanillaUnifiedRandom1458 actionRandom)
+        in RuntimePlayerInventoryItem inventoryAfter, VanillaUnifiedRandom1458 actionRandom,
+        ToolHitState1458? hits = null, ToolHitState1458? replacementHits = null)
     {
         if (Before.SourcePlacement is not { } placement || placement.Item != capture.Selected.ItemType ||
-            !TryStageSourceResult(tail.State, Before.Hits, true, actionRandom) || next is null) return false;
+            !TryStageSourceResultCore(tail.State, hits ?? Before.Hits, true, actionRandom, false, false, replacementHits, Before.Input) || next is null) return false;
         next = next with
         {
             PlacementHistoryEpoch = Before.UseEpoch,

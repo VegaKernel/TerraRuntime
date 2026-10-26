@@ -15,7 +15,9 @@ internal sealed partial class PlayerAuthority
         out RuntimePlayerInventoryItem after)
     {
         preparation = null; after = default;
-        if (!capture.IsCurrent || !capture.HasCurrentSourceStage || capture.Inventory.HasPendingCursorSource ||
+        if (!capture.IsCurrent || !(capture.HasCurrentSourceStage ||
+                capture.Phase.ToolUse?.Input is { IsPlacement: true } preserved && preserved.HasKnownPlacementStage(capture)) ||
+            capture.Inventory.HasPendingCursorSource ||
             capture.Phase.ToolUse is not { SourcePlacement: { } definition } tools ||
             definition.Item != capture.Selected.ItemType || capture.Selected.Prefix.Value != 0 ||
             capture.InventoryBefore[capture.Actor.Player.SelectedItem] != capture.Selected ||

@@ -16,10 +16,9 @@ internal sealed partial class WorldTileAuthority
             placed = false;
             if (!IsCurrentOwned || work.Count != 0 ||
                 !Overlay.TryReadSourceSafely(x, y, out var before)) return Reject();
-            // These retained ordinary solid cells take the default PlaceTile
-            // branch. Frame-important objects, plants, conversion, falling and
-            // special-seed sand colors attach their own source participants.
-            if (type.Value is not (0 or 1 or 30 or 38 or 40)) return Reject();
+            // Metadata admits only the default solid branch. Every side effect
+            // still executes through the ordered source frame/drop owners below.
+            if (!VanillaLocalPlacementTiles1458.IsOrdinarySolid(type)) return Reject();
             if (!sourceEmpty || before.IsActive) return true;
             var after = before;
             after.Type = checked((ushort)type.Value);
@@ -31,9 +30,14 @@ internal sealed partial class WorldTileAuthority
             // PlaceTile Clear(Tile|TilePaint|Slope) preserves wiring, actuator,
             // inactive, liquid and the wall. Do not use normalized placement's
             // broader Inactive reset here.
-            if (!Stage(WorldTileMutationKind.PlaceTile, x, y, in before, in after) ||
-                !PushSquare(x, y) || !Drain() || !Overlay.TryRead(x, y, out after)) return Reject();
-            placed = after.IsActive && after.TileType == type;
+            if (!TryApplyPlacementSeedPaint(x, y, ref after) ||
+                !VanillaToolTileCatalog1458.TryGet(type, out var tileFacts) ||
+                !Stage(WorldTileMutationKind.PlaceTile, x, y, in before, in after) ||
+                tileFacts.TruncatesWalls && !FrameWalls(x, y) ||
+                !PushSquare(x, y) || !Drain()) return Reject();
+            // PlaceTile decides success before SquareTileFrame. A falling cell
+            // may already have become an owned projectile on the server.
+            placed = true;
             return IsCurrentOwned;
         }
 

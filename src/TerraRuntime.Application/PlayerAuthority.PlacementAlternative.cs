@@ -19,7 +19,7 @@ internal sealed partial class PlayerAuthority
             count++;
         }
         if (count != 1 || plan.Member.CursorMove is not null) return false;
-                if (plan.BeforeItem is not { } phase || phase.Selected.PotionDelay != 0 ||
+        if (plan.BeforeItem is not { } phase || phase.Selected.PotionDelay != 0 ||
             phase.ToolUse?.Clocks.Selected.PotionDelay != 0) return false;
         foreach (var buff in plan.BeforeBuffs.CaptureTypes()) if (buff != default) return false;
         return true;
@@ -44,14 +44,33 @@ internal sealed partial class PlayerAuthority
         in RuntimePlayerUpdateWorld1458 world, VanillaUnifiedRandom1458 random,
         ref RuntimePlayerItemPhase1458 item)
     {
-        if (item.ToolUse is not { PlacementAlternative: { } history } tools ||
-            tools.SourceSlot == plan.Member.SelectedItem) return true;
+        if (item.ToolUse is not { PlacementAlternative: { } history } tools) return true;
+        if (tools.SourceSlot == plan.Member.SelectedItem && tools.Input is { IsPlacement: true, Count: > 0 } input &&
+            input.Observations[0].Tile is { Action: 21 } replacement &&
+            IsPlacementAlternativeContext(plan, history, world) && history.MatchesCanonical(random) &&
+            item.Selected.RevolverCritBonus == history.CanonicalRemoteCrit)
+        {
+            foreach (var target in history.Targets)
+                if (target.X == replacement.TileX && target.Y == replacement.TileY)
+                {
+                    item = item with
+                    {
+                        Selected = item.Selected with { RevolverCritBonus = target.RemoteCrit },
+                        ToolUse = tools with { Clocks = target.Clocks, ReplacementHits = target.ReplacementHits,
+                            PlacementAlternative = null }
+                    };
+                    plan.PlacementChosenAlternative = history;
+                    random.CopyStateFrom(target.CreatePreview());
+                    return true;
+                }
+        }
+        if (tools.SourceSlot == plan.Member.SelectedItem) return true;
         // Prefer the source history that needed no hidden action whenever it is
         // already ready. A packet13 does not create an earlier use entitlement.
         bool simpleReady = tools.PlacementReady is { } simple &&
             simple.UseEpoch == tools.PlacementHistoryEpoch &&
             simple.Clocks.Selected.ItemTime == 0 && simple.Clocks.Selected.Animation == 0;
-        if (simpleReady || !history.Ready || history.HistoryEpoch != tools.PlacementHistoryEpoch ||
+        if (simpleReady || !history.HasSelectionAlternative || !history.Ready || history.HistoryEpoch != tools.PlacementHistoryEpoch ||
             !IsPlacementAlternativeContext(plan, history, world) || !history.MatchesCanonical(random) ||
             item.Selected.RevolverCritBonus != history.CanonicalRemoteCrit)
         {
@@ -93,7 +112,7 @@ internal sealed partial class PlayerAuthority
             return;
         }
         if (plan.BeforeItem?.ToolUse?.PlacementAlternative is { } old &&
-            old.HistoryEpoch == tools.PlacementHistoryEpoch &&
+            old.HasSelectionAlternative && old.HistoryEpoch == tools.PlacementHistoryEpoch &&
             old.MatchesCanonical(beforeCommon) && IsPlacementAlternativeContext(plan, old, world))
         {
             var alternative = old.CreateAlternativePreview();
@@ -121,6 +140,7 @@ internal sealed partial class PlayerAuthority
                 item, image, reads, plan.Buffs, plan.Equipment, plan.Appearance,
                 item.Selected.RevolverCritBonus, item.Selected.RevolverCritBonus,
                 plan.Member.OwnedPermanentUpgradeMask, world);
+        next = AdvancePlacementTargets(plan, world, beforeCommon, afterCommon, facts, next);
         plan.Item = item with { ToolUse = tools with { PlacementAlternative = next } };
     }
 }

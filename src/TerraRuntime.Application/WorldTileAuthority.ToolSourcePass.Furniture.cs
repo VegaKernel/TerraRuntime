@@ -254,6 +254,10 @@ internal sealed partial class WorldTileAuthority
             {
                 if (context.DropAfter && !TryFurnitureItem(new(context.Drop), 0, context.DropX, context.DropY, context.DropWidth, context.DropHeight)) return false;
                 destroyingFurniture = null;
+                if (context.Type == 14)
+                    for (int dx = 3; dx >= -1; dx--)
+                    for (int dy = 3; dy >= -1; dy--)
+                        if (!Push(new(StepKind.Frame, context.X + dx, context.Y + dy))) return false;
                 return true;
             }
             int x = context.X + index / context.Height, y = context.Y + index % context.Height;

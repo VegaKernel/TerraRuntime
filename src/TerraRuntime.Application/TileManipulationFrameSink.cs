@@ -70,8 +70,25 @@ public sealed class TileManipulationFrameSink : ITerrariaFrameSink, ITerrariaFra
             return TerrariaFrameSinkResult.Continue;
         }
 
+        if (frame.MessageId == TerrariaFurnitureEntityPlacementCodec1458.MessageId)
+        {
+            if (!TryGetPlayingConnection(out var entityConnection)) return Stop(TileManipulationFrameStopReason.InvalidJoinState);
+            if (TerrariaFurnitureEntityPlacementCodec1458.TryDecode(in frame, out var entity) !=
+                TerrariaFurnitureEntityPlacementDecodeResult1458.Decoded) return Stop(TileManipulationFrameStopReason.MalformedManipulation);
+            if (ingress is IFurniturePlacementNetworkIngress1458 furniture) _ = furniture.TryPostFurnitureEntity(entityConnection, in entity);
+            return TerrariaFrameSinkResult.Continue;
+        }
         if (messageId == TerrariaMessageId.TileSquare)
         {
+            var furnitureResult = TerrariaTileSquareCodec.TryDecodeFurnitureFrame(in frame, out var furnitureSquare);
+            if (furnitureResult != TerrariaFurnitureSquareDecodeResult1458.NotApplicable)
+            {
+                if (!TryGetPlayingConnection(out var furnitureConnection)) return Stop(TileManipulationFrameStopReason.InvalidJoinState);
+                if (furnitureResult != TerrariaFurnitureSquareDecodeResult1458.Decoded || furnitureSquare is null)
+                    return Stop(TileManipulationFrameStopReason.MalformedManipulation);
+                if (ingress is IFurniturePlacementNetworkIngress1458 furniture) _ = furniture.TryPostFurnitureSquare(furnitureConnection, furnitureSquare);
+                return TerrariaFrameSinkResult.Continue;
+            }
             var decoded = TerrariaTileSquareCodec.TryDecodeToolFrame(in frame, out var square);
             if (decoded == TerrariaToolTileSquareDecodeResult1458.NotApplicable) return inner.OnFrame(in frame);
             if (!TryGetPlayingConnection(out ConnectionHandle sourceConnection))

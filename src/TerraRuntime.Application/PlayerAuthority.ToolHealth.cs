@@ -135,7 +135,7 @@ internal sealed partial class PlayerAuthority
             publications.Add(publication);
             // There is ONE latest status owner. A prior baseline is superseded
             // only by an actual later legacy baseline, never a raw declaration.
-            bool removeInput = input is { Count: 0, SquareReport: null } &&
+            bool removeInput = input is { Count: 0, SquareReport: null, FurnitureSquare: null } &&
                 (input.ShootReport is null || input.ShootReport is { } report &&
                     tools.HeldProjectile is { } born && toolProjectiles is not null &&
                     toolProjectiles.HasAdoptedToolBirth(member.Connection, in report, born));

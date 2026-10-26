@@ -43,7 +43,9 @@ internal sealed partial class WorldTileAuthority
         private readonly List<ToolActionPreparation1458> actions = [];
         private readonly List<ToolBirthPublication1458> births = [];
         private readonly List<PlacementPreparation1458> placements = [];
-        private readonly List<bool> actionOrder = [];
+        private readonly List<byte> actionOrder = [];
+        private readonly List<FurniturePlacementPreparation1458> furniturePlacements = [];
+        private int nextFurniturePlacement;
         private int nextPlacement, nextOrder;
         internal List<ToolHealthPublication1458> HealthPublications { get; } = [];
         private Exception? failure;
@@ -55,18 +57,25 @@ internal sealed partial class WorldTileAuthority
 
         internal void Add(ToolActionPreparation1458 action)
         {
-            if (disposed || actions.Count + placements.Count == byte.MaxValue)
+            if (disposed || actions.Count + placements.Count + furniturePlacements.Count == byte.MaxValue)
                 throw new InvalidOperationException("A tool phase has at most one action per human slot.");
             actions.Add(action);
-            actionOrder.Add(false);
+            actionOrder.Add(0);
         }
 
         internal void AddPlacement(PlacementPreparation1458 placement)
         {
-            if (disposed || actions.Count + placements.Count == byte.MaxValue)
+            if (disposed || actions.Count + placements.Count + furniturePlacements.Count == byte.MaxValue)
                 throw new InvalidOperationException("A player phase has at most one world action per human slot.");
             placements.Add(placement);
-            actionOrder.Add(true);
+            actionOrder.Add(1);
+        }
+
+        internal void AddFurniturePlacement(FurniturePlacementPreparation1458 placement)
+        {
+            if (disposed || actions.Count + placements.Count + furniturePlacements.Count == byte.MaxValue)
+                throw new InvalidOperationException("A player phase has at most one world action per human slot.");
+            furniturePlacements.Add(placement); actionOrder.Add(2);
         }
 
         internal void RecordFailure(Exception exception) => failure ??= exception;
@@ -100,7 +109,15 @@ internal sealed partial class WorldTileAuthority
                 }
                 while (nextOrder < actionOrder.Count)
                 {
-                    if (actionOrder[nextOrder++])
+                    byte kind = actionOrder[nextOrder++];
+                    if (kind == 2)
+                    {
+                        var furniture = furniturePlacements[nextFurniturePlacement++];
+                        try { furniture.TryPublishAll(); }
+                        catch (Exception exception) { first ??= exception; }
+                        finally { furniture.Dispose(); }
+                    }
+                    else if (kind == 1)
                     {
                         var placement = placements[nextPlacement++];
                         try { placement.TryPublishAll(); }
@@ -127,6 +144,7 @@ internal sealed partial class WorldTileAuthority
             disposed = true;
             while (next < actions.Count) actions[next++].Dispose();
             while (nextPlacement < placements.Count) placements[nextPlacement++].Dispose();
+            while (nextFurniturePlacement < furniturePlacements.Count) furniturePlacements[nextFurniturePlacement++].Dispose();
         }
     }
 }

@@ -56,6 +56,7 @@ internal sealed partial class WorldTileAuthority
         {
             internal int Index { get; init; }
             internal WorldTile SourceTile { get; init; }
+            internal bool FossilOnly { get; init; }
         }
 
         internal ToolWorldSourcePass1458(WorldTileAuthority owner, ToolWorldTileOverlay1458 overlay,
@@ -308,7 +309,7 @@ internal sealed partial class WorldTileAuthority
         private bool StageDrops(int x, int y, in WorldTile before)
         {
             if (server is null) return false;
-            if (IsExceptionalFurniture(before.Type) || AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
+            if (IsOrdinaryPlacementFurniture(before.Type) || IsExceptionalFurniture(before.Type) || AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
             if (IsSourcePlant(before.Type)) return TryStagePlantDrops(x, y, in before);
             if (before.Type is 5 or 72 or 80 or 323 or >= 583 and <= 589 or 596 or 616 or 634)
             {
@@ -358,6 +359,7 @@ internal sealed partial class WorldTileAuthority
             if (tile.Type is 49 or 136) return FrameSingleCell(step.X, step.Y, in tile);
             if (tile.Type is 137 or 424 or 442) return TryFrameToolFurniture(step.X, step.Y, in tile);
             if (tile.Type == LarvaTile) return FrameLarva(step.X, step.Y, in tile);
+            if (IsOrdinaryPlacementFurniture(tile.Type)) return FrameOrdinaryPlacementFurniture(step.X, step.Y, in tile);
             if (IsExceptionalFurniture(tile.Type)) return FrameExceptionalFurniture(step.X, step.Y, in tile);
             if (tile.Type == VanillaMinecartTrackFrame1458.TileType) return FrameTrack(step.X, step.Y, in tile);
             if (definition.IsFrameImportant) return false;

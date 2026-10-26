@@ -990,4 +990,28 @@
     <EmbeddedResource Include="Fixtures/tool-frame-reset-linux.json.gz" LogicalName="ToolFrameResetLinux1458" />
     <EmbeddedResource Include="Fixtures/tool-frame-reset-windows.json.gz" LogicalName="ToolFrameResetWindows1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/placement-swaps-linux.json.gz" LogicalName="PlacementSwapsLinux1458" />
+    <EmbeddedResource Include="Fixtures/placement-swaps-windows.json.gz" LogicalName="PlacementSwapsWindows1458" />
+    <EmbeddedResource Include="Fixtures/originalrichswaps-linux.json.gz" LogicalName="PlacementRichSwapsLinux1458" />
+    <EmbeddedResource Include="Fixtures/originalrichswaps-windows.json.gz" LogicalName="PlacementRichSwapsWindows1458" />
+    <EmbeddedResource Include="Fixtures/originalallwalls-linux.json.gz" LogicalName="PlacementAllWallsLinux1458" />
+    <EmbeddedResource Include="Fixtures/originalallwalls-windows.json.gz" LogicalName="PlacementAllWallsWindows1458" />
+    <EmbeddedResource Include="Fixtures/placement-existing-targets-linux.json.gz" LogicalName="PlacementExistingTargetsLinux1458" />
+    <EmbeddedResource Include="Fixtures/placement-existing-targets-windows.json.gz" LogicalName="PlacementExistingTargetsWindows1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Producer-rows-Linux.json.gz" LogicalName="PaidFurnitureProducerRowsLinux1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Producer-metadata-Linux.json.gz" LogicalName="PaidFurnitureProducerMetadataLinux1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Producer-rows-Windows.json.gz" LogicalName="PaidFurnitureProducerRowsWindows1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Producer-metadata-Windows.json.gz" LogicalName="PaidFurnitureProducerMetadataWindows1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Network-rows-Linux.json.gz" LogicalName="PaidFurnitureNetworkRowsLinux1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Network-lifecycle-Linux.json.gz" LogicalName="PaidFurnitureNetworkLifecycleLinux1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Network-rows-Windows.json.gz" LogicalName="PaidFurnitureNetworkRowsWindows1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Network-lifecycle-Windows.json.gz" LogicalName="PaidFurnitureNetworkLifecycleWindows1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Ordinary-rows-Linux.json.gz" LogicalName="PaidFurnitureOrdinaryRowsLinux1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/Ordinary-rows-Windows.json.gz" LogicalName="PaidFurnitureOrdinaryRowsWindows1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/IdOrder-Linux.json.gz" LogicalName="PaidFurnitureIdOrderLinux1458" />
+    <EmbeddedResource Include="Fixtures/PaidFurniture/IdOrder-Windows.json.gz" LogicalName="PaidFurnitureIdOrderWindows1458" />
+  </ItemGroup>
 </Project>

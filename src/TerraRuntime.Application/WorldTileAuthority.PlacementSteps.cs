@@ -12,7 +12,7 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class WorldTileAuthority
 {
-    internal sealed class PlacementSteps1458(WorldTileAuthority owner,
+    internal sealed partial class PlacementSteps1458(WorldTileAuthority owner,
         ToolWorldSourcePass1458 local, ToolWorldSourcePass1458 server,
         ToolWorldMutationPlan world, PlayerAuthority.ToolTreeActorsPreparation actors,
         LocalPlacementDefinition1458 definition, int beforeStack)
@@ -32,6 +32,8 @@ internal sealed partial class WorldTileAuthority
             if (!IsCurrent || expected.Count != 0 || beforeStack < 1) return false;
             if (definition.IsWall)
             {
+                if (!local.Overlay.TryReadSourceSafely(x, y, out var existing)) return Reject();
+                if (existing.Wall != 0) return TryReplaceWallAt(x, y);
                 if (!HasWallAnchor(x, y, out bool anchor) || !anchor ||
                     !TryPlaceWall(x, y, true)) return Reject();
                 if (beforeStack > 1)
@@ -53,7 +55,11 @@ internal sealed partial class WorldTileAuthority
                     }
                 return IsCurrent;
             }
-            if (definition.PlaceStyle != 0 || definition.CreateTile is not (0 or 1 or 30 or 38 or 40) ||
+            if (!local.Overlay.TryReadSourceSafely(x, y, out var existingTile)) return Reject();
+            if (existingTile.IsActive) return TryReplaceTileAt(x, y);
+            if (definition.PlaceStyle != 0 || !VanillaLocalPlacementTiles1458.IsOrdinarySolid(new(definition.CreateTile)) ||
+                !local.Overlay.TryReadSourceSafely(x, y, out var target) ||
+                target.LiquidAmount > 0 && target.LiquidKind == WorldLiquidKind.Lava ||
                 !HasSimpleTileAnchor(x, y, out bool anchored) || !anchored ||
                 !actors.TryIsPlacementTileEmpty(x, y, out bool empty) ||
                 !TryIsNpcPlacementEmpty(x, y, out bool npcEmpty) ||
@@ -91,7 +97,8 @@ internal sealed partial class WorldTileAuthority
                 if (!local.Overlay.TryReadSourceSafely(tx, ty, out var tile) ||
                     !VanillaToolTileCatalog1458.TryGet(tile.TileType, out var role)) return false;
                 bool beam = tile.Type is 124 or 561 or 574 or 575 or 576 or 577 or 578;
-                found |= tile.Wall > 0 || tile.IsActive && (role.IsSolid || role.IsRope || beam || tile.Type == 314);
+                found |= tile.Wall > 0 || tile.IsActive && (definition.CreateTile == 379 ||
+                    role.IsSolid || role.IsRope || beam || tile.Type == 314);
             }
             return true;
         }

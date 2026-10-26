@@ -6,6 +6,7 @@ using TerraRuntime.Application;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Players;
+using TerraRuntime.Core.Worlds;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Network;
@@ -85,9 +86,10 @@ internal static partial class ToolPlayerBoundaryChecks
     private static byte[][] PlacementActionBytes(JsonElement step) => step.GetProperty("actionFrames")
         .EnumerateArray().Select(x => Convert.FromHexString(x.GetString()!)).ToArray();
 
-    private static Fixture PlacementScene(short item, short stock, bool knownLocalContext = true)
+    private static Fixture PlacementScene(short item, short stock, bool knownLocalContext = true,
+        IWorldItemStateCommitSink? worldItemSink = null)
     {
-        var f = new Fixture(item, initialStack: stock, playerSeed: 7, worldSeed: 19, knownLocalContext: knownLocalContext);
+        var f = new Fixture(item, worldItemSink, initialStack: stock, playerSeed: 7, worldSeed: 19, knownLocalContext: knownLocalContext);
         for (int x = 0; x < 400; x++)
         {
             f.Tiles.Set(x, 103, default);

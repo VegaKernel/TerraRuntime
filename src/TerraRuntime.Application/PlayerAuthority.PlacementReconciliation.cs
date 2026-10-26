@@ -35,6 +35,17 @@ internal sealed partial class PlayerAuthority
                 possibleSlots |= 1UL << slot;
         }
         if (possibleSlots == 0) return ToolReportObservationResult1458.Rejected;
+        var created = TryCreateRetainedPlacementInput(connection, possibleSlots, out input);
+        if (created != ToolReportObservationResult1458.Retained || input is null) return created;
+        return input.TryObserve(in report) ? ToolReportObservationResult1458.Retained : ToolReportObservationResult1458.Rejected;
+    }
+
+    private ToolReportObservationResult1458 TryCreateRetainedPlacementInput(ConnectionHandle connection,
+        ulong possibleSlots, out RuntimePlayerToolInput1458? input)
+    {
+        input = null;
+        if (possibleSlots == 0 || !membership.TryGet(connection, out var member) ||
+            member.ItemPhase is not { ToolUse: { } tools } phase) return ToolReportObservationResult1458.Rejected;
         if (tools.Input is not null) RetireToolInput(member, tools.Input);
         phase = member.ItemPhase!.Value;
         tools = phase.ToolUse!;
@@ -55,8 +66,7 @@ internal sealed partial class PlayerAuthority
         }
         candidate.BindActor(capture);
         input = candidate;
-        return input.TryObserve(in report) ? ToolReportObservationResult1458.Retained :
-            ToolReportObservationResult1458.Rejected;
+        return ToolReportObservationResult1458.Retained;
     }
 
     private bool TryRetainPlacementInventory(PlayerEquipmentRuntimeCommand equipment)
@@ -71,7 +81,7 @@ internal sealed partial class PlayerAuthority
         return true;
     }
     private readonly record struct PlacementSelectionObservation(RuntimePlayerToolInput1458 Input,
-        RuntimePlayerToolActorCapture1458 Actor, ulong Revision);
+        RuntimePlayerToolActorCapture1458 Actor, ulong Revision, bool HadSourceStage);
 
     private PlacementSelectionObservation? CapturePlacementSelection(RuntimePlayerMember member,
         in PlayerMovementCommitRequest request)
@@ -81,7 +91,7 @@ internal sealed partial class PlayerAuthority
             input.PlacementReads is not { IsCurrent: true } ||
             actor.Actor.InputRevision == ulong.MaxValue || actor.Actor.Player.Revision.Value == ulong.MaxValue)
             return null;
-        return new(input, actor, input.Revision);
+        return new(input, actor, input.Revision, actor.HasCurrentSourceStage);
     }
 
     private void ObservePlacementSelection(RuntimePlayerMember member, PlacementSelectionObservation? pending)
@@ -100,7 +110,7 @@ internal sealed partial class PlayerAuthority
             before.IsCurrentRandom(playerUpdateRandom, playerUpdateRandomOwned) &&
             playerUpdateWorld == before.World;
         if (exact && TryCaptureToolActor(member.Connection, out var observed) && observed is not null &&
-            retained.Input.TryRebasePlacementSelection(before, retained.Revision, observed)) return;
+            retained.Input.TryRebasePlacementSelection(before, retained.Revision, observed, retained.HadSourceStage)) return;
         RetireToolInput(member, retained.Input);
     }
 

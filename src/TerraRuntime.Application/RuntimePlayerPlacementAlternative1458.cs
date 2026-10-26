@@ -9,6 +9,10 @@ namespace TerraRuntime.Application;
 // are never elapsed-time certificates or permission to reset an unknown stream.
 internal sealed class RuntimePlayerPlacementAlternative1458
 {
+    internal const int MaximumTargets = 144;
+    private RuntimePlayerPlacementTarget1458[] targets = [];
+    internal ReadOnlySpan<RuntimePlayerPlacementTarget1458> Targets => targets;
+    internal bool HasSelectionAlternative { get; private set; } = true;
     private readonly VanillaUnifiedRandom1458 canonical;
     private readonly VanillaUnifiedRandom1458 alternative;
     internal ToolClockState1458 Clocks { get; }
@@ -45,4 +49,36 @@ internal sealed class RuntimePlayerPlacementAlternative1458
     }
     internal bool MatchesCanonical(VanillaUnifiedRandom1458 current) => current.HasSameState(canonical);
     internal VanillaUnifiedRandom1458 CreateAlternativePreview() => alternative.Clone();
+
+    internal RuntimePlayerPlacementAlternative1458 WithTargets(
+        ReadOnlySpan<RuntimePlayerPlacementTarget1458> sourceTargets, bool hasSelectionAlternative)
+    {
+        if (sourceTargets.Length > MaximumTargets) throw new ArgumentOutOfRangeException(nameof(sourceTargets));
+        var copy = new RuntimePlayerPlacementAlternative1458(canonical, alternative, Clocks, ReplacementHits,
+            HistoryEpoch, ExpectedPhaseWithoutTools with { ToolUse = ExpectedCanonicalTools }, Inventory,
+            Reads, Buffs, Equipment, Appearance, CanonicalRemoteCrit, AlternativeRemoteCrit, PermanentMask, World);
+        copy.targets = sourceTargets.ToArray();
+        copy.HasSelectionAlternative = hasSelectionAlternative;
+        return copy;
+    }
+}
+
+// Bounded alternative source afterimages, carried only by the existing ToolUse
+// placement history. Each constant target denotes one compatible cursor history;
+// no live inventory, RNG stream or world state belongs to this value.
+internal sealed class RuntimePlayerPlacementTarget1458
+{
+    private readonly VanillaUnifiedRandom1458 random;
+    internal int X { get; }
+    internal int Y { get; }
+    internal ToolClockState1458 Clocks { get; }
+    internal ToolHitState1458 ReplacementHits { get; }
+    internal int RemoteCrit { get; }
+    internal RuntimePlayerPlacementTarget1458(int x, int y, ToolClockState1458 clocks,
+        ToolHitState1458 hits, VanillaUnifiedRandom1458 random, int remoteCrit)
+    {
+        X = x; Y = y; Clocks = clocks; ReplacementHits = hits;
+        this.random = random.Clone(); RemoteCrit = remoteCrit;
+    }
+    internal VanillaUnifiedRandom1458 CreatePreview() => random.Clone();
 }

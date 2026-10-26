@@ -42,7 +42,9 @@ internal sealed partial class WorldTileAuthority
     internal bool TryCommitObservedPlacement(RuntimePlayerToolInput1458 input,
         ToolActionPublicationBatch1458? deferred = null)
     {
-        if (!input.IsPlacement || !input.IsCurrent || input.Actor is not { HasCurrentSourceStage: true }) return false;
+        if (!input.IsPlacement || !input.IsCurrent || input.Actor is not { } actor ||
+            !input.HasKnownPlacementStage(actor)) return false;
+        if (input.FurnitureSquare is not null || input.FurnitureObjectReport is not null) return TryCommitObservedFurniturePlacement(input, deferred);
         PlacementPreparation1458? preparation = null;
         try
         {

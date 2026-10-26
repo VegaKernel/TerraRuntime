@@ -5,6 +5,17 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimePlayerToolInput1458
 {
+    private RuntimePlayerToolActorCapture1458? placementSourceStage;
+    private int placementReleasedMovements;
+
+    // Source-stage preservation, never a new stage from packet13. Only exact
+    // same-update release-only writes can connect an earlier qualified stage
+    // to the delayed economic tail on this same bounded input.
+    internal bool HasKnownPlacementStage(RuntimePlayerToolActorCapture1458 capture) =>
+        IsPlacement && ReferenceEquals(actor, capture) && capture.IsCurrent &&
+        (capture.HasCurrentSourceStage || placementSourceStage is { } source &&
+            placementReleasedMovements is > 0 and <= MaximumObservations &&
+            capture.HasPreservedPlacementEndpoint(source, placementReleasedMovements));
     internal RuntimePlayerToolInput1458(ulong placementSlots) : this(default(ToolDefinition1458))
     {
         if (placementSlots == 0 || (placementSlots >> 59) != 0)
@@ -40,13 +51,27 @@ internal sealed partial class RuntimePlayerToolInput1458
         return true;
     }
     internal bool TryRebasePlacementSelection(RuntimePlayerToolActorCapture1458 before,
-        ulong revision, RuntimePlayerToolActorCapture1458 observed)
+        ulong revision, RuntimePlayerToolActorCapture1458 observed, bool hadSourceStage = false)
     {
         if (!IsPlacement || Invalid || Revision != revision || Revision == ulong.MaxValue ||
             !ReferenceEquals(actor, before) || PlacementReads is not { IsCurrent: true } ||
             !observed.IsCurrent || observed.Connection != before.Connection ||
             !IsPossiblePlacementSlot(observed.Actor.Player.SelectedItem) ||
             !ReferenceEquals(observed.Phase.ToolUse?.Input, this)) return false;
+        bool releaseOnly = observed.HasPreservedPlacementEndpoint(before, 1);
+        if (releaseOnly && hadSourceStage)
+        {
+            placementSourceStage = before;
+            placementReleasedMovements = 1;
+        }
+        else if (releaseOnly && placementSourceStage is not null &&
+            placementReleasedMovements < MaximumObservations)
+            placementReleasedMovements++;
+        else
+        {
+            placementSourceStage = null;
+            placementReleasedMovements = 0;
+        }
         actor = observed;
         Revision++;
         return true;

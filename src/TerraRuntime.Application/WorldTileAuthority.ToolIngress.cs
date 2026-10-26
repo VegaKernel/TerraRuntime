@@ -38,6 +38,7 @@ internal sealed partial class WorldTileAuthority
     // inventory credit nor independent tile/object mutation authority.
     internal bool TryApplyToolObservation(RuntimeCommand command)
     {
+        if (TryApplyFurniturePlacementObservation(command)) return true;
         if (command is ClientLucyAxeMessageRuntimeCommand1458 lucy)
         {
             if (!lucy.State.IsValid || !players.TryGet(lucy.Connection, out _))
@@ -88,7 +89,30 @@ internal sealed partial class WorldTileAuthority
                 // on another selected item. The player owner binds only that
                 // normalized selection successor; no old clock is shortened.
                 if (pending.IsPlacement && pending.IsPossiblePlacementSlot(movement.Request.SelectedItem))
+                {
+                    // Furniture has its own count0 source reports. Preserve its
+                    // tested complete-tail release path without stealing ordinary
+                    // count>0 reports or retiring early/unconfirmed inventory.
+                    if (pending.FurnitureSquare is not null || pending.FurnitureObjectReport is not null)
+                    {
+                        if ((movement.Request.ControlFlags & 32) == 0 && CanCloseCompletedFurniturePlacement(pending) &&
+                            !TryCommitObservedToolAction(pending, endOfCohort: true))
+                            RejectCompletedToolCohort(pending);
+                        return false;
+                    }
+                    // A completed ordinary placement refused payment must not
+                    // monopolize the next released use. Preserve early/unknown
+                    // cohorts and release-before-delayed5; only an existing
+                    // eligible owned stage plus its exact inventory tail closes.
+                    if ((movement.Request.ControlFlags & 32) == 0 && pending.PlacementInventoryReport is not null &&
+                        pending.Count > 0 && pending.Observations[0].Tile is { Action: 1 or 3 or 21 or 22 } &&
+                        pending.Actor is { } actor && pending.HasKnownPlacementStage(actor) &&
+                        actor.Phase.ToolUse is { Clocks.Selected.ItemTime: 0, Clocks.Selected.Animation: > 0,
+                            SourceStagePose: { } sourcePose, BuildingPermission.NoBuilding: false } &&
+                        (sourcePose.Player.ControlFlags & 32) != 0 && !TryCommitObservedPlacement(pending))
+                        RejectCompletedToolCohort(pending);
                     return false;
+                }
                 if (!TryCommitObservedToolAction(pending, endOfCohort: true))
                     RejectCompletedToolCohort(pending);
             }
@@ -135,6 +159,7 @@ internal sealed partial class WorldTileAuthority
 
     private void RejectCompletedToolCohort(RuntimePlayerToolInput1458 input)
     {
+        if (TryRejectFurniturePlacement(input)) return;
         if (input.Count == 0 || tiles is not { } world) return;
         Span<ToolWireCell1458> cells = stackalloc ToolWireCell1458[RuntimePlayerToolInput1458.MaximumObservations];
         int count = 0, reports = 0;

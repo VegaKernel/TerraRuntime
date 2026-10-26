@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Players;
+using TerraRuntime.Gameplay.Tiles;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -13,13 +14,14 @@ internal sealed partial class WorldTileAuthority
     // Other placeable families retain their existing remote projection until
     // their concrete world/clock/payment effects have source-backed owners.
     internal static bool SupportsLocalPlacementDefinition(in LocalPlacementDefinition1458 definition) =>
-        definition.IsWall || definition.PlaceStyle == 0 && definition.CreateTile is 0 or 1 or 30 or 38 or 40;
+        SupportsFurniturePlacement(in definition) || definition.IsWall || definition.PlaceStyle == 0 &&
+        TerraRuntime.Gameplay.Tiles.VanillaLocalPlacementTiles1458.IsOrdinarySolid(new(definition.CreateTile));
 
     private bool TryPreparePlacementAt(RuntimePlayerToolInput1458 input,
         out PlacementPreparation1458? preparation)
     {
         preparation = null;
-        if (!input.IsPlacement || !input.IsCurrent || input.Actor is not { HasCurrentSourceStage: true } capture ||
+        if (!input.IsPlacement || !input.IsCurrent || input.Actor is not { } capture || !input.HasKnownPlacementStage(capture) ||
             input.PlacementReads is not { IsCurrent: true } reads || input.Count == 0 ||
             input.Observations[0].Tile is not { } first ||
             capture.Phase.ToolUse is not { SourcePlacement: { } definition, SourceStagePose: { } pose,
@@ -35,7 +37,7 @@ internal sealed partial class WorldTileAuthority
             !players.TryCaptureToolTreeActors(out var actors) || actors is null || tiles is null) return false;
         // Metadata identifies a possible selected source item; the world pass
         // still rejects every unrepresented target/effect instead of raw fallback.
-        if (first.Action != (definition.IsWall ? 3 : 1) ||
+        if (!(definition.IsWall ? first.Action is 3 or 22 : first.Action is 1 or 21) ||
             first.Data != (definition.IsWall ? definition.CreateWall : definition.CreateTile)) return false;
         var clientTiles = new ToolWorldTileOverlay1458(tiles);
         var serverTiles = new ToolWorldTileOverlay1458(tiles);
@@ -49,9 +51,31 @@ internal sealed partial class WorldTileAuthority
                 !TryCreateToolSourcePass(serverTiles, world.SourceRandom, false, context.HardMode, context.Facts,
                     actors.Actors, world, out var server) || server is null) return false;
             var steps = new PlacementSteps1458(this, client, server, world, actors, definition, capture.Selected.Stack);
-            if (!steps.TryPlaceAt(first.TileX, first.TileY) ||
-                !VanillaLocalPlacement1458.TryPlanTail(definition, tools.Clocks, capture.Selected.Stack,
-                    steps.AdditionalWalls, tools.PlacementSpeed, capture.World.WindowsItemPrefixArithmetic, out var tail)) return false;
+            ToolDefinition1458? bestPick = null;
+            if (!definition.IsWall)
+            {
+                for (int slot = 0; slot < 50; slot++)
+                {
+                    var stock = capture.InventoryBefore[slot];
+                    if (stock.IsEmpty || !VanillaToolCatalog1458.TryGet(stock.ItemType, out var baseTool) ||
+                        baseTool.Pick <= 0) continue;
+                    if (!VanillaToolCatalog1458.TryResolve(stock.ItemType, stock.Prefix,
+                        capture.World.RemixWorld, capture.World.WindowsItemPrefixArithmetic, out var pick)) return false;
+                    if (bestPick is null || pick.Pick > bestPick.Value.Pick) bestPick = pick;
+                }
+            }
+            ToolDamageWorld1458 damageWorld = default;
+            if (!definition.IsWall && !capture.World.TryCaptureToolDamageWorld(out damageWorld)) return false;
+            steps.ConfigureReplacement(bestPick, damageWorld, reads, tools.Hits, tools.ReplacementHits);
+            if (!steps.TryPlaceAt(first.TileX, first.TileY)) return false;
+            LocalPlacementTail1458 tail;
+            bool clock = steps.ReplacementPickUseTime is { } pickTime
+                ? VanillaLocalPlacement1458.TryPlanTileReplacementTail(definition, tools.Clocks,
+                    capture.Selected.Stack, pickTime, capture.PickSpeed, tools.PlacementSpeed,
+                    capture.World.WindowsItemPrefixArithmetic, out tail)
+                : VanillaLocalPlacement1458.TryPlanTail(definition, tools.Clocks, capture.Selected.Stack,
+                    steps.AdditionalWalls, tools.PlacementSpeed, capture.World.WindowsItemPrefixArithmetic, out tail);
+            if (!clock) return false;
             PlayerAuthority.ToolShapePlayerPreparation? shape = null;
             if (!world.ShapeEffects.IsEmpty &&
                 (!players.TryPrepareToolShapeEffects(world.ShapeEffects, out shape) || shape is null)) return false;
@@ -96,7 +120,7 @@ internal sealed partial class WorldTileAuthority
                 !owner.players.TryPreparePlacementPayment(player.Capture, tail, out payment, out after) ||
                 payment is null || !payment.IsCurrent ||
                 shape is not null && !shape.TrySealForJointAdoption(player.Capture.Connection.Player) ||
-                !player.TryStagePlacementResult(tail, after, localRandom)) return false;
+                !player.TryStagePlacementResult(tail, after, localRandom, steps.Hits, steps.ReplacementHits)) return false;
             int index = 0;
             for (int x = centerX - 3; x <= centerX + 3; x++)
             for (int y = centerY - 3; y <= centerY + 3; y++)
@@ -157,8 +181,19 @@ internal sealed partial class WorldTileAuthority
                     }
                     try
                     {
-                        if (IsFootprintCurrent()) owner.TryPublishToolTile(player.Capture.Connection.Source,
-                            player.Capture.Connection.Player, expected[index]);
+                        if (IsFootprintCurrent())
+                        {
+                            // MessageBuffer17 suppresses the primary1/21 relay
+                            // when its source falling frame already removed the
+                            // cell. The prepared world participant has published
+                            // that falling birth and source square instead.
+                            var wire = expected[index];
+                            bool suppressed = wire.Action is 1 or 21 &&
+                                ToolWorldSourcePass1458.IsSourceFallingTile(checked((ushort)wire.Data)) &&
+                                world.Overlay.TryRead(wire.TileX, wire.TileY, out var finalTile) && !finalTile.IsActive;
+                            if (!suppressed) owner.TryPublishToolTile(player.Capture.Connection.Source,
+                                player.Capture.Connection.Player, wire);
+                        }
                         else if (owner.tiles is { } tiles) owner.replication?.TryPublishTileSquareToAll(tiles,
                             expected[index].TileX, expected[index].TileY);
                     }

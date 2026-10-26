@@ -162,6 +162,18 @@ public static class WorldSectionObjectMetadataEncoder
         return result;
     }
 
+    /// <summary>The source TileEntity.Write(networkSend:true) body, shared with section metadata.</summary>
+    public static bool TryEncodeNetworkEntity(WorldTileEntity entity, out byte[] encoded)
+    {
+        encoded = [];
+        if (entity is null || entity.PersistedId < 0 || entity.X < 0 || entity.Y < 0) return false;
+        using var memory = new MemoryStream();
+        using var writer = new BinaryWriter(memory, Encoding.UTF8, leaveOpen: true);
+        writer.Write((byte)entity.Kind); writer.Write(entity.X); writer.Write(entity.Y);
+        if (!TryWriteEntityPayload(writer, entity)) return false;
+        writer.Flush(); encoded = memory.ToArray(); return true;
+    }
+
     private static bool TryWriteEntityPayload(BinaryWriter writer, WorldTileEntity entity)
     {
         if (!WorldTileEntityItemValidator.HasValidItemTypes(entity.Payload))

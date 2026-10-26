@@ -1,0 +1,121 @@
+using TerraRuntime.Contracts.Gameplay;
+
+namespace TerraRuntime.Gameplay.Tiles;
+
+/// <summary>Source default solid placement branch; does not authorize a world action.</summary>
+public static class VanillaLocalPlacementTiles1458
+{
+    public static bool IsOrdinarySolid(TileTypeId type) => type.Value switch
+    {
+            0 or 1 or 6 or 7 or 8 or 9 or 22 or 25 or 30 or 37 or 38 or 39 or
+            40 or 41 or 43 or 44 or 45 or 46 or 47 or 48 or 53 or 54 or 56 or 57 or
+            58 or 59 or 63 or 64 or 65 or 66 or 67 or 68 or 75 or 76 or 107 or 108 or
+            111 or 112 or 116 or 117 or 118 or 119 or 120 or 121 or 122 or 123 or 127 or 130 or
+            140 or 145 or 146 or 147 or 148 or 150 or 151 or 152 or 153 or 154 or 155 or 156 or
+            157 or 158 or 159 or 160 or 161 or 162 or 163 or 164 or 166 or 167 or 168 or 169 or
+            170 or 175 or 176 or 177 or 188 or 189 or 190 or 191 or 192 or 193 or 194 or 195 or
+            196 or 197 or 198 or 200 or 202 or 203 or 204 or 206 or 208 or 211 or 221 or 222 or
+            223 or 224 or 225 or 226 or 229 or 230 or 232 or 234 or 248 or 249 or 250 or 251 or
+            252 or 253 or 255 or 256 or 257 or 258 or 259 or 260 or 261 or 262 or 263 or 264 or
+            265 or 266 or 267 or 268 or 272 or 273 or 274 or 284 or 311 or 312 or 313 or 315 or
+            321 or 322 or 325 or 326 or 327 or 328 or 329 or 345 or 346 or 347 or 348 or 350 or
+            357 or 367 or 368 or 369 or 370 or 371 or 379 or 383 or 384 or 385 or 396 or 397 or
+            398 or 399 or 400 or 401 or 402 or 403 or 404 or 407 or 408 or 409 or 415 or 416 or
+            417 or 418 or 421 or 422 or 426 or 430 or 431 or 432 or 433 or 434 or 446 or 447 or
+            448 or 458 or 459 or 460 or 472 or 473 or 474 or 478 or 479 or 481 or 482 or 483 or
+            495 or 496 or 498 or 500 or 501 or 502 or 503 or 507 or 508 or 512 or 513 or 514 or
+            515 or 516 or 517 or 535 or 537 or 540 or 541 or 546 or 557 or 562 or 563 or 566 or
+            618 or 626 or 628 or 635 or 641 or 659 or 666 or 667 or 668 or 669 or 670 or 671 or
+            672 or 673 or 674 or 675 or 676 or 677 or 678 or 679 or 680 or 681 or 682 or 683 or
+            684 or 685 or 686 or 687 or 688 or 689 or 690 or 691 or 692 or 708 or 717 or 718 or
+            719 or 722 or 727 or 728 or 729 or 730 or 731 or 732 or 734 or 735 or 736 or 737 or
+            738 or 739 or 740 or 741 or 742 or 743 or 744 or 745 or 746 or 747 or 748 or 749 or
+            750 => true,
+        _ => false
+    };
+
+    // These are the source TileID.Sets predicates, independent of mining power.
+    public static bool PreventsReplacement(TileTypeId type) => type.Value switch
+    {
+            58 or 127 or 171 or 225 or 423 or 481 or 482 or 483 => true,
+        _ => false
+    };
+
+    public static bool ForbidsReplacementPlacement(TileTypeId type) => type.Value switch
+    {
+            2 or 23 or 60 or 70 or 109 or 199 or 633 or 661 or 662 => true,
+        _ => false
+    };
+
+    public static bool BreaksAboveOnReplacement(TileTypeId type) => type.Value switch
+    {
+            3 or 20 or 24 or 27 or 61 or 71 or 73 or 74 or 82 or 83 or 84 or 110 or
+            113 or 185 or 186 or 187 or 201 or 227 or 233 or 236 or 238 or 254 or 484 or 485 or
+            529 or 530 or 549 or 590 or 595 or 615 or 624 or 637 or 700 or 702 or 703 or 705 => true,
+        _ => false
+    };
+    public static bool BreaksBelowOnReplacement(TileTypeId type) => type.Value switch
+    {
+            52 or 62 or 115 or 205 or 382 or 444 or 528 or 636 or 638 => true,
+        _ => false
+    };
+    public static bool IsHousingWall(WallTypeId type) => type.Value switch
+    {
+            1 or 4 or 5 or 6 or 10 or 11 or 12 or 16 or 17 or 18 or 19 or 20 or
+            21 or 22 or 23 or 24 or 25 or 26 or 27 or 29 or 30 or 31 or 32 or 33 or
+            34 or 35 or 36 or 37 or 38 or 39 or 41 or 42 or 43 or 44 or 45 or 46 or
+            47 or 60 or 66 or 67 or 68 or 72 or 73 or 74 or 75 or 76 or 77 or 78 or
+            82 or 84 or 85 or 88 or 89 or 90 or 91 or 92 or 93 or 100 or 101 or 102 or
+            103 or 104 or 105 or 106 or 107 or 108 or 109 or 110 or 111 or 112 or 113 or 114 or
+            115 or 116 or 117 or 118 or 119 or 120 or 121 or 122 or 123 or 124 or 125 or 126 or
+            127 or 128 or 129 or 130 or 131 or 132 or 133 or 134 or 135 or 136 or 137 or 138 or
+            139 or 140 or 141 or 142 or 143 or 144 or 145 or 146 or 147 or 148 or 149 or 150 or
+            151 or 152 or 153 or 154 or 155 or 156 or 157 or 158 or 159 or 160 or 161 or 162 or
+            163 or 164 or 165 or 166 or 167 or 168 or 169 or 172 or 173 or 174 or 175 or 176 or
+            177 or 179 or 181 or 182 or 183 or 184 or 186 or 224 or 225 or 226 or 227 or 228 or
+            229 or 230 or 231 or 232 or 233 or 234 or 235 or 236 or 237 or 238 or 239 or 240 or
+            241 or 242 or 243 or 245 or 246 or 247 or 248 or 249 or 250 or 251 or 252 or 253 or
+            254 or 255 or 256 or 257 or 258 or 259 or 260 or 261 or 262 or 263 or 264 or 265 or
+            266 or 267 or 268 or 269 or 270 or 271 or 272 or 273 or 274 or 275 or 276 or 277 or
+            278 or 279 or 280 or 281 or 282 or 283 or 284 or 285 or 286 or 287 or 288 or 289 or
+            290 or 291 or 292 or 293 or 294 or 295 or 296 or 297 or 298 or 299 or 300 or 301 or
+            302 or 303 or 304 or 305 or 306 or 307 or 308 or 309 or 310 or 311 or 312 or 313 or
+            314 or 315 or 316 or 317 or 318 or 319 or 320 or 321 or 322 or 323 or 324 or 325 or
+            326 or 327 or 328 or 329 or 330 or 331 or 332 or 333 or 334 or 335 or 336 or 337 or
+            338 or 339 or 340 or 341 or 342 or 343 or 344 or 345 or 346 or 347 or 348 or 351 or
+            352 or 353 or 354 or 355 or 356 or 357 or 358 or 359 or 360 or 361 or 362 or 363 or
+            364 or 365 or 366 => true,
+        _ => false
+    };
+    // WorldGen.ReplaceTile_IsValidSolid: this is intentionally broader
+    // than NEW default placement, including existing grass and moss cells.
+    public static bool CanReplaceSolid(TileTypeId type) => type.Value switch
+    {
+            0 or 1 or 2 or 6 or 7 or 8 or 9 or 22 or 23 or 25 or 30 or 37 or
+            38 or 39 or 40 or 41 or 43 or 44 or 45 or 46 or 47 or 48 or 53 or 54 or
+            56 or 57 or 58 or 59 or 60 or 63 or 64 or 65 or 66 or 67 or 68 or 70 or
+            75 or 76 or 107 or 108 or 109 or 111 or 112 or 116 or 117 or 118 or 119 or 120 or
+            121 or 122 or 123 or 127 or 130 or 140 or 145 or 146 or 147 or 148 or 150 or 151 or
+            152 or 153 or 154 or 155 or 156 or 157 or 158 or 159 or 160 or 161 or 162 or 163 or
+            164 or 166 or 167 or 168 or 169 or 170 or 175 or 176 or 177 or 179 or 180 or 181 or
+            182 or 183 or 188 or 189 or 190 or 191 or 192 or 193 or 194 or 195 or 196 or 197 or
+            198 or 199 or 200 or 202 or 203 or 204 or 206 or 208 or 211 or 221 or 222 or 223 or
+            224 or 225 or 226 or 229 or 230 or 232 or 234 or 248 or 249 or 250 or 251 or 252 or
+            253 or 255 or 256 or 257 or 258 or 259 or 260 or 261 or 262 or 263 or 264 or 265 or
+            266 or 267 or 268 or 272 or 273 or 274 or 284 or 311 or 312 or 313 or 315 or 321 or
+            322 or 325 or 326 or 327 or 328 or 329 or 345 or 346 or 347 or 348 or 350 or 357 or
+            367 or 368 or 369 or 370 or 371 or 379 or 381 or 383 or 384 or 385 or 396 or 397 or
+            398 or 399 or 400 or 401 or 402 or 403 or 404 or 407 or 408 or 409 or 415 or 416 or
+            417 or 418 or 421 or 422 or 426 or 430 or 431 or 432 or 433 or 434 or 446 or 447 or
+            448 or 458 or 459 or 460 or 472 or 473 or 474 or 477 or 478 or 479 or 481 or 482 or
+            483 or 492 or 495 or 496 or 498 or 500 or 501 or 502 or 503 or 507 or 508 or 512 or
+            513 or 514 or 515 or 516 or 517 or 534 or 535 or 536 or 537 or 539 or 540 or 541 or
+            546 or 557 or 562 or 563 or 566 or 618 or 625 or 626 or 627 or 628 or 633 or 635 or
+            641 or 659 or 661 or 662 or 666 or 667 or 668 or 669 or 670 or 671 or 672 or 673 or
+            674 or 675 or 676 or 677 or 678 or 679 or 680 or 681 or 682 or 683 or 684 or 685 or
+            686 or 687 or 688 or 689 or 690 or 691 or 692 or 708 or 717 or 718 or 719 or 722 or
+            727 or 728 or 729 or 730 or 731 or 732 or 734 or 735 or 736 or 737 or 738 or 739 or
+            740 or 741 or 742 or 743 or 744 or 745 or 746 or 747 or 748 or 749 or 750 => true,
+        _ => false
+    };
+}

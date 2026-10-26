@@ -10,7 +10,7 @@ internal sealed partial class WorldTileAuthority
 {
     internal sealed partial class ToolWorldSourcePass1458
     {
-        private static bool IsSourceFallingTile(ushort type) => type is 53 or 112 or 116 or 123 or 224 or 234 or 330 or 331 or 332 or 333 or 495;
+        internal static bool IsSourceFallingTile(ushort type) => type is 53 or 112 or 116 or 123 or 224 or 234 or 330 or 331 or 332 or 333 or 495;
         private bool TrySourceFalling(int x, int y, in WorldTile tile, out bool fell)
         {
             fell = false;
