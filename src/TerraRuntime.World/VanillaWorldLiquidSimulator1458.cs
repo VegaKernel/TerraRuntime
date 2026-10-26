@@ -1094,7 +1094,11 @@ public sealed class VanillaWorldLiquidSimulator1458
                 // Liquid.DelWater replaces a retired slot with the last live slot, in reverse slot order.
                 for (int i = loadingSlotCount - 1; i >= 0; i--)
                     if (loadingSlots[i].Kill >= GeneratingOrLoadingKillUpdates1458)
+                    {
+                        ApplyLoadingRetirementWaterTail1458(loadingSlots[i].X, loadingSlots[i].Y,
+                            changes, ref changed);
                         loadingSlots[i] = loadingSlots[--loadingSlotCount];
+                    }
                 loadingSlotCursor = 0;
             }
             else
@@ -1114,6 +1118,29 @@ public sealed class VanillaWorldLiquidSimulator1458
             loadingSlotCount = 0;
         }
         return changed;
+    }
+
+    private void ApplyLoadingRetirementWaterTail1458(
+        int x, int y, Span<WorldLiquidSimulationChange> changes, ref int changed)
+    {
+        // TerrariaServer 1.4.5.8 Liquid.DelWater executes before removing a
+        // stable slot. Its low-volume water branch can erase the physical
+        // amount even when Liquid.Update itself left the tile unchanged.
+        WorldTile current = tiles.Get(x, y);
+        if (current.LiquidKind != WorldLiquidKind.Water || current.LiquidAmount >= 20)
+            return;
+        WorldTile left = tiles.Get(x - 1, y);
+        WorldTile right = tiles.Get(x + 1, y);
+        WorldTile below = tiles.Get(x, y + 1);
+        bool clear = current.LiquidAmount < 2 ||
+            left.LiquidAmount < current.LiquidAmount && !IsWaterCheckSolidBarrier1458(in left) ||
+            right.LiquidAmount < current.LiquidAmount && !IsWaterCheckSolidBarrier1458(in right) ||
+            below.LiquidAmount < byte.MaxValue && !IsWaterCheckSolidBarrier1458(in below);
+        if (!clear || current.LiquidAmount == 0)
+            return;
+        current.LiquidAmount = 0;
+        SetTile(x, y, in current);
+        Record(x, y, in current, changes, ref changed);
     }
 
     private void DiscoverExistingLiquid()

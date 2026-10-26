@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Generation liquid retirement, 2026-10-26
+
+TerrariaServer 1.4.5.8 `Liquid.UpdateLiquid` may retire stable slots in the same call when the active queue is below `curMaxLiquid / cycles`. Its reverse `Liquid.DelWater` pass is not merely queue cleanup: for amount below 2 it zeros the cell; for amount 2..19 it zeros the cell when a passable lower-volume side or non-full lower neighbor exists. The direct registered first and second `Settle Liquids` three-basin fixtures both yield the same six-field grid SHA256 `2765b5a309ab750342833807bb58b83fcabf7bbff45dd5fa8b88e9f437514b1f` at `4200x1200`, seed1458; the second pass leaves next RNG `906992634`. Source/runtime phase traces first diverged on the eighth update of round two with identical ordered 46-slot queues before the source retirement cleared `(2005,799)` from 8 to 0. This directly rules out the former round-budget hypothesis for that gap. The runtime currently ports only the observed water low-volume clear, not the full `DelWater` wake/reaction/object branches.
+
 ## Paid furniture and tile-entity ID lifecycle, 2026-10-26
 
 Original local placement sends20 then87 for470/475,20 then87 then79 for471; the rack's final79 does not create another entity. Item1989 uses style2 (framebase72), not style1. Base32/34/35/36 furniture uses79. Original Player.PlaceThing_Tiles_BlockPlacementIfOverPlayers41745 has a restricted type switch excluding all eight admitted furniture items; no general EmptyTile overlap blocker may be invented for these shapes. Server20 applies the qualified client footprint and range framing while retaining server liquids before87 creates the empty entity and86 publishes its ID/payload. Source producer/packet slices are independent component evidence, not wholeMain or initial private funding custody.

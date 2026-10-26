@@ -1240,8 +1240,32 @@ public sealed class SourceBackedFinal1458Tests
         Assert.Equal("0B0F5A4265C269D93B40FC4D9E026134B1FA0B42CFD92FAC304E105515D6D6F4", HashFixture(workspace));
     }
 
-    [Fact(Skip = "Official canonical three-basin fixture with curMaxLiquid=25000 finds row-102 quick-settle rounding gap at 1989,799.")]
+    [Fact]
     public void Settle_liquids_again_canonical_multi_basin_matches_official_passlegacy()
+    {
+        var workspace = CreateCanonicalLiquidBasins();
+        const int width = 4200;
+        const int height = 1200;
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalLiquids", 1458, width, height), workspace, random));
+
+        Assert.Equal(906992634, random.Next());
+        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+    }
+
+    [Fact]
+    public void First_settle_liquids_canonical_multi_basin_matches_official_passlegacy()
+    {
+        var workspace = CreateCanonicalLiquidBasins();
+        JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+
+        // The two registered ordinary-world passes share the source's settlement sequence on this
+        // no-special-seed terrain. The first pass has its own independently run official PassLegacy oracle.
+        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+    }
+
+    private static Workspace CreateCanonicalLiquidBasins()
     {
         const int width = 4200;
         const int height = 1200;
@@ -1266,13 +1290,7 @@ public sealed class SourceBackedFinal1458Tests
             var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
             workspace.TileStore.Set(centerX, sourceY, in water);
         }
-
-        var random = new RandomAdapter(1458);
-        new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
-            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalLiquids", 1458, width, height), workspace, random));
-
-        Assert.Equal(906992634, random.Next());
-        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+        return workspace;
     }
 
     [Fact]
