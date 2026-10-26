@@ -209,6 +209,15 @@ public static partial class RuntimeWorldSnapshotCache
                 return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.DimensionsMismatch);
             }
 
+            // Canonical Terraria 1.4.5.8 WorldFile.LoadWorldTiles resets active timer frames to off.
+            // A disposable cache can contain a live prepared tile image, but it has no mechanism clock
+            // registrations. Apply the same load rule after checksum validation without dirtying the image.
+            foreach (ref WorldTile tile in tiles.TileArray.AsSpan())
+            {
+                if (tile.IsActive && tile.Type == VanillaWorldFormat326.TimersTileType)
+                    tile.FrameY = 0;
+            }
+
             // A successfully decoded layout-v2 snapshot can only have been written from a post-load prepared world.
             // Restore that runtime-only invariant after every payload/hash/dimension check has succeeded.
             world.Tiles.MarkPostLoadLiquidPrepared();

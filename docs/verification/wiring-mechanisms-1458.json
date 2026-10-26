@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "date": "2026-10-26",
+  "branch": "gameplay/wiring-mechanisms-1458",
+  "base": "565e3b00",
+  "terraria": "1.4.5.8",
+  "protocol": 326,
+  "accepted": true,
+  "releaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "wiringCases": 50,
+  "focused": {
+    "total": 164,
+    "passed": 164,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "total": 25336,
+    "passed": 25335,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "test_seconds": 257.438
+  },
+  "full": {
+    "total": 1566749,
+    "passed": 1566748,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "test_seconds": 1398.422,
+    "wall_seconds": 1414.8938069998985,
+    "unfiltered": true,
+    "discoveredAndExecutedMethods": 5250,
+    "missingMethods": 0
+  },
+  "allowedSkip": [
+    "TerraRuntime.Tests.SourceBackedFinal1458Tests.Settle_liquids_again_canonical_multi_basin_matches_official_passlegacy"
+  ],
+  "freeze": {
+    "accepted": true,
+    "sourceInputs": 3897,
+    "executedDlls": 60,
+    "fullDiscoveredMethods": 5250,
+    "sourceFingerprint": "31bff2a64a61992143ef45d1118a58d519a2b6a21b92b187a75f5bb0b4620869",
+    "fullXmlSha256": "ff950b757892a00d349ee8164f62f91f735680762ba4f616c4763a772c2a30cf"
+  },
+  "nativeWindows": {
+    "accepted": true,
+    "exeSha256": "061946466f3744fd7ed2b9f446b74373df3350ec941ed9abdeb004535089651b",
+    "clrDirectory": [
+      0,
+      0
+    ],
+    "smokes": [
+      {
+        "smoke": "loop",
+        "exitCode": 0,
+        "seconds": 0.5218106000684202
+      },
+      {
+        "smoke": "protocol",
+        "exitCode": 0,
+        "seconds": 0.3279276000102982
+      },
+      {
+        "smoke": "network",
+        "exitCode": 0,
+        "seconds": 0.2573541000019759
+      },
+      {
+        "smoke": "world",
+        "exitCode": 0,
+        "seconds": 0.2720997999422252
+      },
+      {
+        "smoke": "tui",
+        "exitCode": 0,
+        "seconds": 1.5192526000319049
+      }
+    ]
+  },
+  "nativeTestOnlyBridge": {
+    "productionSourceUnchanged": true,
+    "unchangedReferenceDlls": 59,
+    "onlyChangedInputs": [
+      "tests/TerraRuntime.Tests/GameLoopTests.cs"
+    ],
+    "onlyChangedDlls": [
+      "TerraRuntime.Tests.dll"
+    ],
+    "nativeExeSha256": "061946466f3744fd7ed2b9f446b74373df3350ec941ed9abdeb004535089651b"
+  },
+  "linuxNativeVerified": false,
+  "officialGuiVerified": false,
+  "githubCiWaited": false,
+  "independentReference": {
+    "edition": "Official Linux edition under Windows CoreCLR; not Linux execution",
+    "exeSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "scenes": 110,
+    "completeSupportedStates": 109,
+    "partialPlate7EligibilityScenes": 1,
+    "rawJsonSha256": "56488c253af73041f08b8a9f5800aa081581acc7b342bdeb03f14d603687f7ed",
+    "gzipSha256": "60070ae80ec94cc8d0fe57f5ae6a0e4f429bb2f61c5c0f18bb909bc1a30e60eb",
+    "timerSaveBase64": "Aw8mkDYAEgA=",
+    "timerLoadedFrameY": 0
+  },
+  "negativeControls": [
+    {
+      "name": "timer-interval-61",
+      "failed": 1,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "vertical-bfs-reversed",
+      "failed": 1,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "production-ingress-omitted",
+      "failed": 1,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "timer-encoder-old-zero",
+      "failed": 1,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "timer-cache-no-reset",
+      "failed": 1,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "delegated-skips-omitted",
+      "failed": 3,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "trapdoor-old-remnant-clear",
+      "failed": 1,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "door-action-publication-omitted",
+      "failed": 1,
+      "errors": 0,
+      "exactRestore": true
+    },
+    {
+      "name": "shared-server-player-occupancy-omitted",
+      "failed": 1,
+      "errors": 0,
+      "fixedControl": "live bot blocks all five gate rows; despawned generation releases them"
+    }
+  ],
+  "sourceMethods": [
+    "Wiring.HitSwitch/TripWire/HitWire/HitWireSingle/UpdateMech/CheckMech/DeActive/ReActive and light toggles",
+    "WorldGen.OpenDoor/CloseDoor/ShiftTrapdoor/ShiftTallGate/CanKillTile/clearWorld",
+    "TileObjectData.Initialize",
+    "Collision.SwitchTiles; NPC.UpdateNPC contact/escape rules",
+    "MessageBuffer.GetData case59",
+    "WorldFile.SaveWorldTiles/LoadWorldTiles"
+  ],
+  "sharedMergeFiles": [
+    "src/TerraRuntime.Application/WorldTileAuthority.cs",
+    "src/TerraRuntime.Application/ServerRuntimeComposition.cs",
+    "src/TerraRuntime.Application/ServerRuntimeState.Tick.cs",
+    "src/TerraRuntime.Application/ProjectileLifecycleFrameSink.cs",
+    "src/TerraRuntime.Application/NpcAuthority.cs",
+    "src/TerraRuntime.Application/ServerPlayerAuthority.cs",
+    "src/TerraRuntime.Core/Npcs/RuntimeNpcAiStateExecutor.cs",
+    "src/TerraRuntime.World/VanillaWorldGroundFighterDoorOpeningService.cs",
+    "src/TerraRuntime.World/WorldFileTileEncoder.cs",
+    "src/TerraRuntime.World/RuntimeWorldSnapshotCache.Read.cs",
+    "src/TerraRuntime.Protocol/TerrariaMessageId.cs",
+    "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj",
+    "tests/TerraRuntime.Tests/GameLoopTests.cs"
+  ],
+  "supportedScope": "Loaded/authorized circuits: four colors, switches/levers/timers/411, junction/pixel routing, admitted lights/doors/trapdoors/gates/actuators, ordinary server-player/NPC plates, authoritative replication and canonical/cache checkpoint reload. See paired wiring guides for exact tile identities.",
+  "limits": [
+    "Inventory-backed wire/actuator tool installation/removal",
+    "Plate7 destruction, weighted and physical projectile/boulder plate producers",
+    "General attached-object framing/drop transactions and cuttable trapdoor destinations",
+    "Pumps/teleporters, logic/traps/statues and nested logic pulses",
+    "Whole NPC23/contact20/59 publication parity; full vanilla wiring and GUI parity"
+  ],
+  "history": "Earlier candidates/retries were not accepted: delegated skip and server-player probe defects were fixed with real assertion controls; C: report/temp exhaustion was isolated by using E: for task reports/TEMP/TMP; a 2-second loop-fixture startup timeout under full GC/load was changed to 30 seconds without changing tick/deadline/update assertions. Final full is clean on the frozen final snapshot.",
+  "localEvidence": "E:/TerraRuntime-wiring-verification-20261026/candidate04; repository alias .cache/wiring-candidate-04/verification",
+  "nextBlock": "Source framing/drop transactions and inventory-backed wiring installation; then pumps/teleporters through liquid/movement owners."
+}

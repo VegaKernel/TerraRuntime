@@ -318,7 +318,11 @@ internal sealed class ServerRuntimeComposition
             golemDownedBaseline,
             townCommerceWorldFacts?.HardMode ?? false,
             worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
-            tileManipulationReplication);
+            tileManipulationReplication,
+            plantBossDowned: townCommerceWorldFacts?.DownedPlantera ?? false,
+            doorOccupancy: tallGateOccupancy);
+        npcAuthority.PressurePlateContact = worldTileAuthority.ApplyNpcPressurePlate;
+        if (serverPlayers is not null) serverPlayers.PressurePlateContact = worldTileAuthority.ApplyPlayerPressurePlate;
         worldClock?.BindToolTreeShakeOwner(worldTileAuthority);
         playersAuthority.BindToolActions(worldTileAuthority, projectileAuthority);
         RuntimeBotAuthority? botAuthority = serverPlayers is not null && botTelemetry is not null && worldTiles is not null

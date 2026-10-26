@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Wiring mechanisms Windows Native acceptance, 2026-10-26
+
+Fresh isolated Windows NativeAOT publish passes all five shipping smokes. The world smoke additionally executes the production command/clock owners for lights, actuators, a multiwired door and independent timer-save bytes. Executable SHA256 `061946466f3744fd7ed2b9f446b74373df3350ec941ed9abdeb004535089651b`, PE CLR directory0/0, evidence `.cache/wiring-candidate-03/native-result.json`. No production dependency, reflection or runtime code generation was added. Original reference reflection is developer-only under tools/reference. Linux Native remains locally unverified (Windows host; no WSL distro). The final production source was freshly published. The subsequent test-only startup allowance leaves all production inputs, 59 other managed reference DLLs and this executable exact; native-bridge04.json pins that scope. Final focused164/164, fast25335/25336 and unfiltered full1566748/1566749 pass with zero failures/errors and the one known liquid skip. See docs/verification/wiring-mechanisms-1458.json.
+
 ## Ordinary placement and paid furniture: local validation, 2026-10-26
 
 Source fingerprint `e59b2d5086f402a8c380643690fd33849d2158c656a26b562ba8cb9076233687` passes fresh Release warnings-as-errors, 191 connected cases across46classes, fast25,285/25,286 and one unfiltered full1,566,698/1,566,699. Both suites have zero failures/errors and the same known canonical-liquid skip. The actual full XML contains all5,204 discovered methods, zero missing/unplanned; all3,969 inputs and158 executed DLLs remain unchanged. Full test time is $1141.041\,\mathrm{s}$ and wall time is $1161.037\,\mathrm{s}$.

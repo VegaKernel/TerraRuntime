@@ -84,7 +84,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
 
     public bool TryOpen(
         in VanillaGroundFighterDoorOpeningIntent intent,
-        out VanillaGroundFighterDoorOpeningMutation mutation)
+        out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire = null)
     {
         mutation = default;
         if (!intent.IsValid || !Contains(intent.TileX, intent.TileY))
@@ -98,9 +99,9 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             return TryDestroy(in intent, in touched, out mutation);
 
         if (intent.ClosedType == VanillaTileIds.ClosedDoor)
-            return TryOpenDoor(in intent, in touched, out mutation);
+            return TryOpenDoor(in intent, in touched, out mutation, skipWire);
         if (intent.ClosedType == VanillaTileIds.TallGateClosed)
-            return TryOpenTallGate(in intent, in touched, out mutation);
+            return TryOpenTallGate(in intent, in touched, out mutation, skipWire);
 
         return false;
     }
@@ -113,7 +114,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     public bool TryCloseDoor(int tileX, int tileY, out VanillaGroundFighterDoorOpeningMutation mutation) =>
         TryCloseDoor(tileX, tileY, forced: true, out mutation);
 
-    public bool TryCloseDoor(int tileX, int tileY, bool forced, out VanillaGroundFighterDoorOpeningMutation mutation)
+    public bool TryCloseDoor(int tileX, int tileY, bool forced, out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire = null)
     {
         mutation = default;
         if (doorCloseRandom is null || !Contains(tileX, tileY))
@@ -210,6 +212,9 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             }
         }
 
+        // WorldGen.CloseDoor skips only the retained column, after restoring its three rows.
+        for (int row = 0; row < 3; row++) skipWire?.Invoke(retainedX, topY + row);
+
         mutation = new VanillaGroundFighterDoorOpeningMutation(
             VanillaGroundFighterDoorOpeningKind.Door,
             tileX,
@@ -227,7 +232,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     public bool TryShiftTallGate(int tileX, int tileY, bool closing, out VanillaGroundFighterDoorOpeningMutation mutation) =>
         TryShiftTallGate(tileX, tileY, closing, forced: true, out mutation);
 
-    public bool TryShiftTallGate(int tileX, int tileY, bool closing, bool forced, out VanillaGroundFighterDoorOpeningMutation mutation)
+    public bool TryShiftTallGate(int tileX, int tileY, bool closing, bool forced, out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire = null)
     {
         mutation = default;
         if (!Contains(tileX, tileY))
@@ -251,6 +257,9 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             if (!gate.IsActive || gate.TileType != expectedType)
                 return false;
         }
+        // WorldGen.ShiftTallGate marks the validated footprint before testing actors. A blocked
+        // gate must not be retried through another wired row in this color pass.
+        for (int offset = 0; offset < TallGateHeight; offset++) skipWire?.Invoke(tileX, topY + offset);
         if (!forced)
         {
             if (tallGateOccupancy is null) return false;
@@ -279,15 +288,16 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     /// cuts eligible destination tiles through <c>KillTile</c>; callers without that full drop/metadata transaction
     /// must reject such a request before mutation rather than silently deleting it.
     /// </summary>
-    public bool TryShiftTrapdoor(int tileX, int tileY, bool playerAbove, bool opening, out VanillaGroundFighterDoorOpeningMutation mutation)
+    public bool TryShiftTrapdoor(int tileX, int tileY, bool playerAbove, bool opening, out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire = null)
     {
         mutation = default;
         if (!Contains(tileX, tileY))
             return false;
 
         return opening
-            ? TryOpenTrapdoor(tileX, tileY, playerAbove, out mutation)
-            : TryCloseTrapdoor(tileX, tileY, out mutation);
+            ? TryOpenTrapdoor(tileX, tileY, playerAbove, out mutation, skipWire)
+            : TryCloseTrapdoor(tileX, tileY, out mutation, skipWire);
     }
 
     public bool TryGetTrapdoorOpenCutTargets(int tileX, int tileY, bool playerAbove, out int leftX, out int targetY)
@@ -299,13 +309,22 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         return true;
     }
 
-    private bool TryOpenTrapdoor(int tileX, int tileY, bool playerAbove, out VanillaGroundFighterDoorOpeningMutation mutation)
+    private bool TryOpenTrapdoor(int tileX, int tileY, bool playerAbove, out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire)
     {
         mutation = default;
         if (!TryResolveOpenTrapdoor(tileX, tileY, playerAbove, out int leftX, out int destinationY))
             return false;
         for (int column = 0; column < 2; column++)
             if (tiles.Get(leftX + column, destinationY).IsActive) return false;
+
+        // WorldGen.ShiftTrapdoor(opening) skips both the original and destination rows after
+        // source/destination admission, before cutting or changing the footprint.
+        for (int column = 0; column < 2; column++)
+        {
+            skipWire?.Invoke(leftX + column, tileY);
+            skipWire?.Invoke(leftX + column, destinationY);
+        }
 
         for (int column = 0; column < 2; column++)
         {
@@ -341,7 +360,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         return true;
     }
 
-    private bool TryCloseTrapdoor(int tileX, int tileY, out VanillaGroundFighterDoorOpeningMutation mutation)
+    private bool TryCloseTrapdoor(int tileX, int tileY, out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire)
     {
         mutation = default;
         if (tallGateOccupancy is null)
@@ -366,23 +386,30 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
                 if (!source.IsActive || source.TileType != VanillaTileIds.TrapdoorOpen)
                     return false;
             }
-            if (!tallGateOccupancy.IsActorFree(leftX + column, retainedY))
-                return false;
         }
+
+        // Preserve WorldGen.ShiftTrapdoor's style-specific skip coordinates, including style1's
+        // row above the open object's top. This occurs before occupancy rejection in the source.
+        int skipTopY = directionStyle == 0 ? topY : topY - 1;
+        for (int column = 0; column < 2; column++)
+        for (int row = 0; row < 2; row++) skipWire?.Invoke(leftX + column, skipTopY + row);
+        for (int column = 0; column < 2; column++)
+            if (!tallGateOccupancy.IsActorFree(leftX + column, retainedY)) return false;
 
         int styleY = touched.FrameY / TrapdoorStyleStride;
         for (int column = 0; column < 2; column++)
         {
-            WorldTile source = tiles.Get(leftX + column, topY);
             WorldTile cleared = tiles.Get(leftX + column, clearedY);
-            ClearCutTile(ref cleared);
+            // WorldGen.ShiftTrapdoor closes with Tile.ClearTile, not KillTile or ClearTileAndPaint.
+            // Its inactive remnant keeps type, frames, paint/coating, wires, actuator, wall and liquid.
+            cleared.ClearSourceShape();
+            cleared.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive);
             tiles.Set(leftX + column, clearedY, in cleared);
             WorldTile retained = tiles.Get(leftX + column, retainedY);
             retained.Type = checked((ushort)VanillaTileIds.TrapdoorClosed.Value);
             retained.Flags |= WorldTileFlags.Active;
             retained.FrameX = checked((short)(column * FrameUnit));
             retained.FrameY = checked((short)(styleY * FrameUnit));
-            CopyBlockColorAndCoating(in source, ref retained);
             tiles.Set(leftX + column, retainedY, in retained);
         }
 
@@ -504,7 +531,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     private bool TryOpenDoor(
         in VanillaGroundFighterDoorOpeningIntent intent,
         in WorldTile touched,
-        out VanillaGroundFighterDoorOpeningMutation mutation)
+        out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire)
     {
         mutation = default;
         if (IsLockedDoor(in touched) || touched.FrameX < 0 || touched.FrameY < 0)
@@ -563,6 +591,11 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             }
         }
 
+        // WorldGen.OpenDoor skips the complete destination2x3 after destination cuts and before
+        // writing the new door frames. The caller supplies the current pulse's per-color skip set.
+        for (int column = 0; column < 2; column++)
+        for (int row = 0; row < 3; row++) skipWire?.Invoke(leftX + column, topY + row);
+
         int openFrameY = (style % DoorStyleCountPerHorizontalBand) * ClosedDoorStyleHeight;
         for (int row = 0; row < 3; row++)
         {
@@ -592,7 +625,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     private bool TryOpenTallGate(
         in VanillaGroundFighterDoorOpeningIntent intent,
         in WorldTile touched,
-        out VanillaGroundFighterDoorOpeningMutation mutation)
+        out VanillaGroundFighterDoorOpeningMutation mutation,
+        Action<int, int>? skipWire)
     {
         mutation = default;
         if (tallGateOccupancy is null || touched.FrameY < 0)
@@ -609,9 +643,10 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             WorldTile gate = tiles.Get(intent.TileX, topY + offset);
             if (!gate.IsActive || gate.TileType != VanillaTileIds.TallGateClosed)
                 return false;
-            if (!tallGateOccupancy.IsActorFree(intent.TileX, topY + offset))
-                return false;
         }
+        for (int offset = 0; offset < TallGateHeight; offset++) skipWire?.Invoke(intent.TileX, topY + offset);
+        for (int offset = 0; offset < TallGateHeight; offset++)
+            if (!tallGateOccupancy.IsActorFree(intent.TileX, topY + offset)) return false;
 
         for (int offset = 0; offset < TallGateHeight; offset++)
         {

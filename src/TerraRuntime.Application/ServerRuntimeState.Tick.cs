@@ -58,6 +58,8 @@ internal sealed partial class ServerRuntimeState
         _runtime.WorldItems.TickInstancedLeases();
 
         _runtime.WorldClock?.Tick();
+        // Main.DoUpdateInWorld_Inner runs time before WorldGen.UpdateWorld/Wiring.UpdateMech.
+        _runtime.WorldTileAuthority.TickMechanisms();
         _runtime.Updates.Advance();
     }
 

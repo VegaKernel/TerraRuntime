@@ -228,8 +228,8 @@ public static class WorldFileTileEncoder
             {
                 BinaryPrimitives.WriteInt16LittleEndian(buffer[dataIndex..], tile.FrameX);
                 dataIndex += sizeof(short);
-                short frameY = tile.Type == VanillaWorldFormat326.TimersTileType ? (short)0 : tile.FrameY;
-                BinaryPrimitives.WriteInt16LittleEndian(buffer[dataIndex..], frameY);
+                // Terraria1458 WorldFile.SaveWorldTiles writes live timer frames; LoadWorldTiles resets them.
+                BinaryPrimitives.WriteInt16LittleEndian(buffer[dataIndex..], tile.FrameY);
                 dataIndex += sizeof(short);
             }
 

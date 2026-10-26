@@ -438,6 +438,8 @@ internal sealed partial class NpcAuthority
         actorControlOwner.CommitPending();
     }
 
+    internal Action<NpcSnapshot, NpcSnapshot>? PressurePlateContact { get; set; }
+
     public void TickSimulation()
     {
         if (vanillaTargeting is not null)
@@ -472,7 +474,7 @@ internal sealed partial class NpcAuthority
 
         TickNaturalHostileSpawning();
         npcBuffStatus.BeginWorldTick();
-        LastAiTick = aiExecutor.Tick(aiStepper, combat);
+        LastAiTick = aiExecutor.Tick(aiStepper, combat, PressurePlateContact);
         lavaContact?.Tick();
         townNpcAuthority.TickShimmer();
         townNpcAuthority.TickLifecycle(worldClock);
