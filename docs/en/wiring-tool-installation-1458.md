@@ -28,7 +28,7 @@ The admitted actuation frame pass is dry. A visited cell with liquid rejects the
 
 The low-level wire/actuator mutation owner also follows source installation/removal semantics: placing an actuator does not require an active tile, and removing it clears only the actuator bit, preserving the inactive bit and unrelated metadata. This correction does not itself authorize a client removal request.
 
-Drop comparisons distinguish the existing world-item snapshot's advertised reservation from the original server's private field. The ordinary `FindOwner` call in the framing scenes invokes `ReserveFor` with packet `22` reservation `15`, while its server field remains `0`; the current shared runtime retains the advertised value. The primitive packet `17` caller instead advertises `100` for its explicit local-player reservation. The source capture keeps both roles. Exact server reservation-clock behavior requires a separate split of server state and client presentation in the existing item owner and is not established by this wiring block.
+Drop comparisons distinguish the packet's reservation offer from the original server's field. Ordinary framing `FindOwner` advertises `15`, and the primitive packet `17` local-player reservation advertises `100`; the server field normally stays `0`. The shared owner now keeps the raw server field in snapshots and carries the offer only in its publication journal. The unchanged original captures independently pin both roles. See [server reservation clocks](world-item-reservation-1458.md) for direct/deferred publication, release and join behavior.
 
 ## Explicit remaining scope
 

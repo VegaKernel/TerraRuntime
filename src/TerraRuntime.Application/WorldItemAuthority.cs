@@ -124,13 +124,18 @@ internal sealed partial class WorldItemAuthority
 
             var update = new WorldItemOwnerStateUpdate(
                 OwnerPlayerId: owner,
-                TimeToKeepReservation: owner == byte.MaxValue ? 0 : DefaultOwnerReservationTicks1458,
+                // FindOwner calls ReserveFor even when assigning255 after a disconnected owner.
+                // Its default15 is an offered packet22 hold, never a write to the server timer.
+                TimeToKeepReservation: DefaultOwnerReservationTicks1458,
                 GrabDelayPlayer: item.GrabDelayPlayer,
                 GrabDelayTime: item.GrabDelayTime,
                 PositionX: item.PositionX,
                 PositionY: item.PositionY);
-            _ = worldItems.TryApplyOwner(item.Handle.Slot, in update, out _);
+            _ = worldItems.TryApplySourceOwner(in item, in update, clearServerReservation: false, out _);
         }
+        // Main.UpdateServer discovers owners before EmergencyStacking.ProcessPendingTransfers.
+        // A releasable pending pair must still suppress FindOwner during this scan.
+        _ = worldItems.TryProcessPendingSourceTransfers();
     }
 
     private bool TryFindSourceOwner(in WorldItemSnapshot item, out byte selected)
@@ -154,7 +159,6 @@ internal sealed partial class WorldItemAuthority
     internal void TickReservationTimers()
     {
         worldItems.TickReservationTimers();
-        _ = worldItems.TryProcessPendingSourceTransfers();
     }
 
     public bool TryCapture(short slot, out WorldItemSnapshot snapshot) =>
@@ -325,11 +329,15 @@ internal sealed partial class WorldItemAuthority
         bool pendingTransfer = worldItems.HasPendingSourceTransfer(item.Handle);
         byte owner = byte.MaxValue;
         if (!command.ForceServer && !pendingTransfer && item.TimeToKeepReservation <= 0 &&
+            item.ShimmerTime <= 0f && !(item.GrabDelayTime > 0 && item.GrabDelayPlayer == byte.MaxValue) &&
             !TryFindSourceOwner(in item, out owner)) { RejectedOwners++; return; }
         var update = new WorldItemOwnerStateUpdate(owner,
-            (command.ForceServer || pendingTransfer) ? 0 : owner == byte.MaxValue ? item.TimeToKeepReservation : DefaultOwnerReservationTicks1458,
+            owner == byte.MaxValue ? 0 : DefaultOwnerReservationTicks1458,
             item.GrabDelayPlayer, item.GrabDelayTime, item.PositionX, item.PositionY);
-        if (worldItems.TryApplyOwner(item.Handle.Slot, in update, out _)) AppliedOwners++;
+        // GetData39 resets owner/age before FindOwner. Only force clears the server's raw hold;
+        // an existing positive hold suppresses reassignment but still receives the default0 offer.
+        if (worldItems.TryApplySourceOwner(in item, in update, clearServerReservation: command.ForceServer, out _,
+            excludedSource: owner == byte.MaxValue ? command.Connection.Source : default)) AppliedOwners++;
         else RejectedOwners++;
     }
 }

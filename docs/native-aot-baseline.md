@@ -1,5 +1,13 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## World-item reservation Windows Native acceptance, 2026-10-27
+
+Fresh Windows NativeAOT executable SHA256 723b70770700d5c8e1430a9d289d7e0a76eebf07618e302be63d5443b2f9fd35, PE CLR0/0, passes loop/protocol/network/world/TUI smokes. Shipping world smoke exercises direct/deferred source allocation, live100, join0, excluded fallback and nonsticky15; wiring=ok and reservation=ok. Linux NativeAOT remains unverified: no available WSL distribution and shipping script rejects cross-OS publish. No new dependency, runtime reflection or code generation.
+
+Release WAE0/0; focused 11184/11184; fast 25439/25439; one final unfiltered full 1566852/1566852, failures/errors/skips0. Full XML covers all 5330 discovered methods. Frozen 3965 source/config/fixture inputs and 60 executed DLLs stayed exact. Source fingerprint 4a9c323d0b54912b3c01e39a8a60c70ca49211f5326974e42e62663958cc7130; full XML SHA256 0c4c28c947cbfe00ec590e8fefb2ee5ad56e84ac99476f053eb55ea0da663a73.
+
+[Durable verification](verification/world-item-reservation-1458.json). Reference probe reflection/IL hooks remain developer-only under tools/reference; production code uses static typed paths.
+
 ## Wiring installation follow-up Windows Native acceptance, 2026-10-26
 
 Fresh Windows NativeAOT production publish passes loop/protocol/network/world/TUI smokes; world includes actual wiring command/clock/framing. Executable SHA256 `77d3e40d4ecb3bf4c3addb57f7790899bb1a1ba979d747b8c243c4858d12ac3a`, PE CLR 0/0. An additional test-only correction replaces formerly unknown action 5 with 255 and separately proves unqualified5 refusal: only ServerRuntimeClientTileIngressTests.cs and TerraRuntime.Tests.dll changed; all production inputs and 59 other DLLs remain exact. native-bridge.json pins reuse. Linux host path is unavailable: no WSL distro and cross-OS publish rejects. No CI wait.

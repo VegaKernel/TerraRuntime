@@ -480,8 +480,8 @@ public sealed class ExceptionalToolFurniture1458Tests
     }
     private sealed class ItemObserver(IWorldItemStateCommitSink? inner, Action<WorldItemStateCommitKind, WorldItemSnapshot> action) : IWorldItemStateCommitSink
     {
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
-        { action(kind, snapshot); inner?.WorldItemStateCommitted(kind, in snapshot); }
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
+        { action(kind, snapshot); inner?.WorldItemStateCommitted(kind, in snapshot, reservationOffer, excludedSource); }
     }
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_commitSink")] private static extern ref IWorldItemStateCommitSink? ItemSink(RuntimeWorldItemStore owner);
     private static void CheckpointAndSection()

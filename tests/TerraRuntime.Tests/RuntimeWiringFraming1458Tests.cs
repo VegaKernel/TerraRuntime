@@ -145,8 +145,8 @@ public sealed class RuntimeWiringFraming1458Tests
     private sealed class ItemObserver(IWorldItemStateCommitSink? previous,
         Action<WorldItemStateCommitKind, WorldItemSnapshot> observer) : IWorldItemStateCommitSink
     {
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
-        { observer(kind, snapshot); previous?.WorldItemStateCommitted(kind, in snapshot); }
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
+        { observer(kind, snapshot); previous?.WorldItemStateCommitted(kind, in snapshot, reservationOffer, excludedSource); }
     }
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_commitSink")]
     private static extern ref IWorldItemStateCommitSink? ItemSink(RuntimeWorldItemStore owner);

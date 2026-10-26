@@ -7,6 +7,7 @@ namespace TerraRuntime.Core.Worlds;
 /// <summary>
 /// Mutable state accepted by the authoritative world-item store. Wire-specific flags are intentionally absent.
 /// ItemNetId remains a compatibility primitive at ingress; authoritative validation crosses it into ItemTypeId.
+/// Reservation time is actual server state; a source ReserveFor publication cannot overwrite it.
 /// </summary>
 public readonly record struct WorldItemStateUpdate(
     float PositionX,
@@ -338,8 +339,9 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
     }
 
     /// <summary>
-    /// Applies packet-neutral packet-22 owner/reservation state to an existing generation. Drop identity,
-    /// velocity, stack, type, prefix, shimmer and ownership-mode bits remain untouched.
+    /// Applies trusted server owner state, including the actual server reservation countdown.
+    /// Source ReserveFor transitions use TryApplySourceOwner to keep their client offer separate.
+    /// Drop identity, velocity, stack, type, prefix, shimmer and ownership-mode bits remain untouched.
     /// </summary>
     public bool TryApplyOwner(short slot, in WorldItemOwnerStateUpdate owner, out WorldItemSnapshot snapshot)
     {
@@ -382,6 +384,43 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
         if (committed)
             Publish(WorldItemStateCommitKind.Owner, in snapshot);
+        return committed;
+    }
+
+    /// <summary>
+    /// Commits an exact-generation source ReserveFor/release transition. The offered packet22 hold
+    /// is publication metadata; it never replaces the server's timeToKeepReservation field.
+    /// </summary>
+    public bool TryApplySourceOwner(in WorldItemSnapshot expected, in WorldItemOwnerStateUpdate offer,
+        bool clearServerReservation, out WorldItemSnapshot snapshot, GameCommandSourceId excludedSource = default)
+    {
+        snapshot = default;
+        if (!expected.Handle.IsAssigned || !IsValidSlot(expected.Handle.Slot) || !IsValidOwner(in offer)) return false;
+        bool committed = false;
+        BeginWrite();
+        try
+        {
+            ref SlotState state = ref _slots[expected.Handle.Slot];
+            if (state.Active && !state.Claimed && Capture(expected.Handle.Slot, in state) == expected &&
+                TryAdvance(ref state.Revision))
+            {
+                state.SourceReleaseRequested = false;
+                state.SourceOwnerAge = 0;
+                state.Update = state.Update with
+                {
+                    PositionX = offer.PositionX,
+                    PositionY = offer.PositionY,
+                    OwnerPlayerId = offer.OwnerPlayerId,
+                    TimeToKeepReservation = clearServerReservation ? 0 : state.Update.TimeToKeepReservation,
+                    GrabDelayPlayer = offer.GrabDelayPlayer,
+                    GrabDelayTime = offer.GrabDelayTime
+                };
+                snapshot = Capture(expected.Handle.Slot, in state);
+                committed = true;
+            }
+        }
+        finally { EndWrite(); }
+        if (committed) Publish(WorldItemStateCommitKind.Owner, in snapshot, offer.TimeToKeepReservation, excludedSource);
         return committed;
     }
 
@@ -561,8 +600,9 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
     }
 
-    private void Publish(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot) =>
-        _commitSink?.WorldItemStateCommitted(kind, in snapshot);
+    private void Publish(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null,
+        GameCommandSourceId excludedSource = default) =>
+        _commitSink?.WorldItemStateCommitted(kind, in snapshot, reservationOffer, excludedSource);
 
     private bool TryAllocateSingleWriter(in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
     {

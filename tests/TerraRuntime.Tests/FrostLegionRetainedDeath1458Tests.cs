@@ -274,7 +274,7 @@ public sealed class FrostLegionRetainedDeath1458Tests
         { value = player; return slot.Value == 0; }
         public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot npc)
         { Events.Add(23); if (kind == NpcStateCommitKind.Despawn) Terminals.Add(npc.Handle); }
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         { if (kind == WorldItemStateCommitKind.Drop) { Events.Add(21); Drops.Add(item); OnDrop?.Invoke(); } }
     }
 }

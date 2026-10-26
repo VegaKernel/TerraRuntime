@@ -150,10 +150,10 @@ public sealed class WorldWiringToolsOriginal1458Tests
                 Assert.Equal(expected.GetProperty("x").GetSingle(), item.PositionX); Assert.Equal(expected.GetProperty("y").GetSingle(), item.PositionY);
                 Assert.Equal(expected.GetProperty("vx").GetSingle(), item.VelocityX); Assert.Equal(expected.GetProperty("vy").GetSingle(), item.VelocityY);
                 Assert.Equal((byte)I(expected, "owner"), item.OwnerPlayerId);
-                // Original ReserveFor's parameter shadows its server field: raw server hold stays0,
-                // while original22 advertises15 to clients. Existing WorldItemSnapshot retains that
-                // advertised hold; this is wire projection, not server reservation-clock parity.
+                // ReserveFor's wire argument does not replace the server field. Both roles
+                // remain independently pinned: raw snapshot0 and original live packet22 offer15.
                 Assert.Equal(0, I(expected, "keep"));
+                Assert.Equal(I(expected, "keep"), item.TimeToKeepReservation);
                 AssertOriginalOwnerPacket(row.GetProperty("frames"), item);
                 Assert.Equal((byte)I(expected, "enemyDelay"), item.EnemyGrabDelayTime);
                 Assert.Equal((byte)I(expected, "grabPlayer"), item.GrabDelayPlayer); Assert.Equal(I(expected, "grabTime"), item.GrabDelayTime);
@@ -196,7 +196,7 @@ public sealed class WorldWiringToolsOriginal1458Tests
         Assert.Equal(bytes.Length,reader.ReadUInt16());Assert.Equal((byte)22,reader.ReadByte());
         Assert.Equal(item.Handle.Slot,reader.ReadInt16());Assert.Equal(item.OwnerPlayerId,reader.ReadByte());
         int advertisedHold=reader.Read7BitEncodedInt();
-        Assert.Equal(15,advertisedHold);Assert.Equal(advertisedHold,item.TimeToKeepReservation);
+        Assert.Equal(15,advertisedHold);Assert.Equal(0,item.TimeToKeepReservation);
         Assert.Equal(item.GrabDelayPlayer,reader.ReadByte());Assert.Equal(item.GrabDelayTime,reader.Read7BitEncodedInt());
         Assert.Equal(item.PositionX,reader.ReadSingle());Assert.Equal(item.PositionY,reader.ReadSingle());
         Assert.Equal(stream.Length,stream.Position);

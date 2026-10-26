@@ -10,6 +10,11 @@ internal static class WorldNativeSmoke
 
     public static int Run()
     {
+        if (!WorldItemReservationNativeSmoke1458.Run())
+        {
+            Console.Error.WriteLine("World smoke failed in source item reservation publication replay.");
+            return 23;
+        }
         if (!WiringNativeSmoke1458.Run())
         {
             Console.Error.WriteLine("World smoke failed in authoritative wiring/timer/save-byte replay.");
@@ -75,7 +80,7 @@ internal static class WorldNativeSmoke
         Console.WriteLine(
             $"World smoke passed: sections={dimensions.SectionCount}, dirtySection={drained[0]}, " +
             $"wldVersion={world.Envelope.FormatVersion}, world={world.Header.Name}, tiles={world.Tiles.Count}, " +
-            "full current header metadata, all persistence sections and footer decoded transactionally; wiring=ok.");
+            "full current header metadata, all persistence sections and footer decoded transactionally; wiring=ok; reservation=ok.");
         return 0;
     }
 

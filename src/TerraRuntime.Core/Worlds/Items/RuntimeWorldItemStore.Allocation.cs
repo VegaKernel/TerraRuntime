@@ -421,8 +421,8 @@ public sealed partial class RuntimeWorldItemStore
                     drop.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer)
                 {
                     if (sourceLocalPlayerId is not { } local || local == byte.MaxValue) return Fail();
-                    state.Update = state.Update with { OwnerPlayerId = local, TimeToKeepReservation = 100, GrabDelayPlayer = 0, GrabDelayTime = 0 };
-                    if (!RecordSync(slot, WorldItemStateCommitKind.Owner)) return Fail();
+                    state.Update = state.Update with { OwnerPlayerId = local, GrabDelayPlayer = 0, GrabDelayTime = 0 };
+                    if (!RecordSync(slot, WorldItemStateCommitKind.Owner, reservationOffer: 100)) return Fail();
                 }
                 // Dedicated NewItem(noBroadcast:true) skips ApplySpawnOwnership before MakeInstanced90.
                 // Ordinary source NewItem publishes21, then FindOwner may publish22.
@@ -432,8 +432,8 @@ public sealed partial class RuntimeWorldItemStore
                     if (!ownerFacts.TrySelectOwner(in drop, state.Update.GrabDelayTime, state.Update.GrabDelayPlayer, out byte selectedOwner)) return Fail();
                     if (selectedOwner != byte.MaxValue)
                     {
-                        state.Update = state.Update with { OwnerPlayerId = selectedOwner, TimeToKeepReservation = 15 };
-                        if (!RecordSync(slot, WorldItemStateCommitKind.Owner)) return Fail();
+                        state.Update = state.Update with { OwnerPlayerId = selectedOwner };
+                        if (!RecordSync(slot, WorldItemStateCommitKind.Owner, reservationOffer: 15)) return Fail();
                     }
                 }
             }
@@ -477,7 +477,7 @@ public sealed partial class RuntimeWorldItemStore
                 if (operation.Kind is {} kind)
                 {
                     var snapshot = kind == WorldItemStateCommitKind.Remove ? Capture(operation.Slot, before) : Capture(operation.Slot, after);
-                    owner.Publish(kind, in snapshot);
+                    owner.Publish(kind, in snapshot, operation.ReservationOffer);
                 }
             }
             owner.sourceTransferCount = step.Pending.Length;
@@ -556,7 +556,7 @@ public sealed partial class RuntimeWorldItemStore
                     var snapshot = operation.Kind is null ? default : operation.Kind == WorldItemStateCommitKind.Remove
                         ? Capture(operation.Slot, in previous[operation.Slot])
                         : Capture(operation.Slot, operation.After);
-                    operations[index] = new(operation.Slot, operation.Kind, snapshot);
+                    operations[index] = new(operation.Slot, operation.Kind, snapshot, operation.ReservationOffer);
                     previous[operation.Slot] = operation.After;
                 }
                 steps = new PublicationStep[preview.steps.Count];
@@ -598,7 +598,7 @@ public sealed partial class RuntimeWorldItemStore
                             continue;
                         try
                         {
-                            owner.Publish(kind, operation.Snapshot);
+                            owner.Publish(kind, operation.Snapshot, operation.ReservationOffer);
                         }
                         catch (Exception exception)
                         {
@@ -626,7 +626,8 @@ public sealed partial class RuntimeWorldItemStore
                 return true;
             }
 
-            private readonly record struct PublicationOperation(short Slot, WorldItemStateCommitKind? Kind, WorldItemSnapshot Snapshot);
+            private readonly record struct PublicationOperation(short Slot, WorldItemStateCommitKind? Kind,
+                WorldItemSnapshot Snapshot, int? ReservationOffer);
             private readonly record struct PublicationStep(int Start, int End, short Slot, WorldItemDropReservation Lease, WorldItemSentinelCommit1458? Transient);
         }
 
@@ -694,13 +695,21 @@ public sealed partial class RuntimeWorldItemStore
         private bool RequestRelease(short slot)
         {
             ref var state = ref working[slot];
-            if (!state.Active || state.Update.OwnerPlayerId == byte.MaxValue) return true;
+            if (!state.Active) return true;
+            bool clearedServerReservation = state.Update.TimeToKeepReservation > 0;
             state.Update = state.Update with { TimeToKeepReservation = 0 };
+            // EmergencyStacking forces FindOwner on both transfer endpoints, including
+            // an already unowned endpoint: clear its server clock without an owner event.
+            if (state.Update.OwnerPlayerId == byte.MaxValue)
+                return !clearedServerReservation || RecordSync(slot, kind: null);
             bool activeOwner = false;
             foreach (var player in players) if (player.Slot == state.Update.OwnerPlayerId) { activeOwner = true; break; }
             if (activeOwner)
             {
-                if (state.SourceReleaseRequested) return true;
+                // FindOwner(force:true) clears the server field even when a previous39
+                // already awaits acknowledgement. Adopt that change without resending39/22.
+                if (state.SourceReleaseRequested)
+                    return !clearedServerReservation || RecordSync(slot, kind: null);
                 state.SourceReleaseRequested = true;
                 state.SourceOwnerAge = -1;
                 return RecordSync(slot, WorldItemStateCommitKind.OwnershipReleaseRequested);
@@ -708,7 +717,7 @@ public sealed partial class RuntimeWorldItemStore
             state.Update = state.Update with { OwnerPlayerId = byte.MaxValue };
             state.SourceReleaseRequested = false;
             state.SourceOwnerAge = 0;
-            return RecordSync(slot, WorldItemStateCommitKind.Owner);
+            return RecordSync(slot, WorldItemStateCommitKind.Owner, reservationOffer: 15);
         }
 
         private bool CanTransfer(in WorldItemStackTransfer1458 transfer)
@@ -728,15 +737,15 @@ public sealed partial class RuntimeWorldItemStore
                     state.SourceReuseTicks, update.OwnerPlayerId, update.ShimmerTime, state.Generation);
             }
         }
-        private bool RecordSync(short slot, WorldItemStateCommitKind kind)
+        private bool RecordSync(short slot, WorldItemStateCommitKind? kind, int? reservationOffer = null)
         {
             if (working[slot].Revision == ulong.MaxValue) return false;
-            working[slot].Revision++; return Record(slot, kind);
+            working[slot].Revision++; return Record(slot, kind, reservationOffer);
         }
-        private bool Record(short slot, WorldItemStateCommitKind? kind)
+        private bool Record(short slot, WorldItemStateCommitKind? kind, int? reservationOffer = null)
         {
             if (operations.Count == MaximumOperations) return false;
-            touched[slot] = true; operations.Add(new(slot, working[slot], kind)); return true;
+            touched[slot] = true; operations.Add(new(slot, working[slot], kind, reservationOffer)); return true;
         }
         private bool Fail() { failed = true; return false; }
         public void Dispose()
@@ -750,7 +759,8 @@ public sealed partial class RuntimeWorldItemStore
             }
             disposed = true;
         }
-        private readonly record struct Operation(short Slot, SlotState After, WorldItemStateCommitKind? Kind);
+        private readonly record struct Operation(short Slot, SlotState After, WorldItemStateCommitKind? Kind,
+            int? ReservationOffer);
         private readonly record struct Step(int Start, int End, short Slot, int LeaseTicks, WorldItemStackTransfer1458[] Pending, WorldItemSentinelCommit1458? Transient);
     }
 }

@@ -281,7 +281,7 @@ public sealed class MoonEventPreparedDeath1458Tests
             return slot.Value == 0;
         }
 
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind == WorldItemStateCommitKind.Drop) OnDrop?.Invoke();
         }

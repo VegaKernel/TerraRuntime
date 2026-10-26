@@ -165,7 +165,8 @@ public sealed class PhysicalWorldItemOrigins1458Tests
         Assert.Equal((x, y, vx, vy), (item.PositionX, item.PositionY, item.VelocityX, item.VelocityY));
         Assert.Equal((short)2019, item.ItemNetId);
         Assert.Equal(connection.Player.Slot.Value, item.OwnerPlayerId);
-        Assert.Equal(100, item.TimeToKeepReservation);
+        Assert.Equal(0, item.TimeToKeepReservation);
+        Assert.Equal(100, Assert.Single(publication.OwnerOffers));
         Assert.Equal((byte)0, item.GrabDelayPlayer);
         Assert.Equal(next, random.SourceRandom.Next());
         state.Apply(command);
@@ -212,12 +213,13 @@ public sealed class PhysicalWorldItemOrigins1458Tests
     {
         public List<byte> Events { get; } = [];
         public List<WorldItemSentinelCommit1458> Sentinels { get; } = [];
+        public List<int?> OwnerOffers { get; } = [];
         public void WorldItemSentinelCommitted(in WorldItemSentinelCommit1458 commit)
         { Sentinels.Add(commit); Events.Add(21); if (commit.Owner.HasValue) Events.Add(22); }
         public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot npc)
         { if (kind == NpcStateCommitKind.Despawn) Events.Add(23); }
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
-        { if (kind == WorldItemStateCommitKind.Drop) Events.Add(21); else if (kind == WorldItemStateCommitKind.Owner) Events.Add(22); }
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
+        { if (kind == WorldItemStateCommitKind.Drop) Events.Add(21); else if (kind == WorldItemStateCommitKind.Owner) { Events.Add(22); OwnerOffers.Add(reservationOffer); } }
     }
 
 }

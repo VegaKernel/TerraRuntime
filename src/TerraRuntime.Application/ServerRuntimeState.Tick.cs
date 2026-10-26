@@ -54,6 +54,7 @@ internal sealed partial class ServerRuntimeState
         if (_runtime.WorldTiles is { } itemTiles && _runtime.EnvironmentWorldFacts is not null)
             _runtime.WorldItems.TickGuideDolls(itemTiles, _runtime.Npcs);
         _runtime.WorldItems.TickReservationTimers();
+        // Source Main.UpdateServer: owner scan, then pending emergency-stack transfers.
         _runtime.WorldItems.TickPlayerReservations(Updates);
         _runtime.WorldItems.TickInstancedLeases();
 

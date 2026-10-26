@@ -34,7 +34,8 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
 
     public bool TryUnregister(GameCommandSourceId source) => endpoints.TryRemove(source, out _);
 
-    public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+    public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot,
+        int? reservationOffer = null, GameCommandSourceId excludedSource = default)
     {
         if (kind == WorldItemStateCommitKind.Color)
         {
@@ -54,7 +55,7 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
         TerrariaWorldItemFrameEncodeResult result = kind switch
         {
             WorldItemStateCommitKind.Drop => EncodeDrop(in snapshot, out encoded),
-            WorldItemStateCommitKind.Owner => EncodeOwner(in snapshot, out encoded),
+            WorldItemStateCommitKind.Owner => EncodeOwner(in snapshot, reservationOffer, out encoded),
             WorldItemStateCommitKind.Remove => TerrariaWorldItemFrameEncoder.TryEncodeRemoval(snapshot.Handle.Slot, out encoded),
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
@@ -65,7 +66,7 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
             return;
         }
 
-        Broadcast(encoded);
+        Broadcast(encoded, excludedSource);
     }
 
     public void WorldItemSentinelCommitted(in WorldItemSentinelCommit1458 commit)
@@ -191,12 +192,13 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
             ShimmerTime: drop.ShimmerTime,
             EnemyGrabDelayTime: drop.EnemyGrabDelayTime);
 
-    private static TerrariaWorldItemFrameEncodeResult EncodeOwner(in WorldItemSnapshot snapshot, out ReadOnlyMemory<byte> encoded)
+    private static TerrariaWorldItemFrameEncodeResult EncodeOwner(in WorldItemSnapshot snapshot,
+        int? reservationOffer, out ReadOnlyMemory<byte> encoded)
     {
         var state = new TerrariaWorldItemOwnerState(
             ItemIndex: snapshot.Handle.Slot,
             OwnerPlayerId: snapshot.OwnerPlayerId,
-            TimeToKeepReservation: snapshot.TimeToKeepReservation,
+            TimeToKeepReservation: reservationOffer ?? snapshot.TimeToKeepReservation,
             GrabDelayPlayer: snapshot.GrabDelayPlayer,
             GrabDelayTime: snapshot.GrabDelayTime,
             PositionX: snapshot.PositionX,
@@ -204,12 +206,13 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
         return TerrariaWorldItemFrameEncoder.TryEncodeOwner(in state, out encoded);
     }
 
-    private void Broadcast(ReadOnlyMemory<byte> encoded)
+    private void Broadcast(ReadOnlyMemory<byte> encoded, GameCommandSourceId excludedSource = default)
     {
         var frame = new OutboundFrame(encoded);
-        foreach (Endpoint endpoint in endpoints.Values)
+        foreach (var pair in endpoints)
         {
-            if (!endpoint.IsPlaying)
+            Endpoint endpoint = pair.Value;
+            if ((!excludedSource.IsSystem && pair.Key == excludedSource) || !endpoint.IsPlaying)
                 continue;
 
             if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)

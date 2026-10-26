@@ -1,5 +1,19 @@
 # Work state
 
+## Source item reservation clocks: accepted continuation, 2026-10-27
+
+World-item snapshots now retain the actual server reservation clock. Source ReserveFor offers15/100 travel only with each commit event, through direct and deferred allocation publication. Direct source-owner commits carry their event-specific excluded recipient. Source39 preserves or forcibly clears the raw clock, and its default unowned reply excludes the releasing connection only for that event. Join uses21 ownershipNone and22 hold0, including imported positive server clocks. Emergency forced search silently adopts a cleared clock for already-pending or already-unowned endpoints. Server owner discovery precedes pending stacking transfer completion in the same tick.
+
+Release WAE0/0; focused 11184/11184; fast 25439/25439; one final unfiltered full 1566852/1566852, failures/errors/skips0. Full XML covers all 5330 discovered methods. Frozen 3965 source/config/fixture inputs and 60 executed DLLs stayed exact. Source fingerprint 4a9c323d0b54912b3c01e39a8a60c70ca49211f5326974e42e62663958cc7130; full XML SHA256 0c4c28c947cbfe00ec590e8fefb2ee5ad56e84ac99476f053eb55ea0da663a73.
+
+Original unmodified1458 Linux edition was executed under Windows CoreCLR. New reservation corpus raw SHA256 b3f7494abb3ae0e22b822c104d5c7cd4bfceff9bcf4eee179a21082cb03734a8, gzip 1c34cde43c3ece02311f670f46d40cf37cbf81d1639c968d583dc77a1508d980; repeated captures match and have0 errors. Existing44/110 wiring fixtures remain unchanged. 7 causal variants produce 16 genuine failures and0 runner errors; restored candidate passes 39/39.
+
+Fresh Windows NativeAOT executable SHA256 723b70770700d5c8e1430a9d289d7e0a76eebf07618e302be63d5443b2f9fd35, PE CLR0/0, passes loop/protocol/network/world/TUI smokes. Shipping world smoke exercises direct/deferred source allocation, live100, join0, excluded fallback and nonsticky15; wiring=ok and reservation=ok. Linux NativeAOT remains unverified: no available WSL distribution and shipping script rejects cross-OS publish. No new dependency, runtime reflection or code generation.
+
+Evidence: docs/verification/world-item-reservation-1458.json and E:/TerraRuntime-reservation-verification-20261026/final. Paired guides: docs/en/world-item-reservation-1458.md and docs/ru/world-item-reservation-1458.md. Own branch includes origin/main4e3b3017 through merge5ce86eb7; main integration belongs to the main chat.
+
+Next: normalize retained NewItem ownership mode1/2 for later live21 and vanilla residual ingress; original SyncItem usesNone0. The current corpus covers immediate creation/join and None-mode pending merges, not that transition. Open: qualified cutter visual dust/viewport/RNG ownership; mass wiring109/GrandDesign/Multicolor/ActuationRod; cursor58/buffered or unknown range contexts; wet framing/AddWater/destruction and broader attachments; cosmetic merge frames; one-shot/weighted/projectile plates; pumps/teleporters and logic/traps/statues. Whole vanilla/GUI and Linux Native remain unverified. The earlier advertised-hold snapshot limitation is superseded by this accepted pass.
+
 ## Paid wiring installation and dry actuator framing: accepted follow-up, 2026-10-26
 
 Four ordinary wrenches 509/850/851/3612 and selected actuator 849 now use the existing ToolUse known local phase, bounded owned17/5 cohort, exact first resource slot0..57 and funded inventory journal. Player clock, paid quantity and same-world tile overlay adopt before publication; late5 acknowledges a receipt. The installed wire participates in the real circuit. Source wall/Golem, reach and NoBuilding rules remain distinct from mining. Actuators use the existing source transaction for dry nine-cell framing, supported switch136 removal/drop538 and torch support. Wet visited frames/unsupported attachments reject atomically; a wet read-only halo does not wake liquid. Primitive actuator placement/removal allows air and removal preserves inactive.

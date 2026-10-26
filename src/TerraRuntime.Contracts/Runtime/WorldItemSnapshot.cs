@@ -64,6 +64,8 @@ public enum WorldItemOwnershipMode : byte
 /// Immutable protocol-neutral projection of one active world item.
 /// Packet encoding remains owned by the protocol adapter. ItemNetId is retained as the current
 /// compatibility/storage primitive; gameplay should cross it through <see cref="TryGetItemType"/>.
+/// TimeToKeepReservation is the retained server field. ReserveFor's independent packet-22 time
+/// argument belongs to the commit notification, not this snapshot or a join baseline.
 /// </summary>
 public readonly record struct WorldItemSnapshot(
     WorldItemHandle Handle,

@@ -520,7 +520,7 @@ public sealed class GuideDollBurnTransaction1458Tests
             return pipeline.TryBurnGuideDollBatch(in doll, out _);
         }
         public bool Batch(in WorldItemSnapshot doll) => pipeline.TryBurnGuideDollBatch(in doll, out _);
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item) =>
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default) =>
             Events.Add($"item:{kind}:{item.ItemNetId}");
         public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot npc) =>
             Events.Add($"npc:{kind}:{npc.Type}");

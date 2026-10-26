@@ -219,10 +219,10 @@ public sealed class MoonDeathLiveBootstrap1458Tests
     private sealed class Observer(IWorldItemStateCommitSink inner, Action beforeDrop) : IWorldItemStateCommitSink
     {
         public int Count { get; private set; }
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind == WorldItemStateCommitKind.Drop) { Count++; beforeDrop(); }
-            inner.WorldItemStateCommitted(kind, in snapshot);
+            inner.WorldItemStateCommitted(kind, in snapshot, reservationOffer, excludedSource);
         }
     }
 

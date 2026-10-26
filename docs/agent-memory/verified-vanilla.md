@@ -1,5 +1,15 @@
 # Verified vanilla facts
 
+## Actual reservation fields, source offers and transfer ordering, 2026-10-27
+
+WorldItem.ReserveFor parameter shadows its field: owner/age change, field unchanged, packet22 argument15 (or explicit100). Client22 assigns the received field; server22 is ignored. FindOwner(force:true) clears the server field before instanced/positive/unowned guards. EmergencyStacking forces both endpoints, including already255; no redundant owner event is sent when owner stays255. Main.UpdateServer increments nonnegative age, owner255 searches on age%5==1 and active owners on age%300==0; owner scan precedes ProcessPendingTransfers. GetData39 accepts only the reserved sender, resets owner/age, then uses force; fallback22hold0 excludes sender, selected15 does not. Join index-only21/22 uses modeNone/hold0. Instanced lease54000 and sentinel400 are separate from the raw clock.
+
+Original unmodified1458 Linux edition was executed under Windows CoreCLR. New reservation corpus raw SHA256 b3f7494abb3ae0e22b822c104d5c7cd4bfceff9bcf4eee179a21082cb03734a8, gzip 1c34cde43c3ece02311f670f46d40cf37cbf81d1639c968d583dc77a1508d980; repeated captures match and have0 errors. Existing44/110 wiring fixtures remain unchanged. 7 causal variants produce 16 genuine failures and0 runner errors; restored candidate passes 39/39.
+
+Release WAE0/0; focused 11184/11184; fast 25439/25439; one final unfiltered full 1566852/1566852, failures/errors/skips0. Full XML covers all 5330 discovered methods. Frozen 3965 source/config/fixture inputs and 60 executed DLLs stayed exact. Source fingerprint 4a9c323d0b54912b3c01e39a8a60c70ca49211f5326974e42e62663958cc7130; full XML SHA256 0c4c28c947cbfe00ec590e8fefb2ee5ad56e84ac99476f053eb55ea0da663a73.
+
+Evidence: docs/verification/world-item-reservation-1458.json and E:/TerraRuntime-reservation-verification-20261026/final. Paired guides: docs/en/world-item-reservation-1458.md and docs/ru/world-item-reservation-1458.md. Own branch includes origin/main4e3b3017 through merge5ce86eb7; main integration belongs to the main chat.
+
 ## Conventional wiring tool source facts and dry framing, 2026-10-26
 
 Player.ItemCheck_UseWiringTools uses four ordinary wrenches509/850/851/3612, time5/animation15/boost20, resource530 searched first positive slot0..57. Selected849 uses time10/animation15/boost0; generic final consumption changes only itemTime to animation14 in the captured first use, retaining itemTimeMax/toolTime10. PlaceWire/PlaceActuator allow air; KillActuator clears actuator alone and preserves inactive. CanDoWireStuffHere refuses wall350, preGolem87, and preGolem dual-dungeon Temple walls87/92/42/24 below surface. It does not consult NoBuilding.

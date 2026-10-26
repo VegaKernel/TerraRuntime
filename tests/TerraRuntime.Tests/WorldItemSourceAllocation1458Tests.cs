@@ -249,5 +249,5 @@ public sealed class WorldItemSourceAllocation1458Tests
     private sealed class Rolls(VanillaUnifiedRandom1458 random):INpcLootRollSource
     {public int NextInt32(int minimum,int maximum)=>random.Next(minimum,maximum);public int RollLuck(int range)=>random.Next(range);}
     private sealed class Sink:IWorldItemStateCommitSink
-    {public List<(WorldItemStateCommitKind Kind,WorldItemSnapshot State)> Events{get;}=[];public void WorldItemStateCommitted(WorldItemStateCommitKind kind,in WorldItemSnapshot snapshot)=>Events.Add((kind,snapshot));}
+    {public List<(WorldItemStateCommitKind Kind,WorldItemSnapshot State)> Events{get;}=[];public void WorldItemStateCommitted(WorldItemStateCommitKind kind,in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)=>Events.Add((kind,snapshot));}
 }

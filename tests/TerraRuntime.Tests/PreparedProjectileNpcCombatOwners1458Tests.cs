@@ -385,7 +385,7 @@ public sealed class PreparedCombatOwnerTests
         public readonly List<WorldItemSentinelCommit1458> Sentinels = new();
         public Action? Callback;
         public bool Once;
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             Events.Add((kind, snapshot));
             var callback = Callback;

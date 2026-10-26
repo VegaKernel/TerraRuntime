@@ -185,7 +185,7 @@ public sealed class SeasonalEventConsumers1458Tests
             return drops.ToArray();
         }
 
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind == WorldItemStateCommitKind.Drop) drops.Add(item);
         }

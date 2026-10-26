@@ -216,7 +216,7 @@ public sealed class BotPickupInventoryAtomic1458Tests
     private sealed class WorldEvents : IWorldItemStateCommitSink
     {
         public int Removals;
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind == WorldItemStateCommitKind.Remove)
                 Removals++;

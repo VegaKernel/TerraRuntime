@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "date": "2026-10-27",
+  "terraria": "1.4.5.8",
+  "protocol": 326,
+  "accepted": true,
+  "branch": "gameplay/wiring-mechanisms-1458",
+  "reviewBase": "5ce86eb70426b689bb70b01797fa35ce0437733e",
+  "mainIncorporated": "4e3b301743d1f45c20c7450afa9aaef28e0ff3b4",
+  "previousPublishedCommit": "de158a772e234f72a5c2c258b374a1f5e6ceecf9",
+  "releaseBuild": {
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntime-reservation-verification-20261026\\final\\build.log"
+  },
+  "focused": {
+    "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+    "id": "b561e45d-2802-47e0-b8ff-73ea005e3bfc",
+    "name": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-wiring\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+    "run-date": "2026-10-26",
+    "run-time": "23:09:13",
+    "start-rtf": "2026-10-26T23:09:13.3904461+03:00",
+    "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+    "target-framework": ".NETCoreApp,Version=v11.0",
+    "errors": "0",
+    "failed": "0",
+    "finish-rtf": "2026-10-26T23:11:55.1734095+03:00",
+    "not-run": "0",
+    "passed": "11184",
+    "skipped": "0",
+    "time": "161.783",
+    "time-rtf": "00:02:41.7833861",
+    "total": "11184"
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 895.602047399967,
+    "tests": {
+      "total": "25439",
+      "passed": "25439",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "892.401",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 2740.0974446999608,
+    "tests": {
+      "total": "1566852",
+      "passed": "1566852",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "2723.624",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "frozenCandidate": {
+    "accepted": true,
+    "sourceInputs": 3965,
+    "executedDlls": 60,
+    "fullMethods": 5330,
+    "sourceFingerprint": "4a9c323d0b54912b3c01e39a8a60c70ca49211f5326974e42e62663958cc7130",
+    "fullXmlSha256": "0c4c28c947cbfe00ec590e8fefb2ee5ad56e84ac99476f053eb55ea0da663a73"
+  },
+  "affectedSelection": {
+    "mode": "full",
+    "reason": "Unclassified change: src/TerraRuntime.Application/ServerRuntimeState.Tick.cs",
+    "selected_method_count": 5330
+  },
+  "localEvidence": "E:\\TerraRuntime-reservation-verification-20261026\\final",
+  "implemented": [
+    "Snapshot.TimeToKeepReservation retains the actual server field; source15/100 holds are transient commit metadata, propagated through direct and deferred allocation publications.",
+    "Exact-preimage TryApplySourceOwner preserves the raw clock unless forced; packet22 remains inadmissible as a client authority write.",
+    "Owner discovery and authenticated39 use independent offered hold and exact per-event recipient exclusion. Default unowned39 response excludes releaser; subsequent offers include the connection again.",
+    "Late join publishes index-only21 creation modeNone and22 hold0, without replaying creation flags or raw positive clock.",
+    "Forced emergency transfers adopt raw clock clears silently for already-pending and already-unowned endpoints.",
+    "Server tick preserves original owner scan before pending stacking transfer completion; newly merged items wait for the next eligible owner cadence.",
+    "Shipping world smoke exercises live100, join0, exclusion, subsequent15, and both allocation publication paths."
+  ],
+  "originalEvidence": {
+    "editionAndHost": "Unmodified official Linux edition under Windows CoreCLR; not Linux execution or GUI parity.",
+    "exeSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "fixture": "tests/TerraRuntime.Tests/Fixtures/WorldItemReservationOriginalLinux1458.json.gz",
+    "gzipSha256": "1c34cde43c3ece02311f670f46d40cf37cbf81d1639c968d583dc77a1508d980",
+    "rawSha256": "b3f7494abb3ae0e22b822c104d5c7cd4bfceff9bcf4eee179a21082cb03734a8",
+    "profiles": 33,
+    "steps": 79,
+    "probe": "tools/reference/wiring1458/LeaseProgram.cs",
+    "probeSha256": "c737b7dff4ca9340ddecad8c836807e9b2040fe42316b9bccbe8718effecf0ca",
+    "captureErrors": 0,
+    "independentRepeatedCaptures": [
+      {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-wiring\\.cache\\wiring-original-evidence\\lease-pending-first.json",
+        "rawSha256": "b3f7494abb3ae0e22b822c104d5c7cd4bfceff9bcf4eee179a21082cb03734a8"
+      },
+      {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-wiring\\.cache\\wiring-original-evidence\\lease-pending-repeat.json",
+        "rawSha256": "b3f7494abb3ae0e22b822c104d5c7cd4bfceff9bcf4eee179a21082cb03734a8"
+      }
+    ],
+    "priorWiringFixturesUnchanged": {
+      "110ScenesSha256": "60070ae80ec94cc8d0fe57f5ae6a0e4f429bb2f61c5c0f18bb909bc1a30e60eb",
+      "44ProfilesSha256": "5de8b2dbd551ef1fa58e48f13c99671a44a229eaff8e0d2425fe6f5d562fdf71"
+    }
+  },
+  "causalControls": {
+    "variants": 7,
+    "genuineFailedTests": 16,
+    "runnerErrors": 0,
+    "fixedRestoration": {
+      "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+      "id": "634e49a6-0576-46a7-8cba-233e00018c7f",
+      "name": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-wiring\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+      "run-date": "2026-10-26",
+      "run-time": "23:08:56",
+      "start-rtf": "2026-10-26T23:08:56.2928848+03:00",
+      "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+      "target-framework": ".NETCoreApp,Version=v11.0",
+      "errors": "0",
+      "failed": "0",
+      "finish-rtf": "2026-10-26T23:08:57.4210757+03:00",
+      "not-run": "0",
+      "passed": "39",
+      "skipped": "0",
+      "time": "1.126",
+      "time-rtf": "00:00:01.1257900",
+      "total": "39"
+    },
+    "names": [
+      "server-clock-conflated",
+      "offer-disconnected",
+      "creation-replayed-on-join",
+      "release-exclusion-disconnected",
+      "silent-force-clear-lost",
+      "unowned-force-clear-lost",
+      "pending-merge-before-owner-scan"
+    ],
+    "evidence": "E:\\TerraRuntime-reservation-verification-20261026\\controls\\result.json"
+  },
+  "windowsNativeAot": {
+    "accepted": true,
+    "exe": "E:\\TerraRuntime-reservation-verification-20261026\\final\\native\\TerraRuntime.Server.exe",
+    "exeSha256": "723b70770700d5c8e1430a9d289d7e0a76eebf07618e302be63d5443b2f9fd35",
+    "clrDirectory": [
+      0,
+      0
+    ],
+    "smokes": [
+      {
+        "smoke": "loop",
+        "exitCode": 0,
+        "seconds": 1.0540380999445915
+      },
+      {
+        "smoke": "protocol",
+        "exitCode": 0,
+        "seconds": 0.4512430999893695
+      },
+      {
+        "smoke": "network",
+        "exitCode": 0,
+        "seconds": 0.30034279997926205
+      },
+      {
+        "smoke": "world",
+        "exitCode": 0,
+        "seconds": 0.45207639993168414
+      },
+      {
+        "smoke": "tui",
+        "exitCode": 0,
+        "seconds": 2.205231999978423
+      }
+    ],
+    "linux": "Unavailable: Windows host, no WSL distributions; cross-OS shipping publish rejected"
+  },
+  "linuxNativeAot": {
+    "verified": false,
+    "reason": "Windows host has no available WSL distribution; shipping publish script rejects linux-x64 on win-x64.",
+    "logs": [
+      "E:\\TerraRuntime-reservation-verification-20261026\\linux-host.log",
+      "E:\\TerraRuntime-reservation-verification-20261026\\linux-publish.log"
+    ]
+  },
+  "sourceMethods": [
+    "WorldItem.ReserveFor / FindOwner / UpdateItem",
+    "MessageBuffer.GetData cases21/22/39 and join baseline",
+    "Main.UpdateServer owner age/cadence/ordering",
+    "EmergencyStacking.RequestOwnershipReleaseForPendingTransfers / ProcessPendingTransfers"
+  ],
+  "sharedModifiedSourceAndTests": [
+    "src/TerraRuntime.Application/RuntimeWorldItemReplicationRegistry.cs",
+    "src/TerraRuntime.Application/ServerRuntimeState.Tick.cs",
+    "src/TerraRuntime.Application/WorldItemAuthority.cs",
+    "src/TerraRuntime.Application/WorldItemReservationNativeSmoke1458.cs",
+    "src/TerraRuntime.Application/WorldNativeSmoke.cs",
+    "src/TerraRuntime.Contracts/Runtime/WorldItemSnapshot.cs",
+    "src/TerraRuntime.Core/Worlds/Items/IWorldItemStateCommitSink.cs",
+    "src/TerraRuntime.Core/Worlds/Items/RuntimeWorldItemStore.Allocation.cs",
+    "src/TerraRuntime.Core/Worlds/Items/RuntimeWorldItemStore.cs",
+    "src/TerraRuntime.Protocol.Multiplicity/WorldItemBootstrapPacketEncoder.cs",
+    "tests/TerraRuntime.Tests/BotPartialPickupIndependentSource1458Tests.cs",
+    "tests/TerraRuntime.Tests/BotPickupInventoryAtomic1458Tests.cs",
+    "tests/TerraRuntime.Tests/CaptainGhostLifecycleSource1458Tests.cs",
+    "tests/TerraRuntime.Tests/ExceptionalToolFurniture1458Tests.cs",
+    "tests/TerraRuntime.Tests/Fixtures/WorldItemReservationOriginalLinux1458.json.gz",
+    "tests/TerraRuntime.Tests/FrostLegionRetainedDeath1458Tests.cs",
+    "tests/TerraRuntime.Tests/GemBunnyLifecycle1458Tests.cs",
+    "tests/TerraRuntime.Tests/GuideDollBurnTransaction1458Tests.cs",
+    "tests/TerraRuntime.Tests/GuideVoodooDoll1458Tests.cs",
+    "tests/TerraRuntime.Tests/InvasionDeathCredit1458Tests.Pipeline.cs",
+    "tests/TerraRuntime.Tests/InvasionPendingDeath1458Tests.cs",
+    "tests/TerraRuntime.Tests/MoonBossDeathAuthority1458Tests.cs",
+    "tests/TerraRuntime.Tests/MoonDeathLiveBootstrap1458Tests.cs",
+    "tests/TerraRuntime.Tests/MoonEventPreparedDeath1458Tests.cs",
+    "tests/TerraRuntime.Tests/NpcCatchOwnership1458Tests.cs",
+    "tests/TerraRuntime.Tests/NpcDeathDropUnpublished1458Tests.cs",
+    "tests/TerraRuntime.Tests/NpcLootColor1458Tests.cs",
+    "tests/TerraRuntime.Tests/OwnedHumanPickupAuthority1458Tests.cs",
+    "tests/TerraRuntime.Tests/PaidFurniturePlacement1458Tests.cs",
+    "tests/TerraRuntime.Tests/PhysicalWorldItemOrigins1458Tests.cs",
+    "tests/TerraRuntime.Tests/PreparedProjectileNpcCombatOwners1458Tests.cs",
+    "tests/TerraRuntime.Tests/RuntimeNpcDeathAllocationViews1458Tests.cs",
+    "tests/TerraRuntime.Tests/RuntimeWiringFraming1458Tests.cs",
+    "tests/TerraRuntime.Tests/RuntimeWorldItemInstancedLeaseAdoptionTests.cs",
+    "tests/TerraRuntime.Tests/RuntimeWorldItemReplicationRegistryTests.cs",
+    "tests/TerraRuntime.Tests/RuntimeWorldItemReservation1458Tests.cs",
+    "tests/TerraRuntime.Tests/RuntimeWorldItemSlotReservationTests.cs",
+    "tests/TerraRuntime.Tests/RuntimeWorldItemStoreTests.cs",
+    "tests/TerraRuntime.Tests/SeasonalEventConsumers1458Tests.cs",
+    "tests/TerraRuntime.Tests/ServerRuntimeWorldItemPickupIntegrationTests.cs",
+    "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj",
+    "tests/TerraRuntime.Tests/ToolPlayerPlacementSwapsChecks.cs",
+    "tests/TerraRuntime.Tests/ToolPlayerReplantChecks.cs",
+    "tests/TerraRuntime.Tests/TownLootSource1458Tests.cs",
+    "tests/TerraRuntime.Tests/TownNpcDeathHitEffect1458Tests.cs",
+    "tests/TerraRuntime.Tests/WorldItemBootstrapPacketEncoderTests.cs",
+    "tests/TerraRuntime.Tests/WorldItemReservationClock1458Tests.cs",
+    "tests/TerraRuntime.Tests/WorldItemReservationOriginal1458Tests.cs",
+    "tests/TerraRuntime.Tests/WorldItemSourceAllocation1458Tests.cs",
+    "tests/TerraRuntime.Tests/WorldWiringToolsOriginal1458Tests.cs"
+  ],
+  "remaining": [
+    "Next: nonzero NewItem mode1/2 survives later partial/emergency Drop21 and residual ingress equality. Original SyncItem uses modeNone0. Immediate creation/join clock evidence does not close this existing later21 gap.",
+    "Qualified cutter visual dust/viewport and RNG ownership; mass wiring/Grand Design/Multicolor/Actuation Rod.",
+    "Wet actuator framing and Liquid.AddWater destruction/publication; broader attached-object destruction and cosmetic merge frames.",
+    "One-shot/weighted/projectile plates, pumps/teleporters, logic/traps/statues.",
+    "Whole vanilla wiring compatibility, official GUI client playthrough and Linux NativeAOT."
+  ],
+  "earlierAttempts": {
+    "broadFocused": {
+      "total": 11121,
+      "failed": 1,
+      "errors": 0,
+      "reason": "New shipping smoke held its allocation claim past commit; source owner mutation correctly refused. Claim scope was corrected before final freeze."
+    },
+    "finalCandidateHasUnfilteredFull": true
+  },
+  "qualityChecks": {
+    "documentation": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-reservation-verification-20261026\\final\\documentation.log"
+    },
+    "projectReferences": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-reservation-verification-20261026\\final\\projectReferences.log"
+    },
+    "domainLiterals": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-reservation-verification-20261026\\final\\domainLiterals.log"
+    },
+    "diffWhitespace": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-reservation-verification-20261026\\final\\diffWhitespace.log"
+    }
+  }
+}

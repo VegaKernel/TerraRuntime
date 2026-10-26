@@ -235,7 +235,7 @@ public sealed partial class InvasionDeathCredit1458Tests
             if (kind == NpcStateCommitKind.Despawn) Terminals.Add(npc.Handle);
         }
 
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind != WorldItemStateCommitKind.Drop) return;
             Drops.Add(item); Events.Add(21); OnDrop?.Invoke();
