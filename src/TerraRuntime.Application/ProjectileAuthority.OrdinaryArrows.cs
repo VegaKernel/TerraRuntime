@@ -10,6 +10,8 @@ internal sealed partial class ProjectileAuthority
 
     private ProjectileActorSimulationResult TrySimulateOrdinaryArrowActor(ProjectileSnapshot initial)
     {
+        if (TerraRuntime.Gameplay.Players.FishingRules1458.IsBobber(initial.Type.Value))
+            return TrySimulateFishingBobber(initial);
         var worldBomb = TrySimulateWorldToolBombActor(initial);
         if (worldBomb != ProjectileActorSimulationResult.NotApplicable) return worldBomb;
         if (TerraRuntime.Gameplay.Projectiles.VanillaFallingBlock1458.TryGetTile(initial.Type, out _) &&

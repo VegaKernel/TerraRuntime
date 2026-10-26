@@ -73,7 +73,7 @@ public sealed class OwnedBankRestockAuthority1458Tests
                     }
                     items.AdoptFundedQuantities(connection, q, money);
                     var bankImage = before.GetProperty("banks").EnumerateArray().SelectMany(x => x.EnumerateArray()).Select(Item).ToArray();
-                    var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps, (short)-1);
+                    var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps, (short)-1);
                     for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType, out long unit)) bankCopper[i] = unit * Math.Max(0, (int)bankImage[i].Stack);
                     for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0, bankImage[i].Stack);
                     Check(items.TryAdoptShopBanks(connection, bankImage, bankCopper, bankQuantity, bankCaps), name + " configured banks");
@@ -206,11 +206,11 @@ public sealed class OwnedBankRestockAuthority1458Tests
                         items.AdoptFundedQuantities(connection, q, money);
                         items.AdoptOwnedQuantities(connection, [new(10, new(110), 1), new(11, new(109), 1), new(2, new(500), 0)]);
                         var bankImage = before.GetProperty("banks").EnumerateArray().SelectMany(x => x.EnumerateArray()).Select(Item).ToArray();
-                        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps, (short)-1);
+                        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps, (short)-1);
                         for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType, out long unit)) bankCopper[i] = unit * Math.Max(0, (int)bankImage[i].Stack);
                         for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0, bankImage[i].Stack);
                         for (int slot = 0; slot < 160; slot++) if (bankImage[slot].ItemType.Value is 109 or 110) bankQuantity[slot] = (short)fundingMode;
-                        int selectedBank = spec.GetProperty("bank").GetInt32(); bankCaps[(selectedBank * 40) * 5 + 1] = 3; bankCaps[(selectedBank * 40 + 1) * 5] = 3;
+                        int selectedBank = spec.GetProperty("bank").GetInt32(); bankCaps[(selectedBank * 40) * RuntimePlayerInventoryStore.QuantityLaneCount + 1] = 3; bankCaps[(selectedBank * 40 + 1) * RuntimePlayerInventoryStore.QuantityLaneCount] = 3;
                         Check(items.TryAdoptShopBanks(connection, bankImage, bankCopper, bankQuantity, bankCaps), name + " configured banks");
                         // Another actor advances the GLOBAL serial after player0's last own stamp.
                         // The first cursor report must still retain the source-valid bank alternative.
@@ -274,7 +274,7 @@ public sealed class OwnedBankRestockAuthority1458Tests
                         }
                         var finalCaps = items.CaptureOwnedQuantities(connection);
                         Check(finalCaps.Contains(new(10, new(110), 4)) && finalCaps.Contains(new(11, new(109), 4)) && finalCaps.Contains(new(2, new(500), 0)), name + " exact main transferred and untouched historical caps");
-                        Check(actualCaps[(selectedBank * 40) * 5 + 1] == 0 && actualCaps[(selectedBank * 40 + 1) * 5] == 0, name + " exact depleted bank caps");
+                        Check(actualCaps[(selectedBank * 40) * RuntimePlayerInventoryStore.QuantityLaneCount + 1] == 0 && actualCaps[(selectedBank * 40 + 1) * RuntimePlayerInventoryStore.QuantityLaneCount] == 0, name + " exact depleted bank caps");
                         Check(memberOwner.TryGet(connection, out var acceptedMember) && acceptedMember.ItemPhase is { ShopOpen: false }, name + " bank move does not open shop");
                     }
                     catch (Exception ex) { failures.Add(row.GetProperty("spec").GetProperty("name").GetString() + ": " + ex.Message); }
@@ -342,7 +342,7 @@ public sealed class OwnedBankRestockAuthority1458Tests
                         }
                         items.AdoptFundedQuantities(connection, q, money);
                         var bankImage = before.GetProperty("banks").EnumerateArray().SelectMany(x => x.EnumerateArray()).Select(Item).ToArray();
-                        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps, (short)-1);
+                        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps, (short)-1);
                         for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType, out long unit)) bankCopper[i] = unit * Math.Max(0, (int)bankImage[i].Stack);
                         for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = (short)Math.Min(1, Math.Max(0, (int)bankImage[i].Stack));
                         Check(items.TryAdoptShopBanks(connection, bankImage, bankCopper, bankQuantity, bankCaps), name + " configured banks");

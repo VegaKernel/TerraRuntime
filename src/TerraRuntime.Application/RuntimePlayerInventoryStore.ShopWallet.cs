@@ -15,7 +15,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     private readonly short[] shopBankQuantityCaps = CreateShopBankQuantityCaps();
     private static short[] CreateShopBankQuantityCaps()
     {
-        var result = new short[PlayerSlotCount * ShopBankImageCount * 5];
+        var result = new short[PlayerSlotCount * ShopBankImageCount * QuantityLaneCount];
         Array.Fill(result, (short)-1);
         return result;
     }
@@ -27,7 +27,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         if (!connection.IsAssigned || connections[connection.Player.Slot.Value] != connection) return false;
         int player = connection.Player.Slot.Value;
         quantities = shopBankFundedQuantities.AsSpan(player * ShopBankImageCount, ShopBankImageCount).ToArray();
-        caps = shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * 5, ShopBankImageCount * 5).ToArray();
+        caps = shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * QuantityLaneCount, ShopBankImageCount * QuantityLaneCount).ToArray();
         return AreValidShopBankOwnership(shopBankItems.AsSpan(player * ShopBankImageCount, ShopBankImageCount), quantities, caps);
     }
 
@@ -35,14 +35,14 @@ internal sealed partial class RuntimePlayerInventoryStore
         ReadOnlySpan<short> quantities, ReadOnlySpan<short> caps)
     {
         if (image.Length != ShopBankImageCount || quantities.Length != ShopBankImageCount ||
-            caps.Length != ShopBankImageCount * 5) return false;
+            caps.Length != ShopBankImageCount * QuantityLaneCount) return false;
         for (int i = 0; i < image.Length; i++)
         {
             if (quantities[i] < 0 || quantities[i] > Math.Max(0, (int)image[i].Stack) ||
                 (CoinValue(image[i]) != 0 && quantities[i] != 0)) return false;
-            for (int lane = 0; lane < 5; lane++)
+            for (int lane = 0; lane < QuantityLaneCount; lane++)
             {
-                int cap = caps[i * 5 + lane];
+                int cap = caps[i * QuantityLaneCount + lane];
                 if (cap < -1 || (cap >= 0 && !IsValidOwnedQuantityMaximum(new(OwnedQuantityTypes[lane]), cap)) ||
                     (QuantityLane(image[i].ItemType) == lane && cap >= 0 && image[i].Stack > cap)) return false;
             }
@@ -104,8 +104,8 @@ internal sealed partial class RuntimePlayerInventoryStore
             (after.ItemFlags & ~PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0) return false;
         int offset = connection.Player.Slot.Value * ShopBankImageCount + bankSlot;
         int lane = QuantityLane(after.ItemType);
-        return lane < 0 || shopBankQuantityCaps[offset * 5 + lane] < 0 ||
-            after.Stack <= shopBankQuantityCaps[offset * 5 + lane];
+        return lane < 0 || shopBankQuantityCaps[offset * QuantityLaneCount + lane] < 0 ||
+            after.Stack <= shopBankQuantityCaps[offset * QuantityLaneCount + lane];
     }
 
     internal bool TrySetShopBankReport(ConnectionHandle connection, short protocolSlot,
@@ -132,7 +132,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         shopBankItems.AsSpan(player * ShopBankImageCount, ShopBankImageCount).Clear();
         shopBankFundedCopper.AsSpan(player * ShopBankImageCount, ShopBankImageCount).Clear();
         shopBankFundedQuantities.AsSpan(player * ShopBankImageCount, ShopBankImageCount).Clear();
-        shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * 5, ShopBankImageCount * 5).Fill(-1);
+        shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * QuantityLaneCount, ShopBankImageCount * QuantityLaneCount).Fill(-1);
     }
 
     // Transfer invokes this after all tuple/value validation and counter reservation.
@@ -142,7 +142,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         ReadOnlySpan<short> quantities = default, ReadOnlySpan<short> caps = default)
     {
         if (quantities.IsEmpty) quantities = new short[ShopBankImageCount];
-        if (caps.IsEmpty) { var unknown = new short[ShopBankImageCount * 5]; Array.Fill(unknown, (short)-1); caps = unknown; }
+        if (caps.IsEmpty) { var unknown = new short[ShopBankImageCount * QuantityLaneCount]; Array.Fill(unknown, (short)-1); caps = unknown; }
         if (!AreValidShopBankOwnership(image, quantities, caps)) return false;
         if (!connection.IsAssigned || connections[connection.Player.Slot.Value] != connection ||
             Serial >= ulong.MaxValue - 1 || !AreValidShopBanks(image, fundedCopper))
@@ -151,7 +151,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         image.CopyTo(shopBankItems.AsSpan(player * ShopBankImageCount, ShopBankImageCount));
         fundedCopper.CopyTo(shopBankFundedCopper.AsSpan(player * ShopBankImageCount, ShopBankImageCount));
         quantities.CopyTo(shopBankFundedQuantities.AsSpan(player * ShopBankImageCount, ShopBankImageCount));
-        caps.CopyTo(shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * 5, ShopBankImageCount * 5));
+        caps.CopyTo(shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * QuantityLaneCount, ShopBankImageCount * QuantityLaneCount));
         Changed(player);
         return true;
     }

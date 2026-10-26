@@ -236,6 +236,9 @@ internal sealed class RuntimePlayerMember
     public PlayerZoneSnapshot1458? Zones { get; set; } = default(PlayerZoneSnapshot1458);
     public float Luck { get; set; }
     public VanillaPlayerLuckComponents1458? LuckComponents { get; set; }
+    internal bool OwnsFishingLadyBugLuck { get; set; }
+    internal long FishingLadyBugAppliedTick { get; set; } = long.MinValue;
+    internal int FishingLadyBugPriorTimer { get; set; }
     public int ItemAnimation { get; set; }
     public float ItemRotation { get; set; }
     public bool HasMana { get; set; }
@@ -245,6 +248,10 @@ internal sealed class RuntimePlayerMember
     // A bound owned life-family attempt closes later raw maximum imports, even when unfunded.
     internal bool OwnsLifeMaximum { get; set; }
     internal byte OwnedPermanentUpgradeMask { get; set; }
+    internal int AnglerQuestsFinished { get; set; }
+    internal int GolferScoreAccumulated { get; set; }
+    internal bool OwnsAnglerQuestsFinished { get; set; }
+    internal ulong AnglerCompletedDay { get; set; }
     internal bool OwnsTorchFavor { get; set; }
     internal bool PaidTorchFavor { get; set; }
     internal PlayerAuthority.PendingCursorMove? CursorMove { get; set; }

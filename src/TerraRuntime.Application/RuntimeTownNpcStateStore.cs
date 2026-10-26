@@ -74,6 +74,7 @@ internal sealed class RuntimeTownNpcStateStore
     }
 
     public int Count => townNpcsBySlot.Count;
+    internal bool IsShimmeredNpcType(NpcTypeId type) => shimmeredTownNpcTypes.Contains(type.Value);
 
     public bool TryGet(short slot, out WorldTownNpc npc) =>
         townNpcsBySlot.TryGetValue(slot, out npc!);
@@ -412,6 +413,32 @@ internal sealed class RuntimeTownNpcStateStore
         if (!townNpcsBySlot.TryGetValue(slot, out WorldTownNpc? npc))
             return false;
         townNpcsBySlot[slot] = npc with { X = snapshot.PositionX, Y = snapshot.PositionY };
+        return true;
+    }
+
+    internal bool CanAdoptFishedResident(in NpcSnapshot snapshot)
+    {
+        if (!CanAdoptRescuedResident(snapshot.Handle.Slot, snapshot.TypeIdentity) ||
+            Count >= MaximumTownNpcs ||
+            !VanillaTownNpcFacts1458.TryGetDefinition(snapshot.TypeIdentity, out var definition)) return false;
+        int tileX = (int)(snapshot.PositionX + definition.Width / 2f) / 16;
+        int tileY = (int)(snapshot.PositionY + definition.Height) / 16;
+        return IsInWorld(tileX, tileY);
+    }
+
+    // The NewNPC birth and its source-generated identity are one owner-thread
+    // transaction. Name/profile draws are staged on the existing spawn cursor;
+    // no independent name RNG is introduced by this persistent resident record.
+    internal bool TryAdoptFishedResident(in NpcSnapshot snapshot, in VanillaTownNpcSpawnIdentity1458 identity)
+    {
+        if (!CanAdoptFishedResident(snapshot) || identity.GivenName is null || identity.VariationIndex < 0 ||
+            !TryAdoptRescuedResident(snapshot.Handle.Slot, snapshot.TypeIdentity, snapshot)) return false;
+        var resident = townNpcsBySlot[snapshot.Handle.Slot];
+        townNpcsBySlot[snapshot.Handle.Slot] = resident with
+        {
+            GivenName = identity.GivenName,
+            TownNpcVariationIndex = identity.VariationIndex
+        };
         return true;
     }
 

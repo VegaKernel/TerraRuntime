@@ -68,7 +68,7 @@ internal static partial class CraftStateChecks
                 if (crafts == 2 && slot is not (58 or 59 or 60))
                     Assert.Equal(before.Before[slot], after.Before[slot]);
             }
-            for (int lane = 0; lane < 219 * 5; lane++) Assert.Equal(before.Caps[lane], after.Caps[lane]);
+            for (int lane = 0; lane < 219 * RuntimePlayerInventoryStore.QuantityLaneCount; lane++) Assert.Equal(before.Caps[lane], after.Caps[lane]);
 
         }
     }

@@ -33,7 +33,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         var image = new RuntimePlayerInventoryItem[count];
         var copper = new long[count];
         var quantity = new short[count];
-        var caps = new short[count * 5];
+        var caps = new short[count * QuantityLaneCount];
         Array.Fill(caps, (short)-1);
         capture.Before.CopyTo(image, 0);
         capture.Copper.CopyTo(copper, 0);
@@ -168,9 +168,9 @@ internal sealed partial class RuntimePlayerInventoryStore
             var actorCaps = capture.Caps;
             ReconcileFinalBankCaps(capture.Before, actorItems, actorCaps);
             if (!AreValidRetainedMainShopImage(actorItems.AsSpan(0, 59), actorQuantity.AsSpan(0, 59).ToArray(),
-                    actorCopper.AsSpan(0, 59).ToArray(), actorCaps.AsSpan(0, 59 * 5)) ||
+                    actorCopper.AsSpan(0, 59).ToArray(), actorCaps.AsSpan(0, 59 * QuantityLaneCount)) ||
                 !AreValidShopBanks(actorItems.AsSpan(59), actorCopper.AsSpan(59)) ||
-                !AreValidShopBankOwnership(actorItems.AsSpan(59), actorQuantity.AsSpan(59), actorCaps.AsSpan(59 * 5))) continue;
+                !AreValidShopBankOwnership(actorItems.AsSpan(59), actorQuantity.AsSpan(59), actorCaps.AsSpan(59 * QuantityLaneCount))) continue;
             var prepared = new ShopBankMovePreparation(this, connection, capture, actorItems, actorCopper, actorQuantity, actorCaps);
             if (result.Inventory is { } prior && (!prior.HasSameAcceptedImage(prepared) || !result.Chest!.AsSpan().SequenceEqual(afterWorld) ||
                 !result.ChestQuantity!.AsSpan().SequenceEqual(state.Quantity.AsSpan(219)) ||

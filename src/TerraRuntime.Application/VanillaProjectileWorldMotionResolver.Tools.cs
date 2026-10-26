@@ -27,9 +27,10 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         byte beforeWetCount, out ToolProjectileTerrain1458 terrain)
     {
         terrain = default;
-        if (!VanillaToolProjectileDefinition1458.TryGet(type, out var definition) ||
+        bool bobber = TerraRuntime.Gameplay.Players.FishingRules1458.IsBobber(type.Value);
+        if (!(bobber ? VanillaDefinitionCatalog.TryGet(type, out var definition) : VanillaToolProjectileDefinition1458.TryGet(type, out definition)) ||
             !float.IsFinite(x) || !float.IsFinite(y) || !float.IsFinite(vx) || !float.IsFinite(vy) ||
-            tileCollide && type.Value != VanillaThrownAxeProjectile1458.ProjectileType)
+            tileCollide && !bobber && type.Value != VanillaThrownAxeProjectile1458.ProjectileType)
             return false;
         var liquid = before;
         byte wetCount = beforeWetCount, colourDraws = 0;

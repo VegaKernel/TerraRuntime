@@ -120,10 +120,10 @@ internal sealed partial class RuntimePlayerInventoryStore
                     copper.AsSpan(0, 59).CopyTo(mainCopper);
                     if (!finalCaps.AsSpan().SequenceEqual(acceptedCaps) ||
                         !AreValidRetainedMainShopImage(image.AsSpan(0, 59), mainQuantity, mainCopper,
-                            finalCaps.AsSpan(0, 59 * 5)) ||
+                            finalCaps.AsSpan(0, 59 * QuantityLaneCount)) ||
                         !AreValidShopBanks(image.AsSpan(59), copper.AsSpan(59)) ||
                         !AreValidShopBankOwnership(image.AsSpan(59), quantity.AsSpan(59),
-                            finalCaps.AsSpan(59 * 5))) continue;
+                            finalCaps.AsSpan(59 * QuantityLaneCount))) continue;
                     if (!copper.AsSpan().SequenceEqual(acceptedCopper) ||
                         !quantity.AsSpan().SequenceEqual(acceptedQuantity))
                     { result.Ambiguous = true; yield break; }

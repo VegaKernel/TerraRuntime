@@ -21,6 +21,10 @@ internal sealed record RuntimePlayerTransferState(
     internal bool OwnsManaMaximum { get; init; }
     internal bool OwnsLifeMaximum { get; init; }
     internal byte OwnedPermanentUpgradeMask { get; init; }
+    internal int AnglerQuestsFinished { get; init; }
+    internal int GolferScoreAccumulated { get; init; }
+    internal bool OwnsAnglerQuestsFinished { get; init; }
+    internal bool OwnsFishingLadyBugLuck { get; init; }
     internal bool OwnsTorchFavor { get; init; }
     internal bool PaidTorchFavor { get; init; }
     internal RuntimePlayerInventoryItem[] ShopBankInventory { get; init; } = new RuntimePlayerInventoryItem[160];
@@ -29,7 +33,7 @@ internal sealed record RuntimePlayerTransferState(
     internal short[] OwnedShopBankQuantityCaps { get; init; } = UnknownShopBankCaps();
     private static short[] UnknownShopBankCaps()
     {
-        var caps = new short[800]; Array.Fill(caps, (short)-1); return caps;
+        var caps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(caps, (short)-1); return caps;
     }
     internal long[] FundedInventoryCoinValues { get; init; } = new long[VanillaPlayerItemSlotCatalog.InventoryCount];
     internal short[] FundedInventoryQuantities { get; init; } = new short[VanillaPlayerItemSlotCatalog.InventoryCount];

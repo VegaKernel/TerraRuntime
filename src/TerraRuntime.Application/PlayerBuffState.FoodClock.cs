@@ -18,7 +18,7 @@ internal sealed partial class PlayerBuffState
         Span<bool> retained = stackalloc bool[Capacity];
         bool finalEffect = false;
         for (int i = 0; i < Capacity; i++)
-            if (ownedFood[i] && durations[i] > 0 && elapsed <= durations[i]) finalEffect = true;
+            if (ownedFood[i] && types[i].Value is 26 or 206 or 207 && durations[i] > 0 && elapsed <= durations[i]) finalEffect = true;
         if (current.ownedFoodEffectAtTick != finalEffect) return false;
         for (int destination = 0; destination < Capacity; destination++)
         {

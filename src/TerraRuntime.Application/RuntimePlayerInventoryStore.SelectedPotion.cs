@@ -15,7 +15,9 @@ internal sealed partial class RuntimePlayerInventoryStore
             !before.IsCanonical || before.IsEmpty || before.Prefix.Value != 0 ||
             !VanillaSelectedConsumableCatalog1458.TryGet(before.ItemType, out var potion) ||
             (potion.HealLife <= 0 && potion.HealMana <= 0 && potion.BuffType <= 0 && before.ItemType.Value is not (29 or 1291 or 3335 or 5326 or 5337 or 5338 or 5339 or 5340 or 5341 or 5342 or 5043)) ||
-            fundedQuantities[GetOffset(connection.Player.Slot.Value, slot)] <= 0) return false;
+            (before.ItemType.Value is >= 2354 and <= 2356
+                ? !CanSpendFishingStock(connection, slot, before.ItemType.Value)
+                : fundedQuantities[GetOffset(connection.Player.Slot.Value, slot)] <= 0)) return false;
         var after = before.Stack == 1 ? default : before with { Stack = (short)(before.Stack - 1) };
         mutation = new(connection, slot, before, after) { ConsumeFundedQuantity = true };
         return true;

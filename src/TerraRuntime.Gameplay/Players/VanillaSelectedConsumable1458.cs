@@ -502,7 +502,7 @@ public static class VanillaSelectedConsumable1458
         return true;
     }
 
-    /// <summary>Detached six-family QuickBuff. Source input eligibility is explicit; this does not
+    /// <summary>Detached admitted-family QuickBuff. Source input eligibility is explicit; this does not
     /// establish button intent or funded custody. All supplied images must be canonical, including inactive Void slots.
     /// Unsupported potentially mutating buff/food families refuse; immunity is an explicit detached input.</summary>
     public static bool TryPlanQuickBuff(ReadOnlySpan<WorldItemPickupSlot1458> inventory,

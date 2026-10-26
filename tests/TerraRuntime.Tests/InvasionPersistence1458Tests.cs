@@ -103,7 +103,8 @@ public sealed partial class InvasionPersistence1458Tests
     [Fact]
     public void Prepared_payload_retains_source_values_and_declares_new_disposable_cache_layout()
     {
-        Assert.Equal(5, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
+        // The Angler variable metadata extends the disposable layout; invasion source values stay unchanged.
+        Assert.Equal(6, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
         foreach (string profile in new[] { "fresh", "goblin", "pirate", "martian-stored-start", "inactive-residue" })
         {
             byte[] bytes = ReadHeader(profile);

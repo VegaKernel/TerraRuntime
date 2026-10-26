@@ -488,4 +488,3 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
     [UnsafeAccessor(UnsafeAccessorKind.Field,Name="projectiles")]
     private static extern ref RuntimeProjectileStore ProjectileStore(ProjectileAuthority authority);
 }
-

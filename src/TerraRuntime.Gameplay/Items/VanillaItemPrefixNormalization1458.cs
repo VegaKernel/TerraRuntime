@@ -31,6 +31,43 @@ public static class VanillaItemPrefixNormalization1458
     // must discard the planned cursor and never adopt a partial resolution.
     public const int MaximumAttempts = 256;
 
+    /// <summary>Bounded source Prefix(-1), including world variants and the natural reduced-chance draw.</summary>
+    public static VanillaItemPrefixNormalizationStatus1458 ResolveNatural(ItemTypeId item, Func<int, int> next,
+        bool windowsItemPrefixArithmetic, out PrefixId prefix, VanillaItemPrefixWorld1458? world = null)
+    {
+        prefix = default;
+        ArgumentNullException.ThrowIfNull(next);
+        if ((uint)item.Value >= VanillaItemIds.Count || PrefixWorldRecords1458.HasVariant(item.Value) && !world.HasValue)
+            return VanillaItemPrefixNormalizationStatus1458.Unsupported;
+        bool prefixable = PrefixWorldRecords1458.HasVariant(item.Value)
+            ? PrefixWorldRecords1458.TryGet(item, world!.Value, out var record)
+            : VanillaItemPrefixTable1458.TryGet(item, out record);
+        if (!prefixable) return VanillaItemPrefixNormalizationStatus1458.Resolved;
+        for (int attempt = 0; attempt < MaximumAttempts; attempt++)
+        {
+            int offer = next(4);
+            if ((uint)offer >= 4) return VanillaItemPrefixNormalizationStatus1458.InvalidDraw;
+            int candidate = 0;
+            if (offer != 0)
+            {
+                var family = VanillaItemPrefixTable1458.GetFamily(record.Family);
+                int index = next(family.Length);
+                if ((uint)index >= (uint)family.Length) return VanillaItemPrefixNormalizationStatus1458.InvalidDraw;
+                candidate = family[index];
+            }
+            if (VanillaItemPrefixTable1458.HasReducedNaturalChance(candidate))
+            {
+                offer = next(3);
+                if ((uint)offer >= 3) return VanillaItemPrefixNormalizationStatus1458.InvalidDraw;
+                if (offer != 0) candidate = 0;
+            }
+            if (!VanillaItemPrefixTable1458.Accepts(record, candidate, windowsItemPrefixArithmetic)) continue;
+            prefix = new(candidate);
+            return VanillaItemPrefixNormalizationStatus1458.Resolved;
+        }
+        return VanillaItemPrefixNormalizationStatus1458.BudgetExhausted;
+    }
+
     /// <summary>Classifies canonical inputs and required world provenance before preparing a cursor.</summary>
     public static bool IsSupported(ItemTypeId item, PrefixId requested, VanillaItemPrefixWorld1458? world = null) =>
         (uint)item.Value < VanillaItemIds.Count &&

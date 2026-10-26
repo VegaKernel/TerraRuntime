@@ -331,6 +331,7 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         var catches = new NpcCatchFrameSink(source, bootstrap, npcBuffs, runtime.NpcCatchIngress);
         var teleports = new PlayerTeleportRequestFrameSink(source, bootstrap, catches, runtime.PlayerTeleportIngress);
         var banners = new BannerClaimFrameSink1458(source, bootstrap, teleports, runtime.BannerClaimIngress);
-        return new BossSummonFrameSink(source, bootstrap, banners, runtime.BossSummonIngress);
+        var bosses = new BossSummonFrameSink(source, bootstrap, banners, runtime.BossSummonIngress);
+        return new FishingFrameSink1458(source, bootstrap, bosses, runtime.CommandIngress);
     }
 }

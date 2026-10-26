@@ -1034,5 +1034,9 @@
     <EmbeddedResource Include="Fixtures/AmmoCycling/Equipment-Windows.json.gz" LogicalName="AmmoCyclingEquipmentWindows1458" />
     <EmbeddedResource Include="Fixtures/AmmoCycling/ItemCheck-Linux.jsonl.gz" LogicalName="AmmoCyclingItemCheckLinux1458" />
     <EmbeddedResource Include="Fixtures/AmmoCycling/ItemCheck-Windows.jsonl.gz" LogicalName="AmmoCyclingItemCheckWindows1458" />
+    <EmbeddedResource Include="Fixtures/FishingRulesLinux1458.json.gz" LogicalName="FishingRulesLinux1458" />
+    <EmbeddedResource Include="Fixtures/OriginalFishingCrate1458.json.gz" LogicalName="OriginalFishingCrate1458" />
+    <EmbeddedResource Include="Fixtures/AnglerOriginal1458.json.gz" LogicalName="AnglerOriginal1458" />
+    <EmbeddedResource Include="Fixtures/FishingNpcBirthOriginal1458.json.gz" LogicalName="FishingNpcBirthOriginal1458" />
   </ItemGroup>
 </Project>

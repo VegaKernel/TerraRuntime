@@ -76,6 +76,23 @@ internal sealed partial class PlayerAuthority
     {
         switch (command)
         {
+            case CaptureFishingCrateRuntimeCommand crate:
+                crate.Completion.TrySetResult(CaptureFishingCrate(crate.Connection, crate.Slot));
+                return true;
+            case CompleteAnglerQuestRuntimeCommand quest:
+                TryCompleteAnglerQuest(quest.Connection);
+                PublishAnglerState(quest.Connection);
+                return true;
+            case PublishAnglerStateRuntimeCommand quest:
+                PublishAnglerState(quest.Connection);
+                return true;
+            case PlayerCharacterProgressRuntimeCommand progress:
+                ApplyCharacterProgress(progress);
+                return true;
+            case OpenFishingCrateRuntimeCommand crate:
+                bool opened = TryOpenFishingCrate(crate.Connection, crate.Slot, crate.ExpectedInventorySerial);
+                crate.Completion?.TrySetResult(opened);
+                return true;
             case PlayerAppearanceRuntimeCommand appearance:
                 ApplyPlayerAppearance(appearance);
                 return true;
@@ -515,6 +532,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryObserveFishingCrateOpen(equipment)) return;
         if (TryAcknowledgePlacementInventory(equipment)) return;
         if (TryRetainPlacementInventory(equipment)) return;
         if (TryStageLocalCraftCredit(equipment)) return;
@@ -530,6 +548,7 @@ internal sealed partial class PlayerAuthority
         // Historical Air may have staged a non-debiting cursor alternative;
         // acknowledge it only after retaining that exact58 companion path.
         if (TryObserveOrderedAmmoInventory(equipment)) return;
+        if (TryStageFishingCrateReward(equipment)) return;
         if (!inventory.CanAcceptOwnedQuantityReport(equipment.Connection, in request))
         {
             RejectedEquipmentUpdates++;
@@ -778,6 +797,11 @@ internal sealed partial class PlayerAuthority
         if (!inventory.TryAttach(spawn.Connection))
             throw new InvalidOperationException("Player inventory ownership changed during authoritative spawn commit.");
 
+        // Initial vanilla packet5 character images precede the first packet12,
+        // not138. Adopt their existing ceilings before spawn observers; this is
+        // never repeated by the separate respawn or managed-transfer paths.
+        inventory.SealFishingCharacterInventory(spawn.Connection);
+
         RuntimePendingPlayerVitals? pending = membership.TakePending(request.ClaimedSlot);
         bool hasPending = pending is not null && pending.Connection == spawn.Connection;
 
@@ -818,6 +842,7 @@ internal sealed partial class PlayerAuthority
         transferProfiles.InitializeSourceBuffs(spawn.Connection);
         AttachNpcRawSlot(spawn.Connection.Player);
         events?.PlayerSpawned(spawn.Connection, in request);
+        PublishAnglerState(spawn.Connection);
     }
 
     private void ApplyPlayerRespawn(PlayerRespawnRuntimeCommand respawn)

@@ -65,7 +65,7 @@ internal static class ClosedSortCycleAuthority1458Checks
                 items.AdoptFundedQuantities(connection,q,money);
                 items.AdoptOwnedQuantities(connection, [new(18, new(110), 2), new(15, new(110), 0), new(2, new(500), 0)]);
                 var bankImage = before.GetProperty("banks").EnumerateArray().SelectMany(x=>x.EnumerateArray()).Select(Item).ToArray();
-                var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps,(short)-1);
+                var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps,(short)-1);
                 for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType,out long unit)) bankCopper[i] = unit * Math.Max(0,(int)bankImage[i].Stack);
                 for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = (short)Math.Min(1,Math.Max(0,(int)bankImage[i].Stack));
                 Check(items.TryAdoptShopBanks(connection,bankImage,bankCopper,bankQuantity,bankCaps),name+" configured banks");

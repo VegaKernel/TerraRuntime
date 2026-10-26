@@ -17,7 +17,7 @@ for(int mode=0;mode<17;mode++)
  var q=new short[59];q[10]=4;store.AdoptFundedQuantities(c,q);
  store.AdoptOwnedQuantities(c,[new(10,new(109),7)]);
  var bank=new RuntimePlayerInventoryItem[160];bank[120]=new(new(110),3,new(0),1);
- var bq=new short[160];bq[120]=2;var caps=new short[800];Array.Fill(caps,(short)-1);caps[120*5+1]=3;
+ var bq=new short[160];bq[120]=2;var caps=new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];Array.Fill(caps,(short)-1);caps[120* RuntimePlayerInventoryStore.QuantityLaneCount+1]=3;
  Check(store.TryAdoptShopBanks(c,bank,new long[160],bq,caps),"seed bank");
  Check(store.TryCaptureShopJournal(c,out var capture)&&capture!=null,"capture");
  if(mode==1)Check(store.TrySet(other,new(other.Player.Slot,2,1,0,9,0)),"disjoint before prepare");
@@ -34,11 +34,11 @@ for(int mode=0;mode<17;mode++)
  if(mode==7)Fields.Items(store)[10]=raw with { ItemFlags=1 };
  if(mode==8)Fields.Quantities(store)[10]=2;
  if(mode==9)Fields.Copper(store)[10]=1;
- if(mode==10)Fields.Caps(store)[10*5]=6;
+ if(mode==10)Fields.Caps(store)[10* RuntimePlayerInventoryStore.QuantityLaneCount]=6;
  if(mode==11)Fields.Banks(store)[120]=bank[120] with { ItemFlags=0 };
  if(mode==12)Fields.BankQuantities(store)[120]=1;
  if(mode==13)Fields.BankCopper(store)[120]=1;
- if(mode==14)Fields.BankCaps(store)[120*5+1]=2;
+ if(mode==14)Fields.BankCaps(store)[120* RuntimePlayerInventoryStore.QuantityLaneCount+1]=2;
  bool accepted=mode is 0 or 1 or 2 or 6 or 16;
  Check(prepared!.TryAcceptUnpublished()==accepted,"certificate outcome mode="+mode);
  Check(!prepared.TryAcceptUnpublished(),"single-use mode="+mode);

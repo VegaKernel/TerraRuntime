@@ -82,6 +82,14 @@ internal sealed partial class ProjectileAuthority
             return;
         }
 
+        var fishingObservation = players.ObserveFishingShoot(command.Connection, in packet);
+        if (fishingObservation != ToolReportObservationResult1458.NotApplicable)
+        {
+            if (fishingObservation == ToolReportObservationResult1458.Rejected)
+            { RejectedClientProjectileProvenance++; RejectedClientUpdates++; }
+            return;
+        }
+
         // A retained source tool report is input to the existing tool owner,
         // never permission for the raw unknown-projectile fallback. A packet-first
         // birth waits for its owned ItemCheck frame; a phase-first birth can commit.

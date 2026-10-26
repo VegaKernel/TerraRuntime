@@ -65,7 +65,7 @@ for (int platform=0;platform<2;platform++)
         long requestedCopper=fundingMode switch {0=>0,1=>1,2=>physicalCopper-1,_=>physicalCopper};
         items.AdoptFundedQuantities(connection,q,money);
         var bankImage = before.EnumerateArray().Skip(59).Select(Item).ToArray();
-        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps,(short)-1);
+        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps,(short)-1);
         for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType,out long unit)) bankCopper[i] = unit * Math.Max(0,(int)bankImage[i].Stack);
         for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0,bankImage[i].Stack);
         Check(items.TryAdoptShopBanks(connection,bankImage,bankCopper,bankQuantity,bankCaps),name+" configured banks");
@@ -186,7 +186,7 @@ for (int platform=0;platform<2;platform++)
         long requestedCopper=fundingMode switch {0=>0,1=>1,2=>physicalCopper-1,_=>physicalCopper};
         items.AdoptFundedQuantities(connection,q,money);
         var bankImage = before.EnumerateArray().Skip(59).Select(Item).ToArray();
-        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps,(short)-1);
+        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps,(short)-1);
         for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType,out long unit)) bankCopper[i] = unit * Math.Max(0,(int)bankImage[i].Stack);
         for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0,bankImage[i].Stack);
         Check(items.TryAdoptShopBanks(connection,bankImage,bankCopper,bankQuantity,bankCaps),name+" configured banks");
@@ -304,7 +304,7 @@ for (int platform=0;platform<2;platform++)
         long requestedCopper=fundingMode switch {0=>0,1=>1,2=>physicalCopper-1,_=>physicalCopper};
         items.AdoptFundedQuantities(connection,q,money);
         var bankImage = before.EnumerateArray().Skip(59).Select(Item).ToArray();
-        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[800]; Array.Fill(bankCaps,(short)-1);
+        var bankCopper = new long[160]; var bankQuantity = new short[160]; var bankCaps = new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount]; Array.Fill(bankCaps,(short)-1);
         for (int i = 0; i < 160; i++) if (VanillaCoinFacts.TryGetValue(bankImage[i].ItemType,out long unit)) bankCopper[i] = unit * Math.Max(0,(int)bankImage[i].Stack);
         for (int i = 0; i < 160; i++) if (bankCopper[i] == 0) bankQuantity[i] = Math.Max((short)0,bankImage[i].Stack);
         Check(items.TryAdoptShopBanks(connection,bankImage,bankCopper,bankQuantity,bankCaps),name+" configured banks");

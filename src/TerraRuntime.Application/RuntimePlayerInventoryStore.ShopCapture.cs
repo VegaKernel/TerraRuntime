@@ -20,7 +20,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         }
         if (!TryCaptureShopBankOwnership(connection, out var bankQuantity, out var bankCaps)) return false;
         int player = connection.Player.Slot.Value;
-        var mainCaps = ownedQuantityCaps.AsSpan(player * InventorySlotCount * 5, InventorySlotCount * 5).ToArray();
+        var mainCaps = ownedQuantityCaps.AsSpan(player * InventorySlotCount * QuantityLaneCount, InventorySlotCount * QuantityLaneCount).ToArray();
         if (!AreValidRetainedMainShopImage(image.AsSpan(0, InventorySlotCount), quantity,
                 copper.AsSpan(0, InventorySlotCount).ToArray(), mainCaps)) return false;
         capture = new(this, connection, playerMutationStamps[player], Serial, image, copper,
@@ -32,16 +32,16 @@ internal sealed partial class RuntimePlayerInventoryStore
     private static bool AreValidRetainedMainShopImage(ReadOnlySpan<RuntimePlayerInventoryItem> image,
         short[] quantity, long[] copper, ReadOnlySpan<short> caps)
     {
-        if (image.Length != InventorySlotCount || caps.Length != InventorySlotCount * 5 ||
+        if (image.Length != InventorySlotCount || caps.Length != InventorySlotCount * QuantityLaneCount ||
             !AreValidFundedQuantities(quantity, image) || !AreValidFundedCoinValues(copper, image)) return false;
         for (int slot = 0; slot < image.Length; slot++)
         {
             var item = image[slot];
             if (!item.IsCanonical || (item.IsEmpty && item != default) ||
                 (item.ItemFlags & ~PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0) return false;
-            for (int lane = 0; lane < 5; lane++)
+            for (int lane = 0; lane < QuantityLaneCount; lane++)
             {
-                int cap = caps[slot * 5 + lane];
+                int cap = caps[slot * QuantityLaneCount + lane];
                 if (cap < -1 || (cap >= 0 && !IsValidOwnedQuantityMaximum(new(OwnedQuantityTypes[lane]), cap)) ||
                     (item.ItemType.Value == OwnedQuantityTypes[lane] && cap >= 0 && item.Stack > cap)) return false;
             }
@@ -52,6 +52,8 @@ internal sealed partial class RuntimePlayerInventoryStore
     internal sealed class ShopJournalCapture(RuntimePlayerInventoryStore owner, ConnectionHandle connection,
         ulong stamp, ulong capturedSerial, RuntimePlayerInventoryItem[] before, long[] copper, short[] quantity, short[] caps, short[] bankQuantity, short[] bankCaps, CursorMovePreparation? escrow)
     {
+        internal bool IsFor(RuntimePlayerInventoryStore expectedOwner, ConnectionHandle expectedConnection) =>
+            ReferenceEquals(owner, expectedOwner) && connection == expectedConnection;
         private ulong currentStamp = stamp;
         private RuntimePlayerInventoryItem[]? observedBefore;
         private long[]? observedCopper;
@@ -103,7 +105,7 @@ internal sealed partial class RuntimePlayerInventoryStore
                 {
                     var expectedCursor = image[58];
                     if (!completedCursor.TryCopyAcceptedBankImage(image.AsSpan(0, 59), funding.AsSpan(0, 59),
-                        quantities.AsSpan(0, 59), ceilings.AsSpan(0, 59 * 5), out ulong completedStamp) ||
+                        quantities.AsSpan(0, 59), ceilings.AsSpan(0, 59 * QuantityLaneCount), out ulong completedStamp) ||
                         completedStamp != serial + 1 || image[58] != expectedCursor) return false;
                 }
                 if (accepted || capture.observationRevision != revision ||
@@ -142,8 +144,8 @@ internal sealed partial class RuntimePlayerInventoryStore
                 owner.shopBankFundedCopper.AsSpan(player * 160, 160).SequenceEqual(funding[59..]) &&
                 owner.fundedQuantities.AsSpan(player * 59, 59).SequenceEqual(quantities[..59]) &&
                 owner.shopBankFundedQuantities.AsSpan(player * 160, 160).SequenceEqual(quantities[59..]) &&
-                owner.ownedQuantityCaps.AsSpan(player * 59 * 5, 59 * 5).SequenceEqual(ceilings[..(59 * 5)]) &&
-                owner.shopBankQuantityCaps.AsSpan(player * 160 * 5, 160 * 5).SequenceEqual(ceilings[(59 * 5)..]);
+                owner.ownedQuantityCaps.AsSpan(player * 59 * QuantityLaneCount, 59 * QuantityLaneCount).SequenceEqual(ceilings[..(59 * QuantityLaneCount)]) &&
+                owner.shopBankQuantityCaps.AsSpan(player * 160 * QuantityLaneCount, 160 * QuantityLaneCount).SequenceEqual(ceilings[(59 * QuantityLaneCount)..]);
         }
         internal bool TryAcceptObservedCursorFirst(in RuntimePlayerInventoryItem cursor)
         {
@@ -160,11 +162,11 @@ internal sealed partial class RuntimePlayerInventoryStore
                 !owner.items.AsSpan(player * InventorySlotCount, InventorySlotCount).SequenceEqual(expected.AsSpan(0, InventorySlotCount)) ||
                 !owner.coinFundedValues.AsSpan(player * InventorySlotCount, InventorySlotCount).SequenceEqual(expectedCopper) ||
                 !owner.fundedQuantities.AsSpan(player * InventorySlotCount, InventorySlotCount).SequenceEqual(expectedQuantity) ||
-                !owner.ownedQuantityCaps.AsSpan(player * InventorySlotCount * 5, InventorySlotCount * 5).SequenceEqual(caps) ||
+                !owner.ownedQuantityCaps.AsSpan(player * InventorySlotCount * QuantityLaneCount, InventorySlotCount * QuantityLaneCount).SequenceEqual(caps) ||
                 !owner.shopBankItems.AsSpan(player * ShopBankImageCount, ShopBankImageCount).SequenceEqual(before.AsSpan(InventorySlotCount)) ||
                 !owner.shopBankFundedCopper.AsSpan(player * ShopBankImageCount, ShopBankImageCount).SequenceEqual(copper.AsSpan(InventorySlotCount)) ||
                 !owner.shopBankFundedQuantities.AsSpan(player * ShopBankImageCount, ShopBankImageCount).SequenceEqual(bankQuantity) ||
-                !owner.shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * 5, ShopBankImageCount * 5).SequenceEqual(bankCaps)) return false;
+                !owner.shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * QuantityLaneCount, ShopBankImageCount * QuantityLaneCount).SequenceEqual(bankCaps)) return false;
             currentStamp = capturedSerial + 1; observedBefore = expected; observedCopper = expectedCopper; observedQuantity = expectedQuantity;
             return true;
         }
@@ -190,8 +192,8 @@ internal sealed partial class RuntimePlayerInventoryStore
                     owner.shopBankItems.AsSpan(player * ShopBankImageCount, ShopBankImageCount).SequenceEqual(before.AsSpan(InventorySlotCount)) &&
                     owner.shopBankFundedCopper.AsSpan(player * ShopBankImageCount, ShopBankImageCount).SequenceEqual(copper.AsSpan(InventorySlotCount)) &&
                     owner.shopBankFundedQuantities.AsSpan(player * ShopBankImageCount, ShopBankImageCount).SequenceEqual(bankQuantity) &&
-                    owner.shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * 5, ShopBankImageCount * 5).SequenceEqual(bankCaps) &&
-                    owner.ownedQuantityCaps.AsSpan(player * InventorySlotCount * 5, InventorySlotCount * 5).SequenceEqual(caps);
+                    owner.shopBankQuantityCaps.AsSpan(player * ShopBankImageCount * QuantityLaneCount, ShopBankImageCount * QuantityLaneCount).SequenceEqual(bankCaps) &&
+                    owner.ownedQuantityCaps.AsSpan(player * InventorySlotCount * QuantityLaneCount, InventorySlotCount * QuantityLaneCount).SequenceEqual(caps);
             }
         }
     }

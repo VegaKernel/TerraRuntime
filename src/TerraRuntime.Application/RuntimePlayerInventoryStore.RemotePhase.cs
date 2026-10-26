@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Application;
 
@@ -9,6 +10,7 @@ internal readonly record struct RemotePhaseInventoryMutation(
 {
     internal bool ConsumeFundedQuantity { get; init; }
     internal bool SourceAmmoConsumption { get; init; }
+    internal bool FishingBait { get; init; }
     // Set only by the qualified placement world/clock participant. A wall fill
     // may place five cells while exhausting two units; it cannot credit stock.
     internal short PlacementQuantity { get; init; }
@@ -20,16 +22,26 @@ internal readonly record struct OwnedInventoryQuantity1458(short Slot, ItemTypeI
 internal sealed partial class RuntimePlayerInventoryStore
 {
     // Fixed admitted producer identities; client reports cannot retire a consumed quantity obligation.
-    private static ReadOnlySpan<int> OwnedQuantityTypes => [109, 110, 189, 500, 2209];
+    private static readonly int[] ownedQuantityTypes = CreateOwnedQuantityTypes();
+    private static ReadOnlySpan<int> OwnedQuantityTypes => ownedQuantityTypes;
+    internal static int QuantityLaneCount => ownedQuantityTypes.Length;
+    private static int[] CreateOwnedQuantityTypes()
+    {
+        var types = new List<int> { 109, 110, 189, 500, 2209 };
+        for (int type = 1; type < VanillaItemIds.Count; type++)
+            if (IsFishingStockType(type))
+                types.Add(type);
+        return types.ToArray();
+    }
     private readonly short[] ownedQuantityCaps = CreateQuantityCaps();
     private static short[] CreateQuantityCaps()
     {
-        var caps = new short[PlayerSlotCount * InventorySlotCount * 5];
+        var caps = new short[PlayerSlotCount * InventorySlotCount * QuantityLaneCount];
         Array.Fill(caps, (short)-1);
         return caps;
     }
     private static int QuantityLane(ItemTypeId type) => OwnedQuantityTypes.IndexOf(type.Value);
-    private static int QuantityOffset(int player, int slot, int lane) => (player * InventorySlotCount + slot) * 5 + lane;
+    private static int QuantityOffset(int player, int slot, int lane) => (player * InventorySlotCount + slot) * QuantityLaneCount + lane;
 
     internal bool CanAcceptOwnedQuantityReport(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
     {
@@ -55,7 +67,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         var result = new List<OwnedInventoryQuantity1458>();
         if (!connection.IsAssigned || connections[connection.Player.Slot.Value] != connection) return [];
         for (short slot = 0; slot < InventorySlotCount; slot++)
-        for (int lane = 0; lane < 5; lane++)
+        for (int lane = 0; lane < QuantityLaneCount; lane++)
         {
             short cap = ownedQuantityCaps[QuantityOffset(connection.Player.Slot.Value, slot, lane)];
             if (cap >= 0) result.Add(new(slot, new(OwnedQuantityTypes[lane]), cap));
@@ -70,15 +82,15 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     internal static bool AreValidOwnedQuantities(ReadOnlySpan<OwnedInventoryQuantity1458> caps, ReadOnlySpan<RuntimePlayerInventoryItem> inventory)
     {
-        if (inventory.Length != InventorySlotCount || caps.Length > InventorySlotCount * 5) return false;
-        Span<bool> seen = stackalloc bool[InventorySlotCount * 5];
+        if (inventory.Length != InventorySlotCount || caps.Length > InventorySlotCount * QuantityLaneCount) return false;
+        Span<bool> seen = stackalloc bool[InventorySlotCount * QuantityLaneCount];
         seen.Clear();
         foreach (var cap in caps)
         {
             int lane = QuantityLane(cap.ItemType);
-            if (cap.Slot is < 0 or >= InventorySlotCount || lane < 0 || cap.Maximum < 0 || !IsValidOwnedQuantityMaximum(cap.ItemType, cap.Maximum) || seen[cap.Slot * 5 + lane]) return false;
+            if (cap.Slot is < 0 or >= InventorySlotCount || lane < 0 || cap.Maximum < 0 || !IsValidOwnedQuantityMaximum(cap.ItemType, cap.Maximum) || seen[cap.Slot * QuantityLaneCount + lane]) return false;
             if (inventory[cap.Slot].ItemType == cap.ItemType && inventory[cap.Slot].Stack > cap.Maximum) return false;
-            seen[cap.Slot * 5 + lane] = true;
+            seen[cap.Slot * QuantityLaneCount + lane] = true;
         }
         return true;
     }
@@ -93,7 +105,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     }
 
     private void ClearOwnedQuantities(int player) =>
-        ownedQuantityCaps.AsSpan(player * InventorySlotCount * 5, InventorySlotCount * 5).Fill(-1);
+        ownedQuantityCaps.AsSpan(player * InventorySlotCount * QuantityLaneCount, InventorySlotCount * QuantityLaneCount).Fill(-1);
 
     // One journal for the complete UpdatePlayers census. All validation and allocation precede
     // the first owner write; one serial advance covers its bounded, distinct physical slots.
@@ -158,10 +170,17 @@ internal sealed partial class RuntimePlayerInventoryStore
                 GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] >= mutation.PlacementQuantity;
         if (mutation.CursorSourceDebit is { } source)
             return source.Slot == mutation.Slot && source.TryCaptureSelectedPotionDebit(this,mutation.Connection,out _,out _);
-        if (mutation.ConsumeFundedQuantity &&
-            (!VanillaSelectedConsumableCatalog1458.TryGet(mutation.Before.ItemType, out var potion) ||
-             (potion.HealLife <= 0 && potion.HealMana <= 0 && potion.BuffType <= 0 && mutation.Before.ItemType.Value is not (29 or 1291 or 3335 or 5326 or 5337 or 5338 or 5339 or 5340 or 5341 or 5342 or 5043)) ||
-             fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] <= 0)) return false;
+        if (mutation.ConsumeFundedQuantity)
+        {
+            bool bait = mutation.FishingBait && TerraRuntime.Gameplay.Players.FishingRules1458.GetBaitPower(mutation.Before.ItemType.Value) > 0;
+            bool consumer = VanillaSelectedConsumableCatalog1458.TryGet(mutation.Before.ItemType, out var potion) &&
+                (potion.HealLife > 0 || potion.HealMana > 0 || potion.BuffType > 0 ||
+                 mutation.Before.ItemType.Value is 29 or 1291 or 3335 or 5326 or 5337 or 5338 or 5339 or 5340 or 5341 or 5342 or 5043);
+            if (!bait && !consumer) return false;
+            bool fishingStock = bait || mutation.Before.ItemType.Value is >= 2354 and <= 2356;
+            if (fishingStock ? !CanSpendFishingStock(mutation.Connection, mutation.Slot, mutation.Before.ItemType.Value) :
+                fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] <= 0) return false;
+        }
         int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);
         if (lane < 0) return true;
         short cap = ownedQuantityCaps[QuantityOffset(mutation.Connection.Player.Slot.Value, mutation.Slot, lane)];
@@ -193,15 +212,18 @@ internal sealed partial class RuntimePlayerInventoryStore
                 var mutation=mutations[index];
                 if (mutation.CursorSourceDebit is { } source)
                 {
-                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=(short)(frozenSourceFunding[index]-1);
+                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=(short)Math.Max(0,frozenSourceFunding[index]-1);
                     source.AdoptSelectedPotionDebit();
                 }
                 else if(mutation.SourceAmmoConsumption)
                     owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=
                         (short)Math.Max(0,owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]-1);
                 else if (mutation.ConsumeFundedQuantity)
-                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] -=
-                        mutation.PlacementQuantity > 0 ? mutation.PlacementQuantity : (short)1;
+                {
+                    int offset = GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot);
+                    owner.fundedQuantities[offset] = (short)Math.Max(0, owner.fundedQuantities[offset] -
+                        (mutation.PlacementQuantity > 0 ? mutation.PlacementQuantity : 1));
+                }
                 owner.PreserveReportedFunding(mutation.Connection.Player.Slot.Value, mutation.Slot, mutation.After);
                 owner.items[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] = mutation.After;
                 int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);

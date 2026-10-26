@@ -197,6 +197,10 @@ internal sealed partial class RuntimeWorldClock : IVanillaNpcWorldEventState
     }
 
     public double Time { get; private set; }
+    // Player.GetFishingConditions reads Main.cloudBGAlpha, not the rain-driven
+    // Main.cloudAlpha retained for WindyDayMusic. Its only writer is the graphical
+    // DrawSurfaceBG pass; the official dedicated no-draw path leaves it at zero.
+    internal float FishingCloudAlpha => 0f;
 
     public bool DayTime { get; private set; }
 
@@ -679,6 +683,8 @@ internal sealed partial class RuntimeWorldClock : IVanillaNpcWorldEventState
         for (int iteration = 0; iteration < dayRate; iteration++)
             TickWeatherWind();
 
+        if (LadyBugRainBoost > 0) LadyBugRainBoost -= dayRate;
+
         if (SlimeRainTime > 0d)
         {
             SlimeRainTime -= dayRate;
@@ -709,6 +715,7 @@ internal sealed partial class RuntimeWorldClock : IVanillaNpcWorldEventState
                 // Main.UpdateTime_StartDay resets shakes before its score/season
                 // work and changes dayTime only after stopping Moon events.
                 toolTreeShakeOwner?.ResetSourceTreeShakesAtDawn();
+                ResetAnglerQuestAtDawn();
                 Time = 0d;
                 BloodMoonActive = false;
                 FinishMoonEventsAtDawn();
@@ -836,7 +843,8 @@ internal sealed partial class RuntimeWorldClock : IVanillaNpcWorldEventState
         {
             int normalizedDayLength = 86_400 / dayRate;
             if (_weatherRandom.NextInt32(0, checked((int)(normalizedDayLength * 5.75d))) == 0 ||
-                (cloudBackgroundActive && _weatherRandom.NextInt32(0, checked((int)(normalizedDayLength * 4.25d))) == 0))
+                (cloudBackgroundActive && _weatherRandom.NextInt32(0, checked((int)(normalizedDayLength * 4.25d))) == 0) ||
+                (LadyBugRainBoost > 0 && _weatherRandom.NextInt32(0, normalizedDayLength) == 0))
             {
                 StartRain();
             }

@@ -189,6 +189,7 @@ internal sealed partial class PlayerAuthority
                 member.ItemUseCaller!=plan.BeforeItemUseCaller ||
                 plan.AmmoInventoryBefore is {IsCurrent:false} ||
                 plan.RefreshedAmmoHistory is null && plan.BeforeItem?.ToolUse?.WeaponShootHistory?.InventoryWitness is { IsCurrent: false } ||
+                plan.FishingBefore is { } fishingBefore && toolProjectiles?.IsFishingCurrent(fishingBefore) != true ||
                 plan.ToolSourceQuery is { IsCurrentOwned: false } ||
                 plan.Item?.ToolUse?.BuildingPermission is { IsCurrent: false } ||
                 plan.Item?.ToolUse?.PlacementAlternative is { Reads.IsCurrent: false } ||
@@ -308,8 +309,10 @@ internal sealed partial class PlayerAuthority
             }
         }
         Exception? first = null;
+        try { DrainFishingActionsAfterOwnedPhase(); }
+        catch (Exception error) { first = error; }
         try { toolWorld?.DrainOrderedLocalMagicBirths(); }
-        catch(Exception error) {first=error;}
+        catch(Exception error) {first??=error;}
         using var toolPublications = toolWorld?.PrepareToolBirthsAfterOwnedPhase();
         if (toolPublications is { } toolBatch)
         {
@@ -462,7 +465,7 @@ internal sealed partial class PlayerAuthority
             out int manaMaximumBonus,
             plan.VoidStorageOpen, item.AmmoCycling is not null) ||
             plan.Buffs.IsItemUseCrowdControlled ||
-            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 23 or 24 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) ||
+            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 23 or 24 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)) ||
             member.MiscFlags1 != 0 ||
             (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
@@ -667,7 +670,8 @@ internal sealed partial class PlayerAuthority
             selected.Prefix,
             world.WindowsItemPrefixArithmetic) &&
             !VanillaGemStaff1458.TryGetWeapon(selected.ItemType,
-            out _) && !VanillaToolCatalog1458.TryGet(selected.ItemType, out _)))
+            out _) && !VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
+            !(selected.Prefix.Value == 0 && FishingRules1458.TryGetPole(selected.ItemType.Value, out _))))
             return false;
         if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType,
             selected.Prefix,
@@ -871,7 +875,14 @@ internal sealed partial class PlayerAuthority
         VanillaUnifiedRandom1458? placementBeforeCommon = null;
         int placementCrit = -1;
         ToolFrameFacts1458 placementCommonFacts = default;
-        if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
+        if (toolProjectiles is not null && FishingRules1458.TryGetPole(selected.ItemType.Value, out _))
+        {
+            if (!TryPlanFishingItemCheck(plan, in selected, in facts, in clocks, ref item, random, out use))
+                return false;
+            trackedLocalPlacement = true; // Already advanced the common local-clock owner.
+            beganActualUse = false;
+        }
+        else if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
         {
             if (item.ToolUse is not { } tools || item.ToolTime is not { } remoteToolTime ||
                 !VanillaToolCatalog1458.TryResolve(selected.ItemType, selected.Prefix,
@@ -1395,7 +1406,7 @@ internal sealed partial class PlayerAuthority
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(94), use.ManaSicknessOffer, false);
         if (use.BuffDurationOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(use.BuffOfferType, use.BuffDurationOffer, false);
-        if (use.Consumed && use.BuffOfferType.Value is 26 or 206 or 207)
+        if (use.Consumed && use.BuffOfferType.Value is 26 or 206 or 207 or 121 or 122 or 123)
             plan.Buffs.StampOwnedFoodGrant(currentCombatTick);
         if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
             !trackedLocalPlacement && item.ToolUse is { } nonToolShadow)
@@ -1485,6 +1496,7 @@ internal sealed partial class PlayerAuthority
         bool ownsManaMaximum,
         bool ownsLifeMaximum)
     {
+        internal FishingBobber1458? FishingBefore;
         internal TerraRuntime.Core.Projectiles.RuntimeProjectileStore.SourceOwnerTypeQueryPreparation? ToolSourceQuery;
         internal RuntimePlayerToolInput1458? BeforeToolInput { get; } = item?.ToolUse?.Input;
         internal RuntimePlayerToolActorCapture1458? BeforeToolInputActor { get; } = item?.ToolUse?.Input?.Actor;

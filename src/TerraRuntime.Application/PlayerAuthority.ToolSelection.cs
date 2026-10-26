@@ -32,7 +32,7 @@ internal sealed partial class PlayerAuthority
             success = true;
         }
         RuntimePlayerWeaponShoot1458? pendingGem=null;
-        LocalItemClockDefinition1458? gemDefinition=null;
+        LocalItemClockDefinition1458? retainedDefinition=null;
         if ((plan.LocalGemFrame is not null || payment is {GemStaff:true,AwaitingPhase:false} ownedGem &&
             ownedGem.Item==selected && ownedGem.Slot==slot) && VanillaGemStaff1458.TryGetWeapon(selected.ItemType,out _))
         {
@@ -47,9 +47,9 @@ internal sealed partial class PlayerAuthority
             {known=false;}
             else
             {
-                gemDefinition=new(gemWeapon.UseTime,gemWeapon.Animation,gemStyle,gemWeapon.AutoReuse,false,gemWeapon.Projectile.Value)
+                retainedDefinition=new(gemWeapon.UseTime,gemWeapon.Animation,gemStyle,gemWeapon.AutoReuse,false,gemWeapon.Projectile.Value)
                     {Style5AnimationBonus=gemWeapon.AutoReuse};
-                if(!VanillaLocalItemUse1458.TryEnterOwnerStage(gemDefinition.Value,local,true,out local))known=false;
+                if(!VanillaLocalItemUse1458.TryEnterOwnerStage(retainedDefinition.Value,local,true,out local))known=false;
                 else known=true;
             }
             if(before.WeaponShoot is {PendingGem:true,PendingReport:not null,PendingCapture:{ } candidate} retained &&
@@ -72,6 +72,14 @@ internal sealed partial class PlayerAuthority
                 Channel = false
             };
             success = true;
+            // Keep the definition of this already owned consumable tail for a
+            // buffered switch to a pole/tool/weapon. The next selected family
+            // must not discard real clocks merely because its predecessor was
+            // a paid potion. Canonical metadata cannot recover unknown clocks.
+            if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var consumable) &&
+                consumable.UseTime > 0 && consumable.UseAnimation > 0 &&
+                VanillaLocalItemUse1458.TryGetSourceUseStyle(selected.ItemType, out byte style) && style > 0)
+                retainedDefinition = new(consumable.UseTime, consumable.UseAnimation, style, false, false, 0);
         }
         else if (known && (selected.IsEmpty ||
             VanillaRemotePassiveItemCatalog1458.TryGet(selected.ItemType, selected.Prefix, out var passive) &&
@@ -104,7 +112,7 @@ internal sealed partial class PlayerAuthority
         return before with
         {
             Clocks = local, LocalClocksKnown = known, SelectionInitialized = true,
-            SourceLocalDefinition = gemDefinition, WeaponShoot = pendingGem,
+            SourceLocalDefinition = retainedDefinition, WeaponShoot = pendingGem,
             SourceItem = deferred ? before.SourceItem : selected.ItemType,
             SourcePrefix = deferred ? before.SourcePrefix : selected.Prefix,
             SourceSlot = deferred ? before.SourceSlot : slot,
