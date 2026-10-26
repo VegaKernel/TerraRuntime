@@ -1,5 +1,13 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Wiring installation follow-up Windows Native acceptance, 2026-10-26
+
+Fresh Windows NativeAOT production publish passes loop/protocol/network/world/TUI smokes; world includes actual wiring command/clock/framing. Executable SHA256 `77d3e40d4ecb3bf4c3addb57f7790899bb1a1ba979d747b8c243c4858d12ac3a`, PE CLR 0/0. An additional test-only correction replaces formerly unknown action 5 with 255 and separately proves unqualified5 refusal: only ServerRuntimeClientTileIngressTests.cs and TerraRuntime.Tests.dll changed; all production inputs and 59 other DLLs remain exact. native-bridge.json pins reuse. Linux host path is unavailable: no WSL distro and cross-OS publish rejects. No CI wait.
+
+Release WAE 0/0, focused 208/208, fast 25367/25367 and one successful unfiltered full 1566780/1566780; failures/errors 0, skips 0. Complete XML audits all 5279 discovered methods. All 3912 source/config/fixture inputs and 60 executed DLLs remain exact. Source fingerprint `2f0fd0acfb4dd2e37ed6500edcef8142108b4235211effcfff7f070b90af4eda`, full XML SHA256 `af30f154a5e7b2cfad680b47c872fcc3c440b691f5fa98f5b0025b28c735a204`.
+
+No production dependency, runtime reflection or code generation was added. The separate original-reference probe is developer-only. Evidence: E:/TerraRuntime-wiring-verification-20261026/tools-final02/native-result.json and native-bridge.json; [durable verification](verification/wiring-installation-1458.json).
+
 ## Wiring mechanisms Windows Native acceptance, 2026-10-26
 
 Fresh isolated Windows NativeAOT publish passes all five shipping smokes. The world smoke additionally executes the production command/clock owners for lights, actuators, a multiwired door and independent timer-save bytes. Executable SHA256 `061946466f3744fd7ed2b9f446b74373df3350ec941ed9abdeb004535089651b`, PE CLR directory0/0, evidence `.cache/wiring-candidate-03/native-result.json`. No production dependency, reflection or runtime code generation was added. Original reference reflection is developer-only under tools/reference. Linux Native remains locally unverified (Windows host; no WSL distro). The final production source was freshly published. The subsequent test-only startup allowance leaves all production inputs, 59 other managed reference DLLs and this executable exact; native-bridge04.json pins that scope. Final focused164/164, fast25335/25336 and unfiltered full1566748/1566749 pass with zero failures/errors and the one known liquid skip. See docs/verification/wiring-mechanisms-1458.json.

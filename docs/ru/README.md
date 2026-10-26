@@ -7,6 +7,7 @@
 ## С чего начать
 
 - [Авторитетная проводка и базовые механизмы](wiring-mechanisms.md)
+- [Оплаченная установка проводки и рамки актуаторов](wiring-tool-installation-1458.md)
 - [Архитектура задач и действий PlayerBot](runtime-bot-architecture.md) — perception, сменный brain, lifecycle, authoritative operations, режимы и leases.
 - [Руководство по проекту](project-guide.md) — назначение TerraRuntime, структура репозитория, сборка, запуск, жизненный цикл, сетевой и игровой поток, миры, сохранение и эксплуатация.
 - [Архитектура](architecture.md) — границы подсистем, владение состоянием, потоки данных, threading model, NativeAOT/CoreCLR profiles, persistence и extension boundaries.

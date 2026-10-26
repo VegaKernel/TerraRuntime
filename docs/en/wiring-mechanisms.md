@@ -86,14 +86,14 @@ The retained independent numeric fixture executes the unmodified official Linux-
 
 The following remain outside the supported chain:
 
-- Inventory-backed wire/actuator tool installation and removal. This acceptance executes circuits already present in the loaded world or existing authorized mutation APIs.
+- Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Pumps and teleporters, pending full integration with liquid and movement owners.
 - Logic gates, traps, statues and their spawn, projectile, cooldown and nested-pulse effects.
-- General `SquareTileFrame` propagation and object-removal side effects beyond the existing admitted owners. Actuation updates collision and tile state but does not claim complete framing parity for every attached object.
+- General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
 
-The next connected block is the source framing/destruction transaction for attached objects and disposable plates, followed by pumps/teleporters through their existing authoritative owners.
+The next connected block is broader attachment destruction and disposable plates, plus the missing client visual-state owner needed for cutter RNG, followed by pumps/teleporters through their existing authoritative owners.
 
 The shipping `--world-smoke` also exercises authenticated command application, light and actuator mutation, the timer deadline, and the independently captured timer-save bytes. The reference probe is retained under [`tools/reference/wiring1458`](../../tools/reference/wiring1458/README.md).

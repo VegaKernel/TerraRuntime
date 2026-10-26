@@ -32,6 +32,9 @@ public static class VanillaSelectedItemCrit1458
         }
         if (VanillaSelectedConsumableCatalog1458.TryGet(item, out _))
             return prefix.Value == 0;
+        // Item.SetDefaults leaves raw crit at zero for the admitted conventional wiring items.
+        if (VanillaWiringToolCatalog1458.TryGet(item, out _))
+            return prefix.Value == 0;
         if (VanillaRemotePassiveItemCatalog1458.TryGet(item, prefix, out _))
             return true;
 

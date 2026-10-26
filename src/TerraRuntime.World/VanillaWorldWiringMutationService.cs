@@ -60,6 +60,18 @@ public sealed class VanillaWorldWiringMutationService
             return Rejected(WorldWiringMutationStatus.OutOfBounds);
 
         WorldTile before = _tiles.Get(request.X, request.Y);
+        var result = Evaluate(in request, in before);
+        if (result.Applied)
+        {
+            WorldTile after = result.After;
+            _tiles.Set(request.X, request.Y, in after);
+        }
+        return result;
+    }
+
+    /// <summary>Pure cell semantics for a detached authoritative transaction; the caller owns coordinates.</summary>
+    public static WorldWiringMutationResult Evaluate(in WorldWiringMutationRequest request, in WorldTile before)
+    {
         WorldTile after = before;
         WorldWiringMutationStatus status = request.Kind switch
         {
@@ -75,7 +87,6 @@ public sealed class VanillaWorldWiringMutationService
         if (status != WorldWiringMutationStatus.Applied)
             return Rejected(status, in before);
 
-        _tiles.Set(request.X, request.Y, in after);
         return new WorldWiringMutationResult(status, before, after);
     }
 
@@ -105,15 +116,12 @@ public sealed class VanillaWorldWiringMutationService
 
     private static WorldWiringMutationStatus SetActuator(ref WorldTile tile, bool enabled)
     {
-        if (!tile.IsActive)
-            return WorldWiringMutationStatus.MissingTile;
-
         if (tile.HasActuator == enabled)
             return WorldWiringMutationStatus.NoChange;
 
         tile.TrySetFlags(WorldTileFlags.Actuator, enabled);
-        if (!enabled)
-            tile.TrySetFlags(WorldTileFlags.Inactive, enabled: false);
+        // WorldGen.PlaceActuator/KillActuator1458 do not require an active tile and do not
+        // change inActive. The enclosing gameplay transaction owns payment, drops and dust RNG.
         return WorldWiringMutationStatus.Applied;
     }
 

@@ -1,5 +1,15 @@
 # Verified vanilla facts
 
+## Conventional wiring tool source facts and dry framing, 2026-10-26
+
+Player.ItemCheck_UseWiringTools uses four ordinary wrenches509/850/851/3612, time5/animation15/boost20, resource530 searched first positive slot0..57. Selected849 uses time10/animation15/boost0; generic final consumption changes only itemTime to animation14 in the captured first use, retaining itemTimeMax/toolTime10. PlaceWire/PlaceActuator allow air; KillActuator clears actuator alone and preserves inactive. CanDoWireStuffHere refuses wall350, preGolem87, and preGolem dual-dungeon Temple walls87/92/42/24 below surface. It does not consult NoBuilding.
+
+Source DeActive/ReActive invokes SquareTileFrame(resetFrame:false), column-major nine calls. Switch136 support uses nactive and can drop538; CheckTorch uses active and keeps supported torches. Runtime admits only dry visited frames; Liquid.AddWater can itself destroy/publish and remains a separate transaction closure. Ordinary stone source cosmetic162/54 is not represented by the existing merge-frame model. WorldItem.ReserveFor's parameter shadows its server field: ordinary framing FindOwner advertises15 in22, explicit17 local reservation advertises100, while server field stays0; current snapshot retains advertised hold. A server/client reservation clock split remains open.
+
+The new original corpus has 44 profiles: 34 real ItemCheck calls (26 installation and 8 conditional cutter), 6 primitive cycles and 4 framing scenes; repeated raw SHA256 dbc48228ccfe84fbd5ad2b42a7c620c27ed24b595984c0a4ad2f725717814a97, gzip5de8b2dbd551ef1fa58e48f13c99671a44a229eaff8e0d2425fe6f5d562fdf71. The older 110-scene fixture remains byte-exact. Seven causal variants cause 9 genuine failed tests with 0 runner errors; exact restoration passes 26/26. Non-important stone cosmetic162/54 and raw server keep0 versus advertised owner22 hold15 are retained as explicit representation boundaries, not asserted as whole server parity.
+
+Visible cutter dust consumes30 extra draws when five slots allocate; a full6000-slot pool leaves only the common ItemCheck draw. Identical world/clocks/packets have cursors31 versus1. No source-owned client visual pool/viewport exists in runtime; cutter admission remains closed. The captures use Linux edition under Windows CoreCLR, not Linux execution or whole GUI/Main.Update parity.
+
 ## Wiring mechanisms 1.4.5.8 source proof, 2026-10-26
 
 Original `MessageBuffer.GetData`59 reads two Int16 coordinates, sets current user, executes HitSwitch, resets user and relays59 excluding sender; it adds no distance rule and valid repeats are distinct presses. `Wiring.TripWire/HitWire` uses red/blue/green/yellow, X-then-Y seeds and FIFO down/up/right/left. Source `WorldGen.OpenDoor/CloseDoor/ShiftTrapdoor/ShiftTallGate` themselves call SkipWire: open door result2x3, close retained1x3, direction-dependent trapdoor2x2 and all5 gate rows before occupancy. `Tile.ClearTile` during trapdoor close retains dormant type/frame/paint/coating. Door source actions are19; the runtime additionally sends final20 for authoritative convergence.

@@ -44,6 +44,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private readonly Func<bool>? plantBossDowned;
     private readonly Func<int, int, bool>? canKillTile;
     private readonly Action<WorldWiringDoorTransition1458>? publishDoorToggle;
+    private readonly Func<int, int, bool>? applyActuatorTransaction;
     private readonly double worldSurface;
 
     public WorldWiringDeviceExecutor1458(WorldTileStore tiles,
@@ -53,7 +54,8 @@ public sealed class WorldWiringDeviceExecutor1458
         Func<bool>? plantBossDowned = null,
         double worldSurface = 0,
         Func<int, int, bool>? canKillTile = null,
-        Action<WorldWiringDoorTransition1458>? publishDoorToggle = null)
+        Action<WorldWiringDoorTransition1458>? publishDoorToggle = null,
+        Func<int, int, bool>? applyActuatorTransaction = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         wiring = new VanillaWorldWiringMutationService(tiles);
@@ -64,6 +66,7 @@ public sealed class WorldWiringDeviceExecutor1458
         this.worldSurface = tiles.WorldSurfaceTiles ?? worldSurface;
         this.canKillTile = canKillTile;
         this.publishDoorToggle = publishDoorToggle;
+        this.applyActuatorTransaction = applyActuatorTransaction;
     }
 
     /// <summary>
@@ -124,6 +127,9 @@ public sealed class WorldWiringDeviceExecutor1458
             if (above.IsActive && (PreventsActuationUnder(above.Type) || canKillTile?.Invoke(x, y) != true))
                 return false;
         }
+        // Production composition prepares framing, drops and the existing RNG together. An unsupported
+        // frame rejects that transaction; it must never fall back to an already-visible raw bit change.
+        if (applyActuatorTransaction is not null) return applyActuatorTransaction(x, y);
         var request = new WorldWiringMutationRequest(tile.IsActuated
             ? WorldWiringMutationKind.Deactuate : WorldWiringMutationKind.Actuate, x, y);
         if (!wiring.Apply(in request).Applied) return false;

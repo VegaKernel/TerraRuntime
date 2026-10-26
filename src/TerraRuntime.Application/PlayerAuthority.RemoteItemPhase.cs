@@ -639,7 +639,8 @@ internal sealed partial class PlayerAuthority
             selected.Prefix,
             world.WindowsItemPrefixArithmetic) &&
             !VanillaGemStaff1458.TryGetWeapon(selected.ItemType,
-            out _) && !VanillaToolCatalog1458.TryGet(selected.ItemType, out _)))
+            out _) && !VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
+            !(selected.Prefix.Value == 0 && VanillaWiringToolCatalog1458.TryGet(selected.ItemType, out _))))
             return false;
         if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType,
             selected.Prefix,
@@ -649,6 +650,7 @@ internal sealed partial class PlayerAuthority
             !malformedPayment.IsValid))
             return false;
         if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
+            !VanillaWiringToolCatalog1458.TryGet(selected.ItemType, out _) &&
             !VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out _) && item.ToolUse is { } unusedTools &&
             (!unusedTools.SourceItem.IsNone || unusedTools.BuildingPermission is not null ||
                 unusedTools.SourceStagePose is not null || unusedTools.ShootEligible || unusedTools.ToolStagePending))
@@ -739,12 +741,23 @@ internal sealed partial class PlayerAuthority
         // Retain that independent owned context, not a post-movement arena query
         // or raw buff199. The later tool stage retains its own moved pose.
         bool localPlacementContext = false;
+        bool localWiringContext = false;
         if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
         {
             if (item.ToolUse is not { } toolBefore ||
                 !TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
                     plan.Y + VanillaBasePlayerHeight * 0.5f, out var permission)) return false;
             item = item with { ToolUse = toolBefore with { BuildingPermission = permission } };
+        }
+        else if (toolWorld is not null && selected.Prefix.Value == 0 && world.JourneyMode is false &&
+            !capturedUnlocks.ArtisanLoaf && item.ToolUse is { } wiringShadow &&
+            VanillaWiringToolCatalog1458.TryGet(selected.ItemType, out _) &&
+            TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
+                plan.Y + VanillaBasePlayerHeight * 0.5f, out var wiringPermission))
+        {
+            // Wiring does not consult noBuilding. This capture supplies world/phase currentness only.
+            item = item with { ToolUse = wiringShadow with { BuildingPermission = wiringPermission } };
+            localWiringContext = true;
         }
         else if (toolWorld is not null && selected.Prefix.Value == 0 &&
             world.JourneyMode is false && item.ToolUse is { } placementShadow &&
@@ -840,6 +853,7 @@ internal sealed partial class PlayerAuthority
         bool mining = false;
         bool ownedConsumableClock = false;
         bool trackedLocalPlacement = false;
+        bool trackedLocalWiring = false;
         VanillaUnifiedRandom1458? placementBeforeCommon = null;
         int placementCrit = -1;
         ToolFrameFacts1458 placementCommonFacts = default;
@@ -897,6 +911,36 @@ internal sealed partial class PlayerAuthority
             // ItemCheck. Local selection may start a separate owned tool epoch
             // while the remote animation is still active.
             beganActualUse = remoteTool.BeganActualUse;
+        }
+        else if (localWiringContext && VanillaWiringToolCatalog1458.TryGet(selected.ItemType, out var wiringDefinition))
+        {
+            if (item.ToolUse is not { } wiringBefore || item.ToolTime is not { } remoteTime) return false;
+            // Default5/3 Simple reach plus the item's boost. Unrepresented range equipment and
+            // permanent builder extension do not become a guessed blockRange here.
+            foreach (var equipped in plan.Equipment)
+            {
+                int armorIndex = equipped.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
+                if (equipped.Stack > 0 && armorIndex is >= 3 and <= 9 &&
+                    equipped.ItemNetId is 2215 or 3061 or 5126) return false;
+            }
+            var wiringFacts = new ToolFrameFacts1458(true, facts.ControlUseItem, facts.LastUseSuccess,
+                facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, false, 1f)
+                { WindowsArithmetic = world.WindowsItemPrefixArithmetic };
+            var wiringPose = new RuntimePlayerToolStagePose1458(plan.Before with
+            {
+                PositionX = plan.X, PositionY = plan.Y, VelocityX = plan.Vx, VelocityY = plan.Vy
+            }, (int)VanillaBasePlayerWidth, (int)VanillaBasePlayerHeight, physical.GravityDirection);
+            var remoteClocks = new ToolClockState1458(clocks, remoteTime, false, item.Channel);
+            int critRoll = random.Next(3);
+            if (!TryAdvanceWiringFrame(wiringDefinition, wiringBefore, remoteClocks, wiringFacts,
+                wiringPose, currentCombatTick, critRoll, out var wiringAfter, out var remoteWiring)) return false;
+            trackedLocalWiring = true;
+            wiringAfter = wiringAfter with { Reach = new(5, 3, wiringDefinition.TileBoost) };
+            item = item with { ToolUse = wiringAfter, ToolTime = remoteWiring.State.ToolTime,
+                Channel = remoteWiring.State.Channel };
+            use = new(remoteWiring.State.Selected, facts.Life, facts.Mana, false, 0, 0)
+                { PendingItemReuse = remoteWiring.PendingItemReuse, ResetItemRotation = remoteWiring.AttemptedUse };
+            beganActualUse = remoteWiring.BeganActualUse;
         }
         else if (localPlacementContext &&
             VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out var placementDefinition))
@@ -1367,7 +1411,7 @@ internal sealed partial class PlayerAuthority
         if (use.Consumed && use.BuffOfferType.Value is 26 or 206 or 207)
             plan.Buffs.StampOwnedFoodGrant(currentCombatTick);
         if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
-            !trackedLocalPlacement && item.ToolUse is { } nonToolShadow)
+            !trackedLocalPlacement && !trackedLocalWiring && item.ToolUse is { } nonToolShadow)
         {
             var shadow = TrackNonToolLocalClock(nonToolShadow, member.SelectedItem,
                 in selected, in facts, in clocks, in use, item.MagicPayment, ownedConsumableClock, in item, plan);

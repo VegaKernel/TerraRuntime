@@ -281,7 +281,7 @@ public sealed class ServerRuntimeClientTileIngressTests
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 910);
-        var request = new TerrariaTileManipulationState(Action: 5, TileX: 10, TileY: 10, Data: 0, Style: 0);
+        var request = new TerrariaTileManipulationState(Action: byte.MaxValue, TileX: 10, TileY: 10, Data: 0, Style: 0);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
 
@@ -291,6 +291,23 @@ public sealed class ServerRuntimeClientTileIngressTests
         Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
+    }
+
+    [Fact]
+    public void Known_wire_action_without_an_owned_tool_phase_is_rejected_without_mutating_world()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 911);
+        var request = new TerrariaTileManipulationState(Action: 5, TileX: 10, TileY: 10, Data: 0, Style: 0);
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection, request));
+
+        Assert.Equal(1, fixture.State.ClientTileManipulationRequests);
+        Assert.Equal(1, fixture.State.ValidatedClientTileManipulations);
+        Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
+        Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
+        Assert.Equal(default(WorldTile), fixture.Tiles.Get(10, 10));
     }
 
     private sealed class Fixture : IDisposable

@@ -18,7 +18,8 @@ internal sealed partial class WorldTileAuthority
             canKillTile: (x, y) => VanillaToolWorldRules1458.TryEvaluate(tiles, x, y,
                 hardModeBaseline || progression.IsCompleted(VanillaWorldProgressionId.Hardmode), out var result) && result.CanKill,
             publishDoorToggle: transition => replication?.TryPublishDoorToggle(new TerrariaDoorToggleState(
-                (byte)transition.Action, (short)transition.X, (short)transition.Y, (sbyte)transition.Direction)));
+                (byte)transition.Action, (short)transition.X, (short)transition.Y, (sbyte)transition.Direction)),
+            applyActuatorTransaction: TryApplyWiringActuator);
         wiring = new WorldWiringCircuit1458(tiles, devices, PublishWiringSquare);
     }
 

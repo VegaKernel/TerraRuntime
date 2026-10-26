@@ -43,6 +43,8 @@ internal sealed partial class WorldTileAuthority
         private readonly List<ToolActionPreparation1458> actions = [];
         private readonly List<ToolBirthPublication1458> births = [];
         private readonly List<PlacementPreparation1458> placements = [];
+        private readonly List<WiringPreparation1458> wiring = [];
+        private int nextWiring;
         private readonly List<byte> actionOrder = [];
         private readonly List<FurniturePlacementPreparation1458> furniturePlacements = [];
         private int nextFurniturePlacement;
@@ -57,7 +59,7 @@ internal sealed partial class WorldTileAuthority
 
         internal void Add(ToolActionPreparation1458 action)
         {
-            if (disposed || actions.Count + placements.Count + furniturePlacements.Count == byte.MaxValue)
+            if (disposed || actions.Count + placements.Count + furniturePlacements.Count + wiring.Count == byte.MaxValue)
                 throw new InvalidOperationException("A tool phase has at most one action per human slot.");
             actions.Add(action);
             actionOrder.Add(0);
@@ -65,7 +67,7 @@ internal sealed partial class WorldTileAuthority
 
         internal void AddPlacement(PlacementPreparation1458 placement)
         {
-            if (disposed || actions.Count + placements.Count + furniturePlacements.Count == byte.MaxValue)
+            if (disposed || actions.Count + placements.Count + furniturePlacements.Count + wiring.Count == byte.MaxValue)
                 throw new InvalidOperationException("A player phase has at most one world action per human slot.");
             placements.Add(placement);
             actionOrder.Add(1);
@@ -73,12 +75,19 @@ internal sealed partial class WorldTileAuthority
 
         internal void AddFurniturePlacement(FurniturePlacementPreparation1458 placement)
         {
-            if (disposed || actions.Count + placements.Count + furniturePlacements.Count == byte.MaxValue)
+            if (disposed || actions.Count + placements.Count + furniturePlacements.Count + wiring.Count == byte.MaxValue)
                 throw new InvalidOperationException("A player phase has at most one world action per human slot.");
             furniturePlacements.Add(placement); actionOrder.Add(2);
         }
 
         internal void RecordFailure(Exception exception) => failure ??= exception;
+
+        internal void AddWiring(WiringPreparation1458 preparation)
+        {
+            if (disposed || actions.Count + placements.Count + furniturePlacements.Count + wiring.Count == byte.MaxValue)
+                throw new InvalidOperationException("A player phase has at most one world action per human slot.");
+            wiring.Add(preparation); actionOrder.Add(3);
+        }
 
         internal void AddBirth(ToolBirthPublication1458 birth)
         {
@@ -110,7 +119,14 @@ internal sealed partial class WorldTileAuthority
                 while (nextOrder < actionOrder.Count)
                 {
                     byte kind = actionOrder[nextOrder++];
-                    if (kind == 2)
+                    if (kind == 3)
+                    {
+                        var preparedWiring = wiring[nextWiring++];
+                        try { preparedWiring.TryPublishAll(); }
+                        catch (Exception exception) { first ??= exception; }
+                        finally { preparedWiring.Dispose(); }
+                    }
+                    else if (kind == 2)
                     {
                         var furniture = furniturePlacements[nextFurniturePlacement++];
                         try { furniture.TryPublishAll(); }
@@ -145,6 +161,7 @@ internal sealed partial class WorldTileAuthority
             while (next < actions.Count) actions[next++].Dispose();
             while (nextPlacement < placements.Count) placements[nextPlacement++].Dispose();
             while (nextFurniturePlacement < furniturePlacements.Count) furniturePlacements[nextFurniturePlacement++].Dispose();
+            while (nextWiring < wiring.Count) wiring[nextWiring++].Dispose();
         }
     }
 }

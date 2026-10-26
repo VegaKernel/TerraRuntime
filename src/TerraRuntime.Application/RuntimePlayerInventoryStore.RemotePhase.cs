@@ -8,6 +8,8 @@ internal readonly record struct RemotePhaseInventoryMutation(
     ConnectionHandle Connection, short Slot, RuntimePlayerInventoryItem Before, RuntimePlayerInventoryItem After)
 {
     internal bool ConsumeFundedQuantity { get; init; }
+    // Exact single-unit Wire/Actuator debit owned by the qualified wiring clock/world operation.
+    internal bool WiringResourceDebit { get; init; }
     // Set only by the qualified placement world/clock participant. A wall fill
     // may place five cells while exhausting two units; it cannot credit stock.
     internal short PlacementQuantity { get; init; }
@@ -122,6 +124,13 @@ internal sealed partial class RuntimePlayerInventoryStore
     private static bool IsOwnedConsumption(in RemotePhaseInventoryMutation mutation)
     {
         var before = mutation.Before;
+        if (mutation.WiringResourceDebit)
+        {
+            if (!mutation.ConsumeFundedQuantity || mutation.PlacementQuantity != 0 || mutation.CursorSourceDebit is not null ||
+                !before.IsCanonical || before.IsEmpty || before.Prefix.Value != 0 ||
+                !VanillaWiringToolCatalog1458.IsResource(before.ItemType)) return false;
+            return mutation.After == (before.Stack == 1 ? default : before with { Stack = (short)(before.Stack - 1) });
+        }
         if (mutation.PlacementQuantity != 0)
         {
             int consumed = mutation.PlacementQuantity;
@@ -144,6 +153,8 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     private bool CanConsumeOwnedQuantity(in RemotePhaseInventoryMutation mutation)
     {
+        if (mutation.WiringResourceDebit)
+            return IsOwnedConsumption(mutation) && fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] > 0;
         if (mutation.PlacementQuantity != 0)
             return IsOwnedConsumption(mutation) && fundedQuantities[
                 GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] >= mutation.PlacementQuantity;

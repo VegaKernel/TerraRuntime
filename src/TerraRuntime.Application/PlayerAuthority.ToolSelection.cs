@@ -103,7 +103,7 @@ internal sealed partial class PlayerAuthority
         else known = false;
         return before with
         {
-            Clocks = local, LocalClocksKnown = known, SelectionInitialized = true,
+            Clocks = local, LocalClocksKnown = known, SelectionInitialized = true, SourceWiring = null,
             SourceLocalDefinition = gemDefinition, WeaponShoot = pendingGem,
             SourceItem = deferred ? before.SourceItem : selected.ItemType,
             SourcePrefix = deferred ? before.SourcePrefix : selected.Prefix,

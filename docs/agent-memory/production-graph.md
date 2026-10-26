@@ -1,5 +1,13 @@
 # Production graph
 
+## Wiring tools and actuator framing owners, 2026-10-26
+
+Four ordinary wrenches 509/850/851/3612 and selected actuator 849 now use the existing ToolUse known local phase, bounded owned17/5 cohort, exact first resource slot0..57 and funded inventory journal. Player clock, paid quantity and same-world tile overlay adopt before publication; late5 acknowledges a receipt. The installed wire participates in the real circuit. Source wall/Golem, reach and NoBuilding rules remain distinct from mining. Actuators use the existing source transaction for dry nine-cell framing, supported switch136 removal/drop538 and torch support. Wet visited frames/unsupported attachments reject atomically; a wet read-only halo does not wake liquid. Primitive actuator placement/removal allows air and removal preserves inactive.
+
+PlayerAuthority.WiringTools/WiringFrame and RuntimePlayerToolInput1458.Wiring extend existing player phase and source actor captures. WorldTileAuthority.WiringTools.Preparation composes the existing player attempt, RuntimePlayerInventoryStore.RemotePhase and ToolWorldMutationPlan. WorldTileAuthority.WiringFraming supplies the device executor callback using existing ToolWorldSourcePass, item allocation, RNG and publication journals. WorldWiringDeviceExecutor never falls back to a raw bit after a production transaction rejection. WorldTileStore section versions, encoded-section cache and persistence remain the sole world representation. See paired wiring-tool-installation-1458 guides and docs/verification/wiring-installation-1458.json.
+
+Open: client cutter visual dust/RNG ownership (same world/packets, cursor31 vs1), mass109/GrandDesign/Multicolor/ActuationRod, cursor58/buffered or unknown range contexts, wet AddWater/framing/destruction, generic attachments/torch drops, server item reservation clock versus advertised snapshot, cosmetic merge frames, one-shot/weighted/projectile plates, pumps/teleporters and logic/traps/statues. Whole vanilla/GUI and Linux Native remain unverified.
+
 ## Authoritative wiring production route, 2026-10-26
 
 The connection `ProjectileLifecycleFrameSink` composes `HitSwitchFrameSink1458` through `RuntimeProjectileNetworkIngress` / inherited `RuntimeTileNetworkIngress`. Packet59 becomes `ClientHitSwitchRuntimeCommand1458` in the existing bounded command ingress. `ServerRuntimeState.Apply` dispatches through `WorldTileAuthority`, which owns a world-local circuit and devices over its existing `WorldTileStore`, existing door service, shared gameplay RNG and progression/CanKill policy. The existing replication registry emits door19 before final tile20, then outer59 excludes its sender. Manual trigger frames are not sent before59; wire timer/expiry mutations publish20 directly.

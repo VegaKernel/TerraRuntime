@@ -40,9 +40,9 @@ public sealed class WorldWiringPersistence1458Tests
             for (int tick = 0; tick < 65; tick++) newPlayer.State.Tick();
             AssertCircuit(reloaded, timerFrame: 0); // No registration survives either load path.
             newPlayer.State.Apply(new ClientHitSwitchRuntimeCommand1458(newPlayer.Connection, new(20, 20)));
-            Assert.Equal((short)0, reloaded.Get(21, 20).FrameX);
+            Assert.Equal((short)44, reloaded.Get(21, 20).FrameX);
             Assert.False(reloaded.Get(22, 20).IsActuated);
-            Assert.Equal((short)18, reloaded.Get(23, 20).FrameY);
+            Assert.Equal((short)18, reloaded.Get(24, 20).FrameY);
             AssertCircuit(world.Tiles, timerFrame: 18); // New world does not retain the old store.
         }
         finally
@@ -86,11 +86,11 @@ public sealed class WorldWiringPersistence1458Tests
             Assert.Equal(0, tiles.PersistenceDirtySections.DirtyCount);
             AssertCircuit(world.Tiles, timerFrame: 18);
             using var resumed = new SpawnedPlayer(tiles);
-            resumed.State.Apply(new ClientHitSwitchRuntimeCommand1458(resumed.Connection, new(23, 20)));
+            resumed.State.Apply(new ClientHitSwitchRuntimeCommand1458(resumed.Connection, new(24, 20)));
             for (int tick = 0; tick < 59; tick++) resumed.State.Tick();
-            Assert.Equal((short)66, tiles.Get(21, 20).FrameX);
+            Assert.Equal((short)110, tiles.Get(21, 20).FrameX);
             resumed.State.Tick();
-            Assert.Equal((short)0, tiles.Get(21, 20).FrameX);
+            Assert.Equal((short)44, tiles.Get(21, 20).FrameX);
         }
         finally { File.Delete(path); File.Delete(path + ".tmp"); }
     }
@@ -98,19 +98,20 @@ public sealed class WorldWiringPersistence1458Tests
     private static void ConfigureCircuit(WorldTileStore tiles)
     {
         tiles.Set(20, 20, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
-        tiles.Set(21, 20, new WorldTile { Type = 4, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        tiles.Set(21, 20, new WorldTile { Type = 4, FrameX = 44, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
         tiles.Set(22, 20, new WorldTile { Type = 1, Flags = WorldTileFlags.Active | WorldTileFlagMasks.Wires | WorldTileFlags.Actuator });
-        tiles.Set(23, 20, new WorldTile { Type = 144, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        tiles.Set(23, 20, new WorldTile { Flags = WorldTileFlags.WireRed });
+        tiles.Set(24, 20, new WorldTile { Type = 144, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
     }
 
     private static void AssertCircuit(WorldTileStore tiles, short timerFrame)
     {
         Assert.Equal((short)18, tiles.Get(20, 20).FrameY);
-        Assert.Equal((short)66, tiles.Get(21, 20).FrameX);
+        Assert.Equal((short)110, tiles.Get(21, 20).FrameX);
         Assert.True(tiles.Get(22, 20).IsActuated);
         Assert.True(tiles.Get(22, 20).HasActuator);
         Assert.Equal(WorldTileFlagMasks.Wires, tiles.Get(22, 20).Flags & WorldTileFlagMasks.Wires);
-        Assert.Equal(timerFrame, tiles.Get(23, 20).FrameY);
+        Assert.Equal(timerFrame, tiles.Get(24, 20).FrameY);
     }
 
     private static byte[] Importance()
@@ -152,13 +153,24 @@ public sealed class WorldWiringPersistence1458Tests
         private readonly PlayerJoinSession session;
         public SpawnedPlayer(WorldTileStore tiles)
         {
-            State = new ServerRuntimeState(worldTiles: tiles);
+            var sourceWorld = new RuntimePlayerUpdateWorld1458(tiles.Dimensions.WidthTiles, tiles.Dimensions.HeightTiles, 60, false, false)
+            {
+                GetGoodWorld = false, InfectedSeed = false, NotTheBeesWorld = false, NoTrapsWorld = false,
+                TenthAnniversaryWorld = false, DontStarveWorld = false, DrunkWorld = false,
+                DualDungeonsSeed = false, JourneyMode = false, HallowBackground = 0, OnlyShimmerOceanWorlds = false
+            };
+            State = new ServerRuntimeState(worldTiles: tiles, sourcePlayerWorld: sourceWorld,
+                worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+                townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 60 },
+                townSpawnWorldFacts: default(TerraRuntime.Gameplay.Npcs.VanillaTownSpawnWorldFacts1458));
             var slots = new PlayerSlotPool(1);
             Assert.True(slots.TryAcquireConnection(out var lease));
             session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
             Assert.Equal(PlayerJoinTransition.WorldRequestAccepted, session.ObserveWorldRequest());
             Assert.Equal(PlayerJoinTransition.SectionRequestAccepted, session.ObserveSectionRequest());
             Connection = new(GameCommandSourceId.FromConnection(1458), session.Handle);
+            State.Apply(new PlayerHealthRuntimeCommand(Connection, new(session.Slot, 100, 100)));
+            State.Apply(new PlayerEquipmentRuntimeCommand(Connection, new(session.Slot, 0, 0, 0, 0, 0)));
             State.Apply(new PlayerSpawnRuntimeCommand(Connection, session, new(session.Slot, 20, 20, 0, 0, 0, 0, 0)));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
         }

@@ -157,7 +157,7 @@ internal sealed partial class PlayerAuthority
 
 // A single-use joint-adoption participant. Only source-derived clock/progress
 // results may be staged by the tool planner; no observer is invoked here.
-internal sealed class PlayerToolAttemptPreparation
+internal sealed partial class PlayerToolAttemptPreparation
 {
     private readonly PlayerAuthority owner;
     private readonly RuntimePlayerToolActorCapture1458 capture;

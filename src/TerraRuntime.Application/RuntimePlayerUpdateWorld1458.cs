@@ -20,6 +20,7 @@ internal readonly record struct RuntimePlayerUpdateWorld1458(
     internal bool? TenthAnniversaryWorld { get; init; }
     internal bool? DontStarveWorld { get; init; }
     internal bool? DrunkWorld { get; init; }
+    internal bool? DualDungeonsSeed { get; init; }
     internal bool? JourneyMode { get; init; }
     internal bool? OnlyShimmerOceanWorlds { get; init; }
     internal int? HallowBackground { get; init; }
@@ -39,6 +40,7 @@ internal readonly record struct RuntimePlayerUpdateWorld1458(
             TenthAnniversaryWorld = metadata.TenthAnniversaryWorld,
             DontStarveWorld = metadata.DontStarveWorld,
             DrunkWorld = metadata.DrunkWorld,
+            DualDungeonsSeed = metadata.DualDungeonsSeed,
             JourneyMode = metadata.GameMode == 3,
             // Main.onlyShimmerOceanWorlds, Terraria1458: derived from raw seed flags.
             OnlyShimmerOceanWorlds = metadata.DrunkWorld && metadata.TenthAnniversaryWorld &&

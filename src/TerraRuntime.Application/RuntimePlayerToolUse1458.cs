@@ -33,6 +33,8 @@ internal sealed record RuntimePlayerToolUse1458(ToolClockState1458 Clocks,
     internal ToolHitState1458 ReplacementHits { get; init; } = ToolHitState1458.Constructor;
     internal RuntimePlayerPlacementAlternative1458? PlacementAlternative { get; init; }
     internal TerraRuntime.Gameplay.Items.LocalPlacementDefinition1458? SourcePlacement { get; init; }
+    internal TerraRuntime.Gameplay.Items.WiringToolDefinition1458? SourceWiring { get; init; }
+    internal RuntimePlayerWiringReceipt1458? WiringReceipt { get; init; }
     internal float PlacementSpeed { get; init; } = 1f;
     internal RuntimePlayerPlacementReady1458? PlacementReady { get; init; }
     internal bool RequiresFreshUse { get; init; }

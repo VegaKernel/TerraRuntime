@@ -335,6 +335,9 @@ internal sealed partial class WorldTileAuthority
             if (step.X <= 5 || step.Y <= 5 || step.X >= dimensions.WidthTiles - 5 || step.Y >= dimensions.HeightTiles - 5)
                 return true;
             if (!Overlay.TryRead(step.X, step.Y, out var tile)) return false;
+            // Wet TileFrame calls invoke Liquid.AddWater in the source. Until that operation has a
+            // prepared queue participant, actuator framing must reject instead of adopting half a call.
+            if (wiringActuationFrame && tile.LiquidAmount != 0) return false;
             if (!tile.IsActive)
             {
                 var cleared = tile;
@@ -357,6 +360,7 @@ internal sealed partial class WorldTileAuthority
             if (tile.Type is 21 or 467 or 88) return FrameContainer(step.X, step.Y, in tile);
             if (tile.Type == 26) return TryVerifyIntactAltar(step.X, step.Y, in tile);
             if (tile.Type is 49 or 136) return FrameSingleCell(step.X, step.Y, in tile);
+            if (wiringActuationFrame && tile.Type == WiringTorchTile) return FrameWiringTorch(step.X, step.Y, in tile);
             if (tile.Type is 137 or 424 or 442) return TryFrameToolFurniture(step.X, step.Y, in tile);
             if (tile.Type == LarvaTile) return FrameLarva(step.X, step.Y, in tile);
             if (IsOrdinaryPlacementFurniture(tile.Type)) return FrameOrdinaryPlacementFurniture(step.X, step.Y, in tile);
