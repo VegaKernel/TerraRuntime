@@ -70,7 +70,7 @@ internal sealed partial class PlayerAuthority
             phase.BaseManaMaximum is > 0 and <= 400 && playerUpdateRandomOwned && playerUpdateWorld is { } world &&
             !VanillaPlayerHealthContext1458.IsRemoteOutOfRange(request.PositionX, request.PositionY, 20, 42,
                 world.MaxTilesX, world.MaxTilesY) &&
-            transferProfiles.CaptureBuffState(member.Connection) is { } buffs && buffs.CountActive(new(23)) == 0 &&
+            transferProfiles.CaptureBuffState(member.Connection) is { PreventsFreshItemUse: false } &&
             transferProfiles.TryCapture(member.Connection, out var appearance, out _, out var types) &&
             appearance is not null && types is not null &&
             inventory.TryGet(member.Connection, request.SelectedItem, out var selected) && selected.IsCanonical &&
@@ -139,7 +139,7 @@ internal sealed partial class PlayerAuthority
         if (item.ManaCrystalIntent is not { Completed: false } captured ||
             captured.Player != plan.Member.Connection.Player || captured.Slot != plan.Member.SelectedItem ||
             captured.Item != selected || captured.BaseMaximum != item.BaseManaMaximum ||
-            !plan.BeforeOwnsManaMaximum || plan.Buffs.CountActive(new(23)) != 0) return false;
+            !plan.BeforeOwnsManaMaximum || plan.Buffs.HasNoItemsEffect) return false;
         var after = selected.Stack == 1 ? default : selected with { Stack = (short)(selected.Stack - 1) };
         plan.InventoryMutations.Add(new(plan.Member.Connection, plan.Member.SelectedItem, selected, after));
         plan.PublishMana = true;

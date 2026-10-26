@@ -54,9 +54,7 @@ internal sealed partial class PlayerAuthority
             20,
             42,
             world.MaxTilesX,
-            world.MaxTilesY) ||
-            transferProfiles.CountActiveBuffs(connection,
-            new(23))is not 0)
+            world.MaxTilesY))
             return false;
         if (!VanillaChanneledMagicWeaponStats1458.TryResolve(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic, out var resolvedWeapon, out _))
             return false;
@@ -70,6 +68,8 @@ internal sealed partial class PlayerAuthority
             };
         else
         {
+            if (transferProfiles.CaptureBuffState(connection) is not { PreventsFreshItemUse: false })
+                return false;
             if (same && (!phase.Selected.ReleaseUseItem || phase.Selected.Animation > 0))
                 return false;
             if (previous is { Attempt: ulong.MaxValue } || !VanillaRemoteChannelledMagic1458.TryResolveManaCost(resolvedWeapon.ManaCost, derived.ManaCostMultiplier, out int cost))

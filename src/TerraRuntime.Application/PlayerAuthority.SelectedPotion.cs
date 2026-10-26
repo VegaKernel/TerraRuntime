@@ -118,7 +118,7 @@ internal sealed partial class PlayerAuthority
                 !lifeUse.Completed && lifeUse.Before == selected;
             if (!VanillaSelectedConsumable1458.TryStepPermanentConsumable(clocks, in facts,
                     plan.Member.BaseLifeMax ?? plan.Member.MaxLife, item.BaseManaMaximum,
-                    selected.Stack, currentLocalLifeInput, plan.Buffs.CountActive(new(23)) > 0,
+                    selected.Stack, currentLocalLifeInput, plan.Buffs.HasNoItemsEffect,
                     random.Next, random.NextDouble, out var permanent)) return false;
             use = permanent.Use;
             if (permanent.Applied)
@@ -131,7 +131,7 @@ internal sealed partial class PlayerAuthority
             food.BuffType is 26 or 206 or 207)
         {
             if (!VanillaSelectedConsumable1458.TryStepFood(clocks, in facts, selected.Stack,
-                true, plan.Buffs.CountActive(new(23)) > 0,
+                true, plan.Buffs.HasNoItemsEffect,
                 random.Next, random.NextDouble, out use)) return false;
         }
         else if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in facts, selected.Stack,
@@ -400,7 +400,7 @@ internal sealed partial class PlayerAuthority
         if (member.SelectedItem == use.Slot && (member.ControlFlags & 32) != 0 && !member.IsDead &&
             phase.Selected.ReleaseUseItem && phase.Selected.Animation == 0 && phase.Selected.ItemTime == 0 &&
             inventory.TryGet(connection, use.Slot, out var current) && (current == use.Before || member.CursorMove?.Inventory is { } source && source.TryCaptureSelectedPotionDebit(inventory, connection, out var original, out _) && original == use.Before) &&
-            transferProfiles.CaptureBuffState(connection) is { } buffs && buffs.CountActive(new(23)) == 0 &&
+            transferProfiles.CaptureBuffState(connection) is { PreventsFreshItemUse: false } buffs &&
             VanillaSelectedConsumableCatalog1458.TryGet(use.Before.ItemType, out var potion) &&
             (!potion.HealingDelay || buffs.CountActive(new(21)) == 0 && phase.Selected.PotionDelay == 0)) return;
         member.ItemPhase = phase with { SelectedPotionUse = null };

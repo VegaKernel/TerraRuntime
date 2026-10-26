@@ -40,6 +40,53 @@ public static class GemStaffBoundaryChecks
         ActiveNoItems();
     }
 
+    public static void FreshCrowdControl()
+    {
+        using var source = Read("GemStaffBehaviorLinux1458");
+        var rows = source.RootElement.EnumerateArray().Where(row =>
+            row.GetProperty("local").GetBoolean() && row.GetProperty("mode").GetString() == "ordinary" &&
+            row.GetProperty("robe").GetInt32() == 0)
+            .GroupBy(row => row.GetProperty("id").GetInt32()).Select(group => group.First()).ToArray();
+        Assert.Equal(7, rows.Length);
+        int cases = 0;
+        foreach (var row in rows)
+        foreach (int buff in new[] { 20, 23, 47, 149, 156 })
+        foreach (bool paidBeforeContact in new[] { false, true })
+        {
+            using var fixture = new GemStaffFixture();
+            var connection = fixture.Connections[2];
+            var member = fixture.Member(2);
+            fixture.Apply(new PlayerInventorySyncCompleteRuntimeCommand(connection));
+            fixture.Tick();
+            fixture.Apply(new PlayerEquipmentRuntimeCommand(connection,
+                new(connection.Player.Slot, 0, 1, 0, (short)row.GetProperty("id").GetInt32(), 0)));
+            fixture.Apply(new PlayerInventorySyncCompleteRuntimeCommand(connection));
+            fixture.Apply(new PlayerManaRuntimeCommand(connection, new(connection.Player.Slot, 200, 200)));
+            fixture.Move(2, false);
+            fixture.Tick();
+            fixture.Move(2, true);
+            if (paidBeforeContact) fixture.Tick();
+            var contact = fixture.Buffs(2).Clone();
+            Assert.True(contact.TryApplyNpcContactBuff(new(buff), 60));
+            Profiles(fixture.Players).RestoreBuffState(connection, contact);
+            Assert.True(fixture.Players.TryGetInventoryItem(connection, 0, out var selected));
+            var phase = member.ItemPhase;
+            var mana = member.Mana;
+            var random = UpdateRandom(fixture.Players)!.Clone();
+
+            bool allowed = fixture.Players.TryPrepareGemStaffPayment(connection, selected,
+                out _, out _, out _, out _);
+
+            Assert.Equal(paidBeforeContact || buff == 20, allowed);
+            Assert.Equal(mana, member.Mana);
+            Assert.Equal(phase, member.ItemPhase);
+            Assert.True(UpdateRandom(fixture.Players)!.HasSameState(random));
+            Assert.Equal(60, fixture.Buffs(2).GetDuration(new(buff)));
+            cases++;
+        }
+        Assert.Equal(70, cases);
+    }
+
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "projectileRandom")]
     private static extern ref VanillaUnifiedRandom1458 ProjectileRandom(ProjectileAuthority owner);
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "seedArray")]

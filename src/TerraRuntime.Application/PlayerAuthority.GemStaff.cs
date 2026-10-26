@@ -95,7 +95,7 @@ internal sealed partial class PlayerAuthority
         var clocks = same ? previous!.Value.GemClocks : phase.Selected;
         bool localStart = clocks.Animation == 0 && clocks.ReleaseUseItem || weapon.AutoReuse && clocks.Animation == 1;
         // NoItems blocks a fresh payment, not a source-owned midpoint already paid.
-        if (transferProfiles.CountActiveBuffs(connection, new(23)) is not 0 ||
+        if (transferProfiles.CaptureBuffState(connection) is not { PreventsFreshItemUse: false } ||
             (member.ControlFlags & 32) == 0 ||
             (member.MiscFlags2 & 64) == 0 ||
             !localStart ||

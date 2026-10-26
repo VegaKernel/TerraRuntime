@@ -83,7 +83,7 @@ internal sealed partial class PlayerAuthority
         bool paid = local && inventory.TryPrepareSelectedPotionConsumption(plan.Member.Connection, plan.Member.SelectedItem, out _);
         if (!VanillaSelectedConsumable1458.TryStepTorchGodFavor(clocks, in facts, selected.Stack,
             (appearance.TorchAndCartFlags & 4) != 0, (appearance.TorchAndCartFlags & 1) != 0,
-            paid, plan.Buffs.CountActive(new(23)) > 0, random.Next, random.NextDouble, out var result)) return false;
+            paid, plan.Buffs.HasNoItemsEffect, random.Next, random.NextDouble, out var result)) return false;
         use = result.Use;
         if (!result.Applied)
         {

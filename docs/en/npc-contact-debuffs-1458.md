@@ -2,6 +2,14 @@
 
 [Русский](../ru/npc-contact-debuffs-1458.md) · [Combat](combat-damage.md)
 
+## New item use and the final contact update
+
+New channelled-magic and gem-staff starts check current buff facts instead of trusting a previously usable item phase. Frozen, Webbed, Stoned and Shimmer prevent a new source `ItemCheck`; Cursed prevents a fresh start. A report already earned by a paid frame or midpoint keeps its existing eligibility. Refusal spends no mana and creates no projectile.
+
+The last positive contact update retains its NoItems and crowd-control effects after removing the slot timer. Cloning, currentness comparison and death include these facts; the next update clears them. Selected consumables, permanent upgrades, Torch favor, QuickBuff, mana crystals and held-tool cancellation reuse the same facts. This fixes the one-tick Cursed case that previously spent mana too early and still allows a released fresh use after expiry. It does not add the missing movement/stat physiology for unsupported active statuses.
+
+The continuation passes 43 scoped cases across 15 complete test classes, including 70 gem-staff preparation scenarios. Its fast tier passes 25,274 /25,275 cases with zero failures/errors and the same known liquid skip; 3,849 source/config/fixture inputs and 158 DLLs remain unchanged. Its baseline regressions expose fresh contact casts and the final Cursed update. Restoring the old callers or omitting the final-update facts causes five assertion failures per control; restoring the exact source passes the unchanged tests. Combined full/Native validation belongs to the subsequent player-use checkpoint. The older contact-rule checkpoint evidence below remains separately scoped.
+
 The existing NPC/player collision pass now applies source-selected contact debuffs to connected and clientless players. It retains the existing admitted NPC definitions, hitboxes, incoming-combat capture, HP executor and immunity registry. This does not enable autonomous contact for `DefinitionOnly` NPCs.
 
 ```mermaid

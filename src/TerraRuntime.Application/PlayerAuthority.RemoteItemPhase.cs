@@ -430,6 +430,7 @@ internal sealed partial class PlayerAuthority
             out var equipmentCombat,
             out int manaMaximumBonus,
             plan.VoidStorageOpen) ||
+            plan.Buffs.IsItemUseCrowdControlled ||
             plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 23 or 24 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) ||
             member.MiscFlags1 != 0 ||
             (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
@@ -799,7 +800,7 @@ internal sealed partial class PlayerAuthority
             mana.Maximum,
             (member.ControlFlags & 32) != 0,
             (member.MiscFlags2 & 64) != 0,
-            plan.Buffs.CountActive(new BuffTypeId(23)) != 0,
+            plan.Buffs.HasNoItemsEffect,
             false,
             true,
             false);

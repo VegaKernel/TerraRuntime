@@ -17,6 +17,80 @@ using Xunit;
 namespace TerraRuntime.Tests;
 public sealed class HumanChannelledMagicAuthority1458Tests
 {
+    [Theory]
+    [InlineData(47, false)]
+    [InlineData(149, false)]
+    [InlineData(156, false)]
+    [InlineData(47, true)]
+    [InlineData(149, true)]
+    [InlineData(156, true)]
+    [InlineData(23, false)]
+    [InlineData(23, true)]
+    public void Owned_contact_crowd_control_blocks_fresh_magic_but_preserves_prior_paid_frame(int buff, bool paidBeforeContact)
+    {
+        using var phases = ReadSource("HumanChannelledMagicPhase1458");
+        var row = phases.RootElement.EnumerateArray().First(x =>
+            x.GetProperty("spec").GetProperty("name").GetString() == "113-above-success");
+        using var fixture = new Harness.Fixture(row, false);
+        fixture.Move(false, 0, false, 1600, 1606);
+        fixture.State.Tick();
+        fixture.Move(true, 0, true, 1600, 1606);
+        if (paidBeforeContact) fixture.State.Tick();
+
+        // Use the existing authoritative contact-slot writer, not packet50 presence.
+        var contact = fixture.Profiles.CaptureBuffState(fixture.Connection)!.Clone();
+        Assert.True(contact.TryApplyNpcContactBuff(new(buff), 60));
+        fixture.Profiles.RestoreBuffState(fixture.Connection, contact);
+        var before = fixture.Member.ItemPhase;
+        var mana = fixture.Member.Mana;
+        var health = fixture.Member.NpcHealth;
+        var random = fixture.Random.Clone();
+        var packet = new TerrariaProjectileUpdateState(new(0, 993, 1), 16,
+            fixture.Member.PositionX - 6, fixture.Member.PositionY + 5, 6, 0,
+            0, 0, 0, 0, 35, 7.5f, 0);
+
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(fixture.Connection, packet));
+
+        Assert.Equal(paidBeforeContact ? 1 : 0, fixture.Projectiles.ActiveCount);
+        Assert.Equal(mana, fixture.Member.Mana);
+        Assert.Equal(health, fixture.Member.NpcHealth);
+        Assert.True(fixture.Random.HasSameState(random));
+        Assert.Equal(60, fixture.Profiles.CaptureBuffState(fixture.Connection)!.GetDuration(new(buff)));
+        if (!paidBeforeContact) Assert.Equal(before, fixture.Member.ItemPhase);
+        else Assert.True(fixture.Member.ItemPhase!.Value.MagicPayment!.Value.BirthConsumed);
+    }
+
+    [Fact]
+    public void Final_owned_cursed_update_blocks_start_then_released_use_recovers_without_new_credit()
+    {
+        using var phases = ReadSource("HumanChannelledMagicPhase1458");
+        var row = phases.RootElement.EnumerateArray().First(x =>
+            x.GetProperty("spec").GetProperty("name").GetString() == "113-above-success");
+        using var fixture = new Harness.Fixture(row, false);
+        fixture.Move(false, 0, false, 1600, 1606);
+        fixture.State.Tick();
+        var contact = fixture.Profiles.CaptureBuffState(fixture.Connection)!.Clone();
+        Assert.True(contact.TryApplyNpcContactBuff(VanillaBuffIds.Cursed, 1));
+        fixture.Profiles.RestoreBuffState(fixture.Connection, contact);
+        fixture.Move(true, 0, true, 1600, 1606);
+        var mana = fixture.Member.Mana;
+
+        fixture.State.Tick();
+
+        Assert.NotNull(fixture.Member.ItemPhase);
+        Assert.Equal(mana, fixture.Member.Mana);
+        Assert.Equal(0, fixture.Member.ItemPhase!.Value.Selected.Animation);
+        Assert.Equal(0, fixture.Profiles.CaptureBuffState(fixture.Connection)!.GetDuration(VanillaBuffIds.Cursed));
+        fixture.Move(false, 0, false, 1600, 1606);
+        fixture.State.Tick();
+        fixture.Move(true, 0, true, 1600, 1606);
+        fixture.State.Tick();
+        Assert.NotNull(fixture.Member.ItemPhase);
+        Assert.Equal(mana - 14, fixture.Member.Mana);
+        Assert.True(fixture.Member.ItemPhase!.Value.Selected.Animation > 0);
+        Assert.Equal(0, fixture.Projectiles.ActiveCount);
+    }
+
 // The original remote corpus covers both arithmetic platforms. These runtime
 // State.Tick comparisons use its Linux rows and managed-only full random-state
 // diagnostics. Local caller rows are a separate Linux component proof; their

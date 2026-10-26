@@ -138,8 +138,8 @@ internal sealed partial class PlayerAuthority
         var before = journal.Capture.Before;
         var main = before.AsSpan(0, 59).ToArray().Select(QuickBuffTuple).ToArray();
         var bank = before.AsSpan(179, 40).ToArray().Select(QuickBuffTuple).ToArray();
-        var eligibility = new QuickBuffEligibility1458(false, beforeBuffs.CountActive(new(23)) != 0,
-            false, member.IsDead, false, beforeBuffs.CountActive(new(23)) != 0);
+        var eligibility = new QuickBuffEligibility1458(false, beforeBuffs.HasNoItemsEffect,
+            beforeBuffs.IsItemUseCrowdControlled, member.IsDead, false, beforeBuffs.HasNoItemsEffect);
         if (!VanillaSelectedConsumable1458.TryPlanQuickBuff(main, bank, types, durations,
                 in eligibility, ReadOnlySpan<bool>.Empty, out var plan) || plan is null ||
             plan.Mutations.Length is < 1 or > 7) yield break;

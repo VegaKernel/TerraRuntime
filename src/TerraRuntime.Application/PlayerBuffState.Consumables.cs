@@ -80,6 +80,8 @@ internal sealed partial class PlayerBuffState
         ownedNpcContact.CopyTo(copy.ownedNpcContact, 0);
         copy.contactDebuffsForUpdate = contactDebuffsForUpdate;
         copy.contactFrozenForUpdate = contactFrozenForUpdate;
+        copy.contactNoItemsForUpdate = contactNoItemsForUpdate;
+        copy.contactCrowdControlForUpdate = contactCrowdControlForUpdate;
         foodClockOrigins.CopyTo(copy.foodClockOrigins, 0);
         return copy;
     }
@@ -90,6 +92,8 @@ internal sealed partial class PlayerBuffState
         ownedNpcContact.AsSpan().SequenceEqual(other.ownedNpcContact) &&
         contactDebuffsForUpdate == other.contactDebuffsForUpdate &&
         contactFrozenForUpdate == other.contactFrozenForUpdate &&
+        contactNoItemsForUpdate == other.contactNoItemsForUpdate &&
+        contactCrowdControlForUpdate == other.contactCrowdControlForUpdate &&
         (!(HasOwnedFoodSlots || other.HasOwnedFoodSlots) || ReferenceEquals(foodClockLineage, other.foodClockLineage)) &&
         foodClockOrigins.AsSpan().SequenceEqual(other.foodClockOrigins) &&
         lastOwnedFoodTick == other.lastOwnedFoodTick && ownedFoodEffectAtTick == other.ownedFoodEffectAtTick;

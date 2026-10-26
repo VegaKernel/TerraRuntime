@@ -46,12 +46,10 @@ internal sealed class HeldToolOwnerPreparation1458
     internal bool HasCurrentPhase => !Inactive &&
         Member.RemotePhaseSnapshot == Before && Member.RemotePhaseItem == Phase &&
         Member.RemotePhaseInputRevision == Member.ProjectileUseInputRevision;
-    internal bool NoItems => Buffs?.CountActive(new BuffTypeId(23)) > 0;
+    internal bool NoItems => Buffs?.HasNoItemsEffect == true;
     // These are source UpdateBuffs writers of frozen/webbed/stoned. They may
     // cancel the exact retained tool; they grant no new use or combat authority.
-    internal bool CrowdControlled => Buffs is { } buffs &&
-        (buffs.CountActive(new BuffTypeId(47)) > 0 || buffs.CountActive(new BuffTypeId(149)) > 0 ||
-         buffs.CountActive(new BuffTypeId(156)) > 0 || buffs.CountActive(new BuffTypeId(353)) > 0);
+    internal bool CrowdControlled => Buffs?.IsItemUseCrowdControlled == true;
 
     internal bool TryStageDummyOwner(int sourceDirection, float sourceRotation)
     {

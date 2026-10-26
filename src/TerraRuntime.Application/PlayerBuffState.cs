@@ -52,6 +52,14 @@ internal sealed partial class PlayerBuffState
         return result;
     }
 
+    // Player.UpdateBuffs / ItemCheck (1.4.5.8): CCed returns before ItemCheck,
+    // while Cursed prevents a new start. Neither fact revokes an earlier paid frame.
+    internal bool HasNoItemsEffect => contactNoItemsForUpdate || CountActive(VanillaBuffIds.Cursed) > 0;
+    internal bool IsItemUseCrowdControlled => contactCrowdControlForUpdate ||
+        CountActive(VanillaBuffIds.Frozen) > 0 || CountActive(VanillaBuffIds.Webbed) > 0 ||
+        CountActive(VanillaBuffIds.Stoned) > 0 || CountActive(VanillaBuffIds.Shimmer) > 0;
+    internal bool PreventsFreshItemUse => HasNoItemsEffect || IsItemUseCrowdControlled;
+
     internal PlayerDebuffSnapshot1458 CaptureDebuffFlags() =>
         new(CountActive(VanillaBuffIds.OnFire) != 0 || contactDebuffsForUpdate.OnFire,
             CountActive(VanillaBuffIds.CursedInferno) != 0 || contactDebuffsForUpdate.OnFire2,
@@ -68,6 +76,8 @@ internal sealed partial class PlayerBuffState
     {
         contactDebuffsForUpdate = default;
         contactFrozenForUpdate = false;
+        contactNoItemsForUpdate = false;
+        contactCrowdControlForUpdate = false;
         InvalidateFoodClockLineage();
         bool changed = false;
         // UpdateDead clears slots in place; don't move a preserved last slot into an earlier position.

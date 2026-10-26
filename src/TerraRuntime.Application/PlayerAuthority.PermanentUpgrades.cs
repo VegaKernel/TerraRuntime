@@ -160,7 +160,7 @@ internal sealed partial class PlayerAuthority
         bool paid = currentInput && inventory.TryPrepareSelectedPotionConsumption(plan.Member.Connection,
             plan.Member.SelectedItem, out _);
         if (!VanillaSelectedConsumable1458.TryStepPermanentUnlock(clocks, in facts, in unlocks,
-            selected.Stack, paid, plan.Buffs.CountActive(new(23)) > 0, combatEquipmentExpertMode,
+            selected.Stack, paid, plan.Buffs.HasNoItemsEffect, combatEquipmentExpertMode,
             random.Next, random.NextDouble, out var result)) return false;
         use = result.Use;
         if (!result.Applied) return !use.Consumed;

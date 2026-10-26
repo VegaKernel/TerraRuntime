@@ -11,7 +11,10 @@ internal sealed partial class PlayerBuffState
     private readonly bool[] ownedNpcContact = new bool[Capacity];
     private PlayerDebuffSnapshot1458 contactDebuffsForUpdate;
     private bool contactFrozenForUpdate;
-    internal bool HasOwnedNpcContactBuffs => ownedNpcContact.Contains(true) || contactDebuffsForUpdate != default || contactFrozenForUpdate;
+    private bool contactNoItemsForUpdate;
+    private bool contactCrowdControlForUpdate;
+    internal bool HasOwnedNpcContactBuffs => ownedNpcContact.Contains(true) || contactDebuffsForUpdate != default ||
+        contactFrozenForUpdate || contactNoItemsForUpdate || contactCrowdControlForUpdate;
     internal bool IsNpcContactFrozen => contactFrozenForUpdate || ContainsOwnedNpcContact(VanillaBuffIds.Frozen);
     internal PlayerDebuffSnapshot1458 CaptureOwnedNpcContactDebuffs() =>
         new(ContainsOwnedNpcContact(VanillaBuffIds.OnFire), ContainsOwnedNpcContact(VanillaBuffIds.CursedInferno),
@@ -45,6 +48,11 @@ internal sealed partial class PlayerBuffState
         bool changed = false;
         contactDebuffsForUpdate = CaptureOwnedNpcContactDebuffs();
         contactFrozenForUpdate = ContainsOwnedNpcContact(VanillaBuffIds.Frozen);
+        // The final positive UpdateBuffs iteration still supplies its effects
+        // after DelBuff removes the timer. The next update clears these facts.
+        contactNoItemsForUpdate = ContainsOwnedNpcContact(VanillaBuffIds.Cursed);
+        contactCrowdControlForUpdate = contactFrozenForUpdate ||
+            ContainsOwnedNpcContact(VanillaBuffIds.Webbed) || ContainsOwnedNpcContact(VanillaBuffIds.Stoned);
         // Age every slot once before compaction; holes must not move an already-aged slot into the loop again.
         for (int slot = 0; slot < Capacity; slot++)
             if (ownedNpcContact[slot] && durations[slot] > 0) durations[slot]--;
