@@ -258,7 +258,7 @@ public sealed partial class WorldRuntime : IDisposable
                 world.RuntimeMetadata.SkyblockWorld),
             sourcePlayerWorld: RuntimePlayerUpdateWorld1458.FromMetadata(world.Tiles.Dimensions, world.RuntimeMetadata),
             worldStateAdopted: RefreshWorldBootstrap);
-        State.BindAnglerWorld(world.RuntimeMetadata, RuntimeConnections.PublishAnglerState);
+        State.BindAnglerWorld(world.RuntimeMetadata, RuntimeConnections.PublishAnglerState, RuntimeConnections.PublishCharacterProgress);
         State.BindFishingWorldInfoPublisher(() =>
         {
             RefreshWorldBootstrap();

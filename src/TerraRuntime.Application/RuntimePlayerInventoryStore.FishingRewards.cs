@@ -23,8 +23,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         for (short slot = 0; slot < before.Length; slot++)
             if (!before[slot].IsCanonical || !CanAcceptOwnedQuantityReport(connection,
                     before[slot].ToCommitRequest(connection.Player.Slot, slot))) return false;
-        if (debitSlot != -1 && (debitSlot is < 0 or >= 58 || before[debitSlot].ItemType.Value != debitType ||
-            before[debitSlot].IsEmpty || quantities[debitSlot] <= 0)) return false;
+        if (debitSlot != -1 && !CanSpendFishingStock(connection, debitSlot, debitType, sourceCapture)) return false;
         preparation = new(this, connection, Serial, before, quantities, debitSlot, debitType,
             sourceCapture is null ? CaptureFundedCoinValues(connection) :
                 sourceCapture.Copper.AsSpan(0, InventorySlotCount).ToArray(), sourceCapture, liveBefore);
@@ -83,9 +82,10 @@ internal sealed partial class RuntimePlayerInventoryStore
             debited = true;
             if (debitSlot == -1) return true;
             var item = Image[debitSlot];
-            if (item.ItemType.Value != debitType || item.Stack <= 0 || quantity[debitSlot] <= 0) return false;
+            if (item.ItemType.Value != debitType || item.Stack <= 0 || !IsCurrent ||
+                !owner.CanSpendFishingStock(connection, debitSlot, debitType, sourceCapture)) return false;
             Image[debitSlot] = item.Stack == 1 ? default : item with { Stack = (short)(item.Stack - 1) };
-            quantity[debitSlot]--;
+            quantity[debitSlot] = (short)Math.Max(0, quantity[debitSlot] - 1);
             return true;
         }
 

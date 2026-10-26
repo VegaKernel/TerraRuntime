@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Fishing character boundary follow-up, 2026-10-26
+
+The follow-up admits legitimate first-spawn character fishing stock through existing physical ceilings without minting private pickup/copper budgets, and preserves those ceilings across existing cursor/sort/bank and managed transfer owners. Explicit76 imports current character Angler/golf snapshots; paid quests lock the session milestone. Reward-first crate cohorts stay untrusted until the existing paid source138 matcher accepts. Source probes establish NO76 at ordinary join and no counter-only regular sync; source GUI rewards precede75, own76 is ignored without SSC, and own5 is ignored for an unlocked non-SSC inventory. Ordinary GUI inventory/lifetime/reconnect/reward-RNG parity therefore remains open, alongside the exact client/server crate-RNG limitation. Server `.plr`/SSC storage is not required or introduced. Release0/0, final focused556/556, exact-test managed55/55 cases with189951 assertions and two causal omission controls pass. Final frozen fast/full/Windows Native/live gates are pending; overlapping foreign fulls caused the automatic own-full transition to be held for ordering clarification. This is not an advance to full vanilla fishing compatibility.
+
 ## Fishing merge integration, 2026-10-26
 
 User explicitly authorized merging `feature/fishing-authority-1458` (`3ecaa538`) into local main. Integration combines current origin/main `33adecbb` (including paid furniture and later liquid/Temple corrections) with the fishing commits; the original feature worktree remains unchanged. Six additive conflicts preserve BOTH status/evidence histories and all test resource groups, with866unique embedded-resource aliases. WorldRuntime's existing managedCustody binding and the added Angler save/publication binding are both retained. No production conflict required a behavioral rewrite.

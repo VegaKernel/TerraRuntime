@@ -86,6 +86,9 @@ internal sealed partial class PlayerAuthority
             case PublishAnglerStateRuntimeCommand quest:
                 PublishAnglerState(quest.Connection);
                 return true;
+            case PlayerCharacterProgressRuntimeCommand progress:
+                ApplyCharacterProgress(progress);
+                return true;
             case OpenFishingCrateRuntimeCommand crate:
                 bool opened = TryOpenFishingCrate(crate.Connection, crate.Slot, crate.ExpectedInventorySerial);
                 crate.Completion?.TrySetResult(opened);
@@ -534,6 +537,7 @@ internal sealed partial class PlayerAuthority
         if (TryReconcileShopInventoryReport(equipment)) return;
         if (TryReconcileFavoriteCursorReturn(equipment)) return;
         if (TryReconcileOwnedCursorMove(equipment)) return;
+        if (TryStageFishingCrateReward(equipment)) return;
         if (!inventory.CanAcceptOwnedQuantityReport(equipment.Connection, in request))
         {
             RejectedEquipmentUpdates++;
@@ -781,6 +785,11 @@ internal sealed partial class PlayerAuthority
 
         if (!inventory.TryAttach(spawn.Connection))
             throw new InvalidOperationException("Player inventory ownership changed during authoritative spawn commit.");
+
+        // Initial vanilla packet5 character images precede the first packet12,
+        // not138. Adopt their existing ceilings before spawn observers; this is
+        // never repeated by the separate respawn or managed-transfer paths.
+        inventory.SealFishingCharacterInventory(spawn.Connection);
 
         RuntimePendingPlayerVitals? pending = membership.TakePending(request.ClaimedSlot);
         bool hasPending = pending is not null && pending.Connection == spawn.Connection;

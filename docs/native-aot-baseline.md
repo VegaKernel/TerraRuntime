@@ -1,5 +1,11 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Fishing character boundary follow-up, 2026-10-26
+
+`feature/fishing-character-sync-1458` extends the merged fishing source with first-spawn physical stock ceilings and explicit authenticated76 count/golf handling. Existing inventory, journal, world-item, RNG, membership and transfer owners remain the sole owners; no production dependency, reflection-discovery surface, character database or server `.plr` mode is added. Release warnings-as-errors and two independent omission controls pass; source bytes are restored. Final focused556/556 passes with zero skips. The isolated exact-test managed replay passes55/55 static cases,42unique methods and189951 assertions;24linked inputs,1784production inputs and197canonical DLLs are exact before/after. This replay is prepared for Native, not yet Native-published.
+
+The user reopened the shared slot, but two foreign fulls90396/18584 were discovered. Our automatic transition to full was stopped before any own full began; fast continues, and ordering clarification is pending. `.cache/character-sync/` records the gates. No full/Native acceptance is claimed yet. Genuine LinuxNative and ordinary GUI Angler/crate economic parity remain unverified; actual source probes disprove automatic76 at join, confirm local reward-before75, and show an unlocked non-SSC client ignoring its own5 inventory update. Server `.plr` storage is not a prerequisite or a solution to those protocol roles.
+
 ## Fishing merge integration, 2026-10-26
 
 User explicitly authorized merging `feature/fishing-authority-1458` (`3ecaa538`) into local main. Integration combines current origin/main `33adecbb` (including paid furniture and later liquid/Temple corrections) with the fishing commits; the original feature worktree remains unchanged. Six additive conflicts preserve BOTH status/evidence histories and all test resource groups, with866unique embedded-resource aliases. WorldRuntime's existing managedCustody binding and the added Angler save/publication binding are both retained. No production conflict required a behavioral rewrite.

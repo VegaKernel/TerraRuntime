@@ -22,6 +22,8 @@ internal sealed record RuntimePlayerTransferState(
     internal bool OwnsLifeMaximum { get; init; }
     internal byte OwnedPermanentUpgradeMask { get; init; }
     internal int AnglerQuestsFinished { get; init; }
+    internal int GolferScoreAccumulated { get; init; }
+    internal bool OwnsAnglerQuestsFinished { get; init; }
     internal bool OwnsFishingLadyBugLuck { get; init; }
     internal bool OwnsTorchFavor { get; init; }
     internal bool PaidTorchFavor { get; init; }

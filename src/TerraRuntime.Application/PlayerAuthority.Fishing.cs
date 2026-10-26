@@ -90,7 +90,7 @@ internal sealed partial class PlayerAuthority
                 Span<FishingInventorySlot1458> image = stackalloc FishingInventorySlot1458[59];
                 for (int i = 0; i < image.Length; i++) image[i] = new(plan.InventoryBefore[i].ItemType.Value, plan.InventoryBefore[i].Stack);
                 int slot = FishingRules1458.SelectBait(image, bobber.Result.BaitItemType);
-                caught = slot >= 0 && inventory.TryGetFundedQuantity(plan.Member.Connection, slot, out var quantity) && quantity > 0;
+                caught = slot >= 0 && inventory.CanSpendFishingStock(plan.Member.Connection, slot, bobber.Result.BaitItemType);
                 if (caught)
                 {
                     var bait = plan.InventoryBefore[slot];

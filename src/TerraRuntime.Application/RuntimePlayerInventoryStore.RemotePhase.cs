@@ -28,8 +28,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     {
         var types = new List<int> { 109, 110, 189, 500, 2209 };
         for (int type = 1; type < VanillaItemIds.Count; type++)
-            if (FishingRules1458.GetBaitPower(type) > 0 || VanillaFishingCrate1458.IsCrate(type) ||
-                type is >= 2450 and <= 2488 or 4393 or 4394 or >= 2354 and <= 2356)
+            if (IsFishingStockType(type))
                 types.Add(type);
         return types.ToArray();
     }
@@ -168,7 +167,10 @@ internal sealed partial class RuntimePlayerInventoryStore
             bool consumer = VanillaSelectedConsumableCatalog1458.TryGet(mutation.Before.ItemType, out var potion) &&
                 (potion.HealLife > 0 || potion.HealMana > 0 || potion.BuffType > 0 ||
                  mutation.Before.ItemType.Value is 29 or 1291 or 3335 or 5326 or 5337 or 5338 or 5339 or 5340 or 5341 or 5342 or 5043);
-            if ((!bait && !consumer) || fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] <= 0) return false;
+            if (!bait && !consumer) return false;
+            bool fishingStock = bait || mutation.Before.ItemType.Value is >= 2354 and <= 2356;
+            if (fishingStock ? !CanSpendFishingStock(mutation.Connection, mutation.Slot, mutation.Before.ItemType.Value) :
+                fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] <= 0) return false;
         }
         int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);
         if (lane < 0) return true;
@@ -201,12 +203,15 @@ internal sealed partial class RuntimePlayerInventoryStore
                 var mutation=mutations[index];
                 if (mutation.CursorSourceDebit is { } source)
                 {
-                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=(short)(frozenSourceFunding[index]-1);
+                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=(short)Math.Max(0,frozenSourceFunding[index]-1);
                     source.AdoptSelectedPotionDebit();
                 }
                 else if (mutation.ConsumeFundedQuantity)
-                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] -=
-                        mutation.PlacementQuantity > 0 ? mutation.PlacementQuantity : (short)1;
+                {
+                    int offset = GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot);
+                    owner.fundedQuantities[offset] = (short)Math.Max(0, owner.fundedQuantities[offset] -
+                        (mutation.PlacementQuantity > 0 ? mutation.PlacementQuantity : 1));
+                }
                 owner.PreserveReportedFunding(mutation.Connection.Player.Slot.Value, mutation.Slot, mutation.After);
                 owner.items[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] = mutation.After;
                 int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);

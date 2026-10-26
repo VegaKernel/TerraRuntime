@@ -23,6 +23,7 @@ internal sealed partial class PlayerAuthority
         internal bool ObservedBatch;
         internal bool StagedCursorDebit;
         internal bool StagedQuantityImage;
+        internal bool FishingCrateCredit;
         internal bool MainSortOnly;
         internal bool CraftCandidate;
         internal CraftResolution? CraftResult;

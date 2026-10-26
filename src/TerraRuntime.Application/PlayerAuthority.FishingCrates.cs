@@ -8,6 +8,55 @@ internal sealed partial class PlayerAuthority
     private bool? fishingCrateLowTiles;
     internal void BindFishingCrateWorld(bool lowTiles) => fishingCrateLowTiles = lowTiles;
 
+    private bool TryStageFishingCrateReward(PlayerEquipmentRuntimeCommand command)
+    {
+        var request = command.Request;
+        if (request.SlotId is < 0 or >= 58 || request.PlayerSlot != command.Connection.Player.Slot ||
+            inventory.CanAcceptOwnedQuantityReport(command.Connection, in request) ||
+            !RuntimePlayerInventoryItem.TryFromNormalized(request, out var reported) ||
+            !membership.TryGet(command.Connection, out var member) || !HasOwnedPickupContext ||
+            member.IsDead || member.ItemAnimation > 0 || member.ItemPhase is not { ShopOpen: false }) return false;
+        var receipt = member.CursorMove;
+        var journal = receipt?.Shop;
+        if (journal is not null && (!journal.ObservedBatch || journal.IsSealed || journal.Invalid ||
+            journal.RemoteCraftSegments || journal.QuickBuffSealed || !IsCurrentShopActor(member, receipt!) ||
+            !journal.Capture.IsCurrent)) return false;
+        var capture = journal?.Capture;
+        if (capture is null && (!inventory.TryCaptureShopJournal(command.Connection, out capture) || capture is null)) return false;
+        bool sourceCrate = false;
+        for (int slot = 0; slot < 58; slot++)
+            if (VanillaFishingCrate1458.IsCrate(capture.Before[slot].ItemType.Value) &&
+                inventory.CanSpendFishingStock(command.Connection, slot, capture.Before[slot].ItemType.Value, capture))
+            { sourceCrate = true; break; }
+        if (!sourceCrate) return false;
+        journal ??= new(capture, null, null)
+        {
+            ObservedBatch = true, ObservedMember = member, ObservedActor = member.CaptureSnapshot(),
+            ObservedInputRevision = member.ProjectileUseInputRevision,
+            QuickBuffBefore = transferProfiles.CaptureBuffState(command.Connection)
+        };
+        if (!journal.Observe(request.SlotId, reported)) { RejectedEquipmentUpdates++; return true; }
+        // This is only an untrusted report in the existing whole journal. It
+        // neither changes physical stock nor widens a character-import ceiling;
+        // exact source138 payment/RNG matching is still required to earn it.
+        journal.StagedQuantityImage = journal.FishingCrateCredit = true;
+        member.CursorMove = receipt is null
+            ? new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision, null, Shop: journal)
+            : receipt with { Shop = journal };
+        return true;
+    }
+
+    private void RefuseFishingCrateReports(ConnectionHandle connection, RuntimePlayerMember member,
+        PendingCursorMove receipt, PendingShopJournal journal)
+    {
+        bool Current() => ReferenceEquals(member.CursorMove?.Shop, journal) && journal.Capture.IsCurrent &&
+            IsCurrentShopActor(member, receipt) && !journal.IsSealed && !journal.Invalid;
+        _ = TryFishingRewards(connection, -1, 0, false, _ => true, Current,
+            () => DropBankBatchAlternative(member, journal), journal.Capture);
+        RejectedEquipmentUpdates++;
+        DropBankBatchAlternative(member, journal);
+    }
+
     // Source UI has no open packet. Its exact decrement joins the existing
     // whole-inventory journal; a source138 reward cohort establishes opening.
     private bool TryObserveFishingCrateOpen(PlayerEquipmentRuntimeCommand command)
@@ -49,7 +98,6 @@ internal sealed partial class PlayerAuthority
             member.ItemPhase is not { ShopOpen: false } || journal.Capture.Before[58] != journal.Reports[58]) return false;
         short selected = -1; int type = 0; bool multipleDebits = false;
         var source = journal.Capture.Before;
-        var quantities = journal.Capture.Quantity;
         var lostTypes = new HashSet<int>();
         for (short slot = 0; slot < 58; slot++)
         {
@@ -58,10 +106,16 @@ internal sealed partial class PlayerAuthority
             var reported = journal.Reports[slot];
             if ((!reported.IsEmpty && reported.ItemType != before.ItemType) || reported.Stack >= before.Stack) continue;
             lostTypes.Add(before.ItemType.Value);
-            multipleDebits |= selected >= 0 || before.Stack - reported.Stack != 1 || quantities[slot] <= 0;
+            multipleDebits |= selected >= 0 || before.Stack - reported.Stack != 1 ||
+                !inventory.CanSpendFishingStock(connection, slot, before.ItemType.Value, journal.Capture);
             selected = slot; type = before.ItemType.Value;
         }
-        if (selected < 0) return false;
+        if (selected < 0)
+        {
+            if (!journal.FishingCrateCredit) return false;
+            RefuseFishingCrateReports(connection, member, receipt, journal);
+            return true;
+        }
         int lost = 0;
         foreach (int identity in lostTypes)
         {
@@ -74,7 +128,12 @@ internal sealed partial class PlayerAuthority
             int decrease = beforeTotal - afterTotal;
             // A conserved sort/cursor/bank operation is not crate opening. Keep
             // the established journal resolver and its funded move certificate.
-            if (decrease <= 0) return false;
+            if (decrease <= 0)
+            {
+                if (!journal.FishingCrateCredit) return false;
+                RefuseFishingCrateReports(connection, member, receipt, journal);
+                return true;
+            }
             lost += decrease;
         }
         if (journal.Seen.AsSpan(59).Contains(true)) return false;
@@ -90,10 +149,7 @@ internal sealed partial class PlayerAuthority
             // Early ordinary reports may have min-debited a source slot while
             // retaining its private budget in this journal. Refusing a coalesced
             // opening must restore that exact owned image, not lose paid crates.
-            _ = TryFishingRewards(connection, -1, 0, false, _ => true, Current,
-                () => DropBankBatchAlternative(member, journal), journal.Capture);
-            RejectedEquipmentUpdates++;
-            DropBankBatchAlternative(member, journal);
+            RefuseFishingCrateReports(connection, member, receipt, journal);
         }
         return true;
     }

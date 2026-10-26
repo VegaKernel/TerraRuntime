@@ -1,4 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Application;
 
@@ -7,6 +9,68 @@ internal sealed partial class RuntimePlayerInventoryStore
     // Reported canonical inventory and consumed ceilings cannot fund a new ground item.
     // Only explicit accepted owner operations add quantity to this existing slot owner.
     private readonly short[] fundedQuantities = new short[PlayerSlotCount * InventorySlotCount];
+
+    private static bool IsFishingStockType(int type) => FishingRules1458.GetBaitPower(type) > 0 ||
+        VanillaFishingCrate1458.IsCrate(type) || type is >= 2450 and <= 2488 or 4393 or 4394 or >= 2354 and <= 2356;
+
+    // MessageBuffer.GetData3 sends the character's packet5 image before packet6;
+    // its first accepted spawn closes that import. There is no initial138.
+    // Reuse physical ceilings without granting ground-item/payment provenance.
+    // Known ceilings are never widened, including if a caller repeats the seal.
+    internal void SealFishingCharacterInventory(ConnectionHandle connection)
+    {
+        if (!connection.IsAssigned || connections[connection.Player.Slot.Value] != connection || Serial == ulong.MaxValue) return;
+        int player = connection.Player.Slot.Value;
+        bool changed = false;
+        for (int lane = 5; lane < QuantityLaneCount; lane++)
+        {
+            int type = ownedQuantityTypes[lane];
+            for (int slot = 0; slot < InventorySlotCount; slot++)
+            {
+                ref short cap = ref ownedQuantityCaps[QuantityOffset(player, slot, lane)];
+                if (cap >= 0) continue;
+                var item = items[GetOffset(player, slot)];
+                cap = item.ItemType.Value == type ? item.Stack : (short)0;
+                changed = true;
+            }
+            for (int slot = 0; slot < ShopBankImageCount; slot++)
+            {
+                int offset = player * ShopBankImageCount + slot;
+                ref short cap = ref shopBankQuantityCaps[offset * QuantityLaneCount + lane];
+                if (cap >= 0) continue;
+                var item = shopBankItems[offset];
+                cap = item.ItemType.Value == type ? item.Stack : (short)0;
+                changed = true;
+            }
+        }
+        if (changed) Changed(player);
+    }
+
+    internal bool CanSpendFishingStock(ConnectionHandle connection, int slot, int expectedType,
+        ShopJournalCapture? sourceCapture = null)
+    {
+        if (slot is < 0 or >= 58 || !connection.IsAssigned ||
+            connections[connection.Player.Slot.Value] != connection || !IsFishingStockType(expectedType)) return false;
+        int lane = QuantityLane(new(expectedType));
+        if (lane < 5) return false;
+        RuntimePlayerInventoryItem item;
+        short cap, quantity;
+        if (sourceCapture is not null)
+        {
+            if (!sourceCapture.IsFor(this, connection) || !sourceCapture.IsCurrent) return false;
+            item = sourceCapture.Before[slot];
+            cap = sourceCapture.Caps[slot * QuantityLaneCount + lane];
+            quantity = sourceCapture.Quantity[slot];
+        }
+        else
+        {
+            item = items[GetOffset(connection.Player.Slot.Value, slot)];
+            cap = ownedQuantityCaps[QuantityOffset(connection.Player.Slot.Value, slot, lane)];
+            quantity = fundedQuantities[GetOffset(connection.Player.Slot.Value, slot)];
+        }
+        return item.IsCanonical && !item.IsEmpty && item.ItemType.Value == expectedType &&
+            item.Prefix.Value == 0 && cap >= item.Stack && quantity >= 0 && quantity <= item.Stack;
+    }
 
     private void PreserveReportedFunding(int player, int slot, in RuntimePlayerInventoryItem after)
     {

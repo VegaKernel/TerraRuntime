@@ -119,7 +119,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                 !AreValidOwnedQuantities(caps,before) ||
                 !VanillaSelectedConsumableCatalog1458.TryGet(before[slot].ItemType,out var potion) ||
                 (potion.HealLife <= 0 && potion.HealMana <= 0 && potion.BuffType <= 0 && before[slot].ItemType.Value is not (29 or 1291 or 3335 or 5326 or 5337 or 5338 or 5339 or 5340 or 5341 or 5342 or 5043)) || before[slot].Prefix.Value != 0 ||
-                funding[slot] < 1 || afterSlot != (before[slot].Stack == 1 ? default : before[slot] with { Stack=(short)(before[slot].Stack-1) })) return false;
+                (funding[slot] < 1 && !(before[slot].ItemType.Value is >= 2354 and <= 2356 &&
+                    caps.Any(cap => cap.Slot == slot && cap.ItemType == before[slot].ItemType && cap.Maximum >= before[slot].Stack))) ||
+                afterSlot != (before[slot].Stack == 1 ? default : before[slot] with { Stack=(short)(before[slot].Stack-1) })) return false;
             original=before[slot]; originalFunding=funding[slot]; return true;
         }
         internal ItemTypeId BeforePotionType => before[slot].ItemType;

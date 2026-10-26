@@ -262,11 +262,11 @@ public sealed class AnglerAuthority1458Tests
         Assert.Equal(10, loaded.RuntimeMetadata.InvasionSize);
     }
 
-    private static void SetAppearance(FishingCrateAuthority1458Tests.Fixture f, string name) =>
+    internal static void SetAppearance(FishingCrateAuthority1458Tests.Fixture f, string name) =>
         f.State.Apply(new PlayerAppearanceRuntimeCommand(f.Connection, new(f.Connection.Player.Slot, 0, 0, 0, 0, name,
             0, 0, 0, default, default, default, default, default, default, default, 0, 0, 0)));
 
-    private static void ConfigureAngler(FishingCrateAuthority1458Tests.Fixture f)
+    internal static void ConfigureAngler(FishingCrateAuthority1458Tests.Fixture f)
     {
         var npcs = new RuntimeNpcStore();
         Assert.True(npcs.TrySpawnVanilla(new(369, 369, 1610, 1606, 0, 0, 255, default, NpcSimulationState.Initial), out var vendor));

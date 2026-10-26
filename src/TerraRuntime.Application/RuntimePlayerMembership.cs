@@ -246,6 +246,8 @@ internal sealed class RuntimePlayerMember
     internal bool OwnsLifeMaximum { get; set; }
     internal byte OwnedPermanentUpgradeMask { get; set; }
     internal int AnglerQuestsFinished { get; set; }
+    internal int GolferScoreAccumulated { get; set; }
+    internal bool OwnsAnglerQuestsFinished { get; set; }
     internal ulong AnglerCompletedDay { get; set; }
     internal bool OwnsTorchFavor { get; set; }
     internal bool PaidTorchFavor { get; set; }

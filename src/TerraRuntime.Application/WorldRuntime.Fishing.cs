@@ -44,7 +44,7 @@ internal sealed partial class PlayerAuthority
         if (slot is < 0 or >= 58 || !membership.IsCurrent(connection) ||
             !inventory.TryGet(connection, slot, out var item) || item.IsEmpty ||
             !TerraRuntime.Gameplay.Items.VanillaFishingCrate1458.IsCrate(item.ItemType.Value) ||
-            !inventory.TryGetFundedQuantity(connection, slot, out var quantity) || quantity <= 0) return null;
+            !inventory.CanSpendFishingStock(connection, slot, item.ItemType.Value)) return null;
         return new(connection, slot, inventory.Serial, item.ItemType.Value, item.Stack);
     }
 }

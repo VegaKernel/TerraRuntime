@@ -1,5 +1,11 @@
 # Production graph
 
+## Fishing character boundary follow-up, 2026-10-26
+
+At the first accepted spawn, the initial packet5 character image establishes physical fishing-stock ceilings in the existing `RuntimePlayerInventoryStore`, covering the main inventory and four banks. No private quantity or copper grant occurs. The existing cursor/sort/bank owners move those ceilings; respawn and transfer never reseed them. Bait, three fishing potions, quest fish and crates spend canonical physical stock within known ceilings; actual rewards alone add private quantities. Reward-first crate reports are held in the existing `PendingShopJournal`, with no physical/cap/RNG adoption until the existing source138 exact cohort matcher pays.
+
+The bounded typed codec turns playing-state76 into an authenticated command; the current member retains count/golf and the existing peer relay publishes them. Paid Angler adoption locks the session count; transfer carries lock/count/golf. World daily names remain the persisted duplicate barrier; no parallel character store exists. Official join does not send76, own76 is ignored without SSC, and the source GUI rewards before75. Actual original GetData5 additionally ignores an unlocked non-SSC client's own inventory image; the inventory-lock branch remains unprobed. Explicit counter snapshots and authoritative paid intents therefore remain a bounded server contract, not proven transparent GUI inventory/lifetime/reward compatibility. Final frozen managed/Native/live gates for this follow-up are pending in `.cache/character-sync/`.
+
 ## Fishing merge integration, 2026-10-26
 
 User explicitly authorized merging `feature/fishing-authority-1458` (`3ecaa538`) into local main. Integration combines current origin/main `33adecbb` (including paid furniture and later liquid/Temple corrections) with the fishing commits; the original feature worktree remains unchanged. Six additive conflicts preserve BOTH status/evidence histories and all test resource groups, with866unique embedded-resource aliases. WorldRuntime's existing managedCustody binding and the added Angler save/publication binding are both retained. No production conflict required a behavioral rewrite.

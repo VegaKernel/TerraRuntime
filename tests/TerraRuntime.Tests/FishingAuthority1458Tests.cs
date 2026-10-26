@@ -109,7 +109,7 @@ public sealed partial class FishingAuthority1458Tests
         }
     }
 
-    private sealed class FishingFixture : IDisposable
+    internal sealed class FishingFixture : IDisposable
     {
         // Keep this real liquid pond above the source Underworld evaporation
         // band; a300-row synthetic world puts row100 inside that band.
@@ -133,7 +133,8 @@ public sealed partial class FishingAuthority1458Tests
         internal RuntimePlayerMember Member { get { Assert.True(Players.TryGet(Connection, out var member)); return member; } }
         internal FishingFixture(short bait, short baitType = 2674,
             WorldLiquidKind liquid = WorldLiquidKind.Water, short poleType = 2294,
-            RuntimeWorldClock? worldClock = null)
+            RuntimeWorldClock? worldClock = null, bool importedBait = false,
+            IReadOnlyDictionary<short, RuntimePlayerInventoryItem>? initialItems = null)
         {
             Assert.True(FishingRules1458.TryGetPole(poleType, out pole));
             for (int x = 0; x < 400; x++) Tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
@@ -165,8 +166,10 @@ public sealed partial class FishingAuthority1458Tests
             for (short slot = 0; slot < 59; slot++)
             {
                 short type = slot == 0 ? poleType : slot == 1 ? (short)1 : (short)0;
-                Apply(new PlayerEquipmentRuntimeCommand(Connection,
-                    new(session.Slot, slot, type == 0 ? (short)0 : (short)1, 0, type, 0)));
+                var item = new RuntimePlayerInventoryItem(new(type), type == 0 ? (short)0 : (short)1, default, 0);
+                if (importedBait && slot == 54) item = new(new(baitType), bait, default, 0);
+                if (initialItems is not null && initialItems.TryGetValue(slot, out var supplied)) item = supplied;
+                Apply(new PlayerEquipmentRuntimeCommand(Connection, item.ToCommitRequest(session.Slot, slot)));
             }
             Apply(new PlayerSpawnRuntimeCommand(Connection, session, new(session.Slot, 100, 103, 0, 0, 0, 0, 0)));
             Apply(new PlayerInventorySyncCompleteRuntimeCommand(Connection));
@@ -174,6 +177,13 @@ public sealed partial class FishingAuthority1458Tests
             Control(false); Tick();
             Assert.NotNull(Member.ItemPhase);
             Assert.True(Players.HasOwnedPickupContext);
+            if (importedBait)
+            {
+                BaitSlot = 54;
+                Assert.Equal(bait, Item(BaitSlot).Stack);
+                Assert.Equal(0, Funded(BaitSlot));
+                return;
+            }
             Assert.True(Items.TryAllocateSourceDrop(new(Member.PositionX, Member.PositionY, 0, 0, bait, 0,
                 WorldItemOwnershipMode.None, baitType, false, 0, 0), default, out var sourceBait, out _));
             Assert.True(Items.TryApplyOwner(sourceBait.Handle.Slot,

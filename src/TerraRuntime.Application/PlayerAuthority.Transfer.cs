@@ -91,6 +91,8 @@ internal sealed partial class PlayerAuthority
             OwnsLifeMaximum = player.OwnsLifeMaximum,
             OwnedPermanentUpgradeMask = player.OwnedPermanentUpgradeMask,
             AnglerQuestsFinished = player.AnglerQuestsFinished,
+            GolferScoreAccumulated = player.GolferScoreAccumulated,
+            OwnsAnglerQuestsFinished = player.OwnsAnglerQuestsFinished,
             OwnsFishingLadyBugLuck = player.OwnsFishingLadyBugLuck,
             OwnsTorchFavor = player.OwnsTorchFavor,
             PaidTorchFavor = player.PaidTorchFavor,
@@ -248,6 +250,7 @@ internal sealed partial class PlayerAuthority
 
         if (!connection.IsAssigned ||
             transfer.AnglerQuestsFinished < 0 ||
+            transfer.GolferScoreAccumulated < 0 ||
             transfer.Slot != connection.Player.Slot ||
             membership.Contains(connection.Player.Slot) ||
             transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
@@ -336,6 +339,8 @@ internal sealed partial class PlayerAuthority
             OwnsLifeMaximum = transfer.OwnsLifeMaximum,
             OwnedPermanentUpgradeMask = transfer.OwnedPermanentUpgradeMask,
             AnglerQuestsFinished = transfer.AnglerQuestsFinished,
+            GolferScoreAccumulated = transfer.GolferScoreAccumulated,
+            OwnsAnglerQuestsFinished = transfer.OwnsAnglerQuestsFinished,
             OwnsFishingLadyBugLuck = transfer.OwnsFishingLadyBugLuck,
             OwnsTorchFavor = transfer.OwnsTorchFavor,
             PaidTorchFavor = transfer.PaidTorchFavor,

@@ -8,11 +8,12 @@ namespace TerraRuntime.Application;
 internal sealed partial class ServerRuntimeState
 {
     internal void BindAnglerWorld(WorldFileRuntimeMetadata metadata,
-        Action<ConnectionHandle, byte, bool, int>? publisher = null)
+        Action<ConnectionHandle, byte, bool, int, int>? publisher = null,
+        Action<ConnectionHandle, int, int>? progressPublisher = null)
     {
         if (_runtime.WorldItems.SpawnRandom is not SystemWorldItemSpawnRandom source)
             throw new InvalidOperationException("Angler authority requires the existing source Main.rand owner.");
-        _runtime.Players.BindAnglerWorld(metadata, _runtime.WorldProgression, source.SourceRandom, publisher);
+        _runtime.Players.BindAnglerWorld(metadata, _runtime.WorldProgression, source.SourceRandom, publisher, progressPublisher);
         _runtime.WorldProgression.SetSlimeRedSpawnBaseline(metadata.UnlockedSlimeRedSpawn);
         _runtime.WorldClock?.BindAnglerOwner(_runtime.Players);
     }

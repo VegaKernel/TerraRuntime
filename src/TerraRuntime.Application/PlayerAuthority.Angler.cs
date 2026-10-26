@@ -14,10 +14,12 @@ internal sealed partial class PlayerAuthority
     private WorldAnglerQuestData1458? anglerState;
     private ulong anglerRevision;
     private ulong anglerDay = 1;
-    private Action<ConnectionHandle, byte, bool, int>? anglerPublisher;
+    private Action<ConnectionHandle, byte, bool, int, int>? anglerPublisher;
+    private Action<ConnectionHandle, int, int>? characterProgressPublisher;
 
     internal void BindAnglerWorld(WorldFileRuntimeMetadata metadata, RuntimeWorldProgressionMutations progression,
-        VanillaUnifiedRandom1458 random, Action<ConnectionHandle, byte, bool, int>? publisher = null)
+        VanillaUnifiedRandom1458 random, Action<ConnectionHandle, byte, bool, int, int>? publisher = null,
+        Action<ConnectionHandle, int, int>? progressPublisher = null)
     {
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(progression);
@@ -29,6 +31,7 @@ internal sealed partial class PlayerAuthority
         anglerState = metadata.AnglerQuest;
         anglerRevision = 1;
         anglerPublisher = publisher;
+        characterProgressPublisher = progressPublisher;
     }
 
     internal WorldAnglerQuestData1458? CaptureAnglerSaveState() => anglerState;
@@ -47,8 +50,28 @@ internal sealed partial class PlayerAuthority
 
     internal void PublishAnglerState(ConnectionHandle connection)
     {
-        if (TryCaptureAnglerState(connection, out byte quest, out bool completed, out int count))
-            anglerPublisher?.Invoke(connection, quest, completed, count);
+        if (TryCaptureAnglerState(connection, out byte quest, out bool completed, out int count) &&
+            membership.TryGet(connection, out var member))
+            anglerPublisher?.Invoke(connection, quest, completed, count, member.GolferScoreAccumulated);
+    }
+
+    private void ApplyCharacterProgress(PlayerCharacterProgressRuntimeCommand progress)
+    {
+        if (progress.AnglerQuestsFinished < 0 || progress.GolferScoreAccumulated < 0 ||
+            !membership.TryGet(progress.Connection, out var member)) return;
+        // Vanilla76 is character state, not proof of a new completion. Once this
+        // session commits a real quest, later reports cannot rewrite that paid
+        // milestone. Golf remains a separate client-owned character field.
+        int count = member.OwnsAnglerQuestsFinished ? member.AnglerQuestsFinished : progress.AnglerQuestsFinished;
+        if (count != member.AnglerQuestsFinished || progress.GolferScoreAccumulated != member.GolferScoreAccumulated)
+        {
+            if (!member.TryAdvanceRevision()) return;
+            member.AnglerQuestsFinished = count;
+            member.GolferScoreAccumulated = progress.GolferScoreAccumulated;
+            member.MarkRemotePhaseSnapshot();
+        }
+        characterProgressPublisher?.Invoke(progress.Connection, count, member.GolferScoreAccumulated);
+        PublishAnglerState(progress.Connection);
     }
 
     internal bool SwapAnglerQuestAtDawn()
@@ -101,7 +124,7 @@ internal sealed partial class PlayerAuthority
             // cannot be skipped in favor of a later funded stack.
             if (slot < 58 && item.ItemType.Value == fish && fishSlot < 0) fishSlot = slot;
         }
-        if (fishSlot < 0 || !inventory.TryGetFundedQuantity(connection, fishSlot, out short funded) || funded <= 0)
+        if (fishSlot < 0 || !inventory.CanSpendFishingStock(connection, fishSlot, fish))
             return false;
         var banks = new RuntimePlayerInventoryItem[160];
         var copper = new long[160];
@@ -133,6 +156,7 @@ internal sealed partial class PlayerAuthority
             }, guard: Current, adopt: () =>
             {
                 member.AnglerQuestsFinished = oldCount + 1;
+                member.OwnsAnglerQuestsFinished = true;
                 member.AnglerCompletedDay = anglerDay;
                 anglerState = nextState;
                 anglerRevision++;
@@ -143,7 +167,11 @@ internal sealed partial class PlayerAuthority
         {
             // Rewards may already be committed when a network observer throws.
             // Neither a retry nor the completion flag may pay again.
-            if (adopted) PublishAnglerState(connection);
+            if (adopted)
+            {
+                try { PublishAnglerState(connection); }
+                finally { characterProgressPublisher?.Invoke(connection, member.AnglerQuestsFinished, member.GolferScoreAccumulated); }
+            }
         }
     }
 
