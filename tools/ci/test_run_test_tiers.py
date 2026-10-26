@@ -173,7 +173,7 @@ class TestTierSelection(unittest.TestCase):
 
     def test_real_manifest_methods_have_source_owners_and_full_domains(self):
         policy = tiers.load_policy(tiers.POLICY)
-        self.assertEqual(166, len(policy["heavy_methods"]))
+        self.assertEqual(167, len(policy["heavy_methods"]))
         for entry in policy["heavy_methods"]:
             self.assertTrue((tiers.ROOT / entry["file"]).is_file(), entry["file"])
             self.assertTrue(entry["domains"])

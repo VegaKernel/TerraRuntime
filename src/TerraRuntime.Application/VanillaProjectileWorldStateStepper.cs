@@ -128,7 +128,13 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
             in behavior,
             in behaviorContext,
             out next);
-        if (resolved) next = next with { PlayerBuff = behavior.PlayerBuff, NpcHealing = behavior.NpcHealing };
+        if (resolved) next = next with
+        {
+            PlayerBuff = behavior.PlayerBuff,
+            NpcHealing = behavior.NpcHealing,
+            OrdinaryAmmoSourceUpdate = current.Type.Value is 4 or 5 or 981 ||
+                current.Type.Value is 1 or 2 or 14 && next.TerminationReason == ProjectileSimulationTerminationReason.TileCollision
+        };
         return resolved;
     }
 

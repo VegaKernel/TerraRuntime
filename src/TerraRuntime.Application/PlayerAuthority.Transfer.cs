@@ -353,6 +353,7 @@ internal sealed partial class PlayerAuthority
                     LastActionUpdate = long.MinValue,
                     Input = null,
                     WeaponShoot = null,
+                    WeaponShootHistory = null,
                     HeldProjectile = null,
                     HeldProjectileType = 0,
                     HeldUseEpoch = 0,

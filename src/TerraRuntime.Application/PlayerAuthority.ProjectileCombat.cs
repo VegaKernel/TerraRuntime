@@ -20,6 +20,8 @@ internal sealed partial class PlayerAuthority
     }
 
     private static bool IsValidDerivedCombat(in VanillaPlayerCombatSnapshot combat) =>
+        combat.AmmoCyclingMode <= AmmoCyclingMode1458.Random &&
+        (combat.AmmoCyclingMode == AmmoCyclingMode1458.None || combat.AmmoCyclerDamage) &&
         combat.Defense >= 0 && combat.MeleeCrit >= 0 && combat.RangedCrit >= 0 && combat.MagicCrit >= 0 &&
         combat.ArmorPenetration >= 0 && combat.MeleeArmorPenetration >= 0 && combat.LavaProtectionTicks >= 0 &&
         float.IsFinite(combat.ManaCostMultiplier) && combat.ManaCostMultiplier > 0f &&

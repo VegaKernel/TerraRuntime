@@ -311,7 +311,8 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             normalized.TerminationReason,
             normalized.PlayerBuff ?? current.PlayerBuff,
             normalized.KillOrigin ?? current.KillOrigin)
-        { SourceDirection = normalized.SourceDirection };
+        { SourceDirection = normalized.SourceDirection,
+          OrdinaryAmmoSourceUpdate = normalized.OrdinaryAmmoSourceUpdate || current.OrdinaryAmmoSourceUpdate };
         return true;
     }
 
@@ -386,5 +387,6 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             current.TerminationReason,
             current.Lifecycle.LocalAi,
             current.PlayerBuff,
-            current.KillOrigin) { SourceDirection = current.SourceDirection };
+            current.KillOrigin) { SourceDirection = current.SourceDirection,
+                OrdinaryAmmoSourceUpdate = current.OrdinaryAmmoSourceUpdate };
 }

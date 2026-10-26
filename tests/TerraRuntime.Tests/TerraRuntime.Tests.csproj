@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/AmmoProjectileDeathLinux1458.json.gz" LogicalName="AmmoProjectileDeathLinux1458" />
+    <EmbeddedResource Include="Fixtures/AmmoProjectileDeathWindows1458.json.gz" LogicalName="AmmoProjectileDeathWindows1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeLinux1458.json.gz" LogicalName="UndeadVariantsRuntimeLinux1458" />
     <EmbeddedResource Include="Fixtures/GemBunnyRuntimeLinux1458.json.gz" LogicalName="GemBunnyRuntimeLinux1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeWindows1458.json.gz" LogicalName="UndeadVariantsRuntimeWindows1458" />
@@ -1013,5 +1015,24 @@
     <EmbeddedResource Include="Fixtures/PaidFurniture/Ordinary-rows-Windows.json.gz" LogicalName="PaidFurnitureOrdinaryRowsWindows1458" />
     <EmbeddedResource Include="Fixtures/PaidFurniture/IdOrder-Linux.json.gz" LogicalName="PaidFurnitureIdOrderLinux1458" />
     <EmbeddedResource Include="Fixtures/PaidFurniture/IdOrder-Windows.json.gz" LogicalName="PaidFurnitureIdOrderWindows1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/released-tool-linux.json.gz" LogicalName="ReleasedToolLinux1458" />
+    <EmbeddedResource Include="Fixtures/released-tool-windows.json.gz" LogicalName="ReleasedToolWindows1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/AmmoContinuityLinuxFirst1458.jsonl.gz" LogicalName="AmmoContinuityLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AmmoContinuityLinuxRepeat1458.jsonl.gz" LogicalName="AmmoContinuityLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AmmoContinuityWindowsFirst1458.jsonl.gz" LogicalName="AmmoContinuityWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/AmmoContinuityWindowsRepeat1458.jsonl.gz" LogicalName="AmmoContinuityWindowsRepeat1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/AmmoCycling/Rows-Linux.json.gz" LogicalName="AmmoCyclingRowsLinux1458" />
+    <EmbeddedResource Include="Fixtures/AmmoCycling/Rows-Windows.json.gz" LogicalName="AmmoCyclingRowsWindows1458" />
+    <EmbeddedResource Include="Fixtures/AmmoCycling/Metadata.json.gz" LogicalName="AmmoCyclingMetadata1458" />
+    <EmbeddedResource Include="Fixtures/AmmoCycling/Equipment-Linux.json.gz" LogicalName="AmmoCyclingEquipmentLinux1458" />
+    <EmbeddedResource Include="Fixtures/AmmoCycling/Equipment-Windows.json.gz" LogicalName="AmmoCyclingEquipmentWindows1458" />
+    <EmbeddedResource Include="Fixtures/AmmoCycling/ItemCheck-Linux.jsonl.gz" LogicalName="AmmoCyclingItemCheckLinux1458" />
+    <EmbeddedResource Include="Fixtures/AmmoCycling/ItemCheck-Windows.jsonl.gz" LogicalName="AmmoCyclingItemCheckWindows1458" />
   </ItemGroup>
 </Project>

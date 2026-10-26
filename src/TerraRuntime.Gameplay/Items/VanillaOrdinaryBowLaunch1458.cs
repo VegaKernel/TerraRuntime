@@ -91,7 +91,10 @@ public static class VanillaOrdinaryBowLaunch1458
 
     /// <summary>Bounded retained damage/Archery shape; this does not admit new equipped damage gear.</summary>
     public static bool HasSupportedLaunchModifiers(in VanillaPlayerCombatSnapshot combat) =>
-        !combat.MagicQuiver && combat.RangedMultDamage == 1f && combat.ArrowDamageAdditiveStack == 0f &&
+        // One represented Magic Quiver contributes the source additive0.1;
+        // its speed/conservation writers already belong to the same source use.
+        combat.RangedMultDamage == 1f &&
+        combat.ArrowDamageAdditiveStack == (combat.MagicQuiver ? 0.1f : 0f) &&
         float.IsFinite(combat.BowDamageMultiplier) && combat.BowDamageMultiplier > 0f;
 
     /// <summary>

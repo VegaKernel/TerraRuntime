@@ -38,6 +38,7 @@ internal sealed partial class PlayerAuthority
         out RuntimePlayerToolUse1458 after)
     {
         after=before;
+        if(TryTrackOrderedAmmoClock(before,slot,in selected,in facts,in remoteBefore,in remoteUse,in phase,plan,out after))return true;
         if (toolWorld is null || playerUpdateWorld is not { } world) return false;
         int delta=remoteBefore.RevolverCritBonus-remoteUse.State.RevolverCritBonus;
         int roll=delta==2?0:delta==0?1:-1;
@@ -165,6 +166,9 @@ internal sealed partial class PlayerAuthority
             !inventory.TryGet(capture.Connection,capture.Player.SelectedItem,out var selected) ||
             !VanillaLocalWeaponClockCatalog1458.TryResolve(selected.ItemType,selected.Prefix,
                 world.WindowsItemPrefixArithmetic,out var definition))return true;
+        if(IsOrderedAmmoWeapon(selected) && (before.WeaponShootHistory is {Uses.Length:>0} ||
+            before.LocalClocksKnown && capture.Member?.ItemUseCaller==RuntimeItemUseCaller1458.LocalOwnerProjection &&
+            (capture.Player.ControlFlags&32)!=0))return false;
         if(before.WeaponShoot is {Committed:true})return false;
         if(!before.LocalClocksKnown && before.WeaponShoot is null)return true;
         if(before.DeferredSelectionSlot is not null)return false;

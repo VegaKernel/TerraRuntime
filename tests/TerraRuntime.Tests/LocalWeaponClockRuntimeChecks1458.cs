@@ -249,20 +249,21 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
     public void Paid_clock_and_ammo_exist_before_reentrant_throwing_publication(bool packetFirst)
     {
         using var f=new Fixture(false);f.Equip(7,39,1);f.Equip(1,3509,1);f.Equip(54,40,1);f.Select(7);
-        f.Control(7,false);f.State.Tick();f.Control(7,true);if(!packetFirst)f.State.Tick();int calls=0;
+        f.Control(7,false);f.State.Tick();f.Control(7,true);int calls=0;
         f.Events.OnEquipment=()=>
         {
             calls++;Assert.True(f.ToolClock.LocalClocksKnown);Assert.True(f.Item(54).IsEmpty);
             var clock=f.ToolClock.Clocks;
-            var nested=Assert.Throws<InvalidOperationException>(()=>f.SourceBirth(39));
-            Assert.Equal("Nested client projectile commit scopes are not supported.",nested.Message);
-            Assert.Equal(clock,f.ToolClock.Clocks);
+            // Packet-first already has all birth keys; phase-first may first
+            // deliver the paid report from this observer. Neither can re-debit.
+            f.SourceBirth(39);Assert.Equal(1,f.Projectiles.PromotedClientProjectileSpawns);
+            Assert.Equal(clock,f.ToolClock.Clocks);Assert.True(f.ToolClock.WeaponShootHistory!.Uses[0].Born);
             throw new InvalidOperationException("owned clock observer");
         };
-        var error=Assert.Throws<InvalidOperationException>(()=>f.SourceBirth(39));Assert.Equal("owned clock observer",error.Message);
-        Assert.Equal(1,calls);Assert.True(f.Item(54).IsEmpty);Assert.True(f.ToolClock.LocalClocksKnown);
-        f.Events.OnEquipment=null;
-        if(packetFirst)f.State.Tick();
+        var error=Assert.Throws<InvalidOperationException>(()=>
+        {if(packetFirst)f.SourceBirth(39);f.State.Tick();if(!packetFirst)f.SourceBirth(39);});
+        Assert.Equal("owned clock observer",error.Message);Assert.Equal(1,calls);
+        Assert.True(f.Item(54).IsEmpty);Assert.True(f.ToolClock.LocalClocksKnown);f.Events.OnEquipment=null;
         Assert.Equal(30,f.ToolClock.Clocks.Selected.ItemTime);
         var unchanged=f.ToolClock.Clocks;f.SourceBirth(39);Assert.Equal(unchanged,f.ToolClock.Clocks);Assert.True(f.Item(54).IsEmpty);
         f.Control(7,false);for(int i=0;i<35;i++)f.State.Tick();f.Select(1);
@@ -271,7 +272,8 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
 
     public void Exact_preparation_refuses_inventory_mutation_and_unrelated_change_does_not_forge_a_new_epoch()
     {
-        using var f=new Fixture(false);f.Equip(7,39,1);f.Equip(54,40,3);f.Select(7);f.Control(7,false);f.State.Tick();
+        // This remains the original strict neutral component/preparation contract.
+        using var f=new Fixture(false,itemUseCaller:RuntimeItemUseCaller1458.Unknown);f.Equip(7,39,1);f.Equip(54,40,3);f.Select(7);f.Control(7,false);f.State.Tick();
         f.Control(7,true);f.State.Tick();var epoch=f.ToolClock.UseEpoch;
         Assert.True(f.Players.TryCaptureProjectileUse(f.Connection,out var capture));Assert.NotNull(capture);
         var debit=new RuntimePlayerInventoryMutation(54,f.Item(54) with{Stack=2});
@@ -286,7 +288,8 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
 
     public void Uncompleted_source_offer_cannot_resurrect_local_clock_after_the_next_owned_frame()
     {
-        using var f=new Fixture(false);f.Equip(7,39,1);f.Equip(54,40,3);f.Select(7);f.Control(7,false);f.State.Tick();
+        // This remains the original strict neutral component/preparation contract.
+        using var f=new Fixture(false,itemUseCaller:RuntimeItemUseCaller1458.Unknown);f.Equip(7,39,1);f.Equip(54,40,3);f.Select(7);f.Control(7,false);f.State.Tick();
         f.Control(7,true);f.State.Tick();Assert.NotNull(f.ToolClock.WeaponShoot);Assert.False(f.ToolClock.LocalClocksKnown);
         f.State.Tick();Assert.Null(f.ToolClock.WeaponShoot);Assert.False(f.ToolClock.LocalClocksKnown);
         f.SourceBirth(39);Assert.False(f.ToolClock.LocalClocksKnown);
@@ -304,8 +307,15 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
     public void NoItems_added_after_the_owned_frame_does_not_reject_its_source_owner_tail(short weapon,short ammo)
     {
         using var f=new Fixture(false);f.Equip(7,weapon,1);if(ammo!=0)f.Equip(54,ammo,3);f.Select(7);f.SetMana();
-        f.Control(7,false);f.State.Tick();f.Control(7,true);f.State.Tick();Assert.NotNull(f.ToolClock.WeaponShoot);
+        f.Control(7,false);f.State.Tick();f.Control(7,true);f.State.Tick();
+        if(ammo==0)Assert.NotNull(f.ToolClock.WeaponShoot);
+        else
+        {
+            Assert.Single(f.ToolClock.WeaponShootHistory!.Uses);
+            Assert.Equal(2,f.Item(54).Stack);Assert.False(f.ToolClock.WeaponShootHistory.Uses[0].Born);
+        }
         f.Buff23();f.SourceBirth(weapon);Assert.True(f.ToolClock.LocalClocksKnown);Assert.Null(f.ToolClock.WeaponShoot);
+        if(ammo!=0){Assert.True(f.ToolClock.WeaponShootHistory!.Uses[0].Born);Assert.Equal(2,f.Item(54).Stack);}
     }
 
     public void The_last_available_member_revision_adopts_mana_and_clock_once()
@@ -319,7 +329,9 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
 
     public void An_old_generation_capture_cannot_write_the_replacement_local_clock_or_inventory()
     {
-        using var f=new Fixture(false);f.Equip(7,39,1);f.Equip(54,40,3);f.Select(7);f.Control(7,false);f.State.Tick();f.Control(7,true);f.State.Tick();
+        // Exercise the strict receipt commit boundary. The local phase-paid
+        // owner cannot be charged again through this legacy leaf contract.
+        using var f=new Fixture(false,itemUseCaller:RuntimeItemUseCaller1458.Unknown);f.Equip(7,39,1);f.Equip(54,40,3);f.Select(7);f.Control(7,false);f.State.Tick();f.Control(7,true);f.State.Tick();
         var players=f.Players;Assert.True(players.TryCaptureProjectileUse(f.Connection,out var capture));Assert.NotNull(capture);
         var debit=new RuntimePlayerInventoryMutation(54,f.Item(54) with{Stack=2});Assert.True(players.CanCommitProjectileUse(capture,debit,0));
         using var replacement=f.Reconnect();Assert.True(players.TryGet(replacement.Slot,out var current));var phase=current.ItemPhase;
@@ -330,12 +342,12 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
     public void Early_paid_bow_cannot_be_shortened_by_a_new_tool_selection_and_success_claim()
     {
         using var f=new Fixture(false);f.Equip(7,39,1);f.Equip(1,2776,1);f.Equip(54,40,3);f.Select(7);
-        f.Control(7,false);f.State.Tick();f.Control(7,true);f.SourceBirth(39);
+        f.Control(7,false);f.State.Tick();f.Control(7,true);f.SourceBirth(39);f.State.Tick();
         Assert.True(f.ToolClock.LocalClocksKnown);Assert.Equal(29,f.ToolClock.Clocks.Selected.Animation);Assert.Equal(30,f.ToolClock.Clocks.Selected.ItemTime);
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles,50,52));
         f.Control(1,true);f.RawKill();f.State.Tick();
         Assert.True(f.Tiles.Get(50,52).IsActive);Assert.Equal(0,f.Items.ActiveCount);
-        Assert.Equal(29,f.ToolClock.Clocks.Selected.Animation);Assert.Equal(30,f.ToolClock.Clocks.Selected.ItemTime);
+        Assert.Equal(28,f.ToolClock.Clocks.Selected.Animation);Assert.Equal(29,f.ToolClock.Clocks.Selected.ItemTime);
         Assert.Equal((byte)7,f.ToolClock.SourceSlot);Assert.Equal((byte?)1,f.ToolClock.DeferredSelectionSlot);
     }
 
@@ -343,7 +355,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
     {
         using var f=new Fixture(false);f.Equip(7,weapon,1);if(ammo!=0)f.Equip(54,ammo,3);f.SetMana();
         f.Control(7,true);f.SourceBirth(weapon);
-        bool deferred=weapon==113 && f.ToolClock.WeaponShoot?.PendingReport is not null;
+        bool deferred=ammo!=0 || weapon==113 && f.ToolClock.WeaponShoot?.PendingReport is not null;
         if(deferred)f.State.Tick();
         Assert.True(f.ToolClock.LocalClocksKnown);Assert.True(f.ToolClock.Clocks.Selected.Animation>0);
         var before=f.ToolClock.Clocks;if(!deferred)f.State.Tick();Assert.Equal(before.Selected.Animation,f.ToolClock.Clocks.Selected.Animation);
@@ -627,7 +639,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
         f.Select(7);f.Control(7,false);f.State.Tick();f.Control(7,true);if(paid)f.State.Tick();
         f.ContactBlock(buff,finalTick);var mana=f.Member.Mana;short ammo=f.Item(54).Stack;var before=f.ToolClock;var random=f.PlayerRandom.Clone();
         f.SourceBirth(weapon);Assert.Equal(paid?1:0,f.Projectiles.PromotedClientProjectileSpawns);
-        Assert.Equal(paid?ammo-1:ammo,f.Item(54).Stack);Assert.Equal(mana,f.Member.Mana);Assert.True(f.PlayerRandom.HasSameState(random));
+        Assert.Equal(ammo,f.Item(54).Stack);Assert.Equal(mana,f.Member.Mana);Assert.True(f.PlayerRandom.HasSameState(random));
         if(paid)Assert.True(f.ToolClock.LocalClocksKnown);else Assert.Equal(before,f.ToolClock);
     }
     public void Seven_gem_entropy_births_keep_all_source_keys_before_tool_continuation(string edition,short staff,bool earlierRemote)
@@ -649,7 +661,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles,50,52));f.Kill();Assert.False(f.Tiles.Get(50,52).IsActive);
         Assert.Equal(births+source.Packets.Length,f.Projectiles.PromotedClientProjectileSpawns);
     }
-    private sealed class WeaponClockEvents : IRuntimePlayerEventSink,IProjectileStateCommitSink
+    internal sealed class WeaponClockEvents : IRuntimePlayerEventSink,IProjectileStateCommitSink
     {
         internal Action? OnEquipment;
 
@@ -657,9 +669,10 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
         public void ProjectileStateCommitted(ProjectileStateCommitKind kind,in ProjectileSnapshot snapshot)
         {if(kind==ProjectileStateCommitKind.Spawn)OnBirth?.Invoke();}
         internal readonly List<PlayerManaCommitRequest> Mana=[];
+        internal readonly List<PlayerHealthCommitRequest> Health=[];
         public void PlayerAppearanceUpdated(ConnectionHandle c,in PlayerAppearanceCommitRequest r){}
         public void PlayerEquipmentUpdated(ConnectionHandle c,in PlayerEquipmentCommitRequest r)=>OnEquipment?.Invoke();
-        public void PlayerHealthUpdated(ConnectionHandle c,in PlayerHealthCommitRequest r){}
+        public void PlayerHealthUpdated(ConnectionHandle c,in PlayerHealthCommitRequest r){Health.Add(r);}
         public void PlayerManaUpdated(ConnectionHandle c,in PlayerManaCommitRequest r){Mana.Add(r);}
         public void PlayerItemAnimationUpdated(ConnectionHandle c,float r,short a){}
         public void PlayerBuffTypesUpdated(ConnectionHandle c,in PlayerBuffTypesCommitRequest r){}
@@ -668,11 +681,12 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
         public void PlayerDisconnected(ConnectionHandle c){}
     }
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         private PlayerBootstrapFrameSink bootstrap;
         private PlayerBootstrapFrameSink? earlierBootstrap;
         private ProjectileLifecycleFrameSink tileSink;
+        private TileManipulationFrameSink ammoTileSink;
         private PlayerVitalsFrameSink vitalsSink=null!;
         private readonly TerrariaConnectionOutboundQueue outbound = new(
             new OutboundQueueOptions(maxFrames: 1024, maxQueuedBytes: 131072, maxFrameBytes: 2048));
@@ -703,12 +717,12 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
             // sample; this explicit world/launch adapter starts at its checkpoint.
             var random=new VanillaUnifiedRandom1458(seed);random.Next(3);return random;
         }
-        public Fixture(bool fullInventory,int launchSeed=0)
+        public Fixture(bool fullInventory,int launchSeed=0,bool sourceLaunchCheckpoint=true, IProjectileStateStepper? sourceStepper=null, RuntimeItemUseCaller1458 itemUseCaller=RuntimeItemUseCaller1458.LocalOwnerProjection,bool selectInitially=true)
         {
-            sourceMain=SourceLaunchCheckpoint(launchSeed);
+            sourceMain=sourceLaunchCheckpoint?SourceLaunchCheckpoint(launchSeed):new VanillaUnifiedRandom1458(launchSeed);
             Items = new(Replication);
             State = new(projectiles:new RuntimeProjectileStore(commitSink:new ProjectileFanout(projectileReplication,Events)),playerEvents: new RuntimePlayerEventFanout(new RuntimePlayerEventFanout(Replication, projectileReplication), Events),
-                projectileReplication: projectileReplication, worldItems: Items, worldTiles: Tiles, worldItemReplication: Replication,
+                projectileStepper: sourceStepper, projectileReplication: projectileReplication, worldItems: Items, worldTiles: Tiles, worldItemReplication: Replication,
                 sourcePlayerWorld: MiningSourceScene1458.Facts(Tiles),
                 worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
                 playerUpdateRandomSeed: new(0),
@@ -723,8 +737,9 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
             bootstrap = new(pool, outbound,
                 PlayerBootstrapPacketSet.CreateForTesting(new byte[] { 3, 0, 7 }, [], new byte[] { 3, 0, 49 }), source,
                 new RuntimePlayerSpawnCommitIngress(ingress), appearanceIngress: null,
-                new RuntimePlayerEquipmentIngress(ingress), new RuntimePlayerMovementIngress(ingress));
+                new RuntimePlayerEquipmentIngress(ingress), new RuntimePlayerMovementIngress(ingress,new RuntimePlayerMovementAuthority(),itemUseCaller));
             tileSink = new(source, bootstrap, new Passthrough(), new RuntimeProjectileNetworkIngress(ingress));
+            ammoTileSink=new(source,bootstrap,tileSink,new RuntimeTileNetworkIngress(ingress));
             vitalsSink=new(source,bootstrap,new RuntimePlayerHealthIngress(ingress),new RuntimePlayerManaIngress(ingress));
             ItemSink = new(source, bootstrap, tileSink, new RuntimeWorldItemIngress(ingress, Items));
             Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(1,
@@ -745,7 +760,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
             State.Apply(new PlayerHealthRuntimeCommand(connection, new(Player.Slot, 100, 100)));
             State.Apply(new PlayerManaRuntimeCommand(connection, new(Player.Slot, 0, 20)));
             State.Apply(new PlayerInventorySyncCompleteRuntimeCommand(connection));
-            Select(7);
+            if(selectInitially)Select(7);
             Drain();
         }
 
@@ -761,6 +776,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
                 source,new RuntimePlayerSpawnCommitIngress(ingress),appearanceIngress:null,
                 new RuntimePlayerEquipmentIngress(ingress),new RuntimePlayerMovementIngress(ingress));
             tileSink=new(source,bootstrap,new Passthrough(),new RuntimeProjectileNetworkIngress(ingress));
+            ammoTileSink=new(source,bootstrap,tileSink,new RuntimeTileNetworkIngress(ingress));
             vitalsSink=new(source,bootstrap,new RuntimePlayerHealthIngress(ingress),new RuntimePlayerManaIngress(ingress));
             ItemSink=new(source,bootstrap,tileSink,new RuntimeWorldItemIngress(ingress,Items));
             Assert.Equal(TerrariaFrameSinkResult.Continue,bootstrap.OnFrame(Frame(1,
@@ -791,6 +807,26 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
         {
             get { Assert.True(Runtime(State).Players.TryGet(Player.Slot,out var member));return member.ItemPhase!.Value.ToolUse!; }
         }
+        public VanillaUnifiedRandom1458 GameplayRandom => sourceMain;
+        public void AmmoReport(in TerrariaProjectileUpdateState packet) =>
+            Assert.Equal(TerrariaFrameSinkResult.Continue,tileSink.OnFrame(MiningSourceScene1458.ObservationFrame(
+                new ClientProjectileUpdateRuntimeCommand(Connection,packet))));
+        public void OriginalAmmoFrame(byte[] wire)
+        {
+            Assert.Equal(wire.Length,BinaryPrimitives.ReadUInt16LittleEndian(wire));
+            var frame=Frame(wire[2],wire.AsSpan(3).ToArray());
+            var result=wire[2] switch
+            {
+                5 or 13 or 138 => bootstrap.OnFrame(frame),
+                27 => tileSink.OnFrame(frame),
+                17 or 125 => ammoTileSink.OnFrame(frame),
+                50 => new PlayerBuffFrameSink(Connection.Source,bootstrap,tileSink,
+                    new RuntimePlayerBuffNetworkIngress(new ApplyingIngress(State))).OnFrame(frame),
+                _ => TerrariaFrameSinkResult.Continue
+            };
+            Assert.Equal(TerrariaFrameSinkResult.Continue,result);
+        }
+
         public void ManaReport(short mana,short maximum=200)
         {
             byte[] data=new byte[5];data[0]=Player.Slot.Value;BinaryPrimitives.WriteInt16LittleEndian(data.AsSpan(1),mana);
@@ -958,7 +994,18 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
                 Assert.True(TerraRuntime.Gameplay.Items.VanillaBulletWeaponStats1458.TryGetPrefixModifiers(new(weapon),default,
                     TerraRuntime.Gameplay.Items.VanillaBulletSourceArithmetic1458.CoreClrSingle,out var prefix));
                 var speed=TerraRuntime.Gameplay.Items.VanillaProjectileWeaponCombatCatalog.ResolveLaunchSpeedEnvelope(definition,ammunition,prefix,combat);
-                var cursor=sourceMain.Clone();
+                // Local phase scheduling uses its source UpdatePlayers cursor.
+                // Replay only the detached preimage through the source-qualified
+                // kernel; retain every literal nonrandom field of the capsule.
+                var paid=ToolClock.WeaponShootHistory?.Uses.FirstOrDefault(static u=>!u.Born && !u.Retired);
+                var cursor=member.ItemUseCaller==RuntimeItemUseCaller1458.LocalOwnerProjection && ToolClock.LocalClocksKnown
+                    ? paid?.RandomBefore.Clone()??PlayerRandom.Clone():sourceMain.Clone();
+                if(member.ItemUseCaller==RuntimeItemUseCaller1458.LocalOwnerProjection && ToolClock.LocalClocksKnown && paid is null)
+                {
+                    Assert.True(TerraRuntime.Gameplay.Players.VanillaSelectedConsumable1458.TryStepHeat(
+                        member.ItemPhase!.Value.ManaHeat,cursor.NextDouble,cursor.Next,out _));
+                    cursor.Next(3);
+                }
                 TerraRuntime.Gameplay.Items.VanillaProjectileWeaponCombatCatalog.PrepareAmmoConservation(definition,ammunition,combat,cursor.Next);
                 Span<TerraRuntime.Gameplay.Items.VanillaBulletLaunchShot1458> shots=stackalloc TerraRuntime.Gameplay.Items.VanillaBulletLaunchShot1458[8];
                 Assert.True(TerraRuntime.Gameplay.Items.VanillaBulletWeaponLaunch1458.TryPlanFromAim(new(weapon),210f,-11f,1,

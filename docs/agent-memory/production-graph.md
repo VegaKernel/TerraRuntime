@@ -1,5 +1,13 @@
 # Production graph
 
+## Four-accessory selector ownership, 2026-10-26
+
+Existing RuntimePlayerItemPhase1458 owns nullable offset/cooldown state; known constructor state starts0/0, retired/unrepresented state stays null. Source-local early update ages it before dead/ghost exits. Equipment projection has explicit opt-in for this known human phase; generic/bot callers remain closed. Ordered ammo selects physical occurrence first, consumes Random selector prefix before conservation, then journals counter/physical/private cost/clocks/RNG together. Saved paid bodies replay from the post-selector random checkpoint; delayed27/5/138 never rerun live selection or rewind state. Transfer retains selector state while clearing old-world delivery. No second ledger/stream/queue or recovery funding was added. Combined acceptance/shipment remains in work-state.
+
+## Ordinary ammo Update observation, 2026-10-26
+
+Concrete VanillaProjectileWorldStateStepper supplies one typed ordinary-ammo source observation on the existing subupdate proposal; RuntimeProjectileBehaviorStateStepper preserves it through state-only post composition. RuntimeProjectileStateExecutor validates represented type/reason and the existing pre-publication sink's explicit capability before adopting. The concrete ProjectileAuthority-composed sink consumes existing projectile RNG after generation-safe adoption and before publication, so callback failure cannot replay it. There is no new random owner, queue or inventory funding. Scope is Update timeout/tile collision; other Kill entry paths are not silently routed into this consumer. Root composition/gate/shipment evidence remains in work-state.
+
 ## Ordinary placement and furniture: accepted metadata/phase graph, 2026-10-26
 
 The combined existing ToolUse/Input, local source-clock, inventory-journal and world mutation owners retain ordinary replacement and paid furniture in one joint adoption boundary. Metadata insertion/removal/pose uses one prepared immutable canonical image, source dictionary entry slots/LIFO free slots, monotonic session IDs and file-order load reindex; raw file DTOs and explicit ad-hoc ID policy remain distinct. Section version fences, snapshot/save and live replication consume that same owner. No new project, production dependency, authoritative inventory ledger or RNG stream was introduced. Exact3969-input/158DLL Release/full/WindowsNative/actualTCP acceptance is complete and recorded at the top of work-state. Subsequent ammo phase-paid FIFO and released-tool witness changes remain private; no wholeMain/fullparity claim. Git history is authoritative for shipment.

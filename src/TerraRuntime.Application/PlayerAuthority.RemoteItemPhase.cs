@@ -88,6 +88,15 @@ internal sealed partial class PlayerAuthority
             plans[i].BeforePaidTorchFavor = member.PaidTorchFavor;
             if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore))
                 return false;
+            var oldAmmoHistory=member.ItemPhase?.ToolUse?.WeaponShootHistory;
+            if(oldAmmoHistory is not null || member.ItemUseCaller==RuntimeItemUseCaller1458.LocalOwnerProjection &&
+                inventory.TryGet(member.Connection,member.SelectedItem,out var localWeapon) && IsOrderedAmmoWeapon(localWeapon))
+            {
+                if(!inventory.TryCaptureShopJournal(member.Connection,out var ammoBefore) || ammoBefore is null)return false;
+                plans[i].AmmoInventoryBefore=ammoBefore;
+                if(oldAmmoHistory?.InventoryWitness is {IsCurrent:false})
+                    plans[i].RefreshedAmmoHistory=RefreshUnpaidAmmoInputHistory(oldAmmoHistory,ammoBefore);
+            }
             // Capture source UpdateEquips' bag gate before any external provider.
             // Cursor 58 and stored bags cannot open Void storage.
             for (int slot = 0; slot < 58; slot++)
@@ -119,6 +128,8 @@ internal sealed partial class PlayerAuthority
         {
             if (!TryPlanRemoteItemPhase(plan, in world, physics, plannedRandom))
                 return false;
+            if (plan.AmmoCyclingAfterShoot is { } selectedAmmoState && plan.Item is { } acceptedItem)
+                plan.Item = acceptedItem with { AmmoCycling = selectedAmmoState };
         }
 
         // Finish every external read before the final owned-store comparisons. In particular a
@@ -175,6 +186,9 @@ internal sealed partial class PlayerAuthority
                 member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum ||
                 member.OwnsLifeMaximum != plan.BeforeOwnsLifeMaximum ||
                 member.Revision == ulong.MaxValue ||
+                member.ItemUseCaller!=plan.BeforeItemUseCaller ||
+                plan.AmmoInventoryBefore is {IsCurrent:false} ||
+                plan.RefreshedAmmoHistory is null && plan.BeforeItem?.ToolUse?.WeaponShootHistory?.InventoryWitness is { IsCurrent: false } ||
                 plan.ToolSourceQuery is { IsCurrentOwned: false } ||
                 plan.Item?.ToolUse?.BuildingPermission is { IsCurrent: false } ||
                 plan.Item?.ToolUse?.PlacementAlternative is { Reads.IsCurrent: false } ||
@@ -266,6 +280,13 @@ internal sealed partial class PlayerAuthority
         }
 
         random.CopyStateFrom(plannedRandom);
+        foreach(var acceptedPlan in plans)
+        {
+            RebindAcceptedAmmoHistory(acceptedPlan.Member);
+            // Inventory-witness rebinding changes only owned metadata. Keep
+            // later publication guards on this callback-free adopted image.
+            acceptedPlan.Item=acceptedPlan.Member.ItemPhase;
+        }
         foreach (var plan in plans)
         {
             // Rebind only an exact receipt whose complete before-image and
@@ -358,7 +379,7 @@ internal sealed partial class PlayerAuthority
                 ReferenceEquals(healthMember,
                 plan.Member) &&
                 healthMember.NpcHealth == plan.Health &&
-                healthMember.ItemPhase == plan.Item)
+                IsAmmoDeliveryPublicationAfterimage(healthMember.ItemPhase,plan.Item))
             {
                 try
                 {
@@ -421,6 +442,7 @@ internal sealed partial class PlayerAuthority
         VanillaServerPlayerDryPhysicsStepper physics,
         VanillaUnifiedRandom1458 random)
     {
+        plan.SourceRandom = random;
         var member = plan.Member;
         var effectTypes = plan.BeforeBuffs.CaptureEffectTypes();
         if (plan.Item is not { } item ||
@@ -438,7 +460,7 @@ internal sealed partial class PlayerAuthority
             plan.Appearance,
             out var equipmentCombat,
             out int manaMaximumBonus,
-            plan.VoidStorageOpen) ||
+            plan.VoidStorageOpen, item.AmmoCycling is not null) ||
             plan.Buffs.IsItemUseCrowdControlled ||
             plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 23 or 24 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)) ||
             member.MiscFlags1 != 0 ||
@@ -448,6 +470,12 @@ internal sealed partial class PlayerAuthority
             physical.GravityDirection is not (1f or -1f) ||
             item.Selected.Animation != member.ItemAnimation)
             return false;
+        // Source-local Update_AmmoCycler precedes ghost/dead exits and does
+        // not depend on which item is selected or whether equipment was removed.
+        if (plan.BeforeItemUseCaller == RuntimeItemUseCaller1458.LocalOwnerProjection && item.AmmoCycling is { } cycling)
+            item = item with { AmmoCycling = VanillaAmmoCycling1458.AdvanceLocalUpdate(in cycling) };
+        if(plan.RefreshedAmmoHistory is { } retiredAmmo && item.ToolUse is { } retainedTools)
+            item=item with {ToolUse=retainedTools with {WeaponShootHistory=retiredAmmo}};
         // Packet42 and accepted projectile mana debits write the owned current value. Neither
         // update resets the retained source regeneration count or delay.
         item = item with
@@ -673,9 +701,9 @@ internal sealed partial class PlayerAuthority
         int sicknessDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(94));
         VanillaPlayerCombatSnapshot buffCombat;
         bool foodEffects = effectTypes.Any(static type => type.Value is 26 or 206 or 207);
-        if (foodEffects)
+        if (foodEffects || equipmentCombat.AmmoCyclerDamage)
         {
-            if (!TryBuildSourceOrderedFoodCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat))
+            if (!TryBuildSourceOrderedFoodCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat, item.AmmoCycling is not null))
                 return false;
         }
         else if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, effectTypes, out buffCombat))
@@ -875,12 +903,15 @@ internal sealed partial class PlayerAuthority
                 in sourceToolPose, currentCombatTick, critRoll, out var toolAfter, out var remoteTool))
                 return false;
             toolAfter = toolAfter with { Reach = toolReach };
-            if (!facts.ControlUseItem && tool.Hammer > 0 && toolAfter.DeferredSelectionSlot is null &&
+            var releasedClockAlternative = CaptureReleasedBufferedToolClock(tool, tools, toolAfter,
+                toolFacts, critRoll, member, plan.Buffs, world, random, remoteTool.State.Selected.RevolverCritBonus);
+            if (!facts.ControlUseItem && toolAfter.DeferredSelectionSlot is null &&
                 toolAfter.BuildingPermission is { IsCurrent: true, NoBuilding: false } releasedBuilding)
                 toolAfter = toolAfter with
                 {
                     ReleaseWitness = new(member.Connection, sourceToolPose, toolReach,
                         releasedBuilding, tool, member.SelectedItem, currentCombatTick)
+                        { BufferedClockAlternative = releasedClockAlternative }
                 };
             item = item with
             {
@@ -1459,6 +1490,10 @@ internal sealed partial class PlayerAuthority
         internal RuntimePlayerToolActorCapture1458? BeforeToolInputActor { get; } = item?.ToolUse?.Input?.Actor;
         internal ulong BeforeToolInputRevision { get; } = item?.ToolUse?.Input?.Revision ?? 0;
         internal RuntimePlayerPlacementAlternative1458? PlacementChosenAlternative { get; set; }
+        internal VanillaUnifiedRandom1458? SourceRandom { get; set; }
+        internal RuntimePlayerInventoryStore.ShopJournalCapture? AmmoInventoryBefore { get; set; }
+        internal AmmoCyclingState1458? AmmoCyclingAfterShoot { get; set; }
+        internal RuntimePlayerAmmoShootHistory1458? RefreshedAmmoHistory { get; set; }
         internal bool VoidStorageOpen { get; set; }
         internal RuntimeTownShopSession1458? BeforeShopSession { get; set; }
         internal RuntimePlayerInventoryItem[] InventoryBefore { get; } = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
@@ -1468,6 +1503,7 @@ internal sealed partial class PlayerAuthority
         internal bool PublishBuffs { get; set; }
         internal TerraRuntime.Contracts.Gameplay.BuffTypeId[]? PublishedBuffTypes { get; set; }
         internal RuntimePlayerMember Member { get; } = member;
+        internal RuntimeItemUseCaller1458 BeforeItemUseCaller { get; } = member.ItemUseCaller;
         internal PlayerStateSnapshot Before { get; } = before;
         internal RuntimePlayerItemPhase1458? BeforeItem { get; } = item;
         internal PlayerGemStaffTransition1458? LocalGemFrame { get; set; }

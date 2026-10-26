@@ -98,6 +98,15 @@ internal sealed partial class ProjectileAuthority
             return;
         }
 
+        var ammoObservation=players.ObserveOrderedAmmoShoot(command.Connection,in packet,command.LocalItemReportIntent);
+        if(ammoObservation!=ToolReportObservationResult1458.NotApplicable)
+        {
+            if(ammoObservation==ToolReportObservationResult1458.Rejected)
+            {RejectedClientProjectileProvenance++;RejectedClientUpdates++;}
+            else DrainOrderedAmmoBirths();
+            return;
+        }
+
         var magicObservation=players.ObserveOrderedLocalMagicShoot(command.Connection,in packet);
         if(magicObservation!=ToolReportObservationResult1458.NotApplicable)
         {

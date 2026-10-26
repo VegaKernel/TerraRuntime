@@ -30,6 +30,7 @@ public readonly record struct ProjectileSimulationStepContext(
 {
     /// <summary>Source motion observation carried through staged behavior composition.</summary>
     public int? SourceDirection { get; init; }
+    public bool OrdinaryAmmoSourceUpdate { get; init; }
 
     public int VanillaNumUpdates => SubupdatesPerWorldTick - SubupdateIndex - 2;
 
@@ -57,6 +58,8 @@ public readonly record struct ProjectileSimulationStepResult(
 {
     /// <summary>Known physical direction after source motion; null means unrepresented.</summary>
     public int? SourceDirection { get; init; }
+    /// <summary>Original ordinary-ammo Update phases, retained only by the concrete world stepper.</summary>
+    public bool OrdinaryAmmoSourceUpdate { get; init; }
 }
 
 /// <summary>Runtime-only top-left at the source Kill boundary before a remaining position-update tail.</summary>
@@ -106,6 +109,7 @@ public interface IProjectileSimulationCommitSink
 public interface IProjectileSimulationPrePublicationCommitSink
 {
     bool OwnsCollisionTileCutOffers { get; }
+    bool OwnsOrdinaryAmmoSourceOffers => false;
     void ProjectileSimulationCommittedBeforePublication(ReadOnlySpan<ProjectileSimulationStepResult> subupdates);
 }
 
@@ -250,6 +254,8 @@ public sealed class RuntimeProjectileStateExecutor
 
                 ProjectileStateUpdate nextState = next.State;
                 if (!RuntimeProjectileStore.IsValidState(in nextState) || !IsCurrentHealing(in next) ||
+                    next.OrdinaryAmmoSourceUpdate &&
+                        _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsOrdinaryAmmoSourceOffers: true } ||
                     next.CollisionTileCutOffer.HasValue &&
                         _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsCollisionTileCutOffers: true } ||
                     !TryProjectLifecycle(
@@ -357,6 +363,13 @@ public sealed class RuntimeProjectileStateExecutor
         in ProjectileSimulationStepResult proposed,
         out ProjectileSimulationStepResult normalized)
     {
+        if (proposed.OrdinaryAmmoSourceUpdate &&
+            (proposed.State.Type.Value is not (1 or 2 or 4 or 5 or 14 or 981) ||
+             proposed.TerminationReason is ProjectileSimulationTerminationReason.WorldBounds or ProjectileSimulationTerminationReason.BehaviorKill))
+        {
+            normalized = default;
+            return false;
+        }
         if (proposed.CollisionTileCutOffer.HasValue &&
             (proposed.State.Type != VanillaProjectileIds.NurseSyringeHeal || proposed.State.Damage != 0))
         {

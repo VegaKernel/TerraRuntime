@@ -96,7 +96,7 @@ internal sealed partial class ProjectileAuthority
             players,
             new RuntimeProjectileNpcHealing1458(npcs,
             npcReplication),
-            new RuntimeProjectileCollisionTileCut1458(this.projectileRandom));
+            new RuntimeProjectileCollisionTileCut1458(this.projectileRandom), this.projectileRandom);
         executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects, npcs);
         this.stepper = stepper;
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);

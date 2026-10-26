@@ -7,6 +7,7 @@ internal sealed partial class ProjectileAuthority
     internal void DrainOrderedLocalMagicBirths()
     {
         Exception? first=null;
+        try {DrainOrderedAmmoBirths();}catch(Exception error){first=error;}
         // Freeze every accepted phase afterimage before the first outward
         // observer. Later births cannot refresh stale profile/input/inventory.
         foreach(var prepared in players.PrepareOrderedLocalMagicShoots())

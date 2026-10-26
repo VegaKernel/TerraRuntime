@@ -10,7 +10,7 @@ internal sealed partial class PlayerAuthority
         PlayerAppearanceCommitRequest? appearance,
         out VanillaPlayerCombatSnapshot combat,
         out int manaMaximumBonus,
-        bool voidStorageOpen)
+        bool voidStorageOpen, bool allowAmmoCycling = false)
     {
         combat = default;
         manaMaximumBonus = 0;
@@ -40,8 +40,10 @@ internal sealed partial class PlayerAuthority
                 // Original source records for these known None vanity accessories prove
                 // no functional grants, but they can block inherited matching favorites.
                 if (index is >= 13 and <= 19 &&
-                    item.ItemNetId is 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321 &&
-                    item.PrefixId == default)
+                    (item.ItemNetId is 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321 &&
+                     item.PrefixId == default ||
+                     item.ItemNetId is 6168 or 6169 or 6193 or 6194 &&
+                     item.PrefixId.Value is 0 or >= 62 and <= 80))
                     continue;
                 if (index is >= 10 and <= 12)
                 {
@@ -70,12 +72,17 @@ internal sealed partial class PlayerAuthority
             // Source CanShareArmor rejects this known weapon in every armor position
             // before armor grants; it may block a later favorite but grants no armor benefits.
             bool sharingBlocker = inactiveArmor && item.ItemNetId == VanillaItemIds.CopperBroadsword.Value;
+            bool cyclingAccessory = allowAmmoCycling && index is >= 3 and <= 9 && item.ItemNetId is 6168 or 6169 or 6193 or 6194;
             bool provenAccessory = index is >= 3 and <= 9 &&
                 item.ItemNetId is 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321;
             if (index is >= 3 and <= 9 && item.ItemNetId is 555 or 854 or 3033 or 3034 or 3035)
             {
                 if (item.PrefixId != default)
                     return false;
+            }
+            else if (cyclingAccessory)
+            {
+                if (item.PrefixId.Value is not (0 or >= 62 and <= 80)) return false;
             }
             else if (provenAccessory)
             {
@@ -105,7 +112,8 @@ internal sealed partial class PlayerAuthority
         bool? extraAccessory = appearance is { } owned ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
         var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
         {
-            LocalVanityArmor = combatEquipmentLocalVanityArmor
+            LocalVanityArmor = combatEquipmentLocalVanityArmor,
+            EnableAmmoCyclingAccessories = allowAmmoCycling
         };
         if (!VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out combat, out manaMaximumBonus))
             return false;
@@ -133,7 +141,10 @@ internal sealed partial class PlayerAuthority
             HuntressAmmoCost90 = false,
             ChloroAmmoCost80 = false,
             AmmoCost80 = false,
-            AmmoCost75 = false
+            AmmoCost75 = false,
+            AmmoCyclingMode = AmmoCyclingMode1458.None,
+            AmmoCyclerDamage = false,
+            MoveSpeed = 1f
         }
 
         == VanillaPlayerCombatSnapshot.Baseline;
@@ -142,7 +153,7 @@ internal sealed partial class PlayerAuthority
     private bool TryBuildSourceOrderedFoodCombat(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
         PlayerAppearanceCommitRequest? appearance,
         ReadOnlySpan<BuffTypeId> buffs,
-        out VanillaPlayerCombatSnapshot combat)
+        out VanillaPlayerCombatSnapshot combat, bool allowAmmoCycling = false)
     {
         // The caller has already passed the unchanged whole-phase equipment admission.
         // For the newly represented food family, replay UpdateBuffs before UpdateEquips
@@ -154,7 +165,8 @@ internal sealed partial class PlayerAuthority
         bool? extraAccessory = appearance is { } owned ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
         var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
         {
-            LocalVanityArmor = combatEquipmentLocalVanityArmor
+            LocalVanityArmor = combatEquipmentLocalVanityArmor,
+            EnableAmmoCyclingAccessories = allowAmmoCycling
         };
         return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, in beforeEquipment, out combat, out _);
     }

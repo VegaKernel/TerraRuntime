@@ -6,6 +6,8 @@
 
 ## С чего начать
 
+- [Переход от отпущенного инструмента к молоту](released-tool-pound-continuity-1458.md) — подтверждённое отпускание, истории отложенного выбора и границы поддержки.
+
 - [Архитектура задач и действий PlayerBot](runtime-bot-architecture.md) — perception, сменный brain, lifecycle, authoritative operations, режимы и leases.
 - [Руководство по проекту](project-guide.md) — назначение TerraRuntime, структура репозитория, сборка, запуск, жизненный цикл, сетевой и игровой поток, миры, сохранение и эксплуатация.
 - [Архитектура](architecture.md) — границы подсистем, владение состоянием, потоки данных, threading model, NativeAOT/CoreCLR profiles, persistence и extension boundaries.
@@ -38,6 +40,9 @@
 - [Телеметрия времени save pipeline](save-pipeline-telemetry.md) — границы времени authoritative snapshot, serializer и полной atomic-write транзакции и правила их интерпретации.
 - [Gameplay и vanilla parity](gameplay.md) — players, items, tiles, chests, NPCs, projectiles, combat и явные parity gaps.
 - [Авторитетность инструментов](tool-use-authority-1458.md) — исходные фазы, RNG, действия мира, перепосадка и публикация снарядов.
+- [Оплаченное использование боеприпасов и отложенные отчёты](paid-ammo-use-continuity-1458.md) — порядок исходных фаз, доставка оплаченных снарядов и исторические подтверждения инвентаря.
+- [Снаряжение смены боезапаса](ammo-cycling-equipment-1458.md) — четыре исходных аксессуара, постоянное состояние выбора, приоритет снаряжения и RNG сохранения/запуска в авторитетной фазе.
+- [Завершение обычных боеприпасов](ammo-projectile-death-1458.md) — энтропия исходных Update/Kill и доказанное отсутствие возврата предметов для представленных тел.
 - [Инструменты, личинка и появление Королевы пчёл](larva-boss-tool-boundary-1458.md) — совместное разрушение объекта, авторитетная подготовка босса и публикация по исходнику.
 - [Town NPC: жильё и магазины](town-npc-housing-shops.md) — authoritative residents, packet 60 для жилья, сохранение комнат, NPC talk, обычные/специальные магазины, pylons и happiness pricing.
 - [Vanilla parity жизненного цикла червей AI_006](npc-worm-ai-parity.md) — source-pinned chain slots, active/style semantics Eater of Worlds, root propagation и оставшиеся lifecycle gaps.

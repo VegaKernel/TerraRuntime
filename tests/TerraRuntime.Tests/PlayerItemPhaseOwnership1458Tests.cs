@@ -21,6 +21,9 @@ public sealed class PlayerItemPhaseOwnership1458Tests
         // The older fixture omitted these fields; its other retained imports stay nullable.
         var constructor = Phase(Row(source, "constructor").GetProperty("constructor")) with
         {
+            // Source Player's persistent selector fields also begin at zero;
+            // only this fresh constructor owns them, not older retained imports.
+            AmmoCycling = new(0, 0),
             ToolTime = 0, ToolUse = RuntimePlayerToolUse1458.Constructor,
             AttackCD = 0, DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
         };

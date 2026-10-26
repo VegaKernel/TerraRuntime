@@ -14,7 +14,7 @@ internal sealed partial class ProjectileAuthority
         in VanillaProjectileAmmoCombatDefinition ammo, in RuntimePlayerInventoryItem ammoItem,
         in VanillaPlayerCombatSnapshot combat, int ammoSlot, bool ammoBox, bool ammoPotion,
         float dx, float dy, float maximumDistance, long tick, VanillaUnifiedRandom1458 plannedRandom,
-        out AuthoritativeClientProjectileSpawn authoritative)
+        out AuthoritativeClientProjectileSpawn authoritative, bool sourcePaid=false)
     {
         authoritative = default;
         // Packet27 has no client platform field. Both complete source profiles start from the
@@ -38,7 +38,7 @@ internal sealed partial class ProjectileAuthority
                 packet.OriginalDamage != 0 || MathF.Abs(packet.KnockBack - knockBack) > MathF.Max(0.001f, MathF.Abs(knockBack) * 0.00001f) ||
                 packet.Ai0 != 0 || packet.Ai1 != 0 || packet.Ai2 != 0 || packet.BannerIdToRespondTo != 0 ||
                 dx * dx + dy * dy > maximumDistance * maximumDistance ||
-                trustedClientUseCadence.IsOnCooldown(connection.Player, tick))
+                !sourcePaid && trustedClientUseCadence.IsOnCooldown(connection.Player, tick))
                 continue;
             var cursor = before.Clone();
             bool conserved = PrepareAmmoConservation(in weapon, in ammo, in combat, cursor, ammoBox, ammoPotion);

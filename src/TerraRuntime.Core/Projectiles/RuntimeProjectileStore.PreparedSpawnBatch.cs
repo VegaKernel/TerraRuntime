@@ -132,8 +132,22 @@ public sealed partial class RuntimeProjectileStore
             published = true;
             // Source sends each NewProjectile birth, even generations overwritten by a later child.
             // Reentrant sinks may replace live actors; the accepted immutable journal never writes them back.
+            Exception? firstFailure = null;
             foreach (ProjectileSnapshot birth in births)
-                owner._commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, in birth);
+            {
+                try
+                {
+                    owner._commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, in birth);
+                }
+                catch (Exception error)
+                {
+                    // The complete immutable batch is already adopted. One
+                    // observer cannot strand its accepted sibling notifications.
+                    firstFailure ??= error;
+                }
+            }
+            if (firstFailure is not null)
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(firstFailure).Throw();
             return true;
         }
 

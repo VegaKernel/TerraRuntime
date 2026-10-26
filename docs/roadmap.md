@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+## Large ammo/equipment candidate on merged main, 2026-10-26
+
+The integration candidate now combines the existing17 phase-paid weapons, bounded delivery/ACK history, source-qualified released-tool witness, ordinary Update timeout/tile-collision RNG and all four cycling accessories on the known human source phase. Selector offset/cooldown, last-effective equipment mode and once-only ranged bonus share existing player state, inventory custody and RNG. Unknown/generic callers retain their fences; no new weapon roster or recovered-ammo producer is implied.
+
+Root independently verified all component manifests and actual causal XML. Combined focused09 passed397/397 before syncing three concurrent main worldgen fixes. Current base is33adecbb; final catalog constant cleanup and reviewed heavy-oracle tier classification are in the same candidate. Fresh final WAE build passes, final focused10 is running, and mandatoryfast/ONEfull/Native/TCP acceptance and shipment remain pending. The337920-phase oracle is still complete in full/item-player matrices, with no row sampling. Earlier scope/status entries below are historical where superseded here. See [cycling EN](en/ammo-cycling-equipment-1458.md)/[RU](ru/ammo-cycling-equipment-1458.md). Full gameplay/AI compatibility remains unfinished.
+
 Late Temple acceptance (2026-10-26): row 70 is bounded `C`. Release solution warnings-as-errors, focused Temple `35/35`, fast `25,293/25,293`, one unfiltered full `1,566,706/1,566,706` with zero skips, and fresh Windows NativeAOT with five smokes pass. The pending-gate wording in the candidate note below is historical; real-prefix and exhaustive TileObjectData parity remain open.
 
 ## Late Temple canonical differential, 2026-10-26
@@ -15,6 +21,11 @@ Rows 53 and 102 advance from `P` to bounded `C`. Three independent official regi
 ## Vanilla liquid settlement: canonical ordinary differential, 2026-10-26
 
 Rows 53 and 102 remain `P`, but the same ordinary `4200 × 1200` three-basin fixture now matches independent official registered `PassLegacy` output for both passes. The row-102 canonical regression is no longer skipped. Source `Liquid.DelWater` clears stable low-volume water at retirement; preserving it fixes the previously observed one-unit gap. An omission control fails the canonical digest. Consolidated Release fast `25,287/25,287` and unfiltered full `1,566,700/1,566,700` both pass with zero skips; fresh Windows NativeAOT and five exercised smokes pass. This is a bounded ordinary-water result, not full liquid-kind, extra-liquid special-seed, real-prefix, or Linux NativeAOT parity.
+## Paid ammo and released-tool integration candidate, 2026-10-26
+
+The next candidate is composed over shipped565e3b00: source-ordered paid use for the existing nine bows/eight guns, bounded delayed birth/ACK history, and source-qualified released-tool to hammer continuity. Root independently verifies135 ammo package pins,3980 private-tree files/158 executed DLLs,129 actual normal tests/six causal assertion controls and1907 released-tool pins/seven assertion controls. Those are component results; fresh combined root build/focused/full/Native/TCP acceptance remains pending.
+
+Semantic composition review found two concrete blockers before that gate: metadata-only ammo witness rebinding can suppress same-phase HP publication, and historical ammo-slot reports can intercept a current placement/craft/cursor participant. A minimal successor and actual regressions are in progress. The four ammo cycling accessories remain outside represented equipment admission pending complete state, update-order and RNG integration. Current main/origin stays565e3b00; no complete gameplay/vanilla claim follows. Scope: [ammo EN](en/paid-ammo-use-continuity-1458.md)/[RU](ru/paid-ammo-use-continuity-1458.md), [tool continuity EN](en/released-tool-pound-continuity-1458.md)/[RU](ru/released-tool-pound-continuity-1458.md).
 
 ## Ordinary placement and paid furniture: final local acceptance, 2026-10-26
 

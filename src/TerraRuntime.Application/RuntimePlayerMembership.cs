@@ -209,6 +209,9 @@ internal sealed class RuntimePendingPlayerVitals(ConnectionHandle connection)
 
 internal sealed class RuntimePlayerMember
 {
+    // Only normalized owned input writes this provenance alongside its revision.
+    // It cannot initialize clocks, stock, mana or a paid source stage by itself.
+    internal RuntimeItemUseCaller1458 ItemUseCaller { get; set; }
     public ConnectionHandle Connection { get; init; }
     public ulong Revision { get; set; }
     public PlayerSlotId Slot { get; init; }

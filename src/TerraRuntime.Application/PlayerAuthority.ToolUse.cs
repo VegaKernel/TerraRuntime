@@ -67,6 +67,65 @@ internal sealed class RuntimePlayerToolActorCapture1458
         beforeRandom.HasSameState(expectedBefore);
 }
 
+// The last released frame can have two source-valid, wire-identical UI histories:
+// an earlier buffered selection retains the old inactive AnimationMax; a later
+// selection request clears it. Keep the complete bounded afterimage beside its
+// existing release witness, without replacing canonical clocks or the live RNG.
+internal sealed class RuntimePlayerReleasedToolClockAlternative1458
+{
+    private readonly RuntimePlayerToolUse1458 canonical;
+    private readonly RuntimePlayerInventoryStore.ShopJournalCapture inventory;
+    private readonly PlayerBuffState buffs;
+    private readonly VanillaUnifiedRandom1458 endpoint;
+    private readonly RuntimePlayerUpdateWorld1458 world;
+    private readonly ConnectionHandle connection;
+    private readonly long update;
+    internal ToolClockState1458 Clocks { get; }
+    internal ToolHitState1458 Hits => canonical.Hits;
+    internal ToolHitState1458 ReplacementHits => canonical.ReplacementHits;
+    internal int RemoteCrit { get; }
+    internal ulong PossibleSelections { get; }
+
+    internal RuntimePlayerReleasedToolClockAlternative1458(RuntimePlayerToolUse1458 canonical,
+        ToolClockState1458 alternative, RuntimePlayerInventoryStore.ShopJournalCapture inventory,
+        PlayerBuffState buffs, VanillaUnifiedRandom1458 endpoint, RuntimePlayerUpdateWorld1458 world,
+        ConnectionHandle connection, long update, int remoteCrit, ulong possibleSelections)
+    {
+        this.canonical = canonical with { ReleaseWitness = null };
+        Clocks = alternative;
+        this.inventory = inventory;
+        this.buffs = buffs.Clone();
+        this.endpoint = endpoint.Clone();
+        this.world = world;
+        this.connection = connection;
+        this.update = update;
+        RemoteCrit = remoteCrit;
+        PossibleSelections = possibleSelections;
+    }
+
+    internal VanillaUnifiedRandom1458 CreateRandomPreview() => endpoint.Clone();
+
+    // A read-only compatible afterimage, qualified to a possible source target.
+    // Producers still require their ordinary current stage and wire cohort;
+    // no producer adopts these alternative clocks or consumes this method.
+    internal bool TryCaptureSourceClocks(RuntimePlayerToolActorCapture1458 capture,
+        int tileX, int tileY, out ToolClockState1458 clocks)
+    {
+        clocks = default;
+        if (!capture.IsCurrent || !capture.HasCurrentSourceStage || capture.Connection != connection ||
+            capture.CapturedUpdate != update || capture.World != world || !inventory.IsCurrent ||
+            !buffs.HasSameSlots(capture.BeforeBuffs) ||
+            capture.Phase.Selected.RevolverCritBonus != RemoteCrit ||
+            capture.Phase.ToolUse is not { ReleaseWitness: { IsCurrent: true } release } current ||
+            !ReferenceEquals(release.BufferedClockAlternative, this) || release.Update != update ||
+            (current with { ReleaseWitness = null }) != canonical ||
+            !release.Reach.Contains(release.Pose, tileX, tileY) ||
+            !capture.CreateRandomPreview().HasSameState(endpoint)) return false;
+        clocks = Clocks with { PoundRelease = true };
+        return true;
+    }
+}
+
 internal sealed partial class PlayerAuthority
 {
     internal bool IsPreservedPlacementEndpoint(RuntimePlayerToolActorCapture1458 source,
@@ -215,9 +274,12 @@ internal sealed class PlayerToolAttemptPreparation
             Before.ReleaseWitness is not { IsCurrent: true } release ||
             Before.SourceStagePose is not { } currentPose || Before.Reach is not { } currentReach ||
             Before.BuildingPermission is not { IsCurrent: true, NoBuilding: false } currentBuilding ||
-            release.Connection != capture.Connection || release.Update > capture.CapturedUpdate || release.Slot != capture.Actor.Player.SelectedItem ||
-            release.Tool.Item != capture.Selected.ItemType || release.Tool.Prefix != capture.Selected.Prefix ||
-            release.Tool.Hammer <= 0 || release.Reach != currentReach ||
+            release.Connection != capture.Connection || release.Update > capture.CapturedUpdate ||
+            Before.SourceDefinition is not { Hammer: > 0 } ||
+            release.Slot >= capture.Inventory.Before.Length ||
+            !capture.Inventory.Before[release.Slot].IsCanonical ||
+            capture.Inventory.Before[release.Slot].ItemType != release.Tool.Item ||
+            capture.Inventory.Before[release.Slot].Prefix != release.Tool.Prefix ||
             !ReferenceEquals(release.Building.Owner, currentBuilding.Owner) ||
             release.Building.Revision != currentBuilding.Revision ||
             !release.Reach.Contains(release.Pose, tileX, tileY) ||
