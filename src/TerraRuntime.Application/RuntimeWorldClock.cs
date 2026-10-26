@@ -13,6 +13,8 @@ internal readonly record struct MoonEventDawnNotice1458(
     internal int Wave { get; init; }
     internal float WaveKills { get; init; }
     internal int WaveRequirement { get; init; }
+    internal bool ShouldReportProgress { get; init; }
+    internal sbyte ProgressIcon { get; init; }
 }
 
 /// <summary>
@@ -218,6 +220,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         MoonEventWaveKills = preview.MoonEventWaveKills;
         MoonEventTotalInvasionPoints = preview.MoonEventTotalInvasionPoints;
         MoonEventProgressRevision = preview.MoonEventProgressRevision;
+        MoonEventProgressReportRequired = preview.MoonEventProgressReportRequired;
+        MoonEventProgressIcon = preview.MoonEventProgressIcon;
     }
 
     public VanillaMoonPhase MoonPhase { get; private set; }
@@ -263,11 +267,13 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public float MoonEventTotalInvasionPoints { get; private set; }
 
     /// <summary>
-    /// Monotonically advances after a source-eligible Moon-event death changes the visible wave progress. The
-    /// authoritative loop uses this to emit packet 78 once per committed progress change rather than sampling the
-    /// state every tick.
+    /// Monotonically identifies accepted source-eligible Moon deaths and starts. This ownership revision is
+    /// distinct from the source packet78 predicate: a zero-to-reset wave transition sends no progress packet.
     /// </summary>
     public long MoonEventProgressRevision { get; private set; }
+
+    internal bool MoonEventProgressReportRequired { get; private set; }
+    internal sbyte MoonEventProgressIcon { get; private set; }
 
     /// <summary>Current source <c>NPC.MoonEventRequiredPointsPerWaveLookup[NPC.waveNumber]</c> value.</summary>
     public int MoonEventWaveRequirement => MoonEventActive
@@ -461,20 +467,24 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     /// event type sets are disjoint, but retaining that shared state also preserves source behavior for malformed
     /// worlds that expose both event flags.
     /// </summary>
-    public bool TryAdvanceMoonEventDeath(NpcTypeId type, bool expertMode, bool masterMode)
+    public bool TryAdvanceMoonEventDeath(NpcTypeId type, bool expertMode, bool masterMode) =>
+        TryAdvanceMoonEventDeath(type, expertMode, masterMode, out _);
+
+    internal bool TryAdvanceMoonEventDeath(NpcTypeId type, bool expertMode, bool masterMode,
+        out MoonEventDeathEffects1458 effects)
     {
+        effects = default;
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         if (!MoonEventActive)
             return false;
 
         float scalar = masterMode ? 2.5f : expertMode ? 2f : 1f;
-        bool advanced = false;
         if (SnowMoonActive && TryGetFrostMoonPoints(type, out float frostPoints))
-            advanced |= ApplyMoonEventPoints(frostPoints * scalar);
+            return ApplyMoonEventPoints(frostPoints * scalar, 1, out effects);
         if (PumpkinMoonActive && TryGetPumpkinMoonPoints(type, out float pumpkinPoints))
-            advanced |= ApplyMoonEventPoints(pumpkinPoints * scalar);
-        return advanced;
+            return ApplyMoonEventPoints(pumpkinPoints * scalar, 2, out effects);
+        return false;
     }
 
     internal static bool IsMoonEventParticipant(NpcTypeId type) =>
@@ -510,6 +520,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         MoonEventWaveNumber = 1;
         MoonEventWaveKills = 0f;
         MoonEventTotalInvasionPoints = 0f;
+        MoonEventProgressReportRequired = false;
+        MoonEventProgressIcon = pumpkin ? (sbyte)2 : (sbyte)1;
         MoonEventProgressRevision++;
         pendingMoonEventStartIcon = pumpkin ? (sbyte)2 : (sbyte)1;
         RequestWorldInfoSync();
@@ -527,6 +539,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         MoonEventWaveNumber = 0;
         MoonEventWaveKills = 0f;
         MoonEventTotalInvasionPoints = 0f;
+        MoonEventProgressReportRequired = false;
+        MoonEventProgressIcon = 0;
         RequestWorldInfoSync();
     }
 
@@ -570,27 +584,32 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
                 HadUnpublishedStart = pendingMoonEventStartIcon != 0,
                 Wave = MoonEventWaveNumber,
                 WaveKills = MoonEventWaveKills,
-                WaveRequirement = MoonEventWaveRequirement
+                WaveRequirement = MoonEventWaveRequirement,
+                ShouldReportProgress = MoonEventProgressReportRequired,
+                ProgressIcon = MoonEventProgressIcon
             };
         }
     }
 
-    private bool ApplyMoonEventPoints(float points)
+    private bool ApplyMoonEventPoints(float points, sbyte icon, out MoonEventDeathEffects1458 effects)
     {
+        float beforeKills = MoonEventWaveKills;
+        int beforeWave = MoonEventWaveNumber;
         MoonEventWaveKills += points;
         MoonEventTotalInvasionPoints += points;
 
         int required = MoonEventRequiredPointsPerWave[MoonEventWaveNumber];
-        if (required == 0 || MoonEventWaveKills < required)
+        if (required != 0 && MoonEventWaveKills >= required)
         {
-            MoonEventProgressRevision++;
-            return true;
+            // NPC.CheckProgress* discards surplus points when a wave advances.
+            MoonEventWaveKills = 0f;
+            MoonEventWaveNumber++;
         }
-
-        // NPC.CheckProgress* discards surplus points when a wave advances rather than carrying them forward.
-        MoonEventWaveKills = 0f;
-        MoonEventWaveNumber++;
+        MoonEventProgressReportRequired = MoonEventWaveKills != beforeKills && points != 0f;
+        MoonEventProgressIcon = icon;
         MoonEventProgressRevision++;
+        effects = new(icon, MoonEventProgressRevision, MoonEventWaveNumber, MoonEventWaveKills,
+            MoonEventWaveRequirement, beforeWave != MoonEventWaveNumber, MoonEventProgressReportRequired);
         return true;
     }
 

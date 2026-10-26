@@ -97,6 +97,22 @@ public sealed class RuntimeWorldProgressionMutations
     public bool IsCompleted(VanillaWorldProgressionId milestone) =>
         CaptureSnapshot().IsCompleted(milestone);
 
+    /// <summary>Validates the exact journal captured by a retained Moon death without replacing unrelated facts.</summary>
+    public bool CanAdoptCompletedMilestone(in RuntimeWorldProgressionMutationSnapshot before,
+        VanillaWorldProgressionId milestone, bool shouldMark) =>
+        milestone is VanillaWorldProgressionId.Pumpking or VanillaWorldProgressionId.MourningWood or
+            VanillaWorldProgressionId.IceQueen or VanillaWorldProgressionId.SantaNk1 or VanillaWorldProgressionId.Everscream &&
+        CaptureSnapshot() == before;
+
+    /// <summary>Adopts only the predicted Moon milestone after all other death owners have been validated.</summary>
+    public bool TryAdoptCompletedMilestone(in RuntimeWorldProgressionMutationSnapshot before,
+        VanillaWorldProgressionId milestone, bool shouldMark)
+    {
+        if (!CanAdoptCompletedMilestone(in before, milestone, shouldMark)) return false;
+        if (shouldMark) MarkCompleted(milestone);
+        return true;
+    }
+
     public void SetSlimeBlueSpawnBaseline(bool unlocked)
     {
         if (unlocked)

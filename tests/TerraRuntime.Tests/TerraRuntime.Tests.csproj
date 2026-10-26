@@ -193,6 +193,19 @@
     <EmbeddedResource Include="Fixtures/invasion-persistence-official-1458.json.gz" LogicalName="InvasionPersistence1458" />
     <EmbeddedResource Include="Fixtures/moon-season-header-official-1458.json.gz" LogicalName="MoonSeasonHeader1458" />
     <EmbeddedResource Include="Fixtures/progression-world-wire-official-1458.json.gz" LogicalName="ProgressionWorldWire1458" />
+    <EmbeddedResource Include="Fixtures/moon-boss-loot-cache-official-1458.json.gz" LogicalName="MoonBossRules1458" />
+    <EmbeddedResource Include="Fixtures/moon-boss-physical-official-1458.json.gz" LogicalName="MoonBossPhysical1458" />
+    <EmbeddedResource Include="Fixtures/moon-boss-items-official-1458.json.gz" LogicalName="MoonBossItems1458" />
+    <EmbeddedResource Include="Fixtures/moon-boss-hit-official-1458.json.gz" LogicalName="MoonBossHit1458" />
+    <EmbeddedResource Include="Fixtures/moon-boss-full-death-official-1458.json.gz" LogicalName="MoonBossFullDeath1458" />
+    <EmbeddedResource Include="Fixtures/moon-participant-loot-cache-official-1458.json.gz" LogicalName="MoonParticipantRules1458" />
+    <EmbeddedResource Include="Fixtures/moon-participant-physical-official-1458.json.gz" LogicalName="MoonParticipantPhysical1458" />
+    <EmbeddedResource Include="Fixtures/moon-participant-items-official-1458.json.gz" LogicalName="MoonParticipantItems1458" />
+    <EmbeddedResource Include="Fixtures/moon-participant-hit-official-1458.json.gz" LogicalName="MoonParticipantHit1458" />
+    <EmbeddedResource Include="Fixtures/moon-participant-full-official-1458.json.gz" LogicalName="MoonParticipantFullDeath1458" />
+    <EmbeddedResource Include="Fixtures/moon-boss-header-official-1458.json.gz" LogicalName="MoonBossHeader1458" />
+    <EmbeddedResource Include="Fixtures/moon-wave-official-1458.json.gz" LogicalName="MoonWave1458" />
+    <EmbeddedResource Include="Fixtures/frost-legion-death-original-1458.json.gz" LogicalName="FrostLegionDeath1458" />
     <EmbeddedResource Include="Fixtures/lantern-pending-persistence-official-1458.json.gz" LogicalName="LanternPendingPersistence1458" />
     <EmbeddedResource Include="Fixtures/invasion-spawn-selection-official-1458.json.gz" LogicalName="InvasionSpawnSelection1458" />
     <EmbeddedResource Include="Fixtures/invasion-day-fighter-context-official-1458.json.gz" LogicalName="InvasionDayFighterContext1458" />

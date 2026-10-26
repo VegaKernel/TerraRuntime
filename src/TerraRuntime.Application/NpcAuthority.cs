@@ -113,7 +113,8 @@ internal sealed partial class NpcAuthority
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
         VanillaTownNpcLootLanguage1458? townLootLanguage = null,
         Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
-        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null)
+        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null,
+        Action? worldStateAdopted = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         this.playerSnapshots = playerSnapshots;
@@ -242,7 +243,9 @@ internal sealed partial class NpcAuthority
                 { TenthAnniversaryWorld: true, DrunkWorld: true, RemixWorld: false, NotTheBeesWorld: false },
             npcSpecificGoodWorld: townCommerceWorldFacts?.GoodWorld ?? false,
             townNameSource: townNpcs is null ? null : townNpcs.CaptureResidentName, townLootLanguage: townLootLanguage,
-            invasion: invasion, invasionProgressPublisher: invasionProgressPublisher);
+            invasion: invasion, invasionProgressPublisher: invasionProgressPublisher,
+            progressionBaseline: townCommerceWorldFacts?.ProgressionBaseline, worldStateAdopted: worldStateAdopted,
+            npcSpawnCycle: sourceSpawnCycle);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,

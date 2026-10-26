@@ -19,6 +19,8 @@
 - [Оплаченные вызовы событий](paid-event-invocation-1458.md)
 - [Авторитетность часов событий](event-clock-authority-1458.md)
 - [Награды Moon и сезонная progression](moon-season-progression-1458.md)
+- [Награды боссов Moon](moon-boss-rewards-1458.md)
+- [Публикация лунных волн](moon-wave-progression-1458.md)
 - [Авторитетность смертей лунных событий](moon-event-death-authority-1458.md)
 
 - [Инвентаризация идентификаторов NPC оригинала](npc-source-inventory-1458.md)

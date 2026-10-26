@@ -629,6 +629,7 @@ public static class VanillaDefinitionCatalog
 
         if (VanillaBigMimicCannonItemCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaSlimeContainedItemCatalog1458.TryGet(type, out definition)) return true;
+        if (VanillaMoonBossDropCatalog1458.TryGet(type, out definition)) return true;
         definition = default;
         return false;
     }

@@ -116,7 +116,9 @@ public sealed partial class WorldRuntime : IDisposable
         INpcStateCommitSink npcCommitSink = new RuntimeNpcStateCommitFanout(
             observableNpcCommitSink,
             NpcArchetypeIdentities);
-        Npcs = new RuntimeNpcStore(commitSink: npcCommitSink);
+        // Protocol addressability is larger than the actual Main.npc simulation table.
+        // Canonical source spawn/death owners require all 200 physical vanilla slots.
+        Npcs = new RuntimeNpcStore(VanillaNpcSpawnRules.PhysicalSlotCount, commitSink: npcCommitSink);
         TownNpcs = new RuntimeTownNpcStateStore(world.Npcs, world.TownRooms, world.Header.Dimensions);
         if (!TownNpcs.TryReserveRuntimeSlots(Npcs))
             throw new InvalidDataException("Failed to reserve authoritative runtime slots for persisted town NPCs.");
@@ -249,7 +251,8 @@ public sealed partial class WorldRuntime : IDisposable
             invasionProgressPublisher: PublishInvasionProgress, invasionStartPublisher: PublishInvasionStart,
             playerUpdateRandomSeed: new(WorldGenerationRequest.ResolveVanillaSeed1458(world.Header.SeedText)),
             itemPrefixWorld: new(world.RuntimeMetadata.RemixWorld, world.RuntimeMetadata.GetGoodWorld,
-                world.RuntimeMetadata.SkyblockWorld));
+                world.RuntimeMetadata.SkyblockWorld),
+            worldStateAdopted: RefreshWorldBootstrap);
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
         RefreshWorldBootstrap();
 
@@ -292,6 +295,7 @@ public sealed partial class WorldRuntime : IDisposable
                         if (TerrariaInvasionProgressCodec.TryEncode(in initial, out var frame))
                             RuntimeConnections.BroadcastToPlaying(frame);
                         lastMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
+                        NpcReplication.AcknowledgeMoonEventProgress(lastMoonEventProgressRevision);
                     }
                 }
             },
@@ -299,21 +303,27 @@ public sealed partial class WorldRuntime : IDisposable
             {
                 runtime.Tick();
 
+                // Retained deaths publish each source transition before terminal NPC23, including
+                // acknowledgement of a zero-to-reset transition which intentionally sends no78.
+                lastMoonEventProgressRevision = Math.Max(lastMoonEventProgressRevision,
+                    NpcReplication.HandledMoonEventProgressRevision);
+
                 if (WorldClock.ConsumeMoonEventDawnNotice() is { } dawn)
                 {
                     // Main.UpdateTime_StartDay emits the retained score, Halloween change,
                     // then Christmas change before packet7. All related clock flags are already adopted.
                     RefreshWorldBootstrap();
-                    if (dawn.MoonIcon != 0 && !dawn.HadUnpublishedStart &&
+                    if (dawn.MoonIcon != 0 && !dawn.HadUnpublishedStart && dawn.ShouldReportProgress &&
                         dawn.ProgressRevision != lastMoonEventProgressRevision)
                     {
                         // checkDead's last-night progress belongs before UpdateTime's score/reset.
                         var finalProgress = new TerrariaInvasionProgressState(checked((int)dawn.WaveKills),
-                            dawn.WaveRequirement, dawn.MoonIcon, checked((sbyte)dawn.Wave));
+                            dawn.WaveRequirement, dawn.ProgressIcon, checked((sbyte)dawn.Wave));
                         if (TerrariaInvasionProgressCodec.TryEncode(in finalProgress, out var frame))
                             RuntimeConnections.BroadcastToPlaying(frame);
-                        lastMoonEventProgressRevision = dawn.ProgressRevision;
                     }
+                    lastMoonEventProgressRevision = Math.Max(lastMoonEventProgressRevision, dawn.ProgressRevision);
+                    NpcReplication.AcknowledgeMoonEventProgress(lastMoonEventProgressRevision);
                     if (dawn.MoonIcon != 0)
                         RuntimeConnections.BroadcastToPlaying(TerrariaMoonEventAnnouncementCodec1458.EncodeScore(
                             dawn.MoonIcon == 1, dawn.TotalPoints));
@@ -347,19 +357,20 @@ public sealed partial class WorldRuntime : IDisposable
                 }
                 if (liveMoonEventProgressRevision != lastMoonEventProgressRevision)
                 {
-                    if (WorldClock.MoonEventActive && (moonStartIcon == 0 ||
+                    if (WorldClock.MoonEventActive && WorldClock.MoonEventProgressReportRequired && (moonStartIcon == 0 ||
                         WorldClock.MoonEventWaveNumber != 1 || WorldClock.MoonEventWaveKills != 0f))
                     {
                         var progress = new TerrariaInvasionProgressState(
                             checked((int)WorldClock.MoonEventWaveKills),
                             WorldClock.MoonEventWaveRequirement,
-                            WorldClock.SnowMoonActive ? (sbyte)1 : (sbyte)2,
+                            WorldClock.MoonEventProgressIcon,
                             checked((sbyte)WorldClock.MoonEventWaveNumber));
                         if (TerrariaInvasionProgressCodec.TryEncode(in progress, out byte[] progressFrame))
                             RuntimeConnections.BroadcastToPlaying(progressFrame);
                     }
 
                     lastMoonEventProgressRevision = liveMoonEventProgressRevision;
+                    NpcReplication.AcknowledgeMoonEventProgress(lastMoonEventProgressRevision);
                 }
 
                 // Main.DoUpdate runs UpdateTime before UpdateWorld_WorldGenAndInvasion.

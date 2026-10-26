@@ -54,6 +54,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
+        else if (VanillaMoonBossLootEvaluator1458.IsBoss(dead.TypeIdentity))
+            ApplyMoonBossDeathEffects();
         else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
             DeathProgression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
         else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
@@ -73,6 +75,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool TryAdmitLethalDeath(in NpcSnapshot pending)
     {
         deathAdmissionRejected = false;
+        // A trusted strike does not authorize omitted participant rewards or death
+        // producers. Unsupported point-bearing bodies stay alive until their existing
+        // retained terminal/loot owner is source-qualified as one complete operation.
+        if (RuntimeWorldClock.IsMoonEventParticipant(pending.TypeIdentity) &&
+            !RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(pending.TypeIdentity))
+        { deathAdmissionRejected = true; return false; }
         if (!CanOwnInvasionDeath(in pending)) { deathAdmissionRejected = true; return false; }
         if (replayingDollDeath is { } retainedDollDeath)
         {
@@ -181,12 +189,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 !TryCaptureDeathPreludeContext(in dead, eaterBoss, out var preludeContext) ||
                 !prelude.TryApply(in dead, in preludeContext, plan.Random, out bool allowLoot) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Prelude)) return false;
+            if (RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity) && !CaptureMoonDeath(in dead, allowLoot)) return false;
             lootDelivery.Phase = NpcDeathDropPhase1458.Imported;
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Imported) ||
                 (allowLoot && !TryExecuteImportedLoot(in dead, eaterBoss)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Imported)) return false;
 
             if (allowLoot) ExecuteOwnedDeathEvents(in dead, eaterBoss);
+            // Moon credit belongs to checkDead after NPCLoot, including an NPC whose
+            // statue/prelude rules return from loot before DoDeathEvents.
+            else if (RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity)) AdvanceMoonEventDeath(in dead);
             if (deathPreviewFailed) return false;
             lootDelivery.Phase = NpcDeathDropPhase1458.Recovery;
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Recovery)) return false;
@@ -224,13 +236,15 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost ||
                 pendingProjectileStrike is not null || pendingDebuffPrelude is not null ||
                 RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(dead.TypeIdentity) ||
-                worldClock?.MoonEventActive == true && RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity))
+                RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity))
             {
                 // Lava's Expert/Skyblock tile producer needs an owned world-tile death operation.
                 if (dead.TypeIdentity == VanillaNpcIds.LavaSlime &&
                     (expertMode || plannedSpecificLowTiles != false || lootRemixWorld != false)) return false;
                 if (dead.TypeIdentity == VanillaNpcIds.BlueSlime && dead.Ai.Ai1 == 1345f) return false;
-                if (previewDeathProgression.CaptureSnapshot() != plannedDeathProgression ||
+                var previewProgression = previewDeathProgression.CaptureSnapshot();
+                if ((RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity)
+                        ? !IsMoonPreviewProgressionValid(in previewProgression) : previewProgression != plannedDeathProgression) ||
                     !plan.TryEnableUnpublished(in dead) || !plan.ValidateUnpublishedOwnerFacts() ||
                     CaptureStrikeClock() != plannedStrikeClock || CaptureStrikeDaily() != plannedStrikeDaily ||
                     !plan.CanAdoptUnpublished()) return false;
@@ -240,6 +254,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 (!allowLoot || !TryRetainCaptainOwners(in dead))) return false;
             if (RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(dead.TypeIdentity) &&
                 (!allowLoot || !TryRetainOrdinaryInvasionOwners(in dead))) return false;
+            if (RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity) && !TryRetainMoonDeathOwners(in dead)) return false;
             plannedDaily = previewDaily;
             plannedPrelude = prelude;
             plannedLootAllowed = allowLoot;
@@ -258,6 +273,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 plan.Dispose(); plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
                 plannedOrdinaryInvasionRemoval = null;
                 plannedOrdinaryDeathPublication = null;
+                plannedMoonRemoval = null;
+                plannedMoonTerminalPublication = null;
             }
         }
     }
@@ -298,6 +315,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedCaptainDeathPublication = null;
         plannedOrdinaryInvasionRemoval = null;
         plannedOrdinaryDeathPublication = null;
+        plannedMoonRemoval = null;
+        plannedMoonTerminalPublication = null;
     }
 
     private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision)
@@ -313,10 +332,17 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         bool worldCurrent = CaptureGlobalLootWorld() == plannedGlobalLootWorld;
         bool specificCurrent = IsSpecificLootContextCurrent();
         bool projectileCurrent = pendingProjectileStrike?.IsCurrent() ?? true;
+        // Master Moon rewards retain an active interacting census. A projectile owner
+        // callback may disconnect a recipient; refresh that census before the final
+        // callback-free progression/clock/NPC comparisons authorize adoption.
+        bool moonPlayersCurrent = !npcs.TryGet(handle, out var moonActor) ||
+            !RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(moonActor.TypeIdentity) ||
+            ArePlannedPlayersCurrent() && AreMoonPlayerBodiesCurrent();
         bool captainCurrent = npcs.TryGet(handle, out var actor) &&
             ((actor.TypeIdentity != VanillaNpcIds.PirateCaptain && actor.TypeIdentity != VanillaNpcIds.PirateGhost) || IsCaptainInvasionCurrent());
         bool ordinaryInvasionCurrent = !RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(actor.TypeIdentity) ||
             IsOrdinaryInvasionCurrent();
+        bool moonCurrent = !RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(actor.TypeIdentity) || IsMoonDeathCurrent();
         bool linkedDeath = actor.TypeIdentity == VanillaNpcIds.PirateCaptain || actor.TypeIdentity == VanillaNpcIds.PirateGhost;
         // Check the captured clock even if a provider has just stopped the event;
         // consulting only the later active flag would let that transition evade validation.
@@ -326,7 +352,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             CaptureStrikeClock() == plannedStrikeClock && CaptureStrikeDaily() == plannedStrikeDaily;
         // Seal after the final external dependency read, before HP or any other owner write.
         bool captainRecipientsCurrent = plannedCaptainBirthJournal?.TrySealRecipients() ?? true;
-        return captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && clockCurrent && fallbackCurrent &&
+        return captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && moonCurrent && moonPlayersCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && clockCurrent && fallbackCurrent &&
             npcs.TryGet(handle, out var current) && current.Revision == revision &&
             deathPrelude.Revision == plannedPreludeRevision && progression.CaptureSnapshot() == plannedDeathProgression &&
             (plannedDeathSpawnSerial is not { } serial ||
@@ -352,6 +378,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool MoneyClearedBeforeDeathPhase(in NpcSnapshot dead, bool eaterBoss)
     {
+        if (VanillaMoonBossLootEvaluator1458.IsParticipant(dead.TypeIdentity)) return plannedMoonMoneyCleared;
         if (VanillaMechanicalBossLootEvaluator.IsTwin(dead.TypeIdentity))
         {
             var other = dead.TypeIdentity == VanillaNpcIds.Retinazer ? VanillaNpcIds.Spazmatism : VanillaNpcIds.Retinazer;

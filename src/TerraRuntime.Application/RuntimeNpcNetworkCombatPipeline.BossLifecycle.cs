@@ -372,7 +372,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     {
         // NPC.checkDead invokes both Moon-event progress checks after NPCLoot. RuntimeWorldClock owns their
         // shared transient wave state, while this boundary makes every authoritative kill path contribute once.
-        DeathClock?.TryAdvanceMoonEventDeath(dead.TypeIdentity, expertMode, masterMode);
+        if (DeathClock is not { } clock) return;
+        if (RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity) && IsPreviewingDeath)
+            clock.TryAdvanceMoonEventDeath(dead.TypeIdentity, expertMode, masterMode, out plannedMoonDeathEffects);
+        else
+            clock.TryAdvanceMoonEventDeath(dead.TypeIdentity, expertMode, masterMode);
     }
 
     private void ApplyKingSlimeDeathEffects(in NpcSnapshot kingSlime)

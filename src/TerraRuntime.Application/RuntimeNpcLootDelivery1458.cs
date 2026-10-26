@@ -27,7 +27,8 @@ internal sealed class RuntimeNpcLootDelivery1458(
     IMechanicalBossLootDeliverySink,
     IEyeOfCthulhuLootDeliverySink,
     IWallOfFleshLootDeliverySink,
-    IBossRecoveryLootDeliverySink1458
+    IBossRecoveryLootDeliverySink1458,
+    IMoonBossLootDeliverySink1458
 {
     private readonly RuntimeWorldItemStore worldItems = items ?? throw new ArgumentNullException(nameof(items));
     private readonly INpcLootWorldItemMaterializer ownedMaterializer = materializer ?? VanillaNpcLootWorldItemMaterializer.Instance;

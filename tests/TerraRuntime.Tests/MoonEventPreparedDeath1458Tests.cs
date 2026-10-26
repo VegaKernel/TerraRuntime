@@ -17,7 +17,7 @@ public sealed class MoonEventPreparedDeath1458Tests
     public void Raw_client_event_damage_never_uses_ranged_compatibility_fallback_for_progress_or_rewards()
     {
         Span<PlayerSlotId> participants = stackalloc PlayerSlotId[255];
-        foreach (int type in new[] { 27, 212, 305, 338 })
+        foreach (int type in new[] { 27, 212, 305, 338, 325, 327, 344, 345, 346 })
         {
             var players = new PlayerAuthority(null, null);
             var pool = new PlayerSlotPool(1);
@@ -36,8 +36,8 @@ public sealed class MoonEventPreparedDeath1458Tests
             var items = new RuntimeWorldItemStore();
             var random = new VanillaUnifiedRandom1458(1458);
             var clock = new RuntimeWorldClock(0, false, 0, 0, 0);
-            if (type == 305) Assert.True(clock.TryStartPumpkinMoon());
-            if (type == 338) Assert.True(clock.TryStartSnowMoon());
+            if (type is 305 or 325 or 327) Assert.True(clock.TryStartPumpkinMoon());
+            if (type is 338 or 344 or 345 or 346) Assert.True(clock.TryStartSnowMoon());
             long beforeRevision = clock.MoonEventProgressRevision;
             int group = VanillaInvasionLifecycle1458.GetGroup(type);
             var invasion = new RuntimeWorldInvasion1458(new(group, 12, 120, 0, 50, 0,
@@ -114,7 +114,7 @@ public sealed class MoonEventPreparedDeath1458Tests
             {
                 Assert.Equal(1f, fixture.Clock.MoonEventWaveKills);
                 Assert.True(fixture.Clock.TryAdvanceMoonEventDeath(new(type), false, false));
-                Assert.True(fixture.Npcs.TryDespawn(target.Handle));
+                Assert.False(fixture.Npcs.TryDespawn(target.Handle)); // Accepted Moon terminal precedes observers.
                 // Exact-slot replacement retains the already verified original spawn facts;
                 // the ordinary allocator may deliberately skip its protected corpse slot.
                 var next = new NpcStateUpdate(target.Type, target.NetId, target.PositionX, target.PositionY,
@@ -189,11 +189,21 @@ public sealed class MoonEventPreparedDeath1458Tests
     }
 
     [Fact]
-    public void Nested_ghost_fade_refuses_without_canceling_a_prepared_moon_death()
+    public void Nested_ghost_fade_completes_without_canceling_the_retained_moon_publication()
     {
         var fixture = new Fixture(338, 0);
         var target = fixture.Spawn(338);
-        var ghost = fixture.Spawn(662);
+        // The admitted Captain producer owns Ghost's zero value/extra/midas fields;
+        // a generic direct type662 spawn deliberately has no money provenance.
+        var captain = fixture.Spawn(216);
+        Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Killed,
+            fixture.Pipeline.TryStrikeEnvironment(captain.Handle, 100000));
+        var active = new NpcSnapshot[fixture.Npcs.Capacity];
+        int count = fixture.Npcs.CopyActive(active);
+        var ghost = Assert.Single(active.AsSpan(0, count).ToArray(), npc => npc.Type == 662);
+        Assert.Equal(0f, ghost.Simulation.MoneyValue);
+        Assert.Equal(0, ghost.Simulation.ExtraMoneyValue);
+        Assert.Equal(false, ghost.Simulation.Midas);
         var motion = new NpcStateUpdate(ghost.Type, ghost.NetId, ghost.PositionX, ghost.PositionY,
             ghost.VelocityX, ghost.VelocityY, ghost.Target, ghost.Ai,
             ghost.Simulation with { Alpha = 255 });
@@ -202,12 +212,10 @@ public sealed class MoonEventPreparedDeath1458Tests
         {
             callback = true;
             Assert.Equal(1f, fixture.Clock.MoonEventWaveKills);
-            var beforeRandom = fixture.Random.Clone();
-            Assert.False(fixture.Pipeline.TryCommitPirateGhostPhase(in ghost, in motion, true,
+            Assert.True(fixture.Pipeline.TryCommitPirateGhostPhase(in ghost, in motion, true,
                 [], static () => true, static () => true));
-            Assert.True(fixture.Random.HasSameState(beforeRandom));
-            Assert.True(fixture.Npcs.TryGet(ghost.Handle, out var unchanged));
-            Assert.Equal(ghost, unchanged);
+            Assert.False(fixture.Npcs.TryGet(ghost.Handle, out _));
+            Assert.Equal(1f, fixture.Clock.MoonEventWaveKills);
         }));
         Assert.True(callback);
         Assert.False(fixture.Npcs.TryGet(target.Handle, out _));
@@ -217,7 +225,7 @@ public sealed class MoonEventPreparedDeath1458Tests
 
     private sealed class Fixture : IRuntimePlayerSlotSnapshotLookup, IWorldItemStateCommitSink
     {
-        internal readonly RuntimeNpcStore Npcs = new(10);
+        internal readonly RuntimeNpcStore Npcs = new(200);
         internal readonly RuntimeNpcNetworkCombatPipeline Pipeline;
         internal readonly VanillaUnifiedRandom1458 Random = new(1458);
         internal readonly RuntimeWorldClock Clock;
@@ -240,6 +248,9 @@ public sealed class MoonEventPreparedDeath1458Tests
             Assert.True(type == 338 ? Clock.TryStartSnowMoon() : Clock.TryStartPumpkinMoon());
             StartRevision = Clock.MoonEventProgressRevision;
             var items = new RuntimeWorldItemStore(this);
+            // Ghost fade's existing death-birth owner requires the concrete spawn
+            // context even when no child is produced. Early Moon counters alone did not.
+            Npcs.SetVanillaSpawnContextSource(() => new(mode + 1f, 1, false));
             Npcs.SetVanillaSpawnRandomSource(new SystemVanillaNpcRandom(Random));
             Pipeline = new(Npcs, items, this, new PlayerAuthority(null, null), () => 0,
                 null, new(items), null, Clock, new(), mode > 0, mode == 2,
