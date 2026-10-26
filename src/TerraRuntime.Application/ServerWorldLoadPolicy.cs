@@ -34,7 +34,7 @@ internal static class ServerWorldLoadPolicy
             RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
                 MaxStringBytes: 64 * 1024,
                 MaxTotalStringBytes: 64L * 1024 * 1024,
-                MaxAnglerNames: 4_096,
+                MaxAnglerNames: WorldAnglerQuestData1458.MaximumCompletedNames,
                 MaxBannerEntries: 8_192,
                 MaxPartyNpcEntries: 4_096,
                 MaxManifestBytes: 4 * 1024 * 1024));

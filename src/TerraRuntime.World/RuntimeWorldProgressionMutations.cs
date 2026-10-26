@@ -26,6 +26,7 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
     public bool UnlockTruffleSpawn { get; init; }
 
     public bool UnlockSlimeYellowSpawn { get; init; }
+    public bool UnlockSlimeRedSpawn { get; init; }
 
     public RuntimeTownRescueFacts1458 RescuedTownNpcs { get; init; }
 
@@ -37,6 +38,7 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
         UnlockSlimeBlueSpawn ||
         UnlockTruffleSpawn ||
         UnlockSlimeYellowSpawn ||
+        UnlockSlimeRedSpawn ||
         RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
 
     public bool IsCompleted(VanillaWorldProgressionId milestone)
@@ -79,6 +81,8 @@ public sealed class RuntimeWorldProgressionMutations
     private bool unlockTruffleSpawn;
     private bool baselineSlimeYellowSpawnUnlocked;
     private bool unlockSlimeYellowSpawn;
+    private bool baselineSlimeRedSpawnUnlocked;
+    private bool unlockSlimeRedSpawn;
     private RuntimeTownRescueFacts1458 baselineRescuedTownNpcs;
     private RuntimeTownRescueFacts1458 rescuedTownNpcs;
 
@@ -171,6 +175,20 @@ public sealed class RuntimeWorldProgressionMutations
         baselineRescuedTownNpcs |= facts;
     }
 
+    public void SetSlimeRedSpawnBaseline(bool unlocked)
+    {
+        if (unlocked) baselineSlimeRedSpawnUnlocked = true;
+    }
+
+    public bool IsSlimeRedSpawnUnlocked => baselineSlimeRedSpawnUnlocked || unlockSlimeRedSpawn;
+
+    public bool MarkSlimeRedSpawnUnlocked()
+    {
+        if (IsSlimeRedSpawnUnlocked) return false;
+        unlockSlimeRedSpawn = true;
+        return true;
+    }
+
     public bool MarkTownNpcRescued(RuntimeTownRescueFacts1458 fact)
     {
         ushort raw = (ushort)fact;
@@ -189,6 +207,7 @@ public sealed class RuntimeWorldProgressionMutations
             UnlockSlimeBlueSpawn = unlockSlimeBlueSpawn,
             UnlockTruffleSpawn = unlockTruffleSpawn,
             UnlockSlimeYellowSpawn = unlockSlimeYellowSpawn,
+            UnlockSlimeRedSpawn = unlockSlimeRedSpawn,
             RescuedTownNpcs = rescuedTownNpcs
         };
 }

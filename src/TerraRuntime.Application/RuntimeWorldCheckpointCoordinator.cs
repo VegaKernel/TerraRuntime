@@ -79,7 +79,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
         WorldFileLoadLimits? checkpointValidationLimits = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
         Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null,
-        RuntimeManagedWorldCustody? managedCustody = null)
+        RuntimeManagedWorldCustody? managedCustody = null,
+        Func<WorldAnglerQuestData1458?>? anglerSaveStateSource = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -129,7 +130,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             worldClock,
             signStore,
             townNpcStore,
-            progressionMutations, deathPrelude, invasionSaveStateSource, managedCustody);
+            progressionMutations, deathPrelude, invasionSaveStateSource, managedCustody, anglerSaveStateSource);
         coordinator = new WorldSaveCoordinator<RuntimeWorldCheckpointSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,
@@ -383,6 +384,13 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             }
 
             headerSection = progressionHeader;
+        }
+
+        if (snapshot.AnglerQuest is { } angler)
+        {
+            if (!WorldFileAnglerHeaderPatcher1458.TryPatch(headerSection, sourceHeader, angler, out byte[] anglerHeader))
+                throw new InvalidDataException("Authoritative Angler quest header patch failed.");
+            headerSection = anglerHeader;
         }
 
         ReadOnlySpan<byte> signSection = preserved.Signs.Span;

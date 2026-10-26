@@ -27,7 +27,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (slot >= 59 && before[slot] != reports[slot]) changedBank = true;
             if (slot < 58 && before[slot] != reports[slot]) changedMain = true;
             int lane = QuantityLane(before[slot].ItemType);
-            if (lane >= 0 && caps[slot * 5 + lane] >= 0 && before[slot].Stack > caps[slot * 5 + lane]) return null;
+            if (lane >= 0 && caps[slot * QuantityLaneCount + lane] >= 0 && before[slot].Stack > caps[slot * QuantityLaneCount + lane]) return null;
         }
         // Main-only comparison is an explicit caller policy. It never permits
         // an unreported bank or cursor change, or bypasses conserved identities.
@@ -239,9 +239,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                 var finalCaps = capture.Caps;
                 ReconcileFinalBankCaps(capture.Before, target, finalCaps);
                 if (AreValidRetainedMainShopImage(target.AsSpan(0, 59), quantity.AsSpan(0, 59).ToArray(),
-                    copper.AsSpan(0, 59).ToArray(), finalCaps.AsSpan(0, 59 * 5)) &&
+                    copper.AsSpan(0, 59).ToArray(), finalCaps.AsSpan(0, 59 * QuantityLaneCount)) &&
                     AreValidShopBanks(target.AsSpan(59), copper.AsSpan(59)) &&
-                    AreValidShopBankOwnership(target.AsSpan(59), quantity.AsSpan(59), finalCaps.AsSpan(59 * 5)))
+                    AreValidShopBankOwnership(target.AsSpan(59), quantity.AsSpan(59), finalCaps.AsSpan(59 * QuantityLaneCount)))
                 {
                     var candidate = new ShopBankMovePreparation(owner, connection, capture,
                         target.ToArray(), copper.ToArray(), quantity.ToArray(), finalCaps);

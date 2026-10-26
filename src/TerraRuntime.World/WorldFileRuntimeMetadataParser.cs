@@ -222,27 +222,35 @@ public static class WorldFileRuntimeMetadataParser
             !reader.TryReadByte(out byte oceanBackground) ||
             !reader.TryReadInt32(out int cloudBackground) ||
             !reader.TryReadInt16(out short cloudCountRaw) || cloudCountRaw is < 0 or > byte.MaxValue ||
-            !reader.TryReadSingle(out float windSpeed) || !float.IsFinite(windSpeed) ||
-            !reader.TryReadInt32(out int anglerCount))
+            !reader.TryReadSingle(out float windSpeed) || !float.IsFinite(windSpeed))
         {
             return Finish(WorldFileRuntimeMetadataParseResult.InvalidScalar, ref reader, out bytesConsumed);
         }
 
+        int anglerOffset = reader.Offset;
+        if (!reader.TryReadInt32(out int anglerCount))
+            return Finish(WorldFileRuntimeMetadataParseResult.Truncated, ref reader, out bytesConsumed);
         if (anglerCount < 0)
             return Finish(WorldFileRuntimeMetadataParseResult.InvalidCount, ref reader, out bytesConsumed);
-        if (anglerCount > limits.MaxAnglerNames)
+        if (anglerCount > limits.MaxAnglerNames || anglerCount > WorldAnglerQuestData1458.MaximumCompletedNames)
             return Finish(WorldFileRuntimeMetadataParseResult.BudgetExceeded, ref reader, out bytesConsumed);
 
+        var anglerNames = new string[anglerCount];
         for (int i = 0; i < anglerCount; i++)
         {
-            result = ReadString(ref reader, limits.MaxStringBytes, limits.MaxTotalStringBytes, ref totalStringBytes, out _);
+            result = ReadString(ref reader, Math.Min(limits.MaxStringBytes, WorldAnglerQuestData1458.MaximumNameBytes),
+                limits.MaxTotalStringBytes, ref totalStringBytes, out anglerNames[i]);
             if (result != WorldFileRuntimeMetadataParseResult.Parsed)
                 return Finish(result, ref reader, out bytesConsumed);
         }
 
         if (!ReadBool(ref reader, out bool savedAngler) ||
-            !reader.TryReadInt32(out _) ||
-            !ReadBool(ref reader, out bool savedStylist) ||
+            !reader.TryReadInt32(out int anglerQuest))
+            return Finish(WorldFileRuntimeMetadataParseResult.Truncated, ref reader, out bytesConsumed);
+        if ((uint)anglerQuest >= 41)
+            return Finish(WorldFileRuntimeMetadataParseResult.InvalidScalar, ref reader, out bytesConsumed);
+        int anglerLength = reader.Offset - anglerOffset;
+        if (!ReadBool(ref reader, out bool savedStylist) ||
             !ReadBool(ref reader, out bool savedTaxCollector) ||
             !ReadBool(ref reader, out bool savedGolfer) ||
             !reader.TryReadInt32(out int invasionSizeStart) ||
@@ -485,6 +493,9 @@ public static class WorldFileRuntimeMetadataParser
             CloudBackgroundActive = cloudBackground >= 1,
             CloudCount = (byte)cloudCountRaw,
             WindSpeed = windSpeed,
+            AnglerQuest = new WorldAnglerQuestData1458(anglerQuest, anglerNames),
+            AnglerSectionOffset = anglerOffset,
+            AnglerSectionLength = anglerLength,
             SavedAngler = savedAngler,
             SavedStylist = savedStylist,
             SavedTaxCollector = savedTaxCollector,

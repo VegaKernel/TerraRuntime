@@ -76,6 +76,20 @@ internal sealed partial class PlayerAuthority
     {
         switch (command)
         {
+            case CaptureFishingCrateRuntimeCommand crate:
+                crate.Completion.TrySetResult(CaptureFishingCrate(crate.Connection, crate.Slot));
+                return true;
+            case CompleteAnglerQuestRuntimeCommand quest:
+                TryCompleteAnglerQuest(quest.Connection);
+                PublishAnglerState(quest.Connection);
+                return true;
+            case PublishAnglerStateRuntimeCommand quest:
+                PublishAnglerState(quest.Connection);
+                return true;
+            case OpenFishingCrateRuntimeCommand crate:
+                bool opened = TryOpenFishingCrate(crate.Connection, crate.Slot, crate.ExpectedInventorySerial);
+                crate.Completion?.TrySetResult(opened);
+                return true;
             case PlayerAppearanceRuntimeCommand appearance:
                 ApplyPlayerAppearance(appearance);
                 return true;
@@ -514,6 +528,7 @@ internal sealed partial class PlayerAuthority
         PlayerEquipmentCommitRequest request = equipment.Request;
         if (TryAcknowledgeWiringInventory(equipment)) return;
         if (TryRetainWiringInventory(equipment)) return;
+        if (TryObserveFishingCrateOpen(equipment)) return;
         if (TryAcknowledgePlacementInventory(equipment)) return;
         if (TryRetainPlacementInventory(equipment)) return;
         if (TryStageLocalCraftCredit(equipment)) return;
@@ -809,6 +824,7 @@ internal sealed partial class PlayerAuthority
         transferProfiles.InitializeSourceBuffs(spawn.Connection);
         AttachNpcRawSlot(spawn.Connection.Player);
         events?.PlayerSpawned(spawn.Connection, in request);
+        PublishAnglerState(spawn.Connection);
     }
 
     private void ApplyPlayerRespawn(PlayerRespawnRuntimeCommand respawn)

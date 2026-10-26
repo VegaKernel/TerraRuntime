@@ -133,7 +133,7 @@ internal sealed partial class PlayerAuthority
         beforeBuffs.CaptureSlots(out var types, out var durations);
         // These are the already represented whole-phase buff facts. Unrepresented
         // control/crafting/spectator states do not gain admission through QuickBuff.
-        if (types.Any(type => type.Value is not (0 or 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207)))
+        if (types.Any(type => type.Value is not (0 or 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)))
             yield break;
         var before = journal.Capture.Before;
         var main = before.AsSpan(0, 59).ToArray().Select(QuickBuffTuple).ToArray();
@@ -142,7 +142,7 @@ internal sealed partial class PlayerAuthority
             beforeBuffs.IsItemUseCrowdControlled, member.IsDead, false, beforeBuffs.HasNoItemsEffect);
         if (!VanillaSelectedConsumable1458.TryPlanQuickBuff(main, bank, types, durations,
                 in eligibility, ReadOnlySpan<bool>.Empty, out var plan) || plan is null ||
-            plan.Mutations.Length is < 1 or > 7) yield break;
+            plan.Mutations.Length is < 1 or > 10) yield break;
         var nextBuffs = beforeBuffs.Clone();
         foreach (var mutation in plan.Mutations)
         {
@@ -190,13 +190,13 @@ internal sealed partial class PlayerAuthority
         if (paid)
         {
             merged = currentBuffs!.Clone();
-            if (journal.QuickBuffOrderedOffers is not { Length: > 0 and <= 7 } offers)
+            if (journal.QuickBuffOrderedOffers is not { Length: > 0 and <= 10 } offers)
                 throw new InvalidOperationException("Prepared QuickBuff lacks its bounded ordered offers.");
             foreach (var offer in offers)
             {
                 if (!merged.TryApplySelectedConsumable(offer.OfferType, offer.OfferDuration, false))
                 { paid = false; break; }
-                if (offer.OfferType.Value is 26 or 206 or 207)
+                if (offer.OfferType.Value is 26 or 206 or 207 or 121 or 122 or 123)
                     merged.StampOwnedFoodGrant(currentCombatTick);
             }
         }

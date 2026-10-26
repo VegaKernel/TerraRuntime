@@ -22,7 +22,7 @@ for(byte player=0;player<3;player++){
  membership.Commit(new RuntimePlayerMember{Connection=c,Slot=c.Player.Slot,Revision=1,HasHealth=true,Life=400,MaxLife=400});Check(inventory.TryAttach(c),"attach");Check(Fields.Raw(players).TryAttach(c.Player),"same-owner raw occupation attach");
  if(player==2)continue;
  var q=new short[59];Check(inventory.TrySet(c,new(c.Player.Slot,10,20,0,9,0)),"funded ordinary source");q[10]=20;inventory.AdoptFundedQuantities(c,q);
- var banks=new RuntimePlayerInventoryItem[160];var bankq=new short[160];var caps=new short[800];Array.Fill(caps,(short)-1);
+ var banks=new RuntimePlayerInventoryItem[160];var bankq=new short[160];var caps=new short[160 * RuntimePlayerInventoryStore.QuantityLaneCount];Array.Fill(caps,(short)-1);
  banks[0]=new(new(9),3,new(0),0);bankq[0]=3;Check(inventory.TryAdoptShopBanks(c,banks,new long[160],bankq,caps),"funded bank source");
 }
 foreach(var c in connections[..2]){

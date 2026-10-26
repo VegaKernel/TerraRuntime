@@ -230,6 +230,9 @@ internal sealed class ServerRuntimeComposition
                 worldClock is { HasOwnedSeasonalState: true } ? worldClock.ChristmasActive : ownedCalendar.XMas,
                 ownedCalendar.TenthAnniversaryWorld) : null);
         worldItemStore.AttachOwnerFactsProvider(worldItemAuthority.SourceOwnerFacts);
+        playersAuthority.BindFishingRewards(worldItemAuthority);
+        playersAuthority.BindFishingWorldClock(worldClock);
+        playersAuthority.BindFishingCrateWorld(skyblockLowTiles);
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
         playersAuthority.SetNpcHealthGrapplingFacts(player => PlayerAuthority.CaptureNpcHealthGrappling(projectileStore, player));
         if (townCommerceWorldFacts is { } ownedPlayerEnvironment)
@@ -305,6 +308,7 @@ internal sealed class ServerRuntimeComposition
             invasionProgressPublisher: invasionProgressPublisher, invasionStartPublisher: invasionStartPublisher,
             worldStateAdopted: worldStateAdopted);
         playersAuthority.SetTorchFavorPrelude(npcAuthority.DeathPrelude);
+        projectileAuthority.BindFishingNpcs(npcAuthority);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,

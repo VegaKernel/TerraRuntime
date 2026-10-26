@@ -35,6 +35,7 @@ internal sealed record RuntimeWorldCheckpointSnapshot(
     RuntimeWorldCustodyCheckpoint? Custody = null)
 {
     public WorldTileEntity[]? TileEntities { get; init; }
+    public WorldAnglerQuestData1458? AnglerQuest { get; init; }
 }
 
 /// <summary>
@@ -53,6 +54,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
     private readonly RuntimeTownNpcStateStore? townNpcStore;
     private readonly RuntimeWorldProgressionMutations progressionMutations;
     private readonly Func<WorldInvasionSaveState1458?>? invasionSaveStateSource;
+    private readonly Func<WorldAnglerQuestData1458?>? anglerSaveStateSource;
 
     public RuntimeWorldCheckpointSnapshotSource(
         WorldTileStore tiles,
@@ -64,7 +66,8 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
         RuntimeWorldProgressionMutations? progressionMutations = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
         Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null,
-        RuntimeManagedWorldCustody? managedCustody = null)
+        RuntimeManagedWorldCustody? managedCustody = null,
+        Func<WorldAnglerQuestData1458?>? anglerSaveStateSource = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
@@ -74,6 +77,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
         this.managedCustody = managedCustody;
         this.deathPrelude = deathPrelude;
         this.invasionSaveStateSource = invasionSaveStateSource;
+        this.anglerSaveStateSource = anglerSaveStateSource;
         this.worldClock = worldClock;
         this.signStore = signStore;
         this.townNpcStore = townNpcStore;
@@ -135,7 +139,11 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
             townNpcStore?.CaptureNpcPersistence(),
             townNpcStore?.CaptureTownRooms(),
             deathPrelude?.CaptureBanners(), deathPrelude?.CaptureBestiary(),
-            invasionSaveStateSource?.Invoke(), custody) { TileEntities = tileOwner.RuntimeTileEntities?.CaptureSnapshot() };
+            invasionSaveStateSource?.Invoke(), custody)
+        {
+            TileEntities = tileOwner.RuntimeTileEntities?.CaptureSnapshot(),
+            AnglerQuest = anglerSaveStateSource?.Invoke()
+        };
         return true;
     }
 }

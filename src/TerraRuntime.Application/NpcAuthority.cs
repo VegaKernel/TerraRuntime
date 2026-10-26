@@ -144,6 +144,8 @@ internal sealed partial class NpcAuthority
             npcs.SetVanillaSpawnWetCollisionSource((x, y, width, height) =>
                 VanillaWorldCollision.TryGetWetContact(worldTiles, x, y, width, height, out _));
         naturalSpawnWorldFacts = townCommerceWorldFacts;
+        fishingCombatBookUsed = townCombatWorldFacts?.CombatBookWasUsed ?? false;
+        fishingWorldStateAdopted = worldStateAdopted;
         naturalSpawnTownNpcs = townNpcs;
         townNpcs?.BindRuntimeNames(npcs);
         naturalSpawnSkyblockLowTiles = skyblockLowTiles;

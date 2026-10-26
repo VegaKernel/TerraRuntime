@@ -30,6 +30,10 @@ public static class VanillaSelectedItemCrit1458
             itemCrit = tool.Crit;
             return true;
         }
+        // Source pole SetDefaults retains raw crit zero and does not admit a
+        // weapon prefix. The connected fishing ItemCheck shares this reset.
+        if (FishingRules1458.TryGetPole(item.Value, out _))
+            return prefix.Value == 0;
         if (VanillaSelectedConsumableCatalog1458.TryGet(item, out _))
             return prefix.Value == 0;
         // Item.SetDefaults leaves raw crit at zero for the admitted conventional wiring items.

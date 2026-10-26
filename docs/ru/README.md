@@ -1,5 +1,7 @@
 # Документация TerraRuntime
 
+Связанная рыбалка: [удочка, наживка и улов](fishing-authority-1458.md), [задания Рыбака](angler-quest-authority-1458.md), [открытие ящиков](fishing-crates-authority-1458.md).
+
 [English](../en/README.md) · [README репозитория](../../README.md) · [Roadmap](../roadmap.md)
 
 Этот каталог содержит русскую документацию TerraRuntime. Английская версия ведётся параллельно в `docs/en/` и должна описывать ту же фактическую версию кода.

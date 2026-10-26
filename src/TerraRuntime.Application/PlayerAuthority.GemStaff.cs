@@ -212,7 +212,7 @@ internal sealed partial class PlayerAuthority
                 return false;
             expectedItems[refill.Slot] = refill.After;
             expectedQuantity[refill.Slot]--;
-            int capIndex = refill.Slot * 5 + lane;
+            int capIndex = refill.Slot * RuntimePlayerInventoryStore.QuantityLaneCount + lane;
             expectedCaps[capIndex] = expectedCaps[capIndex] < 0 ? refill.After.Stack : Math.Min(expectedCaps[capIndex], refill.After.Stack);
             if (!expectedItems.AsSpan().SequenceEqual(after.Before) ||
                 !expectedQuantity.AsSpan().SequenceEqual(after.Quantity) ||

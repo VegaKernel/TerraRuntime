@@ -105,7 +105,7 @@ internal sealed partial class PlayerAuthority
     }
     private bool TryHandleOwnedFoodSnapshot(RuntimePlayerMember member, in PlayerBuffTypesCommitRequest request)
     {
-        if (transferProfiles.CaptureBuffState(member.Connection) is not { HasOwnedFood: true } previous) return false;
+        if (transferProfiles.CaptureBuffState(member.Connection) is not { HasOwnedFoodSlots: true } previous) return false;
         var incoming = request.BuffTypes.Span;
         if (incoming.SequenceEqual(previous.CaptureTypes()))
         {
@@ -126,7 +126,7 @@ internal sealed partial class PlayerAuthority
         }
         // A changed presence-only report cannot select or renew an owned duplicate.
         foreach (var type in previous.CaptureEffectTypes())
-            if (type.Value is 26 or 206 or 207 && incoming.Contains(type))
+            if (type.Value is 26 or 206 or 207 or 121 or 122 or 123 && incoming.Contains(type))
             {
                 RejectedBuffSnapshots++;
                 return true;
