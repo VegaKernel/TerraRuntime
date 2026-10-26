@@ -20,7 +20,7 @@ internal sealed partial class PlayerAuthority
         in TerrariaTileManipulationState report, out RuntimePlayerToolInput1458? input)
     {
         input = null;
-        if (report.Action is not (0 or 2 or 7 or 14 or 20 or 23))
+        if (report.Action is not (0 or 2 or 7 or 14 or 15 or 20 or 23))
             return ToolReportObservationResult1458.NotApplicable;
         var result = TryCaptureToolInput(connection, out input);
         if (result != ToolReportObservationResult1458.Retained || input is null) return result;

@@ -83,7 +83,7 @@ internal sealed partial class WorldTileAuthority
 
         private bool FrameSapling(int x, int y, in WorldTile tile)
         {
-            if (plantDestroying || saplingDestroying || container?.Destroying == true) return true;
+            if (IsSourceDestroyingObject) return true;
             if (tile.FrameY < 0 || tile.FrameY % 40 is not (0 or 18)) return false;
             int top = y - tile.FrameY % 40 / 18, verticalStyle = tile.FrameY / 40;
             if (!Overlay.TryReadSourceSafely(x, top, out var a) || !Overlay.TryReadSourceSafely(x, top + 1, out var b) ||

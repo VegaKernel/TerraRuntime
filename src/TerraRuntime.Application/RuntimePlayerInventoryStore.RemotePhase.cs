@@ -8,6 +8,9 @@ internal readonly record struct RemotePhaseInventoryMutation(
     ConnectionHandle Connection, short Slot, RuntimePlayerInventoryItem Before, RuntimePlayerInventoryItem After)
 {
     internal bool ConsumeFundedQuantity { get; init; }
+    // Set only by the qualified placement world/clock participant. A wall fill
+    // may place five cells while exhausting two units; it cannot credit stock.
+    internal short PlacementQuantity { get; init; }
     internal RuntimePlayerInventoryStore.CursorMovePreparation? CursorSourceDebit {get;init;}
 }
 
@@ -103,7 +106,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         var seen = new HashSet<int>();
         foreach (var mutation in mutations)
         {
-            if (mutation.Connection.Player.Slot.Value == byte.MaxValue || mutation.Slot is < 0 or >= 58 ||
+            if (mutation.Connection.Player.Slot.Value == byte.MaxValue || (mutation.Slot is < 0 or > 58 || mutation.Slot == 58 && mutation.PlacementQuantity == 0) ||
                 !IsOwnedConsumption(mutation) || !TryGet(mutation.Connection, mutation.Slot, out var before) ||
                 before != mutation.Before || !CanConsumeOwnedQuantity(mutation) || !seen.Add(GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)))
                 return false;
@@ -119,6 +122,18 @@ internal sealed partial class RuntimePlayerInventoryStore
     private static bool IsOwnedConsumption(in RemotePhaseInventoryMutation mutation)
     {
         var before = mutation.Before;
+        if (mutation.PlacementQuantity != 0)
+        {
+            int consumed = mutation.PlacementQuantity;
+            if (!mutation.ConsumeFundedQuantity || mutation.CursorSourceDebit is not null ||
+                !before.IsCanonical || before.IsEmpty || before.Prefix.Value != 0 ||
+                consumed is < 1 or > 5 || consumed > before.Stack ||
+                !VanillaLocalPlacementCatalog1458.TryGet(before.ItemType, out var placement) ||
+                (!placement.IsWall && consumed != 1)) return false;
+            RuntimePlayerInventoryItem placedAfter = consumed == before.Stack ? default :
+                before with { Stack = (short)(before.Stack - consumed) };
+            return mutation.After == placedAfter;
+        }
         if (mutation.CursorSourceDebit is not null) return mutation.ConsumeFundedQuantity && mutation.After == before;
         if (!before.IsCanonical || before.IsEmpty || before.Prefix.Value != 0 ||
             (QuantityLane(before.ItemType) < 0 && !mutation.ConsumeFundedQuantity))
@@ -129,6 +144,9 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     private bool CanConsumeOwnedQuantity(in RemotePhaseInventoryMutation mutation)
     {
+        if (mutation.PlacementQuantity != 0)
+            return IsOwnedConsumption(mutation) && fundedQuantities[
+                GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] >= mutation.PlacementQuantity;
         if (mutation.CursorSourceDebit is { } source)
             return source.Slot == mutation.Slot && source.TryCaptureSelectedPotionDebit(this,mutation.Connection,out _,out _);
         if (mutation.ConsumeFundedQuantity &&
@@ -170,7 +188,8 @@ internal sealed partial class RuntimePlayerInventoryStore
                     source.AdoptSelectedPotionDebit();
                 }
                 else if (mutation.ConsumeFundedQuantity)
-                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)]--;
+                    owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] -=
+                        mutation.PlacementQuantity > 0 ? mutation.PlacementQuantity : (short)1;
                 owner.PreserveReportedFunding(mutation.Connection.Player.Slot.Value, mutation.Slot, mutation.After);
                 owner.items[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] = mutation.After;
                 int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);

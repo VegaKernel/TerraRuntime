@@ -11,7 +11,7 @@ internal sealed partial class WorldTileAuthority
         internal bool HasSameSourceEffects(ToolWorldMutationPlan other) =>
             ReferenceEquals(owner, other.owner) && !failed && !adopted && !disposed &&
             !other.failed && !other.adopted && !other.disposed &&
-            npcBeforeSerial == other.npcBeforeSerial && HasSameLarvaBosses(other) && HasSameContainerMetadata(other) &&
+            npcBeforeSerial == other.npcBeforeSerial && HasSameLarvaBosses(other) && HasSameFurniture(other) && HasSameContainerMetadata(other) &&
             beforeTreeShakeCount == other.beforeTreeShakeCount && beforeTreeShakeRevision == other.beforeTreeShakeRevision &&
             SourceRandom.HasSameState(other.SourceRandom) && Overlay.HasSameAfterimage(other.Overlay) &&
             Mutations.SequenceEqual(other.Mutations) && ShapeEffects.SequenceEqual(other.ShapeEffects) &&

@@ -91,7 +91,7 @@ internal sealed partial class WorldTileAuthority
                 !TryCreateToolSourcePass(serverTiles, worldPlan.SourceRandom, false, hardMode,
                     treeWorld.Facts, actors.Actors, worldPlan, out var server) || server is null) return false;
             var steps = new ToolActionSteps1458(this, local, server, worldPlan, reads, localRandom, damageWorld,
-                initialHits, capture.Connection.Player.Slot.Value, hardMode);
+                initialHits, capture.Connection.Player.Slot.Value, hardMode, player.Before.ReplacementHits);
             bool applied = kind switch
             {
                 ToolActionKind1458.Shovel => steps.TryShovel(x, y),
@@ -144,6 +144,8 @@ internal sealed partial class WorldTileAuthority
         private bool shapePublished;
         private bool objectPublished;
         private bool squarePublished;
+        private bool dollPosePublished;
+        private readonly TerraRuntime.Protocol.TerrariaDollPoseState1458? expectedDollPose = steps.ExpectedDollPose;
         private int nextObservation;
         private int nextBoundary;
         private readonly ToolWireObservation1458[] observations = steps.ExpectedObservations.ToArray();
@@ -184,7 +186,8 @@ internal sealed partial class WorldTileAuthority
                 hit?.SelfHurt is { } hurt && !hurt.TrySealForJointAdoption() ||
                 shape is not null && !shape.TrySealForJointAdoption(player.Capture.Connection.Player) ||
                 !player.TryStageSourceResult(clocks, steps.Hits, true, steps.LocalRandom,
-                    consumePoundRelease: consumedRelease, invalidatePoundRelease: invalidateRelease) || !IsCurrent)
+                    consumePoundRelease: consumedRelease, invalidatePoundRelease: invalidateRelease,
+                    replacementHits: steps.ReplacementHits) || !IsCurrent)
                 return false;
             sealedPlan = true;
             return true;
@@ -277,6 +280,7 @@ internal sealed partial class WorldTileAuthority
                     {
                         if (observations[index].Tile is { } tile)
                         {
+                            if (tile.Action == 20) continue; // Its SERVER result (including sender) is in the world publication journal.
                             if (!shapePublished && shape is not null && tile.Action is 7 or 14 or 23)
                             {
                                 shapePublished = true;
@@ -307,6 +311,8 @@ internal sealed partial class WorldTileAuthority
             {
                 try { publication.TryPublishThrough(finalWorldEffects); }
                 catch (Exception exception) { failure ??= exception; }
+                try { TryPublishDollPose(); }
+                catch (Exception exception) { failure ??= exception; }
                 try { TryPublishFurniture(); }
                 catch (Exception exception) { failure ??= exception; }
                 try { TryPublishReplant(); }
@@ -315,6 +321,16 @@ internal sealed partial class WorldTileAuthority
             }
             if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
             return true;
+        }
+
+        private bool TryPublishDollPose()
+        {
+            if (dollPosePublished || expectedDollPose is not { } pose) return false;
+            dollPosePublished = true;
+            if (owner.tiles?.RuntimeTileEntities is not { } metadata) return false;
+            if (!metadata.TryCaptureById(pose.EntityId, out var entity)) return false;
+            if (entity?.Payload is not WorldDisplayDollPayload doll || doll.Pose != pose.Pose) return false;
+            return owner.replication?.TryPublishDollPose(player.Capture.Connection.Source, in pose) == true;
         }
 
         private bool TryPublishFurniture()

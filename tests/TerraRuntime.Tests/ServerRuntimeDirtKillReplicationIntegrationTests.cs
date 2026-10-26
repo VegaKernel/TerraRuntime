@@ -88,10 +88,11 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
         Assert.Equal((short)1, drop.Stack);
         Assert.Equal((byte)0, drop.Prefix);
         Assert.Equal(checked((short)VanillaItemIds.DirtBlock.Value), drop.ItemNetId);
-        Assert.Equal(TerrariaWorldItemOwnership.None, drop.Ownership);
+        // Source21 carries ReserveForLocalPlayer under packet17 item scope.
+        Assert.Equal(TerrariaWorldItemOwnership.ReserveForLocalPlayer, drop.Ownership);
         Assert.False(drop.Shimmered);
         Assert.Equal(0f, drop.ShimmerTime);
-        Assert.Equal((byte)0, drop.EnemyGrabDelayTime);
+        Assert.Equal((byte)100, drop.EnemyGrabDelayTime);
     }
 
     private sealed class Fixture : IDisposable

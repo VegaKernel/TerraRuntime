@@ -351,9 +351,9 @@ public sealed class ProductionTileSinkCompositionTests
     }
 
     /// <summary>
-    /// The building path end to end: a joined player with a wall item in hand places a wall, and a player with
-    /// an ordinary Wood stack places a tile the hand-written catalog never carried. Both were answered with a
-    /// correction before the source-derived placement table existed.
+    /// Joined production sinks retain source placement and its inventory result
+    /// until a funded local use can jointly adopt them. Imported stock alone is
+    /// not a source-use entitlement.
     /// </summary>
     [Theory]
     // item, packet-17 action, wire Data, expected tile, expected wall
@@ -369,7 +369,7 @@ public sealed class ProductionTileSinkCompositionTests
         int expectedWall)
     {
         var tiles = new TerraRuntime.World.WorldTileStore(new TerraRuntime.World.WorldDimensions(200, 150));
-        var state = new ServerRuntimeState(worldTiles: tiles);
+        var state = PlacementSourceScene1458.Create(tiles);
         var slots = new PlayerSlotPool(1);
         GameCommandSourceId source = GameCommandSourceId.FromConnection(913);
         var immediate = new ApplyingCommandIngress(state);
@@ -441,8 +441,19 @@ public sealed class ProductionTileSinkCompositionTests
             CameraTargetY: 0f);
         Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Decode(TerrariaPlayerMovementEncoder.Encode(in movement))));
 
+        var player = Assert.IsType<PlayerHandle>(bootstrap.AssignedPlayerHandle);
+        var connection = new ConnectionHandle(source, player);
+        PlacementSourceScene1458.Start(state, tiles, connection, 50, 52);
+        var after = PlacementSourceScene1458.AfterOne(state, connection);
         var request = new TerrariaTileManipulationState(action, TileX: 50, TileY: 52, Data: wireData, Style: 0);
         Assert.Equal(TerrariaFrameSinkResult.Continue, projectileSink.OnFrame(Packet17(in request)));
+        Assert.Equal(0, state.AppliedClientTileManipulations);
+        Assert.False(tiles.Get(50, 52).IsActive);
+        Assert.Equal(0, tiles.Get(50, 52).Wall);
+        var equipmentAfter = new TerrariaPlayerEquipmentState(player.Slot.Value, after.SlotId,
+            after.Stack, after.Prefix, after.ItemNetId, after.ItemFlags);
+        Assert.Equal(TerrariaFrameSinkResult.Continue,
+            bootstrap.OnFrame(Decode(TerrariaPlayerEquipmentCodec.Encode(in equipmentAfter))));
 
         TerraRuntime.World.WorldTile placed = tiles.Get(50, 52);
         if (expectedTile >= 0)
@@ -456,6 +467,7 @@ public sealed class ProductionTileSinkCompositionTests
 
         Assert.Equal(1, state.AppliedClientTileManipulations);
         Assert.Equal(0, state.RejectedClientTileManipulations);
+        PlacementSourceScene1458.AssertFundedStock(state, connection, 98);
     }
 
     private static TerrariaFrame Packet17(in TerrariaTileManipulationState state)

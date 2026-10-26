@@ -20,3 +20,6 @@ internal sealed record ClientLucyAxeMessageRuntimeCommand1458(ConnectionHandle C
 // Authenticated one-cell special hammer observation, never a raw terrain writer.
 internal sealed record ClientToolTileSquareRuntimeCommand1458(ConnectionHandle Connection,
     TerraRuntime.Protocol.Multiplicity.TerrariaToolTileSquareState1458 State) : RuntimeCommand;
+
+internal sealed record ClientToolDollPoseRuntimeCommand1458(ConnectionHandle Connection,
+    TerrariaDollPoseState1458 State) : RuntimeCommand;

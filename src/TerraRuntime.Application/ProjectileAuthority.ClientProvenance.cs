@@ -13,12 +13,13 @@ internal sealed partial class ProjectileAuthority
 {
     private ClientProjectileProvenanceResolveResult TryResolveStrictClientProjectileSpawn(ConnectionHandle connection,
         in TerrariaProjectileUpdateState packet,
-        out AuthoritativeClientProjectileSpawn authoritative)
+        out AuthoritativeClientProjectileSpawn authoritative,
+        PlayerStateSnapshot? retainedLaunchPose=null)
     {
         bool captured = players.TryCaptureProjectileUse(connection, out var capture);
         var before = projectileRandom.Clone();
         var planned = before.Clone();
-        var result = TryResolveStrictClientProjectileSpawnCore(connection, in packet, planned, out authoritative);
+        var result = TryResolveStrictClientProjectileSpawnCore(connection, in packet, planned, out authoritative,retainedLaunchPose);
         if (result != ClientProjectileProvenanceResolveResult.Accepted)
             return result;
         if (!captured ||
@@ -49,10 +50,16 @@ internal sealed partial class ProjectileAuthority
     private ClientProjectileProvenanceResolveResult TryResolveStrictClientProjectileSpawnCore(ConnectionHandle connection,
         in TerrariaProjectileUpdateState packet,
         VanillaUnifiedRandom1458 plannedRandom,
-        out AuthoritativeClientProjectileSpawn authoritative)
+        out AuthoritativeClientProjectileSpawn authoritative,
+        PlayerStateSnapshot? retainedLaunchPose=null)
     {
         authoritative = default;
-        if (!players.TryCapture(connection.Player, out PlayerStateSnapshot player) || player.IsDead)
+        if (!players.TryCapture(connection.Player, out PlayerStateSnapshot livePlayer) || livePlayer.IsDead)
+            return ClientProjectileProvenanceResolveResult.Rejected;
+        // A phase may move the player. Source launch geometry remains the
+        // exact input pose qualified before that phase, never a late snapshot.
+        PlayerStateSnapshot player=retainedLaunchPose??livePlayer;
+        if(player.Player!=livePlayer.Player || player.SelectedItem!=livePlayer.SelectedItem)
             return ClientProjectileProvenanceResolveResult.Rejected;
         int selectedSlot = player.SelectedItem;
         if (!VanillaPlayerItemSlotCatalog.IsInventorySlot((short)selectedSlot) ||

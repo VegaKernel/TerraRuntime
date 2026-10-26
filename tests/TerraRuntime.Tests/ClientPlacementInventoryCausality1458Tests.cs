@@ -13,7 +13,7 @@ namespace TerraRuntime.Tests;
 public sealed class ClientPlacementInventoryCausality1458Tests
 {
     [Fact]
-    public void Original_client_placements_preserve_server_stock_until_the_later_coalesced_equipment_report()
+    public void Original_stock_report_order_does_not_authorize_unfunded_world_placement()
     {
         using Stream resource = typeof(ClientPlacementInventoryCausality1458Tests).Assembly
             .GetManifestResourceStream("ClientPlacementInventoryCausality1458")!;
@@ -58,21 +58,20 @@ public sealed class ClientPlacementInventoryCausality1458Tests
                 Assert.Equal(17, bytes[2]);
                 Assert.True(bytes[3] is 1 or 3);
                 var request = new TerrariaTileManipulationState(bytes[3], Short(bytes, 4), Short(bytes, 6), Short(bytes, 8), bytes[10]);
+                WorldTile before = tiles.Get(request.TileX, request.TileY);
                 state.Apply(new ClientTileManipulationRuntimeCommand(owner, request));
                 placements++; rowPlacements++;
-                Assert.Equal(rowPlacements, state.AppliedClientTileManipulations);
+                // Original server receipt leaves physical stock unchanged. Our
+                // owned economy additionally requires a funded source-use phase;
+                // this fixture imports neither, so its raw17 cannot edit terrain.
+                Assert.Equal(0, state.AppliedClientTileManipulations);
                 AssertInventory(state, owner, server.GetProperty("after17Inventory"));
                 WorldTile committed = tiles.Get(request.TileX, request.TileY);
-                if (request.Action == 1)
-                {
-                    Assert.True(committed.IsActive);
-                    Assert.Equal(request.Data, committed.TileType.Value);
-                }
-                else Assert.Equal((int)request.Data, committed.Wall);
+                Assert.Equal(before, committed);
 
                 // A repeated placement into the occupied target must not invent another consumption.
                 state.Apply(new ClientTileManipulationRuntimeCommand(owner, request));
-                Assert.Equal(rowPlacements, state.AppliedClientTileManipulations);
+                Assert.Equal(0, state.AppliedClientTileManipulations);
                 Assert.Equal(committed, tiles.Get(request.TileX, request.TileY));
                 AssertInventory(state, owner, server.GetProperty("after17Inventory"));
             }

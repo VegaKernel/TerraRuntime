@@ -60,6 +60,16 @@ public sealed class TileManipulationFrameSink : ITerrariaFrameSink, ITerrariaFra
             return TerrariaFrameSinkResult.Stop;
 
         TerrariaMessageId messageId = (TerrariaMessageId)frame.MessageId;
+        if (frame.MessageId == TerrariaDollPoseCodec1458.MessageId)
+        {
+            var result = TerrariaDollPoseCodec1458.TryDecode(in frame, out var pose);
+            if (result == TerrariaDollPoseDecodeResult1458.NotApplicable) return inner.OnFrame(in frame);
+            if (!TryGetPlayingConnection(out var dollConnection)) return Stop(TileManipulationFrameStopReason.InvalidJoinState);
+            if (result != TerrariaDollPoseDecodeResult1458.Decoded) return Stop(TileManipulationFrameStopReason.MalformedManipulation);
+            if (ingress is IDollPoseNetworkIngress1458 dolls) _ = dolls.TryPostDollPose(dollConnection, in pose);
+            return TerrariaFrameSinkResult.Continue;
+        }
+
         if (messageId == TerrariaMessageId.TileSquare)
         {
             var decoded = TerrariaTileSquareCodec.TryDecodeToolFrame(in frame, out var square);

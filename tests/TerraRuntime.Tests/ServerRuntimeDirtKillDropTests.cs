@@ -45,11 +45,12 @@ public sealed class ServerRuntimeDirtKillDropTests
         Assert.InRange(drop.VelocityY, -4f, -1.6f);
         Assert.Equal(1, drop.Stack);
         Assert.Equal(0, drop.Prefix);
-        Assert.Equal(WorldItemOwnershipMode.None, drop.Ownership);
+        // MessageBuffer17 scopes NewItem to the authenticated breaker (1458).
+        Assert.Equal(WorldItemOwnershipMode.ReserveForLocalPlayer, drop.Ownership);
         Assert.Equal(checked((short)VanillaItemIds.DirtBlock.Value), drop.ItemNetId);
         Assert.False(drop.Shimmered);
         Assert.Equal(0f, drop.ShimmerTime);
-        Assert.Equal(0, drop.EnemyGrabDelayTime);
+        Assert.Equal(100, drop.EnemyGrabDelayTime);
     }
 
     [Fact]

@@ -19,6 +19,7 @@ internal sealed class ToolWorldTileOverlay1458(WorldTileStore tiles)
     private int queries;
     private bool failed;
     private bool adopted;
+    private RuntimeWorldFurnitureStore1458.Preparation? preparedFurniture;
 
     internal WorldTileStore Tiles => tiles;
     public int QueryCount => queries;
@@ -142,17 +143,37 @@ internal sealed class ToolWorldTileOverlay1458(WorldTileStore tiles)
         return IsCurrentOwned;
     }
 
-    public bool TryAdoptUnpublished()
+    internal bool TryPrepareMetadata(RuntimeWorldFurnitureStore1458.Preparation furniture)
     {
-        if (!IsCurrentOwned) return false;
+        if (preparedFurniture is not null || !ReferenceEquals(tiles, furniture.Tiles) || !furniture.CanAdoptUnpublished) return false;
+        foreach (var anchor in furniture.ChangedAnchors)
+            if (!RecordRead(anchor.X, anchor.Y)) return false;
+        preparedFurniture = furniture;
+        return furniture.TrySeal() && IsCurrentOwned;
+    }
+
+    public bool TryAdoptUnpublished(RuntimeWorldFurnitureStore1458.Preparation? furniture = null)
+    {
+        if (!IsCurrentOwned || !ReferenceEquals(furniture, preparedFurniture) || furniture is not null && !furniture.CanAdoptUnpublished) return false;
+        // All metadata anchors joined the read set before other participants
+        // adopted. No work/budget admission may newly fail in this commit tail.
+        Span<WorldSectionId> metadataSections = stackalloc WorldSectionId[MaximumSections];
+        int metadataCount = furniture is { HasChanges: true } ? sectionCount : 0;
+        for (int i = 0; i < metadataCount; i++) metadataSections[i] = sections[i].Section;
+        var fence = metadataSections[..metadataCount];
+        if (!fence.IsEmpty) tiles.BeginMetadataMutation(fence);
+        if (furniture is not null && !furniture.TryAdoptUnpublished())
+            throw new InvalidOperationException("Prepared tile entity metadata changed during callback-free adoption.");
         adopted = true;
         foreach (var cell in staged)
         {
             int x = cell.Key / tiles.Dimensions.HeightTiles;
             int y = cell.Key % tiles.Dimensions.HeightTiles;
             var after = cell.Value;
-            tiles.Set(x, y, in after);
+            if (fence.IsEmpty) tiles.Set(x, y, in after);
+            else tiles.SetWithinMetadataMutation(x, y, in after);
         }
+        if (!fence.IsEmpty) tiles.EndMetadataMutation(fence);
         for (int index = 0; index < sectionCount; index++)
             acceptedVersions[index] = tiles.GetSectionVersion(sections[index].Section);
         return true;

@@ -15,6 +15,7 @@ internal sealed partial class WorldTileAuthority
     // echo consumer, before the legacy packet17 action filter/edit budget.
     internal bool TryObserveClientToolTile(ClientTileManipulationRuntimeCommand command)
     {
+        if (TryObserveClientPlacementTile(command)) return true;
         if (toolProjectileAuthority is null) return false;
         var state = command.State;
         var result = players.ObserveToolReport(command.Connection, in state, out var input);
@@ -56,6 +57,13 @@ internal sealed partial class WorldTileAuthority
             return true;
         }
         if (toolProjectileAuthority is null) return false;
+        if (command is ClientToolDollPoseRuntimeCommand1458 pose)
+        {
+            var state = pose.State;
+            var result = players.ObserveToolDollPose(pose.Connection, in state, out var input);
+            if (result != ToolReportObservationResult1458.Retained || input is null) { RejectedToolReports++; return true; }
+            RetainedToolReports++; TryCommitObservedToolAction(input); return true;
+        }
         if (command is ClientToolTileSquareRuntimeCommand1458 square)
         {
             var state = square.State;
@@ -76,6 +84,11 @@ internal sealed partial class WorldTileAuthority
             if (players.TryGet(movement.Connection, out var member) &&
                 member.ItemPhase?.ToolUse?.Input is { } pending)
             {
+                // A source-selected slot can arrive after a bounded observation
+                // on another selected item. The player owner binds only that
+                // normalized selection successor; no old clock is shortened.
+                if (pending.IsPlacement && pending.IsPossiblePlacementSlot(movement.Request.SelectedItem))
+                    return false;
                 if (!TryCommitObservedToolAction(pending, endOfCohort: true))
                     RejectCompletedToolCohort(pending);
             }
@@ -156,7 +169,8 @@ internal sealed partial class WorldTileAuthority
     private bool TryCommitObservedToolAction(RuntimePlayerToolInput1458 input, bool endOfCohort = false,
         ToolActionPublicationBatch1458? deferred = null)
     {
-        if (!input.IsCurrent || input.Actor is not { } captured || input.Count == 0 && input.SquareReport is null) return false;
+        if (input.IsPlacement) return TryCommitObservedPlacement(input, deferred);
+        if (!input.IsCurrent || input.Actor is not { } captured || input.Count == 0 && input.SquareReport is null && input.DollPoseReport is null) return false;
         var connection = captured.Connection;
         if (input.ShootReport is not null && deferred is null)
             toolProjectileAuthority?.TryCommitPendingToolBirth(connection);
@@ -166,7 +180,18 @@ internal sealed partial class WorldTileAuthority
         Span<ToolWireCell1458> centers = stackalloc ToolWireCell1458[9];
         int count;
         bool wall = input.Count != 0 && input.Observations[0].Tile is { Action: 2 };
-        if (input.Count == 0 && input.SquareReport is { } onlySquare)
+        if (input.Count == 0 && input.DollPoseReport is { } dollPose)
+        {
+            count = 0;
+            if (tiles?.RuntimeTileEntities is not { } metadata) return false;
+            // Case121 has no cursor. Six source cells are real alternatives,
+            // not six independent paid actions; existing full private convergence chooses one.
+            if (metadata.TryCaptureById(dollPose.EntityId, out var entity) && entity!.Kind == WorldTileEntityKind.DisplayDoll)
+                for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++)
+                    centers[count++] = new(entity.X + dx, entity.Y + dy);
+            if (count == 0) return false;
+        }
+        else if (input.Count == 0 && input.SquareReport is { } onlySquare)
         {
             centers[0] = new(onlySquare.TileX, onlySquare.TileY); count = 1;
         }

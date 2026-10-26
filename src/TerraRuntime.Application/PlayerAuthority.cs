@@ -512,6 +512,8 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryAcknowledgePlacementInventory(equipment)) return;
+        if (TryRetainPlacementInventory(equipment)) return;
         if (TryStageLocalCraftCredit(equipment)) return;
         if (TryAcknowledgeSelectedPotionInventory(equipment)) return;
         if (TryReconcileShopInventoryReport(equipment)) return;
@@ -677,6 +679,7 @@ internal sealed partial class PlayerAuthority
         PlayerManaCommitRequest request = mana.Request;
         if (TryAcknowledgeSelectedPotionMana(mana)) return;
         if (TryAcknowledgeManaCrystalMana(mana)) return;
+        if (TryObserveOrderedMagicMana(mana)) return;
         if (!mana.Connection.IsAssigned || mana.Connection.Player.Slot != request.PlayerSlot)
         {
             RejectedManaUpdates++;
@@ -993,6 +996,8 @@ internal sealed partial class PlayerAuthority
             }
         }
 
+        var placementSelection = CapturePlacementSelection(player, in request);
+        var orderedMagicMovement=CaptureOrderedMagicMovement(player,in request);
         var quickBuffMovement = CaptureQuickBuffMovement(player, in request);
         if (!player.TryAdvanceRevision())
         {
@@ -1033,6 +1038,8 @@ internal sealed partial class PlayerAuthority
         player.CameraTargetX = request.HasCameraTarget ? request.CameraTargetX : 0f;
         player.CameraTargetY = request.HasCameraTarget ? request.CameraTargetY : 0f;
 
+        ObservePlacementSelection(player, placementSelection);
+        ObserveOrderedMagicMovement(player,orderedMagicMovement);
         ObserveQuickBuffMovement(player, quickBuffMovement);
         AppliedMovements++;
         LastMovementSlot = request.PlayerSlot;

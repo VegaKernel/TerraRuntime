@@ -308,12 +308,16 @@ internal static partial class ToolPlayerBoundaryChecks
         private readonly List<PlayerJoinSession> sessions = [];
         internal ConnectionHandle Connection;
         private readonly short initialTool;
+        private readonly short initialStack;
+        internal readonly VanillaUnifiedRandom1458 PlacementWorldRandom;
         internal RuntimePlayerMember Member { get { Assert.True(Players.TryGet(Connection, out var member)); return member; } }
         internal RuntimePlayerToolUse1458 Tools => Member.ItemPhase?.ToolUse ?? throw new InvalidOperationException("Missing represented tool owner.");
         internal int Life => Member.NpcHealth?.Life ?? Member.Life;
-        internal Fixture(short item, IWorldItemStateCommitSink? worldItemSink = null)
+        internal Fixture(short item, IWorldItemStateCommitSink? worldItemSink = null,
+            short initialStack = 1, int playerSeed = 0, int worldSeed = 0, bool knownLocalContext = true)
         {
             initialTool = item;
+            this.initialStack = initialStack;
             for (int x = 0; x < 400; x++) Tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             for (int x = 0; x < 3; x++) for (int y = 0; y < 2; y++)
                 Tiles.Set(102 + x, 101 + y, new WorldTile { Type = 26, Flags = WorldTileFlags.Active,
@@ -329,14 +333,15 @@ internal static partial class ToolPlayerBoundaryChecks
             {
                 GetGoodWorld = false, InfectedSeed = false, NotTheBeesWorld = false,
                 NoTrapsWorld = false, TenthAnniversaryWorld = false, DontStarveWorld = false,
-                DrunkWorld = false, JourneyMode = false, HallowBackground = 0,
+                DrunkWorld = false, JourneyMode = knownLocalContext ? false : null, HallowBackground = 0,
                 WindowsItemPrefixArithmetic = OperatingSystem.IsWindows()
             };
-            var main = new VanillaUnifiedRandom1458(0);
+            var main = new VanillaUnifiedRandom1458(worldSeed);
+            PlacementWorldRandom = main;
             State = new(playerEvents: Events, worldTiles: Tiles,
                 worldClock: new RuntimeWorldClock(1000, true, default, 0, 0), projectiles: Projectiles,
                 worldItems: worldItemSink is null ? null : new RuntimeWorldItemStore(worldItemSink),
-                projectileReplication: Replication, tileManipulationReplication: TileReplication, playerUpdateRandomSeed: new(0),
+                projectileReplication: Replication, tileManipulationReplication: TileReplication, playerUpdateRandomSeed: new(playerSeed),
                 naturalSpawnRandom: new SystemVanillaNpcRandom(main),
                 worldItemSpawnRandom: new SystemWorldItemSpawnRandom(main),
                 townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
@@ -344,7 +349,8 @@ internal static partial class ToolPlayerBoundaryChecks
                 sourcePlayerWorld: world);
             var composition = Composition(State);
             Players = composition.Players;
-            composition.WorldTileAuthority.BindToolBuildingPermission(RuntimeToolBuildingPermission1458.FromLoadedWorld(Tiles));
+            if (knownLocalContext)
+                composition.WorldTileAuthority.BindToolBuildingPermission(RuntimeToolBuildingPermission1458.FromLoadedWorld(Tiles));
             Players.SetRemotePlayerEnvironment(new(false, false), Projectiles);
             Players.SetNpcHealthWorldFacts(() => new(false, false));
             Players.SetNpcHealthGrapplingFacts(_ => false);
@@ -359,7 +365,7 @@ internal static partial class ToolPlayerBoundaryChecks
             var c = new ConnectionHandle(GameCommandSourceId.FromConnection(96000 + sessions.Count), session.Handle);
             Apply(new PlayerHealthRuntimeCommand(c, new(session.Slot, 100, 400)));
             Apply(new PlayerManaRuntimeCommand(c, new(session.Slot, 0, 20)));
-            Apply(new PlayerEquipmentRuntimeCommand(c, new(session.Slot, 0, 1, 0, item, 0)));
+            Apply(new PlayerEquipmentRuntimeCommand(c, new(session.Slot, 0, initialStack, 0, item, 0)));
             Apply(new PlayerSpawnRuntimeCommand(c, session, new(session.Slot, 100, 103, 0, 0, 0, 0, 0)));
             Apply(new PlayerInventorySyncCompleteRuntimeCommand(c));
             return c;
@@ -416,9 +422,11 @@ internal static partial class ToolPlayerBoundaryChecks
         internal readonly List<short> AuthoritativeHealth = [];
         internal int Births;
         internal Action? OnAuthoritativeHealth;
+        internal Action<PlayerEquipmentCommitRequest>? OnPlacementEquipment;
         internal void Clear() { Order.Clear(); AuthoritativeHealth.Clear(); Births = 0; }
         public void PlayerAppearanceUpdated(ConnectionHandle connection, in PlayerAppearanceCommitRequest request) { }
-        public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request) { }
+        public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
+        { OnPlacementEquipment?.Invoke(request); }
         public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request) { }
         public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request) { }
         public void PlayerDisconnected(ConnectionHandle connection) { }

@@ -82,11 +82,12 @@ public sealed class WorldFilePreservedSections
                 WorldFilePreservedSectionNormalizationResult.UnsupportedVersion);
         }
 
+        WorldTileEntity[] tileEntities = world.Tiles.RuntimeTileEntities?.CaptureSnapshot() ?? world.TileEntities;
         using var tileEntityStream = new MemoryStream();
         WorldFileTileEntityEncodeResult tileEntityResult = WorldFileTileEntityEncoder.TryEncode(
-            world.TileEntities,
+            tileEntities,
             world.Header.Dimensions,
-            world.TileEntities.Length,
+            tileEntities.Length,
             tileEntityStream,
             out _);
         if (tileEntityResult != WorldFileTileEntityEncodeResult.Encoded)

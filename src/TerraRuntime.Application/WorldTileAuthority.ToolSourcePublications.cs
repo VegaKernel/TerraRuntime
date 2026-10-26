@@ -57,11 +57,11 @@ internal sealed partial class WorldTileAuthority
             publicationOrder.Add(ToolWorldPublicationKind1458.TileSquare);
             return true;
         }
-        internal bool TryStageSourceTileManipulation(int x, int y, byte action)
+        internal bool TryStageSourceTileManipulation(int x, int y, byte action, short data = 0)
         {
             if (!IsCurrentOwned || sealedPlan || publicationOrder.Count == ToolWorldTileOverlay1458.MaximumChangedCells ||
                 !Overlay.TryRead(x, y, out var tile)) return Fail();
-            var state = new TerrariaTileManipulationState(action, checked((short)x), checked((short)y), 0, 0);
+            var state = new TerrariaTileManipulationState(action, checked((short)x), checked((short)y), data, 0);
             WireEffects.Add(new(ToolWorldPublicationKind1458.TileManipulation, x, y, tile, default) { Manipulation = state });
             publicationOrder.Add(ToolWorldPublicationKind1458.TileManipulation);
             return true;

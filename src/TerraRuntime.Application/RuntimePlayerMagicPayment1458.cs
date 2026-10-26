@@ -14,6 +14,7 @@ internal readonly record struct RuntimePlayerMagicPayment1458(PlayerHandle Playe
     bool BirthConsumed,
     bool AwaitingPhase)
 {
+    internal RuntimePlayerMagicManaStage1458? ManaStage { get; init; }
     internal bool GemStaff { get; init; }
     internal TerraRuntime.Gameplay.Players.PlayerSelectedConsumableState1458 GemClocks { get; init; }
     internal TerraRuntime.Contracts.Gameplay.ItemTypeId EffectiveBody { get; init; }

@@ -933,4 +933,61 @@
     <EmbeddedResource Include="Fixtures/PreparedToolNpcWetLinux1458.json.gz" LogicalName="PreparedToolNpcWetLinux1458" />
     <EmbeddedResource Include="Fixtures/PreparedToolNpcWetWindows1458.json.gz" LogicalName="PreparedToolNpcWetWindows1458" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/placement-edge-input-linux.json.gz" LogicalName="PlacementEdgeLinux1458" />
+    <EmbeddedResource Include="Fixtures/placement-edge-input-windows.json.gz" LogicalName="PlacementEdgeWindows1458" />
+    <EmbeddedResource Include="Fixtures/placement-wallfill-linux.json.gz" LogicalName="PlacementWallFillLinux1458" />
+    <EmbeddedResource Include="Fixtures/placement-wallfill-windows.json.gz" LogicalName="PlacementWallFillWindows1458" />
+    <EmbeddedResource Include="Fixtures/placement-crit-linux.json.gz" LogicalName="PlacementCritLinux1458" />
+    <EmbeddedResource Include="Fixtures/placement-crit-windows.json.gz" LogicalName="PlacementCritWindows1458" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/Windows/first/callers.json.gz" LogicalName="FurnitureCallersWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Windows/first/metadata.json.gz" LogicalName="FurnitureMetadataWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Windows/first/tracks.json.gz" LogicalName="FurnitureTracksWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Windows/first/world.json.gz" LogicalName="FurnitureWorldWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/Windows/repeat/callers.json.gz" LogicalName="FurnitureCallersWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Windows/repeat/metadata.json.gz" LogicalName="FurnitureMetadataWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Windows/repeat/tracks.json.gz" LogicalName="FurnitureTracksWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Windows/repeat/world.json.gz" LogicalName="FurnitureWorldWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Linux/first/callers.json.gz" LogicalName="FurnitureCallersLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Linux/first/metadata.json.gz" LogicalName="FurnitureMetadataLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Linux/first/tracks.json.gz" LogicalName="FurnitureTracksLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Linux/first/world.json.gz" LogicalName="FurnitureWorldLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Linux/repeat/callers.json.gz" LogicalName="FurnitureCallersLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Linux/repeat/metadata.json.gz" LogicalName="FurnitureMetadataLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Linux/repeat/tracks.json.gz" LogicalName="FurnitureTracksLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/Linux/repeat/world.json.gz" LogicalName="FurnitureWorldLinuxRepeat1458" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/placement-gray-brick-linux.json.gz" LogicalName="PlacementGrayBrickLinux1458" />
+    <EmbeddedResource Include="Fixtures/placement-gray-brick-windows.json.gz" LogicalName="PlacementGrayBrickWindows1458" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/Linux/first/anchors.json.gz" LogicalName="FurnitureAnchorsLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/Windows/first/anchors.json.gz" LogicalName="FurnitureAnchorsWindowsFirst1458" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/LocalWeaponClockLinuxfirst1458.json.gz" LogicalName="LocalWeaponClockLinuxfirst" />
+    <EmbeddedResource Include="Fixtures/LocalWeaponManaLinuxfirst1458.json.gz" LogicalName="LocalWeaponManaLinuxfirst" />
+    <EmbeddedResource Include="Fixtures/LocalItemUseStyleLinuxfirst1458.json.gz" LogicalName="LocalItemUseStyleLinuxfirst" />
+    <EmbeddedResource Include="Fixtures/LocalWeaponClockLinuxrepeat1458.json.gz" LogicalName="LocalWeaponClockLinuxrepeat" />
+    <EmbeddedResource Include="Fixtures/LocalWeaponManaLinuxrepeat1458.json.gz" LogicalName="LocalWeaponManaLinuxrepeat" />
+    <EmbeddedResource Include="Fixtures/LocalItemUseStyleLinuxrepeat1458.json.gz" LogicalName="LocalItemUseStyleLinuxrepeat" />
+    <EmbeddedResource Include="Fixtures/LocalWeaponClockWindowsfirst1458.json.gz" LogicalName="LocalWeaponClockWindowsfirst" />
+    <EmbeddedResource Include="Fixtures/LocalWeaponManaWindowsfirst1458.json.gz" LogicalName="LocalWeaponManaWindowsfirst" />
+    <EmbeddedResource Include="Fixtures/LocalItemUseStyleWindowsfirst1458.json.gz" LogicalName="LocalItemUseStyleWindowsfirst" />
+    <EmbeddedResource Include="Fixtures/LocalWeaponClockWindowsrepeat1458.json.gz" LogicalName="LocalWeaponClockWindowsrepeat" />
+    <EmbeddedResource Include="Fixtures/LocalWeaponManaWindowsrepeat1458.json.gz" LogicalName="LocalWeaponManaWindowsrepeat" />
+    <EmbeddedResource Include="Fixtures/LocalItemUseStyleWindowsrepeat1458.json.gz" LogicalName="LocalItemUseStyleWindowsrepeat" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/tool-frame-reset-linux.json.gz" LogicalName="ToolFrameResetLinux1458" />
+    <EmbeddedResource Include="Fixtures/tool-frame-reset-windows.json.gz" LogicalName="ToolFrameResetWindows1458" />
+  </ItemGroup>
 </Project>

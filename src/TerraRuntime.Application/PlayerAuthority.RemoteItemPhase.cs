@@ -177,6 +177,10 @@ internal sealed partial class PlayerAuthority
                 member.Revision == ulong.MaxValue ||
                 plan.ToolSourceQuery is { IsCurrentOwned: false } ||
                 plan.Item?.ToolUse?.BuildingPermission is { IsCurrent: false } ||
+                plan.Item?.ToolUse?.PlacementAlternative is { Reads.IsCurrent: false } ||
+                plan.PlacementChosenAlternative is { } chosenPlacement &&
+                    (!IsPlacementAlternativeContext(plan, chosenPlacement, chosenPlacement.World) ||
+                     playerUpdateRandom is not { } placementRandom || !chosenPlacement.MatchesCanonical(placementRandom)) ||
                 plan.BeforeToolInput is { } input &&
                     !IsCurrentToolInput(input, plan.BeforeToolInputRevision) ||
                 !transferProfiles.TryCapture(member.Connection,
@@ -226,6 +230,9 @@ internal sealed partial class PlayerAuthority
                 member.PaidTorchFavor = true;
             member.TryAdvanceRemotePhaseRevision();
             member.ItemPhase = plan.Item;
+            if(plan.BeforeItem?.ToolUse?.WeaponShoot?.PendingManaReport is not null &&
+                plan.Item?.ToolUse?.WeaponShoot?.PendingManaReport is null)
+                RejectedManaUpdates++; // Accepted whole-phase retirement, once before observers.
             if (plan.InventoryMutations.Any(static mutation => mutation.CursorSourceDebit is not null) &&
                 member.CursorMove?.Inventory is { } consumed &&
                 plan.InventoryMutations.Any(mutation => ReferenceEquals(mutation.CursorSourceDebit,
@@ -280,6 +287,8 @@ internal sealed partial class PlayerAuthority
             }
         }
         Exception? first = null;
+        try { toolWorld?.DrainOrderedLocalMagicBirths(); }
+        catch(Exception error) {first=error;}
         using var toolPublications = toolWorld?.PrepareToolBirthsAfterOwnedPhase();
         if (toolPublications is { } toolBatch)
         {
@@ -613,6 +622,7 @@ internal sealed partial class PlayerAuthority
             out _) &&
             originalPotion == provisional.Before)
             selected = originalPotion;
+        if (!TryChoosePlacementAlternative(plan, world, random, ref item)) return false;
         if (!selected.IsCanonical ||
             (!(selected.Prefix == VanillaPrefixIds.None &&
             VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType,
@@ -638,7 +648,8 @@ internal sealed partial class PlayerAuthority
             item.MagicPayment is { } malformedPayment &&
             !malformedPayment.IsValid))
             return false;
-        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) && item.ToolUse is { } unusedTools &&
+        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
+            !VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out _) && item.ToolUse is { } unusedTools &&
             (!unusedTools.SourceItem.IsNone || unusedTools.BuildingPermission is not null ||
                 unusedTools.SourceStagePose is not null || unusedTools.ShootEligible || unusedTools.ToolStagePending))
             item = item with
@@ -727,12 +738,25 @@ internal sealed partial class PlayerAuthority
         // DD2's source NoBuilding derivation precedes movement and ItemCheck.
         // Retain that independent owned context, not a post-movement arena query
         // or raw buff199. The later tool stage retains its own moved pose.
+        bool localPlacementContext = false;
         if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
         {
             if (item.ToolUse is not { } toolBefore ||
                 !TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
                     plan.Y + VanillaBasePlayerHeight * 0.5f, out var permission)) return false;
             item = item with { ToolUse = toolBefore with { BuildingPermission = permission } };
+        }
+        else if (toolWorld is not null && selected.Prefix.Value == 0 &&
+            world.JourneyMode is false && item.ToolUse is { } placementShadow &&
+            VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out var localPlacement) &&
+            WorldTileAuthority.SupportsLocalPlacementDefinition(localPlacement) &&
+            TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
+                plan.Y + VanillaBasePlayerHeight * 0.5f, out var placementPermission))
+        {
+            // Missing local context closes world actions, not the independent
+            // already-supported dedicated remote census for metadata-only use.
+            item = item with { ToolUse = placementShadow with { BuildingPermission = placementPermission } };
+            localPlacementContext = true;
         }
         if (plan.Maximum is not { } maximum ||
             plan.HealthWorld is not { } capturedHealthWorld ||
@@ -750,10 +774,12 @@ internal sealed partial class PlayerAuthority
         if (potionDuration > 0)
             delay = potionDuration;
         var manaFacts = new PlayerManaRegenerationFacts1458(plan.Vx, plan.Vy, plan.Grappling!.Value, false, ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & 4) != 0, 0, 0f, 0);
-        if (!VanillaRemoteManaRegeneration1458.TryStep(item.Mana with { Maximum = (int)Math.Min((long)item.BaseManaMaximum + manaMaximumBonus,
+        if (!TryConsumeLocalMagicManaStage(plan,ref item,random,out bool skipManaRegeneration))return false;
+        var mana=item.Mana;
+        if (!skipManaRegeneration && !VanillaRemoteManaRegeneration1458.TryStep(item.Mana with { Maximum = (int)Math.Min((long)item.BaseManaMaximum + manaMaximumBonus,
             400) },
             in manaFacts,
-            out var mana,
+            out mana,
             out _))
             return false;
         mana = mana with
@@ -761,6 +787,7 @@ internal sealed partial class PlayerAuthority
             Mana = Math.Min(mana.Mana, mana.Maximum),
             Count = Math.Max(0, mana.Count)
         };
+        if(!skipManaRegeneration)AdvanceLocalManaFeedback(ref item,in selected,item.Mana,in mana,random);
         bool left = (member.ControlFlags & 4) != 0;
         bool right = (member.ControlFlags & 8) != 0;
         var horizontal = ResolveRemoteHorizontalIntent(left, right, plan.Vx);
@@ -812,6 +839,10 @@ internal sealed partial class PlayerAuthority
         bool beganActualUse;
         bool mining = false;
         bool ownedConsumableClock = false;
+        bool trackedLocalPlacement = false;
+        VanillaUnifiedRandom1458? placementBeforeCommon = null;
+        int placementCrit = -1;
+        ToolFrameFacts1458 placementCommonFacts = default;
         if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
         {
             if (item.ToolUse is not { } tools || item.ToolTime is not { } remoteToolTime ||
@@ -831,7 +862,7 @@ internal sealed partial class PlayerAuthority
                 facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled,
                 facts.SelectionBuffered, false,
                 tool.NoMeleeSpeedBonus ? 1f : derivedCombat.MeleeAnimationMultiplier)
-            { SourceUseAllowed = sourceAllowed };
+            { SourceUseAllowed = sourceAllowed, WindowsArithmetic = world.WindowsItemPrefixArithmetic };
             var sourceToolPose = new RuntimePlayerToolStagePose1458(plan.Before with
             {
                 PositionX = plan.X, PositionY = plan.Y,
@@ -866,6 +897,39 @@ internal sealed partial class PlayerAuthority
             // ItemCheck. Local selection may start a separate owned tool epoch
             // while the remote animation is still active.
             beganActualUse = remoteTool.BeganActualUse;
+        }
+        else if (localPlacementContext &&
+            VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out var placementDefinition))
+        {
+            if (item.ToolUse is not { } placementBefore || item.ToolTime is not { } remoteTime ||
+                world.JourneyMode is not false) return false;
+            // Captured owned permanent boosters use the same source caps as
+            // Update; placementDefinition does not borrow mining's PickSpeed or Artisan range.
+            float speed = placementDefinition.IsWall ? item.PermanentSpeeds?.WallAnimationMultiplier ?? 1f :
+                item.PermanentSpeeds?.TileAnimationMultiplier ?? 1f;
+            var placementFacts = new ToolFrameFacts1458(true, facts.ControlUseItem,
+                facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled, false, false, speed)
+                { WindowsArithmetic = world.WindowsItemPrefixArithmetic };
+            var sourcePose = new RuntimePlayerToolStagePose1458(plan.Before with
+            {
+                PositionX = plan.X, PositionY = plan.Y, VelocityX = plan.Vx, VelocityY = plan.Vy
+            }, (int)VanillaBasePlayerWidth, (int)VanillaBasePlayerHeight, physical.GravityDirection);
+            var remoteClocks = new ToolClockState1458(clocks, remoteTime, false, item.Channel);
+            placementBeforeCommon = random.Clone();
+            int critRoll = random.Next(3);
+            placementCrit = critRoll;
+            placementCommonFacts = placementFacts;
+            if (!TryAdvancePlacementFrame(placementDefinition, placementBefore, remoteClocks, placementFacts,
+                sourcePose, speed, currentCombatTick, critRoll, out var placementAfter, out var remotePlacement))
+                return false;
+            trackedLocalPlacement = true;
+            placementAfter = placementAfter with { Reach = new(5, 3, placementDefinition.TileBoost) };
+            item = item with { ToolUse = placementAfter, ToolTime = remotePlacement.State.ToolTime,
+                Channel = remotePlacement.State.Channel };
+            use = new(remotePlacement.State.Selected, facts.Life, facts.Mana, false, 0, 0)
+            { PendingItemReuse = remotePlacement.PendingItemReuse,
+              ResetItemRotation = remotePlacement.AttemptedUse };
+            beganActualUse = remotePlacement.BeganActualUse;
         }
         else if (VanillaManaCrystalUse1458.IsSupported(selected.ItemType, selected.Prefix))
         {
@@ -922,6 +986,19 @@ internal sealed partial class PlayerAuthority
                 item.BaseManaMaximum) &&
                 old.EffectiveBody == body;
             var localClocks = same ? previous!.Value.GemClocks : clocks;
+            bool ownedGemPreimage=same;
+            bool deferredGem=false;
+            if(toolWorld is not null && item.ToolUse is {LocalClocksKnown:true} gemShadow)
+            {
+                ownedGemPreimage=true;
+                if(!same)localClocks=gemShadow.Clocks.Selected;
+                bool changed=!gemShadow.SelectionInitialized || gemShadow.SourceSlot!=member.SelectedItem ||
+                    gemShadow.SourceItem!=selected.ItemType || gemShadow.SourcePrefix!=selected.Prefix;
+                bool ready=localClocks.Animation==0 && localClocks.ItemTime==0 && gemShadow.Clocks.ReuseDelay==0;
+                deferredGem=changed && !ready;
+                if(changed && ready)localClocks=localClocks with {ItemTime=0,ItemTimeMax=0,
+                    ReleaseUseItem=facts.ControlUseItem || localClocks.ReleaseUseItem};
+            }
             bool prepaid = same && previous is { AwaitingPhase: true };
             int available = mana.Mana;
             RuntimePlayerMagicRefill1458? refill = null;
@@ -929,6 +1006,7 @@ internal sealed partial class PlayerAuthority
                 !facts.Cursed &&
                 !facts.CrowdControlled &&
                 !facts.SelectionBuffered &&
+                !deferredGem &&
                 (localClocks.ReleaseUseItem &&
                 localClocks.Animation == 0 ||
                 gemWeapon.AutoReuse &&
@@ -962,7 +1040,7 @@ internal sealed partial class PlayerAuthority
                 same ? previous!.Value.GemLastUseSuccess : facts.LastUseSuccess,
                 facts.Cursed,
                 facts.CrowdControlled,
-                facts.SelectionBuffered,
+                facts.SelectionBuffered || deferredGem,
                 true)
             {
                 Prepaid = prepaid,
@@ -976,6 +1054,7 @@ internal sealed partial class PlayerAuthority
             int SharedCrit(int min, int max) => critDraw ??= random.Next(min, max);
             if (!VanillaGemStaffUse1458.TryStep(localClocks, in gemFacts, SharedCrit, out var localUse))
                 return false;
+            if(ownedGemPreimage && !deferredGem)plan.LocalGemFrame=localUse;
             var remoteFacts = gemFacts with
             {
                 LocalPlayer = false,
@@ -1051,10 +1130,26 @@ internal sealed partial class PlayerAuthority
         else if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic))
         {
             var priorPayment = item.MagicPayment;
+            var localMagicClocks=clocks;
+            bool localMagicDeferred=false;
+            if(toolWorld is not null && item.ToolUse is {LocalClocksKnown:true} localShadow)
+            {
+                // A paid packet-first frame owns its pre-Shoot source image.
+                // Unknown local custody leaves the independent remote phase
+                // alive, but can never reconstruct local tool permission.
+                localMagicClocks=localShadow.WeaponShoot is {Committed:true,Frame:null} paidClock
+                    ? paidClock.Before.Selected : localShadow.Clocks.Selected;
+                bool changed=!localShadow.SelectionInitialized || localShadow.SourceSlot!=member.SelectedItem ||
+                    localShadow.SourceItem!=selected.ItemType || localShadow.SourcePrefix!=selected.Prefix;
+                bool ready=localMagicClocks.Animation==0 && localMagicClocks.ItemTime==0 && localShadow.Clocks.ReuseDelay==0;
+                localMagicDeferred=changed && !ready;
+                if(changed && ready)localMagicClocks=localMagicClocks with
+                    {ItemTime=0,ItemTimeMax=0,ReleaseUseItem=facts.ControlUseItem || localMagicClocks.ReleaseUseItem};
+            }
             bool prepaid = priorPayment is { AwaitingPhase: true } paid && paid.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum);
             RuntimePlayerMagicRefill1458? refill = null;
             int available = mana.Mana;
-            bool attempt = facts.ControlUseItem && clocks.ReleaseUseItem && clocks.Animation == 0 && !facts.Cursed && !facts.CrowdControlled && !facts.SelectionBuffered;
+            bool attempt = facts.ControlUseItem && localMagicClocks.ReleaseUseItem && localMagicClocks.Animation == 0 && !facts.Cursed && !facts.CrowdControlled && !facts.SelectionBuffered && !localMagicDeferred;
             if (!VanillaChanneledMagicWeaponStats1458.TryResolve(selected.ItemType,
                 selected.Prefix,
                 world.WindowsItemPrefixArithmetic,
@@ -1095,14 +1190,20 @@ internal sealed partial class PlayerAuthority
                 facts.LastUseSuccess,
                 facts.Cursed,
                 facts.CrowdControlled,
-                facts.SelectionBuffered,
+                facts.SelectionBuffered || localMagicDeferred,
                 prepaid,
                 prepaid &&
                 priorPayment!.Value.SlowMagicUse,
                 magicCombat.ManaCostMultiplier,
                 world.WindowsItemPrefixArithmetic);
-            if (!VanillaRemoteChannelledMagic1458.TryStep(clocks, in magicFacts, random.Next, out var magicUse))
+            // Source local payment/animation and dedicated presentation share
+            // one consumed common sample, never the remote renewal preimage.
+            int? magicCrit=null;
+            int SharedMagicCrit(int min,int max)=>magicCrit??=random.Next(min,max);
+            if (!VanillaRemoteChannelledMagic1458.TryStep(localMagicClocks, in magicFacts, SharedMagicCrit, out var magicUse))
                 return false;
+            var remoteMagicFacts=magicFacts with {Mana=magicUse.Mana,Prepaid=true,PrepaidSlowMagicUse=magicUse.SlowMagicUse};
+            if(!VanillaRemoteChannelledMagic1458.TryStep(clocks,in remoteMagicFacts,SharedMagicCrit,out var remoteMagicUse))return false;
             if (magicUse.AttemptedUse)
             {
                 if (prepaid)
@@ -1159,9 +1260,9 @@ internal sealed partial class PlayerAuthority
                 {
                     Delay = 4f
                 };
-            use = new(magicUse.State, facts.Life, magicUse.Mana, false, 0, 0)
+            use = new(remoteMagicUse.State, facts.Life, magicUse.Mana, false, 0, 0)
             {
-                PendingItemReuse = magicUse.PendingItemReuse
+                PendingItemReuse = remoteMagicUse.PendingItemReuse
             };
             beganActualUse = magicUse.BeganActualUse;
         }
@@ -1265,9 +1366,16 @@ internal sealed partial class PlayerAuthority
             plan.Buffs.TryApplySelectedConsumable(use.BuffOfferType, use.BuffDurationOffer, false);
         if (use.Consumed && use.BuffOfferType.Value is 26 or 206 or 207)
             plan.Buffs.StampOwnedFoodGrant(currentCombatTick);
-        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) && item.ToolUse is { } nonToolShadow)
-            item = item with { ToolUse = TrackNonToolLocalClock(nonToolShadow, member.SelectedItem,
-                in selected, in facts, in clocks, in use, item.MagicPayment, ownedConsumableClock) };
+        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
+            !trackedLocalPlacement && item.ToolUse is { } nonToolShadow)
+        {
+            var shadow = TrackNonToolLocalClock(nonToolShadow, member.SelectedItem,
+                in selected, in facts, in clocks, in use, item.MagicPayment, ownedConsumableClock, in item, plan);
+            // A metadata-only remote step cannot retain a prior local placement
+            // explanation or make old reports eligible after a later context bind.
+            item = item with { ToolUse = shadow with { SourcePlacement = null,
+                PlacementReady = null, PlacementAlternative = null, PlacementHistoryEpoch = 0 } };
+        }
         else if (toolWorld is null && item.ToolUse is { } unboundTool)
             // A standalone remote ItemCheck projection owns no local cursor or
             // world action. Keep its established remote clock behavior without
@@ -1293,6 +1401,8 @@ internal sealed partial class PlayerAuthority
             AttackCD = beganActualUse ? 0 : item.AttackCD,
             ToolTime = beganActualUse && mining ? 1 : item.ToolTime
         };
+        if (placementBeforeCommon is not null)
+            AdvancePlacementAlternative(plan, world, placementBeforeCommon, random, placementCrit, placementCommonFacts);
         plan.Changed = true;
         return true;
     }
@@ -1348,6 +1458,7 @@ internal sealed partial class PlayerAuthority
         internal RuntimePlayerToolInput1458? BeforeToolInput { get; } = item?.ToolUse?.Input;
         internal RuntimePlayerToolActorCapture1458? BeforeToolInputActor { get; } = item?.ToolUse?.Input?.Actor;
         internal ulong BeforeToolInputRevision { get; } = item?.ToolUse?.Input?.Revision ?? 0;
+        internal RuntimePlayerPlacementAlternative1458? PlacementChosenAlternative { get; set; }
         internal bool VoidStorageOpen { get; set; }
         internal RuntimeTownShopSession1458? BeforeShopSession { get; set; }
         internal RuntimePlayerInventoryItem[] InventoryBefore { get; } = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
@@ -1359,6 +1470,7 @@ internal sealed partial class PlayerAuthority
         internal RuntimePlayerMember Member { get; } = member;
         internal PlayerStateSnapshot Before { get; } = before;
         internal RuntimePlayerItemPhase1458? BeforeItem { get; } = item;
+        internal PlayerGemStaffTransition1458? LocalGemFrame { get; set; }
         internal RuntimePlayerPhysicsPhase1458? BeforePhysics { get; } = physics;
         internal PlayerAppearanceCommitRequest? Appearance { get; } = appearance;
         internal PlayerEquipmentCommitRequest[] Equipment { get; } = equipment;

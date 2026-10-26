@@ -79,6 +79,9 @@ public sealed partial class WorldRuntime : IDisposable
         ArgumentNullException.ThrowIfNull(interestManagement);
         ArgumentNullException.ThrowIfNull(options);
 
+        if (world.Tiles.RuntimeTileEntities is null &&
+            !world.Tiles.TryAttachTileEntities(world.TileEntities, ServerWorldLoadPolicy.CreateLimits().MaxTileEntities))
+            throw new InvalidDataException("Failed to import canonical world tile entities.");
         GameLoopOptions loopOptions = options.CreateLoopOptions();
         Identity = identity;
         Source = source;

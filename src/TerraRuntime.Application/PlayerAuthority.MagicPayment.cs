@@ -68,14 +68,17 @@ internal sealed partial class PlayerAuthority
             };
         else
         {
-            if (transferProfiles.CaptureBuffState(connection) is not { PreventsFreshItemUse: false })
-                return false;
+            // NoItems gates a fresh CheckCanUse, not the source owner tail
+            // of an already paid frame whose Shoot report arrived later.
+            if (!CanBeginLocalMagicUse(connection)) return false;
+            if (same && previous is {AwaitingPhase:true}) return false;
             if (same && (!phase.Selected.ReleaseUseItem || phase.Selected.Animation > 0))
                 return false;
             if (previous is { Attempt: ulong.MaxValue } || !VanillaRemoteChannelledMagic1458.TryResolveManaCost(resolvedWeapon.ManaCost, derived.ManaCostMultiplier, out int cost))
                 return false;
             ulong attempt = (previous?.Attempt ?? 0) + 1;
-            int available = member.Mana;
+            if (!TryPrepareLocalMagicManaStage(member,in phase,out var manaStage)) return false;
+            int available = manaStage?.Regenerated.Mana ?? member.Mana;
             RuntimePlayerMagicRefill1458? refill = null;
             PlayerBuffState? beforeBuffs = null;
             PlayerBuffState? afterBuffs = null;
@@ -86,7 +89,7 @@ internal sealed partial class PlayerAuthority
                 if (beforeBuffs is null || !inventory.TryCopyInventory(connection, items))
                     return false;
                 afterBuffs = beforeBuffs.Clone();
-                if (!TryStageAutoQuickMana(connection, attempt, available, phase.Mana.Maximum, phase.ManaPotionDelay, items, afterBuffs, out available, out refill))
+                if (!TryStageAutoQuickMana(connection, attempt, available, manaStage?.Regenerated.Maximum ?? phase.Mana.Maximum, phase.ManaPotionDelay, items, afterBuffs, out available, out refill))
                     return false;
             }
 
@@ -95,7 +98,8 @@ internal sealed partial class PlayerAuthority
             debit = Math.Min(available, cost);
             payment = new(connection.Player, attempt, member.SelectedItem, selected, phase.BaseManaMaximum, after, slow, false, true, true)
             {
-                Refill = refill
+                Refill = refill,
+                ManaStage = manaStage is null ? null : manaStage with {AfterPayment=manaStage.Regenerated with {Mana=after,Delay=4f}}
             };
             if (refill is { } restored)
             {

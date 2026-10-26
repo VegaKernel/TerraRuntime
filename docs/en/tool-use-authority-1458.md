@@ -1,5 +1,7 @@
 # Tool use authority in Terraria 1.4.5.8
 
+[Local weapon and tool continuity](local-weapon-tool-continuity-1458.md) documents the scoped local-clock, ordered mana/refill and Gem cohort component; metadata coverage and final shipping gates remain separate.
+
 The source-backed catalog covers 106 tool items. Runtime paths cover ordinary mining, wall hits, combined tools, the shovel, 23 channelled projectile producers and returning axe `1052`. World interaction support has the explicit boundaries below.
 
 ## Input, time and ownership
@@ -43,16 +45,23 @@ Falling blocks retain constructor27 and the source post-constructor motion separ
 
 ## Validation and remaining coverage
 
-Hammer rotation for `137/424/442` uses the source one-cell client packet `20`, followed by server range framing. Client liquid claims are rejected; the server retains its own liquid and publishes the accepted server image. The publication consumes its once marker before callbacks and checks the full surrounding footprint. Source framing for Water Candle `49` and Switch `136` has a separate qualified caller and anchor rules. These additions preserve the generic frame-important refusal. The isolated furniture and single-cell proofs include actual socket ingress; the latest combined single-cell composition still awaits its joint checks.
+Hammer rotation for `137/424/442` uses the source one-cell client packet `20`, followed by server range framing. Client liquid claims are rejected; the server retains its own liquid and publishes the accepted server image. The publication consumes its once marker before callbacks and checks the full surrounding footprint. Source framing for Water Candle `49` and Switch `136` has a separate qualified caller and anchor rules. These additions preserve the generic frame-important refusal. The furniture and single-cell proofs include actual socket ingress and the combined tools checkpoint below.
+
+Generic shape changes and failed mining retain the center reset sample for `385/446/447/448` as well. Their source cosmetic branch reaches `Framing.SelfFrame8Way`, which consumes one `Next(0,3)` sample when reset is requested. Neighbor-only framing does not request that reset. The correction preserves both role RNG streams without admitting new placement items.
 
 Owned selected consumables retain the local tool-clock lineage when their exact known input matches the consumer's prepared input. The already executed transition includes the visual RNG tail; it is not evaluated twice. `ToolTime` is sampled before potion, buff and permanent effects and last-stack consumption, as in source `ItemCheck_OwnerOnlyCode`. Existing original food snapshots now also check this intermediate field on local rows; their strengthened normal Fact covers 15,200 source phases.
 
-An unsupported local operation does not discard the independent dedicated-player ItemCheck or its paid buffs and mana. Its local clocks remain unknown and cannot authorize a tool action or projectile birth. Active block/wall placement still needs an owned local clock participant before the placement-to-tool world-action transition is accepted; remote animation checks alone do not prove that transition.
+An unsupported local operation does not discard the independent dedicated-player ItemCheck or its paid buffs and mana. Its local clocks remain unknown and cannot authorize a tool action or projectile birth. Represented paid block/wall placement and the 41 retained weapon definitions now have owned local clock participants for subsequent tool actions. Their exact scope is described in [placement continuity](local-placement-tool-continuity-1458.md) and [weapon continuity](local-weapon-tool-continuity-1458.md); remote animation checks alone do not prove that transition.
 
 The normal grouped proofs include source tool metadata/clocks/power, player health/selection/Lucy, replant custody/reentry, 480 projectile terrain episodes, 24 plant-cut consumers, 220 configured falling episodes and 176 natural-origin episodes. Independent original numeric captures preserve exact frames, cell state and RNG; Windows execution of both source editions is distinct from Linux runtime acceptance. Causal omission controls cover replant, bomb draws/collision/lifetime and stale birth publication.
 
 The combined tools/Larva/events/NPC checkpoint passes Release with warnings as errors, the fast tier (25,259 /25,260) and the unfiltered full suite (1,566,672 /1,566,673 cases); both suites have zero failures/errors and the same known liquid skip. All 5,189 methods are selected in full, with 3,848 source/config/fixture inputs and 158 executed DLLs unchanged. Fresh Windows NativeAOT and five server smokes pass, as do actual Release/Native TCP82/49/129, two-client chat and 72 signed effect checks per host. Both hosts are stopped. These checks do not establish official GUI-client or whole `Main.Update` parity.
 
-Remaining work includes local weapon/placement-to-tool clock participants, rare bait births and their complete NPC targeting context, display-doll/hat-rack state, tracks, other special furniture actions, additional frame-important objects and progression tiles. General inventory/ammo/equipment authority and complete vanilla AI remain broader roadmap work. Linux NativeAOT is still unverified locally.
+Remaining work includes broader weapon/placement families and equipment contexts, rare bait births and their complete NPC targeting context, furniture placement and additional interactions, track riding, other frame-important objects and progression tiles. General inventory/ammo/equipment authority and complete vanilla AI remain broader roadmap work. Linux NativeAOT is still unverified locally.
 
 See [gameplay scope](gameplay.md), [world progression](world-progression-events.md) and the [roadmap](../roadmap.md).
+
+
+## Exceptional furniture and track tools
+
+The source-qualified tool component adds legacy mannequins128/269, racks334/471, display doll470, hat rack475 and track314, including pose121, action20 results and canonical mutable tile-entity snapshots. See [ownership, evidence and remaining limits](tool-furniture-exceptions-1458.md). Existing clock/CC/placement authority remains unchanged.

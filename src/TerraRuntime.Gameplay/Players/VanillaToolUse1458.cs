@@ -11,84 +11,11 @@ public static class VanillaToolUse1458
         in ToolFrameFacts1458 facts, int critRoll, out ToolClockTransition1458 transition)
     {
         transition = default;
-        if (!Valid(tool) || !previous.IsValid || !float.IsFinite(facts.AnimationMultiplier) ||
-            facts.AnimationMultiplier < 0f) return false;
-        if (facts.CrowdControlled)
-        {
-            transition = new(previous with
-            {
-                Selected = previous.Selected with { Animation = 0, AnimationMax = 0 },
-                Channel = false
-            }, false, false, false, false, false, false)
-            { LastUseSuccess = facts.LastUseSuccess };
-            return true;
-        }
-        if ((uint)critRoll >= 3) return false;
-        float animationProduct = tool.UseAnimation * facts.AnimationMultiplier;
-        if (!float.IsFinite(animationProduct) || animationProduct >= short.MaxValue + 1f) return false;
-        int animationTicks = Math.Max(1, (int)animationProduct);
-        var selected = previous.Selected;
-        int animation = selected.Animation;
-        int maximum = selected.AnimationMax;
-        bool release = selected.ReleaseUseItem;
-        bool autoLogic = !facts.SelectionBuffered || tool.Shoot > 0 && selected.ItemTime != 0;
-        if (autoLogic && tool.AutoReuse && !facts.NoItems)
-        {
-            release = true;
-            if (animation == 1)
-            {
-                if (!facts.LocalOwner && facts.ControlUseItem && tool.UseStyle == 5 &&
-                    tool.Shoot > 0 && facts.LastUseSuccess)
-                    animation = maximum = animationTicks;
-                else animation = 0;
-            }
-        }
-        if (autoLogic && facts.AutoReuseOverride) release = true;
-        if (animation == 0) maximum = 0;
-        int crit = selected.RevolverCritBonus - (critRoll == 0 ? 2 : 0);
-        bool attempt = facts.ControlUseItem && release && animation == 0 && !facts.SelectionBuffered;
-        bool useSuccess = facts.LastUseSuccess;
-        bool began = false;
-        bool channel = previous.Channel;
-        int toolTime = previous.ToolTime;
-        if (attempt)
-        {
-            bool allowed = !facts.NoItems && facts.SourceUseAllowed;
-            if (facts.LocalOwner) useSuccess = allowed;
-            began = allowed && (facts.LocalOwner || facts.LastUseSuccess);
-            if (began)
-            {
-                animation = maximum = animationTicks;
-                toolTime = 1;
-                if (tool.Channel) channel = true;
-            }
-        }
-        if (!facts.ControlUseItem || facts.SelectionBuffered ||
-            facts.LocalOwner && facts.PendingInventoryActions) channel = false;
-        bool wasAnimating = animation > 0;
-        if (wasAnimating) animation--;
-        bool pending = wasAnimating && animation == 0 && facts.ControlUseItem && release;
-        selected = selected with
-        {
-            Animation = animation,
-            AnimationMax = maximum,
-            ItemTime = Math.Max(0, selected.ItemTime - 1),
-            ReleaseUseItem = !facts.ControlUseItem,
-            RevolverCritBonus = crit
-        };
-        bool local = facts.LocalOwner && facts.AllowedToHoldItems && !facts.JustDroppedItem;
-        bool shoot = local && tool.Shoot > 0 && animation > 0 && selected.ItemTime == 0 &&
-            (!facts.SelectionBuffered || tool.UseTime <= animation);
-        var state = new ToolClockState1458(selected, toolTime, previous.PoundRelease, channel);
-        int predictedToolTime = channel ? toolTime > 0 ? toolTime - 1 : tool.UseTime - 1 :
-            shoot ? tool.UseTime : selected.ItemTime;
-        bool action = local && animation > 0 && facts.ControlUseItem && predictedToolTime == 0;
-        // This predicts the source boundary assuming the offered shot succeeds.
-        // The caller must still adopt that shot and enter the tool stage before
-        // using it; the flag alone is not an action certificate.
-        transition = new(state, attempt, began, pending, shoot, action, true)
-        { LastUseSuccess = useSuccess, LocalToolStage = local };
-        return true;
+        if (!Valid(tool)) return false;
+        var definition = new LocalItemClockDefinition1458(tool.UseTime, tool.UseAnimation,
+            (byte)tool.UseStyle, tool.AutoReuse, tool.Channel, tool.Shoot) { ResetsToolTimeOnStart = true };
+        return VanillaLocalItemUse1458.TryAdvanceFrame(in definition, in previous, in facts,
+            critRoll, out transition);
     }
 
     // Call after the held-projectile shoot preparation has applied its source

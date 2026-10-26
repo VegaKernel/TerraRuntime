@@ -28,7 +28,7 @@ internal sealed partial class WorldTileAuthority
         }
         private bool FrameLarva(int x,int y,in WorldTile tile)
         {
-            if(larvaDestroying)return true;
+            if(IsSourceDestroyingObject)return true;
             if(!TryVerifyLarvaFootprint(x,y,in tile,out int left,out int top))return false;
             int frameX=tile.FrameX/54*54,frameY=tile.FrameY/54*54;
             bool intact=true;

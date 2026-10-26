@@ -11,7 +11,7 @@ internal sealed partial class WorldTileAuthority
         // ore blessing/progression and unrelated 3x2 objects are separate owners.
         private bool TryVerifyIntactAltar(int x, int y, in WorldTile tile)
         {
-            if (plantDestroying || saplingDestroying || container?.Destroying == true) return true;
+            if (IsSourceDestroyingObject) return true;
             if (tile.Type != 26 || tile.FrameX < 0 || tile.FrameY < 0 ||
                 tile.FrameX % 18 != 0 || tile.FrameY % 18 != 0) return false;
             int left = x - tile.FrameX / 18 % 3, top = y - tile.FrameY % 36 / 18;

@@ -136,21 +136,42 @@ public static class GemStaffBoundaryChecks
                 f.Move(2, true);
                 m.ItemPhase = m.ItemPhase!.Value with
                 {
-                    Selected = SourceClocks(row.GetProperty("before"))
+                    Selected = SourceClocks(row.GetProperty("before")),
+                    ToolUse=m.ItemPhase.Value.ToolUse! with {Clocks=m.ItemPhase.Value.ToolUse!.Clocks with
+                        {Selected=SourceClocks(row.GetProperty("before")),ToolTime=row.GetProperty("before").GetProperty("toolTime").GetInt32()}}
                 };
                 m.ItemAnimation = 0;
                 var authority = Composition(f.Runtime).Projectiles;
                 var beforeRandom = row.GetProperty("beforeRandom");
                 int bornCount = 0;
                 ulong attempt = 0;
+                int expectedComposedCrit=SourceClocks(row.GetProperty("before")).RevolverCritBonus;
+                int expectedRawCrit=expectedComposedCrit;
                 foreach (var phase in row.GetProperty("phases").EnumerateArray())
                 {
                     Restore(UpdateRandom(f.Players)!, beforeRandom);
+                    // The numeric row begins at ItemCheck; the runtime also
+                    // executes its preceding UpdateManaRegen. Compose that
+                    // separately source-qualified prefix instead of pretending
+                    // both entry boundaries have the same common draw.
+                    var prefix=new VanillaUnifiedRandom1458(0);Restore(prefix,beforeRandom);
+                    var beforeOwned=m.ItemPhase!.Value;
+                    Assert.True(VanillaSelectedConsumable1458.TryStepHeat(beforeOwned.ManaHeat,prefix.NextDouble,prefix.Next,out _));
+                    var manaFacts=new PlayerManaRegenerationFacts1458(m.VelocityX,m.VelocityY,false,false,false,0,0,0);
+                    Assert.True(VanillaRemoteManaRegeneration1458.TryStep(beforeOwned.Mana with {Mana=m.Mana,Maximum=200},in manaFacts,out var afterRegen,out _));
+                    if(beforeOwned.ToolUse is {LocalClocksKnown:true} local && local.Clocks.Selected.Animation==0 && local.Clocks.ReuseDelay==0 &&
+                        m.Mana<afterRegen.Maximum && afterRegen.Mana>=afterRegen.Maximum)
+                        for(int particle=0;particle<5;particle++)prefix.Next(20,26);
+                    if(prefix.Next(0,3)==0)expectedComposedCrit-=2;
+                    var rawCommon=new VanillaUnifiedRandom1458(0);Restore(rawCommon,beforeRandom);
+                    if(rawCommon.Next(0,3)==0)expectedRawCrit-=2;
+                    Assert.Equal(expectedRawCrit,SourceClocks(phase.GetProperty("state")).RevolverCritBonus);
                     f.Tick();
+                    Assert.True(UpdateRandom(f.Players)!.HasSameState(prefix));
                     Assert.NotNull(m.ItemPhase);
                     Assert.NotNull(m.ItemPhase!.Value.MagicPayment);
                     var payment = m.ItemPhase.Value.MagicPayment!.Value;
-                    Assert.Equal(SourceClocks(phase.GetProperty("state")), payment.GemClocks);
+                    Assert.Equal(SourceClocks(phase.GetProperty("state")) with {RevolverCritBonus=expectedComposedCrit}, payment.GemClocks);
                     Assert.False(m.ItemPhase.Value.Channel);
                     if (attempt > 0 && payment.Attempt > attempt)
                         repeats++;

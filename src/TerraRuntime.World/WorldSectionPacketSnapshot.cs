@@ -87,8 +87,8 @@ public sealed class WorldSectionPacketSnapshot
 public static class WorldSectionPacketSnapshotCapture
 {
     /// <summary>
-    /// Captures the object tail that belongs to an already stable tile snapshot. Object metadata currently has
-    /// no independent mutable runtime revision, so this method must run on the authoritative world thread. Once
+    /// Captures the object tail that belongs to an already stable tile snapshot. Mutable tile-entity metadata joins
+    /// the same concrete section revision fence as terrain, so this method must run on the authoritative world thread. Once
     /// runtime chest/sign/tile-entity mutation is introduced, that state must gain its own section revision and
     /// participate in completion validation as well.
     /// </summary>

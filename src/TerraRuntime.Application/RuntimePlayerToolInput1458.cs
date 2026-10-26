@@ -31,7 +31,8 @@ internal sealed partial class RuntimePlayerToolInput1458(ToolDefinition1458 defi
     internal ulong Revision { get; private set; }
     internal bool Invalid { get; private set; }
     internal ReadOnlySpan<ToolWireObservation1458> Observations => observations.AsSpan(0, count);
-    internal bool IsCurrent => !Invalid && actor?.IsCurrent == true;
+    internal bool IsCurrent => !Invalid && actor?.IsCurrent == true &&
+        (PlacementReads is null || PlacementReads.IsCurrent);
 
     internal void BindActor(RuntimePlayerToolActorCapture1458 value)
     {

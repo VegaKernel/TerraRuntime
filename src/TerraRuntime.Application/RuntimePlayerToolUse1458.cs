@@ -21,9 +21,20 @@ internal sealed record RuntimePlayerToolUse1458(ToolClockState1458 Clocks,
     internal RuntimePlayerToolRelease1458? ReleaseWitness { get; init; }
     internal RuntimePlayerToolReach1458? Reach { get; init; }
     internal bool SelectionInitialized { get; init; }
+    internal RuntimePlayerWeaponShoot1458? WeaponShoot { get; init; }
+    // Retained local mana caller role; selection changes do not make it remote.
+    internal bool LocalManaFeedbackOwned { get; init; }
     internal bool LocalClocksKnown { get; init; } = true;
     internal byte? DeferredSelectionSlot { get; init; }
     internal TerraRuntime.Gameplay.Items.ToolDefinition1458? SourceDefinition { get; init; }
+    internal LocalItemClockDefinition1458? SourceLocalDefinition { get; init; }
+    internal ulong PlacementHistoryEpoch { get; init; }
+    internal RuntimePlayerPlacementReceipt1458? PlacementReceipt { get; init; }
+    internal ToolHitState1458 ReplacementHits { get; init; } = ToolHitState1458.Constructor;
+    internal RuntimePlayerPlacementAlternative1458? PlacementAlternative { get; init; }
+    internal TerraRuntime.Gameplay.Items.LocalPlacementDefinition1458? SourcePlacement { get; init; }
+    internal float PlacementSpeed { get; init; } = 1f;
+    internal RuntimePlayerPlacementReady1458? PlacementReady { get; init; }
     internal bool RequiresFreshUse { get; init; }
     internal ItemTypeId SourceItem { get; init; }
     internal PrefixId SourcePrefix { get; init; }

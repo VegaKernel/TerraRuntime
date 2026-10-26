@@ -456,6 +456,16 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             encodedBestiary = bestiaryStream.ToArray();
         }
 
+        byte[]? encodedTileEntities = null;
+        if (snapshot.TileEntities is { } tileEntities)
+        {
+            using var entityStream = new MemoryStream();
+            if (WorldFileTileEntityEncoder.TryEncode(tileEntities, sourceHeader.Dimensions,
+                ServerWorldLoadPolicy.CreateLimits().MaxTileEntities, entityStream, out _) != WorldFileTileEntityEncodeResult.Encoded)
+                throw new InvalidDataException("Authoritative tile-entity encoding failed.");
+            encodedTileEntities = entityStream.ToArray();
+        }
+
         WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
             snapshot.Custody is { } custody ? sourceEnvelope.WithRevision(custody.Revision.Value) : sourceEnvelope,
             sourceHeader,
@@ -468,7 +478,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             townRoomSection,
             destination,
             out _, banners: snapshot.Banners,
-            bestiarySection: encodedBestiary is null ? (ReadOnlyMemory<byte>?)null : encodedBestiary);
+            bestiarySection: encodedBestiary is null ? (ReadOnlyMemory<byte>?)null : encodedBestiary,
+            tileEntitySection: encodedTileEntities is null ? (ReadOnlyMemory<byte>?)null : encodedTileEntities);
         if (result != WorldFileTileChestRewriteResult.Rewritten)
             throw new InvalidDataException($"Authoritative tile/chest/sign/town world save failed: {result}.");
 

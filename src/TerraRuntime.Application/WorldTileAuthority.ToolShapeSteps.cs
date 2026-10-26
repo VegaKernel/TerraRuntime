@@ -19,7 +19,7 @@ internal sealed partial class WorldTileAuthority
             { consumedRelease = true; return true; }
             // Stateful doll/track/trap/furniture frame changes require their
             // existing object/wiring participant, not a generic slope edit.
-            if (tile.Type is 470 or 314) return Reject();
+
             if (!client.Overlay.TryRead(x, y - 1, out var above) ||
                 !client.Overlay.TryRead(x, y + 1, out var below) ||
                 !client.Overlay.TryRead(x - 1, y, out var left) ||
@@ -35,7 +35,15 @@ internal sealed partial class WorldTileAuthority
                 return client.TryKillTile(x, y, true, true, false, out _) || Reject();
             if (!TryClearMiningCache(x, y)) return false;
 
-            if (tile.Type is 137 or 424 or 442)
+            if (tile.Type == 470)
+            {
+                if (!TryDollPoseAndReport(x, y)) return false;
+            }
+            else if (tile.Type == VanillaMinecartTrackFrame1458.TileType)
+            {
+                if (!TryPoundTrackAndReport(x, y)) return false;
+            }
+            else if (tile.Type is 137 or 424 or 442)
             {
                 if (!TryRotateFurnitureAndReport(x, y)) return false;
             }

@@ -6,11 +6,14 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class PlayerAuthority
 {
-    private static RuntimePlayerToolUse1458 TrackNonToolLocalClock(RuntimePlayerToolUse1458 before,
+    private RuntimePlayerToolUse1458 TrackNonToolLocalClock(RuntimePlayerToolUse1458 before,
         byte slot, in RuntimePlayerInventoryItem selected, in PlayerSelectedConsumableFacts1458 facts,
         in PlayerSelectedConsumableState1458 remoteBefore, in PlayerSelectedConsumableTransition1458 remoteUse,
-        RuntimePlayerMagicPayment1458? payment, bool ownedConsumableClock)
+        RuntimePlayerMagicPayment1458? payment, bool ownedConsumableClock,
+        in RuntimePlayerItemPhase1458 phase, RemoteItemPhasePlan1458 plan)
     {
+        if (TryTrackLocalWeaponClock(before, slot, in selected, in facts,
+            in remoteBefore, in remoteUse, in phase, plan, out var ownedWeapon)) return ownedWeapon;
         bool changed = before.SelectionInitialized && (before.SourceSlot != slot ||
             before.SourceItem != selected.ItemType || before.SourcePrefix != selected.Prefix);
         var local = before.Clocks;
@@ -28,14 +31,32 @@ internal sealed partial class PlayerAuthority
             };
             success = true;
         }
-        if (payment is { GemStaff: true, AwaitingPhase: false } gem &&
-            gem.Item == selected && gem.Slot == slot)
+        RuntimePlayerWeaponShoot1458? pendingGem=null;
+        LocalItemClockDefinition1458? gemDefinition=null;
+        if ((plan.LocalGemFrame is not null || payment is {GemStaff:true,AwaitingPhase:false} ownedGem &&
+            ownedGem.Item==selected && ownedGem.Slot==slot) && VanillaGemStaff1458.TryGetWeapon(selected.ItemType,out _))
         {
             // Reuse the already owned local producer. Its source clock is not the
             // dedicated remote renewal clock and is not reconstructed from41.
-            local = local with { Selected = gem.GemClocks, Channel = false };
-            known = true;
-            success = gem.GemLastUseSuccess;
+            var gem=payment;
+            var sourceGemClocks=plan.LocalGemFrame?.State??gem!.Value.GemClocks;
+            local = local with { Selected = sourceGemClocks, Channel = false };
+            if(playerUpdateWorld is not { } gemWorld ||
+                !VanillaGemStaff1458.TryResolveWeapon(selected.ItemType,selected.Prefix,gemWorld.WindowsItemPrefixArithmetic,out var gemWeapon,out _) ||
+                !VanillaLocalItemUse1458.TryGetSourceUseStyle(selected.ItemType,out byte gemStyle))
+            {known=false;}
+            else
+            {
+                gemDefinition=new(gemWeapon.UseTime,gemWeapon.Animation,gemStyle,gemWeapon.AutoReuse,false,gemWeapon.Projectile.Value)
+                    {Style5AnimationBonus=gemWeapon.AutoReuse};
+                if(!VanillaLocalItemUse1458.TryEnterOwnerStage(gemDefinition.Value,local,true,out local))known=false;
+                else known=true;
+            }
+            if(before.WeaponShoot is {PendingGem:true,PendingReport:not null,PendingCapture:{ } candidate} retained &&
+                IsOrderedLocalMagicCaptureCurrent(candidate) && gem is { } eligible &&
+                (eligible.EligibleBirth && !eligible.BirthConsumed || eligible.MidpointEligible && !eligible.MidpointConsumed))
+                pendingGem=retained with {PendingPhaseReady=true};
+            success = plan.LocalGemFrame?.LastUseSuccess??gem!.Value.GemLastUseSuccess;
             deferred = false;
         }
         else if (known && !deferred && ownedConsumableClock &&
@@ -83,6 +104,7 @@ internal sealed partial class PlayerAuthority
         return before with
         {
             Clocks = local, LocalClocksKnown = known, SelectionInitialized = true,
+            SourceLocalDefinition = gemDefinition, WeaponShoot = pendingGem,
             SourceItem = deferred ? before.SourceItem : selected.ItemType,
             SourcePrefix = deferred ? before.SourcePrefix : selected.Prefix,
             SourceSlot = deferred ? before.SourceSlot : slot,
@@ -91,7 +113,8 @@ internal sealed partial class PlayerAuthority
             RequiresFreshUse = true, LastUseSuccess = success,
             ReleaseWitness = changed ? null : before.ReleaseWitness,
             SourceStagePose = null, Reach = null, BuildingPermission = null,
-            ShootEligible = false, ToolStagePending = false
+            ShootEligible = false, ToolStagePending = false,
+            LastFrameUpdate = pendingGem is not null ? currentCombatTick : before.LastFrameUpdate
         };
     }
 }

@@ -19,7 +19,7 @@ internal sealed partial class WorldTileAuthority
     internal sealed partial class ToolActionSteps1458(WorldTileAuthority owner, ToolWorldSourcePass1458 client,
         ToolWorldSourcePass1458 server, ToolWorldMutationPlan serverPlan, ToolWorldReadPreparation reads,
         VanillaUnifiedRandom1458 localRandom, ToolDamageWorld1458 world,
-        ToolHitState1458 initialHits, byte playerSlot, bool hardMode)
+        ToolHitState1458 initialHits, byte playerSlot, bool hardMode, ToolHitState1458? initialReplacementHits = null)
     {
         private readonly ToolWireObservation1458[] expected =
             new ToolWireObservation1458[RuntimePlayerToolInput1458.MaximumObservations];
@@ -41,6 +41,7 @@ internal sealed partial class WorldTileAuthority
         private int expectedLucyIndex = -1;
         internal TerrariaPlaceObjectState? ExpectedObject => expectedObject;
         internal ToolHitState1458 Hits { get; private set; } = initialHits;
+        internal ToolHitState1458 ReplacementHits { get; private set; } = initialReplacementHits ?? ToolHitState1458.Constructor;
         internal bool BlockMouse { get; private set; }
         internal int ExpectedCount => expectedCount;
         internal ReadOnlySpan<ToolWireObservation1458> ExpectedObservations => expected.AsSpan(0, expectedCount);
@@ -74,9 +75,9 @@ internal sealed partial class WorldTileAuthority
         internal bool HasSameSourceResult(ToolActionSteps1458 other)
         {
             if (!IsCurrent || !other.IsCurrent || TileSelfHurt is not null || other.TileSelfHurt is not null ||
-                BlockMouse != other.BlockMouse || !LocalRandom.HasSameState(other.LocalRandom) ||
+                BlockMouse != other.BlockMouse || !SameReplacementHits(other) || !LocalRandom.HasSameState(other.LocalRandom) ||
                 !SameSquare(expectedSquare, other.expectedSquare) ||
-                expectedChest != other.expectedChest || expectedObject != other.expectedObject ||
+                expectedDollPose != other.expectedDollPose || expectedChest != other.expectedChest || expectedObject != other.expectedObject ||
                 expectedLucy != other.expectedLucy || expectedLucyIndex != other.expectedLucyIndex ||
                 !ExpectedObservations.SequenceEqual(other.ExpectedObservations) ||
                 !Publications.SequenceEqual(other.Publications) ||
@@ -91,6 +92,7 @@ internal sealed partial class WorldTileAuthority
         internal ToolWireMatch1458 Match(RuntimePlayerToolInput1458 input)
         {
             if (!IsCurrent || !input.IsCurrent || input.Count > expectedCount ||
+                input.DollPoseReport is { } doll && expectedDollPose != doll ||
                 input.SquareReport is { } square && !SameSquare(expectedSquare, square) ||
                 input.ObjectReport is { } placed && expectedObject != placed ||
                 input.LucyReport is { } lucy && (expectedLucy != lucy || input.LucyObservationIndex != expectedLucyIndex) ||
@@ -99,6 +101,7 @@ internal sealed partial class WorldTileAuthority
             for (int index = 0; index < observations.Length; index++)
                 if (observations[index] != expected[index]) return ToolWireMatch1458.Rejected;
             return observations.Length == expectedCount &&
+                (expectedDollPose is null || input.DollPoseReport is not null) &&
                 (expectedSquare is null || input.SquareReport is not null) &&
                 (expectedChest is null || input.ChestReport is not null) &&
                 (expectedObject is null || input.ObjectReport is not null) &&
@@ -194,7 +197,10 @@ internal sealed partial class WorldTileAuthority
                     expectedChest = new(action, (short)x, (short)y, 0, 0);
                     if (!server.TryBreakContainer(x, y, playerSlot, out _)) return Reject();
                 }
-                else if (original.Type is 470 or 475) return Reject();
+                else if (original.Type is 470 or 475)
+                {
+                    if (!AppendTile(20, x, y, 0) || !TryServerKillFurniture(x, y)) return Reject();
+                }
                 else if (!client.TryKillTile(x, y, false, false, false, out _) ||
                     !AppendTile(0, x, y, 0) ||
                     !TryServerKillTile(x, y, false, expectedCount)) return Reject();
@@ -337,16 +343,52 @@ internal sealed partial class WorldTileAuthority
             return true;
         }
 
+        private bool SameReplacementHits(ToolActionSteps1458 other)
+        {
+            if (ReplacementHits.BufferLocation != other.ReplacementHits.BufferLocation) return false;
+            for (int index = 0; index < ToolHitState1458.SlotCount; index++)
+                if (ReplacementHits.GetEntry(index) != other.ReplacementHits.GetEntry(index) ||
+                    ReplacementHits.GetOrder(index) != other.ReplacementHits.GetOrder(index)) return false;
+            return true;
+        }
+
         private bool TryClearMiningCache(int x, int y)
         {
+            // Player.ClearMiningCacheAt1458 clears/prunes the independent
+            // replacement cache FIRST, then the ordinary tile cache. Each
+            // source call retains its own501 TTL/order transition.
+            int replacementSlot = ReplacementHits.Find(x, y, 1);
+            if (replacementSlot >= 0)
+            {
+                var cleared = ReplacementHits.Clear(replacementSlot);
+                Span<bool> presence = stackalloc bool[ToolHitState1458.SlotCount];
+                if (!CanStage || !reads.TryCapturePrune(cleared, client.Overlay, presence) ||
+                    !cleared.TryPrune(presence, out var pruned)) return Reject();
+                ReplacementHits = pruned;
+            }
             int slot = Hits.Find(x, y, 1);
             if (slot < 0) return true;
             Hits = Hits.Clear(slot);
             return TryPrune();
         }
 
-        private bool TryServerKillTile(int x, int y, bool fail, int observationEnd) =>
-            server.TryKillTile(x, y, fail, false, false, out _) && RecordPublication(observationEnd);
+        private bool TryServerKillTile(int x, int y, bool fail, int observationEnd)
+        {
+            if (!serverPlan.TryBeginSourceDefaultItemOwner(playerSlot)) return Reject();
+            try { return server.TryKillTile(x, y, fail, false, false, out _) && RecordPublication(observationEnd); }
+            finally { serverPlan.EndSourceDefaultItemOwner(); }
+        }
+        private bool TryServerKillFurniture(int x, int y)
+        {
+            if (!serverPlan.TryBeginSourceDefaultItemOwner(playerSlot)) return Reject();
+            try
+            {
+                if (!server.Overlay.TryRead(x, y, out var before) || !server.TryKillTile(x, y, false, false, false, out _) ||
+                    !server.Overlay.TryRead(x, y, out var after)) return Reject();
+                return serverPlan.TryStageSourceTileManipulation(x, y, 20, after.IsActive && after.Type == before.Type ? (short)1 : (short)0);
+            }
+            finally { serverPlan.EndSourceDefaultItemOwner(); }
+        }
 
         private bool RecordPublication(int observationEnd)
         {

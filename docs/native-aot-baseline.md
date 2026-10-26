@@ -1,5 +1,11 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Connected player item use: local validation, 2026-10-26
+
+Source fingerprint `e961fdad729ab4a4bbd0c2771b3286804cf86f6c025bf6bb26d04fbc0a38ce86` passes fresh Release tests/server warnings-as-errors, focused162/162, fast25282/25283 and one unfiltered full1566695/1566696. Zero failures/errors, one known canonical-liquid skip; the actual full XML contains all5201 discovered methods. All3932 source/config/fixture inputs and158 executed DLLs remain unchanged. Full test time is $1060.887\,\mathrm{s}$ and wall time is $1078.834\,\mathrm{s}$.
+
+Fresh Windows NativeAOT publishes and exercises loop/protocol/network/world/TUI smokes. Private exe SHA256 `cca22282e95194db2aa4adb0b5c027768e8334b6dca7092eb06eb2be8e5c0635`, PE CLR directory0/0. Actual Release/Native TCP82/49/129, two-client relay/chat and72signed35/43 effects per host pass; both hosts are stopped. Evidence `.cache/merge-player-use/connected-candidate-03/acceptance.json` and `live-connected-{release,native}-03`. No production NuGet dependency was added. Source/component tests retain their explicit caller scope; Linux Native, official GUI and wholeMain parity remain unverified. No GitHub CI wait.
+
 ## Combined tools, events and NPC checkpoint: local validation, 2026-10-26
 
 The combined source fingerprint `f1275ab1ee7b2f2d7bf35f44821f8e1a08b06e20af934941a96db3d9902eb93c` passes Release tests/server with warnings as errors, fast25,259/25,260 and one unfiltered full1,566,672/1,566,673. Both suites have zero failures/errors and the same known canonical-liquid skip. The actual full XML contains all5,189 discovered methods, zero missing/unplanned;3,848 source/config/fixture inputs and158 executed DLLs remain unchanged. Full test time is $929.350\,\mathrm{s}$ and wall time is $942.259\,\mathrm{s}$.

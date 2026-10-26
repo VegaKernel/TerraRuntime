@@ -303,6 +303,7 @@ internal sealed partial class WorldTileAuthority
             if (sealedPlan) return IsCurrentOwned;
             if (projectileSpawns is not null && owner.ToolFallingBlocks is { } falling &&
                 !falling.TryPrepareSourceBirths(projectileSpawns, out fallingBirths)) return Fail();
+            if (furniture is not null && !Overlay.TryPrepareMetadata(furniture)) return Fail();
             if (allocation is not null && !allocation.TryClaim()) return Fail();
             sealedPlan = true;
             return ValidateExternalOwners();
@@ -315,7 +316,7 @@ internal sealed partial class WorldTileAuthority
             (allocation is null || allocation.IsCurrent) && AreLarvaBossOwnersCurrent && IsCurrentOwned;
 
         public bool IsCurrentOwned => !failed && !disposed && !adopted && Overlay.IsCurrentOwned &&
-            random.IsCurrent && AreLarvaBossOwnersCurrent && IsTreeShakeBeforeCurrent && IsContainerMetadataCurrent && owner.npcs.TryCaptureDeathMutationSerial(out ulong currentNpcSerial) &&
+            random.IsCurrent && IsFurnitureCurrent && AreLarvaBossOwnersCurrent && IsTreeShakeBeforeCurrent && IsContainerMetadataCurrent && owner.npcs.TryCaptureDeathMutationSerial(out ulong currentNpcSerial) &&
             currentNpcSerial == npcBeforeSerial && (allocation is null || allocation.IsCurrentOwned) &&
             (npcSpawns is null || npcSpawns.IsCurrentOwned) &&
             (projectileSpawns is null || projectileSpawns.IsCurrentOwned) &&
@@ -346,7 +347,7 @@ internal sealed partial class WorldTileAuthority
             if (allocation is not null && !allocation.TryAdoptUnpublished(out items))
                 throw new InvalidOperationException("Prepared world item table changed during callback-free adoption.");
             AdoptContainerMetadata();
-            if (!Overlay.TryAdoptUnpublished())
+            if (!Overlay.TryAdoptUnpublished(furniture))
                 throw new InvalidOperationException("Prepared tool overlay changed during callback-free adoption.");
             AdoptTreeShakeMarks();
             random.Commit();

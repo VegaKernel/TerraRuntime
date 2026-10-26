@@ -50,7 +50,7 @@ internal sealed partial class WorldTileAuthority
         private int steps;
         private int mutationOrdinal;
         private bool failed;
-        private enum StepKind : byte { Kill, Frame, PalmAfterKill, FallingAfterFrame, CrackedNeighbor, CrackedAfterNeighbor, KillAfterSpecial, ContainerNextCell, FossilNeighbor, FossilAfterNeighbor, KillAfterPreEffects, SaplingNextCell, PlantKillComplete, LarvaNextCell, LarvaAfterKills }
+        private enum StepKind : byte { Kill, Frame, PalmAfterKill, FallingAfterFrame, CrackedNeighbor, CrackedAfterNeighbor, KillAfterSpecial, ContainerNextCell, FossilNeighbor, FossilAfterNeighbor, KillAfterPreEffects, SaplingNextCell, PlantKillComplete, LarvaNextCell, LarvaAfterKills, FurnitureNextCell }
         private readonly record struct SourceStep(StepKind Kind, int X, int Y,
             bool Fail = false, bool EffectOnly = false, bool NoItem = false, bool ResetFrame = false)
         {
@@ -71,7 +71,7 @@ internal sealed partial class WorldTileAuthority
         }
 
         public ToolWorldTileOverlay1458 Overlay { get; }
-        public bool IsCurrentOwned => !failed && Overlay.IsCurrentOwned && AreSourceContainerPermissionsCurrent() &&
+        public bool IsCurrentOwned => !failed && Overlay.IsCurrentOwned && IsFurnitureSourceCurrent && AreSourceContainerPermissionsCurrent() &&
             (server is null || server.IsCurrentOwned) &&
             (owner.hardModeBaseline || owner.progression.IsCompleted(VanillaWorldProgressionId.Hardmode)) == hardMode &&
             (owner.skeletronDownedBaseline || owner.progression.IsCompleted(VanillaWorldProgressionId.Skeletron)) == skeletronDowned &&
@@ -221,6 +221,7 @@ internal sealed partial class WorldTileAuthority
                     StepKind.PlantKillComplete => FinishPlantKill(),
                     StepKind.LarvaNextCell => LarvaNextCell(next.Index),
                     StepKind.LarvaAfterKills => LarvaAfterKills(),
+                    StepKind.FurnitureNextCell => FurnitureNextCell(next.Index),
                     StepKind.PalmAfterKill => PalmContinuation(next.X, next.Y),
                     StepKind.FallingAfterFrame => server is not null && server.TryStageSourceTileSquare(next.X, next.Y),
                     _ => false
@@ -238,10 +239,15 @@ internal sealed partial class WorldTileAuthority
                 step.X, step.Y, hardMode, out var permission) ||
                 !VanillaToolTileCatalog1458.TryGet(before.TileType, out var tileFacts)) return false;
             if (permission.Breakability == ToolWorldBreakability1458.NoEffect) return true;
+            if (IsExceptionalFurniture(before.Type))
+            {
+                if (!TryFurnitureBeforeDust(in step, ref before, out bool stop)) return false;
+                if (stop) return true;
+            }
             bool sourceFail = step.Fail || permission.Breakability == ToolWorldBreakability1458.FailedEffect;
             // Stored items/progression and complete object footprints require their
             // typed metadata participant, never a raw cell-clear fallback.
-            if (HasStoredOrProgressionEffect(before.Type) && !AllowsContainerKill(before.Type) &&
+            if (HasStoredOrProgressionEffect(before.Type) && !IsExceptionalFurniture(before.Type) && !AllowsContainerKill(before.Type) &&
                 !(step.Fail && before.Type is 21 or 467 or 88 or 26)) return false;
             if (before.Type == LarvaTile && !TryVerifyLarvaFootprint(step.X, step.Y, in before, out _, out _)) return false;
             if (!AdvanceDust(in before, sourceFail)) return false;
@@ -302,7 +308,7 @@ internal sealed partial class WorldTileAuthority
         private bool StageDrops(int x, int y, in WorldTile before)
         {
             if (server is null) return false;
-            if (AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
+            if (IsExceptionalFurniture(before.Type) || AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
             if (IsSourcePlant(before.Type)) return TryStagePlantDrops(x, y, in before);
             if (before.Type is 5 or 72 or 80 or 323 or >= 583 and <= 589 or 596 or 616 or 634)
             {
@@ -352,11 +358,13 @@ internal sealed partial class WorldTileAuthority
             if (tile.Type is 49 or 136) return FrameSingleCell(step.X, step.Y, in tile);
             if (tile.Type is 137 or 424 or 442) return TryFrameToolFurniture(step.X, step.Y, in tile);
             if (tile.Type == LarvaTile) return FrameLarva(step.X, step.Y, in tile);
+            if (IsExceptionalFurniture(tile.Type)) return FrameExceptionalFurniture(step.X, step.Y, in tile);
+            if (tile.Type == VanillaMinecartTrackFrame1458.TileType) return FrameTrack(step.X, step.Y, in tile);
             if (definition.IsFrameImportant) return false;
             // Source non-important cosmetic frames are not file state. Their
-            // reset draw remains part of both role RNG streams. Special fixed
-            // cosmetic branches bypass the default reset draw.
-            if (step.ResetFrame && tile.Type is not (385 or 446 or 447 or 448)) random.Next(3);
+            // reset draw remains part of both role RNG streams. The special
+            // SelfFrame8Way path also consumes one reset sample.
+            if (step.ResetFrame) random.Next(3);
             return true;
         }
 

@@ -127,6 +127,23 @@ internal sealed partial class PlayerAuthority
             }
             return IsCurrent;
         }
+        internal bool TryIsPlacementTileEmpty(int tileX, int tileY, out bool empty)
+        {
+            empty = false;
+            if (!IsCurrent) return false;
+            int x = tileX * 16, y = tileY * 16;
+            foreach (var actor in actors)
+            {
+                if (!actor.Active || actor.Dead) continue;
+                if (snapshots[actor.Slot] is not { } snapshot) return false;
+                if ((snapshot.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0) continue;
+                if (x < (int)actor.X + actor.Width && x + 16 > (int)actor.X &&
+                    y < (int)actor.Y + actor.Height && y + 16 > (int)actor.Y) return true;
+            }
+            empty = true;
+            return IsCurrent;
+        }
+
         internal bool IsCurrent
         {
             get

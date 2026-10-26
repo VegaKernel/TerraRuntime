@@ -98,7 +98,8 @@ internal sealed partial class PlayerAuthority
         RuntimePlayerMagicPayment1458? magicPayment = null,
         RuntimePlayerMagicUsePreparation? magicUse = null)
     {
-        if (!IsCurrentProjectileUse(capture) || manaCost < 0 || (manaCost > 0 && mutation is not null && magicUse is null))
+        if (!IsCurrentProjectileUse(capture) || manaCost < 0 || (manaCost > 0 && mutation is not null && magicUse is null) ||
+            !TryPrepareOwnedWeaponClockShoot(capture, magicPayment, out _))
             return false;
         if (magicUse is { } prepared)
             return mutation is null &&
@@ -108,6 +109,7 @@ internal sealed partial class PlayerAuthority
                 refill.Connection == capture.Connection &&
                 capture.ItemPhase is { } capturedPhase &&
                 prepared.Payment.BaseManaMaximum == capturedPhase.BaseManaMaximum &&
+                (prepared.Payment.ManaStage is not { } refillStage || IsLocalMagicManaStageCurrent(capture,refillStage)) &&
                 prepared.Inventory.IsCurrent &&
                 transferProfiles.IsCurrentBuffState(capture.Connection,
                 prepared.BeforeBuffs);
@@ -117,9 +119,12 @@ internal sealed partial class PlayerAuthority
                 payment.Player == capture.Connection.Player &&
                 payment.BaseManaMaximum == phase.BaseManaMaximum &&
                 capture.Player.HasMana &&
-                capture.Player.Mana >= manaCost &&
-                (manaCost == 0 ||
-                payment.PaidMana == capture.Player.Mana - manaCost);
+                (payment.ManaStage is { } manaStage
+                    ? IsLocalMagicManaStageCurrent(capture,manaStage) &&
+                        manaStage.Regenerated.Mana>=manaCost && payment.PaidMana==manaStage.Regenerated.Mana-manaCost &&
+                        manaStage.AfterPayment.Mana==payment.PaidMana
+                    : capture.Player.Mana >= manaCost && (manaCost == 0 ||
+                        payment.PaidMana == capture.Player.Mana - manaCost));
         if (manaCost > 0)
             return capture.Player.HasMana && capture.Player.Mana >= manaCost;
         return mutation is not { } value || inventory.CanApplyProjectileConsumption(capture.Connection, in value, capture.InventorySerial);
@@ -131,7 +136,8 @@ internal sealed partial class PlayerAuthority
         RuntimePlayerMagicPayment1458? magicPayment = null,
         RuntimePlayerMagicUsePreparation? magicUse = null)
     {
-        if (!IsCurrentProjectileUse(capture) || manaCost < 0 || (manaCost > 0 && mutation is not null && magicUse is null))
+        if (!IsCurrentProjectileUse(capture) || manaCost < 0 || (manaCost > 0 && mutation is not null && magicUse is null) ||
+            !TryPrepareOwnedWeaponClockShoot(capture, magicPayment, out var weaponClock))
             return false;
         if (magicUse is { } prepared)
         {
@@ -156,7 +162,7 @@ internal sealed partial class PlayerAuthority
             restoredMember.Mana = checked((short)prepared.Payment.PaidMana);
             restoredMember.ItemPhase = restoredPhase with
             {
-                Mana = restoredPhase.Mana with
+                Mana = prepared.Payment.ManaStage?.AfterPayment ?? restoredPhase.Mana with
                 {
                     Mana = restoredMember.Mana
                 },
@@ -165,7 +171,7 @@ internal sealed partial class PlayerAuthority
                 SlowMagicUse = prepared.Payment.SlowMagicUse,
                 MagicPayment = prepared.Payment
             };
-            return true;
+            return AdoptOwnedWeaponClockShoot(capture, weaponClock, revisionAlreadyAdvanced: true);
         }
 
         if (magicPayment is { } payment)
@@ -180,10 +186,10 @@ internal sealed partial class PlayerAuthority
                 !paidMember.TryAdvanceRevision())
                 return false;
             paidMember.OwnsManaMaximum = true;
-            paidMember.Mana = checked((short)(paidMember.Mana - manaCost));
+            paidMember.Mana = checked((short)(payment.ManaStage?.AfterPayment.Mana ?? paidMember.Mana-manaCost));
             paidMember.ItemPhase = phase with
             {
-                Mana = phase.Mana with
+                Mana = payment.ManaStage?.AfterPayment ?? phase.Mana with
                 {
                     Mana = paidMember.Mana
                 },
@@ -192,7 +198,7 @@ internal sealed partial class PlayerAuthority
                 SlowMagicUse = payment.SlowMagicUse,
                 MagicPayment = payment
             };
-            return true;
+            return AdoptOwnedWeaponClockShoot(capture, weaponClock, revisionAlreadyAdvanced: true);
         }
 
         if (manaCost > 0)
@@ -208,12 +214,13 @@ internal sealed partial class PlayerAuthority
                         Mana = member.Mana
                     }
                 };
-            return true;
+            return AdoptOwnedWeaponClockShoot(capture, weaponClock, revisionAlreadyAdvanced: true);
         }
 
         if (mutation is not { } value)
-            return true;
-        return inventory.TryApplyProjectileConsumption(capture.Connection, in value, capture.InventorySerial);
+            return AdoptOwnedWeaponClockShoot(capture, weaponClock);
+        return inventory.TryApplyProjectileConsumption(capture.Connection, in value, capture.InventorySerial) &&
+            AdoptOwnedWeaponClockShoot(capture, weaponClock);
     }
 
     private static int ResolveOwnedChannelExpectedType(RuntimePlayerMagicPayment1458 payment)
@@ -226,7 +233,8 @@ internal sealed partial class PlayerAuthority
     internal void PublishProjectileUse(RuntimePlayerProjectileUseCapture capture,
         RuntimePlayerInventoryMutation? mutation,
         int manaCost,
-        RuntimePlayerMagicUsePreparation? magicUse = null)
+        RuntimePlayerMagicUsePreparation? magicUse = null,
+        RuntimePlayerMagicPayment1458? magicPayment = null)
     {
         ConnectionHandle connection = capture.Connection;
         if (magicUse is { } prepared)
@@ -275,8 +283,14 @@ internal sealed partial class PlayerAuthority
 
         if (manaCost > 0)
         {
-            var request = new PlayerManaCommitRequest(connection.Player.Slot, checked((short)(capture.Player.Mana - manaCost)), capture.Player.MaxMana);
-            events?.PlayerManaUpdated(connection, in request);
+            int after=magicPayment?.PaidMana ?? capture.Player.Mana-manaCost;
+            if(after!=capture.Player.Mana && membership.TryGet(connection,out var member) &&
+                member.Mana==after && member.MaxMana==capture.Player.MaxMana &&
+                (magicPayment is null || member.ItemPhase?.MagicPayment==magicPayment))
+            {
+                var request = new PlayerManaCommitRequest(connection.Player.Slot, checked((short)after), capture.Player.MaxMana);
+                events?.PlayerManaUpdated(connection, in request);
+            }
         }
         else if (mutation is { } value)
         {

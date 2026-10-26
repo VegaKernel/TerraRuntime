@@ -345,8 +345,14 @@ internal sealed partial class PlayerAuthority
                 ToolUse = phase.ToolUse is { } transferredTools ? transferredTools with
                 {
                     Hits = ToolHitState1458.Constructor,
+                    ReplacementHits = ToolHitState1458.Constructor,
+                    PlacementAlternative = null,
+                    PlacementReceipt = null,
+                    PlacementReady = null,
+                    PlacementHistoryEpoch = 0,
                     LastActionUpdate = long.MinValue,
                     Input = null,
+                    WeaponShoot = null,
                     HeldProjectile = null,
                     HeldProjectileType = 0,
                     HeldUseEpoch = 0,
@@ -377,6 +383,7 @@ internal sealed partial class PlayerAuthority
                     BirthConsumed = true,
                     AwaitingPhase = false,
                     Refill = null,
+                    ManaStage = null,
                     MidpointEligible = false,
                     MidpointConsumed = true
                 }

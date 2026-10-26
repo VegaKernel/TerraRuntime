@@ -168,6 +168,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             currentStamp = capturedSerial + 1; observedBefore = expected; observedCopper = expectedCopper; observedQuantity = expectedQuantity;
             return true;
         }
+        internal bool HasPendingCursorSource => escrow is not null;
         internal RuntimePlayerInventoryItem[] Before => before;
         internal long[] Copper => copper;
         internal short[] Quantity => [.. quantity, .. bankQuantity];

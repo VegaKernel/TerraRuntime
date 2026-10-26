@@ -93,9 +93,21 @@ internal sealed partial class PlayerAuthority
         // A completed receipt is history, not another cast certificate. Only an
         // actual fresh local start boundary may prepare a packet-first payment.
         var clocks = same ? previous!.Value.GemClocks : phase.Selected;
+        if(!same && toolWorld is not null && phase.ToolUse is {LocalClocksKnown:true} local)
+        {
+            bool changed=!local.SelectionInitialized || local.SourceSlot!=member.SelectedItem ||
+                local.SourceItem!=selected.ItemType || local.SourcePrefix!=selected.Prefix;
+            clocks=local.Clocks.Selected;
+            if(changed)
+            {
+                if(clocks.Animation!=0 || clocks.ItemTime!=0 || local.Clocks.ReuseDelay!=0)return false;
+                clocks=clocks with {ItemTime=0,ItemTimeMax=0,
+                    ReleaseUseItem=(member.ControlFlags&32)!=0 || clocks.ReleaseUseItem};
+            }
+        }
         bool localStart = clocks.Animation == 0 && clocks.ReleaseUseItem || weapon.AutoReuse && clocks.Animation == 1;
         // NoItems blocks a fresh payment, not a source-owned midpoint already paid.
-        if (transferProfiles.CaptureBuffState(connection) is not { PreventsFreshItemUse: false } ||
+        if (!CanBeginLocalMagicUse(connection) ||
             (member.ControlFlags & 32) == 0 ||
             (member.MiscFlags2 & 64) == 0 ||
             !localStart ||
@@ -103,7 +115,8 @@ internal sealed partial class PlayerAuthority
             previous is { } malformed &&
             !malformed.IsValid)
             return false;
-        int available = member.Mana;
+        if (!TryPrepareLocalMagicManaStage(member,in phase,out var manaStage)) return false;
+        int available = manaStage?.Regenerated.Mana ?? member.Mana;
         int cost = (int)(weapon.ManaCost * retained.ManaCostMultiplier);
         if (cost < 0)
             return false;
@@ -117,7 +130,7 @@ internal sealed partial class PlayerAuthority
             if (beforeBuffs is null || !inventory.TryCopyInventory(connection, inventoryBefore))
                 return false;
             afterBuffs = beforeBuffs.Clone();
-            if (!TryStageAutoQuickMana(connection, attempt, available, phase.Mana.Maximum, phase.ManaPotionDelay, inventoryBefore, afterBuffs, out available, out refill))
+            if (!TryStageAutoQuickMana(connection, attempt, available, manaStage?.Regenerated.Maximum ?? phase.Mana.Maximum, phase.ManaPotionDelay, inventoryBefore, afterBuffs, out available, out refill))
                 return false;
         }
 
@@ -131,7 +144,8 @@ internal sealed partial class PlayerAuthority
             GemLastUseSuccess = true,
             EffectiveBody = body,
             GemFeatures = features,
-            Refill = refill
+            Refill = refill,
+            ManaStage = manaStage is null ? null : manaStage with {AfterPayment=manaStage.Regenerated with {Mana=after,Delay=4f}}
         };
         if (refill is { } restored)
         {

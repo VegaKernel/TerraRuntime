@@ -32,7 +32,10 @@ internal sealed record RuntimeWorldCheckpointSnapshot(
     WorldBannerData1458? Banners = null,
     WorldBestiaryData? Bestiary = null,
     WorldInvasionSaveState1458? Invasion = null,
-    RuntimeWorldCustodyCheckpoint? Custody = null);
+    RuntimeWorldCustodyCheckpoint? Custody = null)
+{
+    public WorldTileEntity[]? TileEntities { get; init; }
+}
 
 /// <summary>
 /// Game-thread-owned snapshot source for the current persistence slice. Tile copying is spread across bounded section
@@ -41,6 +44,7 @@ internal sealed record RuntimeWorldCheckpointSnapshot(
 internal sealed class RuntimeWorldCheckpointSnapshotSource
 {
     private readonly WorldTileSaveShadowSynchronizer tileSynchronizer;
+    private readonly WorldTileStore tileOwner;
     private readonly RuntimeChestStore chestStore;
     private readonly RuntimeManagedWorldCustody? managedCustody;
     private readonly RuntimeNpcDeathPrelude1458? deathPrelude;
@@ -65,6 +69,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
         ArgumentNullException.ThrowIfNull(chestStore);
+        this.tileOwner = tiles;
         this.chestStore = chestStore;
         this.managedCustody = managedCustody;
         this.deathPrelude = deathPrelude;
@@ -130,7 +135,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
             townNpcStore?.CaptureNpcPersistence(),
             townNpcStore?.CaptureTownRooms(),
             deathPrelude?.CaptureBanners(), deathPrelude?.CaptureBestiary(),
-            invasionSaveStateSource?.Invoke(), custody);
+            invasionSaveStateSource?.Invoke(), custody) { TileEntities = tileOwner.RuntimeTileEntities?.CaptureSnapshot() };
         return true;
     }
 }

@@ -44,7 +44,7 @@ internal interface IPlayerDoorToggleNetworkIngress
 /// bounded command queue; all current-session, world-bounds and gameplay-authority decisions remain on the single
 /// authoritative writer thread.
 /// </summary>
-internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITilePickingNetworkIngress1458, ILucyAxeMessageIngress1458, IToolTileSquareIngress1458, ITempleDoorUnlockNetworkIngress, IPlayerDoorToggleNetworkIngress
+internal partial class RuntimeTileNetworkIngress : ITileNetworkIngress, ITilePickingNetworkIngress1458, ILucyAxeMessageIngress1458, IToolTileSquareIngress1458, ITempleDoorUnlockNetworkIngress, IPlayerDoorToggleNetworkIngress
 {
     protected IGameCommandIngress<RuntimeCommand> Ingress { get; }
 

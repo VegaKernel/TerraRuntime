@@ -275,7 +275,7 @@ internal sealed partial class ProjectileAuthority
             Exception? publicationFailure = null;
             try
             {
-                players.PublishProjectileUse(capture, use.InventoryMutation, use.ManaCost, use.MagicUse);
+                players.PublishProjectileUse(capture, use.InventoryMutation, use.ManaCost, use.MagicUse, use.MagicPayment);
             }
             catch (Exception ex)
             {

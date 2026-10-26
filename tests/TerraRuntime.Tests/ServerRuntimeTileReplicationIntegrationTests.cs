@@ -227,21 +227,28 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
     [Fact]
     public void Successful_authoritative_dirt_commit_relays_to_peer_but_not_origin()
     {
-        using var fixture = new Fixture();
+        using var fixture = new Fixture(ownedPlacement: true);
         ConnectionHandle origin = fixture.SpawnPlayer(901);
         ConnectionHandle peer = fixture.SpawnPlayer(902);
         fixture.SetSelectedDirt(origin);
+        PlacementSourceScene1458.Start(fixture.State, fixture.Tiles, origin, 50, 52);
+        _ = DrainFrames(fixture.Outbound(origin));
+        _ = DrainFrames(fixture.Outbound(peer));
+        var after = PlacementSourceScene1458.AfterOne(fixture.State, origin);
         var request = new TerrariaTileManipulationState(
             (byte)TerrariaTileManipulationAction.PlaceTile,
-            TileX: 10,
-            TileY: 10,
+            TileX: 50,
+            TileY: 52,
             Data: checked((short)VanillaTileIds.Dirt.Value),
             Style: 0);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, request));
+        Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.Outbound(peer).QueuedFrames);
+        fixture.State.Apply(new PlayerEquipmentRuntimeCommand(origin, after));
 
         Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
-        Assert.True(fixture.Tiles.Get(10, 10).IsActive);
+        Assert.True(fixture.Tiles.Get(50, 52).IsActive);
         Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
         Assert.Equal(1, fixture.Outbound(peer).QueuedFrames);
         TerrariaFrame frame = DequeueFrame(fixture.Outbound(peer));
@@ -340,11 +347,13 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         private readonly List<PlayerJoinSession> sessions = [];
         private readonly Dictionary<GameCommandSourceId, TerrariaConnectionOutboundQueue> outbound = [];
 
-        public Fixture()
+        private readonly bool ownedPlacement;
+        public Fixture(bool ownedPlacement = false)
         {
+            this.ownedPlacement = ownedPlacement;
             Tiles = new WorldTileStore(new WorldDimensions(200, 150));
             Replication = new RuntimeTileManipulationReplicationRegistry();
-            State = new ServerRuntimeState(
+            State = ownedPlacement ? PlacementSourceScene1458.Create(Tiles, Replication) : new ServerRuntimeState(
                 playerEvents: Replication,
                 worldTiles: Tiles,
                 tileManipulationReplication: Replication);
@@ -369,9 +378,15 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
             outbound.Add(source, queue);
 
             var connection = new ConnectionHandle(source, session.Handle);
+            if (ownedPlacement)
+            {
+                State.Apply(new PlayerHealthRuntimeCommand(connection, new(session.Slot, 100, 100)));
+                State.Apply(new PlayerManaRuntimeCommand(connection, new(session.Slot, 0, 20)));
+            }
             var spawn = new PlayerSpawnCommitRequest(session.Slot, 20, 20, 0, 0, 0, 0, 0);
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, spawn));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
+            if (ownedPlacement) State.Apply(new PlayerInventorySyncCompleteRuntimeCommand(connection));
             return connection;
         }
 

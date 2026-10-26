@@ -3,8 +3,9 @@ namespace TerraRuntime.Gameplay.Players;
 public readonly record struct ToolClockState1458(PlayerSelectedConsumableState1458 Selected,
     int ToolTime, bool PoundRelease, bool Channel)
 {
+    public int ReuseDelay { get; init; }
     public static ToolClockState1458 Constructor => new(default, 0, false, false);
-    public bool IsValid => ToolTime is >= 0 and <= short.MaxValue &&
+    public bool IsValid => ReuseDelay is >= 0 and <= short.MaxValue && ToolTime is >= 0 and <= short.MaxValue &&
         Selected.ItemTime is >= 0 and <= short.MaxValue &&
         Selected.ItemTimeMax is >= 0 and <= short.MaxValue &&
         Selected.Animation is >= 0 and <= short.MaxValue &&
@@ -18,7 +19,10 @@ public readonly record struct ToolFrameFacts1458(bool LocalOwner, bool ControlUs
     bool LastUseSuccess, bool NoItems, bool CrowdControlled, bool SelectionBuffered,
     bool PendingInventoryActions, float AnimationMultiplier,
     bool AllowedToHoldItems = true, bool JustDroppedItem = false,
-    bool SourceUseAllowed = true, bool AutoReuseOverride = false);
+    bool SourceUseAllowed = true, bool AutoReuseOverride = false)
+{
+    public bool WindowsArithmetic { get; init; }
+}
 
 public readonly record struct ToolClockTransition1458(ToolClockState1458 State,
     bool AttemptedUse, bool BeganActualUse, bool PendingItemReuse, bool ShootBoundary,

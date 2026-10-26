@@ -127,7 +127,17 @@ public static class WorldFileTileChestRewriter
         Stream destination,
         out long bytesWritten,
         WorldBannerData1458? banners = null,
-        ReadOnlyMemory<byte>? bestiarySection = null)
+        ReadOnlyMemory<byte>? bestiarySection = null) =>
+        TryRewrite(sourceEnvelope, header, headerSection, preserved, tiles, chests, signSection,
+            npcSection, townRoomSection, destination, out bytesWritten, banners, bestiarySection, null);
+
+    /// <summary>Also rewrites an already validated, detached tile-entity section.</summary>
+    public static WorldFileTileChestRewriteResult TryRewrite(
+        WorldFileEnvelope sourceEnvelope, WorldFileHeader header, ReadOnlySpan<byte> headerSection,
+        WorldFilePreservedSections preserved, WorldTileSaveImage tiles, ReadOnlySpan<WorldChest> chests,
+        ReadOnlySpan<byte> signSection, ReadOnlySpan<byte> npcSection, ReadOnlySpan<byte> townRoomSection,
+        Stream destination, out long bytesWritten, WorldBannerData1458? banners,
+        ReadOnlyMemory<byte>? bestiarySection, ReadOnlyMemory<byte>? tileEntitySection)
     {
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
         ArgumentNullException.ThrowIfNull(header);
@@ -206,7 +216,7 @@ public static class WorldFileTileChestRewriter
             destination.Write(npcSection);
             if (!TryRecordOffset(destination, offsets, 5))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
-            destination.Write(preserved.TileEntities.Span);
+            destination.Write(tileEntitySection.HasValue ? tileEntitySection.Value.Span : preserved.TileEntities.Span);
             if (!TryRecordOffset(destination, offsets, 6))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
             destination.Write(preserved.PressurePlates.Span);

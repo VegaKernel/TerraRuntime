@@ -148,7 +148,7 @@ public static class WorldSectionObjectMetadataEncoder
         int height)
     {
         var result = new List<WorldTileEntity>();
-        foreach (WorldTileEntity entity in world.TileEntities)
+        foreach (WorldTileEntity entity in world.Tiles.RuntimeTileEntities?.EnumerateRows() ?? world.TileEntities)
         {
             if (!InArea(entity.X, entity.Y, xStart, yStart, width, height))
                 continue;

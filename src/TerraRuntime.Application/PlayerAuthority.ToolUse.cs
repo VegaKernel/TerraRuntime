@@ -201,7 +201,8 @@ internal sealed class PlayerToolAttemptPreparation
 
     internal bool TryStageSourceResult(in ToolClockState1458 clocks,
         ToolHitState1458 hits, bool actionOccurred, VanillaUnifiedRandom1458 actionRandom,
-        bool consumePoundRelease = false, bool invalidatePoundRelease = false)
+        bool consumePoundRelease = false, bool invalidatePoundRelease = false,
+        ToolHitState1458? replacementHits = null)
     {
         if (next is not null || !IsCurrent || !capture.HasCurrentSourceStage ||
             Before.ToolStagePending || actionOccurred && Before.RequiresFreshUse || !clocks.IsValid ||
@@ -218,11 +219,28 @@ internal sealed class PlayerToolAttemptPreparation
         {
             Clocks = clocks,
             Hits = hits,
+            ReplacementHits = replacementHits ?? Before.ReplacementHits,
             ReleaseWitness = consumePoundRelease || invalidatePoundRelease ? null : Before.ReleaseWitness,
             ActionSerial = actionOccurred ? Before.ActionSerial + 1 : Before.ActionSerial,
             LastActionUpdate = actionOccurred ? capture.CapturedUpdate : Before.LastActionUpdate,
             // A matched source outcome also completes a no-effect/noBuilding cohort.
             Input = null
+        };
+        return true;
+    }
+
+    internal bool TryStagePlacementResult(in LocalPlacementTail1458 tail,
+        in RuntimePlayerInventoryItem inventoryAfter, VanillaUnifiedRandom1458 actionRandom)
+    {
+        if (Before.SourcePlacement is not { } placement || placement.Item != capture.Selected.ItemType ||
+            !TryStageSourceResult(tail.State, Before.Hits, true, actionRandom) || next is null) return false;
+        next = next with
+        {
+            PlacementHistoryEpoch = Before.UseEpoch,
+            PlacementAlternative = null,
+            PlacementReady = new(tail.State, Before.LastUseSuccess, Before.UseEpoch),
+            PlacementReceipt = new(capture.Connection, capture.Actor.Player.SelectedItem,
+                capture.Selected, inventoryAfter, next.ActionSerial)
         };
         return true;
     }
@@ -249,6 +267,16 @@ internal sealed class PlayerToolAttemptPreparation
             Input = Before.Input is { } observedWorld && (observedWorld.Count > 0 || observedWorld.DeferredHealthPublication is not null)
                 ? observedWorld : null
         };
+        return true;
+    }
+
+    internal bool TryFinalizePlacementInventory(in RuntimePlayerInventoryItem inventoryAfter,
+        int consumed)
+    {
+        if (!adopted || accepted is null || next?.PlacementReceipt is null ||
+            !owner.TryCaptureAcceptedPlacementInventory(capture, accepted, inventoryAfter, consumed,
+                out var refreshed) || refreshed is null) return false;
+        accepted = refreshed;
         return true;
     }
 

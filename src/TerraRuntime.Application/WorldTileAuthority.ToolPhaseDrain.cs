@@ -5,6 +5,8 @@ internal sealed partial class WorldTileAuthority
     // Accepted player phases adopt births before world work, then publish the
     // source birth/status/world sequence. Packet16 is an already adopted HP
     // baseline; a later canonical Hurt can supersede its deferred notification.
+    internal void DrainOrderedLocalMagicBirths() => toolProjectileAuthority?.DrainOrderedLocalMagicBirths();
+
     internal ToolActionPublicationBatch1458? PrepareToolBirthsAfterOwnedPhase()
     {
         if (toolProjectileAuthority is null) return null;
@@ -40,6 +42,9 @@ internal sealed partial class WorldTileAuthority
     {
         private readonly List<ToolActionPreparation1458> actions = [];
         private readonly List<ToolBirthPublication1458> births = [];
+        private readonly List<PlacementPreparation1458> placements = [];
+        private readonly List<bool> actionOrder = [];
+        private int nextPlacement, nextOrder;
         internal List<ToolHealthPublication1458> HealthPublications { get; } = [];
         private Exception? failure;
         private int next;
@@ -50,9 +55,18 @@ internal sealed partial class WorldTileAuthority
 
         internal void Add(ToolActionPreparation1458 action)
         {
-            if (disposed || actions.Count == byte.MaxValue)
+            if (disposed || actions.Count + placements.Count == byte.MaxValue)
                 throw new InvalidOperationException("A tool phase has at most one action per human slot.");
             actions.Add(action);
+            actionOrder.Add(false);
+        }
+
+        internal void AddPlacement(PlacementPreparation1458 placement)
+        {
+            if (disposed || actions.Count + placements.Count == byte.MaxValue)
+                throw new InvalidOperationException("A player phase has at most one world action per human slot.");
+            placements.Add(placement);
+            actionOrder.Add(true);
         }
 
         internal void RecordFailure(Exception exception) => failure ??= exception;
@@ -84,12 +98,22 @@ internal sealed partial class WorldTileAuthority
                     try { health.TryPublish(); }
                     catch (Exception exception) { first ??= exception; }
                 }
-                while (next < actions.Count)
+                while (nextOrder < actionOrder.Count)
                 {
-                    var action = actions[next++];
-                    try { action.TryPublishAll(); }
-                    catch (Exception exception) { first ??= exception; }
-                    finally { action.Dispose(); }
+                    if (actionOrder[nextOrder++])
+                    {
+                        var placement = placements[nextPlacement++];
+                        try { placement.TryPublishAll(); }
+                        catch (Exception exception) { first ??= exception; }
+                        finally { placement.Dispose(); }
+                    }
+                    else
+                    {
+                        var action = actions[next++];
+                        try { action.TryPublishAll(); }
+                        catch (Exception exception) { first ??= exception; }
+                        finally { action.Dispose(); }
+                    }
                 }
             }
             finally { publishing = false; }
@@ -102,6 +126,7 @@ internal sealed partial class WorldTileAuthority
             if (disposed) return;
             disposed = true;
             while (next < actions.Count) actions[next++].Dispose();
+            while (nextPlacement < placements.Count) placements[nextPlacement++].Dispose();
         }
     }
 }

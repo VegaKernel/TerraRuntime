@@ -1,5 +1,11 @@
 # Owned player item use 1.4.5.8
 
+The connected placement, weapon-clock and exceptional furniture checkpoint passes fresh Release builds, 162 focused cases, fast 25,282/25,283 and full 1,566,695/1,566,696 cases. Both suites have zero failures/errors and one known liquid skip; the actual full XML includes all 5,201 discovered methods. Fresh Windows NativeAOT/five smokes and actual Release/Native join, two-client chat and 72 effect checks per host pass. Both hosts are stopped. The source fingerprint is `e961fdad729ab4a4bbd0c2771b3286804cf86f6c025bf6bb26d04fbc0a38ce86`; detailed scope and evidence are in the [roadmap](../roadmap.md). Linux Native, official GUI-client and full vanilla compatibility remain unverified. Broader placement/replacement, fresh furniture creation and repeated local ammunition scheduling are subsequent blocks.
+
+[Local weapon and tool continuity](local-weapon-tool-continuity-1458.md) documents the scoped local-clock, ordered mana/refill and Gem cohort component; metadata coverage and final shipping gates remain separate.
+
+[Local placement and tool continuity](local-placement-tool-continuity-1458.md) documents the scoped connected component and its remaining boundaries.
+
 ## Gem staffs and effective robes
 
 The integrated block covers retained staffs `739..744` and `3377`, and functional robes `1282..1287` and `4256`. Prefix stats, robe defense, mana maximum and mana-cost reduction use the source-qualified equipment order and effective-body selection, including the represented inherited-loadout rules. Positive explicit prefixes `0..97` are distinct from the game's natural prefix-roll families. The recorded Windows and CoreCLR integer-rounding results remain separate.

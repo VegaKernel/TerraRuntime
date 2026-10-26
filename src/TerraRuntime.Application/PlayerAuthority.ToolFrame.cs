@@ -8,7 +8,7 @@ internal sealed partial class PlayerAuthority
     // An effective client selection is not a certificate that our owned local
     // clocks have finished. Defer the server choice until those clocks permit
     // SelectedItemState.Update; never shorten Animation from packet13/41.
-    private static bool TryAdvanceToolFrame(in ToolDefinition1458 tool,
+    private bool TryAdvanceToolFrame(in ToolDefinition1458 tool,
         RuntimePlayerToolUse1458 before, in ToolClockState1458 remoteClocks,
         in ToolFrameFacts1458 sourceFacts, in RuntimePlayerToolStagePose1458 sourcePose,
         long update, int critRoll,
@@ -17,6 +17,14 @@ internal sealed partial class PlayerAuthority
         after = before;
         remote = default;
         if (before.LastFrameUpdate == update) return false;
+        var selectedItem=new RuntimePlayerInventoryItem(tool.Item,1,tool.Prefix,0);
+        if(TryConsumePrepaidWeaponClock(before,sourcePose.Player.SelectedItem,in selectedItem,
+            sourceFacts.WindowsArithmetic,critRoll,out var prepaid))
+        {
+            var presentation=sourceFacts with {LocalOwner=false};
+            if(!VanillaToolUse1458.TryAdvanceFrame(tool,remoteClocks,presentation,critRoll,out remote))return false;
+            after=prepaid;return true;
+        }
         if (!before.LocalClocksKnown)
         {
             // An unrepresented local operation invalidates local tool actions,
@@ -39,6 +47,10 @@ internal sealed partial class PlayerAuthority
         bool changedIdentity = before.SelectionInitialized &&
             (before.SourceItem != tool.Item || before.SourcePrefix != tool.Prefix || changedSlot);
         var localBefore = before.Clocks;
+        if (changedSlot && before.PlacementReady is { } qualified &&
+            qualified.UseEpoch == before.PlacementHistoryEpoch &&
+            qualified.Clocks.Selected.Animation == 0 && qualified.Clocks.Selected.ItemTime == 0)
+            localBefore = qualified.Clocks;
         bool ready = localBefore.Selected.Animation == 0 && localBefore.Selected.ItemTime == 0;
         bool deferred = changedSlot && !ready;
         bool lastSuccess = before.LastUseSuccess;
@@ -64,7 +76,17 @@ internal sealed partial class PlayerAuthority
 
         ToolDefinition1458 localDefinition = tool;
         ToolClockTransition1458 local;
-        if (deferred && before.SourceDefinition is not { })
+        if (deferred && before.SourceLocalDefinition is { } oldCommon)
+        {
+            var oldFacts = sourceFacts with { LocalOwner = true, LastUseSuccess = lastSuccess,
+                SelectionBuffered = true, AnimationMultiplier = before.SourcePlacement is not null
+                    ? before.PlacementSpeed : sourceFacts.AnimationMultiplier };
+            if (!VanillaLocalItemUse1458.TryAdvanceFrame(oldCommon, localBefore, oldFacts, critRoll, out local) ||
+                local.ShootBoundary || !VanillaLocalItemUse1458.TryEnterOwnerStage(oldCommon,
+                    local.State, local.LocalToolStage, out var common)) return false;
+            local = local with { State = common, LocalToolStage = false };
+        }
+        else if (deferred && before.SourceDefinition is not { })
         {
             // Only a proven non-using common clock can bridge an intervening
             // passive selection. An unprojected active owner remains unknown.
@@ -115,6 +137,12 @@ internal sealed partial class PlayerAuthority
             SourcePrefix = deferred ? before.SourcePrefix : tool.Prefix,
             SourceSlot = deferred ? before.SourceSlot : sourcePose.Player.SelectedItem,
             SourceDefinition = deferred ? before.SourceDefinition : tool,
+            SourceLocalDefinition = deferred ? before.SourceLocalDefinition :
+                new LocalItemClockDefinition1458(tool.UseTime, tool.UseAnimation, (byte)tool.UseStyle,
+                    tool.AutoReuse, tool.Channel, tool.Shoot) { ResetsToolTimeOnStart = true },
+            SourcePlacement = deferred ? before.SourcePlacement : null,
+            PlacementReady = deferred ? before.PlacementReady : null,
+            WeaponShoot = null,
             ReleaseWitness = changedIdentity ? null : before.ReleaseWitness,
             LastUseSuccess = local.LastUseSuccess,
             UseEpoch = local.BeganActualUse ? before.UseEpoch + 1 : before.UseEpoch,

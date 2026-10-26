@@ -98,6 +98,14 @@ internal sealed partial class ProjectileAuthority
             return;
         }
 
+        var magicObservation=players.ObserveOrderedLocalMagicShoot(command.Connection,in packet);
+        if(magicObservation!=ToolReportObservationResult1458.NotApplicable)
+        {
+            if(magicObservation==ToolReportObservationResult1458.Rejected)
+            {RejectedClientProjectileProvenance++;RejectedClientUpdates++;}
+            return;
+        }
+
         ClientProjectileProvenanceResolveResult provenance =
             TryResolveStrictClientProjectileSpawn(command.Connection, in packet, out AuthoritativeClientProjectileSpawn authoritative);
         if (provenance == ClientProjectileProvenanceResolveResult.Rejected)
@@ -358,7 +366,7 @@ internal sealed partial class ProjectileAuthority
         AppliedSpawns++;
         PromotedClientProjectileSpawns++;
         Exception? publicationFailure = null;
-        try { players.PublishProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicUse); }
+        try { players.PublishProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicUse, authoritative.MagicPayment); }
         catch (Exception ex) { publicationFailure = ex; }
         // An event sink may deliberately retire or replace the already-owned generation. Publication then
         // refuses the stale snapshot; item-use acceptance is not undone after outward callbacks begin.

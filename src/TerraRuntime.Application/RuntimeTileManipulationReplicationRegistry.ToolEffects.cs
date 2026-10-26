@@ -6,6 +6,9 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeTileManipulationReplicationRegistry
 {
+    internal bool TryPublishDollPose(TerraRuntime.Contracts.Runtime.GameCommandSourceId excludedSource,
+        in TerrariaDollPoseState1458 pose) => TryPublishFrame(excludedSource, TerrariaDollPoseCodec1458.Encode(in pose));
+
     internal bool TryPublishToolTileSnapshot(WorldTileStore tiles, int x, int y, byte[] encoded) =>
         TryPublishEncodedTileSquare(encoded, tiles, x, y, 1, 1, respectSectionRange: true);
 

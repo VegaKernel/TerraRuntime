@@ -83,7 +83,7 @@ internal sealed partial class WorldTileAuthority
 
         private bool FrameContainer(int x, int y, in WorldTile tile)
         {
-            if (plantDestroying || saplingDestroying) return true;
+            if (IsSourceDestroyingObject) return true;
             if (container is not { } context) return TryVerifyIntactContainer(x, y, in tile);
             if (context.Destroying) return true; // original global destroyObject reentry guard
             var bounds = context.Descriptor.Bounds;

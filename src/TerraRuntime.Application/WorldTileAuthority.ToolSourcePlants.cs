@@ -16,7 +16,7 @@ internal sealed partial class WorldTileAuthority
         // destroyObject suppresses reentry until that full source call returns.
         private bool FramePlant(int x, int y, in WorldTile tile)
         {
-            if (plantDestroying || saplingDestroying || container?.Destroying == true) return true;
+            if (IsSourceDestroyingObject) return true;
             for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
                 if (!Overlay.TryReadSourceSafely(x + dx, y + dy, out _)) return false;
             if (!Overlay.TryReadSourceSafely(x, y + 1, out var below)) return false;
