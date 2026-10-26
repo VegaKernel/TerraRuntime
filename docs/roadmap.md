@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+Current mixed-liquid acceptance (2026-10-26): rows 53 and 102 are bounded `C` after Release fast `25,291/25,291`, unfiltered full `1,566,704/1,566,704` with zero skips, fresh Windows NativeAOT and five exercised smokes. The earlier pending-gate wording immediately below records the pre-acceptance candidate; limitations remain unchanged.
+
+## Vanilla liquid settlement: ordinary mixed-kind differential, 2026-10-26
+
+Rows 53 and 102 advance from `P` to bounded `C`. Three independent official registered `PassLegacy` canonical `4200 × 1200` fixtures now match each runtime pass over every cell: the original three water basins, four isolated water/lava/honey/shimmer basins, and three interacting water-versus-lava/honey/shimmer basins. The new seven-field digest includes liquid kind; the latter two official digests are `953ee58d1120e82e52f00182e8fe3afe4869456f095f87007128687695bdb6c8` and `3132d18ed04fbee14b3d1701398843fbe8c0727484040d6c68df7e5d3e344251`, with next RNG `906992634` for the later pass. The interacting fixture exposed the shared `Liquid.DelWater` low-volume retirement rule for non-water kinds and reset-to-water when empty. `C` is bounded ordinary-pass evidence, not full `DelWater` tail, extra-liquid special-seed or real-prefix parity. Consolidated gates for this follow-up are pending.
+
 ## Vanilla liquid settlement: canonical ordinary differential, 2026-10-26
 
 Rows 53 and 102 remain `P`, but the same ordinary `4200 × 1200` three-basin fixture now matches independent official registered `PassLegacy` output for both passes. The row-102 canonical regression is no longer skipped. Source `Liquid.DelWater` clears stable low-volume water at retirement; preserving it fixes the previously observed one-unit gap. An omission control fails the canonical digest. Consolidated Release fast `25,287/25,287` and unfiltered full `1,566,700/1,566,700` both pass with zero skips; fresh Windows NativeAOT and five exercised smokes pass. This is a bounded ordinary-water result, not full liquid-kind, extra-liquid special-seed, real-prefix, or Linux NativeAOT parity.

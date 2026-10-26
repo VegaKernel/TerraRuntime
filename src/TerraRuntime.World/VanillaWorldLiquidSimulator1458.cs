@@ -1095,7 +1095,7 @@ public sealed class VanillaWorldLiquidSimulator1458
                 for (int i = loadingSlotCount - 1; i >= 0; i--)
                     if (loadingSlots[i].Kill >= GeneratingOrLoadingKillUpdates1458)
                     {
-                        ApplyLoadingRetirementWaterTail1458(loadingSlots[i].X, loadingSlots[i].Y,
+                        ApplyLoadingRetirementLowVolumeTail1458(loadingSlots[i].X, loadingSlots[i].Y,
                             changes, ref changed);
                         loadingSlots[i] = loadingSlots[--loadingSlotCount];
                     }
@@ -1120,14 +1120,14 @@ public sealed class VanillaWorldLiquidSimulator1458
         return changed;
     }
 
-    private void ApplyLoadingRetirementWaterTail1458(
+    private void ApplyLoadingRetirementLowVolumeTail1458(
         int x, int y, Span<WorldLiquidSimulationChange> changes, ref int changed)
     {
         // TerrariaServer 1.4.5.8 Liquid.DelWater executes before removing a
-        // stable slot. Its low-volume water branch can erase the physical
-        // amount even when Liquid.Update itself left the tile unchanged.
+        // stable slot. Its low-volume branch is independent of liquid kind
+        // and can erase the physical amount even when Update left it unchanged.
         WorldTile current = tiles.Get(x, y);
-        if (current.LiquidKind != WorldLiquidKind.Water || current.LiquidAmount >= 20)
+        if (current.LiquidAmount >= 20)
             return;
         WorldTile left = tiles.Get(x - 1, y);
         WorldTile right = tiles.Get(x + 1, y);
@@ -1136,9 +1136,10 @@ public sealed class VanillaWorldLiquidSimulator1458
             left.LiquidAmount < current.LiquidAmount && !IsWaterCheckSolidBarrier1458(in left) ||
             right.LiquidAmount < current.LiquidAmount && !IsWaterCheckSolidBarrier1458(in right) ||
             below.LiquidAmount < byte.MaxValue && !IsWaterCheckSolidBarrier1458(in below);
-        if (!clear || current.LiquidAmount == 0)
+        if (!clear || current.LiquidAmount == 0 && current.LiquidKind == WorldLiquidKind.Water)
             return;
         current.LiquidAmount = 0;
+        current.LiquidKind = WorldLiquidKind.Water;
         SetTile(x, y, in current);
         Record(x, y, in current, changes, ref changed);
     }
