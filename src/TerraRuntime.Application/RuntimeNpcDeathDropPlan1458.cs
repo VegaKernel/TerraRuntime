@@ -66,22 +66,22 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
         // Client-local rewards require their own unpublished lease adoption; this lane owns ordinary drops only.
         foreach (var drop in drops.AsSpan(0, count))
             if (drop.LeaseTicks != 0 || drop.Recipients.Length != 0) return false;
-        drainPublication = CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) ||
+        drainPublication = CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) || CanOwnMoonDeath(expected.TypeIdentity) ||
             expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost);
         unpublishedMode = true;
         return CanAdoptUnpublished();
     }
 
-    // NPC.HitEffect (1.4.5.8): these two families only call dedicated no-op Dust/Gore
-    // with fixed arguments. Additional event actors retain their existing death lane until
-    // all source death producers and client-local rewards have an unpublished owner.
-    internal static bool CanOwnMoonDeath(NpcTypeId type) => type.Value is >= 305 and <= 314 or >= 338 and <= 340;
+    // Source-qualified terminal bodies. NPC346's four HitEffect gore choices are retained
+    // by the death preview; Moon bosses use ordinary world drops, including Master pets.
+    internal static bool CanOwnMoonDeath(NpcTypeId type) =>
+        type.Value is >= 305 and <= 315 or >= 325 and <= 327 or 329 or 330 or >= 338 and <= 352;
 
     // NPC.HitEffect and the type-specific DoDeathEvents switch (1.4.5.8) have no
     // retained producer for these bodies. The generic Dungeon Spirit gate is
     // checked separately by the retained death planner; Captain/Ghost stay separate.
     internal static bool CanOwnOrdinaryInvasionDeath(NpcTypeId type) =>
-        type.Value is 26 or 27 or 28 or 29 or 111 or 212 or 213 or 214 or 215 or 252;
+        type.Value is 26 or 27 or 28 or 29 or 111 or 143 or 144 or 145 or 212 or 213 or 214 or 215 or 252;
 
     internal bool ValidateUnpublishedOwnerFacts() => unpublishedMode && !adoptedUnpublished &&
         allocation?.ValidateOwnerFacts() == true;

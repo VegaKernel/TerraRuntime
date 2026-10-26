@@ -80,6 +80,7 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
     public int? SpawnTileY { get; init; }
     public bool UseLocalSeasonCalendar { get; init; }
     public bool DualDungeonsSeed { get; init; }
+    public VanillaWorldProgressionState? ProgressionBaseline { get; init; }
     // TerrariaServer 1.4.5.8 Main.onlyShimmerOceanWorlds uses retained seed flags only.
     public bool OnlyShimmerOceanWorlds => DrunkWorld && TenthAnniversaryWorld &&
         !RemixWorld && !ZenithWorld && !NotTheBeesWorld;
@@ -133,7 +134,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
             metadata.SandstormHappening,
             metadata.InvasionType is >= 1 and <= 4,
             metadata.NoTrapsWorld) { GameMode = metadata.GameMode, UseLocalSeasonCalendar = true,
-                SpawnTileY = metadata.SpawnY, DualDungeonsSeed = metadata.DualDungeonsSeed };
+                SpawnTileY = metadata.SpawnY, DualDungeonsSeed = metadata.DualDungeonsSeed,
+                ProgressionBaseline = metadata.Progression };
     }
 }
 

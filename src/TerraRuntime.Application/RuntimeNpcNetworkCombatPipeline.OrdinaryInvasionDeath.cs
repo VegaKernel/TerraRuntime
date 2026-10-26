@@ -62,6 +62,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             invasion is not null && !invasion.TryAdopt(in plannedOrdinaryInvasion,
                 in plannedOrdinaryInvasionCredit, out acceptedOrdinaryInvasion))
             throw new InvalidOperationException("Validated invasion death owners changed without a callback.");
+        npcSpawnCycle?.SuppressNext();
         if (plannedDaily is not null) bossRecoveryDaily.CopyFrom(plannedDaily);
         if (worldClock is not null && plannedUnpublishedClock is not null)
             worldClock.AdoptDeathProgress(plannedUnpublishedClock);
@@ -98,6 +99,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             try { action(); }
             catch (Exception exception) { failure ??= ExceptionDispatchInfo.Capture(exception); }
         }
+        Drain(() => worldStateAdopted?.Invoke());
         Drain(() => prelude?.PublishBeforeStrike(acceptedNpc));
         // NetMessage.SendData(28) flushes an unannounced NewNPC generation first,
         // exposing its retained pre-strike state without restoring a dead join baseline.

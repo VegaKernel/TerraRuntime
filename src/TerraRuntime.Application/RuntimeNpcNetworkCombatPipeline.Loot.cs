@@ -25,6 +25,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void ExecuteNpcDeathHitEffects(in NpcSnapshot npc)
     {
+        // NPC.HitEffect's Santa-NK1 gore arguments still consume four choices on
+        // the dedicated server, before NPCLoot, although Gore.NewGore returns early.
+        if (npc.Type == 346)
+            for (int choice = 0; choice < 4; choice++) random.NextInt32(61, 64);
+        // NPC.HitEffect's Flocko death has the same caller-side gore choice twice.
+        if (npc.Type == 347)
+            for (int choice = 0; choice < 2; choice++) random.NextInt32(61, 64);
         if (npc.TypeIdentity == VanillaNpcIds.LavaSlime)
         {
             // Dedicated Dust.NewDust returns early, but its caller still selects noGravity forty times.
@@ -78,6 +85,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!TryExecuteMechSpawnersLoot(in npc)) return false;
         if (!TryExecuteSlimeBodyLoot(in npc)) return false;
         if (!TryExecuteGlobalLoot(in npc)) return false;
+        if (VanillaMoonBossLootEvaluator1458.IsParticipant(npc.TypeIdentity)) return TryExecuteMoonBossLoot(in npc);
         if (VanillaTownNpcLootRules1458.TryGet(npc.TypeIdentity, out _)) return TryExecuteTownSpecificLoot(in npc);
         if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
             return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);

@@ -30,6 +30,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!applied)
             return false;
 
+        // NPC.checkDead sets noSpawnCycle before terminal/death-animation dispatch.
+        // Nonlethal and refused strikes never consume the next natural spawn pass.
+        if (result.Lethal || result.DeathIntercepted) npcSpawnCycle?.SuppressNext();
+
         if (result.Lethal && plannedCaptainBirth is not null)
         {
             AdoptCaptainOwners(in committed);
@@ -49,6 +53,17 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 (short)Math.Min(request.BaseDamage, short.MaxValue), request.KnockBack,
                 checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
             PublishOrdinaryInvasionDeath(in committed, in eventWire, prelude);
+            return true;
+        }
+
+        if (result.Lethal && plannedMoonRemoval is not null)
+        {
+            AdoptMoonDeathOwners(in committed);
+            var moonWire = new TerrariaNpcDamageState(committed.Handle.Slot,
+                RuntimeNpcPacketProjection.ToProtocolGeneration(committed.Handle.Generation),
+                (short)Math.Min(request.BaseDamage, short.MaxValue), request.KnockBack,
+                checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
+            PublishMoonDeath(in committed, in moonWire, prelude);
             return true;
         }
 

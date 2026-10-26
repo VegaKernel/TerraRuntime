@@ -19,6 +19,8 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Paid event invocation](paid-event-invocation-1458.md)
 - [Event clock authority](event-clock-authority-1458.md)
 - [Moon rewards and seasonal progression](moon-season-progression-1458.md)
+- [Moon boss rewards](moon-boss-rewards-1458.md)
+- [Moon wave publication](moon-wave-progression-1458.md)
 - [Moon event death authority](moon-event-death-authority-1458.md)
 
 - [Original NPC identity inventory](npc-source-inventory-1458.md)

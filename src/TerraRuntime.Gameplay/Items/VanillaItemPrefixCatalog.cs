@@ -133,6 +133,11 @@ public static class VanillaItemPrefixCatalog
     /// </summary>
     public static bool IsValidForItem(ItemTypeId itemType, PrefixId prefix)
     {
+        var moonFamily = VanillaMoonBossDropCatalog1458.GetPrefixFamily(itemType);
+        if (moonFamily != VanillaItemPrefixFamily.None)
+            return prefix == VanillaPrefixIds.None ||
+                (Contains(GetRollablePrefixes(moonFamily), prefix) &&
+                 VanillaMoonBossDropCatalog1458.AcceptsNaturalPrefix(itemType, prefix));
         var invasionFamily = VanillaInvasionDropCatalog1458.GetPrefixFamily(itemType);
         if (invasionFamily != VanillaItemPrefixFamily.None)
             return prefix == VanillaPrefixIds.None ||

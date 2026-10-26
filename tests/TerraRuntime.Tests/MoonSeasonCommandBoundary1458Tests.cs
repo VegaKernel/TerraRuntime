@@ -77,6 +77,57 @@ public sealed class MoonSeasonCommandBoundary1458Tests
     }
 
     [Fact]
+    public void Retained_death_publication_acknowledges_progress_and_no_report_transition_before_dawn_poll()
+    {
+        foreach (bool report in new[] { false, true })
+        {
+            using var fixture = new Fixture(player: true, paid: true);
+            fixture.Apply(new ClientBossSummonRuntimeCommand(fixture.Connection, -5));
+            Assert.Equal(new byte[] { 82, 82, 7, 78 }, Ids(fixture.Drain()));
+            Assert.True(fixture.World.WorldClock.TryAdvanceMoonEventDeath(new(report ? 338 : 345), false, false,
+                out var effects));
+            Assert.Equal(report, effects.ShouldReportProgress);
+            fixture.World.NpcReplication.PublishMoonEventDeathEffects(in effects);
+            var death = fixture.Drain();
+            Assert.Equal(report ? new byte[] { 78 } : new byte[] { 82 }, Ids(death));
+            fixture.Update();
+            var dawn = fixture.Drain();
+            Assert.Equal(new byte[] { 82, 7 }, Ids(dawn));
+            Assert.Equal("Misc.FrostMoonScore", Key(dawn[0]));
+            Assert.Equal(report ? "1" : "150", Literal(dawn[0]));
+            Assert.Null(fixture.World.CaptureWorldBootstrap().Progress);
+        }
+    }
+
+    [Fact]
+    public void Scalar_death_fallback_does_not_invent_last_night_progress_for_zero_reset_or_float_precision()
+    {
+        foreach (bool precision in new[] { false, true })
+        {
+            using var fixture = new Fixture(player: true, paid: true);
+            fixture.Apply(new ClientBossSummonRuntimeCommand(fixture.Connection, -5));
+            Assert.Equal(new byte[] { 82, 82, 7, 78 }, Ids(fixture.Drain()));
+            if (precision)
+            {
+                // Original single-precision source: 2^24 + 1 remains2^24.
+                typeof(RuntimeWorldClock).GetProperty(nameof(RuntimeWorldClock.MoonEventWaveNumber))!
+                    .SetValue(fixture.World.WorldClock, 20);
+                typeof(RuntimeWorldClock).GetProperty(nameof(RuntimeWorldClock.MoonEventWaveKills))!
+                    .SetValue(fixture.World.WorldClock, 16777216f);
+            }
+            Assert.True(fixture.World.WorldClock.TryAdvanceMoonEventDeath(new(precision ? 338 : 345), false, false));
+            Assert.False(fixture.World.WorldClock.MoonEventProgressReportRequired);
+            // A partial host may use the existing scalar death API rather than a retained journal.
+            // The production poll/dawn fallback must still honor the original no78 predicate.
+            fixture.Update();
+            var dawn = fixture.Drain();
+            Assert.Equal(precision ? new byte[] { 82, 82, 7 } : new byte[] { 82, 7 }, Ids(dawn));
+            Assert.Equal("Misc.FrostMoonScore", Key(dawn[0]));
+            if (precision) Assert.Equal("Misc.StartedVictoryXmas", Key(dawn[1]));
+        }
+    }
+
+    [Fact]
     public void Dawn_score_and_clock_world_info_precede_overlapping_invasion_completion()
     {
         using var fixture = new Fixture(player: false, paid: false);

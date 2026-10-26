@@ -18,7 +18,14 @@ public static class WorldFileProgressionHeaderPatcher
 {
     private const int MaximumStringBytes = 4 * 1024;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+    private const ulong MoonBossMutationMask =
+        (1UL << (int)VanillaWorldProgressionId.Pumpking) |
+        (1UL << (int)VanillaWorldProgressionId.MourningWood) |
+        (1UL << (int)VanillaWorldProgressionId.IceQueen) |
+        (1UL << (int)VanillaWorldProgressionId.SantaNk1) |
+        (1UL << (int)VanillaWorldProgressionId.Everscream);
     private const ulong SupportedMutationMask =
+        MoonBossMutationMask |
         (1UL << (int)VanillaWorldProgressionId.GoblinArmy) |
         (1UL << (int)VanillaWorldProgressionId.FrostLegion) |
         (1UL << (int)VanillaWorldProgressionId.PirateInvasion) |
@@ -160,7 +167,8 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         TownStateOffsets1458 townState = default;
-        bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.MartianMadness) ||
+        bool needsTownState = (mutations.CompletedMask & MoonBossMutationMask) != 0 ||
+            mutations.IsCompleted(VanillaWorldProgressionId.MartianMadness) ||
             mutations.IsCompleted(VanillaWorldProgressionId.QueenSlime) ||
             mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) ||
             mutations.IsCompleted(VanillaWorldProgressionId.DukeFishron) ||
@@ -182,6 +190,12 @@ public static class WorldFileProgressionHeaderPatcher
         if (mutations.IsCompleted(VanillaWorldProgressionId.ShadowOrbSmashed)) patchedHeader[shadowOrbSmashedOffset] = 1;
         // Source SaveWorldFlags places downedMartians directly after downedFishron.
         if (mutations.IsCompleted(VanillaWorldProgressionId.MartianMadness)) patchedHeader[townState.DukeFishronOffset + 1] = 1;
+        // SaveWorldFlags 1.4.5.8: Fishron, Martians, Cultist, MoonLord, then these five Moon flags.
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Pumpking)) patchedHeader[townState.DukeFishronOffset + 4] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.MourningWood)) patchedHeader[townState.DukeFishronOffset + 5] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.IceQueen)) patchedHeader[townState.DukeFishronOffset + 6] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.SantaNk1)) patchedHeader[townState.DukeFishronOffset + 7] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.Everscream)) patchedHeader[townState.DukeFishronOffset + 8] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.EyeOfCthulhu) && !persistedDownedBoss1)
             patchedHeader[downedBoss1Offset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.EvilBoss) && !persistedDownedBoss2)

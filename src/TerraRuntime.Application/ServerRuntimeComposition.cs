@@ -143,7 +143,8 @@ internal sealed class ServerRuntimeComposition
         PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null,
         IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned,
         VanillaItemPrefixWorld1458? itemPrefixWorld = null,
-        RuntimePlayerUpdateWorld1458? sourcePlayerWorld = null)
+        RuntimePlayerUpdateWorld1458? sourcePlayerWorld = null,
+        Action? worldStateAdopted = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -301,7 +302,8 @@ internal sealed class ServerRuntimeComposition
             projectileReplication,
             lootRandom: gameplayRandom, deathPrelude: deathPrelude, townSocialWorldFacts: townSocialWorldFacts,
             townLootLanguage: VanillaTownNpcLootLanguage1458.English,
-            invasionProgressPublisher: invasionProgressPublisher, invasionStartPublisher: invasionStartPublisher);
+            invasionProgressPublisher: invasionProgressPublisher, invasionStartPublisher: invasionStartPublisher,
+            worldStateAdopted: worldStateAdopted);
         playersAuthority.SetTorchFavorPrelude(npcAuthority.DeathPrelude);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,

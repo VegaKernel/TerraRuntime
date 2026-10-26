@@ -61,6 +61,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             invasion is not null && !invasion.TryAdopt(in plannedCaptainInvasion, in plannedCaptainCredit,
                 out acceptedCaptainInvasion))
             throw new InvalidOperationException("Validated Captain owners changed without a callback.");
+        npcSpawnCycle?.SuppressNext();
         if (plannedDaily is not null) bossRecoveryDaily.CopyFrom(plannedDaily);
         if (worldClock is not null && plannedUnpublishedClock is not null)
             worldClock.AdoptDeathProgress(plannedUnpublishedClock);
@@ -102,6 +103,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedCaptainBirthJournal = null;
         plannedCaptainDeathPublication = null;
         preparedDeathPreludePublication = null;
+        Drain(() => worldStateAdopted?.Invoke());
         Drain(() => prelude?.PublishBeforeStrike(capturedCommitted));
         if (terminalPublication is not null) Drain(() => terminalPublication.TryPublishPendingBirth());
         else Drain(() => removal.TryPublishPendingBirthBeforeStrike());

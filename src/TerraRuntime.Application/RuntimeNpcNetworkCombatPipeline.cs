@@ -3,6 +3,7 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Npcs;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -60,6 +61,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly bool masterMode;
     private readonly RuntimeWorldClock? worldClock;
     private readonly RuntimeWorldProgressionMutations progression;
+    private readonly VanillaWorldProgressionState? progressionBaseline;
+    private readonly Action? worldStateAdopted;
+    private readonly RuntimeNpcSpawnCycle1458? npcSpawnCycle;
     private readonly WorldTileStore? worldTiles;
     private readonly bool crimsonWorld;
     private readonly bool skyblockLowTiles;
@@ -145,7 +149,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         Func<NpcHandle, string?>? townNameSource = null,
         VanillaTownNpcLootLanguage1458? townLootLanguage = null,
         RuntimeWorldInvasion1458? invasion = null,
-        Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null)
+        Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
+        VanillaWorldProgressionState? progressionBaseline = null,
+        Action? worldStateAdopted = null,
+        RuntimeNpcSpawnCycle1458? npcSpawnCycle = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -186,6 +193,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.worldItemReplication = worldItemReplication;
         this.worldClock = worldClock;
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        this.progressionBaseline = progressionBaseline;
+        this.worldStateAdopted = worldStateAdopted;
+        this.npcSpawnCycle = npcSpawnCycle;
+        npcReplication?.BindMoonEventClock(worldClock);
         this.worldTiles = worldTiles;
         this.crimsonWorld = crimsonWorld;
         this.skyblockLowTiles = skyblockLowTiles;
@@ -547,7 +558,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         { CancelPendingDeathPlan(); return RuntimeProjectileNpcDamageResult.Rejected; }
 
         if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost ||
-            RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity)))
+            RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity) ||
+            RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(liveTarget.TypeIdentity)))
             return RuntimeProjectileNpcDamageResult.Killed;
 
         if (result.Lethal && pendingDeathPlan?.IsAdoptedUnpublished == true)
@@ -672,7 +684,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
         if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost ||
-            RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity)))
+            RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity) ||
+            RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(liveTarget.TypeIdentity)))
             return RuntimeTownNpcMeleeDamageResult1458.Killed;
 
         if (result.Lethal && pendingDeathPlan?.IsAdoptedUnpublished == true)
