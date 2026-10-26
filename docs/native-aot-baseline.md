@@ -1,5 +1,7 @@
 # NativeAOT and CoreCLR hosting baseline
 
+2026-10-27 Buried Chests cave-house boundary: fresh Windows NativeAOT executable SHA256 `09371fa44c86a4e3519d68be1a756e407b6bfb7b25da1729199e4e89a4ee3286` passes exercised loop/protocol/network/world/TUI smokes. Release solution warnings-as-errors and unfiltered full `1,566,765/1,566,765` pass with zero skips. No new production dependency or project edge. Linux NativeAOT remains locally unverified; this is scoped candidate/beam evidence, not complete Buried Chests parity.
+
 ## Fishing character boundary follow-up, 2026-10-26
 
 `feature/fishing-character-sync-1458` checkpoint `51197c1a` extends the merged fishing source with first-spawn physical stock ceilings and explicit authenticated76 count/golf handling. Existing inventory, journal, world-item, RNG, membership and transfer owners remain the sole owners; no production dependency, reflection-discovery surface, character database or server `.plr` mode is added. Release warnings-as-errors and two independent omission controls pass; source bytes are restored. Final focused556/556 and mandatory fast25350/25350 pass with zero failures/errors/skips. The isolated exact-test managed replay passes55/55 static cases,42unique methods and189951 assertions;24linked inputs,1784production inputs and197canonical DLLs are exact before/after. All4122source/config/test inputs and197canonical DLLs remain exact after the checkpoint; source SHA256 `8fae36726e33c2c502daa9282b71736db28238a9da300792e1b167f6e06010fb`. Fresh Native publication/execution is recorded below.

@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Cave-house offer and bridge boundaries, 2026-10-27
+
+TerrariaServer 1.4.5.8 `WorldGen.UndergroundHousesAndBuriedChests`'s third loop samples an ordinary house coordinate, then refuses it on `oceanDepths` before calling `CaveHouseBiome.Place`; the fourth loop adjusts only the top of `GenVars.UndergroundDesertHiveLocation` to `(int)Main.worldSurface + 26` and passes the resulting rectangle unchanged to `RandomRectanglePoint`. It does not apply the ordinary-loop `maxTilesY-230` ceiling to that rectangle. `HouseBuilder.CreateSupportBeamList` forces a beam to a lower room when its gap is less than 50 cells, regardless of whether `WorldUtils.Find` finds terrain. `PlaceSupportBeams` skips a candidate only if the cell immediately above its start has type19; it does not protect unrelated frame-important objects inside the beam path. Direct original `WoodHouseBuilder.PlaceSupportBeams` on rooms `(100,100,20,10)` and `(100,125,20,10)` with platform100,109 and active type21 at104,115 yields active beam124 at x104/108/112/116, rows110..124, and no beam at x100.
+
 ## Fishing character role correction, 2026-10-26
 
 The official Linux1458 assembly SHA256 `4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034` was executed in a private BCL probe. Nine actual MessageBuffer76 rows establish the dedicated authenticated sender remap, exact signed-counter wire layout, source255 ignore, peer relay and client own/peer/SSC roles. Relay for authenticated slot3, Angler29/golf1234 is `0C004C031D000000D2040000`. Negative values are accepted by the original wire handler; this runtime deliberately refuses them semantically. Pre-playing source kicks can still mutate afterward; that source fall-through is not a legal import path here.

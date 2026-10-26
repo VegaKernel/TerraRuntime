@@ -1,5 +1,9 @@
 # Complete vanilla worldgen pass audit — 2026-09-08
 
+Buried Chests cave-house boundary acceptance (2026-10-27): the source-scoped offer/beam corrections below pass Release fast `25,352/25,352`, unfiltered full `1,566,765/1,566,765` with zero skips, and fresh Windows NativeAOT with five smokes. Row 63 stays `P` pending complete house furniture/aging/protected-structure parity and a registered-pass differential; Linux NativeAOT is locally unverified.
+
+Buried Chests cave-house boundary (2026-10-27): row 63 remains `P`. The ordinary house loop now rejects ocean offers before the builder, the additional-desert loop samples the source-adjusted full rectangle, and a direct official `HouseBuilder.PlaceSupportBeams` fixture pins forced short-gap beams and the exact top-platform veto. These are source-backed sub-boundaries, not a complete registered-pass differential; furniture, aging and earlier protected `StructureMap` rectangles remain open.
+
 Late Temple acceptance (2026-10-26): the two official canonical complete-pass fixtures below now also pass Release fast `25,293/25,293`, unfiltered full `1,566,706/1,566,706` with zero skips, and fresh Windows NativeAOT with five smokes. Row 70 is bounded `C`; Linux NativeAOT, real-prefix and exhaustive TileObjectData parity remain open. The pending-gate sentence in the candidate note below is historical.
 
 Late Temple (2026-10-26): row 70 moves from `P` to bounded `C`. Direct official `WorldGen.templePart2` `4200 × 1200`, seed-`1458`, eight-room full-grid/RNG fixtures match the registered runtime pass for plain and obstructed cavities. The latter contains stone partitions, missing temple-wall bands and tile-`232` floor interruptions; it caught the source-scoped non-solid tile-232 support rule that persists through spikes and furniture. Plain SHA-256 `74aac25e70298cba5fdc54ba6b2569e79c3fc717983a8338b30367c5c17f0357`, next RNG `425056706`; obstructed SHA-256 `8112f030f7fa0f32be9d68a4f0d6659be4f393cc90b4dfba30707cfd9b7b994f`, next RNG `873817261`. This is bounded synthetic complete-pass evidence, not real-prefix or exhaustive TileObjectData parity. The ledger is now **2P + 70C = 72 unfinished rows**. Consolidated gates remain pending.
@@ -644,7 +648,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 60 | Wall Variety | PostSettle | C | `CaveWallVariety`: the pocket flood, its closure and size rules, the depth-keyed families and the wall framing every placement spends: 8 official complete-delegate fixtures |
 | 61 | Life Crystals | PostSettle | C | placement attempts / framing / RNG |
 | 62 | Statues | PostSettle | C | styles / placement attempts / RNG |
-| 63 | Buried Chests | Chest | P | `AddBuriedChest` and both chest loops ported: 64 + 10 official comparisons / cave-house loops still invented |
+| 63 | Buried Chests | Chest | P | `AddBuriedChest` and both chest loops ported (64 + 10 official comparisons); house offer ocean/desert bounds and short-gap support beams now source-backed / furniture, aging, prior protected structures and full-pass differential remain |
 | 64 | Surface Chests | Chest | C | `SurfaceChests`: the wall test, the living-wood reservoir sweep and the retry counter: 14 official complete-delegate fixtures |
 | 65 | Jungle Chests Placement | Chest | C | ordered JungleShrines anchors published; source first offer, 3x3 kill/3x4 flatten fallback and retry; eight official registered full-pass cell/chest-inventory/RNG differentials / real-prefix shrine terrain remains open |
 | 66 | Water Chests | Chest | C | `UnderwaterChests`: the treasure spiral, the asymmetric scatter pair and the item cycle: 12 official complete-delegate fixtures |

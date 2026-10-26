@@ -241,6 +241,11 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
 
             int x = random.Next(80, grid.Width - 80);
             int y = random.Next(houseMinimumY, houseMaximumY);
+            // WorldGen's third UndergroundHousesAndBuriedChests loop rejects oceanDepths before
+            // CaveHouseBiome.Place. Letting the builder inspect an ocean offer changes both its
+            // acceptance and the shared RNG stream before the next sampled candidate.
+            if (IsOrdinaryHouseOceanOffer1458(x, y, grid.Width, state.WorldSurface, state.RockLayer))
+                continue;
             if (CaveHousePlacement1458.TryPlace(workspace, state, random, x, y, out _))
                 housePlaced++;
         }
@@ -248,8 +253,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         int additionalDesertPlaced = 0;
         if (workspace.VanillaUndergroundDesertRegion is VanillaUndergroundDesertRegion1458 desert)
         {
-            int desertTop = Math.Max(desert.Y, (int)state.WorldSurface + 26);
-            int desertBottom = Math.Min(desert.Bottom, grid.Height - 230);
+            (int desertTop, int desertBottom) = GetAdditionalDesertHouseVerticalRange1458(
+                desert.Y, desert.Bottom, state.WorldSurface);
             for (int attempt = 0;
                  attempt < 10_000 && additionalDesertPlaced < additionalDesertTarget && desertBottom > desertTop;
                  attempt++)
@@ -270,6 +275,15 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             $"Placing underground houses and buried chests (chests {chestsPlaced}, " +
             $"houses {housePlaced}/{houseTarget}, additional desert {additionalDesertPlaced}/{additionalDesertTarget})");
     }
+
+    internal static bool IsOrdinaryHouseOceanOffer1458(
+        int x, int y, int width, double worldSurface, double rockLayer) =>
+        y <= (worldSurface + rockLayer) / 2d + 40d &&
+        (x < BeachDistance || x > width - BeachDistance);
+
+    internal static (int Top, int Bottom) GetAdditionalDesertHouseVerticalRange1458(
+        int desertTop, int desertBottom, double worldSurface) =>
+        (Math.Max(desertTop, (int)worldSurface + 26), desertBottom);
 
     private void ApplySurfaceChests(
         IWorldGenerationContext context,

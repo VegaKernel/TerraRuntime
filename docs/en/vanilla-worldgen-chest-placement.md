@@ -34,6 +34,8 @@ All four use `Containers` tile `21`, the existing source-backed 2 × 2 chest obj
 
 Cave-house decorative furniture and aging are still unported. They remain absent instead of being emitted as unframed single tiles. The additional desert-house path uses the underground-desert region recorded by the existing source-backed desert pass; a missing region is fail-closed and cannot redirect those houses into an arbitrary biome.
 
+The ordinary house candidate loop rejects `oceanDepths` before trying room placement. The additional-desert loop samples the full adjusted desert rectangle; the ordinary house's bottom-height ceiling does not clip it. Bridges between adjacent rooms follow the source's forced short-gap support-beam rule, including the immediate top-platform veto. A direct original `HouseBuilder` fixture pins that geometry. Earlier passes' protected `StructureMap` rectangles, furniture, aging and a complete official pass differential remain open, so `Buried Chests` stays partial.
+
 The Ivy Chest and Water Chest style identities were cross-checked against the official Terraria Wiki: `Containers` style `10` is Ivy Chest and style `17` is Water Chest.
 
 ## Loot ownership

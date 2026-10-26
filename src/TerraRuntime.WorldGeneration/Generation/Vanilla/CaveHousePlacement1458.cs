@@ -367,19 +367,16 @@ internal static class CaveHousePlacement1458
                 if (x >= lower.Left && x < lower.Right)
                     maximum = Math.Min(maximum, lower.Top - startY);
             }
-            if (maximum <= 0 || !TryFindSolidDown(grid, x, startY, maximum, out int endY))
+            if (maximum <= 0 || grid.At(x, startY - 1).Type == Platform)
                 continue;
-            bool objectInBeamPath = false;
-            for (int y = startY; y < endY; y++)
-            {
-                WorldTile existing = grid.At(x, y);
-                if (existing.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(existing.Type))
-                {
-                    objectInBeamPath = true;
-                    break;
-                }
-            }
-            if (objectInBeamPath)
+            // HouseBuilder.CreateSupportBeamList forces the gap to a lower room when it is
+            // shorter than 50, even if there is no terrain. Only the unconstrained 50-cell
+            // search needs a solid hit. The preceding platform check is on the top cell,
+            // not a blanket ban on frame-important objects anywhere inside the beam path.
+            int endY;
+            if (maximum < 50)
+                endY = startY + maximum;
+            else if (!TryFindSolidDown(grid, x, startY, maximum, out endY))
                 continue;
             for (int y = startY; y < endY; y++)
                 SetBlock(ref grid.At(x, y), beamType);
@@ -387,6 +384,10 @@ internal static class CaveHousePlacement1458
                 grid.At(x, endY).Shape = 0;
         }
     }
+
+    internal static void PlaceSupportBeamsForTesting(
+        Workspace workspace, IReadOnlyList<CaveHouseRoom1458> rooms, ushort beamType) =>
+        PlaceSupportBeams(new Grid(workspace.TileStore), rooms, beamType);
 
     private static bool TryPlaceChest(
         Workspace workspace,

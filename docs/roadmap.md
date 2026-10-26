@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+Buried Chests cave-house boundary acceptance (2026-10-27): the source-scoped candidate/beam corrections below pass Release solution warnings-as-errors, focused two new boundary tests plus ten existing official chest-loop comparisons and 33 canonical/startup integration cases, fast `25,352/25,352`, one unfiltered full `1,566,765/1,566,765` with zero skips, and fresh Windows NativeAOT with five smokes. Row 63 remains `P` until the complete house builder and registered-pass differential are verified; Linux NativeAOT is locally unverified. The pending-gate wording below is historical.
+
+## Buried Chests cave-house boundary, 2026-10-27
+
+Row 63 remains `P`, but its ordinary house-loop candidate search now applies the source `oceanDepths` rejection before calling `CaveHouseBiome`, and its additional-desert loop samples the adjusted full `GenVars.UndergroundDesertHiveLocation` instead of clipping the bottom to the ordinary-house height ceiling. The structural house slice also reproduces `HouseBuilder.CreateSupportBeamList`'s forced bridges to a lower room at gaps shorter than $50\,\text{tiles}$, overwriting objects in the path except where the top cell is a platform. A direct official `HouseBuilder.PlaceSupportBeams` fixture, focused chest-loop and canonical-world integration regressions cover these boundaries. Furniture, aging, earlier protected `StructureMap` regions and a complete registered-pass differential remain open; do not mark row 63 `C` yet.
+
 ## Fishing character boundary follow-up, 2026-10-26
 
 The follow-up admits legitimate first-spawn character fishing stock through existing physical ceilings without minting private pickup/copper budgets, and preserves those ceilings across existing cursor/sort/bank and managed transfer owners. Explicit76 imports current character Angler/golf snapshots; paid quests lock the session milestone. Reward-first crate cohorts stay untrusted until the existing paid source138 matcher accepts. Source probes establish NO76 at ordinary join and no counter-only regular sync; source GUI rewards precede75, own76 is ignored without SSC, and own5 is ignored for an unlocked non-SSC inventory. Ordinary GUI inventory/lifetime/reconnect/reward-RNG parity therefore remains open, alongside the exact client/server crate-RNG limitation. Server `.plr`/SSC storage is not required or introduced.
