@@ -776,9 +776,10 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         // Source CanSpawnInTile permits water but rejects lava. SetSpawnFlagsForChosenTile then
         // identifies waterTile from the two cells above the solid row; the ordinary pre-Hardmode
         // central-world path chooses Goldfish unless its 1/400 Gold Goldfish roll succeeds.
-        // The admitted fish AI runs in the same tick and keeps using this authoritative stream:
-        // non-wet initial Goldfish consumes its three grounded-launch rolls after the 1/400 roll.
-        var random = new SpawnRandom([1, -50, -20, 0], 360);
+        // Original NewNPC samples WetCollision before the admitted fish AI runs. Repeated
+        // GoldfishBirthWet1458 observations on both editions preserve RNG through eight wet
+        // updates; only the dry control consumes three grounded-launch draws on its first AI.
+        var random = new SpawnRandom([1], 360);
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 500 };
         var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
@@ -799,6 +800,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         var snapshots = new NpcSnapshot[npcs.Capacity];
         Assert.Equal(1, npcs.CopyActive(snapshots));
         Assert.Equal(VanillaNpcIds.Goldfish.Value, snapshots[0].Type);
+        Assert.True(snapshots[0].Simulation.Wet);
     }
 
     [Fact]

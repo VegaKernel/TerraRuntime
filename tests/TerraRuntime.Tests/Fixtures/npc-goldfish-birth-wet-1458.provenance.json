@@ -1,0 +1,35 @@
+{
+  "game": "Terraria 1.4.5.8",
+  "count": 6,
+  "execution": {
+    "linux": "Original Linux assembly under Windows CoreCLR; not Linux NativeAOT.",
+    "windows": "Original Windows x86 assembly under .NET Framework."
+  },
+  "scope": "actual NewNPC55 then8 UpdateNPC in exact500x1200 water-spawn world and dry-world negative control; no spawn pool implementation",
+  "source": {
+    "linux": {
+      "file": "GoldfishBirthWetLinux1458.json.gz",
+      "sha256": "158bda6456a1dab4d1fbc61eeefd133e07702791bf47778da4dd03aa0bf4c27b",
+      "compressedBytes": 3499,
+      "originalBinarySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "helperSha256": "9176ab852408d55f80c4d6842114ec83aeb116fce356503c6e9c327d08ad3d52",
+      "repeat": "byte-exact",
+      "actualUpdates": 48,
+      "birthRngDraws": 0,
+      "wetUpdateRngDraws": 0,
+      "dryFirstUpdateRngDraws": 3
+    },
+    "windows": {
+      "file": "GoldfishBirthWetWindows1458.json.gz",
+      "sha256": "ce40c46224c8939c46b3e08688ea2e86a6e56e0f7bbc232fe436640906766a0d",
+      "compressedBytes": 3525,
+      "originalBinarySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+      "helperSha256": "2027a3519a2d2f89e16f58bd1ef78fb3b90379b899b048f22ea014462540654e",
+      "repeat": "byte-exact",
+      "actualUpdates": 48,
+      "birthRngDraws": 0,
+      "wetUpdateRngDraws": 0,
+      "dryFirstUpdateRngDraws": 3
+    }
+  }
+}

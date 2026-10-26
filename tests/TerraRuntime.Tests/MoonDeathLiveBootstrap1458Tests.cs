@@ -119,11 +119,11 @@ public sealed class MoonDeathLiveBootstrap1458Tests
                     BaseDefense = type == 143 ? 20 : type == 144 ? 26 : 22,
                     BaseLifeMax = type == 143 ? 200 : type == 144 ? 240 : 220,
                     SpawnDifficulty = 1f, KnockBackResist = .6f, Rotation = 0,
-                    // NPC.SetDefaults(143..145): the trusted DefinitionOnly body must
+                    // NPC.SetDefaults(143..145): the trusted backend body must
                     // carry its real dimensions for retained network birth/terminal frames.
                     HitboxOverride = new NpcHitboxDimensions(26, 40) });
             // An explicit trusted body exercises the future admitted owner's backend.
-            // Public vanilla creation/combat keep the current DefinitionOnly barrier.
+            // Public combat retains the lifecycle barrier despite admitted creation defaults.
             Assert.True(world.Npcs.TrySpawn(0, in state, out var target));
             var combat = Combat(world);
             var rng = combat.SourceRandom.Clone();

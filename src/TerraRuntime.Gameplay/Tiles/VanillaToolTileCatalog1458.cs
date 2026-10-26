@@ -78,6 +78,10 @@ public readonly record struct ToolTileDefinition1458(ToolTileFlags1458 Flags)
 public static class VanillaToolTileCatalog1458
 {
     public const int TileCount = 754;
+
+    // Player.ItemCheck_UseMiningTools (1.4.5.8): these two grasses need the
+    // conversion hit in addition to the ordinary shovel hit.
+    internal static bool RequiresShovelGrassConversionHit(TileTypeId type) => type.Value is 70 or 633;
     public static bool TryGet(TileTypeId type, out ToolTileDefinition1458 definition)
     {
         definition = default;

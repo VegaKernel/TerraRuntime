@@ -13,9 +13,9 @@ namespace TerraRuntime.Application;
 /// Network-side projection/cache for authoritative NPC commits. Active-slot baselines are stored in
 /// spawn form so a joining client always resets the slot even when its wrapped byte generation happens
 /// to match. Live commits are broadcast only to connections that completed the player spawn transition.
-/// Exact packet-23 update duplicates are coalesced per full runtime generation before peer fanout.
-/// Ordinary motion commits are additionally sampled on vanilla's default <c>Main.npcStreamSpeed</c>
-/// cadence; spawn, despawn and committed life changes remain immediate.
+/// Legacy ordinary motion uses duplicate suppression and <c>Main.npcStreamSpeed</c> sampling.
+/// Explicitly verified source AI publications retain their own cooldown/proximity offers, including
+/// intentional duplicate packets; immediate combat commits do not advance that source phase.
 /// </summary>
 internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSink, INpcBirthRetentionSink, IRuntimePlayerEventSink, INpcAiHealingCommitSink, INpcAiTauntCommitSink
 {
@@ -137,10 +137,11 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
             return false;
         }
 
+        RetireGemBunnyHome(snapshot.Handle);
         Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
         Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], null);
         ClearLiveFrame(snapshot.Handle);
-        Broadcast(encoded);
+        Broadcast(encoded, UsesUndeadNetworkPhase1458(in snapshot) ? snapshot.Handle : null);
         return true;
     }
 
@@ -249,13 +250,27 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     internal void ProgressionEvent(short eventId) =>
         Broadcast(TerrariaProgressionEventCodec1458.Encode(eventId));
 
-    public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)
+    public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot) =>
+        NpcStateCommittedCore(kind, in snapshot, vanillaAiPhase: false);
+
+    public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false)
+    {
+        if (!IsUndeadNetworkPhaseCurrent(in snapshot)) return;
+        if (lowPriority) MarkUndeadLowPriorityNetworkUpdate(in snapshot);
+        NpcStateCommittedCore(kind, in snapshot, vanillaAiPhase: true);
+    }
+
+    private void NpcStateCommittedCore(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool vanillaAiPhase)
     {
         if (activeDeathPublication is { } death && death.Matches(kind, in snapshot))
         {
             death.TryPublishFrame(kind);
             return;
         }
+        ObserveCatchSlotOwner(in snapshot);
+        ObserveGemBunnyHome(kind, in snapshot);
+        bool sourceSend = false;
+        bool sourcePhase = vanillaAiPhase && TrySelectUndeadNetworkPhase(kind, in snapshot, out sourceSend);
         if (kind == NpcStateCommitKind.Spawn &&
             retainedBirthJournals[snapshot.Handle.Slot] is { } birthJournal && birthJournal.Matches(in snapshot))
         {
@@ -284,10 +299,11 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         if (kind == NpcStateCommitKind.Despawn)
         {
             if (!suppressBroadcast)
-                Broadcast(encoded);
+                Broadcast(encoded, UsesUndeadNetworkPhase1458(in snapshot) ? snapshot.Handle : null);
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
             Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], null);
             ClearLiveFrame(snapshot.Handle);
+            if (UsesUndeadNetworkPhase1458(in snapshot)) ResetSourceProximity(in snapshot);
             return;
         }
 
@@ -313,27 +329,43 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         if (suppressBroadcast)
             return;
 
+        // Source UpdateNetworkCode owns its cooldown. Baselines above still observe every accepted
+        // state; immediate combat publications use their existing path outside this AI phase.
+        if (sourcePhase && !sourceSend)
+        {
+            StreamNpcUpdateToNearbyPlayers(in snapshot, encoded, sourcePhase: true);
+            return;
+        }
         bool duplicate = IsDuplicateLiveFrame(snapshot.Handle, encoded);
-        if (kind == NpcStateCommitKind.Update)
-            StreamMoonLordUpdateToNearbyPlayers(in snapshot, encoded);
-        if (kind == NpcStateCommitKind.Update && duplicate)
+        if (!sourcePhase && kind == NpcStateCommitKind.Update)
+            StreamNpcUpdateToNearbyPlayers(in snapshot, encoded, sourcePhase: false);
+        if (!sourcePhase && kind == NpcStateCommitKind.Update && duplicate)
         {
             Interlocked.Increment(ref suppressedDuplicateFrames);
             return;
         }
 
-        if (kind == NpcStateCommitKind.Update && ShouldSuppressForCadence(in snapshot))
+        if (!sourcePhase && kind == NpcStateCommitKind.Update && ShouldSuppressForCadence(in snapshot))
         {
             Interlocked.Increment(ref suppressedCadenceFrames);
             return;
         }
 
-        Broadcast(encoded);
+        Broadcast(encoded, UsesUndeadNetworkPhase1458(in snapshot) ? snapshot.Handle : null);
         RecordLiveFrame(in snapshot, encoded);
+        if (sourcePhase)
+        {
+            if (kind == NpcStateCommitKind.Spawn) ResetSourceProximity(in snapshot);
+            // UpdateNetworkCode sends its own offer first; StreamUpdatesToNearbyPlayers can
+            // then legitimately send an identical second packet during this same NPC phase.
+            StreamNpcUpdateToNearbyPlayers(in snapshot, encoded, sourcePhase: true);
+        }
     }
 
     public void NpcBirthRetained(in NpcSnapshot snapshot)
     {
+        ObserveCatchSlotOwner(in snapshot);
+        ObserveGemBunnyHome(NpcStateCommitKind.Spawn, in snapshot);
         RefreshBaselineFrames(in snapshot);
         ClearLiveFrame(snapshot.Handle);
     }
@@ -411,14 +443,15 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     }
 
     /// <summary>
-    /// Mirrors NPC.StreamUpdatesToNearbyPlayers for the complete 1.4.5.8 catalog entry
-    /// NPCID.Sets.UsesMultiplayerProximitySyncing: Moon Lord head, hands and core (396-398).
-    /// The regular packet-23 fallback remains separate because it models an older bounded transport
-    /// policy rather than source NPC.netUpdate ownership.
+    /// Uses the existing proximity owner for explicitly verified ordinary source phases.
+    /// NPCID.Sets.UsesMultiplayerProximitySyncing defaults true with Moon Lord exceptions.
+    /// The previous bounded Moon Lord transport path stays separate pending its own revalidation;
+    /// it is not evidence for the source catalog's admission or complete wire parity.
     /// </summary>
-    private void StreamMoonLordUpdateToNearbyPlayers(in NpcSnapshot snapshot, byte[] encoded)
+    private void StreamNpcUpdateToNearbyPlayers(in NpcSnapshot snapshot, byte[] encoded, bool sourcePhase)
     {
-        if (!UsesMultiplayerProximitySyncing(snapshot.TypeIdentity) ||
+        if (!(sourcePhase ? UsesUndeadNetworkPhase1458(in snapshot) : UsesLegacyMoonLordProximityStream(snapshot.TypeIdentity)) ||
+            sourcePhase && snapshot.Simulation.TownNpc == true ||
             Math.Abs(snapshot.VelocityX) + Math.Abs(snapshot.VelocityY) <= .5f ||
             !TryAdvanceProximityStream(snapshot.Handle))
         {
@@ -447,7 +480,10 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
             }
 
             if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+            {
                 Interlocked.Increment(ref relayedFrames);
+                if (sourcePhase) endpoint.ResetProximityStream(snapshot.Handle);
+            }
             else
                 Interlocked.Increment(ref rejectedFrames);
         }
@@ -473,10 +509,19 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         }
     }
 
-    private static bool UsesMultiplayerProximitySyncing(NpcTypeId type) =>
+    private static bool UsesLegacyMoonLordProximityStream(NpcTypeId type) =>
         type == VanillaNpcIds.MoonLordHead ||
         type == VanillaNpcIds.MoonLordHand ||
         type == VanillaNpcIds.MoonLordCore;
+
+    private void ResetSourceProximity(in NpcSnapshot snapshot)
+    {
+        lock (proximityStreamGate)
+        {
+            proximityStreamOwners[snapshot.Handle.Slot] = snapshot.Handle;
+            proximityStreamTicks[snapshot.Handle.Slot] = 0;
+        }
+    }
 
     internal ReadOnlyMemory<byte>[] CaptureWorldTransferDespawnFrames()
     {
@@ -570,7 +615,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         endpoint.UpdateReportedCameraPosition(connection.Player, request);
     }
 
-    private void Broadcast(byte[] encoded)
+    private void Broadcast(byte[] encoded, NpcHandle? sourceNpc = null)
     {
         var frame = new OutboundFrame(encoded);
         foreach (Endpoint endpoint in endpoints.Values)
@@ -579,7 +624,10 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
                 continue;
 
             if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+            {
                 Interlocked.Increment(ref relayedFrames);
+                if (sourceNpc is { } owner) endpoint.ResetProximityStream(owner);
+            }
             else
                 Interlocked.Increment(ref rejectedFrames);
         }
@@ -600,86 +648,4 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         }
     }
 
-    private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)
-    {
-        private readonly object proximityStreamGate = new();
-        private readonly Dictionary<NpcHandle, byte> proximityStreamCounters = new();
-        private sealed record PlayingOccupation(PlayerHandle Player);
-        private PlayingOccupation? playing;
-        private float reportedCameraX;
-        private float reportedCameraY;
-
-        public TerrariaConnectionOutboundQueue Outbound { get; } =
-            outbound ?? throw new ArgumentNullException(nameof(outbound));
-
-        public bool MatchesPlayer(PlayerHandle player) => Volatile.Read(ref playing)?.Player == player;
-
-        public bool IsPlaying => Volatile.Read(ref playing)?.Player.IsAssigned == true;
-
-        public object? CapturePlayingOccupation() => Volatile.Read(ref playing);
-        public bool IsCurrentPlayingOccupation(object captured) =>
-            ReferenceEquals(Volatile.Read(ref playing), captured) && IsPlaying;
-
-        public void MarkPlaying(PlayerHandle player)
-        {
-            lock (proximityStreamGate)
-            {
-                proximityStreamCounters.Clear();
-                reportedCameraX = 0f;
-                reportedCameraY = 0f;
-            }
-            Volatile.Write(ref playing, new PlayingOccupation(player));
-        }
-
-        public void ClearPlaying(PlayerHandle player)
-        {
-            var captured = Volatile.Read(ref playing);
-            if (captured?.Player != player ||
-                !ReferenceEquals(Interlocked.CompareExchange(ref playing, null, captured), captured)) return;
-            lock (proximityStreamGate)
-                proximityStreamCounters.Clear();
-        }
-
-        public void UpdateReportedCameraPosition(PlayerHandle player, in PlayerMovementCommitRequest request)
-        {
-            if (!MatchesPlayer(player))
-            {
-                return;
-            }
-
-            lock (proximityStreamGate)
-            {
-                reportedCameraX = request.HasCameraTarget ? request.CameraTargetX : request.PositionX;
-                reportedCameraY = request.HasCameraTarget ? request.CameraTargetY : request.PositionY;
-            }
-        }
-
-        public bool TryAccumulateProximityStream(
-            NpcHandle npc,
-            float npcCenterX,
-            float npcCenterY,
-            bool boss,
-            byte threshold)
-        {
-            if (!IsPlaying)
-                return false;
-
-            lock (proximityStreamGate)
-            {
-                float dx = npcCenterX - reportedCameraX;
-                float dy = npcCenterY - reportedCameraY;
-                float distance = MathF.Sqrt(dx * dx + dy * dy);
-                byte gain = boss
-                    ? threshold
-                    : distance < 250f ? threshold
-                    : distance < 500f ? (byte)4
-                    : distance < 1_000f ? (byte)2
-                    : distance < 1_500f ? (byte)1
-                    : (byte)0;
-                byte counter = (byte)(proximityStreamCounters.GetValueOrDefault(npc) + gain);
-                proximityStreamCounters[npc] = counter;
-                return counter >= threshold;
-            }
-        }
-    }
 }

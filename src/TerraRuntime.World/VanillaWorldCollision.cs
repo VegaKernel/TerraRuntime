@@ -298,10 +298,12 @@ public static class VanillaWorldCollision
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        float probeWidth = Math.Min(10, width);
-        float probeHeight = height / 2;
-        float probeX = positionX + width / 2f - probeWidth / 2f;
-        float probeY = positionY + height / 2f - probeHeight / 2f;
+        // Collision.WetCollision (1.4.5.8) divides physical dimensions and probe
+        // dimensions as integers before adding them to the floating position.
+        int probeWidth = Math.Min(10, width);
+        int probeHeight = height / 2;
+        float probeX = positionX + width / 2 - probeWidth / 2;
+        float probeY = positionY + height / 2 - probeHeight / 2;
 
         GetScanBounds(
             tiles,
@@ -360,13 +362,21 @@ public static class VanillaWorldCollision
         out WorldLiquidKind liquidKind)
     {
         ArgumentNullException.ThrowIfNull(tiles);
+        return TryGetWetContact(tiles, positionX, positionY, width, height, tiles.Get, out liquidKind);
+    }
+
+    public static bool TryGetWetContact(WorldTileStore tiles, float positionX, float positionY,
+        int width, int height, Func<int, int, WorldTile> readTile, out WorldLiquidKind liquidKind)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        ArgumentNullException.ThrowIfNull(readTile);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        float probeWidth = Math.Min(10, width);
-        float probeHeight = height / 2;
-        float probeX = positionX + width / 2f - probeWidth / 2f;
-        float probeY = positionY + height / 2f - probeHeight / 2f;
+        int probeWidth = Math.Min(10, width);
+        int probeHeight = height / 2;
+        float probeX = positionX + width / 2 - probeWidth / 2;
+        float probeY = positionY + height / 2 - probeHeight / 2;
 
         GetScanBounds(
             tiles,
@@ -383,7 +393,7 @@ public static class VanillaWorldCollision
         {
             for (int y = minY; y < maxY; y++)
             {
-                WorldTile tile = tiles.Get(x, y);
+                WorldTile tile = readTile(x, y);
                 if (tile.LiquidAmount > 0)
                 {
                     float liquidX = x * TileSize;
@@ -399,7 +409,7 @@ public static class VanillaWorldCollision
                 }
                 else if (tile.IsActive && GetSlope(in tile) != 0 && y > 0)
                 {
-                    WorldTile above = tiles.Get(x, y - 1);
+                    WorldTile above = readTile(x, y - 1);
                     if (above.LiquidAmount <= 0)
                         continue;
 

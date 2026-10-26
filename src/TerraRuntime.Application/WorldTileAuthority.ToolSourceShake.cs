@@ -255,11 +255,7 @@ internal sealed partial class WorldTileAuthority
                 vx = (float)Math.Cos(angle) * 3f; vy = (float)Math.Sin(angle) * 3f;
             }
             if (!allocated) return true; // Source overflow-object writes are not an active birth.
-            if (!VanillaNpcDefinitionCatalog.TryGet(new(birth.Type), new(birth.NetId), out var definition) ||
-                !definition.TryResolveHitbox(birth.Simulation, out var body)) return false;
-            bool wet = false;
-            if (!definition.NoTileCollideAtSpawn && !TryNpcWet(birth.PositionX, birth.PositionY, body.Width, body.Height, out wet)) return false;
-            return server.TryFinishSourceNpc(in birth, vx, vy, afterAi, replaceable, wet, out _);
+            return server.TryFinishSourceNpc(in birth, vx, vy, afterAi, replaceable, birth.Simulation.Wet, out _);
         }
 
         private bool TryTreeProjectile(int type, float centerX, float centerY, float vx, float vy,
@@ -271,35 +267,6 @@ internal sealed partial class WorldTileAuthority
                 centerX - definition.Width * .5f, centerY - definition.Height * .5f,
                 vx, vy, ai, 0, damage, 0, 0);
             return server.TryStageSourceProjectile(store, in state, npcProjectile, out _);
-        }
-
-        private bool TryNpcWet(float x, float y, int width, int height, out bool wet)
-        {
-            wet = false;
-            var dimensions = Overlay.Tiles.Dimensions;
-            int pw = Math.Min(10, width), ph = height / 2;
-            float px = x + width / 2 - pw / 2, py = y + height / 2 - ph / 2;
-            int left = Math.Clamp((int)(x / 16f) - 1, 0, dimensions.WidthTiles - 1);
-            int right = Math.Clamp((int)((x + width) / 16f) + 2, 0, dimensions.WidthTiles - 1);
-            int top = Math.Clamp((int)(y / 16f) - 1, 0, Math.Max(0, dimensions.HeightTiles - 40));
-            int bottom = Math.Clamp((int)((y + height) / 16f) + 2, 0, Math.Max(0, dimensions.HeightTiles - 40));
-            for (int tx = left; tx < right; tx++) for (int ty = top; ty < bottom; ty++)
-            {
-                if (!Overlay.TryRead(tx, ty, out var tile)) return false;
-                float liquidY = ty * 16; int liquidHeight;
-                if (tile.LiquidAmount > 0)
-                { float empty = (256 - tile.LiquidAmount) / 32f * 2f; liquidY += empty; liquidHeight = 16 - (int)empty; }
-                else
-                {
-                    if (!tile.IsActive || tile.SourceSlope == 0 || ty == 0) continue;
-                    if (!Overlay.TryRead(tx, ty - 1, out var above)) return false;
-                    if (above.LiquidAmount == 0) continue;
-                    liquidHeight = 16;
-                }
-                if (px + pw > tx * 16 && px < tx * 16 + 16 && py + ph > liquidY && py < liquidY + liquidHeight)
-                { wet = true; return true; }
-            }
-            return true;
         }
 
         private bool TryTreeLeafStyle(int x, in WorldTile top, in WorldTile ground, out short style)

@@ -92,7 +92,9 @@ public sealed class NpcSourceDefaultRoster1458Tests
         Assert.Equal(691, positive);
         Assert.Equal(65, signed);
         Assert.Equal(1, definitionOnly);
-        Assert.Equal(324, creationOnly);
+        // The separately verified 30 undead identities and seven gem bunnies
+        // now own lifecycle execution; all other creation-only identities stay fenced.
+        Assert.Equal(287, creationOnly);
     }
 
     [Fact]

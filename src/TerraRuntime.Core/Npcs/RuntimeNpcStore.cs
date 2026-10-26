@@ -13,7 +13,14 @@ public readonly record struct NpcStateUpdate(
     float VelocityY,
     ushort Target,
     NpcAiState Ai,
-    NpcSimulationState Simulation);
+    NpcSimulationState Simulation)
+{
+    // Per-proposal source netUpdate intent. It is consumed only with the accepted revision,
+    // never retained as simulation state or inherited by a later update/generation.
+    internal bool RequiresImmediateSync { get; init; }
+    internal bool VanillaNetworkPhase { get; init; }
+    internal bool RequiresLowPrioritySync { get; init; }
+}
 
 /// <summary>
 /// Generation-safe authoritative NPC slot store. This type owns storage identity, revision ordering,

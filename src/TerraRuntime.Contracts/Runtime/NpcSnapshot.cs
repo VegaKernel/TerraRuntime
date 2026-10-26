@@ -88,6 +88,15 @@ public readonly record struct NpcSimulationState(
     /// <summary>Retained NPC.stairFall. Null leaves committed stair history owned by the store.</summary>
     public bool? StairFall { get; init; }
 
+    /// <summary>Source NPC home memory, also used by nonresident AI007 critters.</summary>
+    public int? HomeTileX { get; init; }
+    public int? HomeTileY { get; init; }
+    public bool? Homeless { get; init; }
+
+    /// <summary>Retained source catchable-NPC protection. Null leaves unsupported identities unowned.</summary>
+    public int? CatchableNpcTempImmunityCounter { get; init; }
+    public short? ReleaseOwner { get; init; }
+
     public NpcLiquidContactKind LiquidContact { get; init; }
 
     public float OldPositionX { get; init; }

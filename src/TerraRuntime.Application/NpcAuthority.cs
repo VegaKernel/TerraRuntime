@@ -32,6 +32,7 @@ internal sealed partial class NpcAuthority
     private readonly VanillaNpcTargetingAiStepper? vanillaTargeting;
     private readonly VanillaNpcCheckActiveAiStepper? vanillaCheckActive;
     private readonly VanillaNpcWorldMotionAiStepper? pirateGhostMotion;
+    private readonly RuntimeGemBunnyLifecycle1458? gemBunnyLifecycle;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
     internal RuntimeNpcDeathPrelude1458 DeathPrelude => combat.DeathPrelude;
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
@@ -139,6 +140,9 @@ internal sealed partial class NpcAuthority
         npcs.SetVanillaSpawnContextSource(CaptureSpawnContext);
         this.naturalSpawnRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom();
         npcs.SetVanillaSpawnRandomSource(this.naturalSpawnRandom);
+        if (worldTiles is not null)
+            npcs.SetVanillaSpawnWetCollisionSource((x, y, width, height) =>
+                VanillaWorldCollision.TryGetWetContact(worldTiles, x, y, width, height, out _));
         naturalSpawnWorldFacts = townCommerceWorldFacts;
         naturalSpawnTownNpcs = townNpcs;
         townNpcs?.BindRuntimeNames(npcs);
@@ -331,6 +335,12 @@ internal sealed partial class NpcAuthority
                         playerSnapshots: playerSnapshots),
                     progressionMutations: progression);
                 pirateGhostMotion = worldMotion;
+                gemBunnyLifecycle = new RuntimeGemBunnyLifecycle1458(worldTiles, worldSurfaceTiles, npcs,
+                    combat, expertMode, npcReplication, npcBuffStatus);
+                vanillaTargeting.SetGemBunnyOwner(npcs, new VanillaGemBunnyEnvironment1458(worldTiles, npcs,
+                    npcBuffStatus, _ => CaptureGemBunnyConditions(), CaptureGemBunnyPlayerDanger, npcReplication),
+                    worldTiles.Dimensions.WidthTiles, worldSurfaceTiles);
+                worldMotion.SetGemBunnyLifecycle(gemBunnyLifecycle);
                 vanillaCheckActive = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 aiStepper = vanillaCheckActive;
             }
@@ -351,6 +361,10 @@ internal sealed partial class NpcAuthority
         if (vanillaTargeting is not null && pirateGhostMotion is not null)
             aiStepper = new RuntimePirateGhostOuterAiStepper1458(aiStepper, npcs, vanillaTargeting,
                 pirateGhostMotion, combat, npcBuffStatus, rawPlayerSlots, CapturePirateGhostPlayers);
+        if (gemBunnyLifecycle is not null && worldTiles is not null &&
+            this.naturalSpawnRandom is SystemVanillaNpcRandom sharedRandom)
+            aiStepper = new RuntimeGemBunnyOuterAiStepper1458(aiStepper, gemBunnyLifecycle,
+                worldTiles.Dimensions.HeightTiles, sharedRandom.SourceRandom);
     }
 
     public RuntimeNpcShopCatalogRegistry Shops => shops;
@@ -1581,6 +1595,11 @@ internal sealed partial class NpcAuthority
 
     private float GetNaturalSpawnSlots(in NpcSnapshot npc)
     {
+        // SetDefaultsFromNetId: Big Boned owns two slots independently of visual scale;
+        // the signed zombie/skeleton pairs multiply the default slot by the final source scale.
+        if (npc.NetId == -14) return 2f;
+        if (npc.NetId is >= -37 and <= -26 or >= -55 and <= -44) return npc.Simulation.Scale;
+
         float slots = npc.TypeIdentity switch
         {
         // TerrariaServer 1.4.5.8 NPC.SetDefaults source weights for the currently admitted natural types.
@@ -1941,7 +1960,44 @@ internal sealed partial class NpcAuthority
 
         if (npc.Simulation.SpawnedFromStatue)
         {
-            npcs.TryDespawn(npc.Handle);
+            if (npc.Type is < 646 or > 652 || npc.Type != npc.NetId)
+            {
+                npcs.TryDespawn(npc.Handle);
+                return;
+            }
+            // CatchNPC's smoke uses Entity.Center and casts only X before packet106 packing.
+            // Geometry, wire preparation and source ownership must be valid before spending RNG.
+            // A custom adapter without the shared UnifiedRandom owner cannot atomically commit it.
+            if (!catchDefinition.TryResolveHitbox(npc.Simulation, out var statueBody) ||
+                naturalSpawnRandom is not SystemVanillaNpcRandom statueRandom)
+                return;
+            float smokeX = npc.PositionX + statueBody.Width * .5f - 20f;
+            float smokeY = npc.PositionY + statueBody.Height * .5f - 20f;
+            if (!float.IsFinite(smokeX) || smokeX < int.MinValue || smokeX >= 2147483648f ||
+                !TerraRuntime.Protocol.Multiplicity.TerrariaPoofOfSmokeCodec1458.TryEncode((int)smokeX, smokeY, out var smokeFrame) ||
+                !npcs.TryPrepareCatchRemoval(in npc, out var statueRemoval))
+                return;
+            var liveStatueRandom = statueRandom.SourceRandom;
+            var statueCheckpoint = liveStatueRandom.Clone();
+            var preparedStatueRandom = liveStatueRandom.Clone();
+            // Utils.PoofOfSmoke still evaluates these argument expressions on dedicated servers;
+            // Gore.NewGore and Dust.NewDust add no server-side draws of their own.
+            int smokeGoreCount = preparedStatueRandom.Next(3, 7);
+            for (int index = 0; index < smokeGoreCount; index++)
+            {
+                _ = preparedStatueRandom.NextDouble();
+                _ = preparedStatueRandom.Next(11, 14);
+            }
+            for (int index = 0; index < 10; index++)
+            {
+                _ = preparedStatueRandom.NextDouble();
+                _ = preparedStatueRandom.NextDouble();
+            }
+            if (!liveStatueRandom.HasSameState(statueCheckpoint) || !statueRemoval!.TryAdoptUnpublished())
+                return;
+            liveStatueRandom.CopyStateFrom(preparedStatueRandom);
+            if (statueRemoval.TryPublish())
+                npcReplication?.PublishStatueCatchSmoke(in npc, smokeFrame);
             return;
         }
 
@@ -1951,6 +2007,7 @@ internal sealed partial class NpcAuthority
         float playerCenterX = player.PositionX + playerWidth / 2f;
         float playerCenterY = player.PositionY + playerHeight / 2f;
         var liveRandom = (worldItemSpawnRandom as SystemWorldItemSpawnRandom)?.SourceRandom;
+        var randomCheckpoint = liveRandom?.Clone();
         var preparedRandom = liveRandom?.Clone();
         IWorldItemSpawnRandom catchRandom = preparedRandom is null ? worldItemSpawnRandom : new SystemWorldItemSpawnRandom(preparedRandom);
         WorldItemDropStateUpdate drop = VanillaNpcCatchWorldItem1458.Create(
@@ -1969,26 +2026,24 @@ internal sealed partial class NpcAuthority
         }
         using var allocation = worldItems.CreateAllocationPreview(views[..viewCount]);
         if (!allocation.TrySpawnSource(in drop, 0, out _, sourceLocalPlayerId: command.Connection.Player.Slot.Value) || !allocation.TryClaim() ||
-            !npcs.TryGet(npc.Handle, out var retained) || retained.Revision != npc.Revision)
+            !players.IsCurrent(command.Connection) ||
+            randomCheckpoint is not null && !liveRandom!.HasSameState(randomCheckpoint) ||
+            !npcs.TryPrepareCatchRemoval(in npc, out var removal) || !allocation.IsCurrentOwned)
             return;
+        // Adopt both owners before any callback. Source publication still creates/reserves the
+        // item before inactive23; observers cannot catch/update a retired generation a second time.
+        if (!allocation.TryAdoptUnpublished(out var publication)) return;
+        if (!removal!.TryAdoptUnpublished())
+            throw new InvalidOperationException("Prepared NPC catch removal changed during callback-free adoption.");
         if (preparedRandom is not null) liveRandom!.CopyStateFrom(preparedRandom);
-        if (!allocation.TryCommitNext(out short itemSlot, out _))
-            throw new InvalidOperationException("Prepared NPC catch item allocation changed before publication.");
-        allocation.Dispose();
-        if (itemSlot < RuntimeWorldItemStore.VanillaCapacity)
+        try
         {
-            if (!worldItems.TryGetActive(itemSlot, out var item))
-                throw new InvalidOperationException("Accepted NPC catch item disappeared before ownership assignment.");
-            // The source NewItem plan already adopts the authenticated reservation
-            // and publishes its single owner22. Do not overwrite a reentrant owner change.
-            if (item.OwnerPlayerId != command.Connection.Player.Slot.Value ||
-                item.TimeToKeepReservation != VanillaNpcCatchWorldItem1458.ReservationTicks ||
-                item.GrabDelayPlayer != 0 || item.GrabDelayTime != 0)
-                throw new InvalidOperationException("Caught NPC item reservation changed during publication.");
+            publication!.TryPublishNext(out _);
         }
-        // Source CatchNPC creates/assigns its item before deactivating the NPC and publishing packet23.
-        if (!npcs.TryDespawn(npc.Handle))
-            throw new InvalidOperationException("An accepted NPC catch lost its exact generation before despawn.");
+        finally
+        {
+            removal.TryPublish();
+        }
     }
 
     private float CaptureDifficulty() => (masterMode ? 3f : expertMode ? 2f : 1f) +
@@ -2033,6 +2088,23 @@ internal sealed partial class NpcAuthority
         int count = CopyTargetCandidates(captured);
         return captured.AsSpan(0, count).ToArray();
     }
+
+    private RuntimeTownNpcScheduleConditions1458 CaptureGemBunnyConditions() => new(
+        worldClock?.DayTime ?? true, worldClock?.Raining ?? false,
+        naturalSpawnWorldFacts?.Eclipse ?? false, worldClock?.SlimeRainActive ?? false,
+        // Main.IsItStorming is never refreshed by the dedicated-server audio update.
+        StormingAboveSurface: false)
+    {
+        InvasionActive = invasion is not null && invasion.TryCapture(out var active) && active.State.Type > 0
+    };
+
+    private RuntimeTownPlayerDanger1458[] CaptureGemBunnyPlayerDanger() => CapturePirateGhostPlayers()
+        .Where(candidate => candidate.Active)
+        .Select(candidate => new RuntimeTownPlayerDanger1458(candidate.Slot,
+            new RuntimeTownPlayerBounds1458(candidate.CenterX - candidate.Width * .5f,
+                candidate.CenterY - candidate.Height * .5f, candidate.Width, candidate.Height),
+            candidate.Dead, players.HasNaturalSpawnBuffSnapshot(candidate.Slot, VanillaBuffIds.Stinky)))
+        .ToArray();
 
     private int CopyTargetCandidates(Span<VanillaNpcTargetCandidate> destination)
     {

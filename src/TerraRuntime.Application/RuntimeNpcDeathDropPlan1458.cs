@@ -62,12 +62,12 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
             (expected.TypeIdentity != VanillaNpcIds.Zombie && expected.TypeIdentity != VanillaNpcIds.BlueSlime &&
              expected.TypeIdentity != VanillaNpcIds.LavaSlime && expected.TypeIdentity != VanillaNpcIds.PirateCaptain &&
              expected.TypeIdentity != VanillaNpcIds.PirateGhost && !CanOwnMoonDeath(expected.TypeIdentity) &&
-             !CanOwnOrdinaryInvasionDeath(expected.TypeIdentity))) return false;
+             !CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) && !VanillaGemBunnyAi1458.IsSupported(expected.Type))) return false;
         // Client-local rewards require their own unpublished lease adoption; this lane owns ordinary drops only.
         foreach (var drop in drops.AsSpan(0, count))
             if (drop.LeaseTicks != 0 || drop.Recipients.Length != 0) return false;
         drainPublication = CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) || CanOwnMoonDeath(expected.TypeIdentity) ||
-            expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost);
+            expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost || VanillaGemBunnyAi1458.IsSupported(expected.Type));
         unpublishedMode = true;
         return CanAdoptUnpublished();
     }

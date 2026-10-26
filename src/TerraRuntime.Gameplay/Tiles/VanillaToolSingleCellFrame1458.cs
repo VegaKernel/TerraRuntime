@@ -9,6 +9,8 @@ public readonly record struct ToolSingleCellFrameTile1458(TileTypeId Type, short
 // This is only the source anchor/frame decision, not permission to remove an object.
 public static class VanillaToolSingleCellFrame1458
 {
+    // TileFrame's platform atlas cell stride (1.4.5.8).
+    private const int PlatformFrameStep = 18;
     public static bool TryPlan(TileTypeId type, short frameX, ushort wall,
         ReadOnlySpan<ToolSingleCellFrameTile1458> window, out short afterFrameX, out bool kill)
     {
@@ -50,7 +52,7 @@ public static class VanillaToolSingleCellFrame1458
         var facts = Facts(tile);
         if (facts.IsPlatform)
         {
-            int frame = tile.FrameX / 18;
+            int frame = tile.FrameX / PlatformFrameStep;
             return !tile.HalfBrick && frame is >= 0 and <= 7 || frame is >= 12 and <= 16 or >= 25 and <= 26;
         }
         return facts.IsSolid && facts.IsSolidTop || IsTable(tile.Type) && !tile.HalfBrick && tile.Slope == 0;
@@ -58,7 +60,7 @@ public static class VanillaToolSingleCellFrame1458
     private static bool Side(in ToolSingleCellFrameTile1458 tile, bool left) => NActive(tile) &&
         Facts(tile).IsSolid && !Facts(tile).NoAttach && !tile.HalfBrick &&
         (tile.Slope == 0 || (left ? tile.Slope is 2 or 4 : tile.Slope is 1 or 3));
-    private static bool Beam(in ToolSingleCellFrameTile1458 tile) => NActive(tile) && tile.Type.Value is 124 or 561 or 574 or 575 or 576 or 577 or 578;
+    private static bool Beam(in ToolSingleCellFrameTile1458 tile) => NActive(tile) && VanillaToolFurniture1458.IsBeam(tile.Type);
     private static bool Tree(in ToolSingleCellFrameTile1458 tile) => NActive(tile) && Facts(tile).IsTreeTrunk;
     // Main.tileTable, all754 initialized identities, independently captured from both official editions.
     private static bool IsTable(TileTypeId type) => type.Value is

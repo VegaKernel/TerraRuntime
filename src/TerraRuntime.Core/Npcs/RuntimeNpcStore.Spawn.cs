@@ -8,6 +8,11 @@ public sealed partial class RuntimeNpcStore
 {
     private Func<VanillaNpcSpawnContext>? _spawnContext;
     private IVanillaNpcRandom _spawnRandom = new SystemVanillaNpcRandom();
+    private Func<float, float, int, int, bool>? spawnWetCollision;
+
+    /// <summary>Supplies the world's existing WetCollision query for NewNPC, before birth publication.</summary>
+    public void SetVanillaSpawnWetCollisionSource(Func<float, float, int, int, bool> source) =>
+        spawnWetCollision = source ?? throw new ArgumentNullException(nameof(source));
 
     /// <summary>Shares the world-owned NPC random stream with creation, AI and natural spawn selection.</summary>
     public void SetVanillaSpawnRandomSource(IVanillaNpcRandom source) =>
@@ -54,7 +59,7 @@ public sealed partial class RuntimeNpcStore
         state.BirthPending = false;
         if (protect) state.SpawnProtection = VanillaNpcSpawnRules.SpawnProtectionUpdates;
         state.Revision = 1;
-        state.Update = normalized;
+        state.Update = normalized with { RequiresImmediateSync = false, VanillaNetworkPhase = false, RequiresLowPrioritySync = false };
         MarkSlotMutation();
         if (!wasActive) _activeCount++;
         snapshot = Capture(slot, in state);
@@ -117,7 +122,9 @@ public sealed partial class RuntimeNpcStore
             });
 
         // An AI intent models NewNPC's explicit ai arguments, including an intentional all-zero state.
-        return TrySpawnVanillaCore(in update, out snapshot, intent.StartSlot, spawnDefaults);
+        if (!TryApplySpawnWetCollision(in update, spawnDefaults, out var wetUpdate))
+        { snapshot = default; return false; }
+        return TrySpawnVanillaCore(in wetUpdate, out snapshot, intent.StartSlot, spawnDefaults);
     }
 
     /// <summary>Allocates in vanilla search order, observing protection and replacement eligibility.</summary>
@@ -166,7 +173,9 @@ public sealed partial class RuntimeNpcStore
                 PositionY = anchor.Y - body.Height
             };
         }
-        NpcStateUpdate initialized = ApplySpawnAiDefaults(in owned);
+        if (!TryApplySpawnWetCollision(in owned, spawnDefaults, out var wetOwned))
+        { snapshot = default; return false; }
+        NpcStateUpdate initialized = ApplySpawnAiDefaults(in wetOwned);
         if (!TrySpawnVanillaCore(in initialized, out snapshot, startSlot, spawnDefaults, publish: !deferBirth))
             return false;
         if (deferBirth)
@@ -182,6 +191,23 @@ public sealed partial class RuntimeNpcStore
         {
             Ai = VanillaNpcAiSpawnDefaults1458.Resolve(new NpcTypeId(update.Type), in definition, update.Ai, _spawnRandom)
         };
+    }
+
+    private bool TryApplySpawnWetCollision(in NpcStateUpdate update, VanillaNpcSpawnDefaults? defaults,
+        out NpcStateUpdate result)
+    {
+        result = update;
+        if (spawnWetCollision is not { } query) return true;
+        var materialized = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in update, defaults);
+        if (materialized.Simulation.NoTileCollide) return true;
+        if (!VanillaNpcDefinitionCatalog.TryGet(new(update.Type), new(update.NetId), out var definition) ||
+            !definition.TryResolveHitbox(materialized.Simulation, out var body)) return false;
+        ulong serial = mutationSerial;
+        bool wet = query(update.PositionX, update.PositionY, body.Width, body.Height);
+        // Environment callbacks may replace an entity or reenter creation. Publish no stale birth.
+        if (mutationSerialExhausted || mutationSerial != serial || !ReferenceEquals(query, spawnWetCollision)) return false;
+        result = update with { Simulation = update.Simulation with { Wet = wet } };
+        return true;
     }
 
     private bool TryCaptureSpawnDefaults(ref int type, ref short netId, out VanillaNpcSpawnDefaults? defaults, out float difficulty)

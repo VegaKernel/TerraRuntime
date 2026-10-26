@@ -137,6 +137,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             !CanExcludeUnownedDungeonSpirit(in dead)) return false;
         var liveRandom = random.SourceRandom;
         var plan = new RuntimeNpcDeathDropPlan1458(dead.Handle, dead.Revision, liveRandom);
+        if (pendingGemBunnyDeath is { } critter)
+        {
+            if (!VanillaGemBunnyAi1458.IsSupported(dead.Type) || pendingProjectileStrike is not null ||
+                pendingTownStrike is not null || !liveRandom.HasSameState(critter.BeforeRandom) ||
+                !critter.IsCurrent()) return false;
+            plan.Random.CopyStateFrom(critter.AfterRandom);
+            plan.RetainStrikePrelude();
+        }
         if (pendingProjectileStrike is { } projectileStrike)
         {
             if (pendingTownStrike is not null || !liveRandom.HasSameState(projectileStrike.Before) ||
@@ -207,7 +215,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             lootDelivery.Phase = NpcDeathDropPhase1458.Money;
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Money)) return false;
             if (MoneyClearedBeforeDeathPhase(in dead, eaterBoss)) value = 0f;
-            var context = new VanillaNpcMoneyContext1458(value, extra, luck, midas, DeathClock?.BloodMoonActive == true);
+            var context = CreateMoneyContext(in dead, value, extra, luck, midas, DeathClock?.BloodMoonActive == true);
             if (!VanillaNpcDefinitionCatalog.TryGet(dead.TypeIdentity, dead.NetIdentity, out var definition)) return false;
             var origin = ResolveNpcLootOrigin(in dead, in definition);
             var moneySink = new MoneyPlanningSink(lootDelivery, origin, random);
@@ -234,7 +242,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (!TryCaptureAllocationViews(allocationViews, out int viewCount) ||
                 !plan.TryReserve(worldItems, allocationViews[..viewCount]) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
             if (dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost ||
-                pendingProjectileStrike is not null || pendingDebuffPrelude is not null ||
+                pendingProjectileStrike is not null || pendingDebuffPrelude is not null || pendingGemBunnyDeath is not null ||
                 RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(dead.TypeIdentity) ||
                 RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity))
             {
@@ -332,6 +340,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         bool worldCurrent = CaptureGlobalLootWorld() == plannedGlobalLootWorld;
         bool specificCurrent = IsSpecificLootContextCurrent();
         bool projectileCurrent = pendingProjectileStrike?.IsCurrent() ?? true;
+        bool critterCurrent = pendingGemBunnyDeath?.IsCurrent() ?? true;
         // Master Moon rewards retain an active interacting census. A projectile owner
         // callback may disconnect a recipient; refresh that census before the final
         // callback-free progression/clock/NPC comparisons authorize adoption.
@@ -348,11 +357,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         // consulting only the later active flag would let that transition evade validation.
         bool moonDeath = actor.Handle.IsAssigned && RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(actor.TypeIdentity);
         bool ordinaryInvasion = RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(actor.TypeIdentity);
-        bool clockCurrent = (pendingProjectileStrike is null && pendingDebuffPrelude is null && !linkedDeath && !moonDeath && !ordinaryInvasion) ||
+        bool clockCurrent = (pendingProjectileStrike is null && pendingDebuffPrelude is null && pendingGemBunnyDeath is null && !linkedDeath && !moonDeath && !ordinaryInvasion) ||
             CaptureStrikeClock() == plannedStrikeClock && CaptureStrikeDaily() == plannedStrikeDaily;
         // Seal after the final external dependency read, before HP or any other owner write.
         bool captainRecipientsCurrent = plannedCaptainBirthJournal?.TrySealRecipients() ?? true;
-        return captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && moonCurrent && moonPlayersCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && clockCurrent && fallbackCurrent &&
+        return captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && moonCurrent && moonPlayersCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && critterCurrent && clockCurrent && fallbackCurrent &&
             npcs.TryGet(handle, out var current) && current.Revision == revision &&
             deathPrelude.Revision == plannedPreludeRevision && progression.CaptureSnapshot() == plannedDeathProgression &&
             (plannedDeathSpawnSerial is not { } serial ||

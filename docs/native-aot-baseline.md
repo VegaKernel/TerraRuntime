@@ -1,5 +1,11 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Combined tools, events and NPC checkpoint: local validation, 2026-10-26
+
+The combined source fingerprint `f1275ab1ee7b2f2d7bf35f44821f8e1a08b06e20af934941a96db3d9902eb93c` passes Release tests/server with warnings as errors, fast25,259/25,260 and one unfiltered full1,566,672/1,566,673. Both suites have zero failures/errors and the same known canonical-liquid skip. The actual full XML contains all5,189 discovered methods, zero missing/unplanned;3,848 source/config/fixture inputs and158 executed DLLs remain unchanged. Full test time is $929.350\,\mathrm{s}$ and wall time is $942.259\,\mathrm{s}$.
+
+Fresh Windows NativeAOT publishes and exercises loop/protocol/network/world/TUI smokes. The private executable SHA256 is `7F4D741A80D2F42990E19B097A401C45633295CF8A46B3DD64E04EA0FC03DEE8`, with PE CLR directory0/0. Actual Release and Native TCP82/49/129, two-client relay/chat and72 signed35/43 effect checks per host pass; both hosts are stopped. Numeric source/component evidence remains scoped to its captured callers, and no official GUI-client or whole `Main.Update` claim is made. Evidence is `.cache/merge-events/combined-candidate-03` plus `live-combined-{release,native}-03`. Linux Native remains unverified; no dependency or GitHub CI wait was added.
+
 ## NPC contact status: Windows local validation, 2026-10-25
 
 The isolated `combat/npc-contact-buffs` candidate builds Release with warnings as errors and publishes Windows NativeAOT; loop/protocol/network/world/TUI smokes pass. The 16 unchanged new normal Fact bodies are additionally linked into a static typed harness with a small reviewed assertion shim: managed and fresh Windows Native both execute 1,024,679 assertion invocations with byte-identical per-Fact output. Exact 38 DLL inputs, linked sources and two numeric gzip fixtures are pinned, native CLR directory is 0/0. This is additional typed replay, not an AOT xUnit runner or whole Main parity. Evidence `.cache/npc-contact-native-v2/acceptance.json`; shipping server `.cache/windows-native-result.json`. No production dependency is added.

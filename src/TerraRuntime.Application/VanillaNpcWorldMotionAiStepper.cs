@@ -34,6 +34,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     private readonly IVanillaGroundFighterDoorOpeningSink? doorOpeningSink;
     private readonly RuntimeWorldProgressionMutations progressionMutations;
     private readonly IKingSlimeDeathRandom kingSlimeDeathRandom;
+    private RuntimeGemBunnyLifecycle1458? gemBunnyLifecycle;
+
+    internal void SetGemBunnyLifecycle(RuntimeGemBunnyLifecycle1458 lifecycle) =>
+        gemBunnyLifecycle = lifecycle ?? throw new ArgumentNullException(nameof(lifecycle));
 
     public VanillaNpcWorldMotionAiStepper(INpcAiStateStepper inner, WorldTileStore tiles)
         : this(
@@ -121,7 +125,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if ((targeting is not null && (VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc) ||
-            targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc))) ||
+            targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc) || targeting.GemBunny.HasPlan(in npc))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -145,8 +149,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             return true;
         }
         if (!TryFinishPhysics(tiles, worldSurfaceTiles, in npc, in adjusted, out next)) return false;
-        // NPC.FindFrame case 3 runs after collision; a grounded Zombie faces its current direction.
-        if (npc.TypeIdentity == VanillaNpcIds.Zombie && next.VelocityY == 0f)
+        // NPC.FindFrame runs after collision; both admitted undead frame branches face their
+        // current direction on the ground. Signed identities retain their own physical bodies.
+        if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(npc.TypeIdentity) && next.VelocityY == 0f)
             next = next with { Simulation = next.Simulation with { SpriteDirection = next.Simulation.DirectionX } };
         return true;
     }
@@ -272,9 +277,12 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 hitboxHeight,
                 simulation.DirectionX,
                 simulation.DirectionY,
-                obstacleParameters);
+                obstacleParameters,
+                VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) ? simulation.SpriteDirection : null);
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
+            if (obstacle.Jumped && VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type))
+                aiState = aiState with { RequiresImmediateSync = true };
 
             if (doorContact.GroundSupported &&
                 velocityY == 0f &&
@@ -284,12 +292,39 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 velocityY = stuckHopVelocity;
             }
 
+            // AI_003's Expert elevated-target jump follows obstacle/stuck launches but precedes
+            // the type-specific lunge. It deliberately does not set netUpdate itself.
+            if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) &&
+                doorContact.GroundSupported && velocityY == 0f && targeting?.GroundFighterExpertMode == true &&
+                ((velocityX < 0f && simulation.SpriteDirection == -1) ||
+                 (velocityX > 0f && simulation.SpriteDirection == 1)) &&
+                aiState.Target < byte.MaxValue && targeting.TryGetCandidate((byte)aiState.Target, out var elevated))
+            {
+                float targetBottom = elevated.CenterY + elevated.Height * .5f;
+                if (targetBottom < aiState.PositionY &&
+                    MathF.Abs(aiState.PositionX + hitboxWidth * .5f - elevated.CenterX) < elevated.Width * 3f &&
+                    VanillaWorldCanHit.HasLineOfSight(tiles, aiState.PositionX, aiState.PositionY,
+                        hitboxWidth, hitboxHeight, elevated.CenterX - elevated.Width * .5f,
+                        elevated.CenterY - elevated.Height * .5f, (int)elevated.Width, (int)elevated.Height))
+                {
+                    bool launch = targetBottom > aiState.PositionY - 6 * 16f;
+                    int column = (int)((aiState.PositionX + hitboxWidth * .5f) / 16f);
+                    int bottom = (int)((aiState.PositionY + hitboxHeight) / 16f) - 1;
+                    for (int y = bottom; !launch && y > bottom - 6; y--)
+                        launch = (uint)column < (uint)tiles.Dimensions.WidthTiles &&
+                            (uint)y < (uint)tiles.Dimensions.HeightTiles &&
+                            tiles.Get(column, y) is { IsActive: true, IsActuated: false } tile &&
+                            VanillaTileIds.IsPlatform(tile.TileType);
+                    if (launch) velocityY = -7.9f;
+                }
+            }
+
             if (hasFighterProfile &&
                 fighterProfile.CloseRangeLunge &&
                 doorEnvironment.HasTarget &&
                 VanillaGroundFighterCloseRangeLunge.TryResolve(
-                    aiState.PositionX + hitboxWidth * 0.5f,
-                    aiState.PositionY + hitboxHeight * 0.5f,
+                    aiState.PositionX + hitboxWidth / 2,
+                    aiState.PositionY + hitboxHeight / 2,
                     doorEnvironment.TargetCenterX,
                     doorEnvironment.TargetCenterY,
                     velocityX,
@@ -300,6 +335,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             {
                 velocityX = lungedVelocityX;
                 velocityY = lungedVelocityY;
+                if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type))
+                    aiState = aiState with { RequiresImmediateSync = true };
             }
 
             if (definition.Type.Value == 258 &&
@@ -582,6 +619,16 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        if (targeting is not null && targeting.GemBunny.HasPlan(in before))
+        {
+            if (gemBunnyLifecycle is null ||
+                !targeting.GemBunny.TryGetConditions(in before, out bool dayTime, out bool eclipse))
+            { targeting.GemBunny.Cancel(); return default; }
+            // Invasion only changes Collision_DecideFallThroughPlatforms for townNPC=true.
+            // These exact seven nonresident subtypes retain their captured day/eclipse/home policy.
+            return gemBunnyLifecycle.Complete(in before, in committed, targeting.GemBunny,
+                dayTime, eclipse, invasionActive: false);
+        }
         if (targeting is not null && targeting.HasBeePlan(in before))
         {
             if (!targeting.TryGetBeePlan(in before, in committed, out var planned) ||

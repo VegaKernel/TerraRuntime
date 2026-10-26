@@ -18,6 +18,8 @@ public readonly record struct ToolShovelHit1458(int OffsetX, int OffsetY, int Pi
 /// <summary>Local tool damage arithmetic. Position-dependent kill permissions remain a separate input.</summary>
 public static class VanillaToolDamage1458
 {
+    // Source trap/rack frame cells include their two-pixel atlas padding.
+    private const int MiningObjectFrameStep = 18;
     public static bool IsTilePoundable(TileTypeId type) =>
         VanillaToolTileCatalog1458.TryGet(type, out var facts) && !facts.IsHammerTarget &&
         (facts.IsSolid || facts.IsLivingFire || type.Value is 314 or 424 or 442 or 351 or 470);
@@ -67,7 +69,7 @@ public static class VanillaToolDamage1458
         else if (type == 137 && power < 210 &&
             (!world.NotTheBeesWorld || !world.NoTrapsWorld || world.TenthAnniversaryWorld))
         {
-            int frame = target.FrameY / 18;
+            int frame = target.FrameY / MiningObjectFrameStep;
             if ((uint)(frame - 1) <= 3) damage = 0;
         }
         else if (roles.IsDungeon && power < 100 && y > world.WorldSurface)
@@ -114,7 +116,7 @@ public static class VanillaToolDamage1458
             }
             if (target.FrameX < 5000)
             {
-                relativeX -= target.FrameX / 18 % 3;
+                relativeX -= target.FrameX / MiningObjectFrameStep % 3;
                 // An invalid mixed-object window can exceed the source's valid
                 // anchor footprint. Refuse before any state/RNG is adopted.
                 if (relativeX is < -2 or > 2 || relativeY is < -2 or > 2) return false;
@@ -181,7 +183,8 @@ public static class VanillaToolDamage1458
                 var tile = window[index];
                 VanillaToolTileCatalog1458.TryGet(tile.Type, out var roles);
                 if (!roles.CanBeDugByShovel) continue;
-                if (tile.Active && (roles.ConvertsAsGrass || roles.ConvertsAsJungleGrass || tile.Type.Value is 70 or 633))
+                if (tile.Active && (roles.ConvertsAsGrass || roles.ConvertsAsJungleGrass ||
+                    VanillaToolTileCatalog1458.RequiresShovelGrassConversionHit(tile.Type)))
                     destination[count++] = new(x, y, 100);
                 destination[count++] = new(x, y, 30);
             }

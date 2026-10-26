@@ -9,18 +9,24 @@ public sealed partial class RuntimeNpcStore
 {
     internal bool TryPrepareWorldSpawns(VanillaUnifiedRandom1458 live,
         VanillaUnifiedRandom1458 sharedWorkingRandom, out PreparedWorldSpawns? preparation)
+        => TryPrepareWorldSpawns(live, sharedWorkingRandom, spawnWetCollision, out preparation);
+
+    internal bool TryPrepareWorldSpawns(VanillaUnifiedRandom1458 live,
+        VanillaUnifiedRandom1458 sharedWorkingRandom, Func<float, float, int, int, bool>? wetCollision,
+        out PreparedWorldSpawns? preparation)
     {
         preparation = null;
         if (mutationSerialExhausted || mutationSerial == ulong.MaxValue ||
             ReferenceEquals(live, sharedWorkingRandom) || !IsSpawnRandomSource(live)) return false;
         ulong serial = mutationSerial;
+        var wetSource = spawnWetCollision;
         var before = live.Clone();
         var workingBefore = sharedWorkingRandom.Clone();
         var context = _spawnContext?.Invoke();
         if (context is not { IsValid: true } || mutationSerial != serial ||
             !IsSpawnRandomSource(live) || !live.HasSameState(before) ||
-            !sharedWorkingRandom.HasSameState(workingBefore)) return false;
-        preparation = new(this, serial, context.Value, live, before, sharedWorkingRandom);
+            !sharedWorkingRandom.HasSameState(workingBefore) || !ReferenceEquals(wetSource, spawnWetCollision)) return false;
+        preparation = new(this, serial, context.Value, live, before, sharedWorkingRandom, wetCollision, wetSource);
         return true;
     }
 
@@ -40,6 +46,7 @@ public sealed partial class RuntimeNpcStore
         private readonly VanillaUnifiedRandom1458 live;
         private readonly VanillaUnifiedRandom1458 before;
         private readonly VanillaUnifiedRandom1458 working;
+        private readonly Func<float, float, int, int, bool>? wetSource;
         private readonly List<NpcSnapshot> births = [];
         private readonly HashSet<byte> changed = [];
         private int calls;
@@ -47,19 +54,22 @@ public sealed partial class RuntimeNpcStore
         private bool adopted;
 
         internal PreparedWorldSpawns(RuntimeNpcStore owner, ulong serial, VanillaNpcSpawnContext context,
-            VanillaUnifiedRandom1458 live, VanillaUnifiedRandom1458 before, VanillaUnifiedRandom1458 working)
+            VanillaUnifiedRandom1458 live, VanillaUnifiedRandom1458 before, VanillaUnifiedRandom1458 working,
+            Func<float, float, int, int, bool>? wetCollision, Func<float, float, int, int, bool>? wetSource)
         {
             this.owner = owner; this.serial = serial; this.context = context;
-            this.live = live; this.before = before; this.working = working;
+            this.live = live; this.before = before; this.working = working; this.wetSource = wetSource;
             detached = new(owner.Capacity);
             owner._slots.CopyTo(detached._slots, 0);
             detached._activeCount = owner._activeCount;
             detached._spawnRandom = new SystemVanillaNpcRandom(working);
             detached._spawnContext = () => context;
+            detached.spawnWetCollision = wetCollision;
         }
 
         internal bool IsCurrentOwned => !failed && !adopted && !owner.mutationSerialExhausted &&
-            owner.mutationSerial == serial && owner.IsSpawnRandomSource(live) && live.HasSameState(before);
+            owner.mutationSerial == serial && owner.IsSpawnRandomSource(live) && live.HasSameState(before) &&
+            ReferenceEquals(wetSource, owner.spawnWetCollision);
         internal bool ValidateContext() => IsCurrentOwned && owner._spawnContext?.Invoke() == context && IsCurrentOwned;
         internal ReadOnlySpan<NpcSnapshot> Births => CollectionsMarshal.AsSpan(births);
 
@@ -140,7 +150,12 @@ public sealed partial class RuntimeNpcStore
                     SpawnDifficulty = difficulty, LocalAi = intent.InitialLocalAi,
                     CanBeReplacedByOtherNpcs = intent.CanBeReplacedByOtherNpcs
                 });
-            if (!detached.TrySpawnVanillaCore(in update, out birth, intent.StartSlot, defaults, publish: false) ||
+            // NewNPC evaluates WetCollision after allocation/defaults and before retaining the birth.
+            // The supplied tool query reads its guarded staged terrain; adoption invokes no provider.
+            var beforeWet = working.Clone();
+            if (!detached.TryApplySpawnWetCollision(in update, defaults, out var wetUpdate) ||
+                !IsCurrentOwned || !working.HasSameState(beforeWet)) return Fail();
+            if (!detached.TrySpawnVanillaCore(in wetUpdate, out birth, intent.StartSlot, defaults, publish: false) ||
                 !detached.TryRetainPendingBirth(in birth)) return Fail();
             allocated = true;
             changed.Add(birth.Handle.Slot);

@@ -16,7 +16,7 @@ internal sealed partial class WorldTileAuthority
                 if (npcSpawns is null)
                 {
                     var live=((SystemWorldItemSpawnRandom)owner.worldItemSpawnRandom).SourceRandom;
-                    if (!owner.npcs.TryPrepareWorldSpawns(live,SourceRandom,out npcSpawns) || npcSpawns is null) return Fail();
+                    if (!owner.npcs.TryPrepareWorldSpawns(live,SourceRandom,CaptureSourceNpcWet,out npcSpawns) || npcSpawns is null) return Fail();
                 }
                 if (!npcSpawns.TryStageLarvaBoss(boss.BottomX,boss.BottomY,boss.Target,boss.PlayerCount,out bool allocated,out var birth)) return Fail();
                 if (allocated) { boss.BindBirth(in birth);publicationOrder.Add(ToolWorldPublicationKind1458.Npc); }

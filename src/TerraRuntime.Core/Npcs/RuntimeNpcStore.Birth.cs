@@ -75,7 +75,8 @@ public sealed partial class RuntimeNpcStore
         }
     }
 
-    private void PublishCurrentUpdate(ref SlotState state, in NpcSnapshot snapshot, bool forceSync)
+    private void PublishCurrentUpdate(ref SlotState state, in NpcSnapshot snapshot, bool forceSync,
+        bool vanillaNetworkPhase = false, bool lowPriority = false)
     {
         NpcStateCommitKind kind = state.BirthPending
             ? NpcStateCommitKind.Spawn
@@ -85,6 +86,9 @@ public sealed partial class RuntimeNpcStore
             state.BirthPending = false;
             MarkSlotMutation();
         }
-        _commitSink?.NpcStateCommitted(kind, in snapshot);
+        if (vanillaNetworkPhase)
+            _commitSink?.NpcVanillaAiStateCommitted(kind, in snapshot, lowPriority);
+        else
+            _commitSink?.NpcStateCommitted(kind, in snapshot);
     }
 }

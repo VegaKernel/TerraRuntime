@@ -59,6 +59,7 @@ public sealed partial class RuntimeNpcStore
             owner._slots.CopyTo(detached._slots, 0);
             detached._activeCount = owner._activeCount;
             detached._spawnRandom = new SystemVanillaNpcRandom(Random);
+            detached.spawnWetCollision = owner.spawnWetCollision;
             if (context is { } captured)
                 detached._spawnContext = () => captured;
             if (!float.IsFinite(centerX) || !float.IsFinite(bottomY) || centerX != (int)centerX || bottomY != (int)bottomY)

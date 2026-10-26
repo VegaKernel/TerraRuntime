@@ -25,6 +25,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 
 - [Original NPC identity inventory](npc-source-inventory-1458.md)
 - [AI3/AI7 definition roster and shared staircase descent](npc-ai3-ai7-roster-1458.md)
+- [AI3/AI7 runtime admission and remaining dependencies](npc-ai3-ai7-runtime-1458.md)
 - [Owned NPC health context and physical producers](npc-owned-health-and-producers-1458.md) — remote life clocks, whole admitted Guide Doll operation and source herb/web placement.
 - [Town NPC death rewards](town-npc-death-rewards-1458.md)
 

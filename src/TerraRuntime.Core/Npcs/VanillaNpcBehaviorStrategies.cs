@@ -683,6 +683,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNp
 internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
 {
     private readonly IVanillaNpcRandom random = random ?? throw new ArgumentNullException(nameof(random));
+
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -759,7 +760,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         }
         // AI_003's ambient sound offer reads shimmerTransparency, independently of alpha. The preceding
         // Shimmer VFX phase remains unowned; unknown or nonzero histories cannot enter this dry lane.
-        if (definition.Type == VanillaNpcIds.Zombie &&
+        if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) &&
             (npc.Simulation.ShimmerTransparency != 0f || npc.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer))
         {
             next = default;
@@ -858,7 +859,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
               definition.Type == VanillaNpcIds.SwampThing) && context.EclipseActive) &&
             npc.PositionY < context.WorldSurfacePixels &&
             parameters.DaySurfaceEncouragesDespawn;
-        if (definition.Type == VanillaNpcIds.Zombie)
+        if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) && definition.Type != VanillaNpcIds.AngryBones)
         {
             daytimeSurface = context.DayTime && !context.EclipseActive && !npc.Simulation.SpawnedFromStatue &&
                 npc.PositionY <= context.WorldSurfacePixels;
@@ -946,9 +947,26 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         }
 
         VanillaBlueSlimeTargetRefresh closest =
-            context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
+            (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type)
+                ? context.TrySelectRawClosestTarget(in npc, in definition, out var selected)
+                : context.TrySelectClosestTarget(in npc, in definition, out selected))
                 ? selected
                 : default;
+        if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) && closest.HasTarget &&
+            context.TryFindCandidate((byte)closest.Target, out var facingCandidate) && facingCandidate.Active && !facingCandidate.Dead)
+        {
+            // Target scoring uses Entity.Center, but SetTargetTrackingValues faces the integer
+            // targetRect and integer half body. It runs before the fighter's vertical correction.
+            bool retainFacing = facingCandidate.NoAggro && npc.Simulation.DirectionX != 0 ||
+                facingCandidate.ItemAnimation == 0 && facingCandidate.Aggro < 0 && npc.Target < byte.MaxValue;
+            int facingX = retainFacing ? npc.Simulation.DirectionX :
+                (int)(facingCandidate.CenterX - facingCandidate.Width * .5f) + (int)facingCandidate.Width / 2 <
+                    npc.PositionX + fighterBody.Width / 2 ? -1 : 1;
+            int facingY = retainFacing ? startingDirectionY :
+                (int)(facingCandidate.CenterY - facingCandidate.Height * .5f) + (int)facingCandidate.Height <=
+                    npc.PositionY + fighterBody.Height ? -1 : 1;
+            closest = closest with { DirectionX = npc.Simulation.Confused ? -facingX : facingX, DirectionY = facingY };
+        }
         // TargetClosest retains slot zero geometry when no active player can be selected.
         // Nailhead can still release its untargeted volley; inactive geometry never enters that target list.
         if (!closest.HasTarget && definition.Type == VanillaNpcIds.Nailhead &&
@@ -1064,7 +1082,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
 
         // Genuine dedicated-server SoundID.Zombie offer, after source stuck tracking and before pursuit.
         // SoundEngine's server path adds no further random selection; this is not a cursor compensation.
-        if (definition.Type == VanillaNpcIds.Zombie && result.Ai.Ai3 < parameters.StuckThreshold && !daytimeSurface)
+        if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) && result.Ai.Ai3 < parameters.StuckThreshold && !daytimeSurface)
             _ = random.NextInt32(0, 1000);
 
         if (definition.Type == VanillaNpcIds.ChaosElemental && result.VelocityY < 0f)
@@ -1168,7 +1186,16 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
                 JustHit = false,
                 TimeLeft = result.TimeLeft,
                 DamageOverride = damageOverride
-            });
+            })
+        {
+            // SetTargetTrackingValues owns the source netUpdate offer before world collision.
+            VanillaNetworkPhase = VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type),
+            RequiresLowPrioritySync = VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) && npc.Simulation.JustHit,
+            RequiresImmediateSync = VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) &&
+                result.TargetRefreshes > 0 && !npc.Simulation.CollideX && !npc.Simulation.CollideY &&
+                (closest.Target != npc.Target || closest.DirectionX != npc.Simulation.DirectionX ||
+                 closest.DirectionY != npc.Simulation.DirectionY)
+        };
         return true;
     }
 

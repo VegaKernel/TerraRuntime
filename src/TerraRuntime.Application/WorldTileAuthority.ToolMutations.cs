@@ -239,7 +239,7 @@ internal sealed partial class WorldTileAuthority
             if (npcSpawns is null)
             {
                 var live = ((SystemWorldItemSpawnRandom)owner.worldItemSpawnRandom).SourceRandom;
-                if (!owner.npcs.TryPrepareWorldSpawns(live, SourceRandom, out npcSpawns) || npcSpawns is null) return Fail();
+                if (!owner.npcs.TryPrepareWorldSpawns(live, SourceRandom, CaptureSourceNpcWet, out npcSpawns) || npcSpawns is null) return Fail();
             }
             if (!npcSpawns.TryStage(in intent, out allocated, out birth)) return Fail();
             if (allocated) publicationOrder.Add(ToolWorldPublicationKind1458.Npc);

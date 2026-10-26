@@ -233,7 +233,11 @@ public static class VanillaZombieMotion
 
         float maximumSpeed = input.BaseMaximumHorizontalSpeed;
         if (input.ScaleAdjustsMaximumHorizontalSpeed)
-            maximumSpeed *= 1f + (1f - input.Scale);
+            // The original Windows x86 fighter keeps the subtraction/product wider until the
+            // speed assignment. Separate original multi-update captures expose signed-body drift.
+            maximumSpeed = OperatingSystem.IsWindows()
+                ? (float)(maximumSpeed * (1d + (1d - input.Scale)))
+                : maximumSpeed * (1f + (1f - input.Scale));
         if ((velocityX > 0f && directionX < 0) || (velocityX < 0f && directionX > 0))
             velocityX *= input.ReversingVelocityDamping;
         if (armedAttackTick)

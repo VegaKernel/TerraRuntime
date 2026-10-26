@@ -48,11 +48,12 @@ internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper, INpcA
             return true;
         }
 
-        if (!VanillaZombieCheckActive.TryStep(
+        if (!definition.TryResolveHitbox(next.Simulation, out var body) ||
+            !VanillaZombieCheckActive.TryStep(
                 next.PositionX,
                 next.PositionY,
-                definition.Width,
-                definition.Height,
+                body.Width,
+                body.Height,
                 next.Simulation.TimeLeft,
                 candidates.AsSpan(0, candidateCount),
                 out VanillaZombieCheckActiveResult lifetime))

@@ -26,7 +26,8 @@ public readonly record struct TerrariaNpcUpdateState(
     int LifeMax,
     bool SpawnNeedsSyncing,
     float SpawnDifficulty = 1f,
-    byte ReleaseOwner = byte.MaxValue)
+    byte ReleaseOwner = byte.MaxValue,
+    bool SpawnedFromStatue = false)
 {
     // NPC.AI style 82 / ProjectileKey in protocol 326: this AI field is an opaque bit carrier.
     private const int MoonLordLeechBlobType = 401;

@@ -166,13 +166,15 @@ public sealed class FrostLegionRetainedDeath1458Tests
     }
 
     [Fact]
-    public void Source_roster_stays_metadata_only_and_public_combat_cannot_admit_unrepresented_ai38()
+    public void Source_roster_creation_defaults_do_not_admit_public_combat_for_unrepresented_ai38()
     {
         foreach (int type in new[] { 143, 144, 145 })
         {
             var fixture = new BackendFixture(type);
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), out var definition));
-            Assert.True(definition.DefinitionOnly);
+            Assert.False(definition.DefinitionOnly);
+            Assert.True(definition.CreationDefaultsOnly);
+            Assert.False(definition.SupportsRuntimeLifecycle);
             var before = fixture.Random.Clone();
             Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Rejected,
                 fixture.Pipeline.TryStrikeEnvironment(fixture.Npc.Handle, 100000));
@@ -235,8 +237,8 @@ public sealed class FrostLegionRetainedDeath1458Tests
 
         internal NpcSnapshot Spawn(int type, byte slot)
         {
-            // Explicit source body for backend proof only. TrySpawnVanilla and public combat
-            // keep the DefinitionOnly barrier until the separate NPC owner admits real AI38.
+            // Explicit source body for backend proof only. Creation defaults do not
+            // remove the public combat/lifecycle barrier for unrepresented AI38.
             var update = new NpcStateUpdate(type, (short)type, 800, 440, 0, 0, 0, default,
                 NpcSimulationState.Initial with
                 {

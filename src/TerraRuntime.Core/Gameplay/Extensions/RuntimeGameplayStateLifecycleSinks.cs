@@ -6,7 +6,7 @@ namespace TerraRuntime.Core.Extensions;
 /// Allocation-free hot-path fan-out for immutable NPC commit events. Composition happens once on the cold path;
 /// the authoritative store still owns event order and invokes every sink synchronously after a successful commit.
 /// </summary>
-public sealed class NpcStateCommitSinkFanout : INpcStateCommitSink
+public sealed class NpcStateCommitSinkFanout : INpcStateCommitSink, INpcBirthRetentionSink
 {
     private readonly INpcStateCommitSink[] sinks;
 
@@ -24,6 +24,24 @@ public sealed class NpcStateCommitSinkFanout : INpcStateCommitSink
     {
         foreach (INpcStateCommitSink sink in sinks)
             sink.NpcStateCommitted(kind, in snapshot);
+    }
+
+    public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false)
+    {
+        foreach (INpcStateCommitSink sink in sinks)
+            sink.NpcVanillaAiStateCommitted(kind, in snapshot, lowPriority);
+    }
+
+    public void NpcCatchCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing)
+    {
+        foreach (INpcStateCommitSink sink in sinks)
+            sink.NpcCatchCommitted(in snapshot, spawnNeedsSyncing);
+    }
+
+    public void NpcBirthRetained(in NpcSnapshot snapshot)
+    {
+        foreach (INpcStateCommitSink sink in sinks)
+            if (sink is INpcBirthRetentionSink retained) retained.NpcBirthRetained(in snapshot);
     }
 }
 

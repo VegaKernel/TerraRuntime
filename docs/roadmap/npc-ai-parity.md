@@ -1,8 +1,20 @@
 # Vanilla NPC and AI parity roadmap
 
+## Combined source candidate, 2026-10-26
+
+The remaining-defaults component and the independently accepted first37 runtime branch compose to468 explicit lifecycle identities,287 `CreationDefaultsOnly` identities and the single metadata-only664 row. Creation remains690/691 nonzero-life positive identities and65/65 signed variants. The earlier38-case component preserved431 lifecycle admissions; that historical proof is not relabelled as first37 or combined acceptance. The two checkpoints' focused/full/Native results remain separately scoped; combined shipping acceptance is pending. `FullVanillaAiParity` stays false. Root tools/Larva and the source-overlay wet-on-birth seam retain their own currentness and publication boundaries.
+
 ## Remaining creation-default roster, cache component 2026-10-26
 
 189 positive definitions and the final2 signed variants now have source-backed creation/default rules in the isolated component:690/691 positive creation coverage and65/65 signed. Source664 remains queryable metadata with source0x0 body. All431 previous runtime registrations stay unchanged;324 creation-only identities remain fenced. Coherent38 normal cases and five actual omission/restoration controls pass; no new full/Native/shipping claim. Detailed source boundaries: [EN](../en/npc-source-definition-roster-1458.md), [RU](../ru/npc-source-definition-roster-1458.md). The501/63 counts below describe the earlier AI3/AI7 checkpoint.
+
+## AI3/AI7 runtime worktree, 2026-10-26
+
+Branch `feature/npc-ai3-ai7-runtime`, base `origin/main` `ed1021ee`, admits an explicit first30 cohort: positive201/202/203/635 and signed-13/-14/-26..-37/-44..-55. Real source birth/update/strike/death sequences reuse existing defaults, collision, dispatcher, world RNG, damage/loot and replication. Corrections include integer terrain/facing/Hitbox rules, initial wet state, Expert elevated jumps, Windows arithmetic and source netSpam/proximity chronology. Scoped Release WAE0/0 and33,433 checks pass, including2,070 original groups/40,922 updates per platform and every retained packet offer. The rejected global money-arithmetic prototype is preserved separately; the admitted rule is explicit to this cohort and leaves legacy expectations intact. Final combined acceptance is recorded in the following post-grace checkpoint.
+
+The same branch now also explicitly admits seven nonresident gem bunnies646..652, including post-AI temporary protection, post-grace movement, wet/status/death ordering, ordinary/statue/pending catch and home/buff replay. Their unique source corpus is6286 outerupdates+252 innerAI+42 catches per edition, plus28 actual pending catches; numeric/wire duplicates are not recounted. Current post-grace WAE0/0,33679 focused, fast25134/25135(one existing allowed skip), fresh WindowsNative+five smokes and typedNative6 pass. Full5065 methods passes1566547/1566548 with the same single allowed skip; this is the locally accepted first37 checkpoint. Totals:468 global lifecycle,204/300 AI3/AI7 lifecycle,96 creation-only. SourceWorld SwitchTiles/HitSwitch and full ordinary selector ordering remain explicit shared dependencies; LinuxNative is unverified locally.
+
+AI7 gem bunnies646..652 are an explicitly admitted nonresident cohort using existing status/contact/death/catch owners; combined final acceptance is recorded above. They do not inherit town scheduling or commerce. Ordinary new spawn pools remain blocked pending earlier source selection/fact dependencies; event pools stay with the events workstream. FullVanillaAiParity remains false. Current scope, rejected oracle setup, evidence and remaining limits: [English](../en/npc-ai3-ai7-runtime-1458.md), [Русский](../ru/npc-ai3-ai7-runtime-1458.md). Do not merge/push this branch; integration belongs to the main chat.
 
 ## AI3/AI7 definition roster and shared staircase state, 2026-10-25
 

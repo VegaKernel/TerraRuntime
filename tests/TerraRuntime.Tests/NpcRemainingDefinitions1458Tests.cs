@@ -143,7 +143,8 @@ public sealed class NpcRemainingDefinitions1458Tests
                 if(d.SupportsRuntimeLifecycle)lifecycle++;
             }
         Assert.Equal(690,created);Assert.Equal(1,metadata);
-        Assert.Equal(431, lifecycle + CountSignedLifecycle());
+        // Previous431 plus the independent first37 undead/gem-bunny lifecycle block.
+        Assert.Equal(468, lifecycle + CountSignedLifecycle());
         int signed=0;
         for(short net=-65;net<0;net++) for(int type=1;type<=696;type++)
             if(VanillaNpcDefinitionCatalog.TryGet(new(type),new(net),out var d) && !d.DefinitionOnly) signed++;

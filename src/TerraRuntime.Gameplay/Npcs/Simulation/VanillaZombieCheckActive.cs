@@ -20,8 +20,6 @@ public static class VanillaZombieCheckActive
     private const int ScreenHeight = 1200;
     private const int ActiveRangeX = 4032;
     private const int ActiveRangeY = 2520;
-    private const int PlayerWidth = 20;
-    private const int PlayerHeight = 42;
 
     public static bool TryStep(
         float positionX,
@@ -43,13 +41,13 @@ public static class VanillaZombieCheckActive
         }
 
         var activeRange = new IntRect(
-            (int)(positionX + width * 0.5f - ActiveRangeX),
-            (int)(positionY + height * 0.5f - ActiveRangeY),
+            (int)(positionX + width / 2 - ActiveRangeX),
+            (int)(positionY + height / 2 - ActiveRangeY),
             ActiveRangeX * 2,
             ActiveRangeY * 2);
         var resetRange = new IntRect(
-            (int)((double)(positionX + width * 0.5f) - ScreenWidth * 0.5d - width),
-            (int)((double)(positionY + height * 0.5f) - ScreenHeight * 0.5d - height),
+            (int)((double)(positionX + width / 2) - ScreenWidth * 0.5d - width),
+            (int)((double)(positionY + height / 2) - ScreenHeight * 0.5d - height),
             ScreenWidth + width * 2,
             ScreenHeight + height * 2);
 
@@ -67,10 +65,10 @@ public static class VanillaZombieCheckActive
             }
 
             var hitbox = new IntRect(
-                (int)(player.CenterX - PlayerWidth * 0.5f),
-                (int)(player.CenterY - PlayerHeight * 0.5f),
-                PlayerWidth,
-                PlayerHeight);
+                (int)(player.CenterX - player.Width * 0.5f),
+                (int)(player.CenterY - player.Height * 0.5f),
+                (int)player.Width,
+                (int)player.Height);
 
             if (activeRange.Intersects(hitbox))
                 playerInActiveRange = true;

@@ -12,6 +12,9 @@ public readonly record struct ToolDustTile1458(TileTypeId Type, short FrameX, sh
 /// </summary>
 public static class VanillaToolDust1458
 {
+    // MakeTileDust (1.4.5.8) uses separate atlas strides for these families.
+    private const int PileFrameStep = 22;
+    private const int PlatformFrameStep = 18;
     public static bool TryGetAmount(in ToolDustTile1458 tile, bool fail, out int amount)
     {
         amount = 0;
@@ -28,7 +31,7 @@ public static class VanillaToolDust1458
             541 => 1,
             549 => 2,
             534 or 536 or 539 or 625 or 627 => fail ? 3 : 5,
-            184 when tile.FrameX / 22 >= 5 => 5,
+            184 when tile.FrameX / PileFrameStep >= 5 => 5,
             _ => fail ? 3 : 10
         };
         return true;
@@ -55,7 +58,7 @@ public static class VanillaToolDust1458
         }
         if (type is 641 or 370 or 171)
             nextInteger(0, 2);
-        if (type == 19 && tile.FrameY / 18 == 30)
+        if (type == 19 && tile.FrameY / PlatformFrameStep == 30)
             nextInteger(0, 3);
         if (type == 254 && tile.FrameX >= 72)
             nextInteger(0, tile.FrameX < 108 ? 3 : tile.FrameX < 144 ? 2 : 4);

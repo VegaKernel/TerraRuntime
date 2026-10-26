@@ -33,6 +33,8 @@ public static class TerrariaNpcUpdateEncoder
 
         if (state.SpawnDifficulty != 1f)
             extraFlags |= NpcUpdateExtraFlags.HasDifficultyOverride;
+        if (state.SpawnedFromStatue)
+            extraFlags |= NpcUpdateExtraFlags.SpawnedFromStatue;
 
         var packet = new NpcUpdate
         {
