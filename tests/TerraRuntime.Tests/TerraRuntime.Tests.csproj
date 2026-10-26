@@ -990,4 +990,10 @@
     <EmbeddedResource Include="Fixtures/tool-frame-reset-linux.json.gz" LogicalName="ToolFrameResetLinux1458" />
     <EmbeddedResource Include="Fixtures/tool-frame-reset-windows.json.gz" LogicalName="ToolFrameResetWindows1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/FishingRulesLinux1458.json.gz" LogicalName="FishingRulesLinux1458" />
+    <EmbeddedResource Include="Fixtures/OriginalFishingCrate1458.json.gz" LogicalName="OriginalFishingCrate1458" />
+    <EmbeddedResource Include="Fixtures/AnglerOriginal1458.json.gz" LogicalName="AnglerOriginal1458" />
+    <EmbeddedResource Include="Fixtures/FishingNpcBirthOriginal1458.json.gz" LogicalName="FishingNpcBirthOriginal1458" />
+  </ItemGroup>
 </Project>

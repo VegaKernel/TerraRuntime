@@ -179,6 +179,7 @@ public static class WorldFileProgressionHeaderPatcher
             mutations.UnlockSlimeBlueSpawn ||
             mutations.UnlockTruffleSpawn ||
             mutations.UnlockSlimeYellowSpawn ||
+            mutations.UnlockSlimeRedSpawn ||
             mutations.RescuedTownNpcs != RuntimeTownRescueFacts1458.None;
         if (needsTownState && !TryLocateTownState(ref reader, out townState))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
@@ -240,6 +241,8 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[townState.TruffleOffset] = 1;
         if (mutations.UnlockSlimeYellowSpawn && !townState.PersistedSlimeYellow)
             patchedHeader[townState.SlimeYellowOffset] = 1;
+        if (mutations.UnlockSlimeRedSpawn && !townState.PersistedSlimeRed)
+            patchedHeader[townState.SlimeRedOffset] = 1;
         PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Goblin, townState.SavedGoblinOffset, townState.PersistedSavedGoblin);
         PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Wizard, townState.SavedWizardOffset, townState.PersistedSavedWizard);
         PatchTownRescueFact(patchedHeader, mutations.RescuedTownNpcs, RuntimeTownRescueFacts1458.Mechanic, townState.SavedMechanicOffset, townState.PersistedSavedMechanic);
@@ -283,7 +286,9 @@ public static class WorldFileProgressionHeaderPatcher
         int TruffleOffset,
         bool PersistedTruffle,
         int SlimeYellowOffset,
-        bool PersistedSlimeYellow);
+        bool PersistedSlimeYellow,
+        int SlimeRedOffset,
+        bool PersistedSlimeRed);
 
     private static void PatchTownRescueFact(
         byte[] header,
@@ -325,7 +330,8 @@ public static class WorldFileProgressionHeaderPatcher
             !reader.TryReadInt32(out _) ||
             !reader.TryReadInt16(out _) ||
             !reader.TryReadSingle(out _) ||
-            !reader.TryReadInt32(out int anglerCount) || anglerCount < 0 || anglerCount > 255)
+            !reader.TryReadInt32(out int anglerCount) || anglerCount < 0 ||
+            anglerCount > WorldAnglerQuestData1458.MaximumCompletedNames)
         {
             return false;
         }
@@ -394,8 +400,10 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool slimeBlue) || !reader.TrySkipBools(4)) return false;
         int truffleOffset = reader.Offset;
         if (!reader.TryReadBool(out bool truffle)) return false;
-        // arms dealer, nurse, princess, combat book II, peddler satchel, green/old/purple/rainbow/red slimes.
-        if (!reader.TrySkipBools(10)) return false;
+        // arms dealer, nurse, princess, combat book II, peddler satchel, green/old/purple/rainbow slimes.
+        if (!reader.TrySkipBools(9)) return false;
+        int slimeRedOffset = reader.Offset;
+        if (!reader.TryReadBool(out bool slimeRed)) return false;
         int slimeYellowOffset = reader.Offset;
         if (!reader.TryReadBool(out bool slimeYellow)) return false;
 
@@ -414,7 +422,8 @@ public static class WorldFileProgressionHeaderPatcher
             deerclopsOffset, deerclops,
             slimeBlueOffset, slimeBlue,
             truffleOffset, truffle,
-            slimeYellowOffset, slimeYellow);
+            slimeYellowOffset, slimeYellow,
+            slimeRedOffset, slimeRed);
         return true;
     }
 
