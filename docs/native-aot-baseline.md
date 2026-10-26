@@ -1,5 +1,11 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Fishing candidate: managed checks, Native pending, 2026-10-26
+
+Frozen source `05a6ab49b447b1af1189950d8c8ff6288082d3d3f878b1b0a380ec7960e9d15f` (3973inputs,197canonical Test/Server DLL paths) passes Release warnings-as-errors, focused532/532 and mandatoryfast25315/25316 with one existing canonical-liquid skip. Full planned all5229methods but was interrupted explicitly by the user to free the shared heavy slot after $2503.992\,\mathrm{s}$; no finalXML exists and accepted=false. This is not a full or Native acceptance checkpoint.
+
+No production dependency or runtime reflection/code-generation surface was added. The private statically linked fishing replay builds managed Release with AOT/trim analyzers and exercises9unchanged Facts/37484assertions, including actual cast/payment/liquids/potions/Fishron; it has not been Native-published. Fresh standard WindowsNative/five smokes, typedNative and real Release/Native TCP remain pending slot coordination. The Linux publish guard refuses linux-x64 on this win-x64 host, and no WSL distribution is available; genuine LinuxNative is unverified. Evidence `.cache/fishing-acceptance/candidate07/acceptance.json` is explicitly pending/accepted=false. Earlier accepted baselines below do not attest this candidate.
+
 ## Connected player item use: local validation, 2026-10-26
 
 Source fingerprint `e961fdad729ab4a4bbd0c2771b3286804cf86f6c025bf6bb26d04fbc0a38ce86` passes fresh Release tests/server warnings-as-errors, focused162/162, fast25282/25283 and one unfiltered full1566695/1566696. Zero failures/errors, one known canonical-liquid skip; the actual full XML contains all5201 discovered methods. All3932 source/config/fixture inputs and158 executed DLLs remain unchanged. Full test time is $1060.887\,\mathrm{s}$ and wall time is $1078.834\,\mathrm{s}$.

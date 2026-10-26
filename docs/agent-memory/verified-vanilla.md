@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Fishing evidence boundary after interrupted acceptance, 2026-10-26
+
+Source/component proof and normal runtime532 plus mandatoryfast25315/25316 are retained. Crate07-v3 actual XML TrueException/TrueException/EqualException controls are valid; earlier InvalidProgram attempts are rejected. SpecialNPC quantization05 and source/test bridge07 remain scoped component proof. The user's shared-slot decision interrupted the only full run before XML creation, so no full case totals, broad acceptance or Native/live fishing claim follows. Typed fishing replay currently has managed-only9methods/37484assertions. Original Linux-edition assembly observations on Windows are not LinuxNative execution. See work-state for exact source pins, interruption record, supported chains and remaining gates.
+
 ## Fishing caller roles and causal evidence correction, 2026-10-26
 
 Actual official special-NPC births:42 calls (7types*2callerroles*3seeds),21 dedicated runtime comparisons. Packet130 truncates and tile-quantizes nonFishron coordinates after Nautilus64; direct/SP ItemCheck does not. Fishron370 uses bobber center+100, ordinary NewNPC/slot0/Target255/timeLeft937. Red682 consumes existing name/profile RNG, adopts townresident+unlock before7/retention/23 and enters checkpoint owners. NPC source/test/fixture hashes bridge unchanged05->07; copied same-DLL unquantized control produces actual Xunit position failure then restoration passes. Birth evidence is separate from complete NPC AI and scheduler parity.

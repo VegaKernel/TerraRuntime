@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+## Connected fishing: code checkpoint, acceptance slot released, 2026-10-26
+
+Isolated `feature/fishing-authority-1458` contains commits `8bcd2109` (source rules/world state) and `ca6c935f` (owned runtime chain/tests/paired guides). Release WAE0/0, focused532/532 and mandatoryfast25315/25316 pass; the one skip is the existing canonical-liquid case. The user explicitly stopped our only full run to free the slot for the main chat; all5229methods were planned, but no finalXML or acceptedfull result exists. Fresh WindowsNative/typedNative/live and genuineLinuxNative remain pending. No main merge/push, new dependency or complete vanilla-compatibility claim.
+
+The connected pole/bait/bobber/catch, daily Angler and26crate paths are implemented within the scope linked below. Durable character `.plr` inventory/count ownership, broader gear/body/chum/Shimmer contexts, initial fresh-world quest selection, complete special-NPC scheduling/AI and transparent arbitrary vanilla crate UI RNG histories remain open. Source freeze and exact resume gates are in [work-state](agent-memory/work-state.md).
+
 ## Connected fishing branch: implementation candidate, 2026-10-26
 
 Isolated `feature/fishing-authority-1458` starts at fetched `origin/main` `ebd727d7` in `TerraRuntime-fishing`. The new path joins locally qualified base-pole use, existing funded bait quantities, owned projectile AI61, actual pond/liquid/scene/clock/weather conditions, source bite/drop streams, paid pull and returning catch rewards. Three paid fishing potions and consumed ladybug effects use existing clocks/luck/weather. Angler quests adopt fish payment before rewards, retain world daily completion names and save the validated variable header block. All26 crates retain rewards-before-debit, existing inventory/overflow storage and source RNG order; exact inventory-journal reports can establish one source opening, with a public revision-bound host action for explicit intent. See [fishing EN](en/fishing-authority-1458.md)/[RU](ru/fishing-authority-1458.md), [Angler EN](en/angler-quest-authority-1458.md)/[RU](ru/angler-quest-authority-1458.md), [crates EN](en/fishing-crates-authority-1458.md)/[RU](ru/fishing-crates-authority-1458.md).

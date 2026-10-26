@@ -1,5 +1,11 @@
 # Production graph
 
+## Fishing freeze and pending integration gates, 2026-10-26
+
+The connected fishing graph is committed as `8bcd2109` + `ca6c935f`; no dependency/project edge added and no main integration performed. Release WAE and focused532 plus mandatoryfast25315/25316 pass. Full planned5229methods was stopped explicitly by the user to release the shared heavy slot; no fullXML/acceptance, Native or live evidence exists for this candidate. Source3973 SHA05a6ab49b447b1af1189950d8c8ff6288082d3d3f878b1b0a380ec7960e9d15f and197canonical DLLs remain frozen. Resume heavy gates only after slot coordination; interrupted evidence is not a successful checkpoint.
+
+Merge-sensitive owners: PlayerAuthority remote phase/ToolSelection/GemStaff/buffs/luck and membership/transfer; all RuntimePlayerInventoryStore caps/captures/bank/cursor/coin paths (shared QuantityLaneCount); ProjectileAuthority ingress/simulation and replication; NpcAuthority plus Core NaturalSpawn publication and town-resident store; WorldRuntime composition/clock/checkpoint; World metadata/header rewriting/prepared cache6/progression and protocol world7; test resource aliases and paired docs. Other branches must use the same variable cap stride in any added custody participants. No second economy or rewardledger was introduced.
+
 ## Fishing candidate07 integration guard, 2026-10-26
 
 Source graph remains frozen at3973-input SHA `05a6ab49b447b1af1189950d8c8ff6288082d3d3f878b1b0a380ec7960e9d15f`. The existing quantity owner now has a variable admitted-lane count; pending Gem refill prediction must use the same stride as inventory/cursor/bank/transfer captures. Its old `slot*5+lane` sibling was caught by the unchanged pending-twins test and corrected. Exact owned consumable transitions retain their canonical local definition for potion->pole/tool/weapon buffering. Dedicated fishing cloud background is zero on the no-draw source path and is distinct from the existing rain-driven cloudAlpha used by WindyDayMusic. Focused532 passes; common fast/full/Native/live acceptance is still pending and must not be inferred from component evidence.
