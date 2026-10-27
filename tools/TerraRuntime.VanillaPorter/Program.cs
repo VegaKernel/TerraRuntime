@@ -224,10 +224,18 @@ internal static class Program
             if (id.Identifier.ValueText == map.SourceParameter && id.Parent is not MemberAccessExpressionSyntax)
                 throw new InvalidOperationException("Direct source-parameter access is unsupported.");
         }
-        foreach (var expression in map.Members.Values)
-            if (SyntaxFactory.ParseExpression(expression).ContainsDiagnostics
-                || expression.Contains(';') || expression.Contains('\n'))
-                throw new InvalidOperationException("Invalid mapped expression: " + expression);
+        foreach (var (original, expression) in map.Members)
+        {
+            var from = SyntaxFactory.ParseExpression(original);
+            var to = SyntaxFactory.ParseExpression(expression);
+            if (from is not MemberAccessExpressionSyntax || to is not MemberAccessExpressionSyntax
+                || Root(from) != map.SourceParameter || Root(to) != map.TargetParameter
+                || from.DescendantNodesAndSelf().Any(x => x is InvocationExpressionSyntax)
+                || to.DescendantNodesAndSelf().Any(x => x is InvocationExpressionSyntax)
+                || original.Contains('\n') || expression.Contains('\n')
+                || original.Contains(';') || expression.Contains(';'))
+                throw new InvalidOperationException("Mapping must be a pure member path on source/target actors.");
+        }
 
         var body = (BlockSyntax)new MemberRewriter(map.Members).Visit(method.Body)!;
         var changed = parameter.WithIdentifier(SyntaxFactory.Identifier(map.TargetParameter))
@@ -243,6 +251,13 @@ internal static class Program
             throw new InvalidOperationException("Generated C# has syntax errors.");
         return code;
     }
+
+    private static string? Root(ExpressionSyntax expression) => expression switch
+    {
+        IdentifierNameSyntax name => name.Identifier.ValueText,
+        MemberAccessExpressionSyntax member => Root(member.Expression),
+        _ => null,
+    };
 
     private sealed class MemberRewriter(Dictionary<string, string> members) : CSharpSyntaxRewriter
     {
