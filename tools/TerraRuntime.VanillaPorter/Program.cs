@@ -268,8 +268,8 @@ internal static class Program
         var actorB = b.GetType("GeneratedVanilla.PortedActor")!;
         var runA = a.GetType("OriginalMotion")!.GetMethod("Step")!;
         var runB = b.GetType("GeneratedVanilla.PortedMotion")!.GetMethod("Step")!;
-        foreach (float x in [-10f, -1f, 0f, 1f, 10f])
-        foreach (float target in [-11f, 0f, 11f])
+        foreach (float x in new[] { -10f, -1f, 0f, 1f, 10f })
+        foreach (float target in new[] { -11f, 0f, 11f })
         {
             var va = Activator.CreateInstance(actorA)!;
             var vb = Activator.CreateInstance(actorB)!;
@@ -289,7 +289,7 @@ internal static class Program
     {
         var trusted = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")
             ?? throw new InvalidOperationException("Runtime references unavailable.");
-        var references = trusted.Split(Path.PathSeparator).Select(MetadataReference.CreateFromFile);
+        var references = trusted.Split(Path.PathSeparator).Select(path => MetadataReference.CreateFromFile(path));
         var compilation = CSharpCompilation.Create(name,
             [CSharpSyntaxTree.ParseText(code)], references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
