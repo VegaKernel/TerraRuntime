@@ -1,0 +1,32 @@
+name: VanillaPorter prototype
+
+on:
+  pull_request:
+    paths:
+      - 'tools/TerraRuntime.VanillaPorter/**'
+      - '.github/workflows/vanilla-porter.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/TerraRuntime.VanillaPorter/**'
+      - '.github/workflows/vanilla-porter.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-differential:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Build tool (warnings as errors)
+        run: dotnet build tools/TerraRuntime.VanillaPorter/TerraRuntime.VanillaPorter.csproj -c Release
+      - name: Scan synthetic source
+        run: dotnet run --no-build -c Release --project tools/TerraRuntime.VanillaPorter -- scan --file tools/TerraRuntime.VanillaPorter/examples/ai-sample.cs --method Step
+      - name: Scaffold synthetic source
+        run: dotnet run --no-build -c Release --project tools/TerraRuntime.VanillaPorter -- scaffold --file tools/TerraRuntime.VanillaPorter/examples/ai-sample.cs --method Step --mapping tools/TerraRuntime.VanillaPorter/examples/ai-mapping.json
+      - name: Compare compiled source and generated candidate
+        run: dotnet run --no-build -c Release --project tools/TerraRuntime.VanillaPorter -- verify --file tools/TerraRuntime.VanillaPorter/examples/ai-sample.cs --method Step --mapping tools/TerraRuntime.VanillaPorter/examples/ai-mapping.json
