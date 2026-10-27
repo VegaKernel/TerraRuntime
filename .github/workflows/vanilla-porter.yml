@@ -30,3 +30,19 @@ jobs:
         run: dotnet run --no-build -c Release --project tools/TerraRuntime.VanillaPorter -- scaffold --file tools/TerraRuntime.VanillaPorter/examples/ai-sample.cs --method Step --mapping tools/TerraRuntime.VanillaPorter/examples/ai-mapping.json
       - name: Compare compiled source and generated candidate
         run: dotnet run --no-build -c Release --project tools/TerraRuntime.VanillaPorter -- verify --file tools/TerraRuntime.VanillaPorter/examples/ai-sample.cs --method Step --mapping tools/TerraRuntime.VanillaPorter/examples/ai-mapping.json
+      - name: Reject missing actor mappings, unsupported calls and effectful mappings
+        shell: bash
+        run: |
+          set -eu
+          project="tools/TerraRuntime.VanillaPorter"
+          map="$project/examples/ai-mapping.json"
+          for file in ai-unmapped.cs ai-effectful.cs; do
+            if dotnet run --no-build -c Release --project "$project" -- scaffold --file "$project/examples/$file" --method Step --mapping "$map"; then
+              echo "FAIL: unsafe source was silently scaffolded: $file"
+              exit 1
+            fi
+          done
+          if dotnet run --no-build -c Release --project "$project" -- scaffold --file "$project/examples/ai-sample.cs" --method Step --mapping "$project/examples/ai-effectful-mapping.json"; then
+            echo "FAIL: effectful mapping was silently accepted"
+            exit 1
+          fi
