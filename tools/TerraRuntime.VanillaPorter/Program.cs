@@ -196,7 +196,7 @@ internal static class Program
         var unsupported = Unsupported(method);
         if (unsupported.Length != 0)
             throw new InvalidOperationException("Unsupported method syntax: " + string.Join(", ", unsupported));
-        if (method.ReturnType is not PredefinedTypeSyntax type || !type.IsKind(SyntaxKind.VoidKeyword)
+        if (method.ReturnType is not PredefinedTypeSyntax type || !type.Keyword.IsKind(SyntaxKind.VoidKeyword)
             || !method.Modifiers.Any(SyntaxKind.StaticKeyword)
             || method.TypeParameterList is not null || method.AttributeLists.Count != 0)
             throw new InvalidOperationException("Only non-generic, attribute-free static void methods are supported.");
@@ -265,7 +265,7 @@ internal static class Program
             "VanillaPorterAdapted");
 
         var actorA = a.GetType("VanillaActor")!;
-        var actorB = b.GetType("PortedActor")!;
+        var actorB = b.GetType("GeneratedVanilla.PortedActor")!;
         var runA = a.GetType("OriginalMotion")!.GetMethod("Step")!;
         var runB = b.GetType("GeneratedVanilla.PortedMotion")!.GetMethod("Step")!;
         foreach (float x in [-10f, -1f, 0f, 1f, 10f])
