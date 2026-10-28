@@ -66,6 +66,8 @@ public enum WorldItemOwnershipMode : byte
 /// compatibility/storage primitive; gameplay should cross it through <see cref="TryGetItemType"/>.
 /// TimeToKeepReservation is the retained server field. ReserveFor's independent packet-22 time
 /// argument belongs to the commit notification, not this snapshot or a join baseline.
+/// Source creation notifications may carry their one-time NewItem ownership argument;
+/// source-created active snapshots and later SyncItem notifications carry None.
 /// </summary>
 public readonly record struct WorldItemSnapshot(
     WorldItemHandle Handle,

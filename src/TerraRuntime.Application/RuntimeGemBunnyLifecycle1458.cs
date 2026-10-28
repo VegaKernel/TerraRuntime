@@ -89,8 +89,10 @@ internal sealed class RuntimeGemBunnyLifecycle1458(
         return result;
     }
 
-    internal bool TryCommitLowerWorldDeath(in NpcSnapshot before, VanillaUnifiedRandom1458 random)
+    internal bool TryCommitLowerWorldDeath(in NpcSnapshot before, VanillaUnifiedRandom1458 random,
+        Func<bool>? admissionCurrent = null)
     {
+        if (admissionCurrent?.Invoke() == false) return false;
         if (!VanillaGemBunnyAi1458.IsSupported(before.Type) ||
             before.Simulation.Immortal != false || before.Simulation.DontTakeDamage ||
             !TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out var definition) ||
@@ -105,7 +107,8 @@ internal sealed class RuntimeGemBunnyLifecycle1458(
             before.VelocityX, before.VelocityY, before.Target, before.Ai,
             before.Simulation with { Life = 0, JustHit = true });
         var expected = before;
-        bool Current() => npcs.TryGet(expected.Handle, out var current) && current == expected &&
+        bool Current() => admissionCurrent?.Invoke() != false &&
+            npcs.TryGet(expected.Handle, out var current) && current == expected &&
             random.HasSameState(checkpoint) && statusPhase.IsCurrent;
         // UpdateNPC continues BuffSetFlags/expiry/VFX after this early strike's loot, then
         // reaches its life-zero network return. Preserve that post-loot shared RNG ordering.

@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Npcs;
 using TerraRuntime.Protocol.Multiplicity;
@@ -41,7 +42,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
     internal void PublishStatueCatchSmoke(in NpcSnapshot caught, byte[] frame)
     {
         // Only the exact new Gem Bunny lifecycle owns this source-verified catch publication.
-        if (caught.Simulation.SpawnedFromStatue && caught.Type is >= 646 and <= 652 && caught.Type == caught.NetId)
+        if (caught.Simulation.SpawnedFromStatue && VanillaNonresidentBunnyCatalog1458.IsSupported(caught.Type) && caught.Type == caught.NetId)
             Broadcast(frame);
     }
 }

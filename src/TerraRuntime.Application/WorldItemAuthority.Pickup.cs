@@ -100,7 +100,7 @@ internal sealed partial class WorldItemAuthority
             if (proposedResidual is null && item.Stack != storage.Taken) return false;
             if (proposedResidual is { } residual && (item.Stack == storage.Taken || residual != new WorldItemDropStateUpdate(
                 item.PositionX, item.PositionY, item.VelocityX, item.VelocityY, checked((short)(item.Stack - storage.Taken)),
-                item.Prefix, item.Ownership, item.ItemNetId, item.Shimmered, item.ShimmerTime, item.EnemyGrabDelayTime))) return false;
+                item.Prefix, WorldItemOwnershipMode.None, item.ItemNetId, item.Shimmered, item.ShimmerTime, item.EnemyGrabDelayTime))) return false;
         }
         var tuple = new RuntimePlayerInventoryItem(type,
             type.Value is >= 71 and <= 74 ? checked((short)funded) : item.Stack, item.PrefixId, 0);

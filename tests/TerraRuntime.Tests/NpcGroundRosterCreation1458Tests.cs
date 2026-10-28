@@ -163,8 +163,8 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), new((short)net), out var definition));
             bool undeadRuntime = net is 201 or 202 or 203 or 635 or -13 or -14 or
                 >= -37 and <= -26 or >= -55 and <= -44;
-            bool gemBunnyRuntime = net is >= 646 and <= 652;
-            bool expected = promoted.Contains(net) && !undeadRuntime && !gemBunnyRuntime;
+            bool nonresidentBunnyRuntime = VanillaNonresidentBunnyCatalog1458.IsSupported(net);
+            bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentBunnyRuntime;
             Assert.Equal(expected, definition.CreationDefaultsOnly);
             Assert.Equal(!expected, definition.SupportsRuntimeLifecycle);
             if (!expected) continue;
@@ -192,7 +192,7 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(store.TryGet(born.Handle, out retained));
             Assert.Equal(retainedDead, retained);
         }
-        Assert.Equal(96, fenced);
+        Assert.Equal(92, fenced);
     }
 
     private sealed class CountingLifecycle : INpcAiStateStepper, INpcAiPrepass1458

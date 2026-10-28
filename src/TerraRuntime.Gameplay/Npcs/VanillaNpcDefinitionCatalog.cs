@@ -243,14 +243,14 @@ public static class VanillaNpcDefinitionCatalog
         bool found = TryGetRegistered(type, out definition);
         if (VanillaNpcGroundRoster1458.TryGet(type, new((short)type.Value), out var source))
         {
-            bool gemBunny = type.Value is >= 646 and <= 652;
+            bool nonresidentBunny = VanillaNonresidentBunnyCatalog1458.IsSupported(type.Value);
             definition = source with
             {
                 BehaviorFamily = definition.DefinitionOnly ? VanillaNpcBehaviorFamily.None : definition.BehaviorFamily,
-                PhysicsFamily = gemBunny ? VanillaNpcPhysicsFamily.GenericGround :
+                PhysicsFamily = nonresidentBunny ? VanillaNpcPhysicsFamily.GenericGround :
                     definition.DefinitionOnly ? VanillaNpcPhysicsFamily.None : definition.PhysicsFamily,
                 Role = definition.DefinitionOnly ? source.Role : definition.Role,
-                CreationDefaultsOnly = definition.DefinitionOnly && !gemBunny
+                CreationDefaultsOnly = definition.DefinitionOnly && !nonresidentBunny
             };
             return true;
         }

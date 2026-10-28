@@ -403,7 +403,7 @@ internal static class CaveHousePlacement1458
             for (int y = startY; y < endY; y++)
                 SetBlock(ref grid.At(x, y), beamType);
             if (grid.InWorld(x, endY))
-                grid.At(x, endY).Shape = 0;
+                grid.At(x, endY).ClearSourceShape();
         }
     }
 
@@ -568,23 +568,26 @@ internal static class CaveHousePlacement1458
 
     private static void SetBlock(ref WorldTile tile, ushort type)
     {
+        // Actions.SetTileKeepWall clears everything except wiring/actuation,
+        // then restores only the old wall identity before the separate framing
+        // stage. Wall paint/coatings do not survive that source clear.
         tile.Type = type;
-        tile.Flags |= WorldTileFlags.Active;
-        tile.Flags &= ~(WorldTileFlags.Inactive | WorldTileFlags.Actuator);
-        tile.FrameX = -1;
-        tile.FrameY = -1;
-        tile.Shape = 0;
+        tile.Flags = (tile.Flags & (WorldTileFlagMasks.Wires | WorldTileFlagMasks.Actuation)) | WorldTileFlags.Active;
+        tile.FrameX = 0;
+        tile.FrameY = 0;
+        tile.ClearSourceShape();
+        tile.TileColor = 0;
+        tile.WallColor = 0;
         tile.LiquidAmount = 0;
         tile.LiquidKind = WorldLiquidKind.Water;
     }
 
     private static void ClearTile(ref WorldTile tile)
     {
-        tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.Actuator);
-        tile.Type = 0;
-        tile.FrameX = 0;
-        tile.FrameY = 0;
-        tile.Shape = 0;
+        // WorldUtils.ClearTile delegates to Tile.ClearTile: retain material,
+        // frames, paint, liquid, wires and the actuator installation itself.
+        tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive);
+        tile.ClearSourceShape();
     }
 
     private static void SetPlatform(ref WorldTile tile, int style, byte shape)

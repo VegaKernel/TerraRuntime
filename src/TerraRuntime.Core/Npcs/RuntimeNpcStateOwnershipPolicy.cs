@@ -11,7 +11,7 @@ namespace TerraRuntime.Core.Npcs;
 /// </summary>
 internal static class RuntimeNpcStateOwnershipPolicy
 {
-    private static bool IsGemBunny(int type, int netId) => type is >= 646 and <= 652 && type == netId;
+    private static bool IsOwnedBunny(int type, int netId) => VanillaNonresidentBunnyCatalog1458.IsSupported(type) && type == netId;
 
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
@@ -21,8 +21,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
             HomeTileY = update.Simulation.HomeTileY ?? -1,
             Homeless = update.Simulation.Homeless ?? false,
             CatchableNpcTempImmunityCounter = update.Simulation.CatchableNpcTempImmunityCounter ??
-                (IsGemBunny(update.Type, update.NetId) ? 90 : null),
-            ReleaseOwner = update.Simulation.ReleaseOwner ?? (IsGemBunny(update.Type, update.NetId) ? (short)255 : null),
+                (IsOwnedBunny(update.Type, update.NetId) ? 90 : null),
+            ReleaseOwner = update.Simulation.ReleaseOwner ?? (IsOwnedBunny(update.Type, update.NetId) ? (short)255 : null),
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {
@@ -115,9 +115,9 @@ internal static class RuntimeNpcStateOwnershipPolicy
             HomeTileY = simulation.HomeTileY ?? (sameDefinition ? previous.Simulation.HomeTileY : -1),
             Homeless = simulation.Homeless ?? (sameDefinition ? previous.Simulation.Homeless : false),
             CatchableNpcTempImmunityCounter = simulation.CatchableNpcTempImmunityCounter ??
-                (sameDefinition ? previous.Simulation.CatchableNpcTempImmunityCounter : IsGemBunny(update.Type, update.NetId) ? 90 : null),
+                (sameDefinition ? previous.Simulation.CatchableNpcTempImmunityCounter : IsOwnedBunny(update.Type, update.NetId) ? 90 : null),
             ReleaseOwner = simulation.ReleaseOwner ??
-                (sameDefinition ? previous.Simulation.ReleaseOwner : IsGemBunny(update.Type, update.NetId) ? (short)255 : null),
+                (sameDefinition ? previous.Simulation.ReleaseOwner : IsOwnedBunny(update.Type, update.NetId) ? (short)255 : null),
             ShimmerTransparency = sameDefinition ? simulation.ShimmerTransparency : previous.Simulation.ShimmerTransparency,
             TownNpc = sameDefinition ? simulation.TownNpc :
                 VanillaNpcTownFlags1458.TryGet(new(update.Type), out bool townNpc) ? townNpc : null,

@@ -30,6 +30,7 @@ public sealed class BigMimicRetainedEffects1458Tests
         var expected = row.GetProperty("drops");
         var actual = fixture.Items();
         Assert.Equal(expected.GetArrayLength(), actual.Length);
+        Assert.Equal(actual.Length, fixture.CreationDrops.Count);
         for (int index = 0; index < actual.Length; index++)
         {
             var drop = expected[index];
@@ -39,7 +40,8 @@ public sealed class BigMimicRetainedEffects1458Tests
             Assert.Equal(drop.GetProperty("y").GetSingle(), actual[index].PositionY);
             Assert.Equal(drop.GetProperty("vx").GetSingle(), actual[index].VelocityX);
             Assert.Equal(drop.GetProperty("vy").GetSingle(), actual[index].VelocityY);
-            Assert.Equal(WorldItemOwnershipMode.GrabDelayForAllPlayers, actual[index].Ownership);
+            Assert.Equal(WorldItemOwnershipMode.None, actual[index].Ownership);
+            Assert.Equal(WorldItemOwnershipMode.GrabDelayForAllPlayers, fixture.CreationDrops[index].Ownership);
             Assert.Equal(100, actual[index].GrabDelayTime);
             Assert.Equal(0, actual[index].Prefix);
         }
@@ -171,7 +173,8 @@ public sealed class BigMimicRetainedEffects1458Tests
         internal readonly Recording Commits = new();
         internal readonly RuntimeNpcStore Store;
         internal readonly RuntimeProjectileStore Projectiles = new();
-        internal readonly RuntimeWorldItemStore WorldItems = new();
+        internal readonly RuntimeWorldItemStore WorldItems;
+        internal readonly List<WorldItemSnapshot> CreationDrops = [];
         internal readonly Players Player = new();
         internal readonly SystemVanillaNpcRandom Random;
         internal readonly VanillaNpcTargetingAiStepper Targeting;
@@ -181,6 +184,7 @@ public sealed class BigMimicRetainedEffects1458Tests
         internal Fixture(int type, float phase, float clock, int seed, bool expert = false,
             bool tenth = false, int width = 28, int height = 44)
         {
+            WorldItems = new(new ItemRecording(CreationDrops));
             Store = new(200, Commits);
             Random = new(seed);
             Targeting = new(new Rejecting(), random: Random);
@@ -202,6 +206,15 @@ public sealed class BigMimicRetainedEffects1458Tests
         {
             var buffer = new WorldItemSnapshot[400];
             return buffer[..WorldItems.CopyActive(buffer)];
+        }
+    }
+
+    private sealed class ItemRecording(List<WorldItemSnapshot> drops) : TerraRuntime.Core.Worlds.IWorldItemStateCommitSink
+    {
+        public void WorldItemStateCommitted(TerraRuntime.Core.Worlds.WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot,
+            int? reservationOffer = null, GameCommandSourceId excludedSource = default)
+        {
+            if (kind == TerraRuntime.Core.Worlds.WorldItemStateCommitKind.Drop) drops.Add(snapshot);
         }
     }
 

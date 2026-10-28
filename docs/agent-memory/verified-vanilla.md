@@ -1,5 +1,13 @@
 # Verified vanilla facts
 
+## Applied item creation, bunny family and house mutations, 2026-10-28
+
+Original WorldItem.SyncItem calls SendData21 with the index only, so its ownership argument is None. NewItem passes its resolved creation mode only to the initial21, then applies the resulting owner/grab fields separately; there is no retained NewItemOwnership field on WorldItem. Dedicated noBroadcast skips ApplySpawnOwnership, with raw owner255/keep0/grabPlayer0/grabTime0 for all four modes; NewItem's earlier enemy delay100 for modes1/2 remains. Actual private PickupItem530 component captures consume two available units (world7->5, inventory9997->9999) and publish21None; original combining publishes destination21None and source151. The two valid-filler v2 captures agree exactly over17profiles/62steps. This does not execute outer pickup eligibility or whole Player.Update.
+
+Original AI007's explicitly selected ordinary Bunny46/303/337/443/540 share the represented gem-bunny path. Actual UpdateNPC and runtime Tick agree on6048 named state/RNG phases across three seeds, including existing646 control. Only four creation-only definitions are promoted;46 already had lifecycle defaults. Squirrels299/538/539/639..645 have a player-luck-driven hostile AI3 transition absent from this owner and are excluded; AI7 membership alone is not admission. FullVanillaAiParity remains false.
+
+Actual unframed Actions.SetTileKeepWall clears prior tile paint/coatings/liquid/shape/frames, retains wires and both actuation bits and restores wall type. WorldUtils.ClearTile(frameNeighbors:false) clears active/inactive/shape while retaining type, frames, liquid, paint, wires and actuator. Support-beam landing clears both independent shape components. Source/runtime160 primitive transitions and4096 explicit border-stage cells plus physical RNG agree across three seeds; interior framing, furniture, aging and the registered house pass remain unqualified.
+
 ## Applied shape, Dryad and owned caller facts, 2026-10-28
 
 Original QuickCleanup can retain halfBrick beside any slope. Its slope-only ocean-anchor reset preserves halfBrick, ClearSlope clears both, halfBrick takes support-below precedence and Pearlstone's exception reads independent halfBrick. Actual sameinput original/current initially differs7cells and unchanged normalFact fails; fixed full128000cell+RNG profiles match3seeds.

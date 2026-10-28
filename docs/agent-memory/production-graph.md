@@ -1,5 +1,11 @@
 # Production graph
 
+## Analyzer-applied runtime ownership, 2026-10-28
+
+The shipping graph remains 15 projects and 29 references. World-item creation ownership is retained with an allocation operation only for its initial Drop publication; direct/deferred adoption share the same canonical active state with Ownership.None. Trusted direct and reserved creation paths similarly project their initial event argument, and existing-slot synchronization/partial takes/merges normalize stale hints without changing quantity custody, owner or clocks. A source no-broadcast lease skips ApplySpawnOwnership; no new item owner or funding ledger was added. Creation callback snapshots are publication projections, not exact current-state preimages.
+
+One Gameplay nonresident-bunny catalog supplies twelve exact IDs to the existing AI, default materialization, definition admission and catch/network gates. Five ordinary siblings reuse the prior gem-bunny owner; four definitions leave creation-only. This grants no resident/housing role or general AI7 admission. The cave-house owner now uses the correct primitive clear/reset semantics for independent shape and metadata fields. Source analyzers and original probes remain offline; no production reflection, dynamic code or dependency was introduced. Aggregate acceptance is recorded separately in work-state.
+
 ## Offline Roslyn analyzer, 2026-10-28
 
 Shipping graph remains 15 projects/29 references with no source/build changes from accepted main1c4e5aaa. SourceProbe is an unreferenced developer console project using the installed SDK's Roslyn assemblies through MSBuildToolsPath; it adds no production package or solution project. Python `source analyze` validates the closed bounded request, binds exact read bytes to admitted official metadata, builds privately, and guards explicit source/reference/tool membership and executed DLLs. The backend parses source and embedded managed metadata without executing the original. Inventories expose body-local diagnostics, lexical accesses/calls and opaque alias/dispatch/protocol frontiers; no new runtime owner or translated algorithm is introduced.

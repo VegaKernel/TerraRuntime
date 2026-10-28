@@ -46,7 +46,9 @@ public sealed class ServerRuntimeDirtKillDropTests
         Assert.Equal(1, drop.Stack);
         Assert.Equal(0, drop.Prefix);
         // MessageBuffer17 scopes NewItem to the authenticated breaker (1458).
-        Assert.Equal(WorldItemOwnershipMode.ReserveForLocalPlayer, drop.Ownership);
+        Assert.Equal(WorldItemOwnershipMode.None, drop.Ownership);
+        Assert.Equal(WorldItemOwnershipMode.ReserveForLocalPlayer, Assert.Single(fixture.CreationDrops).Ownership);
+        Assert.Equal(connection.Player.Slot.Value, drop.OwnerPlayerId);
         Assert.Equal(checked((short)VanillaItemIds.DirtBlock.Value), drop.ItemNetId);
         Assert.False(drop.Shimmered);
         Assert.Equal(0f, drop.ShimmerTime);
@@ -206,6 +208,15 @@ public sealed class ServerRuntimeDirtKillDropTests
         return held;
     }
 
+    private sealed class DropRecording(List<WorldItemSnapshot> drops) : TerraRuntime.Core.Worlds.IWorldItemStateCommitSink
+    {
+        public void WorldItemStateCommitted(TerraRuntime.Core.Worlds.WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot,
+            int? reservationOffer = null, GameCommandSourceId excludedSource = default)
+        {
+            if (kind == TerraRuntime.Core.Worlds.WorldItemStateCommitKind.Drop) drops.Add(snapshot);
+        }
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly PlayerSlotPool slots = new(1);
@@ -214,7 +225,7 @@ public sealed class ServerRuntimeDirtKillDropTests
         public Fixture()
         {
             Tiles = new WorldTileStore(new WorldDimensions(200, 150));
-            Items = new RuntimeWorldItemStore();
+            Items = new RuntimeWorldItemStore(new DropRecording(CreationDrops));
             State = new ServerRuntimeState(worldTiles: Tiles, worldItems: Items,
                 sourcePlayerWorld: MiningSourceScene1458.Facts(Tiles),
                 worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
@@ -227,6 +238,7 @@ public sealed class ServerRuntimeDirtKillDropTests
 
         public WorldTileStore Tiles { get; }
         public RuntimeWorldItemStore Items { get; }
+        public List<WorldItemSnapshot> CreationDrops { get; } = [];
         public ServerRuntimeState State { get; }
 
         public ConnectionHandle SpawnPlayer(long connectionId)

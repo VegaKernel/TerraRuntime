@@ -6,7 +6,8 @@ namespace TerraRuntime.Application;
 
 // NPC.UpdateNPC's AI007 lower-world strike precedes buff/AI/gravity processing.
 internal sealed class RuntimeGemBunnyOuterAiStepper1458(INpcAiStateStepper inner,
-    RuntimeGemBunnyLifecycle1458 lifecycle, int worldHeightTiles, TerraRuntime.Core.VanillaUnifiedRandom1458 random)
+    RuntimeGemBunnyLifecycle1458 lifecycle, int worldHeightTiles, TerraRuntime.Core.VanillaUnifiedRandom1458 random,
+    Func<bool?>? bloodMoonOwner = null)
     : INpcAiStateStepper, INpcAiStateStepperWrapper, INpcAiPrepass1458
 {
     private readonly INpcAiPrepass1458? ordinary = NpcAiStateStepperComposition.FindCapability<INpcAiPrepass1458>(inner);
@@ -15,6 +16,8 @@ internal sealed class RuntimeGemBunnyOuterAiStepper1458(INpcAiStateStepper inner
     public bool TryRunPrepass(in NpcSnapshot npc, out bool consumed)
     {
         consumed = false;
+        bool convertible = VanillaNonresidentBunnyCatalog1458.IsEvilConvertible(npc.Type);
+        if (convertible && bloodMoonOwner?.Invoke() is not false) return false;
         if (VanillaGemBunnyAi1458.IsSupported(npc.Type) && !npc.Simulation.DontTakeDamage &&
             npc.Simulation.Immortal == false &&
             VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) &&
@@ -22,7 +25,10 @@ internal sealed class RuntimeGemBunnyOuterAiStepper1458(INpcAiStateStepper inner
             npc.PositionY > worldHeightTiles * 16f - 640f + body.Height)
         {
             consumed = true;
-            return lifecycle.TryCommitLowerWorldDeath(in npc, random);
+            // The early lower-world death can invoke loot providers. Recheck the same
+            // authoritative neutral context before any unpublished NPC/RNG/status adoption.
+            bool Current() => !convertible || bloodMoonOwner?.Invoke() is false;
+            return lifecycle.TryCommitLowerWorldDeath(in npc, random, Current);
         }
         return ordinary is null || ordinary.TryRunPrepass(in npc, out consumed);
     }

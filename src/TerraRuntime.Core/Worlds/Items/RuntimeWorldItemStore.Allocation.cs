@@ -398,22 +398,26 @@ public sealed partial class RuntimeWorldItemStore
                 pendingCount = kept;
                 state.Generation++; state.Revision = leaseTicks == 0 ? 1UL : 0UL;
                 state.Active = leaseTicks == 0; state.Reserved = leaseTicks != 0; state.SourceLease = leaseTicks != 0;
-                state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceOwnerAge = 0; state.SourceReleaseRequested = false; state.Update = CreateInitial(in publicationDrop);
+                state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceOwnerAge = 0; state.SourceReleaseRequested = false;
+                // NewItem's ownership argument belongs only to its initial21.
+                // WorldItem retains the resulting reservation/delay fields,
+                // while every later SyncItem uses the default ownership None.
+                state.Update = CreateInitial(in publicationDrop) with { Ownership = WorldItemOwnershipMode.None };
                 state.OwnedCoinPhysical = creationSource == WorldItemCreationSource1458.NewItem && preparedCoinValue.HasValue;
                 state.FundedCoinValue = creationSource == WorldItemCreationSource1458.NewItem
                     ? preparedCoinValue ?? CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) : 0;
                 state.FundedQuantity = creationSource == WorldItemCreationSource1458.NewItem && CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) == 0 ? publicationDrop.Stack : 0;
                 if (leaseTicks == 0) state.Update = state.Update with { Color = null };
-                if (leaseTicks == 0 && ownerFacts is not null)
-                    state.Update = state.Update with { GrabDelayPlayer = 0 };
-                if (drop.Ownership == WorldItemOwnershipMode.GrabDelayForAllPlayers)
+                state.Update = state.Update with { GrabDelayPlayer = 0 };
+                if (leaseTicks == 0 && drop.Ownership == WorldItemOwnershipMode.GrabDelayForAllPlayers)
                     state.Update = state.Update with { GrabDelayTime = 100, GrabDelayPlayer = byte.MaxValue };
                 if (leaseTicks == 0 && drop.Ownership == WorldItemOwnershipMode.GrabDelayForLocalPlayer)
                 {
                     if (sourceLocalPlayerId is not { } local || local == byte.MaxValue) return Fail();
                     state.Update = state.Update with { GrabDelayTime = 100, GrabDelayPlayer = local };
                 }
-                if (!Record(slot, leaseTicks == 0 ? WorldItemStateCommitKind.Drop : null)) return Fail();
+                if (!Record(slot, leaseTicks == 0 ? WorldItemStateCommitKind.Drop : null,
+                    creationOwnership: leaseTicks == 0 ? publicationDrop.Ownership : null)) return Fail();
                 // MessageBuffer21 and explicit NewItem ReserveForLocalPlayer apply reservation after source21.
                 // Retain it in this claimed plan; an external owner update cannot mutate a claimed slot.
                 if (leaseTicks == 0 &&
@@ -477,6 +481,8 @@ public sealed partial class RuntimeWorldItemStore
                 if (operation.Kind is {} kind)
                 {
                     var snapshot = kind == WorldItemStateCommitKind.Remove ? Capture(operation.Slot, before) : Capture(operation.Slot, after);
+                    if (operation.CreationOwnership is { } creationOwnership)
+                        snapshot = snapshot with { Ownership = creationOwnership };
                     owner.Publish(kind, in snapshot, operation.ReservationOffer);
                 }
             }
@@ -556,6 +562,8 @@ public sealed partial class RuntimeWorldItemStore
                     var snapshot = operation.Kind is null ? default : operation.Kind == WorldItemStateCommitKind.Remove
                         ? Capture(operation.Slot, in previous[operation.Slot])
                         : Capture(operation.Slot, operation.After);
+                    if (operation.CreationOwnership is { } creationOwnership)
+                        snapshot = snapshot with { Ownership = creationOwnership };
                     operations[index] = new(operation.Slot, operation.Kind, snapshot, operation.ReservationOffer);
                     previous[operation.Slot] = operation.After;
                 }
@@ -740,12 +748,15 @@ public sealed partial class RuntimeWorldItemStore
         private bool RecordSync(short slot, WorldItemStateCommitKind? kind, int? reservationOffer = null)
         {
             if (working[slot].Revision == ulong.MaxValue) return false;
+            if (kind == WorldItemStateCommitKind.Drop)
+                working[slot].Update = working[slot].Update with { Ownership = WorldItemOwnershipMode.None };
             working[slot].Revision++; return Record(slot, kind, reservationOffer);
         }
-        private bool Record(short slot, WorldItemStateCommitKind? kind, int? reservationOffer = null)
+        private bool Record(short slot, WorldItemStateCommitKind? kind, int? reservationOffer = null,
+            WorldItemOwnershipMode? creationOwnership = null)
         {
             if (operations.Count == MaximumOperations) return false;
-            touched[slot] = true; operations.Add(new(slot, working[slot], kind, reservationOffer)); return true;
+            touched[slot] = true; operations.Add(new(slot, working[slot], kind, reservationOffer, creationOwnership)); return true;
         }
         private bool Fail() { failed = true; return false; }
         public void Dispose()
@@ -760,7 +771,7 @@ public sealed partial class RuntimeWorldItemStore
             disposed = true;
         }
         private readonly record struct Operation(short Slot, SlotState After, WorldItemStateCommitKind? Kind,
-            int? ReservationOffer);
+            int? ReservationOffer, WorldItemOwnershipMode? CreationOwnership);
         private readonly record struct Step(int Start, int End, short Slot, int LeaseTicks, WorldItemStackTransfer1458[] Pending, WorldItemSentinelCommit1458? Transient);
     }
 }

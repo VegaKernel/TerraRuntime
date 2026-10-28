@@ -126,9 +126,9 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         const int hardmodeBossBehaviorCount = 35;
-        const int gemBunnyBehaviorCount = 7;
+        int nonresidentBunnyBehaviorCount = VanillaNonresidentBunnyCatalog1458.Types.Length;
         var entries = new VanillaNpcAiCoverage[
-            16 + hardmodeBossBehaviorCount + gemBunnyBehaviorCount +
+            16 + hardmodeBossBehaviorCount + nonresidentBunnyBehaviorCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -486,9 +486,9 @@ public static class VanillaNpcAiCoverageCatalog
             entries[index++] = Partial(definition.Type, OrdinaryCore |
                 (definition.Type == VanillaNpcIds.Mothron ? VanillaNpcAiCapability.ChildSpawnSlice : VanillaNpcAiCapability.None));
 
-        // Exact nonresident gem bunnies own AI007 movement and complete accepted outer phases.
+        // Exact nonresident bunnies own AI007 movement and the existing accepted outer phases.
         // Shared style7 membership grants no town lifecycle or parity claim to another identity.
-        for (int type = 646; type <= 652; type++)
+        foreach (int type in VanillaNonresidentBunnyCatalog1458.Types)
             entries[index++] = Partial(new(type), OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice);
 
         if (index != entries.Length)
