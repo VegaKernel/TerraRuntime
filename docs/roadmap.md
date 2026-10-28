@@ -1,5 +1,13 @@
 # TerraRuntime roadmap
 
+## Analyzer-applied gameplay, NPC and worldgen union, 2026-10-28
+
+The semantic inventories have been applied to shipping behavior: world-item creation ownership now belongs only to the initial publication, with canonical state for later packet `21`, partial pickup and stack merging; five ordinary bunny identities reuse the existing nonresident owner, adding four lifecycle definitions and reducing AI3/AI7 creation-only identities from 96 to 92; cave-house tile mutations now preserve or reset the exact independent shape and metadata fields. The concurrent main Final Cleanup Check2x1 change is retained.
+
+Release warnings-as-errors, focused `431/431`, fast `25,587/25,587` and one unfiltered full `1,567,001/1,567,001` pass with zero failures, errors, skips or not-run cases. Actual XML covers all `5,428` discovered methods. Fresh Windows x64 NativeAOT and all five smokes pass. Three-seed original/runtime comparisons cover 6,048 actual composed NPC phases and the bounded house mutation/beam fixture. Independent original item captures and unchanged-test old-runtime failures qualify the ownership fix. All 891 existing fixtures remain unchanged. [Acceptance](verification/analyzer-applied-roadmap-20261028.json) records exact source/DLL/index guards, historical rejected/interrupted candidates and component scope.
+
+New ordinary-bunny updates require an owned inactive Blood Moon; active or unknown context refuses before adoption because conversion to types `47`/`464` remains unimplemented. Gold Bunny `443` dedicated HitEffect now consumes its original 10/20 caller-side choices through the shared strike/death owner. Full AI7, all gold-critter effects, whole Player.Update and whole-world parity remain open. Rows 63/109 remain `P`; full house decoration, aging and interior framing, remaining Final Cleanup branches, Linux NativeAOT and fresh GUI/TCP acceptance remain open.
+
 Merged Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped row109 branch below is verified with concurrent gameplay/QuickCleanup changes. Release WAE0/0, fast `25,553/25,553`, unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes pass. Row109 remains `P`; earlier parent-tree gate numbers below are historical, not merged acceptance.
 
 Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped six-identity source branch below passes Release warnings-as-errors, fast `25,549/25,549`, one unfiltered full `1,566,963/1,566,963` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; further framing, special-seed and real-prefix work is required. The pending-gate wording below is historical.

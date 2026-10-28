@@ -1,0 +1,521 @@
+{
+  "schemaVersion": 1,
+  "kind": "gold-bunny-hit-effect-component-evidence",
+  "date": "2026-10-28",
+  "accepted": true,
+  "scope": "Original dedicated HitEffect caller RNG for newly admitted GoldBunny443, plus unchanged normal regression on shared accepted-strike/death owners. No complete strike, loot, NPC.Update or final-union gate claim.",
+  "productionChange": {
+    "type": 443,
+    "nonlethalChoices": 10,
+    "lethalChoices": 20,
+    "operation": "NextInt32(232,234)",
+    "owner": "Existing RuntimeNpcNetworkCombatPipeline nonlethal/death HitEffect owners; death preview uses the detached stream and publication does not consume them again.",
+    "inputs": [
+      {
+        "path": "src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline.Loot.cs",
+        "sha256": "182bc9df9a73e1f4afba16072758d88a52c1335b379f15bdab1194c292803c0e"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/GoldBunnyHitEffect1458Tests.cs",
+        "sha256": "dfe6fb312c63e3f8d4e77ad66f4088bbb1f8cab285553605b97b8b3ff1856048"
+      }
+    ]
+  },
+  "originalHitEffect": {
+    "qualification": {
+      "accepted": true,
+      "scope": "Original-only HitEffect component proof, 12 actual calls per repeat; no strike/loot/death-preview/UpdateNPC equivalence.",
+      "inputsUnchanged": true,
+      "executedUnchanged": true,
+      "records": [
+        {
+          "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\original-01.json",
+          "sha256": "e4ddb6790805a4d40024e5edf5d0f524b6ae551e0bbf9dfef0af6ddaa57b8f0d",
+          "actualHitEffectCalls": 12,
+          "command": [
+            "dotnet",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.dll",
+            "official",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\original-01.json",
+            "1458"
+          ],
+          "exitCode": 0
+        },
+        {
+          "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\original-02.json",
+          "sha256": "e4ddb6790805a4d40024e5edf5d0f524b6ae551e0bbf9dfef0af6ddaa57b8f0d",
+          "actualHitEffectCalls": 12,
+          "command": [
+            "dotnet",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.dll",
+            "official",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\original-02.json",
+            "1458"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "before": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\Program.cs": "1e2595a60d0e2119d7ce812308cefdd5737769be6f56405c32282e1670845e26",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\Probe.csproj": "41255faa9d5c219c44168e7a2e94b6071d89ee1dea6274a59bf2b54a057c2441",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\prepare.py": "84e737108f9cb0ec94c3549276bea8ee53138b7ce452dd467935387f8a802940",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\qualify.py": "4029c12af34ff27587e0ed345cd302f1e8622c690779e8523e9449d2540a885f",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria.ID\\NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Dust.cs": "a67714b9d1e73c7f23c0c550a95877a3495b7be376711345a651dc5a9a225460",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Gore.cs": "9d27981b8cdbc3c90d70016c4e99ebdb74f71af87e104c4a9be2064bb6e16e9b"
+      },
+      "after": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\Program.cs": "1e2595a60d0e2119d7ce812308cefdd5737769be6f56405c32282e1670845e26",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\Probe.csproj": "41255faa9d5c219c44168e7a2e94b6071d89ee1dea6274a59bf2b54a057c2441",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\prepare.py": "84e737108f9cb0ec94c3549276bea8ee53138b7ce452dd467935387f8a802940",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\qualify.py": "4029c12af34ff27587e0ed345cd302f1e8622c690779e8523e9449d2540a885f",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria.ID\\NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Dust.cs": "a67714b9d1e73c7f23c0c550a95877a3495b7be376711345a651dc5a9a225460",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Gore.cs": "9d27981b8cdbc3c90d70016c4e99ebdb74f71af87e104c4a9be2064bb6e16e9b"
+      },
+      "executedBefore": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.dll": "779b01906db85d978464d880879dcb11b1adf55af8bbcf781c2e94428b6ec440",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.exe": "bae0c3814a5a704c21e2ae5189ffd2354dea4dc14b7e70b6bc165380a018e033",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.pdb": "79b0dff03e78c7e2abb195b33d0f53bc3f4ddcc1c5a16eb8d3f36563a1debe94",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419"
+      },
+      "executedAfter": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.dll": "779b01906db85d978464d880879dcb11b1adf55af8bbcf781c2e94428b6ec440",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.exe": "bae0c3814a5a704c21e2ae5189ffd2354dea4dc14b7e70b6bc165380a018e033",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.pdb": "79b0dff03e78c7e2abb195b33d0f53bc3f4ddcc1c5a16eb8d3f36563a1debe94",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\bin\\Release\\net11.0\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419"
+      },
+      "expectedGoldFullPhysicalRngSha256": {
+        "nonlethal": "72fe0d789a34b81f2b54f093b076fb6d10feae5a5c2ab951514e80dc1b49bad3",
+        "lethal": "93bc7e1f6fedfa76a28d9c34600f4a78da6661785b960250c1b84a967f9cbac8"
+      },
+      "captureWallSeconds": 3.6053053000941873,
+      "limits": [
+        "Unmodified original Linux assembly under Windows CoreCLR, not Linux Native or GUI.",
+        "NPC.HitEffect(1,1d) called on explicit living/dead preimages; no actual StrikeNPC, NPCLoot or UpdateNPC call.",
+        "Only GoldBunny443 and five observed bunny controls; no complete IsGoldCritter roster acceptance.",
+        "The original-only probe references no TerraRuntime assembly and does not patch original IL."
+      ]
+    },
+    "actualCallsPerRepeat": 12,
+    "observedTypes": [
+      46,
+      303,
+      337,
+      443,
+      540,
+      646
+    ],
+    "seed": 1458,
+    "goldNonlethalPhysicalCursor": 10,
+    "goldLethalPhysicalCursor": 20,
+    "otherObservedBunniesPhysicalCursor": 0,
+    "allObservedNamedNpcStatesUnchanged": true,
+    "artifacts": [
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/qualification.json",
+        "sha256": "1d1968191394087068744014043a4107681947d4d1f91e3d714767c30c7997be"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/original-01.json",
+        "sha256": "e4ddb6790805a4d40024e5edf5d0f524b6ae551e0bbf9dfef0af6ddaa57b8f0d"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/original-02.json",
+        "sha256": "e4ddb6790805a4d40024e5edf5d0f524b6ae551e0bbf9dfef0af6ddaa57b8f0d"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/qualified-build.log",
+        "sha256": "1a83cf4c6830b9046698be3ad77db637fac76bd59dab90865bfc81f4a6131fbd"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/input-before.json",
+        "sha256": "31c5c6d62d9c2b443c36c772f8b1553f3bc7f0ba464b9d2632d297eb21684b75"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/input-after.json",
+        "sha256": "31c5c6d62d9c2b443c36c772f8b1553f3bc7f0ba464b9d2632d297eb21684b75"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/executed-before.json",
+        "sha256": "c4bb749112821919d721fb5be7446af8998219e7d4bafba98ef68e7f6db847df"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/executed-after.json",
+        "sha256": "c4bb749112821919d721fb5be7446af8998219e7d4bafba98ef68e7f6db847df"
+      }
+    ]
+  },
+  "originalOrderedComponents": {
+    "qualification": {
+      "accepted": true,
+      "scope": "Original-only ordered HitEffect, zero-value money and healing component proof; three actual calls per repeat; no complete strike/loot/death-preview/UpdateNPC equivalence.",
+      "inputsUnchanged": true,
+      "executedUnchanged": true,
+      "records": [
+        {
+          "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\original-01.json",
+          "sha256": "f66b57afd0f41985f1afca35c13eee2882b50bc742eccf24142744465d2009d1",
+          "actualHitEffectCalls": 1,
+          "actualMoneyCalls": 1,
+          "actualHealingCalls": 1,
+          "command": [
+            "dotnet",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.dll",
+            "official",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\original-01.json",
+            "1458"
+          ],
+          "exitCode": 0
+        },
+        {
+          "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\original-02.json",
+          "sha256": "f66b57afd0f41985f1afca35c13eee2882b50bc742eccf24142744465d2009d1",
+          "actualHitEffectCalls": 1,
+          "actualMoneyCalls": 1,
+          "actualHealingCalls": 1,
+          "command": [
+            "dotnet",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.dll",
+            "official",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux",
+            "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\original-02.json",
+            "1458"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "before": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\Program.cs": "7a7c3a1426d48efe022cc34018d3b1f29b75e3be81c9886f1e0ca579636d411d",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\Probe.csproj": "41255faa9d5c219c44168e7a2e94b6071d89ee1dea6274a59bf2b54a057c2441",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\prepare.py": "2314ec8fd19b5dc7b55beeddf5a6ff16679630972b8322cb1e695ae461821467",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\qualify.py": "10a42c7b38536399d4f7f6d4254208966ed2aea6f8f01339cd2197ed8cb0532c",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria.ID\\NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Dust.cs": "a67714b9d1e73c7f23c0c550a95877a3495b7be376711345a651dc5a9a225460",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Gore.cs": "9d27981b8cdbc3c90d70016c4e99ebdb74f71af87e104c4a9be2064bb6e16e9b"
+      },
+      "after": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\Program.cs": "7a7c3a1426d48efe022cc34018d3b1f29b75e3be81c9886f1e0ca579636d411d",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\Probe.csproj": "41255faa9d5c219c44168e7a2e94b6071d89ee1dea6274a59bf2b54a057c2441",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\prepare.py": "2314ec8fd19b5dc7b55beeddf5a6ff16679630972b8322cb1e695ae461821467",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\qualify.py": "10a42c7b38536399d4f7f6d4254208966ed2aea6f8f01339cd2197ed8cb0532c",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria.ID\\NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Dust.cs": "a67714b9d1e73c7f23c0c550a95877a3495b7be376711345a651dc5a9a225460",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Gore.cs": "9d27981b8cdbc3c90d70016c4e99ebdb74f71af87e104c4a9be2064bb6e16e9b"
+      },
+      "executedBefore": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.dll": "a1151560d41a853d62a8c91e605909ad0311aa88bbad4f3e48323b2a0fd8e6df",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.exe": "bae0c3814a5a704c21e2ae5189ffd2354dea4dc14b7e70b6bc165380a018e033",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.pdb": "e3eafc89cb12a189311abc90fbbbbcc5fdc899d227c3879a56c9a29c5b9d18a1",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419"
+      },
+      "executedAfter": {
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.dll": "a1151560d41a853d62a8c91e605909ad0311aa88bbad4f3e48323b2a0fd8e6df",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.exe": "bae0c3814a5a704c21e2ae5189ffd2354dea4dc14b7e70b6bc165380a018e033",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.pdb": "e3eafc89cb12a189311abc90fbbbbcc5fdc899d227c3879a56c9a29c5b9d18a1",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\gold-bunny-hiteffect-20261028\\healing-successor\\bin\\Release\\net11.0\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419"
+      },
+      "sourcePhaseSamples": [
+        20,
+        9,
+        2
+      ],
+      "expectedFullPhysicalRngSha256": {
+        "afterHitEffect": "93bc7e1f6fedfa76a28d9c34600f4a78da6661785b960250c1b84a967f9cbac8",
+        "afterMoney": "2e12b0c133b5365f5d2eca7574907c74eb4c3edc816f7280564e24f77a98698a",
+        "afterHealing": "71801082c14abfec4f8a4fc0779e6210c644a287bcda9b3c4de1de5cfd2fa6d4"
+      },
+      "captureWallSeconds": 1.323125599999912,
+      "limits": [
+        "Unmodified original Linux assembly under Windows CoreCLR, not Linux Native or GUI.",
+        "NPC.HitEffect, NPCLoot_DropMoney and NPCLoot_DropHeals called on explicit dead Gold443/value0/extra0/midasfalse/damage0 and inactive uninjured luck0 player0.",
+        "Only GoldBunny443; no fullNPCLoot, StrikeNPC, UpdateNPC or complete IsGoldCritter roster acceptance.",
+        "The original-only probe references no TerraRuntime assembly and does not patch original IL."
+      ]
+    },
+    "profile": {
+      "type": 443,
+      "life": 0,
+      "lifeMax": 5,
+      "damage": 0,
+      "moneyValue": 0,
+      "extraValue": 0,
+      "midas": false,
+      "bloodMoon": false,
+      "closestPlayer": {
+        "slot": 0,
+        "active": false,
+        "life": 100,
+        "lifeMax": 100,
+        "mana": 20,
+        "manaMax": 20,
+        "luck": 0
+      },
+      "seed": 1458
+    },
+    "calls": [
+      "NPC.HitEffect(1,1d)",
+      "NPC.NPCLoot_DropMoney(player0)",
+      "NPC.NPCLoot_DropHeals(player0)"
+    ],
+    "physicalCursors": [
+      20,
+      29,
+      31
+    ],
+    "phaseSampleCounts": [
+      20,
+      9,
+      2
+    ],
+    "explanation": "Zero money value still consumes the source luck and conditional percentage offers. Healing offers precede damage/vitals guards. Nine money samples is specific to this input stream; whole death does not universally consume31 samples.",
+    "artifacts": [
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/qualification.json",
+        "sha256": "b2c80f2a2204efb3a4d8fbbbe3e863ab99b000da2ebcbb1749c91198eab2a758"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/original-01.json",
+        "sha256": "f66b57afd0f41985f1afca35c13eee2882b50bc742eccf24142744465d2009d1"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/original-02.json",
+        "sha256": "f66b57afd0f41985f1afca35c13eee2882b50bc742eccf24142744465d2009d1"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/qualified-build.log",
+        "sha256": "bc903e1e75078892ee97cd422c7bad06e9135f48629f95703b858606488cf779"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/input-before.json",
+        "sha256": "b5e22a3d8a25c557b752ba0b8d4c12984a81287e3e0be048c2918aabe8671bed"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/input-after.json",
+        "sha256": "b5e22a3d8a25c557b752ba0b8d4c12984a81287e3e0be048c2918aabe8671bed"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/executed-before.json",
+        "sha256": "d748ef8b0ca62a5938da4a12582a4e0993ddd749e3a4b67c5c7b3d3bf2a95a1d"
+      },
+      {
+        "path": ".cache/gold-bunny-hiteffect-20261028/healing-successor/executed-after.json",
+        "sha256": "d748ef8b0ca62a5938da4a12582a4e0993ddd749e3a4b67c5c7b3d3bf2a95a1d"
+      }
+    ]
+  },
+  "causalRegression": {
+    "scope": "audit-fixes-final source snapshot before concurrent FinalCleanup merge; source/test inputs above remain unchanged across that merge, final aggregate acceptance is separate.",
+    "sameTestDllSha256": "875b354c02428b8161ca915407ed40b8c1c7e5520297e1e345ec5c9e7d55c959",
+    "fixedGold": {
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "oldGold": {
+      "total": 17,
+      "passed": 12,
+      "failed": 5,
+      "errors": 0,
+      "skipped": 0
+    },
+    "oldFailedMethods": [
+      "Prepared_projectile_adopts_hit_effect_once_before_its_observer_and_refusals_are_inert",
+      "Dedicated_hit_effect_matches_original_complete_random_state",
+      "Dedicated_hit_effect_matches_original_complete_random_state",
+      "Accepted_nonlethal_environment_and_contact_each_advance_the_shared_owner_once",
+      "Accepted_death_preserves_original_hit_effect_money_healing_order_and_stale_retry_is_inert"
+    ],
+    "fixedRuntimeDllPins": {
+      "TerraRuntime.Application.dll": "9138cf33f2480db33ef889dece831f7560ac8c8a4941b8779f3ec1c1013d5445",
+      "TerraRuntime.Contracts.dll": "0d470a3a8e491dbf9c40dec55ab31807521c75838807941c5e029c4840509cd5",
+      "TerraRuntime.Core.dll": "8240a4de57b34c6cfe979136bd62e01dc3b220983714b0dbfcdb91ffeb4133f5",
+      "TerraRuntime.Extensibility.dll": "6aea4b187d6de4d95e934df3364c85db2c6d160269d1573f3cb1c2685080e9c5",
+      "TerraRuntime.Extensible.Server.dll": "ea53615211bc23ac1496782feb1147519c6d006ca09bac44943ff622611325b7",
+      "TerraRuntime.Gameplay.dll": "710f4f20c65903d9dcc73da821dd294ec463c722645003767f5892dd52308881",
+      "TerraRuntime.HostContracts.dll": "79a66b6cc6d33775f1f2d396988c218172e51932dcb3b7677d7a99434db7b9de",
+      "TerraRuntime.HostModuleFixture.dll": "70d2a5593391b3f1d2af9bdd62d0e38ba7f4402d348d5a0aff626dfc5e787d63",
+      "TerraRuntime.Network.dll": "fa4c1de87a37fbb8afcee97369883c2d6ba4188aab4811147d897b7689aca293",
+      "TerraRuntime.Protocol.dll": "6610eeb6b6ad8ae1d7299268e17612602c48115415eb7c1289a85daea9b2dbfe",
+      "TerraRuntime.Protocol.Multiplicity.dll": "cc9342e74e74b45b5bd3f66a4f8ad33957314959aefbcc1bbd492a51f6130778",
+      "TerraRuntime.Schematics.dll": "95ab14ca496102c020665ab1eccdd6db68ece4f86500eeb5f507b25836db853e",
+      "TerraRuntime.Server.dll": "e528f752e14ec95196080d2fbdb1864f71aa2ef931d73015645631643b607024",
+      "TerraRuntime.Tests.dll": "875b354c02428b8161ca915407ed40b8c1c7e5520297e1e345ec5c9e7d55c959",
+      "TerraRuntime.Transport.dll": "9a8167891dd671f0b377685c2e2b99462553b27b22f29b9d6a1e30693e617eed",
+      "TerraRuntime.WorkerPoolProbe.dll": "5318e25f008df0fc90daa5fc80bdea67aa9818f433d4ff68730e1ce212cb844a",
+      "TerraRuntime.World.dll": "af48cf5cec9b4d6546e142c7e1dce2f86072d9b219695e3715cd41839d2c9280",
+      "TerraRuntime.WorldGeneration.dll": "f4ce76a0e418e5a429d626934323a40462f0147eac52f80f63deef152083e131"
+    },
+    "oldRuntimeDllPins": {
+      "TerraRuntime.Application.dll": "b7095c7b6676394a99be1e91473ccfeead54b99988c65019ccbf4a085dfb27c6",
+      "TerraRuntime.Contracts.dll": "0d470a3a8e491dbf9c40dec55ab31807521c75838807941c5e029c4840509cd5",
+      "TerraRuntime.Core.dll": "2ab9b6a4fb5f00fb799f40e40f30aafcad624d5b2bbc189a801efcc228250480",
+      "TerraRuntime.Extensibility.dll": "6aea4b187d6de4d95e934df3364c85db2c6d160269d1573f3cb1c2685080e9c5",
+      "TerraRuntime.Extensible.Server.dll": "ea53615211bc23ac1496782feb1147519c6d006ca09bac44943ff622611325b7",
+      "TerraRuntime.Gameplay.dll": "4146ee2ec10dfcc798edda14133e3c45ef862ad31b20e43f75f7a05d12127f64",
+      "TerraRuntime.HostContracts.dll": "79a66b6cc6d33775f1f2d396988c218172e51932dcb3b7677d7a99434db7b9de",
+      "TerraRuntime.HostModuleFixture.dll": "70d2a5593391b3f1d2af9bdd62d0e38ba7f4402d348d5a0aff626dfc5e787d63",
+      "TerraRuntime.Network.dll": "fa4c1de87a37fbb8afcee97369883c2d6ba4188aab4811147d897b7689aca293",
+      "TerraRuntime.Protocol.dll": "6610eeb6b6ad8ae1d7299268e17612602c48115415eb7c1289a85daea9b2dbfe",
+      "TerraRuntime.Protocol.Multiplicity.dll": "cc9342e74e74b45b5bd3f66a4f8ad33957314959aefbcc1bbd492a51f6130778",
+      "TerraRuntime.Schematics.dll": "95ab14ca496102c020665ab1eccdd6db68ece4f86500eeb5f507b25836db853e",
+      "TerraRuntime.Server.dll": "e528f752e14ec95196080d2fbdb1864f71aa2ef931d73015645631643b607024",
+      "TerraRuntime.Tests.dll": "875b354c02428b8161ca915407ed40b8c1c7e5520297e1e345ec5c9e7d55c959",
+      "TerraRuntime.Transport.dll": "9a8167891dd671f0b377685c2e2b99462553b27b22f29b9d6a1e30693e617eed",
+      "TerraRuntime.WorkerPoolProbe.dll": "5318e25f008df0fc90daa5fc80bdea67aa9818f433d4ff68730e1ce212cb844a",
+      "TerraRuntime.World.dll": "af48cf5cec9b4d6546e142c7e1dce2f86072d9b219695e3715cd41839d2c9280",
+      "TerraRuntime.WorldGeneration.dll": "f4ce76a0e418e5a429d626934323a40462f0147eac52f80f63deef152083e131"
+    },
+    "checks": [
+      "Complete original physical RNG hashes for component calls and five non-gold controls.",
+      "Accepted repeated environment/NPC-contact nonlethal choices advance once.",
+      "Accepted prepared-player-projectile choices precede its observer; stale target and false currentness refuse.",
+      "Actual accepted death preserves the independently observed HitEffect/money/healing stream; stale retry and zero/invulnerable requests are inert."
+    ],
+    "artifacts": [
+      {
+        "path": ".cache/analyzer-roadmap-20261028/audit-fixes-final/build.log",
+        "sha256": "8aa611ebbe2dd2e503d4e88f2067d8fc5f0c902444c20925a1c2a034dbdfab1c"
+      },
+      {
+        "path": ".cache/analyzer-roadmap-20261028/audit-fixes-final/fixed-result.json",
+        "sha256": "02002f67105cf2914974d93ed6acb97c46d4a58d401ad24a50cae5f942fb72e4"
+      },
+      {
+        "path": ".cache/analyzer-roadmap-20261028/audit-fixes-final/fixed.xml",
+        "sha256": "135da309db70c8c97dc24fa0baaecd8275db574a9ccfa6746af97df72993e0bd"
+      },
+      {
+        "path": ".cache/analyzer-roadmap-20261028/audit-fixes-final/fixed.log",
+        "sha256": "4cb8f71f505f29630cd8c58747add9851c365b0d15785d5ad0d6db6fd4c8737f"
+      },
+      {
+        "path": ".cache/analyzer-roadmap-20261028/audit-fixes-final/old-gold-result.json",
+        "sha256": "e72f5a6656b8c87a7508e69b7b0c8a9936cdd5ad3f99f1e6c68b8f1c9735b829"
+      },
+      {
+        "path": ".cache/analyzer-roadmap-20261028/audit-fixes-final/old-gold.xml",
+        "sha256": "7a6d9156951b5bb940ccf328c2adb1e69cf781879ee44461715a4b023e8d990b"
+      },
+      {
+        "path": ".cache/analyzer-roadmap-20261028/audit-fixes-final/old-gold.log",
+        "sha256": "e070396209a90ba6c3bbec0e81265c813cc154b3e4a552e415f219cf5df30384"
+      }
+    ]
+  },
+  "sourceBoundaries": {
+    "goldCaller": "NPC.cs:85593 IsGoldCritter caller before Dust.NewDust",
+    "dedicatedDust": "Dust.cs:94 dedicated early return precedes internal allocation RNG",
+    "moneyAndHealingOrder": "NPC.cs:79712-79713",
+    "zeroValueMoneyOffers": "NPC.cs:80436 NPCLoot_DropMoney",
+    "healingOffersBeforePhysiology": "NPC.cs:80353 and80369"
+  },
+  "limits": [
+    "Unmodified original Linux edition executes on Windows CoreCLR; no Linux-host, GUI or Native proof.",
+    "The original-only probes reference no TerraRuntime assemblies and patch no original method body or IL.",
+    "Twelve direct HitEffect calls and the separate ordered three-component sequence are not full StrikeNPC, NPCLoot or UpdateNPC captures.",
+    "Only type443 gains the new Gold RNG branch; no complete IsGoldCritter roster or FullVanillaAiParity claim.",
+    "Focused causal validation is not the final merged fast/full/Native acceptance."
+  ]
+}
