@@ -39,6 +39,17 @@ def set_cell(data, state, index, field, value):
     data[state]['cellsSha256'] = hashlib.sha256(payload).hexdigest()
 
 
+def cleanup_observation(engine):
+    data = observation(engine)
+    data['pass'] = 'QuickCleanup'
+    data['scenario'] = 'quick-cleanup-ordinary-v1'
+    data['context'].update(rockLayer=1, beachDistance=1, oceanLevel=41,
+                           notTheBees=False, dualDungeons=False, roundLandmasses=False,
+                           contentFactFields=list(trace.CONTENT_FIELDS),
+                           contentFacts=[[1, 1, 0, 1, 0, 1]])
+    return data
+
+
 class PassTraceTests(unittest.TestCase):
     def setUp(self):
         self.official, self.runtime = observation('official'), observation('runtime')
@@ -117,6 +128,29 @@ class PassTraceTests(unittest.TestCase):
         self.runtime['output']['rng']['inext'] = 999
         with self.assertRaisesRegex(ValueError, 'physical RNG cursor'):
             trace.compare(self.official, self.runtime)
+
+    def test_cleanup_complete_explicit_context_and_content_facts_compare(self):
+        self.assertTrue(trace.compare(cleanup_observation('official'), cleanup_observation('runtime'))['accepted'])
+
+    def test_cleanup_missing_or_unsupported_context_never_compares_green(self):
+        for mode in ('missing-fact', 'missing-context', 'fields', 'duplicate', 'seed-variant', 'beach', 'depth'):
+            left, right = cleanup_observation('official'), cleanup_observation('runtime')
+            for data in (left, right):
+                if mode == 'missing-fact': data['context']['contentFacts'][0][0] = 0
+                elif mode == 'missing-context': del data['context']['rockLayer']
+                elif mode == 'fields': data['context']['contentFactFields'].pop()
+                elif mode == 'duplicate': data['context']['contentFacts'] *= 2
+                elif mode == 'seed-variant': data['context']['notTheBees'] = True
+                elif mode == 'beach': data['context']['beachDistance'] = True
+                else: data['context']['oceanLevel'] += 1
+            with self.subTest(mode=mode), self.assertRaises(ValueError): trace.compare(left, right)
+
+    def test_cleanup_content_fact_disagreement_is_incomparable_input(self):
+        left, right = cleanup_observation('official'), cleanup_observation('runtime')
+        right['context']['contentFacts'][0][1] = 0
+        report = trace.compare(left, right)
+        self.assertFalse(report['accepted'])
+        self.assertEqual(['context'], report['inputDifferences'])
 
     def test_file_size_and_duplicate_json_guards_apply_before_comparison(self):
         with tempfile.TemporaryDirectory() as temporary:

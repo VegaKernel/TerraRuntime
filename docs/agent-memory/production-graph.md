@@ -1,5 +1,11 @@
 # Production graph
 
+## Three-domain offline execution, 2026-10-28
+
+Shipping graph remains15projects/29edges with unchanged production inputs. PassProbe extends the existing WorldGeneration reference with a named QuickCleanup profile. New offline NpcProbe references Core and GameplayProbe references Gameplay; both link the existing UnifiedRandom source. No production project references a probe. Reflection, original managed assembly loading and fixture mutation stay in separate developer processes. Shared behavior_probe.py owns fresh-build/process/provenance/source/DLL guards for both behavior domains; domain modules own strict complete state schemas and comparison. CLI retains separate run and supplied-observation compare commands.
+
+NPC uses the actual RuntimeNpcStore/executor and targeting stepper. Its explicit carrier supplies hit pulses and matches source-backed outer pulse retirement; raw direct-AI flags are preserved. Gameplay invokes real selection, selector advance, conservation and launch helpers against a detached stock fixture; no authoritative inventory ledger is added or exercised. Unknown observed nullable NPC fields refuse capture rather than becoming guessed defaults. Verification and scope are in work-state and docs/verification/three-domain-oracles-20261028.json.
+
 ## Applied isolated worldgen oracle and Shimmer protection, 2026-10-28
 
 Offline PassProbe references existing WorldGeneration and links the current UnifiedRandom source; it adds no shipping project, dependency or runtime reflection. Shipping graph remains15projects/29edges. Fresh original registered Grass Wall and current runtime execution share an explicit synthetic fixture with actual readback; the Python comparator requires identical input cells/context/full physical RNG before comparing all named WorldTile16 output fields and RNG. The runner binds current source/tool inputs and six executed DLLs before/after. This supports one wall-stain profile, not a natural generation prefix or whole-world parity.

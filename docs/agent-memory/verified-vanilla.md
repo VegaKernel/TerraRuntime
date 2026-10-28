@@ -1,5 +1,13 @@
 # Verified vanilla facts
 
+## Executed ordinary cleanup, AI3 carrier and PickAmmo boundary, 2026-10-28
+
+Actual original registered Quick Cleanup matches current QuickCleanupPass1458 on all128,000WorldTile16cells and complete RNG for seeds1458/42/8675309 with ordinary flags and observed participating content facts. It changes67/62/65cells respectively. The fixture has800columns because the original readonly beach distance is380; both ocean and non-ocean contexts are represented. This is an explicit synthetic ordinary-world profile, not a natural generation prefix or special-seed acceptance.
+
+Actual original AI_003_Fighters and current RuntimeNpcAiStateExecutor/VanillaNpcTargetingAiStepper match16Ice Golem frames for the same three seeds after the explicitly recorded caller JustHit retirement. Pure AI leaves official justHit for NPC.Update's tail while the runtime proposal retires it earlier; raw16flags and the initial red pair are retained. No position integration, collision, shots, AI7 or whole NPC.Update is exercised. Unknown rotation/knockback cannot be replaced with fixture constants.
+
+Actual original Player.PickAmmo and current helper chain match24calls perseed for Wooden Bow39, Random cycling, projected quiver/box/potion/ammoCost75 effects, full58slots, launch binary32bits and full Main.rand. Seed1458 selects slots1/50/54/55, performs8debits and clears depleted1/50stacks. Source coin-slot occurrence participates twice in selection order. Runtime debit is a detached fixture projection; source/runtime agreement here does not establish authoritative inventory admission, ItemCheck or UpdateEquips. Actual omission and extra-RNG controls reject in all three domains. No new compatibility status follows from these bounded tool observations.
+
 ## Actual isolated Grass Wall and prior Shimmer protection, 2026-10-28
 
 Pinned original1.4.5.8 registered Grass Wall GenPass.Apply and current GrassWallPass1458.Apply produce identical17,920-cell WorldTile16 projections and complete physical RNG endpoints on synthetic grass-wall-stain-v1 input for seeds1458/42/8675309. Actual omit-pass control differs in83cells+RNG; extra-rng differs only in RNG. Main.rand and WorldGen.genRand alias in this context; actual UnifiedRandom has one stored inext0..55 and56slots, with the other cursor derived. No dirt-pocket/SpreadGrass/natural-prefix/manifest-tail/raw-Tile-memory/whole-world claim follows.

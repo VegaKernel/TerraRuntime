@@ -1,0 +1,1324 @@
+{
+  "schemaVersion": 1,
+  "kind": "three-domain-offline-oracle-qualification",
+  "date": "2026-10-28",
+  "baseCommit": "7b00c9f6c9c0cebd3f32da909601e3cd5640fc93",
+  "accepted": true,
+  "scope": "Offline developer tools: ordinary synthetic QuickCleanup, isolated AI3 Ice Golem with explicit caller pulse retirement, and projected PickAmmo boundary. No new production parity classification.",
+  "productionSourcesTestsAndBuildInputsUnchanged": true,
+  "protectedInputCount": 4006,
+  "shippingBefore": {
+    "path": ".cache/three-oracles/shipping-before.json",
+    "sha256": "26d86609233d33e57f5e786d684a50d16239427023801d26866f4c1ca56ff952"
+  },
+  "pythonTests": {
+    "passed": 170,
+    "failed": 0,
+    "errors": 0,
+    "wallSeconds": 6.166
+  },
+  "documentation": {
+    "pairedPages": 134,
+    "markdownFiles": 307,
+    "changedBaseChecked": true
+  },
+  "shippingGraph": {
+    "projects": 15,
+    "projectReferences": 29,
+    "newProductionDependencies": 0
+  },
+  "execution": {
+    "accepted": true,
+    "runs": [
+      {
+        "domain": "worldgen",
+        "seed": 1458,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "equal-projection",
+        "validationErrors": [],
+        "seconds": 3.7691423000069335
+      },
+      {
+        "domain": "worldgen",
+        "seed": 42,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "equal-projection",
+        "validationErrors": [],
+        "seconds": 3.8642003999557346
+      },
+      {
+        "domain": "worldgen",
+        "seed": 8675309,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "equal-projection",
+        "validationErrors": [],
+        "seconds": 3.7436714000068605
+      },
+      {
+        "domain": "worldgen",
+        "seed": 1458,
+        "control": "omit-pass",
+        "cliExitCode": 1,
+        "accepted": false,
+        "classification": "behavior-difference",
+        "validationErrors": [],
+        "seconds": 3.4179368000477552
+      },
+      {
+        "domain": "worldgen",
+        "seed": 1458,
+        "control": "extra-rng",
+        "cliExitCode": 1,
+        "accepted": false,
+        "classification": "behavior-difference",
+        "validationErrors": [],
+        "seconds": 3.727662199991755
+      },
+      {
+        "domain": "npc",
+        "seed": 1458,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "match",
+        "validationErrors": [],
+        "seconds": 2.536074999952689
+      },
+      {
+        "domain": "npc",
+        "seed": 42,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "match",
+        "validationErrors": [],
+        "seconds": 2.337058400036767
+      },
+      {
+        "domain": "npc",
+        "seed": 8675309,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "match",
+        "validationErrors": [],
+        "seconds": 2.8918763000983745
+      },
+      {
+        "domain": "npc",
+        "seed": 1458,
+        "control": "omit-step",
+        "cliExitCode": 1,
+        "accepted": false,
+        "classification": "npc-state-mismatch",
+        "validationErrors": [],
+        "seconds": 2.430731499916874
+      },
+      {
+        "domain": "npc",
+        "seed": 1458,
+        "control": "extra-rng",
+        "cliExitCode": 1,
+        "accepted": false,
+        "classification": "rng-state-mismatch",
+        "validationErrors": [],
+        "seconds": 2.358190100057982
+      },
+      {
+        "domain": "gameplay",
+        "seed": 1458,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "match",
+        "validationErrors": [],
+        "seconds": 2.0451014999998733
+      },
+      {
+        "domain": "gameplay",
+        "seed": 42,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "match",
+        "validationErrors": [],
+        "seconds": 1.8190997999627143
+      },
+      {
+        "domain": "gameplay",
+        "seed": 8675309,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "match",
+        "validationErrors": [],
+        "seconds": 1.8803145999554545
+      },
+      {
+        "domain": "gameplay",
+        "seed": 1458,
+        "control": "omit-step",
+        "cliExitCode": 1,
+        "accepted": false,
+        "classification": "behavior-mismatch",
+        "validationErrors": [],
+        "seconds": 2.3024583999067545
+      },
+      {
+        "domain": "gameplay",
+        "seed": 1458,
+        "control": "extra-rng",
+        "cliExitCode": 1,
+        "accepted": false,
+        "classification": "behavior-mismatch",
+        "validationErrors": [],
+        "seconds": 2.0245783999562263
+      },
+      {
+        "domain": "grass-wall",
+        "seed": 1458,
+        "control": "normal",
+        "cliExitCode": 0,
+        "accepted": true,
+        "classification": "equal-projection",
+        "validationErrors": [],
+        "seconds": 2.242869900073856
+      }
+    ],
+    "sourceAndTestsUnchanged": true,
+    "protectedInputCount": 4006,
+    "wallSeconds": 66.19107339996845
+  },
+  "runs": [
+    {
+      "accepted": true,
+      "classification": "equal-projection",
+      "seed": 1458,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 3.7691423000069335,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": true,
+        "comparable": true,
+        "pass": "QuickCleanup",
+        "scenario": "quick-cleanup-ordinary-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "equal-projection",
+        "cellsCompared": 128000,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": null,
+        "beforeCellsSha256": "4ed28116b3120d21f697ea18fa1b4a3c5d5944c184e0d203e1a52469c9fb002f",
+        "officialAfterCellsSha256": "104f8ef338bad93909d1f5fa01a39fdc16143feef4e98c1723f6dcb7f2d0cbf3",
+        "runtimeAfterCellsSha256": "104f8ef338bad93909d1f5fa01a39fdc16143feef4e98c1723f6dcb7f2d0cbf3"
+      },
+      "domain": "worldgen",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "PassProbe.dll": "0db5cce80857761d3435551166a5b6b95f5024e1c6651c8613689c359d30a50e",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b",
+        "TerraRuntime.World.dll": "d38478d3928b9327788bd375f4a93da316826c30bae54a9b41006ae5ebe5b23b",
+        "TerraRuntime.WorldGeneration.dll": "ab535de77f4cc14eea3003350299560fd9272a7c4bdf8c79b25139efdd7d2430"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-normal/result.json",
+          "sha256": "9600e88d2f5087aae52de83eab9cfc01e5a533d81d5ac4cca769a24aeb3e50c9"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-normal/official.json",
+          "sha256": "70e11f8e0f636d6c8b15de72cd837fb2ab75ac7830eac702604eb1a9c9b6e865"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-normal/runtime.json",
+          "sha256": "ae4b05a2c3b56fccccd9e5589789425b6c57f21d0c5fcd15879483db73553169"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-normal/build.log",
+          "sha256": "ead2f143fad2b630cdeb286abc10310e410154921f305d11b496c499fcc34aaa"
+        }
+      ],
+      "observedChangedCells": 67
+    },
+    {
+      "accepted": true,
+      "classification": "equal-projection",
+      "seed": 42,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 3.8642003999557346,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": true,
+        "comparable": true,
+        "pass": "QuickCleanup",
+        "scenario": "quick-cleanup-ordinary-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "equal-projection",
+        "cellsCompared": 128000,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": null,
+        "beforeCellsSha256": "4ed28116b3120d21f697ea18fa1b4a3c5d5944c184e0d203e1a52469c9fb002f",
+        "officialAfterCellsSha256": "235c6960bd5aa75b3579c28d5bf2b7b02c566ea97854f2625a7b0613a994b10b",
+        "runtimeAfterCellsSha256": "235c6960bd5aa75b3579c28d5bf2b7b02c566ea97854f2625a7b0613a994b10b"
+      },
+      "domain": "worldgen",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "PassProbe.dll": "0db5cce80857761d3435551166a5b6b95f5024e1c6651c8613689c359d30a50e",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b",
+        "TerraRuntime.World.dll": "d38478d3928b9327788bd375f4a93da316826c30bae54a9b41006ae5ebe5b23b",
+        "TerraRuntime.WorldGeneration.dll": "ab535de77f4cc14eea3003350299560fd9272a7c4bdf8c79b25139efdd7d2430"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-42-normal/result.json",
+          "sha256": "72583580302043b3bdcdc09a9c334bda787a1b2cd2ca2e9a0f476574504cbb37"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-42-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-42-normal/official.json",
+          "sha256": "fcfca5d6bfddaee0afc4893f3fecef8318c83db25de056da3f22fb6069e193b2"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-42-normal/runtime.json",
+          "sha256": "9a96cba5033aa8bd018edf693933f73aa538f9831fa17bc98f12bb271831895a"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-42-normal/build.log",
+          "sha256": "0b8152150c20f2e83019614c431976f3cdfd78dda49447da441f0c96f6e757db"
+        }
+      ],
+      "observedChangedCells": 62
+    },
+    {
+      "accepted": true,
+      "classification": "equal-projection",
+      "seed": 8675309,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 3.7436714000068605,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": true,
+        "comparable": true,
+        "pass": "QuickCleanup",
+        "scenario": "quick-cleanup-ordinary-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "equal-projection",
+        "cellsCompared": 128000,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": null,
+        "beforeCellsSha256": "4ed28116b3120d21f697ea18fa1b4a3c5d5944c184e0d203e1a52469c9fb002f",
+        "officialAfterCellsSha256": "96698aa1c6c16ac446793a1c10606746ee8c3d735b906a9ff57310c32ffd4d3a",
+        "runtimeAfterCellsSha256": "96698aa1c6c16ac446793a1c10606746ee8c3d735b906a9ff57310c32ffd4d3a"
+      },
+      "domain": "worldgen",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "PassProbe.dll": "0db5cce80857761d3435551166a5b6b95f5024e1c6651c8613689c359d30a50e",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b",
+        "TerraRuntime.World.dll": "d38478d3928b9327788bd375f4a93da316826c30bae54a9b41006ae5ebe5b23b",
+        "TerraRuntime.WorldGeneration.dll": "ab535de77f4cc14eea3003350299560fd9272a7c4bdf8c79b25139efdd7d2430"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-8675309-normal/result.json",
+          "sha256": "eb0e6032226aa06250edc763e1c32297f98946018450e04e86a33fdf1345e91b"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-8675309-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-8675309-normal/official.json",
+          "sha256": "aa099062308aee6414a30faf18a120a0319197b465aab3011e70d0187539d88e"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-8675309-normal/runtime.json",
+          "sha256": "02b63014445ca4b19db07520e57f9035e11e913357e98edbccc032476ab386f5"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-8675309-normal/build.log",
+          "sha256": "e17debfdbd1216a125796ac262fb2d7aabbd49a7fbf442b7fcd0a7346ce4742b"
+        }
+      ],
+      "observedChangedCells": 65
+    },
+    {
+      "accepted": false,
+      "classification": "behavior-difference",
+      "seed": 1458,
+      "control": "omit-pass",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 3.4179368000477552,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": false,
+        "comparable": true,
+        "pass": "QuickCleanup",
+        "scenario": "quick-cleanup-ordinary-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "behavior-difference",
+        "cellsCompared": 128000,
+        "differentCells": 67,
+        "differentFields": 87,
+        "firstCellDifference": {
+          "index": 40045,
+          "x": 45,
+          "y": 50,
+          "fields": [
+            {
+              "field": "shape",
+              "expected": 0,
+              "actual": 4
+            }
+          ]
+        },
+        "firstRngDifference": {
+          "field": "inext",
+          "expected": 53,
+          "actual": 0
+        },
+        "beforeCellsSha256": "4ed28116b3120d21f697ea18fa1b4a3c5d5944c184e0d203e1a52469c9fb002f",
+        "officialAfterCellsSha256": "104f8ef338bad93909d1f5fa01a39fdc16143feef4e98c1723f6dcb7f2d0cbf3",
+        "runtimeAfterCellsSha256": "4ed28116b3120d21f697ea18fa1b4a3c5d5944c184e0d203e1a52469c9fb002f"
+      },
+      "domain": "worldgen",
+      "cliExitCode": 1,
+      "executedDlls": {
+        "PassProbe.dll": "0db5cce80857761d3435551166a5b6b95f5024e1c6651c8613689c359d30a50e",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b",
+        "TerraRuntime.World.dll": "d38478d3928b9327788bd375f4a93da316826c30bae54a9b41006ae5ebe5b23b",
+        "TerraRuntime.WorldGeneration.dll": "ab535de77f4cc14eea3003350299560fd9272a7c4bdf8c79b25139efdd7d2430"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-omit-pass/result.json",
+          "sha256": "698f3e15fcb1e065b611c8d07a4d26d458daaf613cd73d339bbcc9fe8a954f25"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-omit-pass/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-omit-pass/official.json",
+          "sha256": "70e11f8e0f636d6c8b15de72cd837fb2ab75ac7830eac702604eb1a9c9b6e865"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-omit-pass/runtime.json",
+          "sha256": "1b6d76605325643ca22a1c8b0e3dfc77a02bc2520f1cfeb4f91d1026a8335e50"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-omit-pass/build.log",
+          "sha256": "6af335ce223004799de44bac3bdb2bc92e6eaa334e083b8c2c015cecc312c504"
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "classification": "behavior-difference",
+      "seed": 1458,
+      "control": "extra-rng",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 3.727662199991755,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": false,
+        "comparable": true,
+        "pass": "QuickCleanup",
+        "scenario": "quick-cleanup-ordinary-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "behavior-difference",
+        "cellsCompared": 128000,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": {
+          "field": "inext",
+          "expected": 53,
+          "actual": 54
+        },
+        "beforeCellsSha256": "4ed28116b3120d21f697ea18fa1b4a3c5d5944c184e0d203e1a52469c9fb002f",
+        "officialAfterCellsSha256": "104f8ef338bad93909d1f5fa01a39fdc16143feef4e98c1723f6dcb7f2d0cbf3",
+        "runtimeAfterCellsSha256": "104f8ef338bad93909d1f5fa01a39fdc16143feef4e98c1723f6dcb7f2d0cbf3"
+      },
+      "domain": "worldgen",
+      "cliExitCode": 1,
+      "executedDlls": {
+        "PassProbe.dll": "0db5cce80857761d3435551166a5b6b95f5024e1c6651c8613689c359d30a50e",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b",
+        "TerraRuntime.World.dll": "d38478d3928b9327788bd375f4a93da316826c30bae54a9b41006ae5ebe5b23b",
+        "TerraRuntime.WorldGeneration.dll": "ab535de77f4cc14eea3003350299560fd9272a7c4bdf8c79b25139efdd7d2430"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-extra-rng/result.json",
+          "sha256": "2e4265c1b7a2a8a5e8eb311c845b7e5563819a428c489465362a7e3f9617dca8"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-extra-rng/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-extra-rng/official.json",
+          "sha256": "70e11f8e0f636d6c8b15de72cd837fb2ab75ac7830eac702604eb1a9c9b6e865"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-extra-rng/runtime.json",
+          "sha256": "1613b0137ce18757cbcb2e244a74fadc0c9e15241a1d64012296c72ddfa76be5"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/worldgen-1458-extra-rng/build.log",
+          "sha256": "e17debfdbd1216a125796ac262fb2d7aabbd49a7fbf442b7fcd0a7346ce4742b"
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "classification": "match",
+      "seed": 1458,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.536074999952689,
+      "comparison": {
+        "accepted": true,
+        "classification": "match",
+        "comparedFrames": 16,
+        "scenario": "ai003-ice-golem-airborne-v1",
+        "scope": "Sixteen type243 Ice Golem AI+explicit caller justHit-retirement frames on identical airborne input; retained motion, attack timers, target and full physical Main.rand state. No NPC.Update, collision/gravity, projectile-spawn, world lifecycle, AI7, Native or full NPC parity claim.",
+        "officialObservationSha256": "2873e5d02bfa76b0d8c3c7fd0d6623e2195cbc571483a6ef09febb7bc9432347",
+        "runtimeObservationSha256": "eefb0f238a66f184d864671c1af6888cb05033799c019518bf2665b7e995f6b5"
+      },
+      "domain": "npc",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "NpcProbe.dll": "d6499830cba37226f0d5518e3c25ac60c80ad611eaf0dbc61d4b607e3585d440",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Core.dll": "1a59d0e49ea68c2dcf926eec8427198c0c759755d7e43b0a659d525aee58a30d",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-normal/result.json",
+          "sha256": "30da48d4a40e19bb4419ab8882bbbb17725e56a01c8ca401ceae522049940127"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-normal/official.json",
+          "sha256": "2873e5d02bfa76b0d8c3c7fd0d6623e2195cbc571483a6ef09febb7bc9432347"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-normal/runtime.json",
+          "sha256": "eefb0f238a66f184d864671c1af6888cb05033799c019518bf2665b7e995f6b5"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-normal/build.log",
+          "sha256": "0b8152150c20f2e83019614c431976f3cdfd78dda49447da441f0c96f6e757db"
+        }
+      ],
+      "changedFrames": 16,
+      "callerBoundary": {
+        "carrierRetirement": "NPC.Update tail justHit=false after AI; runtime retires in admitted proposal",
+        "rawAfterAiJustHit": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ],
+        "runtimeRawAfterAiJustHit": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "classification": "match",
+      "seed": 42,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.337058400036767,
+      "comparison": {
+        "accepted": true,
+        "classification": "match",
+        "comparedFrames": 16,
+        "scenario": "ai003-ice-golem-airborne-v1",
+        "scope": "Sixteen type243 Ice Golem AI+explicit caller justHit-retirement frames on identical airborne input; retained motion, attack timers, target and full physical Main.rand state. No NPC.Update, collision/gravity, projectile-spawn, world lifecycle, AI7, Native or full NPC parity claim.",
+        "officialObservationSha256": "2b9515936ae4c2680db325dbecdbfc58958b0fc128121a374da07036cd31c611",
+        "runtimeObservationSha256": "8bfb8bb2951e07ad2eaf4a6e6c2ec7dbb8af6978c4b0050618f09b03ba339a56"
+      },
+      "domain": "npc",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "NpcProbe.dll": "d6499830cba37226f0d5518e3c25ac60c80ad611eaf0dbc61d4b607e3585d440",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Core.dll": "1a59d0e49ea68c2dcf926eec8427198c0c759755d7e43b0a659d525aee58a30d",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-42-normal/result.json",
+          "sha256": "e129a171698eb0f8f77ba2aadde20d009bde6668204a3fe8810ac8baf285c76d"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-42-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-42-normal/official.json",
+          "sha256": "2b9515936ae4c2680db325dbecdbfc58958b0fc128121a374da07036cd31c611"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-42-normal/runtime.json",
+          "sha256": "8bfb8bb2951e07ad2eaf4a6e6c2ec7dbb8af6978c4b0050618f09b03ba339a56"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-42-normal/build.log",
+          "sha256": "b577987079ef80e6c6c1c82d358383bd96a7511353f5ceb4eaee3a6e979e8463"
+        }
+      ],
+      "changedFrames": 16,
+      "callerBoundary": {
+        "carrierRetirement": "NPC.Update tail justHit=false after AI; runtime retires in admitted proposal",
+        "rawAfterAiJustHit": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ],
+        "runtimeRawAfterAiJustHit": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "classification": "match",
+      "seed": 8675309,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.8918763000983745,
+      "comparison": {
+        "accepted": true,
+        "classification": "match",
+        "comparedFrames": 16,
+        "scenario": "ai003-ice-golem-airborne-v1",
+        "scope": "Sixteen type243 Ice Golem AI+explicit caller justHit-retirement frames on identical airborne input; retained motion, attack timers, target and full physical Main.rand state. No NPC.Update, collision/gravity, projectile-spawn, world lifecycle, AI7, Native or full NPC parity claim.",
+        "officialObservationSha256": "ecb0d3e4086ec5e92a542c4296d2b2e84b9c939c6a0f6c8cb3e3f29a288b9f9c",
+        "runtimeObservationSha256": "37fcb170710de9a3be695204401ee8c0cf972e744e7172d03a189155fe222142"
+      },
+      "domain": "npc",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "NpcProbe.dll": "d6499830cba37226f0d5518e3c25ac60c80ad611eaf0dbc61d4b607e3585d440",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Core.dll": "1a59d0e49ea68c2dcf926eec8427198c0c759755d7e43b0a659d525aee58a30d",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-8675309-normal/result.json",
+          "sha256": "9da1c2983ebf6090ef9713fb867bc1f528e8286f7bc73382b232765e3e002471"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-8675309-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-8675309-normal/official.json",
+          "sha256": "ecb0d3e4086ec5e92a542c4296d2b2e84b9c939c6a0f6c8cb3e3f29a288b9f9c"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-8675309-normal/runtime.json",
+          "sha256": "37fcb170710de9a3be695204401ee8c0cf972e744e7172d03a189155fe222142"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-8675309-normal/build.log",
+          "sha256": "437dda80955041029b3a27b1aa5192b7d15dbb2ed0f52cd5a0b24ed8906ae4c9"
+        }
+      ],
+      "changedFrames": 16,
+      "callerBoundary": {
+        "carrierRetirement": "NPC.Update tail justHit=false after AI; runtime retires in admitted proposal",
+        "rawAfterAiJustHit": [
+          false,
+          false,
+          true,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          true,
+          false,
+          false
+        ],
+        "runtimeRawAfterAiJustHit": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "accepted": false,
+      "classification": "npc-state-mismatch",
+      "seed": 1458,
+      "control": "omit-step",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.430731499916874,
+      "comparison": {
+        "accepted": false,
+        "classification": "npc-state-mismatch",
+        "firstDifference": "frames[0].after.npc.velocity[0]",
+        "expected": "3ee3d70b",
+        "actual": "3e99999a",
+        "frame": 0,
+        "scenario": "ai003-ice-golem-airborne-v1",
+        "scope": "Sixteen type243 Ice Golem AI+explicit caller justHit-retirement frames on identical airborne input; retained motion, attack timers, target and full physical Main.rand state. No NPC.Update, collision/gravity, projectile-spawn, world lifecycle, AI7, Native or full NPC parity claim.",
+        "officialObservationSha256": "2873e5d02bfa76b0d8c3c7fd0d6623e2195cbc571483a6ef09febb7bc9432347",
+        "runtimeObservationSha256": "53c80f54f6817053be334d2368b1f4e58f32f0436c8460fb9dd0963ea8f78116"
+      },
+      "domain": "npc",
+      "cliExitCode": 1,
+      "executedDlls": {
+        "NpcProbe.dll": "d6499830cba37226f0d5518e3c25ac60c80ad611eaf0dbc61d4b607e3585d440",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Core.dll": "1a59d0e49ea68c2dcf926eec8427198c0c759755d7e43b0a659d525aee58a30d",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-omit-step/result.json",
+          "sha256": "ba80f63c2ba51f7c8b10500f17a609b93da0b5be67642d619421fa20a8bc1daa"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-omit-step/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-omit-step/official.json",
+          "sha256": "2873e5d02bfa76b0d8c3c7fd0d6623e2195cbc571483a6ef09febb7bc9432347"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-omit-step/runtime.json",
+          "sha256": "53c80f54f6817053be334d2368b1f4e58f32f0436c8460fb9dd0963ea8f78116"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-omit-step/build.log",
+          "sha256": "6af335ce223004799de44bac3bdb2bc92e6eaa334e083b8c2c015cecc312c504"
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "classification": "rng-state-mismatch",
+      "seed": 1458,
+      "control": "extra-rng",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.358190100057982,
+      "comparison": {
+        "accepted": false,
+        "classification": "rng-state-mismatch",
+        "firstDifference": "frames[0].after.rng.inext",
+        "expected": 1,
+        "actual": 2,
+        "frame": 0,
+        "scenario": "ai003-ice-golem-airborne-v1",
+        "scope": "Sixteen type243 Ice Golem AI+explicit caller justHit-retirement frames on identical airborne input; retained motion, attack timers, target and full physical Main.rand state. No NPC.Update, collision/gravity, projectile-spawn, world lifecycle, AI7, Native or full NPC parity claim.",
+        "officialObservationSha256": "2873e5d02bfa76b0d8c3c7fd0d6623e2195cbc571483a6ef09febb7bc9432347",
+        "runtimeObservationSha256": "26990f8dbbc919b797bd740367d66e22799e2b14b2c2a4ad5d0b942d29caaed1"
+      },
+      "domain": "npc",
+      "cliExitCode": 1,
+      "executedDlls": {
+        "NpcProbe.dll": "d6499830cba37226f0d5518e3c25ac60c80ad611eaf0dbc61d4b607e3585d440",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Core.dll": "1a59d0e49ea68c2dcf926eec8427198c0c759755d7e43b0a659d525aee58a30d",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-extra-rng/result.json",
+          "sha256": "5c0483e15a655af050d2512af0ea7a3b75efabcf2b787fbf97f75d0b99b8dc28"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-extra-rng/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-extra-rng/official.json",
+          "sha256": "2873e5d02bfa76b0d8c3c7fd0d6623e2195cbc571483a6ef09febb7bc9432347"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-extra-rng/runtime.json",
+          "sha256": "26990f8dbbc919b797bd740367d66e22799e2b14b2c2a4ad5d0b942d29caaed1"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/npc-1458-extra-rng/build.log",
+          "sha256": "77861900e030fbf0a81f2a768b60be45e56a614f7a02b642a88a5368449b28a4"
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "classification": "match",
+      "seed": 1458,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.0451014999998733,
+      "comparison": {
+        "schemaVersion": 1,
+        "kind": "gameplay-behavior-comparison",
+        "scenario": "pick-ammo-random-conservation-v1",
+        "scope": "Twenty-four Wooden Bow PickAmmo boundary calls on explicit projected effects and 58 ordinary inventory slots; complete selector, launch binary32 bits and physical Main.rand state. Runtime stock debit is a detached caller projection. No ItemCheck/UpdateEquips, authoritative inventory admission, packet27, projectile birth or full player parity claim.",
+        "accepted": true,
+        "classification": "match",
+        "framesCompared": 24,
+        "differentFields": 0,
+        "firstDifference": null,
+        "officialObservationSha256": "22ada1a596ed4c1cc7b89b75f82ca588b737c01b6f081b3589e056e2e6bdd1c9",
+        "runtimeObservationSha256": "7c0326229cad72d833d73da397f52214a49a97a3408dd227e4c8e1c7604f6467"
+      },
+      "domain": "gameplay",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "GameplayProbe.dll": "b2b896adf683b65195103ef1d86386da87966f94745d2688731b757546a31d33",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-normal/result.json",
+          "sha256": "b7e20191cccfaa363fefa4ac7dd6797ae8fe2b30e3a6243ac8b597517ce3a22e"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-normal/official.json",
+          "sha256": "22ada1a596ed4c1cc7b89b75f82ca588b737c01b6f081b3589e056e2e6bdd1c9"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-normal/runtime.json",
+          "sha256": "7c0326229cad72d833d73da397f52214a49a97a3408dd227e4c8e1c7604f6467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-normal/build.log",
+          "sha256": "8fc13ecd3d0d17b7edb5314a88db8fc0951fe224bb7b802a182b36c887633b32"
+        }
+      ],
+      "observedDebits": 8,
+      "selectedPhysicalSlots": [
+        1,
+        50,
+        54,
+        55
+      ]
+    },
+    {
+      "accepted": true,
+      "classification": "match",
+      "seed": 42,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 1.8190997999627143,
+      "comparison": {
+        "schemaVersion": 1,
+        "kind": "gameplay-behavior-comparison",
+        "scenario": "pick-ammo-random-conservation-v1",
+        "scope": "Twenty-four Wooden Bow PickAmmo boundary calls on explicit projected effects and 58 ordinary inventory slots; complete selector, launch binary32 bits and physical Main.rand state. Runtime stock debit is a detached caller projection. No ItemCheck/UpdateEquips, authoritative inventory admission, packet27, projectile birth or full player parity claim.",
+        "accepted": true,
+        "classification": "match",
+        "framesCompared": 24,
+        "differentFields": 0,
+        "firstDifference": null,
+        "officialObservationSha256": "79407e971387e7197e0c97efe714a910822a1cc0f2fd6c58f1cdbd412ac16f68",
+        "runtimeObservationSha256": "9c3925986e44aa1d662c7dc3bb385c38150d972050f50252168e3489b97d47f1"
+      },
+      "domain": "gameplay",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "GameplayProbe.dll": "b2b896adf683b65195103ef1d86386da87966f94745d2688731b757546a31d33",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-42-normal/result.json",
+          "sha256": "d520d6e540820096b8fc0eaa69118ae709674d2f0029377868e71c5ad6ff1551"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-42-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-42-normal/official.json",
+          "sha256": "79407e971387e7197e0c97efe714a910822a1cc0f2fd6c58f1cdbd412ac16f68"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-42-normal/runtime.json",
+          "sha256": "9c3925986e44aa1d662c7dc3bb385c38150d972050f50252168e3489b97d47f1"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-42-normal/build.log",
+          "sha256": "cf6eda155a7920cc28392993c875c73f1cc0d969716a5e406655df7df00e1933"
+        }
+      ],
+      "observedDebits": 4,
+      "selectedPhysicalSlots": [
+        1,
+        50,
+        54,
+        55
+      ]
+    },
+    {
+      "accepted": true,
+      "classification": "match",
+      "seed": 8675309,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 1.8803145999554545,
+      "comparison": {
+        "schemaVersion": 1,
+        "kind": "gameplay-behavior-comparison",
+        "scenario": "pick-ammo-random-conservation-v1",
+        "scope": "Twenty-four Wooden Bow PickAmmo boundary calls on explicit projected effects and 58 ordinary inventory slots; complete selector, launch binary32 bits and physical Main.rand state. Runtime stock debit is a detached caller projection. No ItemCheck/UpdateEquips, authoritative inventory admission, packet27, projectile birth or full player parity claim.",
+        "accepted": true,
+        "classification": "match",
+        "framesCompared": 24,
+        "differentFields": 0,
+        "firstDifference": null,
+        "officialObservationSha256": "4ba34bad48c9220ae2e0d7e34ee6017db1d142217e07c4204ddeedfa7ddccc6d",
+        "runtimeObservationSha256": "785790366f7f2fa8b4a5e6e90f6e3008ada2279ca028b49deeda563d5cef8e97"
+      },
+      "domain": "gameplay",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "GameplayProbe.dll": "b2b896adf683b65195103ef1d86386da87966f94745d2688731b757546a31d33",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-8675309-normal/result.json",
+          "sha256": "dffa6d8ee496ffb462a14fb487700bdcf27302321a5da0dfa83bbcea68d6549d"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-8675309-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-8675309-normal/official.json",
+          "sha256": "4ba34bad48c9220ae2e0d7e34ee6017db1d142217e07c4204ddeedfa7ddccc6d"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-8675309-normal/runtime.json",
+          "sha256": "785790366f7f2fa8b4a5e6e90f6e3008ada2279ca028b49deeda563d5cef8e97"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-8675309-normal/build.log",
+          "sha256": "f098a251818b5e98f9148dfbe517e613db183b26780653c0820e230db7c8b93d"
+        }
+      ],
+      "observedDebits": 9,
+      "selectedPhysicalSlots": [
+        1,
+        50,
+        54,
+        55
+      ]
+    },
+    {
+      "accepted": false,
+      "classification": "behavior-mismatch",
+      "seed": 1458,
+      "control": "omit-step",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.3024583999067545,
+      "comparison": {
+        "schemaVersion": 1,
+        "kind": "gameplay-behavior-comparison",
+        "scenario": "pick-ammo-random-conservation-v1",
+        "scope": "Twenty-four Wooden Bow PickAmmo boundary calls on explicit projected effects and 58 ordinary inventory slots; complete selector, launch binary32 bits and physical Main.rand state. Runtime stock debit is a detached caller projection. No ItemCheck/UpdateEquips, authoritative inventory admission, packet27, projectile birth or full player parity claim.",
+        "accepted": false,
+        "classification": "behavior-mismatch",
+        "framesCompared": 24,
+        "differentFields": 300,
+        "firstDifference": {
+          "field": "frames[7].state.cyclingOffset",
+          "expected": 2039662424,
+          "actual": 962656531
+        },
+        "officialObservationSha256": "22ada1a596ed4c1cc7b89b75f82ca588b737c01b6f081b3589e056e2e6bdd1c9",
+        "runtimeObservationSha256": "57e34aeeeaa7dd0e0bb886a72e8f51e61febfa942376ff9cabfff228b12b7e86"
+      },
+      "domain": "gameplay",
+      "cliExitCode": 1,
+      "executedDlls": {
+        "GameplayProbe.dll": "b2b896adf683b65195103ef1d86386da87966f94745d2688731b757546a31d33",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-omit-step/result.json",
+          "sha256": "62098b31e672dc2796c7da4675b563c52151310dee2dbad0d1212a2a7df31bf9"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-omit-step/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-omit-step/official.json",
+          "sha256": "22ada1a596ed4c1cc7b89b75f82ca588b737c01b6f081b3589e056e2e6bdd1c9"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-omit-step/runtime.json",
+          "sha256": "57e34aeeeaa7dd0e0bb886a72e8f51e61febfa942376ff9cabfff228b12b7e86"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-omit-step/build.log",
+          "sha256": "07c1c3b68eceb5a5ff2033e4ed2de1553bef95789f9533499c5a6f0f27bdf935"
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "classification": "behavior-mismatch",
+      "seed": 1458,
+      "control": "extra-rng",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.0245783999562263,
+      "comparison": {
+        "schemaVersion": 1,
+        "kind": "gameplay-behavior-comparison",
+        "scenario": "pick-ammo-random-conservation-v1",
+        "scope": "Twenty-four Wooden Bow PickAmmo boundary calls on explicit projected effects and 58 ordinary inventory slots; complete selector, launch binary32 bits and physical Main.rand state. Runtime stock debit is a detached caller projection. No ItemCheck/UpdateEquips, authoritative inventory admission, packet27, projectile birth or full player parity claim.",
+        "accepted": false,
+        "classification": "behavior-mismatch",
+        "framesCompared": 24,
+        "differentFields": 239,
+        "firstDifference": {
+          "field": "frames[7].state.rng.inext",
+          "expected": 40,
+          "actual": 41
+        },
+        "officialObservationSha256": "22ada1a596ed4c1cc7b89b75f82ca588b737c01b6f081b3589e056e2e6bdd1c9",
+        "runtimeObservationSha256": "d1c80d6f0cbfe24ecf97aab676e32ce8ce8eb407c7d7960739aeb1af1b6a370d"
+      },
+      "domain": "gameplay",
+      "cliExitCode": 1,
+      "executedDlls": {
+        "GameplayProbe.dll": "b2b896adf683b65195103ef1d86386da87966f94745d2688731b757546a31d33",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-extra-rng/result.json",
+          "sha256": "a3bd05d3e2184e649a3f1256620de94d3186e4a18c3e6e2c4aa4330b0987f8c1"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-extra-rng/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-extra-rng/official.json",
+          "sha256": "22ada1a596ed4c1cc7b89b75f82ca588b737c01b6f081b3589e056e2e6bdd1c9"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-extra-rng/runtime.json",
+          "sha256": "d1c80d6f0cbfe24ecf97aab676e32ce8ce8eb407c7d7960739aeb1af1b6a370d"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/gameplay-1458-extra-rng/build.log",
+          "sha256": "8e2f94c0cfa0570a118ce42b2242dec1acd5cc84da358322ec736f0da6915aec"
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "classification": "equal-projection",
+      "seed": 1458,
+      "control": "normal",
+      "sourceInputCount": 1839,
+      "sourceInputsSha256": "4c09fb5bf5f4e7bfecda726b56126f65d12f49981c0bedeb9f7c9bb956aa4a4f",
+      "wallSeconds": 2.242869900073856,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": true,
+        "comparable": true,
+        "pass": "SurfaceDirtWallsToGrassWalls",
+        "scenario": "grass-wall-stain-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "equal-projection",
+        "cellsCompared": 17920,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": null,
+        "beforeCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b",
+        "officialAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8",
+        "runtimeAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8"
+      },
+      "domain": "grass-wall",
+      "cliExitCode": 0,
+      "executedDlls": {
+        "PassProbe.dll": "0db5cce80857761d3435551166a5b6b95f5024e1c6651c8613689c359d30a50e",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "TerraRuntime.Contracts.dll": "0b1cf804ee2360b8e85e75c440d429126e44c96ac5eaf2ac16fb0bac4cbf43cd",
+        "TerraRuntime.Gameplay.dll": "50c5e8789ca9b644b396c8b0c31e3116e0fb84e0ebf2ce9dd799ecfc646ef30b",
+        "TerraRuntime.World.dll": "d38478d3928b9327788bd375f4a93da316826c30bae54a9b41006ae5ebe5b23b",
+        "TerraRuntime.WorldGeneration.dll": "ab535de77f4cc14eea3003350299560fd9272a7c4bdf8c79b25139efdd7d2430"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/three-oracles/candidate-01/grass-wall-1458-normal/result.json",
+          "sha256": "9fe28184d1c850ffd7fe4e03885f8a0309da66fe53ec2a0b8611ea291d9a9648"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/grass-wall-1458-normal/source-before.json",
+          "sha256": "ae028dc0f4f92688cc896eb1bc4cf54e9cce9a349ead529bd2b1dc1e47e2c467"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/grass-wall-1458-normal/official.json",
+          "sha256": "be55e59a0bc330d31c0b2ff5ae994c369bce91699f1808c477e96f87f6091316"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/grass-wall-1458-normal/runtime.json",
+          "sha256": "1da708ccc57fc35ea0ed9b0e75e3466956a6227b090e01542826de585226db31"
+        },
+        {
+          "path": ".cache/three-oracles/candidate-01/grass-wall-1458-normal/build.log",
+          "sha256": "1ca1c91510b8429a3cbfffc95ccf49ed6f8af32a63ab4e4ce4af027e7365023c"
+        }
+      ],
+      "observedChangedCells": 83
+    }
+  ],
+  "normalFreshBuildAndCompareWallSeconds": {
+    "worldgen": {
+      "samples": [
+        3.7691423000069335,
+        3.8642003999557346,
+        3.7436714000068605
+      ],
+      "median": 3.7691423000069335
+    },
+    "npc": {
+      "samples": [
+        2.536074999952689,
+        2.337058400036767,
+        2.8918763000983745
+      ],
+      "median": 2.536074999952689
+    },
+    "gameplay": {
+      "samples": [
+        2.0451014999998733,
+        1.8190997999627143,
+        1.8803145999554545
+      ],
+      "median": 1.8803145999554545
+    },
+    "grass-wall": {
+      "samples": [
+        2.242869900073856
+      ],
+      "median": 2.242869900073856
+    }
+  },
+  "standaloneComparisons": [
+    {
+      "path": ".cache/three-oracles/candidate-01/worldgen-standalone.json",
+      "sha256": "be9c5738dcd1a2655cbd208fcb338fe395d1ee174645743ff4650b1f8b1edf28"
+    },
+    {
+      "path": ".cache/three-oracles/candidate-01/npc-standalone.json",
+      "sha256": "d5e34edf5126cca5b264aae460c9d5c9b42adac545728663b04bc2d97c53743d"
+    },
+    {
+      "path": ".cache/three-oracles/candidate-01/gameplay-standalone.json",
+      "sha256": "a69de31be65601998467a42212af3c3722c067a74bba850a8e8aa15e2eb7e245"
+    }
+  ],
+  "unchangedConstructorData": {
+    "accepted": true,
+    "mutationCount": 44,
+    "capture": {
+      "path": ".cache/three-oracles/data-capture.json",
+      "sha256": "20545b0818e7d055730f4121da74481ab68ca76d958b7bea591aba513c458dc0"
+    },
+    "verification": {
+      "path": ".cache/three-oracles/data-verify.json",
+      "sha256": "48a77ab8236ae406c586fc22354305327cd835d4e6ba7c359d114a6472933008"
+    }
+  },
+  "knownUnresolvedMetadataDiagnostic": {
+    "accepted": false,
+    "differences": [
+      {
+        "field": "AddPassesSha256",
+        "expected": "1e073711995e1eb38578d7d23e991cf5005fefaf573188ebbdcec261f945347f",
+        "actual": "72e757af1fb0a7b565d397bbb0f9fd1d32a2960838ba636c593e122645ab9672"
+      }
+    ],
+    "operation": "worldgen-check",
+    "runtimeCatalogSha256": "1b76787431deb846201b5e89269bec576fac4a1e16e0dd719b2109097adc41c0",
+    "coverage": {
+      "runtimeWeightComparison": "not-represented-by-runtime-catalog",
+      "seedGateComparison": "recorded-and-fingerprinted-not-executed",
+      "sourceRegistrationCount": 109,
+      "sourceWeightsKnown": 109,
+      "worldCellRngComparison": "not-executed"
+    },
+    "sourceFreshness": "checked",
+    "scope": "Registration metadata/fingerprints only; no generated-world, cell/RNG or AI parity claim",
+    "sourceDifferences": [],
+    "wallSeconds": 0.016690599964931607
+  },
+  "notExecuted": [
+    "new production fast/full matrices",
+    "fresh NativeAOT",
+    "fresh TCP/live-client acceptance",
+    "AI7 oracle",
+    "whole NPC.Update",
+    "authoritative inventory admission",
+    "ItemCheck/UpdateEquips",
+    "natural-prefix or whole-world parity"
+  ]
+}

@@ -1,6 +1,6 @@
 # World generation source tools
 
-`tools/vanilla.py worldgen` provides a source registration catalog, a bounded replay of one compiled Reset checkpoint, and fresh original/runtime execution of one isolated Grass Wall pass. These workflows do not generate a complete world or prove complete pass parity.
+`tools/vanilla.py worldgen` provides a source registration catalog, a bounded replay of one compiled Reset checkpoint, and fresh original/runtime execution of supported isolated passes. These workflows do not generate a complete world or prove complete pass parity.
 
 ```sh
 python tools/vanilla.py worldgen capture --source-root /path/to/decompiled/1458 --output .cache/worldgen-tools/catalog.json
@@ -8,6 +8,7 @@ python tools/vanilla.py worldgen check --reference .cache/worldgen-tools/catalog
 python tools/vanilla.py worldgen mutate --reference .cache/worldgen-tools/catalog.json --report .cache/worldgen-tools/mutations.json
 python tools/vanilla.py worldgen replay-reset --tests-dll tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll --output-dir .cache/worldgen-tools/reset-replay
 python tools/vanilla.py worldgen run-pass --assembly /path/to/TerrariaServer.exe --output-dir .cache/worldgen-tools/grass-wall --seed 1458
+python tools/vanilla.py worldgen run-pass --assembly /path/to/TerrariaServer.exe --output-dir .cache/worldgen-tools/quick-cleanup --seed 1458 --profile quick-cleanup
 python tools/vanilla.py worldgen compare-pass --official .cache/worldgen-tools/grass-wall/official.json --runtime .cache/worldgen-tools/grass-wall/runtime.json --report .cache/worldgen-tools/grass-wall-comparison.json
 ```
 
@@ -25,13 +26,24 @@ The initial real-source audit on 2026-10-28 intentionally returns a diagnostic f
 
 ## Fresh isolated-pass comparison
 
-`run-pass` builds the current offline `PassProbe` with warnings as errors, validates the official executable and dependencies against the admitted reference, and captures both engines in separate processes. It selects the actual registered official `SurfaceDirtWallsToGrassWalls` / `Grass Wall` pass and calls `GenPass.Apply`; the runtime capture calls the current `GrassWallPass1458.Apply`. Neither pass implementation is copied into the tool.
+`run-pass` builds the current offline `PassProbe` with warnings as errors, validates the official executable and dependencies against the admitted reference, and captures both engines in separate processes. It selects the actual registered official pass and calls `GenPass.Apply`; the runtime capture calls the corresponding current runtime `Apply`. Neither pass implementation is copied into the tool. `--profile grass-wall` remains the default; `--profile quick-cleanup` selects the second profile.
 
-Both engines receive the same explicit synthetic 160×112 predecessor with a stone/wall patch, world context and RNG state. The observations contain all 17,920 cells before and after in the complete named 16-byte `WorldTile` projection, plus the physical RNG cursor and all 56 state slots. In 1.4.5.8, `WorldGen.genRand` aliases `Main.rand`; the second RNG cursor is derived, not an additional stored field. The comparator rejects different input cells, context, scenario or RNG before comparing every output field and reporting the first cell/field and RNG difference. Missing, malformed or unsupported represented state is rejected.
+| Profile | Official registration / runtime body | Explicit synthetic predecessor |
+| --- | --- | --- |
+| `grass-wall` | `SurfaceDirtWallsToGrassWalls` / `Grass Wall`; `GrassWallPass1458.Apply` | 160×112 stone/wall patch; all 17,920 cells |
+| `quick-cleanup` | `QuickCleanup` / `Quick Cleanup`; `QuickCleanupPass1458.Apply` | 800×160 ordinary-world cleanup cases; all 128,000 cells |
 
-`run-pass` records source/tool hashes and the executed DLL closure, checks them before/after, and retains build/capture logs and rejected evidence. `compare-pass` only compares the supplied observations and records the hashes of the consumed files; it does not rebuild or recheck their correspondence to current source. The fixture exercises wall staining and deliberately excludes dirt-pocket/`SpreadGrass` branches. It does not represent a naturally generated prefix, raw `Tile` wall-frame metadata, the `WorldGenerator.RunPass` manifest-tail RNG draw, Native execution or whole-world parity.
+Both engines receive the same explicit predecessor, world context and RNG state. The observations contain every cell before and after in the complete named 16-byte `WorldTile` projection, plus the physical RNG cursor and all 56 state slots. In 1.4.5.8, `WorldGen.genRand` aliases `Main.rand`; the second RNG cursor is derived, not an additional stored field. The comparator rejects different input cells, context, scenario or RNG before comparing every output field and reporting the first cell/field and RNG difference. Missing, malformed or unsupported represented state is rejected.
+
+The cleanup profile covers ocean liquid normalization above/below its floor and inside/outside its columns, sand support columns with RNG drawn in the loop condition, hive/temple materials and shallow/deep liquids, wall borrowing, and ordinary slope/support/trap cases. The official readonly beach distance remains 380; the fixture preserves a genuine inland strip. Its context additionally records rock layer, ocean level, beach distance, ordinary seed flags, and independently observed participating solidity, solid-top, saved-slope, platform and generation-clearability facts. Missing facts for any input/output cell identity or different content facts reject comparison. The original facts are initialized from verified source setup for these identities; this is not full content initialization. Combined independent half-brick/slope shapes and secret-seed branches are outside this profile.
+
+`run-pass` records source/tool hashes and the executed DLL closure, checks them before/after, and retains build/capture logs and rejected evidence. `compare-pass` only compares the supplied observations and records the hashes of the consumed files; it does not rebuild or recheck their correspondence to current source. The Grass Wall fixture exercises wall staining and deliberately excludes dirt-pocket/`SpreadGrass` branches. Neither profile represents a naturally generated prefix, raw `Tile` wall-frame metadata, the `WorldGenerator.RunPass` manifest-tail RNG draw, Native execution or whole-world parity.
 
 The actual 2026-10-28 qualification used fresh `run-pass` executions for seeds 1458, 42 and 8675309: all 17,920 output cells and RNG states matched, with 1,832 source/tool inputs and six DLLs unchanged in each run. Two actual runtime controls confirmed detection: `--control omit-pass` produced 83 differing cells and an RNG difference at seed 1458; `--control extra-rng` preserved cells but changed RNG. Both controls correctly return a rejected comparison and nonzero CLI exit. Their evidence is retained under `.cache/worldgen-run-pass-root-01`, `-42`, `-8675309`, `-omit` and `-extra`; these local captures are not portable golden files.
+
+The second-profile backend qualification on the same date freshly built `PassProbe` with zero warnings/errors and captured the actual registered Quick Cleanup delegate and runtime body for seeds 1458, 42 and 8675309. Every one of the 128,000 cells and the complete RNG state matched; the pass changed 67, 62 and 65 cells respectively, so these are not empty-world no-op comparisons. At seed 1458 the real omitted-pass control differed in 67 cells and RNG; the extra-draw control differed only in RNG. A freshly captured Grass Wall pair still matched. The backend checks its DLL closure and official inputs before/after; these prototype captures do not claim the common runner's across-build source guard. Full observations and comparison evidence are retained under `.cache/three-oracles-worldgen/prototype-01/qualification.json`.
+
+Final shared CLI qualification executes `quick-cleanup` for seeds `1458`, `42` and `8675309`, both real negative controls, and the preserved Grass Wall profile. Source/tool and DLL guards remain exact throughout. The [three-domain verification record](../verification/three-domain-oracles-20261028.json) retains hashes, comparison details and measured runner times; this does not extend the stated profile scope.
 
 ## Reset replay and the next differential step
 

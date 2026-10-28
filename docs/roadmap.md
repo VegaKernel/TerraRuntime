@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Three behavior-tool directions active, 2026-10-28
+
+Offline tools now execute and compare ordinary synthetic QuickCleanup, sixteen AI3 Ice Golem frames with explicit caller pulse retirement, and twenty-four PickAmmo boundary calls. Fresh CLI qualification covers three seeds pernewdomain, real omission/extra-RNG controls, and preserved GrassWall;170Python tests and bilingual docs pass. Production sources and compatibility classifications are unchanged. AI7/fullNPCUpdate, authoritative player admission/ItemCheck/UpdateEquips, other worldgen branches and natural-prefix/whole-world parity remain work. Guides: [worldgen EN](en/worldgen-source-tools.md) / [RU](ru/worldgen-source-tools.md), [NPC EN](en/npc-source-tools.md) / [RU](ru/npc-source-tools.md), [gameplay EN](en/gameplay-source-tools.md) / [RU](ru/gameplay-source-tools.md). Exact guards and observations: [verification](verification/three-domain-oracles-20261028.json).
+
 ## Applied worldgen pass oracle, 2026-10-28
 
 `worldgen run-pass` now executes original registered Grass Wall and current runtime code on the same explicit synthetic input. All17,920projected cells and complete physical RNG agree for seeds1458/42/8675309; deliberate omission and extra-RNG controls fail as expected. The paired [worldgen guide](en/worldgen-source-tools.md) / [RU](ru/worldgen-source-tools.md) documents fresh source/DLL guards and standalone `compare-pass`. This covers wall staining only. Natural-prefix state mapping, dirt-pocket/SpreadGrass branches and other passes remain open; the AddPasses fingerprint diagnostic remains unresolved.

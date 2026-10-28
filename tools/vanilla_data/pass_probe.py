@@ -11,6 +11,10 @@ from . import pass_trace
 
 PROJECT = 'tools/vanilla_data/PassProbe/PassProbe.csproj'
 CONTROLS = ('normal', 'omit-pass', 'extra-rng')
+PROFILES = {
+    'grass-wall': ('SurfaceDirtWallsToGrassWalls', 'grass-wall-stain-v1', 'Grass Wall', 'GrassWallPass1458'),
+    'quick-cleanup': ('QuickCleanup', 'quick-cleanup-ordinary-v1', 'Quick Cleanup', 'QuickCleanupPass1458'),
+}
 
 
 def source_inputs() -> dict:
@@ -30,9 +34,10 @@ def dll_pins(folder: Path) -> dict:
     return {path.relative_to(folder).as_posix(): facts.digest(path) for path in sorted(folder.rglob('*.dll'))}
 
 
-def run_pass(assembly: Path, output_dir: Path, seed: int = 1458, control: str = 'normal') -> dict:
-    if type(seed) is not int or not -0x80000000 <= seed <= 0x7fffffff or control not in CONTROLS:
-        raise ValueError('Unsupported seed/control')
+def run_pass(assembly: Path, output_dir: Path, seed: int = 1458, control: str = 'normal', profile: str = 'grass-wall') -> dict:
+    if type(seed) is not int or not -0x80000000 <= seed <= 0x7fffffff or control not in CONTROLS or profile not in PROFILES:
+        raise ValueError('Unsupported seed/control/profile')
+    pass_id, scenario, registered_name, runtime_type = PROFILES[profile]
     assembly = assembly.resolve(strict=True)
     admitted = facts.reference()
     if facts.digest(assembly) != admitted['assemblySha256']:
@@ -71,7 +76,7 @@ def run_pass(assembly: Path, output_dir: Path, seed: int = 1458, control: str = 
         for engine in ('official', 'runtime'):
             mode = control if engine == 'runtime' else 'normal'
             if not execute(engine, ['dotnet', str(binary), engine, str(assembly), str(facts.PIN_PATH),
-                                   str(output_dir / (engine + '.json')), str(seed), mode], 30):
+                                   str(output_dir / (engine + '.json')), str(seed), mode, profile], 30):
                 break
         if not errors:
             try:
@@ -80,15 +85,15 @@ def run_pass(assembly: Path, output_dir: Path, seed: int = 1458, control: str = 
                 for observation in (official, runtime):
                     if observation.get('executedDlls') != pins:
                         raise ValueError('Observation does not identify the executed DLL closure')
-                    if observation['pass'] != 'SurfaceDirtWallsToGrassWalls' or observation['scenario'] != 'grass-wall-stain-v1' or observation['context']['seed'] != seed:
+                    if observation['pass'] != pass_id or observation['scenario'] != scenario or observation['context']['seed'] != seed:
                         raise ValueError('Observation is not the requested pass/scenario/seed')
                     provenance = observation['provenance']
                     mode = control if observation['engine'] == 'runtime' else 'normal'
                     if provenance.get('control') != mode or provenance.get('probeSha256') != pins.get('PassProbe.dll'):
                         raise ValueError('Observation control/probe identity differs')
-                if official['provenance'].get('entry') != 'registered-GenPass.Apply' or official['provenance'].get('registeredName') != 'Grass Wall' or official['provenance'].get('officialAssemblySha256') != admitted['assemblySha256'] or official['provenance'].get('dependenciesSha256') != admitted['dependenciesSha256']:
+                if official['provenance'].get('entry') != 'registered-GenPass.Apply' or official['provenance'].get('registeredName') != registered_name or official['provenance'].get('officialAssemblySha256') != admitted['assemblySha256'] or official['provenance'].get('dependenciesSha256') != admitted['dependenciesSha256']:
                     raise ValueError('Official entry/artifact identity differs')
-                if runtime['provenance'].get('entry') != 'TerraRuntime.WorldGeneration.Vanilla.GrassWallPass1458.Apply' or runtime['provenance'].get('runtimeAssemblySha256') != pins.get('TerraRuntime.WorldGeneration.dll'):
+                if runtime['provenance'].get('entry') != 'TerraRuntime.WorldGeneration.Vanilla.' + runtime_type + '.Apply' or runtime['provenance'].get('runtimeAssemblySha256') != pins.get('TerraRuntime.WorldGeneration.dll'):
                     raise ValueError('Runtime entry/artifact identity differs')
                 compared = pass_trace.compare(official, runtime)
                 (output_dir / 'comparison.json').write_text(json.dumps(compared, indent=2) + '\n', encoding='utf-8')
@@ -118,7 +123,7 @@ def run_pass(assembly: Path, output_dir: Path, seed: int = 1458, control: str = 
     accepted = not errors and compared is not None and compared['accepted']
     report = {'schemaVersion': 1, 'operation': 'worldgen-run-pass', 'accepted': accepted,
               'classification': 'execution-or-input-failure' if errors else compared['classification'] if compared else 'no-observation',
-              'pass': 'SurfaceDirtWallsToGrassWalls', 'scenario': 'grass-wall-stain-v1', 'seed': seed, 'control': control,
+              'pass': pass_id, 'scenario': scenario, 'profile': profile, 'seed': seed, 'control': control,
               'sourceInputCount': len(before), 'sourceInputsUnchanged': unchanged,
               'sourceInputsSha256': facts.data_digest(before), 'dllsBefore': pins, 'dllsAfter': after,
               'dllsUnchanged': pins == after, 'commands': commands, 'validationErrors': errors,
