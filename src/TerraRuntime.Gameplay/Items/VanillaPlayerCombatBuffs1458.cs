@@ -10,7 +10,7 @@ public static class VanillaPlayerCombatBuffs1458
         out VanillaPlayerCombatSnapshot after)
     {
         after = before;
-        if (active.Length > 44 || !float.IsFinite(before.MinionDamage) || before.MinionDamage <= 0f ||
+        if ((before.BuffImmunity & ~VanillaPlayerBuffImmunity1458.All) != 0 || active.Length > 44 || !float.IsFinite(before.MinionDamage) || before.MinionDamage <= 0f ||
             !float.IsFinite(before.MeleeAttackSpeed) || !float.IsFinite(before.MinionKnockback) || !float.IsFinite(before.MoveSpeed) ||
             !float.IsFinite(before.PickSpeed)) return false;
         if (before.Defense < 0 || before.MeleeCrit < 0 || before.RangedCrit < 0 || before.MagicCrit < 0) return false;

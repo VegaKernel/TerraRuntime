@@ -1,5 +1,13 @@
 # Work state
 
+## CURRENT unpublished gameplay integration, 2026-10-29
+
+Branch gameplay/ankh-integration-20261029 combines accepted main1c4d8c9e with component0aaab63; only documentation conflicts were resolved by preserving both histories. No aggregate gameplay acceptance is claimed. Wait for six additional source-ordered status continuations on the sibling equipment branch, then merge them and run one combined gate. Primary main remains the published NPC/tool checkpoint; no deployment/push of this branch yet.
+
+## Isolated Ankh equipment component, 2026-10-28
+
+Branch gameplay/ankh-immunities-20261028 in TerraRuntime-next-equipment starts at02b769ec; no main merge/push yet. Sixteen Ankh-line grants reuse effective equipment, retained combat fields, source NPC proc RNG and existing44buffslots. Only Poison20/Cursed23 current-affliction cleanup is admitted; other active harmful states stay fenced,1613fireWalk/1921cold/5355Shimmer remain excluded. ReleaseWAE0/0, new454/454 and existing19neighborFacts pass. Same387TestDLL gives384oldassertfail/3controls then387fixedgreen; exactfinal454TestDLL cleanupomission has30assertfail/21controls,158DLL/sourceguards green. Component only: aggregatefast/full/Native/TCP notrun. Evidence docs/verification/ankh-immunity-equipment-20261028.json; cache E-backed through original .cache/ankh junction. Preserve NPC22 worktree and its independent gates.
+
 ## CURRENT main union ready for publication, 2026-10-29
 
 Primary main merges NPC checkpointa498d8fa and semantic-tool checkpoint7ae9d32a. All4067 shipping/build/test/resource inputs and raw index bytes match accepted NEXT final03; immutable158DLL closure, full1575840/all5485methods, fast34426 audited from the same full, Nativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/all5smokes and actualRelease+NativeTCP remain exact. The disjoint tool merge does not require or claim another production full/Native execution. Combined evidence docs/verification/ground-critter-semantic-main-union-20261029.json. Push this accepted main; Git records actual publication. AI3/AI7 lifecycle247/300=82.3%, global511/244; FullVanillaAiParity false.

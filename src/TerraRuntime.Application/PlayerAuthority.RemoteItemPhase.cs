@@ -834,6 +834,9 @@ internal sealed partial class PlayerAuthority
             Count = Math.Max(0, mana.Count)
         };
         if(!skipManaRegeneration)AdvanceLocalManaFeedback(ref item,in selected,item.Mana,in mana,random);
+        // UpdateBuffs and life/mana regeneration have already observed this frame's
+        // effects. Source immunity removal is later and must not cancel those writes.
+        plan.PublishBuffs |= plan.Buffs.RemoveEquipmentImmuneBuffs(in derivedCombat);
         bool left = (member.ControlFlags & 4) != 0;
         bool right = (member.ControlFlags & 8) != 0;
         var horizontal = ResolveRemoteHorizontalIntent(left, right, plan.Vx);

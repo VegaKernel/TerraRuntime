@@ -1,5 +1,9 @@
 # Production graph
 
+## Isolated Ankh equipment component, 2026-10-28
+
+Sixteen immunity accessories add bounded immutable flags to the existing combat snapshot; the existing equipment selector and whole-player admission own grants. NPC contact still spends proc RNG before immunity. Late cure uses existing44slots/provenance/DelBuff compaction and per-update poison/noItems carriers; existing player phase adopts buff/HP/items/RNG before observers. No new inventory/timer/RNG owner, production package or project edge. Component evidence only; main/aggregate integration pending.
+
 ## Ground-critter retained owner, 2026-10-28
 
 Ground-critter checkpoint2026-10-28: source4067/DLL158/index exact, old891fixtures unchanged; AI3/AI7 lifecycle247/300 (82.3%), global511/244. Existing retained owner now handles34critters and live squirrel7→3; no parallel store/RNG/dependency, graph15/29. Phase63744active+960surface/fullRNG strict,60legacy stability controls; terminal4224NPC/raw/RNGonly, inactivebuffownership unqualified. WAE/focus1391/full1575840/all5485methods and fast34426 actual subset of same unfiltered run green, freshWindowsNativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/5smokes/actualRelease+NativeTCP green. FullVanillaAiParity false; LinuxNative/GUI/gracefulsave open. See docs/verification/ground-critter-acceptance-20261028.json.

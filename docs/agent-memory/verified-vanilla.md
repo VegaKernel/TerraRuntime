@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Source Ankh-line immunity observations, 2026-10-28
+
+Actual initialized original1458 Item.SetDefaults/UpdateEquips/AddBuff confirms885..893 grant30/36/20/22/32/35/23/33/31 respectively;3781 grants156,901 grants33+36,902 grants30+20,903 grants32+31,904 grants35+23,5354 grants22+156,1612 allten. Source StatusFromNPC spends its proc draws before AddBuff immunity. Actual unmodified remote Player.Update0 preserves thisframe poison/noItems after lateimmuneDelBuff; forward compaction canleave adjacentCursed oneextra update, andslot43 retains source special compaction. Original16favorite-source GetEffectiveArmor/UpdateEquips confirms accessorytrue,wing/armorparts-1,expertOnlyfalse,incompatibility-1. Fixtures AnkhEquipmentLinux1458 andAnkhEquipmentSharingLinux1458 retain actual outputs; no wholeMain/GUI/Native or unknownregenerationclock claim.
+
 ## Ground-critter source-qualified continuation, 2026-10-28
 
 Ground-critter checkpoint2026-10-28: source4067/DLL158/index exact, old891fixtures unchanged; AI3/AI7 lifecycle247/300 (82.3%), global511/244. Existing retained owner now handles34critters and live squirrel7→3; no parallel store/RNG/dependency, graph15/29. Phase63744active+960surface/fullRNG strict,60legacy stability controls; terminal4224NPC/raw/RNGonly, inactivebuffownership unqualified. WAE/focus1391/full1575840/all5485methods and fast34426 actual subset of same unfiltered run green, freshWindowsNativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/5smokes/actualRelease+NativeTCP green. FullVanillaAiParity false; LinuxNative/GUI/gracefulsave open. See docs/verification/ground-critter-acceptance-20261028.json.
