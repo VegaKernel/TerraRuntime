@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+Merged Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped row109 branch below is verified with concurrent gameplay/QuickCleanup changes. Release WAE0/0, fast `25,553/25,553`, unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes pass. Row109 remains `P`; earlier parent-tree gate numbers below are historical, not merged acceptance.
+
 Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped six-identity source branch below passes Release warnings-as-errors, fast `25,549/25,549`, one unfiltered full `1,566,963/1,566,963` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; further framing, special-seed and real-prefix work is required. The pending-gate wording below is historical.
 
 ## Final Cleanup Check2x1 framing, 2026-10-28

@@ -1,5 +1,7 @@
 # Complete vanilla worldgen pass audit — 2026-09-08
 
+Merged Final Cleanup Check2x1 gate (2026-10-28): the scoped official fixture below passes Release fast `25,553/25,553`, unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes on the merged gameplay/QuickCleanup tree. Row109 remains `P`; type103, chest metadata, other framing, special-seed tails and real-prefix parity remain open. Linux NativeAOT is locally unverified.
+
 Final Cleanup Check2x1 acceptance (2026-10-28): the six-identity official fixture below is joined by Release fast `25,549/25,549`, unfiltered full `1,566,963/1,566,963` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; type103, chest metadata, further framing families, special-seed tails and real-prefix parity remain open. Linux NativeAOT is locally unverified.
 
 Final Cleanup two-by-one framing (2026-10-28): row 109 remains `P`. The official registered `PassLegacy` `1000 × 500`, seed-`1458` fixture now matches every six-field cell and next RNG for intact and broken `Check2x1` objects of types `16/18/29/134/462/649`. It checks solid-support and table-only arms, missing members and frame spacing; SHA-256 `85db1681ebc66152ef3f1fa2d02d8188bd4bfe5fef94500cd09de650da8f7435`, next RNG `1056314798`. The table-arm omission fails the unchanged fixture. Other important identities, type-103 `AnchorValid(Table)`, chest metadata effects, special-seed tails and a real-prefix differential remain open.
