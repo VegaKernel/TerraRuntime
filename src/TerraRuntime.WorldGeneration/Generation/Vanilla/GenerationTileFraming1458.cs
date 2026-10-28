@@ -30,7 +30,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <c>CheckTorch</c>, all five <c>IsADripTile</c> identities, dart trap <c>136</c>, directional tiles
 /// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one- and two-cell type-<c>185</c>
 /// piles, the ordinary/table-supported <c>Check2x1</c> identities <c>16</c>/<c>18</c>/<c>29</c>/
-/// <c>103</c>/<c>134</c>/<c>462</c>/<c>649</c>, dye <c>227</c>,
+/// <c>103</c>/<c>134</c>/<c>462</c>/<c>649</c>, basic chests <c>21</c>/<c>467</c> (with an optional
+/// workspace chest side table), dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -51,7 +52,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// </remarks>
 internal sealed class GenerationTileFraming1458(
     WorldTileStore store,
-    IWorldGenerationVanillaRandom random)
+    IWorldGenerationVanillaRandom random,
+    Workspace? workspace = null)
 {
     private const ushort LargePiles = 186;
     private const ushort LargePiles2 = 187;
@@ -123,6 +125,12 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 16 or 18 or 29 or 103 or 134 or 462 or 649)
         {
             CheckTwoByOne(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 21 or 467)
+        {
+            CheckChest(i, j, tile.Type);
             return;
         }
 
@@ -574,6 +582,51 @@ internal sealed class GenerationTileFraming1458(
         destroyingObject = false;
         SquareTileFrame(left, j);
         SquareTileFrame(left + 1, j);
+    }
+
+    /// <summary>TerrariaServer 1.4.5.8 WorldGen.CheckChest, including the occupied-container veto.</summary>
+    private void CheckChest(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        WorldTile observed = At(i, j);
+        int column = observed.FrameX / 18;
+        while (column > 1)
+            column -= 2;
+        int left = i - column;
+        int top = j - observed.FrameY / 18;
+        if (!Contains(left, top) || !Contains(left + 1, top + 2))
+            return;
+
+        bool canDestroy = workspace?.CanDestroyGeneratedChest(left, top) ?? true;
+        bool broken = false;
+        for (int x = left; x < left + 2; x++)
+        {
+            for (int y = top; y < top + 2; y++)
+            {
+                WorldTile part = At(x, y);
+                int partColumn = part.FrameX / 18;
+                while (partColumn > 1)
+                    partColumn -= 2;
+                if (!part.IsActive || part.Type != type || partColumn != x - left ||
+                    part.FrameY != (y - top) * 18)
+                    broken = true;
+            }
+
+            WorldTile support = At(x, top + 2);
+            if ((!support.IsActive || !VanillaTileCollisionCatalog.IsSolid(support.TileType)) && canDestroy)
+                broken = true;
+        }
+        if (!broken || !canDestroy)
+            return;
+
+        destroyingObject = true;
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 3; y++)
+            if (At(x, y).IsActive && At(x, y).Type == type)
+                KillTile(x, y);
+        destroyingObject = false;
     }
 
     private bool IsTwoByOneTableSupport(int x, int y)
@@ -1196,6 +1249,14 @@ internal sealed class GenerationTileFraming1458(
         ref WorldTile tile = ref At(i, j);
         if (!tile.IsActive)
             return;
+
+        if (tile.Type is 21 or 467)
+        {
+            int left = i - tile.FrameX / 18 % 2;
+            int top = j - tile.FrameY / 18;
+            if (workspace is not null && !workspace.TryRemoveEmptyGeneratedChest(left, top))
+                return;
+        }
 
         GenerationKillTileDust1458.Consume(random, tile.Type);
         tile.Flags &= ~WorldTileFlags.Active;

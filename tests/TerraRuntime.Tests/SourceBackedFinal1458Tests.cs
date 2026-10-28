@@ -924,6 +924,87 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_basic_chests_match_official_registered_passlegacy()
+    {
+        // Independent TerrariaServer 1.4.5.8 registered FinalCleanup PassLegacy, 1000x500,
+        // seed1458: intact and unsupported/missing-member 21/467 objects. All six fields of
+        // every cell and the next shared RNG draw are pinned, not just the local object footprint.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        foreach ((int left, ushort type, short baseFrame, bool complete, bool support) in new[]
+        {
+            (500, (ushort)21, (short)0, true, true), (540, (ushort)21, (short)36, true, false),
+            (580, (ushort)21, (short)72, false, true), (620, (ushort)467, (short)0, true, true),
+            (660, (ushort)467, (short)36, true, false), (700, (ushort)467, (short)72, false, true)
+        })
+        {
+            for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 2; dy++)
+            {
+                if (!complete && dx == 1 && dy == 1)
+                    continue;
+                var part = new WorldTile { Type = type, FrameX = (short)(baseFrame + dx * 18),
+                    FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(left + dx, 100 + dy, in part);
+            }
+            var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            for (int dx = 0; dx < (support ? 2 : 1); dx++)
+                workspace.TileStore.Set(left + dx, 102, in floor);
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("FD1B611258105C3069982838AD3F9621F2E79A1A973FDFF2F9FA39EE418C07ED", HashFixture(workspace));
+        Assert.Equal(1056314798, random.Next());
+        Assert.True(workspace.TileStore.Get(500, 100).IsActive);
+        Assert.True(workspace.TileStore.Get(620, 100).IsActive);
+        foreach (int left in new[] { 540, 580, 660, 700 })
+            Assert.False(workspace.TileStore.Get(left, 100).IsActive);
+    }
+
+    [Fact]
+    public void Final_cleanup_removes_only_empty_chest_metadata_and_rebases_remaining_slots()
+    {
+        var workspace = new Workspace(600, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        foreach (int left in new[] { 200, 240, 280 })
+        {
+            for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 2; dy++)
+            {
+                var part = new WorldTile { Type = 21, FrameX = (short)(dx * 18),
+                    FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(left + dx, 100 + dy, in part);
+            }
+            var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(left, 102, in floor);
+            workspace.TileStore.Set(left + 1, 102, in floor);
+        }
+        Assert.True(workspace.TryAddGeneratedChest(200, 100, "", []));
+        Assert.True(workspace.TryAddGeneratedChest(240, 100, "", [new WorldChestItem(1, 1, 0)]));
+        Assert.True(workspace.TryAddGeneratedChest(280, 100, "", []));
+        WorldTile absent = default;
+        workspace.TileStore.Set(201, 102, in absent);
+        workspace.TileStore.Set(241, 102, in absent);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 600, 500),
+                workspace, new RandomAdapter(1458)));
+
+        Assert.False(workspace.TileStore.Get(200, 100).IsActive);
+        Assert.True(workspace.TileStore.Get(240, 100).IsActive);
+        Assert.True(workspace.TileStore.Get(280, 100).IsActive);
+        WorldChest[] chests = workspace.CaptureGeneratedChests();
+        Assert.Equal(new[] { (240, (short)0), (280, (short)1) },
+            chests.Select(chest => (chest.X, chest.SlotId)));
+        Assert.Equal(1, chests[0].Items[0].Stack);
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);
