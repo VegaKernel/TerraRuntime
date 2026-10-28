@@ -157,7 +157,7 @@ public sealed class NpcDeathDropUnpublished1458Tests
     {
         internal readonly List<(WorldItemStateCommitKind Kind, short NpcItem)> Frames = [];
         internal Action? OnCommit;
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             Frames.Add((kind, snapshot.ItemNetId));
             OnCommit?.Invoke();

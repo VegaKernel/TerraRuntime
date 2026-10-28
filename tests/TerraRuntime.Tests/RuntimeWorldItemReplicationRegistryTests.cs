@@ -174,7 +174,7 @@ public sealed class RuntimeWorldItemReplicationRegistryTests
         public WorldItemStateCommitKind LastKind { get; private set; }
         public WorldItemSnapshot LastSnapshot { get; private set; }
 
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             CommitCount++;
             LastKind = kind;

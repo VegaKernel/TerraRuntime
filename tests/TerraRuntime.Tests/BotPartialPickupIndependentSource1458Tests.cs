@@ -287,7 +287,7 @@ public sealed class BotPartialPickupIndependentSource1458Tests
         public int Removals;
         public int Updates;
         public Action<WorldItemStateCommitKind, WorldItemSnapshot>? Callback;
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             Callback?.Invoke(kind, snapshot);
             if (kind != WorldItemStateCommitKind.Remove) Updates++;

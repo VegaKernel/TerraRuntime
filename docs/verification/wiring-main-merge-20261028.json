@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "date": "2026-10-28",
+  "scope": "Renewed user merge-now request; bounded integration validation, not a new full-suite/parity acceptance checkpoint.",
+  "mergeChecksPassed": true,
+  "mainParent": "b8c3c620eafc6730a757cbcb8097429f8b117ec3",
+  "wiringParent": "70621c2134b01da47fd089c3ea322a0ad081ef1b",
+  "resolution": {
+    "documents": "Preserved both histories and all four RU guide links.",
+    "PlayerAuthority.cs": "Specific wiring acknowledgements/retention precede pending fishing reports; both remain before generic equipment application.",
+    "RuntimePlayerInventoryStore.RemotePhase.cs": "Preserved separate SourceAmmoConsumption and WiringResourceDebit branches, including their different private-funding requirements.",
+    "TerraRuntime.Tests.csproj": "Preserved ammo-death and all wiring/reservation resources."
+  },
+  "releaseBuild": {
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntime-wiring-main-integration-20261028\\evidence\\build.log"
+  },
+  "focused": {
+    "accepted": true,
+    "tests": {
+      "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+      "id": "d8e8bfe4-4054-4622-ade3-eb56455f61d4",
+      "name": "E:\\TerraRuntime-wiring-main-integration-20261028\\worktree\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+      "run-date": "2026-10-28",
+      "run-time": "10:56:54",
+      "start-rtf": "2026-10-28T10:56:54.1064578+03:00",
+      "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+      "target-framework": ".NETCoreApp,Version=v11.0",
+      "errors": "0",
+      "failed": "0",
+      "finish-rtf": "2026-10-28T10:57:51.2179549+03:00",
+      "not-run": "0",
+      "passed": "237",
+      "skipped": "0",
+      "time": "57.113",
+      "time-rtf": "00:00:57.1126232",
+      "total": "237"
+    },
+    "sourceInputs": 4012,
+    "executedDlls": 60,
+    "classes": [
+      "TerraRuntime.Tests.WorldItemReservationClock1458Tests",
+      "TerraRuntime.Tests.RuntimeWorldItemReservation1458Tests",
+      "TerraRuntime.Tests.WorldItemReservationOriginal1458Tests",
+      "TerraRuntime.Tests.WorldItemBootstrapPacketEncoderTests",
+      "TerraRuntime.Tests.WorldWiringOriginal1458Tests",
+      "TerraRuntime.Tests.WorldWiringToolsOriginal1458Tests",
+      "TerraRuntime.Tests.RuntimeWiring1458Tests",
+      "TerraRuntime.Tests.WorldWiringCircuit1458Tests",
+      "TerraRuntime.Tests.WorldWiringDeviceExecutor1458Tests",
+      "TerraRuntime.Tests.WorldWiringPersistence1458Tests",
+      "TerraRuntime.Tests.RuntimeWiringFraming1458Tests",
+      "TerraRuntime.Tests.ToolPlayer.OwnedWiringTools1458Tests",
+      "TerraRuntime.Tests.ToolPlayer.OwnedWiringPostPhase1458Tests",
+      "TerraRuntime.Tests.FishingAuthority1458Tests",
+      "TerraRuntime.Tests.FishingCharacterStock1458Tests",
+      "TerraRuntime.Tests.FishingCharacterProgress1458Tests",
+      "TerraRuntime.Tests.FishingNetwork1458Tests",
+      "TerraRuntime.Tests.FishingClientReport1458Tests",
+      "TerraRuntime.Tests.FishingClientRewardAuthority1458Tests",
+      "TerraRuntime.Tests.AnglerClientAuthority1458Tests",
+      "TerraRuntime.Tests.FishingCrateAuthority1458Tests",
+      "TerraRuntime.Tests.AnglerAuthority1458Tests",
+      "TerraRuntime.Tests.OwnedLocalWeaponClockAuthority1458Tests",
+      "TerraRuntime.Tests.PlayerItemPhaseOwnership1458Tests"
+    ],
+    "explicitMethods": [
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Original_local_UpdatePlayers_owns_PickAmmo_random_before_next_common",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Detached_paid_delivery_shell_preserves_the_old_null_phase_passive_fallback",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Paid_immutable_receipts_survive_later_inventory_writes_and_observer_inventory_writes",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Paid_volley_publishes_each_immutable_sibling_after_first_observer_throws",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Paid_predeath_shoot_remains_deliverable_without_new_dead_player_authority",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Cold_original_27_then_first_held_13_waits_for_one_owned_payment",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Initial_census_refreshes_unpaid_inputs_and_provider_failure_keeps_only_paid_delivery",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Caller_provenance_cannot_replace_known_clocks_or_an_owned_source_start",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Source_conserved_second_use_keeps_the_last_funded_arrow_until_third_payment",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Paid_burst_waits_for_all_keys_without_repeating_pick_ammo_or_random",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Earlier_remote_common_precedes_local_pick_ammo_independent_of_input_fifo",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Delayed_paid_cohorts_keep_costs_entropy_keys_and_historical_acknowledgements",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Paid_cohort_callbacks_and_old_generation_never_replay_resources",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Source_inventory_5_before_first_27_retains_one_unpaid_offer_without_a_cursor_debit",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Ammo_history_rebinding_keeps_the_real_paid_health_publication_afterimage",
+      "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Historical_ammo_slot_yields_to_owned_moves_and_last_placement_tail"
+    ],
+    "sourceFingerprint": "227312a6b3a53e1a7f9c32d36bd80cb032cb0e5e9baf692cf57822786a605642"
+  },
+  "windowsNativeAot": {
+    "accepted": true,
+    "exe": "E:\\TerraRuntime-wiring-main-integration-20261028\\evidence\\native\\TerraRuntime.Server.exe",
+    "exeSha256": "0f2939c6202a5fb841a3fa31db56fa93ea33496d7fed230061d857ba0b4c82d5",
+    "clrDirectory": [
+      0,
+      0
+    ],
+    "smokes": [
+      {
+        "smoke": "loop",
+        "exitCode": 0,
+        "seconds": 0.6085148999700323
+      },
+      {
+        "smoke": "protocol",
+        "exitCode": 0,
+        "seconds": 0.26143169996794313
+      },
+      {
+        "smoke": "network",
+        "exitCode": 0,
+        "seconds": 0.1707753000082448
+      },
+      {
+        "smoke": "world",
+        "exitCode": 0,
+        "seconds": 0.23105970001779497
+      },
+      {
+        "smoke": "tui",
+        "exitCode": 0,
+        "seconds": 1.0788161000236869
+      }
+    ],
+    "linux": "Unavailable: Windows host, no WSL distributions; cross-OS shipping publish rejected"
+  },
+  "currentFast": {
+    "executed": false,
+    "reason": "No new broad tier run at the renewed merge-now request; bounded connected regressions exercise resolved resource/phase/fishing/wiring paths."
+  },
+  "currentFull": {
+    "executed": false,
+    "accepted": false,
+    "reason": "The earlier 2026-10-27 candidate full was interrupted and produced no XML/result; main advanced materially after that candidate. It is not counted as a pass and no new lengthy full was started."
+  },
+  "earlierInterruptedCandidate": {
+    "mainParent": "0d48670b1bce8a82aeed132d6eedcdfe479dff33",
+    "evidence": "E:/TerraRuntime-wiring-main-integration-20261027/evidence",
+    "completed": "Release WAE0/0, focused169/169, fast25463/25463 and Windows Native five smokes; none of those counts is presented as the current b8c3c620 union."
+  },
+  "priorBranchEvidence": [
+    "docs/verification/wiring-mechanisms-1458.json",
+    "docs/verification/wiring-installation-1458.json",
+    "docs/verification/world-item-reservation-1458.json"
+  ],
+  "linuxNativeAot": {
+    "verified": false,
+    "reason": "No available Linux host in this Windows session; earlier Windows-host cross-OS guard evidence retained."
+  },
+  "limits": "Historical original fixtures and prior main/branch full/native/TCP evidence retain their exact snapshot scopes. Later21 mode/residual ingress, broader mechanisms, Linux Native and original GUI economic/gameplay parity remain open.",
+  "rejectedSelectorAttempt": {
+    "tests": 0,
+    "accepted": false,
+    "reason": "Combining class and method filters intersected to zero; replaced by OR method selectors, then every requested class/method was confirmed executed."
+  },
+  "localEvidence": "E:\\TerraRuntime-wiring-main-integration-20261028\\evidence",
+  "qualityChecks": {
+    "documentation": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-wiring-main-integration-20261028\\evidence\\documentation.log"
+    },
+    "projectReferences": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-wiring-main-integration-20261028\\evidence\\projectReferences.log"
+    },
+    "domainLiterals": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-wiring-main-integration-20261028\\evidence\\domainLiterals.log"
+    },
+    "diffWhitespace": {
+      "exitCode": 0,
+      "log": "E:\\TerraRuntime-wiring-main-integration-20261028\\evidence\\diffWhitespace.log"
+    }
+  }
+}

@@ -145,6 +145,6 @@ public sealed class RuntimeWorldItemInstancedLeaseAdoptionTests
     private sealed class RecordingSink : IWorldItemStateCommitSink
     {
         public List<WorldItemStateCommitKind> Kinds { get; } = [];
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot) => Kinds.Add(kind);
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default) => Kinds.Add(kind);
     }
 }

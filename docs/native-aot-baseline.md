@@ -1,5 +1,13 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Wiring merge-now integration, 2026-10-28
+
+The user renewed the explicit request to merge wiring into main. The prepared union combines mainb8c3c620 (concurrent fishing, paid ammo/tool continuity and cave-house changes) with wiring70621c21. Both resource-debit paths, fishing/wiring equipment observers and all fixture resources survive the resolved conflicts. This is merge integration, not a new broad vanilla-parity acceptance checkpoint. Git records actual publication.
+
+Current merged Release WAE0/0 and connected regressions 237/237 pass with no failures/errors/skips, including complete wiring/reservation and fishing classes, local-weapon clock203-case helper, player phase ownership and selected paid-ammo routing/adversarial regressions. All 4012 protected inputs and 60 executed DLLs remain exact. Fresh Windows NativeAOT SHA256 0f2939c6202a5fb841a3fa31db56fa93ea33496d7fed230061d857ba0b4c82d5, PE CLR0/0, passes all five shipping smokes including wiring=ok and reservation=ok.
+
+The earlier isolated main0d48670b candidate full was interrupted without XML/result. Its Release/focused169/fast25463/Native results belong only to that earlier candidate. No new lengthy fast/full run was started for this renewed merge-now request; do not claim a completed full on the current union. Prior branch full1566852 and historical main full/TCP/component evidence retain their exact snapshot scope. Linux Native/original GUI and the documented later21 residual/mode plus broader mechanism gaps remain open. Evidence: docs/verification/wiring-main-merge-20261028.json.
+
 2026-10-27 merged cave-house checkpoint: fresh Windows NativeAOT executable SHA256 `14890564e24fc0e1438451a967138a1f9271618e905a190ebf7168d4026343f9` passes exercised loop/protocol/network/world/TUI smokes on merge `96b4488c`. Release WAE0/0, fast `25,432/25,432` and unfiltered full `1,566,846/1,566,846` pass without skips; all5,314 methods are selected. No new dependency/project edge was added by the cave-house slice. Linux NativeAOT and full pass parity remain unverified.
 
 2026-10-27 Buried Chests cave-house boundary: fresh Windows NativeAOT executable SHA256 `09371fa44c86a4e3519d68be1a756e407b6bfb7b25da1729199e4e89a4ee3286` passes exercised loop/protocol/network/world/TUI smokes. Release solution warnings-as-errors and unfiltered full `1,566,765/1,566,765` pass with zero skips. No new production dependency or project edge. Linux NativeAOT remains locally unverified; this is scoped candidate/beam evidence, not complete Buried Chests parity.
@@ -28,6 +36,25 @@ Fresh Windows Native server SHA256 `76abfc4a96c3c9ea8209092c80b0f3e5534a0661fe43
 
 Genuine LinuxNative and ordinary GUI Angler/crate economic parity remain unverified; actual source probes disprove automatic76 at join, confirm local reward-before75, and show an unlocked non-SSC client ignoring its own5 inventory update. Server `.plr` storage is not a prerequisite or a solution to those protocol roles. Static Native tests and raw TCP do not establish original graphical-client inventory adoption or replace source role evidence. No GitHub CI wait.
 
+## World-item reservation Windows Native acceptance, 2026-10-27
+
+Fresh Windows NativeAOT executable SHA256 723b70770700d5c8e1430a9d289d7e0a76eebf07618e302be63d5443b2f9fd35, PE CLR0/0, passes loop/protocol/network/world/TUI smokes. Shipping world smoke exercises direct/deferred source allocation, live100, join0, excluded fallback and nonsticky15; wiring=ok and reservation=ok. Linux NativeAOT remains unverified: no available WSL distribution and shipping script rejects cross-OS publish. No new dependency, runtime reflection or code generation.
+
+Release WAE0/0; focused 11184/11184; fast 25439/25439; one final unfiltered full 1566852/1566852, failures/errors/skips0. Full XML covers all 5330 discovered methods. Frozen 3965 source/config/fixture inputs and 60 executed DLLs stayed exact. Source fingerprint 4a9c323d0b54912b3c01e39a8a60c70ca49211f5326974e42e62663958cc7130; full XML SHA256 0c4c28c947cbfe00ec590e8fefb2ee5ad56e84ac99476f053eb55ea0da663a73.
+
+[Durable verification](verification/world-item-reservation-1458.json). Reference probe reflection/IL hooks remain developer-only under tools/reference; production code uses static typed paths.
+
+## Wiring installation follow-up Windows Native acceptance, 2026-10-26
+
+Fresh Windows NativeAOT production publish passes loop/protocol/network/world/TUI smokes; world includes actual wiring command/clock/framing. Executable SHA256 `77d3e40d4ecb3bf4c3addb57f7790899bb1a1ba979d747b8c243c4858d12ac3a`, PE CLR 0/0. An additional test-only correction replaces formerly unknown action 5 with 255 and separately proves unqualified5 refusal: only ServerRuntimeClientTileIngressTests.cs and TerraRuntime.Tests.dll changed; all production inputs and 59 other DLLs remain exact. native-bridge.json pins reuse. Linux host path is unavailable: no WSL distro and cross-OS publish rejects. No CI wait.
+
+Release WAE 0/0, focused 208/208, fast 25367/25367 and one successful unfiltered full 1566780/1566780; failures/errors 0, skips 0. Complete XML audits all 5279 discovered methods. All 3912 source/config/fixture inputs and 60 executed DLLs remain exact. Source fingerprint `2f0fd0acfb4dd2e37ed6500edcef8142108b4235211effcfff7f070b90af4eda`, full XML SHA256 `af30f154a5e7b2cfad680b47c872fcc3c440b691f5fa98f5b0025b28c735a204`.
+
+No production dependency, runtime reflection or code generation was added. The separate original-reference probe is developer-only. Evidence: E:/TerraRuntime-wiring-verification-20261026/tools-final02/native-result.json and native-bridge.json; [durable verification](verification/wiring-installation-1458.json).
+
+## Wiring mechanisms Windows Native acceptance, 2026-10-26
+
+Fresh isolated Windows NativeAOT publish passes all five shipping smokes. The world smoke additionally executes the production command/clock owners for lights, actuators, a multiwired door and independent timer-save bytes. Executable SHA256 `061946466f3744fd7ed2b9f446b74373df3350ec941ed9abdeb004535089651b`, PE CLR directory0/0, evidence `.cache/wiring-candidate-03/native-result.json`. No production dependency, reflection or runtime code generation was added. Original reference reflection is developer-only under tools/reference. Linux Native remains locally unverified (Windows host; no WSL distro). The final production source was freshly published. The subsequent test-only startup allowance leaves all production inputs, 59 other managed reference DLLs and this executable exact; native-bridge04.json pins that scope. Final focused164/164, fast25335/25336 and unfiltered full1566748/1566749 pass with zero failures/errors and the one known liquid skip. See docs/verification/wiring-mechanisms-1458.json.
 ## Fishing merge integration, 2026-10-26
 
 User explicitly authorized merging `feature/fishing-authority-1458` (`3ecaa538`) into local main. Integration combines current origin/main `33adecbb` (including paid furniture and later liquid/Temple corrections) with the fishing commits; the original feature worktree remains unchanged. Six additive conflicts preserve BOTH status/evidence histories and all test resource groups, with866unique embedded-resource aliases. WorldRuntime's existing managedCustody binding and the added Angler save/publication binding are both retained. No production conflict required a behavioral rewrite.

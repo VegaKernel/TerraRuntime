@@ -211,7 +211,7 @@ internal static partial class ToolPlayerBoundaryChecks
     private sealed class ReplantDropSink : IWorldItemStateCommitSink
     {
         internal Action? OnDrop;
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind != WorldItemStateCommitKind.Drop || OnDrop is not { } action) return;
             OnDrop = null; action(); // Consume before callback/reentry; no mutable world-item store access.

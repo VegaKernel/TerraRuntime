@@ -240,10 +240,10 @@ public sealed class InvasionPendingDeath1458Tests
             if (kind == NpcStateCommitKind.Spawn) OnSpawn?.Invoke();
         }
 
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind == WorldItemStateCommitKind.Drop) OnDrop?.Invoke();
-            ItemRegistry.WorldItemStateCommitted(kind, in snapshot);
+            ItemRegistry.WorldItemStateCommitted(kind, in snapshot, reservationOffer, excludedSource);
         }
     }
 

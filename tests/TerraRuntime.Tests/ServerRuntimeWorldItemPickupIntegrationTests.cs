@@ -51,7 +51,7 @@ public sealed class ServerRuntimeWorldItemPickupIntegrationTests
         TerrariaFrame initialDrop = DequeueFrame(outbound);
         Assert.Equal(TerrariaMessageId.WorldItemDrop, (TerrariaMessageId)initialDrop.MessageId);
         Assert.Equal(connection.Player.Slot.Value, allocated.OwnerPlayerId);
-        Assert.Equal(15, allocated.TimeToKeepReservation);
+        Assert.Equal(0, allocated.TimeToKeepReservation);
 
         TerrariaFrame ownerFrame = DequeueFrame(outbound);
         Assert.Equal(
@@ -65,7 +65,7 @@ public sealed class ServerRuntimeWorldItemPickupIntegrationTests
         state.Tick();
         Assert.True(state.TryCaptureWorldItemSnapshot(allocated.Handle.Slot, out WorldItemSnapshot reserved));
         Assert.Equal(connection.Player.Slot.Value, reserved.OwnerPlayerId);
-        Assert.Equal(13, reserved.TimeToKeepReservation);
+        Assert.Equal(0, reserved.TimeToKeepReservation);
         Assert.Equal(0, outbound.QueuedFrames);
 
         using var bootstrap = new PlayerBootstrapFrameSink(

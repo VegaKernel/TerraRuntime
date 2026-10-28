@@ -15,6 +15,7 @@ internal sealed partial class WorldTileAuthority
     // echo consumer, before the legacy packet17 action filter/edit budget.
     internal bool TryObserveClientToolTile(ClientTileManipulationRuntimeCommand command)
     {
+        if (TryObserveClientWiringTile(command)) return true;
         if (TryObserveClientPlacementTile(command)) return true;
         if (toolProjectileAuthority is null) return false;
         var state = command.State;
@@ -194,6 +195,7 @@ internal sealed partial class WorldTileAuthority
     private bool TryCommitObservedToolAction(RuntimePlayerToolInput1458 input, bool endOfCohort = false,
         ToolActionPublicationBatch1458? deferred = null)
     {
+        if (input.IsWiring) return TryCommitObservedWiring(input, deferred);
         if (input.IsPlacement) return TryCommitObservedPlacement(input, deferred);
         if (!input.IsCurrent || input.Actor is not { } captured || input.Count == 0 && input.SquareReport is null && input.DollPoseReport is null) return false;
         var connection = captured.Connection;

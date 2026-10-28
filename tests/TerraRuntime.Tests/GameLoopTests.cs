@@ -345,7 +345,9 @@ public sealed class GameLoopTests
             });
 
         loop.Start();
-        Assert.True(updated.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        // Startup scheduling can pause behind the full matrix's GC/load. The assertions below
+        // measure the update phase itself; this wait is only a bounded fixture-start allowance.
+        Assert.True(updated.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
 
         DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(1);
         while (loop.Snapshot.Tick < 2 && DateTime.UtcNow < deadline)

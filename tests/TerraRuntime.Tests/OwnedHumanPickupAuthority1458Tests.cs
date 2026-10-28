@@ -826,5 +826,5 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
     }
     internal sealed class WorldEvents : IWorldItemStateCommitSink
-    { internal Action? Callback; internal WorldItemStateCommitKind LastKind; public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item) { LastKind = kind; Callback?.Invoke(); } }
+    { internal Action? Callback; internal WorldItemStateCommitKind LastKind; public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default) { LastKind = kind; Callback?.Invoke(); } }
 }

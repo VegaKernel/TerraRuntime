@@ -537,6 +537,8 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryAcknowledgeWiringInventory(equipment)) return;
+        if (TryRetainWiringInventory(equipment)) return;
         if (TryObservePendingFishingReport(equipment)) return;
         if (TryObserveFishingCrateOpen(equipment)) return;
         if (TryAcknowledgePlacementInventory(equipment)) return;

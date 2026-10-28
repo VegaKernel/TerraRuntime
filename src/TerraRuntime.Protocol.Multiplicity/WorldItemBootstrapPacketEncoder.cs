@@ -44,7 +44,9 @@ public static class WorldItemBootstrapPacketEncoder
                 Stack = item.Stack,
                 Prefix = item.Prefix,
                 ItemNetId = item.ItemNetId,
-                Ownership = (NewItemOwnership)item.Ownership,
+                // MessageBuffer's join loop calls SendData21 with only the item index. Its
+                // ownership argument is None, not the item's retained creation ownership mode.
+                Ownership = (NewItemOwnership)WorldItemOwnershipMode.None,
                 Shimmered = item.Shimmered,
                 ShimmerTime = item.ShimmerTime,
                 EnemyGrabDelayTime = item.EnemyGrabDelayTime
@@ -54,7 +56,8 @@ public static class WorldItemBootstrapPacketEncoder
             {
                 ItemId = item.Handle.Slot,
                 PlayerId = item.OwnerPlayerId,
-                TimeToKeepReservation = item.TimeToKeepReservation,
+                // Join SendData22 also omits number2: the packet offers0 regardless of raw server hold.
+                TimeToKeepReservation = 0,
                 GrabDelayPlayer = item.GrabDelayPlayer,
                 GrabDelayTime = item.GrabDelayTime,
                 PositionX = item.PositionX,

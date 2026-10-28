@@ -68,7 +68,9 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         bool golemDownedBaseline,
         bool hardModeBaseline,
         bool goodWorld,
-        RuntimeTileManipulationReplicationRegistry? replication)
+        RuntimeTileManipulationReplicationRegistry? replication,
+        bool plantBossDowned = false,
+        IVanillaTallGateOccupancyProbe? doorOccupancy = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
@@ -86,11 +88,12 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
         playerDoorOpenings = tiles is null ? null : new VanillaWorldGroundFighterDoorOpeningService(
             tiles,
-            tallGateOccupancy: new RuntimeTallGateOccupancyProbe(players, serverPlayers: null, npcs),
+            tallGateOccupancy: doorOccupancy ?? new RuntimeTallGateOccupancyProbe(players, serverPlayers: null, npcs),
             doorCloseRandom: new WorldItemDoorCloseRandom(worldItemSpawnRandom));
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
         liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles, sideEffects: this);
         larvaMutations = tiles is null ? null : new VanillaLarvaObjectMutationService1458(tiles);
+        InitializeWiring(plantBossDowned);
 
         if (tiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
@@ -132,6 +135,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
     public bool TryApply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (command is ClientHitSwitchRuntimeCommand1458 hitSwitch) { ApplyHitSwitch(hitSwitch); return true; }
         if (TryApplyToolObservation(command)) return true;
 
         if (objectPlacement?.TryApply(command) == true)

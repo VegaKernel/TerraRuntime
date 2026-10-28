@@ -37,6 +37,7 @@ public sealed class ProjectileLifecycleFrameSink :
     private readonly TempleDoorUnlockFrameSink? templeDoorUnlock;
     private readonly PlayerDoorToggleFrameSink? playerDoorToggle;
     private readonly ObjectPlacementFrameSink? objectPlacement;
+    private readonly HitSwitchFrameSink1458? hitSwitch;
     private long droppedAuthorityUpdates;
 
     internal ProjectileLifecycleFrameSink(
@@ -67,7 +68,10 @@ public sealed class ProjectileLifecycleFrameSink :
         playerDoorToggle = ingress is IPlayerDoorToggleNetworkIngress playerDoorIngress
             ? new PlayerDoorToggleFrameSink(source, bootstrap, playerDoorInner, playerDoorIngress)
             : null;
-        ITerrariaFrameSink objectInner = playerDoorToggle ?? playerDoorInner;
+        ITerrariaFrameSink wiringInner = playerDoorToggle ?? playerDoorInner;
+        hitSwitch = ingress is IWiringNetworkIngress1458 wiringIngress
+            ? new HitSwitchFrameSink1458(source, bootstrap, wiringInner, wiringIngress) : null;
+        ITerrariaFrameSink objectInner = hitSwitch is null ? wiringInner : hitSwitch;
         objectPlacement = ingress is IObjectPlacementNetworkIngress objectIngress
             ? new ObjectPlacementFrameSink(source, bootstrap, objectInner, objectIngress)
             : null;
@@ -136,6 +140,8 @@ public sealed class ProjectileLifecycleFrameSink :
                 return playerDoorSource.RejectionCategory;
             }
 
+            if (hitSwitch?.RejectionCategory is { } wiringRejection && wiringRejection != TerrariaFrameRejectionCategory.None)
+                return wiringRejection;
             return inner is ITerrariaFrameRejectionSource source
                 ? source.RejectionCategory
                 : TerrariaFrameRejectionCategory.None;
@@ -146,7 +152,8 @@ public sealed class ProjectileLifecycleFrameSink :
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
-        if (StopReason != ProjectileLifecycleFrameStopReason.None ||
+        if (hitSwitch is { RejectionCategory: not TerrariaFrameRejectionCategory.None } ||
+            StopReason != ProjectileLifecycleFrameStopReason.None ||
             TileStopReason != TileManipulationFrameStopReason.None ||
             TempleDoorUnlockStopReason != TempleDoorUnlockFrameStopReason.None ||
             PlayerDoorToggleStopReason != PlayerDoorToggleFrameStopReason.None ||
@@ -161,6 +168,7 @@ public sealed class ProjectileLifecycleFrameSink :
             TerrariaMessageId.NpcDamage when npcDamageIngress is not null => HandleNpcDamage(in frame),
             TerrariaMessageId.ProjectileDestroy => HandleDestroy(in frame),
             _ => objectPlacement?.OnFrame(in frame) ??
+                 hitSwitch?.OnFrame(in frame) ??
                  playerDoorToggle?.OnFrame(in frame) ??
                  templeDoorUnlock?.OnFrame(in frame) ??
                  tileManipulation?.OnFrame(in frame) ??

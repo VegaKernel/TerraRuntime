@@ -8,6 +8,9 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 
 ## Start here
 
+- [Authoritative wiring and basic mechanisms](wiring-mechanisms.md)
+- [Paid wiring installation and actuator framing](wiring-tool-installation-1458.md)
+- [Server reservation clocks and owner offers](world-item-reservation-1458.md)
 - [PlayerBot task/action architecture](runtime-bot-architecture.md) — perception, replaceable brain, lifecycle, authoritative operations, modes and leases.
 - [Project guide](project-guide.md) — TerraRuntime purpose, repository map, build, startup, lifecycle, networking/gameplay flow, worlds, persistence, and operations.
 - [Architecture](architecture.md) — subsystem boundaries, state ownership, data flow, threading model, NativeAOT/CoreCLR profiles, persistence, and extension boundaries.

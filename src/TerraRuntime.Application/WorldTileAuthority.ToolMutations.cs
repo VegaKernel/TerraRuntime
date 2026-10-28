@@ -21,7 +21,10 @@ internal readonly record struct ToolWorldShapeEffect1458(int X, int Y, byte Befo
     public bool RequiresPlayerLift { get; init; }
 }
 internal readonly record struct ToolWorldMutationStep1458(
-    WorldTileMutationKind Kind, int X, int Y, WorldTileMutationResult Result);
+    WorldTileMutationKind Kind, int X, int Y, WorldTileMutationResult Result)
+{
+    internal bool PreserveLiquidQueue { get; init; }
+}
 
 internal readonly record struct ToolWorldPublicationOffset1458(int End, int Items, int Npcs, int Projectiles);
 internal enum ToolWorldPublicationKind1458 : byte { Item, Npc, Projectile, TileSquare, TreeEffect, TileManipulation, ChestUpdate, LarvaBoss }
@@ -356,7 +359,8 @@ internal sealed partial class WorldTileAuthority
             // after final physical adoption and before any observer can reenter.
             foreach (var mutation in mutations)
             {
-                if (mutation.Kind is not (WorldTileMutationKind.KillWall or WorldTileMutationKind.PlaceWall))
+                if (!mutation.PreserveLiquidQueue &&
+                    mutation.Kind is not (WorldTileMutationKind.KillWall or WorldTileMutationKind.PlaceWall))
                     VanillaWorldLiquidWakeup1458.WakeCellAndNeighbours(owner.tiles!, mutation.X, mutation.Y);
                 var bounds = mutation.Result;
                 var first = TerrariaSectionGeometry.FromTile(owner.tiles!.Dimensions, bounds.FrameMinX, bounds.FrameMinY);

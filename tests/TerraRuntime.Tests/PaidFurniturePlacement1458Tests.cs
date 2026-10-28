@@ -315,8 +315,8 @@ public sealed class PaidFurniturePlacement1458Tests
     private sealed class ExpectedPublicationException : Exception;
     private sealed class ItemObserver(IWorldItemStateCommitSink? inner, Action<WorldItemStateCommitKind, WorldItemSnapshot> callback) : IWorldItemStateCommitSink
     {
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
-        { callback(kind, item); inner?.WorldItemStateCommitted(kind, in item); }
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
+        { callback(kind, item); inner?.WorldItemStateCommitted(kind, in item, reservationOffer, excludedSource); }
     }
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_queue")] private static extern ref BoundedOutboundQueue Queue(TerrariaConnectionOutboundQueue owner);
     private static byte[][] Drain(TerrariaConnectionOutboundQueue queue)

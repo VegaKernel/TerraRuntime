@@ -47,7 +47,7 @@ public sealed class WorldItemBootstrapPacketEncoderTests
         Assert.Equal((short)9, drop.Stack);
         Assert.Equal((byte)4, drop.Prefix);
         Assert.Equal((short)42, drop.ItemNetId);
-        Assert.Equal(NewItemOwnership.GrabDelayForAllPlayers, drop.Ownership);
+        Assert.Equal((NewItemOwnership)0, drop.Ownership);
         Assert.True(drop.Shimmered);
         Assert.Equal(2.5f, drop.ShimmerTime);
         Assert.Equal((byte)8, drop.EnemyGrabDelayTime);
@@ -55,7 +55,7 @@ public sealed class WorldItemBootstrapPacketEncoderTests
         ItemOwnerView owner = ItemOwnerView.FromPayload(frames[1].Span[3..]);
         Assert.Equal((short)12, owner.ItemId);
         Assert.Equal((byte)6, owner.PlayerId);
-        Assert.Equal(120, owner.TimeToKeepReservation);
+        Assert.Equal(0, owner.TimeToKeepReservation);
         Assert.Equal((byte)7, owner.GrabDelayPlayer);
         Assert.Equal(30, owner.GrabDelayTime);
         Assert.Equal(160.5f, owner.PositionX);

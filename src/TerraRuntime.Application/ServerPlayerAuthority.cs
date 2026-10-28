@@ -107,6 +107,8 @@ internal sealed partial class ServerPlayerAuthority
         }
     }
 
+    internal Action<PlayerStateSnapshot, PlayerStateSnapshot>? PressurePlateContact { get; set; }
+
     public void TickPhysics(IRuntimePlayerSnapshotLookup players)
     {
         ArgumentNullException.ThrowIfNull(players);
@@ -198,6 +200,7 @@ internal sealed partial class ServerPlayerAuthority
                 out PlayerStateSnapshot committed))
             {
                 events?.ServerPlayerMoved(in committed);
+                PressurePlateContact?.Invoke(player, committed);
             }
         }
     }

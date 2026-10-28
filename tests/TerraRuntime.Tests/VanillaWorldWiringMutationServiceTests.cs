@@ -69,7 +69,27 @@ public sealed class VanillaWorldWiringMutationServiceTests
         var killActuator = actuate with { Kind = WorldWiringMutationKind.KillActuator };
         Assert.True(service.Apply(in killActuator).Applied);
         Assert.False(tiles.Get(2, 2).HasActuator);
-        Assert.False(tiles.Get(2, 2).IsActuated);
+        Assert.True(tiles.Get(2, 2).IsActuated);
+    }
+
+    [Fact]
+    public void Source_actuator_installation_and_removal_allow_air_and_preserve_inactive_and_independent_state()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(10, 10));
+        var before = new WorldTile { Type = 1, FrameX = 36, FrameY = 54, Wall = 7,
+            TileColor = 3, LiquidAmount = 41, LiquidKind = WorldLiquidKind.Honey,
+            Flags = WorldTileFlags.Inactive | WorldTileFlags.WireYellow | WorldTileFlags.InvisibleBlock };
+        tiles.Set(2, 2, in before);
+        var service = new VanillaWorldWiringMutationService(tiles);
+        var request = new WorldWiringMutationRequest(WorldWiringMutationKind.PlaceActuator, 2, 2);
+        Assert.True(service.Apply(in request).Applied);
+        var installed = before; installed.Flags |= WorldTileFlags.Actuator;
+        Assert.Equal(installed, tiles.Get(2, 2));
+        Assert.Equal(WorldWiringMutationStatus.NoChange, service.Apply(in request).Status);
+        request = request with { Kind = WorldWiringMutationKind.KillActuator };
+        Assert.True(service.Apply(in request).Applied);
+        Assert.Equal(before, tiles.Get(2, 2));
+        Assert.Equal(WorldWiringMutationStatus.NoChange, service.Apply(in request).Status);
     }
 
     [Fact]

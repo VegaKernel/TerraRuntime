@@ -69,7 +69,7 @@ public sealed class NpcCatchOwnership1458Tests
         internal Action? OnDrop;
         internal int Drops;
         internal List<NpcSnapshot> Retired { get; } = [];
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             if (kind != WorldItemStateCommitKind.Drop) return;
             Drops++;

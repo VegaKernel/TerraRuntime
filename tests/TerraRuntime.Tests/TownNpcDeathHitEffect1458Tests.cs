@@ -159,6 +159,6 @@ public sealed class TownNpcDeathHitEffect1458Tests
         }
         public bool TryGetPlayer(PlayerSlotId slot, out PlayerStateSnapshot value) { value = Player; return slot.Value == 0; }
         public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot npc) => Events.Add($"npc:{kind}:{npc.Type}");
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item) => Events.Add($"item:{kind}:{item.ItemNetId}");
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default) => Events.Add($"item:{kind}:{item.ItemNetId}");
     }
 }

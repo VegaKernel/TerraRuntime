@@ -548,9 +548,9 @@ public sealed partial class MoonBossDeathAuthority1458Tests
             if (kind == NpcStateCommitKind.Despawn) Terminals.Add(npc.Handle);
             if (kind == NpcStateCommitKind.Spawn) OnSpawn?.Invoke();
         }
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
-            ItemRegistry.WorldItemStateCommitted(kind, in item);
+            ItemRegistry.WorldItemStateCommitted(kind, in item, reservationOffer, excludedSource);
             if (kind != WorldItemStateCommitKind.Drop) return;
             Drops.Add(item);
             OnDrop?.Invoke();

@@ -17,7 +17,10 @@ public enum WorldItemStateCommitKind : byte
 /// </summary>
 public interface IWorldItemStateCommitSink
 {
-    void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot);
+    // ReserveFor's packet22 hold is an offer to clients, not the server item's countdown.
+    // It belongs to this notification only; ordinary snapshots and bootstrap carry no offer.
+    void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot,
+        int? reservationOffer = null, GameCommandSourceId excludedSource = default);
 }
 
 /// <summary>The source sentinel is a transient wire object, never a physical handle or join-baseline entity.</summary>

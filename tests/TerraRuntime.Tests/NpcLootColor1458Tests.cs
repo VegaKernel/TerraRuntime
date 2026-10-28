@@ -162,10 +162,10 @@ public sealed class NpcLootColor1458Tests
     private sealed class Trace(RuntimeWorldItemReplicationRegistry registry) : IWorldItemStateCommitSink, IWorldItemSentinelCommitSink1458
     {
         public List<(WorldItemStateCommitKind Kind, WorldItemSnapshot Snapshot)> Commits { get; } = [];
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot, int? reservationOffer = null, GameCommandSourceId excludedSource = default)
         {
             Commits.Add((kind, snapshot));
-            registry.WorldItemStateCommitted(kind, snapshot);
+            registry.WorldItemStateCommitted(kind, snapshot, reservationOffer, excludedSource);
         }
         public void WorldItemSentinelCommitted(in WorldItemSentinelCommit1458 commit) => registry.WorldItemSentinelCommitted(commit);
     }

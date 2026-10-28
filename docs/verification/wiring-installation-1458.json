@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "date": "2026-10-26",
+  "terraria": "1.4.5.8",
+  "protocol": 326,
+  "branch": "gameplay/wiring-mechanisms-1458",
+  "reviewBase": "73dd7a61",
+  "previousPublishedCommit": "304af45bbef09b14c23f5d6c4567a5d7c1a3b62b",
+  "mainIncorporated": "33adecbb0d18b9b51c1d56bb1b392a6c1b23cb6b",
+  "accepted": true,
+  "releaseBuild": {
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntime-wiring-verification-20261026\\tools-final02\\build.log"
+  },
+  "focused": {
+    "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+    "id": "a4241c0a-f4c5-4cf7-acc1-4e976eedbfa1",
+    "name": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-wiring\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+    "run-date": "2026-10-26",
+    "run-time": "21:25:05",
+    "start-rtf": "2026-10-26T21:25:05.5110542+03:00",
+    "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+    "target-framework": ".NETCoreApp,Version=v11.0",
+    "errors": "0",
+    "failed": "0",
+    "finish-rtf": "2026-10-26T21:25:26.2470405+03:00",
+    "not-run": "0",
+    "passed": "208",
+    "skipped": "0",
+    "time": "20.739",
+    "time-rtf": "00:00:20.7388132",
+    "total": "208"
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 554.6920117998961,
+    "tests": {
+      "total": "25367",
+      "passed": "25367",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "550.944",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1283.4507940999465,
+    "tests": {
+      "total": "1566780",
+      "passed": "1566780",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1265.982",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "frozenCandidate": {
+    "accepted": true,
+    "sourceInputs": 3912,
+    "executedDlls": 60,
+    "fullMethods": 5279,
+    "sourceFingerprint": "2f0fd0acfb4dd2e37ed6500edcef8142108b4235211effcfff7f070b90af4eda",
+    "fullXmlSha256": "af30f154a5e7b2cfad680b47c872fcc3c440b691f5fa98f5b0025b28c735a204"
+  },
+  "affectedSelection": {
+    "mode": "full",
+    "reason": "Unclassified change: src/TerraRuntime.Application/WiringNativeSmoke1458.cs",
+    "selected_method_count": 5279
+  },
+  "localEvidence": "E:\\TerraRuntime-wiring-verification-20261026\\tools-final02",
+  "implemented": [
+    "Paid ordinary red/blue/green/yellow wrench installation: items509/850/851/3612, packet17 actions5/10/12/16.",
+    "Paid selected actuator849 installation, including air and last-stack itemTime=animation while toolTime/itemTimeMax remain10.",
+    "Existing PlayerAuthority.ToolUse, known source phase/clock/RNG, bounded owned17/5 cohort, first resource slot0..57 and funded inventory journal.",
+    "Early reports wait for source phase; exact late5 acknowledges receipt; stale generations, terrain, wrong quantities and unfunded first stacks refuse.",
+    "Known wire operation without a qualified source phase rejects; truly unknown action255 retains unsupported classification.",
+    "Installed wire connects the existing live circuit; section/persistence dirtiness uses the same WorldTileStore; canonical/cache checkpoint tests remain real.",
+    "Actuator dry nine-cell source frame pass through existing overlay/drop/RNG transaction, attached switch136 -> real item538, supported torch active() support.",
+    "Wet frame visits and unsupported attached-object framing reject before adoption; read-only wet halo does not acquire spurious liquid work.",
+    "Pure primitive owner permits actuator installation/removal in air and preserves inactive bit during removal."
+  ],
+  "originalEvidence": {
+    "editionAndHost": "Unmodified official Linux edition executed under Windows CoreCLR; not Linux execution or GUI/Main.Update parity.",
+    "exeSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "newFixture": "tests/TerraRuntime.Tests/Fixtures/WiringToolsOriginalLinux1458.json.gz",
+    "newGzipSha256": "5de8b2dbd551ef1fa58e48f13c99671a44a229eaff8e0d2425fe6f5d562fdf71",
+    "newRepeatedRawSha256": "dbc48228ccfe84fbd5ad2b42a7c620c27ed24b595984c0a4ad2f725717814a97",
+    "newCapturedProfiles": 44,
+    "fullItemCheckProfiles": 34,
+    "admittedInstallationProfiles": 26,
+    "successfulInstallationProfiles": 14,
+    "conditionalUnsupportedCutterProfiles": 8,
+    "primitiveCycles": 6,
+    "framingProfiles": 4,
+    "productionFramingReplays": 2,
+    "framingReplaySeed": 7,
+    "captureErrors": 0,
+    "previous110FixtureUnchangedSha256": "60070ae80ec94cc8d0fe57f5ae6a0e4f429bb2f61c5c0f18bb909bc1a30e60eb",
+    "probe": "tools/reference/wiring1458/ToolsProgram.cs",
+    "probeSha256": "3aa1569dc211071286b953f73aa23961a7d4bb493fcc43bd1e027aad403fd7ab",
+    "comparisonBoundaries": [
+      "Ordinary stone source cosmetic merge frames162/54 are retained in raw evidence and asserted separately; runtime comparison projects type/flags, while attachment frames remain exact.",
+      "Original server ReserveFor leaves raw keep0 while packet22 advertises15. Existing WorldItemSnapshot retains the advertised15; source22 bytes, physical body, owner/grab fields and public RNG offers are compared. Server reservation-clock parity is not claimed.",
+      "Visible free dust versus full6000-slot pool gives identical cutter world/clocks/packets but RNG cursors31 versus1. No client cutter admission is inferred."
+    ]
+  },
+  "causalControls": {
+    "variants": 7,
+    "genuineFailedTests": 9,
+    "runnerErrors": 0,
+    "fixedRestoration": {
+      "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+      "id": "434be0c9-696b-4a39-90fc-76ef52bc6499",
+      "name": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-wiring\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+      "run-date": "2026-10-26",
+      "run-time": "21:14:27",
+      "start-rtf": "2026-10-26T21:14:27.5634691+03:00",
+      "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+      "target-framework": ".NETCoreApp,Version=v11.0",
+      "errors": "0",
+      "failed": "0",
+      "finish-rtf": "2026-10-26T21:14:28.5894232+03:00",
+      "not-run": "0",
+      "passed": "26",
+      "skipped": "0",
+      "time": "1.029",
+      "time-rtf": "00:00:01.0294427",
+      "total": "26"
+    },
+    "names": [
+      "ingress-disconnected",
+      "old-actuator-state",
+      "wrong-last-actuator-tooltime",
+      "framing-disconnected",
+      "spurious-liquid-wakeup",
+      "wet-frame-guard-omitted",
+      "funding-debit-omitted"
+    ],
+    "evidence": "E:\\TerraRuntime-wiring-verification-20261026\\tools-controls\\result.json",
+    "scope": "Exact source restoration. Target Fact bodies unchanged by the subsequent unknown-action test-only correction."
+  },
+  "windowsNativeAot": {
+    "accepted": true,
+    "exe": "E:\\TerraRuntime-wiring-verification-20261026\\tools-final\\native\\TerraRuntime.Server.exe",
+    "exeSha256": "77d3e40d4ecb3bf4c3addb57f7790899bb1a1ba979d747b8c243c4858d12ac3a",
+    "clrDirectory": [
+      0,
+      0
+    ],
+    "smokes": [
+      {
+        "smoke": "loop",
+        "exitCode": 0,
+        "seconds": 0.9255166000220925
+      },
+      {
+        "smoke": "protocol",
+        "exitCode": 0,
+        "seconds": 0.45740569999907166
+      },
+      {
+        "smoke": "network",
+        "exitCode": 0,
+        "seconds": 0.3510367999551818
+      },
+      {
+        "smoke": "world",
+        "exitCode": 0,
+        "seconds": 0.44438040000386536
+      },
+      {
+        "smoke": "tui",
+        "exitCode": 0,
+        "seconds": 1.750793999992311
+      }
+    ],
+    "linux": "Unavailable: Windows host, no WSL distributions; cross-OS shipping publish rejected",
+    "reuseBridge": "native-bridge.json",
+    "publishedCandidate": "tools-final"
+  },
+  "nativeTestOnlyBridge": {
+    "accepted": true,
+    "changedInputs": [
+      "tests/TerraRuntime.Tests/ServerRuntimeClientTileIngressTests.cs"
+    ],
+    "changedDlls": [
+      "TerraRuntime.Tests.dll"
+    ],
+    "unchangedOtherDlls": 59,
+    "productionInputsIdentical": true,
+    "exeSha256": "77d3e40d4ecb3bf4c3addb57f7790899bb1a1ba979d747b8c243c4858d12ac3a",
+    "reason": "Test-only correction: formerly unknown action5 is now recognized; unknown-action test uses255 and an additional assertion preserves rejection of unqualified5."
+  },
+  "linuxNativeAot": {
+    "verified": false,
+    "reason": "Windows host, no WSL distributions; shipping script rejects linux-x64 on win-x64.",
+    "logs": "E:\\TerraRuntime-wiring-verification-20261026\\tools01"
+  },
+  "sourceMethods": [
+    "Player.ItemCheck / ItemCheck_UseWiringTools / ItemCheck_OwnerOnlyCode / ApplyItemTime / CanDoWireStuffHere",
+    "WorldGen.PlaceWire / PlaceWire2 / PlaceWire3 / PlaceWire4 / KillWire / KillWire2 / KillWire3 / KillWire4 / PlaceActuator / KillActuator",
+    "Wiring.HitWireSingle / DeActive / ReActive; WorldGen.SquareTileFrame / TileFrame / CheckTorch",
+    "MessageBuffer.GetData17/59; WorldItem.ReserveFor; MessageBuffer22 client handler"
+  ],
+  "sharedModifiedSourceAndTests": [
+    "src/TerraRuntime.Application/PlayerAuthority.PlacementFrame.cs",
+    "src/TerraRuntime.Application/PlayerAuthority.RemoteItemPhase.cs",
+    "src/TerraRuntime.Application/PlayerAuthority.ToolFrame.cs",
+    "src/TerraRuntime.Application/PlayerAuthority.ToolSelection.cs",
+    "src/TerraRuntime.Application/PlayerAuthority.ToolUse.cs",
+    "src/TerraRuntime.Application/PlayerAuthority.cs",
+    "src/TerraRuntime.Application/RuntimePlayerInventoryStore.RemotePhase.cs",
+    "src/TerraRuntime.Application/RuntimePlayerToolInput1458.cs",
+    "src/TerraRuntime.Application/RuntimePlayerToolUse1458.cs",
+    "src/TerraRuntime.Application/RuntimePlayerUpdateWorld1458.cs",
+    "src/TerraRuntime.Application/WiringNativeSmoke1458.cs",
+    "src/TerraRuntime.Application/WorldTileAuthority.ToolIngress.cs",
+    "src/TerraRuntime.Application/WorldTileAuthority.ToolMutations.cs",
+    "src/TerraRuntime.Application/WorldTileAuthority.ToolPhaseDrain.cs",
+    "src/TerraRuntime.Application/WorldTileAuthority.ToolSourcePass.cs",
+    "src/TerraRuntime.Application/WorldTileAuthority.Wiring.cs",
+    "src/TerraRuntime.Gameplay/Players/VanillaSelectedItemCrit1458.cs",
+    "src/TerraRuntime.World/VanillaWorldWiringMutationService.cs",
+    "src/TerraRuntime.World/WorldWiringDeviceExecutor1458.cs",
+    "tests/TerraRuntime.Tests/ServerRuntimeClientTileIngressTests.cs",
+    "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj",
+    "tests/TerraRuntime.Tests/VanillaWorldWiringMutationServiceTests.cs",
+    "tests/TerraRuntime.Tests/WorldWiringPersistence1458Tests.cs"
+  ],
+  "remaining": [
+    "Qualified client cutter needs an owned visual dust/viewport state or a proven treatment of unknown local RNG lineage.",
+    "Mass wiring109, Grand Design, Multicolor Wrench, Actuation Rod, cursor58, buffered selection and unrepresented range/Journey contexts.",
+    "Wet actuation framing including Liquid.AddWater destruction/publication; broader attached-object destruction and torch drops.",
+    "Exact server reservation clock versus advertised item-owner presentation; ordinary stone cosmetic merge-atlas frames.",
+    "One-shot7/weighted/projectile/boulder plate producers, pumps/teleporters, logic/traps/statues/nested logic pulses.",
+    "Whole vanilla wiring compatibility, official GUI-client playthrough and Linux NativeAOT."
+  ],
+  "earlierAttempts": {
+    "accepted": false,
+    "firstFast": {
+      "executed": true,
+      "exit_code": 1,
+      "wall_seconds": 427.9271889999509,
+      "tests": {
+        "total": "25366",
+        "passed": "25365",
+        "failed": "1",
+        "errors": "0",
+        "skipped": "0",
+        "time": "425.653",
+        "skipped_tests": []
+      },
+      "accepted": false
+    },
+    "reason": "Old unknown-action test used5, now a recognized red-wire operation. Changed only the test to255 and added independent refusal coverage for unqualified5.",
+    "firstFullStarted": false,
+    "preliminaryFocusedLogs": "E:\\TerraRuntime-wiring-verification-20261026\\tools01",
+    "notes": "Earlier framing assertions initially compared unsupported stone cosmetic fields and raw server reservation field with advertised snapshot projection. Full original observations remain unmodified; final tests/documents explicitly state representation boundaries."
+  }
+}

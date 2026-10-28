@@ -47,6 +47,6 @@ public sealed class RuntimeNpcDeathAllocationViews1458Tests
     private sealed class Sink : IWorldItemStateCommitSink
     {
         public List<(WorldItemStateCommitKind Kind, WorldItemSnapshot Item)> Events { get; } = [];
-        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item) => Events.Add((kind, item));
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item, int? reservationOffer = null, GameCommandSourceId excludedSource = default) => Events.Add((kind, item));
     }
 }

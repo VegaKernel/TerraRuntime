@@ -96,7 +96,7 @@ public sealed class GemBunnyLifecycle1458Tests
             Assert.True(f.Items.TryGetActive(0, out var item));
             Assert.Equal((short)(4838 + group.Key.Type - 646), item.ItemNetId);
             Assert.Equal((byte)0, item.OwnerPlayerId);
-            Assert.Equal(100, item.TimeToKeepReservation);
+            Assert.Equal(0, item.TimeToKeepReservation); // ReserveFor advertises100 without setting the server field.
             Assert.Equal(group.Last().GetProperty("after").GetProperty("next").GetInt32(), f.Random.Clone().Next());
         }
     }

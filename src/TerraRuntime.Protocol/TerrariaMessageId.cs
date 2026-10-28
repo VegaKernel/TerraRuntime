@@ -54,6 +54,7 @@ public enum TerrariaMessageId : byte
     SetNpcTalk = 40,
     AddPlayerBuffPvp = 55,
     UniqueTownNpcInfoSyncRequest = 56,
+    HitSwitch = 59,
     UpdateNpcHome = 60,
     SpawnBoss = 61,
     TeleportEntity = 65,

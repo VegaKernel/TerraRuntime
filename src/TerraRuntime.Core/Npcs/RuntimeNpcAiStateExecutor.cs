@@ -88,7 +88,8 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 
     public NpcAiStateTickSummary Tick(
         INpcAiStateStepper stepper,
-        INpcAiStateCommitSink? commitSink)
+        INpcAiStateCommitSink? commitSink,
+        Action<NpcSnapshot, NpcSnapshot>? actorContact = null)
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
@@ -354,6 +355,13 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 }
                 if (_npcs.TryGet(committed.Handle, out NpcSnapshot current) && current.Revision == committed.Revision)
                     postCommitEffect?.ApplyCommittedEffectAfterSpawns(in npc, in committed, this);
+                // Source NPC.UpdateNPC tests pressure contacts after movement and AI effects, before
+                // advancing to the next live slot. Later actors must see any committed wire mutations.
+                if (actorContact is not null && _npcs.TryGet(committed.Handle, out current) && current.Revision == committed.Revision)
+                {
+                    actorContact(npc, current);
+                    if (_npcs.TryGet(committed.Handle, out var contacted)) committed = contacted;
+                }
                 if (postCommitEffect?.DeactivatesAfterCompletion(in npc, in committed) == true &&
                     _npcs.TryGet(committed.Handle, out current) && current.Revision == committed.Revision)
                 {

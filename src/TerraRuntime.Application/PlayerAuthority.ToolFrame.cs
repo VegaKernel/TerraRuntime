@@ -129,7 +129,7 @@ internal sealed partial class PlayerAuthority
         if (deferred) localState = localState with { Channel = false };
         after = before with
         {
-            Clocks = localState,
+            Clocks = localState, SourceWiring = null,
             SourceStagePose = sourcePose,
             RequiresFreshUse = requiresFresh,
             SelectionInitialized = true,

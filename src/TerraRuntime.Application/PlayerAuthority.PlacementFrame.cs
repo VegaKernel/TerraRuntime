@@ -95,7 +95,7 @@ internal sealed partial class PlayerAuthority
         }
         after = before with
         {
-            Clocks = localState, SourcePlacement = deferred ? before.SourcePlacement : definition,
+            Clocks = localState, SourcePlacement = deferred ? before.SourcePlacement : definition, SourceWiring = null,
             SourceLocalDefinition = retainedDefinition, SourceDefinition = deferred ? before.SourceDefinition : null,
             PlacementSpeed = deferred ? before.PlacementSpeed : placementSpeed,
             PlacementReady = deferred ? before.PlacementReady : readyHistory, PlacementHistoryEpoch = historyEpoch,

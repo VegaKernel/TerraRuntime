@@ -11,6 +11,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/AmmoProjectileDeathLinux1458.json.gz" LogicalName="AmmoProjectileDeathLinux1458" />
     <EmbeddedResource Include="Fixtures/AmmoProjectileDeathWindows1458.json.gz" LogicalName="AmmoProjectileDeathWindows1458" />
+    <EmbeddedResource Include="Fixtures/WiringOriginalLinux1458.json.gz" LogicalName="WiringOriginalLinux1458" />
+    <EmbeddedResource Include="Fixtures/WiringToolsOriginalLinux1458.json.gz" LogicalName="WiringToolsOriginalLinux1458" />
+    <EmbeddedResource Include="Fixtures/WorldItemReservationOriginalLinux1458.json.gz" LogicalName="WorldItemReservationOriginalLinux1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeLinux1458.json.gz" LogicalName="UndeadVariantsRuntimeLinux1458" />
     <EmbeddedResource Include="Fixtures/GemBunnyRuntimeLinux1458.json.gz" LogicalName="GemBunnyRuntimeLinux1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeWindows1458.json.gz" LogicalName="UndeadVariantsRuntimeWindows1458" />
