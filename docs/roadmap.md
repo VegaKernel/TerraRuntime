@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Ground-critter checkpoint accepted, 2026-10-28
+
+Ground-critter checkpoint2026-10-28: source4067/DLL158/index exact, old891fixtures unchanged; AI3/AI7 lifecycle247/300 (82.3%), global511/244. Existing retained owner now handles34critters and live squirrel7→3; no parallel store/RNG/dependency, graph15/29. Phase63744active+960surface/fullRNG strict,60legacy stability controls; terminal4224NPC/raw/RNGonly, inactivebuffownership unqualified. WAE/focus1391/full1575840/all5485methods and fast34426 actual subset of same unfiltered run green, freshWindowsNativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/5smokes/actualRelease+NativeTCP green. FullVanillaAiParity false; LinuxNative/GUI/gracefulsave open. See docs/verification/ground-critter-acceptance-20261028.json. Next priority: existing player equipment/buff owners and bounded automatic semantic candidates; broad per-NPC AI parity remains open.
+
 ## Ordinary melee and Check2x1 merge integration, 2026-10-28
 
 Merge5415e106 preserves NPC checkpoint08152d8f and concurrentmain3c4c2c75. Merged Release warnings-as-errors, focused8311/8311, mandatoryfast33662/33662, complete worldgen/infrastructure84161/84161 pass without failures/errors/skips. Fresh WindowsNative074283e1/allfive smokes, actualRelease+NativeTCPtwojoins/82→49→129/movement-chat/replacementHello and re-captured55872NPCphases are green. Shipping NPC code/resources remain exact; the source delta from the NPC checkpoint is only WorldGeneration/GenerationTileFraming1458 plus its existing test expansion.

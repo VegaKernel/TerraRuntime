@@ -22,7 +22,7 @@ internal static class VanillaOrdinaryMeleePresentation1458
         if (count == 0 || motion.Simulation.FrameIndex is not { } row ||
             !double.IsFinite(motion.Simulation.FrameCounter)) return false;
         if (motion.Type == 464)
-        { final = VanillaGemBunnyAccepted1458.FinishPresentation(in motion); return true; }
+        { final = VanillaGroundCritterAccepted1458.FinishPresentation(in motion); return true; }
 
         double timer = motion.Simulation.FrameCounter;
         int sprite = motion.Simulation.SpriteDirection;

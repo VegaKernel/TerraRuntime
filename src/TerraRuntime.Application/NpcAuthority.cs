@@ -33,7 +33,7 @@ internal sealed partial class NpcAuthority
     private readonly VanillaNpcTargetingAiStepper? vanillaTargeting;
     private readonly VanillaNpcCheckActiveAiStepper? vanillaCheckActive;
     private readonly VanillaNpcWorldMotionAiStepper? pirateGhostMotion;
-    private readonly RuntimeGemBunnyLifecycle1458? gemBunnyLifecycle;
+    private readonly RuntimeGroundCritterLifecycle1458? gemBunnyLifecycle;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
     internal RuntimeNpcDeathPrelude1458 DeathPrelude => combat.DeathPrelude;
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
@@ -340,13 +340,13 @@ internal sealed partial class NpcAuthority
                 pirateGhostMotion = worldMotion;
                 vanillaTargeting.SetOrdinaryMeleeOwner(npcs, new VanillaOrdinaryMeleeEnvironment1458(
                     worldTiles, npcs, npcBuffStatus, worldMotion, CaptureOrdinaryMeleeWorldFacts1458, npcReplication));
-                gemBunnyLifecycle = new RuntimeGemBunnyLifecycle1458(worldTiles, worldSurfaceTiles, npcs,
-                    combat, expertMode, npcReplication, npcBuffStatus);
-                vanillaTargeting.SetGemBunnyOwner(npcs, new VanillaGemBunnyEnvironment1458(worldTiles, npcs,
-                    npcBuffStatus, _ => CaptureGemBunnyConditions(), CaptureGemBunnyPlayerDanger, npcReplication,
-                    CaptureBunnyBloodMoon),
+                gemBunnyLifecycle = new RuntimeGroundCritterLifecycle1458(worldTiles, worldSurfaceTiles, npcs,
+                    combat, expertMode, npcReplication, npcBuffStatus, worldMotion);
+                vanillaTargeting.SetGroundCritterOwner(npcs, new VanillaGroundCritterEnvironment1458(worldTiles, npcs,
+                    npcBuffStatus, _ => CaptureGroundCritterConditions(), CaptureGroundCritterPlayerDanger, npcReplication,
+                    CaptureBunnyBloodMoon, playerNames: playerSnapshots),
                     worldTiles.Dimensions.WidthTiles, worldSurfaceTiles);
-                worldMotion.SetGemBunnyLifecycle(gemBunnyLifecycle);
+                worldMotion.SetGroundCritterLifecycle(gemBunnyLifecycle);
                 vanillaCheckActive = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 aiStepper = vanillaCheckActive;
             }
@@ -369,7 +369,7 @@ internal sealed partial class NpcAuthority
                 pirateGhostMotion, combat, npcBuffStatus, rawPlayerSlots, CapturePirateGhostPlayers);
         if (gemBunnyLifecycle is not null && worldTiles is not null &&
             this.naturalSpawnRandom is SystemVanillaNpcRandom sharedRandom)
-            aiStepper = new RuntimeGemBunnyOuterAiStepper1458(aiStepper, gemBunnyLifecycle,
+            aiStepper = new RuntimeGroundCritterOuterAiStepper1458(aiStepper, gemBunnyLifecycle,
                 worldTiles.Dimensions.HeightTiles, sharedRandom.SourceRandom, CaptureBunnyBloodMoon);
     }
 
@@ -1968,12 +1968,9 @@ internal sealed partial class NpcAuthority
 
         if (npc.Simulation.SpawnedFromStatue)
         {
-            if (npc.Type is < 646 or > 652 || npc.Type != npc.NetId)
-            {
-                npcs.TryDespawn(npc.Handle);
-                return;
-            }
-            // CatchNPC's smoke uses Entity.Center and casts only X before packet106 packing.
+            // CatchNPC applies the same statue branch to every positive catchItem
+            // except Mystic Frog, whose teleport branch precedes this one.
+            // Its smoke uses Entity.Center and casts only X before packet106 packing.
             // Geometry, wire preparation and source ownership must be valid before spending RNG.
             // A custom adapter without the shared UnifiedRandom owner cannot atomically commit it.
             if (!catchDefinition.TryResolveHitbox(npc.Simulation, out var statueBody) ||
@@ -2001,7 +1998,9 @@ internal sealed partial class NpcAuthority
                 _ = preparedStatueRandom.NextDouble();
                 _ = preparedStatueRandom.NextDouble();
             }
-            if (!liveStatueRandom.HasSameState(statueCheckpoint) || !statueRemoval!.TryAdoptUnpublished())
+            if (!players.IsCurrent(command.Connection) ||
+                !players.TryGet(command.Connection, out var currentStatuePlayer) || !ReferenceEquals(player, currentStatuePlayer) ||
+                !liveStatueRandom.HasSameState(statueCheckpoint) || !statueRemoval!.TryAdoptUnpublished())
                 return;
             liveStatueRandom.CopyStateFrom(preparedStatueRandom);
             if (statueRemoval.TryPublish())
@@ -2103,7 +2102,7 @@ internal sealed partial class NpcAuthority
         worldClock is not null, worldClock?.DayTime ?? true, worldClock?.EclipseActive ?? false,
         CaptureDifficulty() >= 2f, worldClock?.GetGoodWorld ?? false, naturalSpawnWorldFacts?.RemixWorld ?? false);
 
-    private RuntimeTownNpcScheduleConditions1458 CaptureGemBunnyConditions() => new(
+    private RuntimeTownNpcScheduleConditions1458 CaptureGroundCritterConditions() => new(
         worldClock?.DayTime ?? true, worldClock?.Raining ?? false,
         naturalSpawnWorldFacts?.Eclipse ?? false, worldClock?.SlimeRainActive ?? false,
         // Main.IsItStorming is never refreshed by the dedicated-server audio update.
@@ -2112,7 +2111,7 @@ internal sealed partial class NpcAuthority
         InvasionActive = invasion is not null && invasion.TryCapture(out var active) && active.State.Type > 0
     };
 
-    private RuntimeTownPlayerDanger1458[] CaptureGemBunnyPlayerDanger() => CapturePirateGhostPlayers()
+    private RuntimeTownPlayerDanger1458[] CaptureGroundCritterPlayerDanger() => CapturePirateGhostPlayers()
         .Where(candidate => candidate.Active)
         .Select(candidate => new RuntimeTownPlayerDanger1458(candidate.Slot,
             new RuntimeTownPlayerBounds1458(candidate.CenterX - candidate.Width * .5f,

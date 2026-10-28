@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-final03-actual-tcp-live-join",
+  "accepted": true,
+  "aggregateAcceptance": false,
+  "scope": "Actual localhost Release and Windows x64 NativeAOT TCP. Two accepted joins per variant, Banner11 then295 Bestiary4 before49/129, movement13/chat82 and replacement Hello3. Private worlds/binaries and immutable original world. No GUI, full gameplay or graceful-save shutdown acceptance.",
+  "sourceManifestSha256": "51a5f0a5149264ee6f7cc6c4d3c713485152107f9dd4de4995c837a747ad737f",
+  "dllManifestSha256": "deb80f3d19427ee23a951899bf86b4fe3d4304e6fc012b51994567e45ea96765",
+  "sourceInputCount": 4067,
+  "canonicalDllCount": 158,
+  "runner": {
+    "path": ".cache/ground-critter/run-live-final03.py",
+    "sha256": "e1573cb75a91fcb111228ac48931942bca39fcc9e8c494f69bc547b071c55b98"
+  },
+  "passiveCaptureWrapper": {
+    "path": ".cache/ground-critter/capture-live-join.py",
+    "sha256": "ddbfb934b789f5647bb43b0c4bea3bde6a8157eaa5501d470dc808f80e1a9a35"
+  },
+  "unchangedShippingProbe": {
+    "path": "tools/ci/live_join_relay_probe.py",
+    "sha256": "3727d04a0d7c818916173a01785b4867b98b83fc26393312abb7b45d8145d0ad"
+  },
+  "native": {
+    "receipt": {
+      "path": ".cache/ground-critter/final-gate03/native/result.json",
+      "sha256": "a9deaf5cd532d63884ad60fb0398e7e254c73d0762c5b1c5c9c6435746c8b2cb"
+    },
+    "executableSha256": "fa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae"
+  },
+  "runs": [
+    {
+      "variant": "release",
+      "acceptedBounded": true,
+      "receipt": {
+        "path": ".cache/ground-critter/live-next-release-03/result.json",
+        "sha256": "f7259c392602937766c820afd64298932be479ea4c7115e28e18cc98d694dc0b"
+      },
+      "setup": {
+        "path": ".cache/ground-critter/live-next-release-03/setup.json",
+        "sha256": "ae29198f23d21d33eb977b2931d098747dbda16910244bf3b7094ca912dfbf5f"
+      },
+      "wire": {
+        "path": ".cache/ground-critter/live-next-release-03/wire.json.gz",
+        "sha256": "aeb51428d40da014989e27989c47d02ec60ed0f7a40e1c7dcb40822087dedab0"
+      },
+      "hostLog": {
+        "path": ".cache/ground-critter/live-next-release-03/host.log",
+        "sha256": "7afcd1bd9080c2f0dc9161a1ecb9341f707c00c661b22988f6fb7ea6dde23ac1"
+      },
+      "probeLog": {
+        "path": ".cache/ground-critter/live-next-release-03/probe.log",
+        "sha256": "d6e040c8c54f1f14e70d77bfbbd50af4d37b096a29dc0af2795d2db52e0b1f34"
+      },
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\live-next-release-03\\bin\\TerraRuntime.Server.dll",
+        "--world",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\live-next-release-03\\world\\source-copy.wld",
+        "--bind",
+        "127.0.0.1",
+        "--port",
+        "17871",
+        "--max-players",
+        "2",
+        "--no-tui",
+        "--import-world-custody"
+      ],
+      "connections": [
+        {
+          "socket": 0,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129After49": 1
+        },
+        {
+          "socket": 1,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129After49": 1
+        }
+      ],
+      "movement13AndChat82CheckedByUnmodifiedProbe": true,
+      "thirdConnectionHello3Literal": "0500030000",
+      "ownedHiddenProcessStopped": true,
+      "processId": 71512,
+      "durationSeconds": 8.587161600007676
+    },
+    {
+      "variant": "native",
+      "acceptedBounded": true,
+      "receipt": {
+        "path": ".cache/ground-critter/live-next-native-03/result.json",
+        "sha256": "835a11d14c15fd287e53350004457d39858d0947b6740b171247394716ba2d07"
+      },
+      "setup": {
+        "path": ".cache/ground-critter/live-next-native-03/setup.json",
+        "sha256": "cd3d32a5f68fba0024ca6191f84de7074fcc1b27aa58840131fc44ea89c47966"
+      },
+      "wire": {
+        "path": ".cache/ground-critter/live-next-native-03/wire.json.gz",
+        "sha256": "8c502a5ddc9f031a88d2589faabdca5588770ce5cc037840da172b65785034f3"
+      },
+      "hostLog": {
+        "path": ".cache/ground-critter/live-next-native-03/host.log",
+        "sha256": "93b2b605facc98668190ed6db6cd462d691536bdd482a087a43001ea849015a8"
+      },
+      "probeLog": {
+        "path": ".cache/ground-critter/live-next-native-03/probe.log",
+        "sha256": "8c6715d94476c2d9e465d07004694ea79b2c43cf66382566c843e6a231d0e22d"
+      },
+      "command": [
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\live-next-native-03\\TerraRuntime.Server.exe",
+        "--world",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\live-next-native-03\\world\\source-copy.wld",
+        "--bind",
+        "127.0.0.1",
+        "--port",
+        "17872",
+        "--max-players",
+        "2",
+        "--no-tui",
+        "--import-world-custody"
+      ],
+      "connections": [
+        {
+          "socket": 0,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129After49": 1
+        },
+        {
+          "socket": 1,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129After49": 1
+        }
+      ],
+      "movement13AndChat82CheckedByUnmodifiedProbe": true,
+      "thirdConnectionHello3Literal": "0500030000",
+      "ownedHiddenProcessStopped": true,
+      "processId": 162544,
+      "durationSeconds": 4.9928369000554085
+    }
+  ]
+}

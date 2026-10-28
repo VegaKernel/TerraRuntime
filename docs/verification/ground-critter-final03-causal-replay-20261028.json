@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-final03-existing-control-actual-replay",
+  "accepted": true,
+  "componentAccepted": true,
+  "aggregateAcceptance": false,
+  "candidate": "ground-critter/final-gate03",
+  "sourceGuardAccepted": true,
+  "canonicalDllGuardAccepted": true,
+  "sourceInputCount": 4067,
+  "canonicalDllCount": 158,
+  "sameFinalTestDllSha256": "999a9935426278f94b3423a37a420463a0a7e3a5ffe3b12d63849084acc32198",
+  "fixedOwnerCases": 551,
+  "fixedCombatCatchCases": 191,
+  "fixedPassed": 742,
+  "ownerIndividualOmissions": 5,
+  "ownerExpectedAssertionFailures": 322,
+  "combatIndividualOmissions": 3,
+  "combatExpectedAssertionFailures": 128,
+  "loaderErrors": 0,
+  "skipped": 0,
+  "exactPriorFailureNamesAndCounts": true,
+  "canonicalSourceAndDllsUnchanged": true,
+  "oldPrivateClosurePinsUnchanged": true,
+  "noBuilds": true,
+  "executionDirectory": "E:\\TerraRuntime-agent-cache\\TerraRuntime-next-ai7-20261028\\final03-replay",
+  "resultSha256": "1908b4ccb6310723627b972ada892a20ee6b1035b867bea8faf5041b0da730a3",
+  "runnerSha256": "e66c0b087129fe3403ac3e3798835aa43c393d6e3044eff4098f04a1c0970c50",
+  "sourceControlRecordSha256": {
+    "owner": "5ea34605a8b01f90c6fbf75b1f62a4edab5364919c218b8e544bdd77086e3b5a",
+    "combat": "2ba9d65e0203c3d4a789de3feea569b1121e8ddd22691322c01b0cf288bb254d"
+  },
+  "records": [
+    {
+      "name": "owner-fixed",
+      "total": 551,
+      "passed": 551,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 0,
+      "xmlSha256": "31655f82b723d6adf41e574d739b39ed4fa19d08fc77eb18788b870a333ba717",
+      "logSha256": "21c272a32bac6b50fcbe9b3c0bdcb917ea96f11411fd141c56dfd0c9122cf0e7",
+      "privateClosurePinsSha256": "ee312cfc8e2b8efb55d42856a39f960ed8944f29ce0173f6f64691f65055d0da",
+      "dllDifferencesFromCanonical": {},
+      "assertionFailureIdentitiesSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "firstAssertion": null
+    },
+    {
+      "name": "combat-fixed",
+      "total": 191,
+      "passed": 191,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 0,
+      "xmlSha256": "ad25c7cea46770fdb1e914201546e1bb9466ed660b3e3e8fdcb91e3c600694d5",
+      "logSha256": "968ef7cf31abdc4ee8658fa38567f94f9e1004be4c752dea70ad5d5517f8340d",
+      "privateClosurePinsSha256": "ee312cfc8e2b8efb55d42856a39f960ed8944f29ce0173f6f64691f65055d0da",
+      "dllDifferencesFromCanonical": {},
+      "assertionFailureIdentitiesSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "firstAssertion": null
+    },
+    {
+      "name": "owner-omit-los-sections",
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "758249dbbe11edd108807dabe87b6e3dee41a395481247a6fed93ad69e0a12fa",
+      "logSha256": "29186f314b1dabcd7c132557bf9bc8497606cd175c435864daa7ed2ff1954015",
+      "privateClosurePinsSha256": "db81630e01290dc30ab5c4042fb8590aef4b14bf0db8ee15c92ba5b45ace1c06",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Application.dll": {
+          "canonical": "fc9b4ae79bebd59812a4dfb81afb8c082b3ae8cd0bef9bb548a379c0a58af9ff",
+          "executed": "b903dace34bddbe08852898cb62ebfedeaed032e45dff88bed082dd1cfc5d3dc"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "57335c03bf4e6362cdcbb9c2f2305b92d09b23e31d2c8abd97aba30434d9de94",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.GroundCritterCurrentness1458Tests.Far_los_corridor_section_change_refuses_completion_while_actor_and_player_facts_stay_current",
+        "exception": "Xunit.Sdk.EqualException",
+        "message": "Assert.Equal() Failure: Values differ\nExpected: False\nActual:   True"
+      }
+    },
+    {
+      "name": "owner-bunny-new-family-frames",
+      "total": 542,
+      "passed": 224,
+      "failed": 318,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "dc5060bdc4b3a3451b71a50d20d788fac5915fca05256d40a9f134a301e8161a",
+      "logSha256": "6917bdf046ea67279db94cb901a5f3af4b34bf1ea3e721a238a37e7122dc4d17",
+      "privateClosurePinsSha256": "c688ea5b4b8f15f930ab891ba9d007a5c666a2aa052fafa8a4e9ea8137ca4881",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Application.dll": {
+          "canonical": "fc9b4ae79bebd59812a4dfb81afb8c082b3ae8cd0bef9bb548a379c0a58af9ff",
+          "executed": "1b6971ac235867f996ec6be493b70dcbbff158cb178442f2c338cd692fe26a09"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "f47bfbf3691d66d566600deca7f4934e0d2f2bc58c5f6e9c0ffd53dcc200500b",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.GroundCritterPresentation1458Tests.Actual_source_frame_counter_and_sprite_match_without_changing_body_or_motion(index: 145, type: 148, scene: \\\"epsilon\\\")",
+        "exception": "Xunit.Sdk.EqualException",
+        "message": "Assert.Equal() Failure: Strings differ\n             \u2193 (pos 2)\nExpected: \\\"3fc3333340000000\\\"\nActual:   \\\"3ff2666668000000\\\"\n             \u2191 (pos 2)"
+      }
+    },
+    {
+      "name": "owner-omit-retained-style",
+      "total": 5,
+      "passed": 4,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "7ac6f6aa3ed0c279a91c2bdbac0d0d1a59ddbe6f0c54fc6e66ca69c862f7283c",
+      "logSha256": "1414f075e540c925894ac00a8b787a53cb96462557782acafd9a72a3783c57e9",
+      "privateClosurePinsSha256": "976836580868743e27683853e44af46d07b2403df86f0c8a103202d70f9d4e4b",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Core.dll": {
+          "canonical": "0f4640647ff0e3b817fb89c41a1b6acb480d2a38dd52018b84dd6d3d5a67d495",
+          "executed": "86b28e7af2791e2c831a8e7b356f1015bdd54d3bc3f55e900c345c06f4fc3c90"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "891d10079c509f9e6c64d4aa8235ffa32e1fb199bb8250ab260326e26dd41440",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.GroundCritterStateOwnership1458Tests.Same_identity_retains_style_three_when_sparse_updates_and_stuck_counter_omit_it",
+        "exception": "Xunit.Sdk.EqualException",
+        "message": "Assert.Equal() Failure: Values differ\nExpected: 3\nActual:   null"
+      }
+    },
+    {
+      "name": "owner-omit-prepass-style",
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "cd3a302d9484c05f2e367672c457027eb3a5e6174041f6933f411ef64600da0e",
+      "logSha256": "579ce24b7cda33d801b93aa8ea3986b2ec5475d01088ee893e84d63381e7a5cd",
+      "privateClosurePinsSha256": "277180a1c931841b371d2d8ccb49483e88bf2c5b9e7353eceab2ee50f0064d3a",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Application.dll": {
+          "canonical": "fc9b4ae79bebd59812a4dfb81afb8c082b3ae8cd0bef9bb548a379c0a58af9ff",
+          "executed": "bfbd43da7340aa9caa33e53d37cc4df0be755b684de27ea534f2123a0886416c"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "3ca46638c0d3b522ca2ba2ca5cde7262ccf872167746ed8c7fd7cbc79cfb6068",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.GroundCritterLowerWorld1458Tests.Actual_npc_phase_strikes_lower_world_ai7_but_continues_the_same_squirrel_after_its_real_turn",
+        "exception": "Xunit.Sdk.TrueException",
+        "message": "Assert.True() Failure\nExpected: True\nActual:   False"
+      }
+    },
+    {
+      "name": "owner-omit-death-style",
+      "total": 2,
+      "passed": 1,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "1130dedd661d2d0189a36c3f1fdf846ad18a002179dd1ae79e83423ba8416ac4",
+      "logSha256": "f97d6cb0c0e70827dbd2441b6daff7de1826f9ff52e782e4850091500a235965",
+      "privateClosurePinsSha256": "c5cd4d895778881d21606b4c74e5c37e88c23fefdc56a32e958d78bbb21dfa2a",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Application.dll": {
+          "canonical": "fc9b4ae79bebd59812a4dfb81afb8c082b3ae8cd0bef9bb548a379c0a58af9ff",
+          "executed": "5dfbed2ff712b6c341988c7149afff518a0fefcf7cf64993bdda24bd81eddf95"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "73c9d0af935fd2c23a71e6c19cb58b2dca2bfcac94a72a4631c91cca2f14c18a",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.GroundCritterLowerWorld1458Tests.Lower_world_death_owner_itself_refuses_retained_ai3_without_npc_or_entropy_mutation",
+        "exception": "Xunit.Sdk.EqualException",
+        "message": "Assert.Equal() Failure: Values differ\nExpected: False\nActual:   True"
+      }
+    },
+    {
+      "name": "combat-old-gold-predicate",
+      "total": 51,
+      "passed": 18,
+      "failed": 33,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "3d9ff73f9bfa3a23bb57787e3c425663ae70b39a49013e5ea161bc55e59bb4e9",
+      "logSha256": "6f036c8478fcfd0c67ff316d3ea922b930ad96f793ee005f44f07607a4f285b0",
+      "privateClosurePinsSha256": "f6bd540265072370971c38c4bfa64dfbef258fb28fe1d0583eb92a53507546c9",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Application.dll": {
+          "canonical": "fc9b4ae79bebd59812a4dfb81afb8c082b3ae8cd0bef9bb548a379c0a58af9ff",
+          "executed": "903b1250e08ee268b8601756d944b937f38a9540bbdce02a8fe0b61b1409516c"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "d922bc48641f67a92bb529d4badc51e79a2a87bee954afea7752106a39d8353e",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.GoldCritterHitEffect1458Tests.Dedicated_gold_hit_effects_match_actual_original_complete_random_state(seed: 1458, json: \\\"{\\\\\\\"kind\\\\\\\":\\\\\\\"hitEffect\\\\\\\",\\\\\\\"type\\\\\\\":445,\\\\\\\"lethal\\\\\\\":fa\\\"\u00b7\u00b7\u00b7)",
+        "exception": "Xunit.Sdk.EqualException",
+        "message": "Assert.Equal() Failure: Values differ\nExpected: 10\nActual:   0"
+      }
+    },
+    {
+      "name": "combat-old-gem-only-statue",
+      "total": 120,
+      "passed": 33,
+      "failed": 87,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "51cbb2432a95e07d26156782bfed8da7ae6544f1b95c0e4cf08c75aac7159373",
+      "logSha256": "eeea7b7740ed16da1f74f09ed4c98bb753933b0c350c0a524f67410a53da5545",
+      "privateClosurePinsSha256": "fcd0532102a1b6ce3b1e85100c1b88a0f5f3a2f30102b719797bb1af6954d1e4",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Application.dll": {
+          "canonical": "fc9b4ae79bebd59812a4dfb81afb8c082b3ae8cd0bef9bb548a379c0a58af9ff",
+          "executed": "52246f8495d88ba2e755533b9dd071d695817af459616a87ba2b02fc7c9d21f8"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "ba0501c0a7f904911a22cbf7ed73bbb5a926e8b95f033325037527d4f8ddc9db",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.NpcStatueCatch1458Tests.Removal_and_smoke_entropy_are_adopted_before_a_reentrant_catch_observer",
+        "exception": "Xunit.Sdk.EqualException",
+        "message": "Assert.Equal() Failure: Values differ\nExpected: 1\nActual:   0"
+      }
+    },
+    {
+      "name": "combat-omit-surviving-contact",
+      "total": 20,
+      "passed": 12,
+      "failed": 8,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "1c6fe07af778a131b606be89ece89f1b3aafb1fa4716d71ccc85ef59705cfcd9",
+      "logSha256": "21feb94acb1d31c7ba694e3fa550a841086f2958efeee2987b509a518aadffea",
+      "privateClosurePinsSha256": "d363709adc5dcda3478ce926c16994aa6ffb1b6bb3172f59fda23720af5d2358",
+      "dllDifferencesFromCanonical": {
+        "TerraRuntime.Application.dll": {
+          "canonical": "fc9b4ae79bebd59812a4dfb81afb8c082b3ae8cd0bef9bb548a379c0a58af9ff",
+          "executed": "efb1b2f6dee0f6647e5f817fd4cb66a83561ceefe04535a44c34efc546b7dfdd"
+        }
+      },
+      "assertionFailureIdentitiesSha256": "ab3f1c7f07de43508cfb8a788b04250f08cd7553d96acddaf1b12e1dbde954fc",
+      "firstAssertion": {
+        "name": "TerraRuntime.Tests.GroundCritterNonlethalContact1458Tests.Actual_npc_phase_adopts_source_surviving_contact_and_gold_choices_before_the_peer_turn(json: \\\"{\\\\\\\"seed\\\\\\\":1458,\\\\\\\"type\\\\\\\":443,\\\\\\\"frameCount\\\\\\\":7,\\\\\\\"inp\\\"\u00b7\u00b7\u00b7)",
+        "exception": "Xunit.Sdk.EqualException",
+        "message": "Assert.Equal() Failure: Values differ\nExpected: 11\nActual:   1"
+      }
+    }
+  ],
+  "scope": "Actual final03 TestDLL executes unchanged final shipping App/Core and eight previously built single-assembly omission variants. Each subset repeats all its rows with exact expected assertion identities/counts, never loader failures; all source/canonical/private closure hash and membership guards hold. New copies live on E; original variants remain unchanged. No aggregate/full-suite/Native/TCP acceptance is inferred."
+}

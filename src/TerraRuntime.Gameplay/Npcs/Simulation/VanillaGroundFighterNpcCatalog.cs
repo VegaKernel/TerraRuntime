@@ -335,7 +335,8 @@ public static class VanillaGroundFighterNpcCatalog
 
     /// <summary>Exact cohorts whose shared source target/network phases are represented.</summary>
     public static bool UsesVerifiedGroundFighterTargeting1458(NpcTypeId type) =>
-        IsUndeadVariantParent(type) || IsOrdinaryMeleeCohort1458(type);
+        IsUndeadVariantParent(type) || IsOrdinaryMeleeCohort1458(type) ||
+        VanillaNonresidentGroundCritterCatalog1458.IsTurningSquirrel(type.Value);
 
     public static bool IsOrdinaryMeleeDayDespawnCandidate1458(NpcTypeId type) => type.Value is
         44 or 104 or 140 or 196 or 197 or 489 or 536 or 691;

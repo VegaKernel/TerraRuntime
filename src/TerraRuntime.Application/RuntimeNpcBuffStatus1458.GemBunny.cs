@@ -88,7 +88,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458
     internal bool TryPlanGemBunnyPhase(in NpcSnapshot before, out RuntimeNpcBuffPlan1458 plan)
     {
         plan = default;
-        if (!VanillaGemBunnyAi1458.IsSupported(before.Type) || !TryPlan(in before, out plan)) return false;
+        if (!VanillaGroundCritterAi1458.IsSupported(before.Type) || !TryPlan(in before, out plan)) return false;
         // The existing public status ingress admits Stinky for these critters. Fire is produced by
         // collision immediately before their lethal50 strike; wider imported DOT histories remain unowned.
         ref Entry entry = ref entries[before.Handle.Slot];
@@ -98,7 +98,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458
     }
 
     internal bool IsCurrentGemBunnyPhase(in RuntimeNpcBuffPlan1458 plan) =>
-        VanillaGemBunnyAi1458.IsSupported(plan.Expected.Type) &&
+        VanillaGroundCritterAi1458.IsSupported(plan.Expected.Type) &&
         npcs.TryGet(plan.Expected.Handle, out var current) && current.Type == plan.Expected.Type &&
         current.NetId == plan.Expected.NetId && entries[current.Handle.Slot].Handle == current.Handle &&
         entries[current.Handle.Slot].Revision == plan.StatusRevision;

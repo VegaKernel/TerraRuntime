@@ -1,0 +1,349 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-state-presentation-currentness-component",
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "scope": "Bounded current-API state preservation, source FindFrame comparison and actual composed name/raw-player/LOS-currentness guards. No complete22-cohort UpdateNPC, full-world, networking, full-suite, Native or GUI acceptance claim.",
+  "sourcePresentation": {
+    "fixture": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterFindFrameLinux1458.json.gz",
+      "sha256": "668a5c402a352c6faf848d923b0162b8a69b5b1deb64dc46ac342bcd1127bc6a"
+    },
+    "provenance": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterFindFrameLinux1458.provenance.json",
+      "sha256": "a716bf4fd61a71666e14e1d02bc11489aa1188e351de4c75a54f2ea0b7a20c14"
+    },
+    "uniqueOriginalCalls": 542,
+    "callsIncludingIdenticalRepeats": 1084,
+    "types": 34,
+    "poseFamilies": 9,
+    "scope": "Actual original FindFrame only, complete original named state and physical56-slot/cursor RNG unchanged. Runtime tests compare exact frame/counter bits/sprite and unchanged represented body/motion."
+  },
+  "sourceInitializedBirthProtection": {
+    "fixture": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterBirthProtectionLinux1458.json.gz",
+      "sha256": "71f0006bcd99a8eb1b11ea1c3c95bf177751564a1cf241b61628ebb49edab622"
+    },
+    "provenance": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterBirthProtectionLinux1458.provenance.json",
+      "sha256": "567ba6bbc4e65c1385e8beaf92647e1630d1c6418943ae0d9c6607264b0472a9"
+    },
+    "originalNewNpcCalls": 24,
+    "originalUpdateNpcCalls": 2184,
+    "sourceSeeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "identicalRepeats": 2,
+    "facts": "Main.Initialize1/2 then actualNewNPC generation1:303/337/540 positivecatchItem2019 but falsecatchable/friendly andcounter0 through91updates;46true/90, tick90true/0, tick91false/0.",
+    "runtimeBound": "Twelve normal profiles exercise real spawn omittedFriendly/counter defaults and91 owned phases, comparing friendly/counter only. No full runtimebody/RNG parity claim."
+  },
+  "currentnessScope": {
+    "name": "Actual packet4 neutralname\u2192Cenx also advances player revision; composed refusal is not isolated name-guard causality. Refusal preserves placeholder/full liveRNG, subsequent actualtick turns once.",
+    "los": "Actor1023/floor100, player5000 in600x200 world. After actual plan and unpublishedplaceholder, onlytile300,98 insection1 changes; actor/dangersection0 version andfull liveplayer snapshot remain unchanged. Omitting only LOSsection retention makes the negativecompletion assertion fail."
+  },
+  "freshCanonical": {
+    "focusedResult": {
+      "path": ".cache/ground-critter/focus02/result.json",
+      "sha256": "9a882e2f625dd66e46c9c178db24cd5bdf151a01e2176965e1f244b64a80dd37"
+    },
+    "focusedXml": {
+      "path": ".cache/ground-critter/focus02/tests.xml",
+      "sha256": "ba3f03da816054cb367df839bcbf8abf34586030dff7bbe99cd6ef9370310837"
+    },
+    "focusedPassed": 1263,
+    "errors": 0,
+    "skipped": 0,
+    "sourceCount": 4066,
+    "sourceManifest": {
+      "path": ".cache/ground-critter/focus02/source-before.json",
+      "sha256": "270b32bd6a2717d3ccb25eed7d73be5d69226fd6d249634f6486459c10a9b48b"
+    },
+    "canonicalDllCount": 158,
+    "canonicalDllManifest": {
+      "path": ".cache/ground-critter/focus02/dll-before.json",
+      "sha256": "e0656462311fa1955c8ce3d31e5bcd5bb3655adde25a13dc0daebfc72ab0610b"
+    },
+    "sameTestDllSha256": "028b2730e46e6482ceae2f6f1076e329381c785bb4e27583cf7b7a4ca1c3c7f2",
+    "allInputsAndCanonicalDllsUnchanged": true
+  },
+  "privateCausal": {
+    "setup": {
+      "path": ".cache/ground-critter/owner-controls01/setup.json",
+      "sha256": "bd023360751cc1dd183e6644c2a641f41b7485a205f76e9b25378ba5b400f43e"
+    },
+    "result": {
+      "path": ".cache/ground-critter/owner-controls01/executed/result.json",
+      "sha256": "f72371d5bf726c554064c332ef8ce451abb224b86636769c6505bcfca24d2e11"
+    },
+    "preparationRunner": {
+      "path": ".cache/ground-critter/prepare-owner-controls.py",
+      "sha256": "394a181e398075d96224482ed9fbd119c600eb1063d561d0fb655bade8e84543"
+    },
+    "executionRunner": {
+      "path": ".cache/ground-critter/run-owner-controls.py",
+      "sha256": "3048d91e8c852e677f2dbf74d2a11bca51b184abb10f71ec2b23eda4fb9833f8"
+    },
+    "method": "Current source copies with preservedAPI, private reference copies and isolated project outputs. Eachmutant replaces oneDLL; same TestDLL andother157DLLs stayexact. No sharedbuild/canonicalwrite or oldApplication ABI substitution.",
+    "applicationSourceFilesPerProject": 754,
+    "applicationCanonicalReferences": 16,
+    "coreSourceFiles": 187,
+    "coreCanonicalReferences": 2,
+    "mutations": {
+      "omit-los-sections": {
+        "path": "VanillaGroundCritterTerrain1458.cs",
+        "originalSha256": "5941ab2ea857d12d49dba9b9bf13bb171db483b7c913831b5b36342a7a56859c",
+        "mutantSha256": "3790a2aed200700f7f9bc97f3c845e43d86b65d56a7ebe54fec8ff50aa063918",
+        "old": "for (int sx = first.X; sx <= last.X; sx++) RetainSection(new(sx, sy));",
+        "replacement": "for (int sx = first.X; sx <= last.X; sx++) _ = new WorldSectionId(sx, sy);"
+      },
+      "bunny-new-family-frames": {
+        "path": "VanillaGroundCritterPresentation1458.cs",
+        "originalSha256": "bf122d55338b33d61d316998a463369b11346738de8f3b2f95dd4f466e00dd2c",
+        "mutantSha256": "e8836c2b525c4cadcba1147c7f5c889d75a60ea5900039b984f7f67d488ccad0",
+        "old": "        int frames = type switch {",
+        "replacement": "        if (type is 148 or 149 or 299 or 300 or 361 or 366 or 367 or 445 or 447 or 538 or 539 or\n            610 or 616 or 617 or 625 or >= 639 and <= 645)\n        {\n            presented = VanillaGroundCritterAccepted1458.FinishPresentation(in physics);\n            return true;\n        }\n        int frames = type switch {"
+      },
+      "omit-retained-style": {
+        "path": "Npcs/RuntimeNpcStateOwnershipPolicy.cs",
+        "originalSha256": "fe2765929a8c678ceda9851d3cf37cfe4e497e62593882845d0bfd001f0d426d",
+        "mutantSha256": "730606c4fa10860adc03f5bee5081f0e394c44c86e92f862b8956017f77d58c8",
+        "old": "AiStyleOverride = sameDefinition ? simulation.AiStyleOverride ?? previous.Simulation.AiStyleOverride : null,",
+        "replacement": "AiStyleOverride = sameDefinition ? simulation.AiStyleOverride : null,"
+      }
+    },
+    "builds": [
+      {
+        "variant": "omit-los-sections",
+        "command": [
+          "dotnet",
+          "build",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\omit-los-sections\\project\\TerraRuntime.Application.csproj",
+          "-c",
+          "Release",
+          "--nologo",
+          "-warnaserror"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 7.306408400065266,
+        "logSha256": "2780cf280e9bd8ab6f20d6662c7d449cb4a3fe4f929120d1d0354feaa023f74b"
+      },
+      {
+        "variant": "bunny-new-family-frames",
+        "command": [
+          "dotnet",
+          "build",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\bunny-new-family-frames\\project\\TerraRuntime.Application.csproj",
+          "-c",
+          "Release",
+          "--nologo",
+          "-warnaserror"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 7.34353650000412,
+        "logSha256": "cb675bc608e568d26b760acbb80fd50b0a2d3e5b331e991ace7da880241c9d03"
+      },
+      {
+        "variant": "omit-retained-style",
+        "command": [
+          "dotnet",
+          "build",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\omit-retained-style\\project\\TerraRuntime.Core.csproj",
+          "-c",
+          "Release",
+          "--nologo",
+          "-warnaserror"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 2.6161023000022396,
+        "logSha256": "26ee0a58eb7b862f348923851dd774b3edd9cecdd0fba00a990a8c2d34ce6a33"
+      }
+    ],
+    "runs": [
+      {
+        "variant": "fixed",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\fixed\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-parallel",
+          "none",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\fixed.xml",
+          "-class",
+          "TerraRuntime.Tests.GroundCritterCurrentness1458Tests",
+          "-class",
+          "TerraRuntime.Tests.GroundCritterPresentation1458Tests",
+          "-class",
+          "TerraRuntime.Tests.GroundCritterStateOwnership1458Tests"
+        ],
+        "exitCode": 0,
+        "total": 549,
+        "passed": 549,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xml": {
+          "path": ".cache/ground-critter/owner-controls01/executed/fixed.xml",
+          "sha256": "cd17793b0fad782f38db8fb9347da61bb0e32b7ba1e883650b906c3e7f938379"
+        },
+        "log": {
+          "path": ".cache/ground-critter/owner-controls01/executed/fixed.log",
+          "sha256": "71c742490f8c0a7b8e238f009592c935c0034d8d3cec746e314086f719688953"
+        },
+        "executedDllManifestSha256": "e0dad219818ff2dd9507b9a990c1c76260ab0c2588856c4f23f4982f2b9fa859",
+        "changedFromCanonical": [],
+        "failureExample": []
+      },
+      {
+        "variant": "omit-los-sections",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\omit-los-sections\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-parallel",
+          "none",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\omit-los-sections.xml",
+          "-class",
+          "TerraRuntime.Tests.GroundCritterCurrentness1458Tests"
+        ],
+        "exitCode": 1,
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "xml": {
+          "path": ".cache/ground-critter/owner-controls01/executed/omit-los-sections.xml",
+          "sha256": "04963569e2609cae4d51332646b27723144af7411f05bc2239754ff33e45d08f"
+        },
+        "log": {
+          "path": ".cache/ground-critter/owner-controls01/executed/omit-los-sections.log",
+          "sha256": "0067b628e0f3a82c1ae34adac15853088ccb1370b720df7138d9023c49baf1f9"
+        },
+        "executedDllManifestSha256": "b259a328797b4100a89ab7f3f3539453315c18abebd63d837d1b54e15742cf46",
+        "changedFromCanonical": [
+          "TerraRuntime.Application.dll"
+        ],
+        "failureExample": [
+          {
+            "name": "TerraRuntime.Tests.GroundCritterCurrentness1458Tests.Far_los_corridor_section_change_refuses_completion_while_actor_and_player_facts_stay_current",
+            "method": "Far_los_corridor_section_change_refuses_completion_while_actor_and_player_facts_stay_current",
+            "exception": "Xunit.Sdk.EqualException",
+            "message": "Assert.Equal() Failure: Values differ\nExpected: False\nActual:   True",
+            "stack": "   at TerraRuntime.Tests.GroundCritterCurrentness1458Tests.Far_los_corridor_section_change_refuses_completion_while_actor_and_player_facts_stay_current() in C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\tests\\TerraRuntime.Tests\\GroundCritterCurrentness1458Tests.cs:line 89\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)"
+          }
+        ]
+      },
+      {
+        "variant": "bunny-new-family-frames",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\bunny-new-family-frames\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-parallel",
+          "none",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\bunny-new-family-frames.xml",
+          "-class",
+          "TerraRuntime.Tests.GroundCritterPresentation1458Tests"
+        ],
+        "exitCode": 1,
+        "total": 542,
+        "passed": 224,
+        "failed": 318,
+        "errors": 0,
+        "skipped": 0,
+        "xml": {
+          "path": ".cache/ground-critter/owner-controls01/executed/bunny-new-family-frames.xml",
+          "sha256": "96e2a664d7255da8f18092b09746784d6cf2cedfbadd77574a68ede325aca029"
+        },
+        "log": {
+          "path": ".cache/ground-critter/owner-controls01/executed/bunny-new-family-frames.log",
+          "sha256": "fb4497790d787aa23bba61670453e5fe0a17ef032c233fa31d78b9453a6062a5"
+        },
+        "executedDllManifestSha256": "9174351fbd11d47c1f0648db173306c1bac9249deec186bf8f5bb42b3bfd4c94",
+        "changedFromCanonical": [
+          "TerraRuntime.Application.dll"
+        ],
+        "failureExample": [
+          {
+            "name": "TerraRuntime.Tests.GroundCritterPresentation1458Tests.Actual_source_frame_counter_and_sprite_match_without_changing_body_or_motion(index: 145, type: 148, scene: \\\"epsilon\\\")",
+            "method": "Actual_source_frame_counter_and_sprite_match_without_changing_body_or_motion",
+            "exception": "Xunit.Sdk.EqualException",
+            "message": "Assert.Equal() Failure: Strings differ\n             \u2193 (pos 2)\nExpected: \\\"3fc3333340000000\\\"\nActual:   \\\"3ff2666668000000\\\"\n             \u2191 (pos 2)",
+            "stack": "   at TerraRuntime.Tests.GroundCritterPresentation1458Tests.Actual_source_frame_counter_and_sprite_match_without_changing_body_or_motion(Int32 index, Int32 type, String scene) in C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\tests\\TerraRuntime.Tests\\GroundCritterPresentation1458Tests.cs:line 28\n   at InvokeStub_GroundCritterPresentation1458Tests.Actual_source_frame_counter_and_sprite_match_without_changing_body_or_motion(Object, Span`1)\n   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)"
+          }
+        ]
+      },
+      {
+        "variant": "omit-retained-style",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\omit-retained-style\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-parallel",
+          "none",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter\\owner-controls01\\executed\\omit-retained-style.xml",
+          "-class",
+          "TerraRuntime.Tests.GroundCritterStateOwnership1458Tests"
+        ],
+        "exitCode": 1,
+        "total": 5,
+        "passed": 4,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "xml": {
+          "path": ".cache/ground-critter/owner-controls01/executed/omit-retained-style.xml",
+          "sha256": "333edb078f116021d1d6f108cd51e1df78b1f22f65b3c5faa099e38cf911db17"
+        },
+        "log": {
+          "path": ".cache/ground-critter/owner-controls01/executed/omit-retained-style.log",
+          "sha256": "b36b3c2aaee0d8cc47cec024fb4c75c8c4a7dc0cbbc87a3ae91f175d88cb23c2"
+        },
+        "executedDllManifestSha256": "464812a4ce8b5f182ddb132ce513a65bc6af79c2959545e96a07348add4f52dd",
+        "changedFromCanonical": [
+          "TerraRuntime.Core.dll"
+        ],
+        "failureExample": [
+          {
+            "name": "TerraRuntime.Tests.GroundCritterStateOwnership1458Tests.Same_identity_retains_style_three_when_sparse_updates_and_stuck_counter_omit_it",
+            "method": "Same_identity_retains_style_three_when_sparse_updates_and_stuck_counter_omit_it",
+            "exception": "Xunit.Sdk.EqualException",
+            "message": "Assert.Equal() Failure: Values differ\nExpected: 3\nActual:   null",
+            "stack": "   at TerraRuntime.Tests.GroundCritterStateOwnership1458Tests.Same_identity_retains_style_three_when_sparse_updates_and_stuck_counter_omit_it() in C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\tests\\TerraRuntime.Tests\\GroundCritterStateOwnership1458Tests.cs:line 59\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)"
+          }
+        ]
+      }
+    ],
+    "unchangedOldBunnyFrameControls": {
+      "types": [
+        46,
+        303,
+        337,
+        443,
+        540,
+        646,
+        647,
+        648,
+        649,
+        650,
+        651,
+        652
+      ],
+      "passed": 150,
+      "failed": 0
+    },
+    "acceptance": "Fixed549/549; LOS omission1genuineassertion/1controlpass; oldBunny renderer318genuineassertions/224passes; retainedstyle omission1genuineassertion/4controlpasses. Allerrors/skips0; everyfailure Xunit.Sdk assertion, loaderfailures explicitlyrejected."
+  },
+  "oldOriginalFixturesUnchanged": true,
+  "notClaimed": "Aggregate22-critter acceptance remains pending independent whole-phase oracle and the grouped final gates. A physical source RNG receipt in a bounded fixture does not establish runtime whole-phase equivalence."
+}

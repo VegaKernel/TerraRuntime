@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-findframe-source-only-fixture-provenance",
+  "fixture": "GroundCritterFindFrameLinux1458.json.gz",
+  "compressedSha256": "668a5c402a352c6faf848d923b0162b8a69b5b1deb64dc46ac342bcd1127bc6a",
+  "uncompressedSha256": "df8b6bb9f29f3cbdec0e6f981c14476e057efb68b6d8cc1ad800ee1c9ff84ebc",
+  "qualificationSource": ".cache/ai7-critter-20261028/frames-qualification.json",
+  "qualificationSha256": "ea09073169963cfd45f5ffbd67c05b64f21f32f24f68259ae49a6ea94da823c7",
+  "scope": "Original NPC.FindFrame component only. New immutable fixture; no AI, collision, combat, network, full UpdateNPC or aggregate runtime acceptance claim. The runtime comparison is performed separately by GroundCritterPresentation1458Tests.",
+  "originalQualification": {
+    "schemaVersion": 1,
+    "kind": "actual-original-ground-critter-findframe-qualification",
+    "accepted": true,
+    "aggregateAcceptance": false,
+    "runtimeParityClaim": false,
+    "fixture": "GroundCritterFindFrameLinux1458.v1.json.gz",
+    "fixtureSha256": "668a5c402a352c6faf848d923b0162b8a69b5b1deb64dc46ac342bcd1127bc6a",
+    "rows": 542,
+    "types": [
+      46,
+      148,
+      149,
+      299,
+      300,
+      303,
+      337,
+      361,
+      366,
+      367,
+      443,
+      445,
+      447,
+      538,
+      539,
+      540,
+      610,
+      616,
+      617,
+      625,
+      639,
+      640,
+      641,
+      642,
+      643,
+      644,
+      645,
+      646,
+      647,
+      648,
+      649,
+      650,
+      651,
+      652
+    ],
+    "actualFindFrameCallsBothRepeats": 1084,
+    "originalRepeatByteIdentical": true,
+    "rngAll56AndCursorUnchangedEveryCall": true,
+    "nonPresentationNamedNpcAndPlayerStateUnchangedEveryCall": true,
+    "observedChangedFields": {
+      "frameCounter": 399,
+      "frameIndex": 221
+    },
+    "frameCounts": {
+      "46": 7,
+      "303": 7,
+      "337": 7,
+      "443": 7,
+      "540": 7,
+      "646": 7,
+      "647": 7,
+      "648": 7,
+      "649": 7,
+      "650": 7,
+      "651": 7,
+      "652": 7,
+      "148": 12,
+      "149": 12,
+      "299": 6,
+      "300": 6,
+      "361": 13,
+      "366": 4,
+      "367": 4,
+      "445": 13,
+      "447": 6,
+      "538": 6,
+      "539": 6,
+      "610": 6,
+      "616": 14,
+      "617": 14,
+      "625": 12,
+      "639": 6,
+      "640": 6,
+      "641": 6,
+      "642": 6,
+      "643": 6,
+      "644": 6,
+      "645": 6
+    },
+    "receipts": [
+      {
+        "name": "frames-a",
+        "outputSha256": "762be91b0143208c792edb50826b107550b638240275a4734a85ec7315d209ab",
+        "receiptSha256": "b45f754c03fc702f1e6c8a63a55d527771f2d10f20e2c56a75039942812b9d66",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "409701f0f556f78c72ee632a54bd67ea083b39e801ee35610d4383cfed97c2dc",
+          "runnerSha256": "e78cc9d9495435c243edad5315440491f3858a46ed6681e44b01f11090ae524a",
+          "executedDirectory": {
+            "Probe.dll": "93fcddf79487c5f891a729c5c4413471f02e97b81ceab74726186341409f136a"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      },
+      {
+        "name": "frames-b",
+        "outputSha256": "762be91b0143208c792edb50826b107550b638240275a4734a85ec7315d209ab",
+        "receiptSha256": "9e67c34af9f9fa2da1a1fd4fa5cd406c419d42f139237dbc7ff71f4fc3396d8a",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "409701f0f556f78c72ee632a54bd67ea083b39e801ee35610d4383cfed97c2dc",
+          "runnerSha256": "e78cc9d9495435c243edad5315440491f3858a46ed6681e44b01f11090ae524a",
+          "executedDirectory": {
+            "Probe.dll": "93fcddf79487c5f891a729c5c4413471f02e97b81ceab74726186341409f136a"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      },
+      {
+        "name": "frames-reverse-a",
+        "outputSha256": "0da74cf031a79ae4e0997b40e8c25ecbee9a22726294481ea538685be2b709a1",
+        "receiptSha256": "dcb7a2b2bf30c449eace8463f1185627d141b4b3cdb0895167e84464c8a02302",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "7570a7b985b326195dbbc672a09028751db7176277847bfcf9a432820400911a",
+          "runnerSha256": "6f63b3af9dd3e8980bb203904f0e56894717642c090981da85a609851b1585c6",
+          "executedDirectory": {
+            "Probe.dll": "31f14144b08c0dbf28b1a654a5830171c4dabba3be2fc9961a1f3b8ee5b8b055"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      },
+      {
+        "name": "frames-reverse-b",
+        "outputSha256": "0da74cf031a79ae4e0997b40e8c25ecbee9a22726294481ea538685be2b709a1",
+        "receiptSha256": "90ab46aa7440ff32c1307a041a136372a4c3f75c0a4bb26def03f0c04473334a",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "7570a7b985b326195dbbc672a09028751db7176277847bfcf9a432820400911a",
+          "runnerSha256": "6f63b3af9dd3e8980bb203904f0e56894717642c090981da85a609851b1585c6",
+          "executedDirectory": {
+            "Probe.dll": "31f14144b08c0dbf28b1a654a5830171c4dabba3be2fc9961a1f3b8ee5b8b055"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      }
+    ],
+    "scope": "Actual original NPC.FindFrame only on Windows CoreCLR/official1458Linux, initialized source tile/NPC data and actual frame counts. All542 cases spend zero RNG; all other named NPC/player facts unchanged except observed frame/counter/sprite fields. No AI, physics, combat, networking, wholeUpdateNPC, runtime equivalence or aggregate acceptance claim."
+  }
+}

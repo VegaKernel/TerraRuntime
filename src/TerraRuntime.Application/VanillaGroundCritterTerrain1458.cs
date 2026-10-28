@@ -6,7 +6,7 @@ namespace TerraRuntime.Application;
 
 // This adapter delegates motion to the shared collision implementation; it owns no NPC state.
 // Each instance belongs to a speculative AI plan and fences every world section it actually reads.
-internal sealed class VanillaGemBunnyTerrain1458(WorldTileStore tiles) : IVanillaGemBunnyTerrain1458
+internal sealed class VanillaGroundCritterTerrain1458(WorldTileStore tiles) : IVanillaGroundCritterTerrain1458
 {
     private readonly Dictionary<WorldSectionId, long> sections = [];
     private bool valid = true;
@@ -22,17 +22,56 @@ internal sealed class VanillaGemBunnyTerrain1458(WorldTileStore tiles) : IVanill
         }
     }
 
-    public GemBunnyTile1458 Tile(int x, int y)
+    public GroundCritterTile1458 Tile(int x, int y)
     {
         WorldTile tile = Cell(x, y);
         bool active = tile.IsActive && !tile.IsActuated;
         return new(active && VanillaTileCollisionCatalog.IsSolid(tile.TileType),
             VanillaTileCollisionCatalog.IsSolidTop(tile.TileType), tile.Shape is 2 or 3,
             tile.TileType == VanillaTileIds.BlueDungeonBrick || tile.TileType == VanillaTileIds.GreenDungeonBrick ||
-            tile.TileType == VanillaTileIds.PinkDungeonBrick);
+            tile.TileType == VanillaTileIds.PinkDungeonBrick,
+            StrictSolid: active && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+                !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && !tile.IsHalfBrick && tile.SourceSlope == 0);
     }
 
     internal int TileType(int x, int y) => Cell(x, y).TileType.Value;
+
+    public bool TryGetWaterLine(int centerTileX, int centerTileY, out bool found, out float waterLineHeight)
+    {
+        found = false;
+        waterLineHeight = 0f;
+        if (centerTileX < 10 || centerTileY < 10 ||
+            centerTileX >= tiles.Dimensions.WidthTiles - 10 || centerTileY >= tiles.Dimensions.HeightTiles - 10)
+            return IsCurrent;
+        // Collision.GetWaterLine examines this four-cell column, with integer
+        // liquid/16 arithmetic. Reuse the fish adapter's exact existing query.
+        for (int y = centerTileY - 2; y <= centerTileY + 1; y++) Cell(centerTileX, y);
+        if (!IsCurrent) return false;
+        found = VanillaFishWorldEnvironment1458.TryGetWaterLineAtTile(tiles, centerTileX, centerTileY, out waterLineHeight);
+        return IsCurrent;
+    }
+
+    internal bool TryCanHit(float x, float y, int width, int height,
+        in VanillaNpcRawPlayer1458 target, out bool visible)
+    {
+        visible = false;
+        if (!target.IsValid || !float.IsFinite(x) || !float.IsFinite(y) || width <= 0 || height <= 0)
+            return false;
+        // CanHit traverses center tiles and their immediate neighbors. Retain the
+        // containing sections before the query, including its world-edge clamps.
+        int left = Math.Clamp((int)(MathF.Min(x, target.PositionX) / 16f) - 3, 0, tiles.Dimensions.WidthTiles - 1);
+        int right = Math.Clamp((int)(MathF.Max(x + width, target.PositionX + target.Width) / 16f) + 3, 0, tiles.Dimensions.WidthTiles - 1);
+        int top = Math.Clamp((int)(MathF.Min(y, target.PositionY) / 16f) - 3, 0, tiles.Dimensions.HeightTiles - 1);
+        int bottom = Math.Clamp((int)(MathF.Max(y + height, target.PositionY + target.Height) / 16f) + 3, 0, tiles.Dimensions.HeightTiles - 1);
+        var first = TerrariaSectionGeometry.FromTile(tiles.Dimensions, left, top);
+        var last = TerrariaSectionGeometry.FromTile(tiles.Dimensions, right, bottom);
+        for (int sy = first.Y; sy <= last.Y; sy++)
+            for (int sx = first.X; sx <= last.X; sx++) RetainSection(new(sx, sy));
+        if (!IsCurrent) return false;
+        visible = VanillaWorldCanHit.HasLineOfSight(tiles, x, y, width, height,
+            target.PositionX, target.PositionY, target.Width, target.Height);
+        return IsCurrent;
+    }
 
     internal bool HasConveyorAtBody(float x, float y, int width, int height)
     {
@@ -59,20 +98,20 @@ internal sealed class VanillaGemBunnyTerrain1458(WorldTileStore tiles) : IVanill
         for (int x = left; x <= right; x++)
             for (int y = top; y <= bottom; y++)
             {
-                GemBunnyTile1458 tile = Tile(x, y);
+                GroundCritterTile1458 tile = Tile(x, y);
                 if (tile.Solid && !tile.SolidTop) return true;
             }
         return false;
     }
 
-    public GemBunnyStep1458 StepDown(float x, float y, float vx, float vy, int width, int height)
+    public GroundCritterStep1458 StepDown(float x, float y, float vx, float vy, int width, int height)
     {
         FenceBody(x, y, vx, vy, width, height);
         var step = VanillaWorldPlayerStepCollision.StepDown(tiles, x, y, vx, vy, width, height);
         return new(x, step.PositionY, vx, vy);
     }
 
-    public GemBunnyStep1458 StepUp(float x, float y, float vx, float vy, int width, int height, bool matchPlatforms)
+    public GroundCritterStep1458 StepUp(float x, float y, float vx, float vy, int width, int height, bool matchPlatforms)
     {
         FenceBody(x, y, vx, vy, width, height);
         var step = VanillaWorldPlayerStepCollision.StepUp(tiles, x, y, vx, width, height,
@@ -167,9 +206,14 @@ internal sealed class VanillaGemBunnyTerrain1458(WorldTileStore tiles) : IVanill
         if ((uint)x >= (uint)tiles.Dimensions.WidthTiles || (uint)y >= (uint)tiles.Dimensions.HeightTiles)
         { valid = false; return default; }
         var section = TerrariaSectionGeometry.FromTile(tiles.Dimensions, x, y);
+        RetainSection(section);
+        return tiles.Get(x, y);
+    }
+
+    private void RetainSection(WorldSectionId section)
+    {
         long version = tiles.GetSectionVersion(section);
         if ((version & 1) != 0) valid = false;
         if (!sections.TryAdd(section, version) && sections[section] != version) valid = false;
-        return tiles.Get(x, y);
     }
 }

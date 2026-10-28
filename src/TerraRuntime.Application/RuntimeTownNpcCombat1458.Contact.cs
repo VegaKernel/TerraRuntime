@@ -34,7 +34,7 @@ internal sealed partial class RuntimeTownNpcCombat1458
     {
         next = accelerated;
         strike = null;
-        if (!nonresidentCritter && phaseRandom is not null || nonresidentCritter && (!VanillaGemBunnyAi1458.IsSupported(source.Type) ||
+        if (!nonresidentCritter && phaseRandom is not null || nonresidentCritter && (!VanillaGroundCritterAi1458.IsSupported(source.Type) ||
                 source.Simulation.TownNpc != false || phaseRandom is null)) return false;
         if (next.Simulation.DontTakeDamage || next.Simulation.Immortal == true ||
             next.Simulation.HostileContactImmunity > 0) return true;

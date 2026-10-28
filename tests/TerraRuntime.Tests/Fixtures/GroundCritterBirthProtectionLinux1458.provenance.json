@@ -1,0 +1,683 @@
+{
+  "schemaVersion": 1,
+  "kind": "original-only-initialized-birth-protection-provenance",
+  "fixture": "GroundCritterBirthProtectionLinux1458.json.gz",
+  "compressedSha256": "71f0006bcd99a8eb1b11ea1c3c95bf177751564a1cf241b61628ebb49edab622",
+  "uncompressedSha256": "25120fe7d33cb3c37e957fcaaaf8d37220c7228e23b9a5c6e7da4f522261c3bf",
+  "qualificationSha256": "e99514dd95cd3eba418679d7ff7e831d7c4a59dfd4d9712862511171ab2bd16b",
+  "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+  "originalQualification": {
+    "schemaVersion": 1,
+    "acceptedSourceOnly": true,
+    "runtimeParityClaim": false,
+    "aggregateAcceptance": false,
+    "scope": "Actual original Initialize_TileAndNPCData1/2, then fresh NewNPC generation1 and91 originalUpdateNPC phases for46,303,337,540. No catchability/friendly/counter overrides after birth; no whole-world or runtime equivalence claim. Original noSpawnCycle caller suppresses unrelated natural-spawn cycle.",
+    "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+    "runs": [
+      {
+        "acceptedSourceOnly": true,
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0",
+          "unused",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\qualified-1458-a.json.gz",
+          "1458"
+        ],
+        "startedNs": 1793216400662763900,
+        "exitCode": 0,
+        "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+        "allInputPinsUnchanged": true,
+        "output": ".cache\\ground-critter-birth91\\qualified-1458-a.json.gz",
+        "compressedSha256": "e8f9635e04f3d2db1312f3c5f119be968ed795e20629d1c5ff42df8f9b0a7e1b",
+        "uncompressedSha256": "c03fc6d8b40ae04538a2d3234c0c05463507505afc4d2a53960007319a9bdc9a",
+        "originalNewNpcCalls": 4,
+        "originalUpdateNpcCalls": 364,
+        "timeline": [
+          {
+            "type": 46,
+            "catchItem": 2019,
+            "sourceCatchable": true,
+            "birthGeneration": 1,
+            "birthFriendly": true,
+            "birthCounter": 90,
+            "tick1": {
+              "friendly": true,
+              "immunity": 89
+            },
+            "tick90": {
+              "friendly": true,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 303,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 337,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 540,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          }
+        ]
+      },
+      {
+        "acceptedSourceOnly": true,
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0",
+          "unused",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\qualified-1458-b.json.gz",
+          "1458"
+        ],
+        "startedNs": 1793216402451596800,
+        "exitCode": 0,
+        "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+        "allInputPinsUnchanged": true,
+        "output": ".cache\\ground-critter-birth91\\qualified-1458-b.json.gz",
+        "compressedSha256": "e8f9635e04f3d2db1312f3c5f119be968ed795e20629d1c5ff42df8f9b0a7e1b",
+        "uncompressedSha256": "c03fc6d8b40ae04538a2d3234c0c05463507505afc4d2a53960007319a9bdc9a",
+        "originalNewNpcCalls": 4,
+        "originalUpdateNpcCalls": 364,
+        "timeline": [
+          {
+            "type": 46,
+            "catchItem": 2019,
+            "sourceCatchable": true,
+            "birthGeneration": 1,
+            "birthFriendly": true,
+            "birthCounter": 90,
+            "tick1": {
+              "friendly": true,
+              "immunity": 89
+            },
+            "tick90": {
+              "friendly": true,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 303,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 337,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 540,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          }
+        ]
+      },
+      {
+        "acceptedSourceOnly": true,
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0",
+          "unused",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\qualified-42-a.json.gz",
+          "42"
+        ],
+        "startedNs": 1793216404178709100,
+        "exitCode": 0,
+        "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+        "allInputPinsUnchanged": true,
+        "output": ".cache\\ground-critter-birth91\\qualified-42-a.json.gz",
+        "compressedSha256": "507dfe6705384968561ee40d2b78e696c56abf78e424f14751a6b05b8719b87e",
+        "uncompressedSha256": "4e34db783f2dd7f3736db037337fd2e63cac199838067babfaad2eb8cc1a07ff",
+        "originalNewNpcCalls": 4,
+        "originalUpdateNpcCalls": 364,
+        "timeline": [
+          {
+            "type": 46,
+            "catchItem": 2019,
+            "sourceCatchable": true,
+            "birthGeneration": 1,
+            "birthFriendly": true,
+            "birthCounter": 90,
+            "tick1": {
+              "friendly": true,
+              "immunity": 89
+            },
+            "tick90": {
+              "friendly": true,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 303,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 337,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 540,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          }
+        ]
+      },
+      {
+        "acceptedSourceOnly": true,
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0",
+          "unused",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\qualified-42-b.json.gz",
+          "42"
+        ],
+        "startedNs": 1793216405881876200,
+        "exitCode": 0,
+        "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+        "allInputPinsUnchanged": true,
+        "output": ".cache\\ground-critter-birth91\\qualified-42-b.json.gz",
+        "compressedSha256": "507dfe6705384968561ee40d2b78e696c56abf78e424f14751a6b05b8719b87e",
+        "uncompressedSha256": "4e34db783f2dd7f3736db037337fd2e63cac199838067babfaad2eb8cc1a07ff",
+        "originalNewNpcCalls": 4,
+        "originalUpdateNpcCalls": 364,
+        "timeline": [
+          {
+            "type": 46,
+            "catchItem": 2019,
+            "sourceCatchable": true,
+            "birthGeneration": 1,
+            "birthFriendly": true,
+            "birthCounter": 90,
+            "tick1": {
+              "friendly": true,
+              "immunity": 89
+            },
+            "tick90": {
+              "friendly": true,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 303,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 337,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 540,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          }
+        ]
+      },
+      {
+        "acceptedSourceOnly": true,
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0",
+          "unused",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\qualified-8675309-a.json.gz",
+          "8675309"
+        ],
+        "startedNs": 1793216407576802000,
+        "exitCode": 0,
+        "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+        "allInputPinsUnchanged": true,
+        "output": ".cache\\ground-critter-birth91\\qualified-8675309-a.json.gz",
+        "compressedSha256": "339e3b1c9c731a379eb573e5e198139fbf25929b5249a482c4c265cf11efba71",
+        "uncompressedSha256": "e7d3d2a0c2556b8e886aede8bb5909cb4cb7e93d0f5f3ca3d0f05e73c8cfe75c",
+        "originalNewNpcCalls": 4,
+        "originalUpdateNpcCalls": 364,
+        "timeline": [
+          {
+            "type": 46,
+            "catchItem": 2019,
+            "sourceCatchable": true,
+            "birthGeneration": 1,
+            "birthFriendly": true,
+            "birthCounter": 90,
+            "tick1": {
+              "friendly": true,
+              "immunity": 89
+            },
+            "tick90": {
+              "friendly": true,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 303,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 337,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 540,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          }
+        ]
+      },
+      {
+        "acceptedSourceOnly": true,
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0",
+          "unused",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\qualified-8675309-b.json.gz",
+          "8675309"
+        ],
+        "startedNs": 1793216409363496900,
+        "exitCode": 0,
+        "inputManifestSha256": "46dbb9145fc6c70fa46ee5c61feee27e63276e8b708c8ae940435510a4ee52f5",
+        "allInputPinsUnchanged": true,
+        "output": ".cache\\ground-critter-birth91\\qualified-8675309-b.json.gz",
+        "compressedSha256": "339e3b1c9c731a379eb573e5e198139fbf25929b5249a482c4c265cf11efba71",
+        "uncompressedSha256": "e7d3d2a0c2556b8e886aede8bb5909cb4cb7e93d0f5f3ca3d0f05e73c8cfe75c",
+        "originalNewNpcCalls": 4,
+        "originalUpdateNpcCalls": 364,
+        "timeline": [
+          {
+            "type": 46,
+            "catchItem": 2019,
+            "sourceCatchable": true,
+            "birthGeneration": 1,
+            "birthFriendly": true,
+            "birthCounter": 90,
+            "tick1": {
+              "friendly": true,
+              "immunity": 89
+            },
+            "tick90": {
+              "friendly": true,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 303,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 337,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          },
+          {
+            "type": 540,
+            "catchItem": 2019,
+            "sourceCatchable": false,
+            "birthGeneration": 1,
+            "birthFriendly": false,
+            "birthCounter": 0,
+            "tick1": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick90": {
+              "friendly": false,
+              "immunity": 0
+            },
+            "tick91": {
+              "friendly": false,
+              "immunity": 0
+            }
+          }
+        ]
+      }
+    ],
+    "originalNewNpcCalls": 24,
+    "originalUpdateNpcCalls": 2184,
+    "allThreeSeedsTwoRepeatsByteIdentical": true,
+    "allInputsUnchanged": true,
+    "preliminaryDiagnostics": "Before qualified pins, initial private probe lacked projectile objects needed by NewNPC.ResetNPCSlotData, then generation field reader needed property access. Both invocation failures generated no captures and are excluded; one preliminary successful source1458-a capture is retained separately and not counted."
+  },
+  "exactInputPins": {
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.dll": "3d2a76efb16b52fbd50e1a0f9d61d123f4684c14fe18034c97311e05446bf225",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.exe": "49ecea51e3a27e46295c5f025d8508265682c661e53f24e9bbf9ac0e0d9bbc64",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.pdb": "30eb013d329993417cc723d44eae74095f789115a277465d9bf0ddb4e472f43a",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\bin\\Release\\net11.0\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\Program.cs": "c1e306ea23983a8ae4fa804ed95afe9bc34ca136d3b5c08449499ad58501d6d8",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\probe\\Probe.csproj": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-next-ai7\\.cache\\ground-critter-birth91\\capture-qualified.py": "8c2270470c4e47cca95297dd668b7d6e2daa537d97939c098b4577df5532bc70",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Projectile.cs": "0a3027ad6713dd7ec7ccb66ea520f68f701ef3856269af5cf01389b4079b8eb9",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria.ID\\NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0"
+  },
+  "runtimeScope": "Normal tests separately compare owned friendly/counter state only. No whole runtime body/RNG parity, network, GUI or aggregate acceptance claim."
+}

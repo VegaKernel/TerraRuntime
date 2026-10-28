@@ -206,6 +206,7 @@ public static class VanillaNpcLootRuleCatalog
         if (VanillaInvasionNpcLootCatalog1458.TryGet(npcType, out table)) return true;
         if (VanillaUndeadLootCatalog1458.TryGet(npcType, out table)) return true;
         if (VanillaOrdinaryMeleeLootCatalog1458.TryGet(npcType, out table)) return true;
+        if (VanillaNonresidentGroundCritterCatalog1458.TryGetNpcSpecificTable(npcType, out table)) return true;
 
         table = default;
         return false;

@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "kind": "nonresident-ground-critter-connected-acceptance",
+  "date": "2026-10-28",
+  "accepted": true,
+  "baseCommit": "02b769ec7e6605477e54e45d5d2401910cb7a777",
+  "cohort": [
+    148,
+    149,
+    299,
+    300,
+    361,
+    366,
+    367,
+    445,
+    447,
+    538,
+    539,
+    610,
+    616,
+    617,
+    625,
+    639,
+    640,
+    641,
+    642,
+    643,
+    644,
+    645
+  ],
+  "scope": [
+    "Twenty-two identities through the existing retained NPC/status/shared-RNG owner.",
+    "Nine source-backed presentation families; same-generation squirrel AI7 to AI3 transition and subsequent shared fighter motion.",
+    "Source-initialized catch protection and statue CatchNPC, gold caller-side HitEffect entropy, surviving NPC-contact path.",
+    "Captured terrain, line of sight, water line, names/luck/player context and pre-publication currentness."
+  ],
+  "runtimeGate": {
+    "path": ".cache/ground-critter/final-gate03/accepted.json",
+    "sha256": "88d1b90b3436d0cfd4feb516b0b4eb4a903539aa255e81d6cbc44ca27240187c"
+  },
+  "tests": {
+    "focused": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 1391,
+      "skipped": 0,
+      "total": 1391
+    },
+    "fast": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 34426,
+      "skipped": 0,
+      "total": 34426
+    },
+    "full": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 1575840,
+      "skipped": 0,
+      "total": 1575840
+    }
+  },
+  "unfilteredFull": {
+    "discoveredMethods": 5485,
+    "executedMethods": 5485,
+    "noRunnerFilter": true,
+    "result": {
+      "path": ".cache/ground-critter/final-gate03/affected/result.json",
+      "sha256": "e97c7c3a804656c6e5e9a5015cf12aff81c8b2eec666cdc98feefbfd09fddc69"
+    }
+  },
+  "windowsNative": {
+    "executableSha256": "fa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae",
+    "fiveSmokesPassed": true,
+    "result": {
+      "path": ".cache/ground-critter/final-gate03/native/result.json",
+      "sha256": "a9deaf5cd532d63884ad60fb0398e7e254c73d0762c5b1c5c9c6435746c8b2cb"
+    }
+  },
+  "freshTcp": {
+    "path": "docs/verification/ground-critter-live-join-20261028.json",
+    "sha256": "d71e2cb65fa98e3136cde29407dcd4ebf14ea6eb98015da46657e6225c42a10f"
+  },
+  "sourceAndIndexBridge": {
+    "accepted": true,
+    "sourceInputCount": 4067,
+    "dllCount": 158,
+    "exactSourceAndDllMembership": true,
+    "everyRawInputMatchesGitIndexBlob": true,
+    "originalFixturesUnchanged": 891,
+    "sourceManifest": {
+      "path": ".cache/ground-critter/final-gate03/source-before.json",
+      "sha256": "51a5f0a5149264ee6f7cc6c4d3c713485152107f9dd4de4995c837a747ad737f"
+    },
+    "dllManifest": {
+      "path": ".cache/ground-critter/final-gate03/dll-before.json",
+      "sha256": "deb80f3d19427ee23a951899bf86b4fe3d4304e6fc012b51994567e45ea96765"
+    }
+  },
+  "componentManifests": [
+    {
+      "path": "docs/verification/ground-critter-phase-final02-20261028.json",
+      "sha256": "2137537d0e79923450be0d22c5ce2abafc090c0be372adb2de8b59fecd5e7ded"
+    },
+    {
+      "path": "docs/verification/ground-critter-state-presentation-currentness-final02-20261028.json",
+      "sha256": "e6825338e93f1019063a0b2118cdfbcc68b6089c172f8660f2b725da10e03fdd"
+    },
+    {
+      "path": "docs/verification/ground-critter-combat-catch-final02-20261028.json",
+      "sha256": "b9ac4b51b5b23ef2eded96627c26159243128b60125bc73b985edb69c3a3d0ca"
+    },
+    {
+      "path": "docs/verification/ground-critter-final03-test-only-bridge-20261028.json",
+      "sha256": "1b148ffa6c0bf6af54fbc5baf2dad327cbfcda710e201ab294abd78089e330ef"
+    },
+    {
+      "path": "docs/verification/ground-critter-final03-causal-replay-20261028.json",
+      "sha256": "6c7deee746405aaa18ea6384671c11f8be2e27b47ee15fe131af3ed2c38f30bb"
+    }
+  ],
+  "newProvenanceLfBridge": [
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchLinux1458.provenance.json",
+      "beforeSha256": "1e04065d33ce1b00d5011346216b18b3f8219d96ba478bed4f7a67ebe5e67ad3",
+      "afterSha256": "7ddc266602e1d945450084f66f224f24be9433e4d612b7b5ecfd6137b1c0b11f",
+      "onlyCrlfToLf": true
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterBirthProtectionLinux1458.provenance.json",
+      "beforeSha256": "567ba6bbc4e65c1385e8beaf92647e1630d1c6418943ae0d9c6607264b0472a9",
+      "afterSha256": "696ab4660552f465e36cc061c629ef3f164339fde8ad2e060f62851fdea8239a",
+      "onlyCrlfToLf": true
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterContactLinux1458.provenance.json",
+      "beforeSha256": "794b47ba1ede06e95ba294a4ea77922e8a56e72e7b0d07749a175a8c680f2eeb",
+      "afterSha256": "8bca45866ad64c63a95079e91da71499b57b83468b3eb609311dd3bced505ac0",
+      "onlyCrlfToLf": true
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterFindFrameLinux1458.provenance.json",
+      "beforeSha256": "a716bf4fd61a71666e14e1d02bc11489aa1188e351de4c75a54f2ea0b7a20c14",
+      "afterSha256": "8bb4fdea00a2cf8618a6cfcd83288d04323764fa1bb6c31d1ca3ab35b03a4b84",
+      "onlyCrlfToLf": true
+    }
+  ],
+  "counts": {
+    "ai3Ai7Admitted": 247,
+    "ai3Ai7CreationOnly": 53,
+    "ai3PositiveAdmitted": 149,
+    "globalLifecycle": 511,
+    "globalCreationOnly": 244
+  },
+  "shippingGraph": {
+    "projects": 15,
+    "projectReferences": 29,
+    "newProductionDependencies": 0
+  },
+  "mandatoryFastCoverage": {
+    "executionMode": "audited-method-subset-of-single-unfiltered-full",
+    "scope": "All mandatory-fast methods and actual rows audited from the same complete unfiltered full invocation. No second duplicate fast process or sampled cases."
+  },
+  "historicalRejectedCandidates": [
+    {
+      "name": "final-gate01",
+      "record": {
+        "path": ".cache/ground-critter/final-gate01/accepted.json",
+        "sha256": "32442948e9c71b5f3d77b36283a2ae894867d9bafed49583ddf8066ddfcbfb2c"
+      },
+      "reason": "WAE and focused1379 passed. Root interrupted fast before any heavy matrix after review found the missing live-style lower-world guard. Not an accepted fast/full candidate."
+    },
+    {
+      "name": "final-gate02",
+      "record": {
+        "path": ".cache/ground-critter/final-gate02/accepted.json",
+        "sha256": "e3a4dbd6cd04d38eebee74f9b4042da017f582eefee21789061ea6feb387757d"
+      },
+      "reason": "WAE/focused1381 passed; fast34425/34426, one historical JSON-schema hash included the newly added retained field. Final03 excludes that field from the intentionally old schema and asserts its null defaults separately; historical expected hash and shipping implementation unchanged. No full/Native started on02."
+    }
+  ],
+  "limits": [
+    "FullVanillaAiParity remains false. AI7 ai3==1 retirement, Blood Moon conversion, unsupported imports/status/world contexts retain refusal.",
+    "Active NPC phases and surface-water companions have strict source comparison. After retirement only actual retained NPC/raw-player/RNG projection is compared; unavailable buff ownership is excluded, and full-corpus strict projection is not accepted.",
+    "Legacy old-to-new controls attest stability, not all legacy source behavior. Empty NPC-specific tables do not waive existing global loot/prelude/money/healing owners.",
+    "Original Linux managed assembly executed on Windows CoreCLR. Linux NativeAOT, official GUI and graceful-save shutdown are unverified. Fresh TCP is independently bounded by its record."
+  ]
+}

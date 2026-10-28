@@ -104,6 +104,12 @@ internal sealed class VanillaFishWorldEnvironment1458 : IVanillaFishEnvironment1
 
         int x = (int)((positionX + width * 0.5f) / TileSize);
         int y = (int)(positionY / TileSize);
+        return TryGetWaterLineAtTile(tiles, x, y, out waterLineHeight);
+    }
+
+    internal static bool TryGetWaterLineAtTile(WorldTileStore tiles, int x, int y, out float waterLineHeight)
+    {
+        waterLineHeight = 0f;
         if (x < 10 || y < 10 ||
             x >= tiles.Dimensions.WidthTiles - 10 ||
             y >= tiles.Dimensions.HeightTiles - 10)

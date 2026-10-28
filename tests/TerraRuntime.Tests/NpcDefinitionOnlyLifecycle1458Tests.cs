@@ -904,7 +904,7 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
                 typeInfo.Properties.Remove(townFlag);
                 var stairFall = typeInfo.Properties.Single(property => property.Name == "StairFall");
                 typeInfo.Properties.Remove(stairFall);
-                foreach (string name in new[] { "HomeTileX", "HomeTileY", "Homeless", "CatchableNpcTempImmunityCounter", "ReleaseOwner" })
+                foreach (string name in new[] { "HomeTileX", "HomeTileY", "Homeless", "CatchableNpcTempImmunityCounter", "ReleaseOwner", "AiStyleOverride" })
                     typeInfo.Properties.Remove(typeInfo.Properties.Single(property => property.Name == name));
             }
         });
@@ -920,6 +920,9 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
         Assert.False(after.Simulation.Homeless);
         Assert.Null(after.Simulation.CatchableNpcTempImmunityCounter);
         Assert.Null(after.Simulation.ReleaseOwner);
+        Assert.Null(NpcSimulationState.Initial.AiStyleOverride);
+        Assert.Null(default(NpcSimulationState).AiStyleOverride);
+        Assert.Null(after.Simulation.AiStyleOverride);
         string serialized = JsonSerializer.Serialize(new { summary, log, after },
             new JsonSerializerOptions { TypeInfoResolver = oldSchema });
         // The unchanged pre-extension baseline verifies Bird74's historical hash, then captures

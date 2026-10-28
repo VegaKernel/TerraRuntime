@@ -3,47 +3,56 @@ using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core.Npcs;
 
-internal readonly record struct GemBunnyTile1458(bool Solid, bool SolidTop, bool TopSlope, bool Dungeon = false);
-internal readonly record struct GemBunnyStep1458(float X, float Y, float VelocityX, float VelocityY);
-internal readonly record struct GemBunnyDanger1458(bool Present, int TowardDirection, bool SelfStinky);
+internal readonly record struct GroundCritterTile1458(bool Solid, bool SolidTop, bool TopSlope, bool Dungeon = false, bool StrictSolid = false);
+internal readonly record struct GroundCritterStep1458(float X, float Y, float VelocityX, float VelocityY);
+internal readonly record struct GroundCritterDanger1458(bool Present, int TowardDirection, bool SelfStinky);
 
 // Core owns the AI state machine. The application supplies the existing world collision algorithms.
-internal interface IVanillaGemBunnyTerrain1458
+internal interface IVanillaGroundCritterTerrain1458
 {
-    GemBunnyTile1458 Tile(int x, int y);
+    GroundCritterTile1458 Tile(int x, int y);
     bool NavigationObstacle(int left, int right, int top, int bottom);
     bool Drowning(float x, float y, int width, int height);
-    GemBunnyStep1458 StepDown(float x, float y, float vx, float vy, int width, int height);
-    GemBunnyStep1458 StepUp(float x, float y, float vx, float vy, int width, int height, bool matchPlatforms);
+    GroundCritterStep1458 StepDown(float x, float y, float vx, float vy, int width, int height);
+    GroundCritterStep1458 StepUp(float x, float y, float vx, float vy, int width, int height, bool matchPlatforms);
+    bool TryGetWaterLine(int centerTileX, int centerTileY, out bool found, out float waterLineHeight)
+    { found = false; waterLineHeight = 0f; return false; }
 }
 
 /// <summary>
 /// Clean implementation of the reachable AI007 body for the explicitly admitted nonresident bunnies. This type is transient
 /// planning data; committed NPC state, random state and collision ownership stay with their existing owners.
 /// </summary>
-internal sealed class VanillaGemBunnyAi1458
+internal sealed class VanillaGroundCritterAi1458
 {
     internal float X, Y, Vx, Vy;
-    internal int Width, Height, Direction, HomeX, HomeY, RestingX, RestingY, Life, LifeMax;
+    internal int Width, Height, Direction, HomeX, HomeY, RestingX, RestingY, Life, LifeMax, WorldWidthTiles;
     internal float Gravity;
-    internal bool Wet, Homeless, ShelterWeather, Force;
+    internal bool Wet, Homeless, ShelterWeather, Force, CollideX;
     internal bool Friendly = true;
     internal float OldX, OldY, OldVx, OldVy;
     internal NpcAiState Ai, Local;
+    internal VanillaGroundCritterFamily1458 Family = VanillaGroundCritterFamily1458.Bunny;
 
-    internal static bool IsSupported(int type) => VanillaNonresidentBunnyCatalog1458.IsSupported(type);
+    private bool Mouse => Family is VanillaGroundCritterFamily1458.Mouse or VanillaGroundCritterFamily1458.Rat;
+    private bool Turtle => Family is VanillaGroundCritterFamily1458.Turtle or VanillaGroundCritterFamily1458.SeaTurtle;
+    private bool Frog => Family == VanillaGroundCritterFamily1458.Frog;
 
-    internal bool TryStep(IVanillaGemBunnyTerrain1458 terrain, GemBunnyDanger1458 danger,
+    internal static bool IsSupported(int type) => VanillaNonresidentGroundCritterCatalog1458.IsSupported(type);
+
+    internal bool TryStep(IVanillaGroundCritterTerrain1458 terrain, GroundCritterDanger1458 danger,
         IVanillaNpcRandom random)
     {
-        if (Ai.Ai0 is not (0f or 1f or 8f) || Ai.Ai3 != 0f || LifeMax <= 0 ||
+        if (Turtle) danger = danger with { Present = false, TowardDirection = 0 };
+        if (Ai.Ai0 is not (0f or 1f or 8f) ||
+            (Family == VanillaGroundCritterFamily1458.Squirrel ? Ai.Ai3 is not (0f or 2f) : Ai.Ai3 != 0f) || LifeMax <= 0 ||
             HomeX < -1 || HomeY < -1 || Direction is < -1 or > 1 ||
             danger.Present && danger.TowardDirection is not (-1 or 1))
             return false;
         if (Direction == 0) Direction = 1;
         int originX = (int)(X + Width / 2) / 16;
         int originY = (int)(Y + Height + 1f) / 16;
-        bool drowning = terrain.Drowning(X, Y, Width, Height);
+        bool drowning = !Frog && !Turtle && terrain.Drowning(X, Y, Width, Height);
         // TownCritter disables the cliff-avoidance scan and all resident home/seat/attack offers.
         // Danger can still interrupt a critter, including the blocked flee state 8.
         if (danger.Present)
@@ -68,13 +77,18 @@ internal sealed class VanillaGemBunnyAi1458
         {
             if (danger.SelfStinky) Ai = Ai with { Ai0 = 1f };
             if (Local.Ai3 > 0f) Local = Local with { Ai3 = Local.Ai3 - 1f };
-            Vx = Vx > .1f ? Vx - .1f : Vx < -.1f ? Vx + .1f : 0f;
-            if (Ai.Ai1 > 0f) Ai = Ai with { Ai1 = Ai.Ai1 - 1f };
-            // The source keeps executing the idle branch after a transition, including its later
-            // home-band turn offer. It does not execute the walking branch until the next update.
-            if (Wet && drowning) BeginWalking(200 + random.NextInt32(0, 300) + random.NextInt32(200, 400));
-            if (Ai.Ai1 <= 0f) BeginWalking(200 + random.NextInt32(0, 300) + random.NextInt32(200, 400));
-            if (!ShelterWeather || originX == RestingX && originY == RestingY)
+            if (Frog && Wet) BeginWalking(200 + random.NextInt32(500, 700));
+            else
+            {
+                if (Mouse) Vx *= .5f;
+                Vx = Vx > .1f ? Vx - .1f : Vx < -.1f ? Vx + .1f : 0f;
+                if (Ai.Ai1 > 0f) Ai = Ai with { Ai1 = Ai.Ai1 - 1f };
+                // The source keeps executing the idle branch after a transition, including its later
+                // home-band turn offer. It does not execute the walking branch until the next update.
+                if (Wet && drowning) BeginWalking(200 + random.NextInt32(0, 300) + random.NextInt32(200, 400));
+                if (Ai.Ai1 <= 0f) BeginWalking(200 + random.NextInt32(0, 300) + random.NextInt32(200, 400));
+            }
+            if (!ShelterWeather || originX == RestingX && originY == RestingY && !(Frog && Wet))
             {
                 if (originX < RestingX - 25 || originX > RestingX + 25)
                 {
@@ -111,6 +125,29 @@ internal sealed class VanillaGemBunnyAi1458
                 Force = true;
             }
         }
+        if ((Frog || Turtle) && Wet)
+        {
+            if (WorldWidthTiles <= 0) return false;
+            if (Frog) Ai = Ai with { Ai1 = 50f };
+            float centerX = X + Width * .5f, centerY = Y + Height * .5f;
+            int centerTileX = (int)(centerX / 16f);
+            if (CollideX || centerTileX < 5 && Direction == -1 || centerTileX > WorldWidthTiles - 5 && Direction == 1)
+            { Direction *= -1; Vx *= -.25f; Force = true; }
+            // Utils.ToTileCoordinates truncates pixels before its arithmetic shift.
+            if (!terrain.TryGetWaterLine((int)centerX >> 4, (int)centerY >> 4, out bool found, out float waterLine)) return false;
+            if (found)
+            {
+                if (!float.IsFinite(waterLine)) return false;
+                float nextCenter = centerY + 1f;
+                if (centerY > waterLine)
+                {
+                    Vy = MathF.Max(-4f, Vy - .8f);
+                    if (nextCenter + Vy < waterLine) Vy = waterLine - nextCenter;
+                }
+                else Vy = MathF.Min(Vy, waterLine - nextCenter);
+            }
+            else Vy -= .2f;
+        }
         return float.IsFinite(X) && float.IsFinite(Y) && float.IsFinite(Vx) && float.IsFinite(Vy) &&
             Ai.IsFinite && Local.IsFinite;
     }
@@ -122,7 +159,7 @@ internal sealed class VanillaGemBunnyAi1458
         Force = true;
     }
 
-    private void Walk(IVanillaGemBunnyTerrain1458 terrain, GemBunnyDanger1458 danger,
+    private void Walk(IVanillaGroundCritterTerrain1458 terrain, GroundCritterDanger1458 danger,
         IVanillaNpcRandom random, int originX, bool drowning)
     {
         if (!drowning)
@@ -141,9 +178,22 @@ internal sealed class VanillaGemBunnyAi1458
         // AI007 observes Friendly before SubAI expires the catchable protection later in
         // this update. The ordinary speed returns on the following update after expiry.
         bool fleeingSpeed = Friendly && (danger.Present || drowning);
-        float speed = fleeingSpeed ? 1.5f + (1f - (float)Life / LifeMax) * .9f : 1f;
-        float acceleration = fleeingSpeed ? .1f : .07f;
-        if (Vx < -speed || Vx > speed)
+        float speed = Family == VanillaGroundCritterFamily1458.Squirrel ? 1.5f : 1f;
+        float acceleration = .07f;
+        if (Turtle)
+        {
+            speed = Wet ? Family == VanillaGroundCritterFamily1458.SeaTurtle ? 2.5f : 2f
+                : Family == VanillaGroundCritterFamily1458.SeaTurtle ? .2f : .5f;
+            acceleration = Wet ? 1f : .07f;
+        }
+        if (Mouse) { speed = 2f; acceleration = 1f; }
+        if (fleeingSpeed) { speed = 1.5f + (1f - (float)Life / LifeMax) * .9f; acceleration = .1f; }
+        if (Frog && Wet)
+        {
+            if (MathF.Abs(Vx) < .05f && MathF.Abs(Vy) < .05f) Vx += speed * 10f * Direction;
+            else Vx *= .9f;
+        }
+        else if (Vx < -speed || Vx > speed)
         {
             if (Vy == 0f) { Vx *= .8f; Vy *= .8f; }
         }
@@ -168,14 +218,20 @@ internal sealed class VanillaGemBunnyAi1458
             else Local = Local with { Ai3 = -1f };
             if (Vx < 0f && Direction == -1 || Vx > 0f && Direction == 1)
             {
-                GemBunnyTile1458 ahead = terrain.Tile(aheadX, feetY);
-                GemBunnyTile1458 above = terrain.Tile(aheadX, feetY - 1);
-                GemBunnyTile1458 high = terrain.Tile(aheadX, feetY - 2);
+                GroundCritterTile1458 ahead = terrain.Tile(aheadX, feetY);
+                GroundCritterTile1458 above = terrain.Tile(aheadX, feetY - 1);
+                GroundCritterTile1458 high = terrain.Tile(aheadX, feetY - 2);
                 bool turn = false;
                 if (Full(high) && (Height / 16 >= 3 || Full(above)))
                 {
                     if (!terrain.NavigationObstacle(aheadX - Direction * 2, aheadX - Direction, feetY - 5, feetY - 1) &&
                         !terrain.NavigationObstacle(aheadX, aheadX, feetY - 5, feetY - 3)) Jump(-6f);
+                    else if (Mouse)
+                    {
+                        if (terrain.Tile((int)((X + Width * .5f) / 16f) + Direction,
+                                (int)((Y + Height * .5f) / 16f)).StrictSolid)
+                        { Direction *= -1; Vx = 0f; Force = true; }
+                    }
                     else turn = true;
                 }
                 else if (Full(above))
@@ -204,7 +260,7 @@ internal sealed class VanillaGemBunnyAi1458
                 if (keepWalking) { Ai = Ai with { Ai1 = 90f }; Force = true; }
                 if (Vy < 0f) Local = Local with { Ai3 = X };
                 if (Vy < 0f && Wet) Vy *= 1.2f;
-                if (Vy < 0f) Vy *= 1.2f;
+                if (Vy < 0f && !Mouse) Vy *= 1.2f;
             }
         }
         if (OldX == X && OldY == Y && OldVx == Vx && OldVy == Vy + Gravity && !danger.Present)
@@ -222,7 +278,7 @@ internal sealed class VanillaGemBunnyAi1458
         }
     }
 
-    private void Apply(GemBunnyStep1458 step) { X = step.X; Y = step.Y; Vx = step.VelocityX; Vy = step.VelocityY; }
+    private void Apply(GroundCritterStep1458 step) { X = step.X; Y = step.Y; Vx = step.VelocityX; Vy = step.VelocityY; }
     private void Jump(float velocity) { Vy = velocity; Force = true; }
-    private static bool Full(GemBunnyTile1458 tile) => tile.Solid && !tile.SolidTop;
+    private static bool Full(GroundCritterTile1458 tile) => tile.Solid && !tile.SolidTop;
 }

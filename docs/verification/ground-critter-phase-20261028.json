@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-scoped-phase-qualification",
+  "accepted": true,
+  "aggregateAcceptance": false,
+  "FullVanillaAiParity": false,
+  "strictFullCorpusAccepted": false,
+  "strictFullCorpusRetainsExplicitInactiveStatusDifferences": true,
+  "sourceGuardAccepted": true,
+  "canonicalDllGuardAccepted": true,
+  "sourceInputCount": 4066,
+  "canonicalDllCount": 158,
+  "focus02SourceSha256": "270b32bd6a2717d3ccb25eed7d73be5d69226fd6d249634f6486459c10a9b48b",
+  "focus02DllSha256": "e0656462311fa1955c8ce3d31e5bcd5bb3655adde25a13dc0daebfc72ab0610b",
+  "sourceCorpusQualificationSha256": "0ea141bfa7c5c92f09b7c5c9b188daa2cfb164c04fae64c909f25228a839f1e1",
+  "exactActiveNpcPhases": 63744,
+  "activeCasesPerSeed": 332,
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "inactiveTerminalDiagnostics": [
+    {
+      "seed": 1458,
+      "cases": 22,
+      "knownRetainedNpcRawplayerAndFullRngPhasesExact": 1408,
+      "fullInactiveStatusParityAccepted": false
+    },
+    {
+      "seed": 42,
+      "cases": 22,
+      "knownRetainedNpcRawplayerAndFullRngPhasesExact": 1408,
+      "fullInactiveStatusParityAccepted": false
+    },
+    {
+      "seed": 8675309,
+      "cases": 22,
+      "knownRetainedNpcRawplayerAndFullRngPhasesExact": 1408,
+      "fullInactiveStatusParityAccepted": false
+    }
+  ],
+  "unsupportedAi3OneCasesPerSeed": 10,
+  "unsupportedRefusalUnchangedNpcStatusPlayersAndRng": true,
+  "legacyOldNewExactCases": 60,
+  "legacyOldNewExactPhases": 3840,
+  "negativeControls": [
+    {
+      "name": "fixed-second-omit",
+      "actualControl": "omit-step",
+      "sameFullInput": true,
+      "rejectedCasesAgainstNormal": 374,
+      "unchangedCases": [
+        {
+          "type": 299,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 538,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 539,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 639,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 640,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 641,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 642,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 643,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 644,
+          "scene": "turn-ai3-1"
+        },
+        {
+          "type": 645,
+          "scene": "turn-ai3-1"
+        }
+      ],
+      "scope": "Ten unsupported ai3==1 phases are genuine no-ops, so omitting one also remains no-op; all374 executing cases reject omission. Extra actual RNG rejects all384. These are successful rejection controls, not parity greens."
+    },
+    {
+      "name": "fixed-second-extra",
+      "actualControl": "extra-rng",
+      "sameFullInput": true,
+      "rejectedCasesAgainstNormal": 384,
+      "unchangedCases": [],
+      "scope": "Ten unsupported ai3==1 phases are genuine no-ops, so omitting one also remains no-op; all374 executing cases reject omission. Extra actual RNG rejects all384. These are successful rejection controls, not parity greens."
+    }
+  ],
+  "surfaceCompanionSha256": "5d2831194090d1c2817480a60cbce67fff7e6d42bf0838806fe00fa97f40a8b9",
+  "surfaceCompanionExactPhases": 960,
+  "runtimeCodeDlls": {
+    "TerraRuntime.Application.dll": "e827162604b0d5f490987c701a0013b2c8687489b29aaba697e8635770ffb0f3",
+    "TerraRuntime.Core.dll": "0f4640647ff0e3b817fb89c41a1b6acb480d2a38dd52018b84dd6d3d5a67d495",
+    "TerraRuntime.Gameplay.dll": "31661e93b7eb40895a91060dd46e27e314de794a32d32f380d4053b32d2e4184",
+    "TerraRuntime.Contracts.dll": "7447179cb832704f148cfafb3c3d5c2c5ffd96c7e34d245f2e24f02d766d29ca"
+  },
+  "captureReceipts": [
+    {
+      "name": "v2-source-1458-a",
+      "sha256": "d22b4bc12a254134116b26e8f81740a531ffb8d34e97202bfc9e16c0aad31e1c",
+      "outputSha256": "e49557f6b6f6610f344ab91806607d647e4a7e576580c98f3283ada36ba0fb55"
+    },
+    {
+      "name": "v2-source-1458-b",
+      "sha256": "076d5a29946b83ba28478721357c0cc653ae9a722805a84af0ce181ebb405328",
+      "outputSha256": "e49557f6b6f6610f344ab91806607d647e4a7e576580c98f3283ada36ba0fb55"
+    },
+    {
+      "name": "v2-source-42-a",
+      "sha256": "d88b6ca978ae19d6b844f15d29c60531e355f1f2c00ee37120b306db0f1a7f9c",
+      "outputSha256": "df2fcb394e5762b3404480fd66380ad69959d5853402fafee5c9f6248524f47a"
+    },
+    {
+      "name": "v2-source-42-b",
+      "sha256": "cf48c8a4111a47c3929239dcaed90a40b438770a5ee1782c224ee6c6a813bffe",
+      "outputSha256": "df2fcb394e5762b3404480fd66380ad69959d5853402fafee5c9f6248524f47a"
+    },
+    {
+      "name": "v2-source-8675309-a",
+      "sha256": "05e4a94190c8eb701a2616704f3df7bc507e899089c76708892873f707516e16",
+      "outputSha256": "cb6cd96fde59ca3586273b57e460e64471881a21d56b63f2d9b41d2d4854e591"
+    },
+    {
+      "name": "v2-source-8675309-b",
+      "sha256": "ef70df4df7c8a4338063e1643b24783cf977f35c93c1a56792524c17201b30a8",
+      "outputSha256": "cb6cd96fde59ca3586273b57e460e64471881a21d56b63f2d9b41d2d4854e591"
+    },
+    {
+      "name": "fixed-second-1458",
+      "sha256": "d22849ddd769244620fe81590431506d4c0e0be673e5d5947592c23eb70da95b",
+      "outputSha256": "f3739027c4ef52fe746aaa041a61340afdd64f5a75c46aa32c2f7aa53b2472e6"
+    },
+    {
+      "name": "fixed-second-42",
+      "sha256": "a885ba6cee80a2dfc500ad05dc89e36e3d2874467b332a4bf35d8670b639ccf2",
+      "outputSha256": "4521debaec810a094cb6496c00afd70cdb1610a48ab9411d264c6534ee45eb3a"
+    },
+    {
+      "name": "fixed-second-8675309",
+      "sha256": "3c01efa8d914d2ceab8afae95f5b8000e2208ef2f12bceb798b26bb8826abb21",
+      "outputSha256": "668976bb65791151d8731e66a02ebbd89fe41f84143eafd9f9b1d1600bca20c3"
+    },
+    {
+      "name": "fixed-second-omit",
+      "sha256": "07305a9e3a315fbe50dda3b5406b661507460e526a8f2424a8d7df3c380933df",
+      "outputSha256": "4efbecf4122c693bf32696cb98d3a5fa2fea10bd07b195613532f55c61a69f5b"
+    },
+    {
+      "name": "fixed-second-extra",
+      "sha256": "a15e0b91645c399fb6a245fc3fe69828f5640592c2e3bbb7566d1270f3babd74",
+      "outputSha256": "78ccb8bb068a3bda7a3fe342cc0c189a180ebbc5840e80f0d5a9bad26fbb3787"
+    },
+    {
+      "name": "surface-home-a",
+      "sha256": "308814b14ddff08081310c98d63987a8f03093344fa93cc42a5b40e8aa982e98",
+      "outputSha256": "53dd3d8cb83d2e67952bc2e202710d15e0f5ef9e30d27e23d6322c4682d85ba0"
+    },
+    {
+      "name": "surface-home-b",
+      "sha256": "4725722d2e6f0b7795aa49ed0b1e7968df5f655aa2b5d32c9d0306cad07befa6",
+      "outputSha256": "53dd3d8cb83d2e67952bc2e202710d15e0f5ef9e30d27e23d6322c4682d85ba0"
+    },
+    {
+      "name": "surface-second-1458",
+      "sha256": "7ac4167687ae8703fd36324b04f0e14b048fbab6341c736d0d7354d850384eb2",
+      "outputSha256": "81ee4780801f7b85a845b8dd48dc99d730bb60e054bfa4026e39f52bae8c1d24"
+    }
+  ],
+  "scope": "Only declared ACTIVE full named NPC/raw0/raw255 Luck/name/Cenx/status/fullphysicalRNG projection plus separate bounded surface-water companion is full parity-qualified. Inactive actor scalar/pose/AI/frame/rawplayer/RNG domains match but status ownership is unavailable after retirement and is explicitly NOT qualified or filled. Actual NpcAuthority.AdvanceWorldTick+TickSimulation vs immutable original NPC.UpdateNPC; no world-time/spawn-selection, whole-world, network, combat/loot/catch, fresh-birth or aggregate/fullAI claim.",
+  "candidate": "ground-critter/focus02",
+  "bindingScope": "Exact pre-final focus02 source/DLL snapshot and immutable fixed-second captures; later style7 bottom-world guard correction and final aggregate candidates require a successor closure qualification.",
+  "currentAggregateCandidateQualified": false,
+  "freshSourceBirthParityClaim": false,
+  "cohort": [
+    148,
+    149,
+    299,
+    300,
+    361,
+    366,
+    367,
+    445,
+    447,
+    538,
+    539,
+    610,
+    616,
+    617,
+    625,
+    639,
+    640,
+    641,
+    642,
+    643,
+    644,
+    645
+  ],
+  "entryProfiles": {
+    "original": "Actual official1458Linux NPC.UpdateNPC(0) on Windows CoreCLR after real Initialize_TileAndNPCData1/2; noSpawnCycle=true, explicit tile/player/actor inputs.",
+    "runtime": "Actual composed NpcAuthority.AdvanceWorldTick+TickSimulation with real owned clock and existing spawn-cycle suppression; exact original preimage imported through real store/player owners.",
+    "excludedCallers": "No player/world-time, natural spawn rate/selection, whole-world, network or whole combat/death/catch equivalence claim."
+  },
+  "activeProjection": "Exact named NPC motion/AI/localAI/stats/frame/catch fields, actual aiStyle via owned override or definition fallback, defLifeMax, ordered active buffs/status, actual raw0/255 geometry/Luck/name/Cenx, and full physical RNG cursor+56slots. Source LOS/closest/netUpdate/waterline diagnostics are separately named and excluded from this declared parity domain.",
+  "terminalProjection": {
+    "phases": 4224,
+    "cases": 66,
+    "fullInactiveStatusParityAccepted": false,
+    "knownRetainedNpcRawPlayersAndPhysicalRngExact": true,
+    "unavailableFields": [
+      "statusKnown",
+      "stinky",
+      "buffs"
+    ],
+    "observation": "Read actual physical slot.Update/Active/Generation; inactive revision0 is not replaced with a fabricated NpcSnapshot. Public status rejects inactive handles; unavailable fields stay false/null/null. Strict full-corpus report remains red."
+  },
+  "legacyControls": {
+    "cases": 60,
+    "phases": 3840,
+    "npcAndFullRngOldNewStable": true,
+    "sourceFullParityClaim": false,
+    "note": "Old470/walk Ai1 preservation gap remains source-red and is not masked or newly promoted."
+  },
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalFnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "originalSourceSha256": {
+    "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+    "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+    "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+    "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+    "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541",
+    "Terraria/Collision.cs": "03bd08884122a7530395136f3bc030955e9d681109dc2818a33f0cf76c82eac5"
+  },
+  "originalCorpus": {
+    "casesPerSeed": 384,
+    "phasesPerCase": 64,
+    "actualSourceCallsBothRepeats": 147456,
+    "repeatByteIdentical": true,
+    "mainFullInputMismatches": 0,
+    "activeCasesPerSeed": 332,
+    "retiredCasesPerSeed": 22,
+    "unsupportedAi3OneCasesPerSeed": 10
+  },
+  "surfaceCompanion": {
+    "cases": 15,
+    "phases": 960,
+    "actualSourceCallsBothRepeats": 1920,
+    "repeatByteIdentical": true,
+    "scope": "Five frog/turtle types, low/full surface waterline found and actual left-boundary turn; all named NPC/rawplayer/status/RNG fields match. Invalid collision warmup and unsafe uninitialized-home source attempts remain rejected historical artifacts."
+  },
+  "adapterReferencesTests": false,
+  "unusedTestDllPresentInPhysicalCopy": true,
+  "secondQualificationSha256": "c8ad4a5db6de088aeda097d5d522b6f956c0e8766b1795c67ff5aad11d6ad27b",
+  "strictFullCorpusComparisonSha256": "8d26485ae6899ffa152970d79ec90c794c2a421a957dc33cbae87c55d11f44ab",
+  "copiedPhysicalClosurePinsSha256": "938ed6044d9593634f5852eb2488d11fffa10da905f326a14d662e1b36d81888",
+  "shippingCodeAtCapturePinsSha256": "d217737f6842a7c72e859b8a6a28f141f3acf133ec1c2a1313006c12fe69a242",
+  "provenanceLfBridgeSha256": "8f4b569b2c2260bc2593d4736f1f52c13000ac2f3fd59a339d523fbe7e016794",
+  "provenanceLfBridge": {
+    "schemaVersion": 1,
+    "kind": "provenance-json-newline-only-source-bridge",
+    "accepted": true,
+    "changes": [
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchLinux1458.provenance.json",
+        "beforeSha256": "1e04065d33ce1b00d5011346216b18b3f8219d96ba478bed4f7a67ebe5e67ad3",
+        "afterSha256": "7ddc266602e1d945450084f66f224f24be9433e4d612b7b5ecfd6137b1c0b11f",
+        "onlyCrlfToLf": true,
+        "reconstructedOriginalByteHashMatches": true,
+        "jsonValuesUnchanged": true
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterBirthProtectionLinux1458.provenance.json",
+        "beforeSha256": "567ba6bbc4e65c1385e8beaf92647e1630d1c6418943ae0d9c6607264b0472a9",
+        "afterSha256": "696ab4660552f465e36cc061c629ef3f164339fde8ad2e060f62851fdea8239a",
+        "onlyCrlfToLf": true,
+        "reconstructedOriginalByteHashMatches": true,
+        "jsonValuesUnchanged": true
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterContactLinux1458.provenance.json",
+        "beforeSha256": "794b47ba1ede06e95ba294a4ea77922e8a56e72e7b0d07749a175a8c680f2eeb",
+        "afterSha256": "8bca45866ad64c63a95079e91da71499b57b83468b3eb609311dd3bced505ac0",
+        "onlyCrlfToLf": true,
+        "reconstructedOriginalByteHashMatches": true,
+        "jsonValuesUnchanged": true
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterFindFrameLinux1458.provenance.json",
+        "beforeSha256": "a716bf4fd61a71666e14e1d02bc11489aa1188e351de4c75a54f2ea0b7a20c14",
+        "afterSha256": "8bb4fdea00a2cf8618a6cfcd83288d04323764fa1bb6c31d1ca3ab35b03a4b84",
+        "onlyCrlfToLf": true,
+        "reconstructedOriginalByteHashMatches": true,
+        "jsonValuesUnchanged": true
+      }
+    ],
+    "scope": "Only four new provenance JSON CRLF-to-LF changes. Historical corpus bytes/receipts/source pins stay immutable. TestDLL may change because provenance resources are embedded; no runtime code equivalence is inferred for later implementation changes."
+  },
+  "limits": "Component acceptance only for the explicitly declared active and surface domains. No full inactive-buff, FullVanillaAiParity, fresh-birth, full-world, packet, combat/loot/catch or aggregate fast/full/Native acceptance."
+}

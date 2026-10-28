@@ -21,7 +21,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         RuntimeNpcBuffAdditionPlan1458? addition = null, byte[]? additionFrame = null,
         Func<VanillaUnifiedRandom1458, bool>? afterLoot = null, bool strikeBeforeStatus = false)
     {
-        if (!VanillaGemBunnyAi1458.IsSupported(expected.Type) || dead.Type != expected.Type ||
+        if (!VanillaGroundCritterAi1458.IsSupported(expected.Type) || dead.Type != expected.Type ||
             dead.Simulation.Life != 0 || expected.Simulation.Life <= 0 ||
             pendingGemBunnyDeath is not null || pendingDeathPlan is not null || pendingProjectileStrike is not null ||
             pendingDebuffPrelude is not null || pendingTownStrike is not null ||

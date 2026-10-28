@@ -243,7 +243,7 @@ public static class VanillaNpcDefinitionCatalog
         bool found = TryGetRegistered(type, out definition);
         if (VanillaNpcGroundRoster1458.TryGet(type, new((short)type.Value), out var source))
         {
-            bool nonresidentBunny = VanillaNonresidentBunnyCatalog1458.IsSupported(type.Value);
+            bool nonresidentBunny = VanillaNonresidentGroundCritterCatalog1458.IsSupported(type.Value);
             definition = source with
             {
                 BehaviorFamily = definition.DefinitionOnly ? VanillaNpcBehaviorFamily.None : definition.BehaviorFamily,

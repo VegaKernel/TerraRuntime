@@ -156,8 +156,10 @@ public sealed class GemBunnyLifecycle1458Tests
         internal Action<NpcSnapshot>? OnCommit = null;
         private readonly RuntimeNpcReplicationRegistry? replication;
         internal readonly WorldTileStore tiles;
-        private readonly VanillaGemBunnyAccepted1458 ai = new();
-        private readonly RuntimeGemBunnyLifecycle1458 lifecycle;
+        private readonly VanillaGroundCritterAccepted1458 ai = new();
+        private readonly VanillaGroundFighterNpcBehaviorStrategy fighter;
+        private readonly INpcAiStateStepper fallback = new VanillaDemonEyeAiStepper();
+        private readonly RuntimeGroundCritterLifecycle1458 lifecycle;
         private readonly VanillaNpcBehaviorContext context = new();
         internal readonly RuntimeNpcBuffStatus1458 status;
         private readonly PlayerStateSnapshot player;
@@ -178,6 +180,7 @@ public sealed class GemBunnyLifecycle1458Tests
                         LiquidKind = scene is "lava" or "lavaStinky" ? WorldLiquidKind.Lava : WorldLiquidKind.Water });
             Npcs = new(commitSink: this); Random = new(seed);
             var adapter = new SystemVanillaNpcRandom(Random); Npcs.SetVanillaSpawnRandomSource(adapter);
+            fighter = new(adapter);
             player = default(PlayerStateSnapshot) with { Player = new(new(0), new(1)), Revision = new(1),
                 PositionX = scene == "far" ? 6000f : 660f, PositionY = 1558f, IsDead = scene == "deadPlayer",
                 HasHealth = true, Life = 100, MaxLife = 100, DerivedLifeMax = 100,
@@ -224,7 +227,7 @@ public sealed class GemBunnyLifecycle1458Tests
                 mechanicalLootBaseline: new(0, false, false, false, false), npcSpecificLowTiles: static () => false,
                 onlyShimmerOceanWorlds: false);
             lifecycle = new(tiles, 80d, Npcs, combat, replication: replication, status: status);
-            ai.Configure(Npcs, new VanillaGemBunnyEnvironment1458(tiles, Npcs, status,
+            ai.Configure(Npcs, new VanillaGroundCritterEnvironment1458(tiles, Npcs, status,
                 _ => new(dayTime, false, false, false, false),
                 () => { DuringPlan?.Invoke(); return playerPresent ? [new(0,
                     new(player.PositionX, player.PositionY, 20f, 42f), player.IsDead, false)] : []; }, replication), adapter);
@@ -247,9 +250,9 @@ public sealed class GemBunnyLifecycle1458Tests
         public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
         {
             next = default;
-            return VanillaGemBunnyAi1458.IsSupported(npc.Type) &&
+            return VanillaGroundCritterAi1458.IsSupported(npc.Type) &&
                 VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) &&
-                ai.TryStep(in npc, in definition, context, out next);
+                ai.TryStep(in npc, in definition, context, fighter, fallback, out next);
         }
         public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) => ai.HasPlan(in before);
         public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)

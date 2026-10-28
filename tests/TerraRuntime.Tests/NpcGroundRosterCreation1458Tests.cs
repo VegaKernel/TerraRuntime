@@ -125,8 +125,9 @@ public sealed class NpcGroundRosterCreation1458Tests
     public void Definition_materialization_does_not_grant_unverified_autonomous_ai_or_full_parity()
     {
         // Source identities still fenced after the melee cohort: Snow Flinx, Torch Zombie,
-        // ordinary Penguin, Old Man, Travelling Merchant and Skeleton Merchant.
-        foreach (int type in new[] { 185, 590, 148, 37, 368, 453 })
+        // Fish230, Old Man, Travelling Merchant and Skeleton Merchant. Penguin148
+        // now has the separately composed nonresident ground-critter lifecycle.
+        foreach (int type in new[] { 185, 590, 230, 37, 368, 453 })
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), out var definition));
             Assert.False(definition.DefinitionOnly);
@@ -147,7 +148,7 @@ public sealed class NpcGroundRosterCreation1458Tests
     [Fact]
     public void Newly_materialized_definitions_keep_unproved_runtime_lifecycle_fenced()
     {
-        // Independent starting-main census, minus the separately verified undead and gem-bunny cohorts.
+        // Independent starting-main census, minus the separately verified cohorts.
         int[] promoted = [44,104,140,181,185,196,197,198,201,202,203,236,379,380,381,382,383,
             385,386,389,391,409,411,415,419,424,425,426,427,428,429,449,450,451,452,464,470,
             471,480,481,482,489,508,518,520,524,525,526,527,528,529,530,532,534,536,580,582,
@@ -163,10 +164,12 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), new((short)net), out var definition));
             bool undeadRuntime = net is 201 or 202 or 203 or 635 or -13 or -14 or
                 >= -37 and <= -26 or >= -55 and <= -44;
-            bool nonresidentBunnyRuntime = VanillaNonresidentBunnyCatalog1458.IsSupported(net);
+            bool nonresidentGroundCritterRuntime = net is 46 or 148 or 149 or 299 or 300 or 303 or 337 or
+                361 or 366 or 367 or 443 or 445 or 447 or 538 or 539 or 540 or 610 or 616 or 617 or 625 or
+                639 or 640 or 641 or 642 or 643 or 644 or 645 or 646 or 647 or 648 or 649 or 650 or 651 or 652;
             bool ordinaryMeleeRuntime = net is 44 or 104 or 140 or 181 or 196 or 197 or 464 or 470 or 489 or
                 524 or 525 or 526 or 527 or 528 or 529 or 536 or 691;
-            bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentBunnyRuntime && !ordinaryMeleeRuntime;
+            bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentGroundCritterRuntime && !ordinaryMeleeRuntime;
             Assert.Equal(expected, definition.CreationDefaultsOnly);
             Assert.Equal(!expected, definition.SupportsRuntimeLifecycle);
             if (!expected) continue;
@@ -194,7 +197,7 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(store.TryGet(born.Handle, out retained));
             Assert.Equal(retainedDead, retained);
         }
-        Assert.Equal(75, fenced);
+        Assert.Equal(53, fenced);
     }
 
     private sealed class CountingLifecycle : INpcAiStateStepper, INpcAiPrepass1458

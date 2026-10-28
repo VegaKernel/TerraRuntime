@@ -588,7 +588,7 @@ internal sealed class VanillaNpcBehaviorContext
             (definition.Type != VanillaNpcIds.BlueSlime && definition.Type != VanillaNpcIds.LavaSlime &&
              definition.AiStyle != VanillaNpcAiStyles.DemonEye &&
              !VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
-             !VanillaGemBunnyAi1458.IsSupported(definition.Type.Value)))
+             !VanillaGroundCritterAi1458.IsSupported(definition.Type.Value)))
             return false;
         foreach (var candidate in Candidates)
             if (candidate.Active && !candidate.Dead && !candidate.Ghost)

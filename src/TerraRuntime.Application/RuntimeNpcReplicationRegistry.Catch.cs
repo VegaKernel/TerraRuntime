@@ -41,8 +41,11 @@ internal sealed partial class RuntimeNpcReplicationRegistry
 
     internal void PublishStatueCatchSmoke(in NpcSnapshot caught, byte[] frame)
     {
-        // Only the exact new Gem Bunny lifecycle owns this source-verified catch publication.
-        if (caught.Simulation.SpawnedFromStatue && VanillaNonresidentBunnyCatalog1458.IsSupported(caught.Type) && caught.Type == caught.NetId)
+        // CatchNPC's statue smoke is independent of AI style. The catch owner
+        // already admitted the live generation; Mystic Frog takes another path.
+        if (caught.Simulation.SpawnedFromStatue &&
+            !VanillaNpcCatchCatalog1458.IsMysticFrog(caught.TypeIdentity) &&
+            VanillaNpcCatchCatalog1458.TryGetCatchItem(caught.TypeIdentity, out _))
             Broadcast(frame);
     }
 }

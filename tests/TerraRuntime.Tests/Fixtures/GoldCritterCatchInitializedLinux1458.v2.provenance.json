@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 2,
+  "fixtureSha256": "ea9be9ec68a1f06bbce6f49770b1904b4dc5d65425c07b964b992ad7222ebb1d",
+  "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "adapterSha256": "13e80d70f35bdf1366b49b34fd4f2140d72a7c80221db869492971c0331afb7d",
+  "probeSha256": "cfeafe8794f3c503e12a40731ce12140bedd55d566c8a209a25faee57e7ca8f3",
+  "probeSourceSha256": "fc4a4a3e5b5c709a876adaaa672244ad5c69dbca6c41402db8aae4490d1bdae4",
+  "captures": [
+    {
+      "seed": 1458,
+      "a": ".cache/ground-critter-combat-catch/initialized-v2-1458-a.json",
+      "b": ".cache/ground-critter-combat-catch/initialized-v2-1458-b.json",
+      "sha256": "330674eb922a3717f53a3f5fd10fe6c7c284bc2a619119e857b168be98087227",
+      "byteIdentical": true
+    },
+    {
+      "seed": 42,
+      "a": ".cache/ground-critter-combat-catch/initialized-v2-42-a.json",
+      "b": ".cache/ground-critter-combat-catch/initialized-v2-42-b.json",
+      "sha256": "d95b365874b9cd5330b3b90e107ed86bdac5e89a21fea35835612129374b6e86",
+      "byteIdentical": true
+    },
+    {
+      "seed": 8675309,
+      "a": ".cache/ground-critter-combat-catch/initialized-v2-8675309-a.json",
+      "b": ".cache/ground-critter-combat-catch/initialized-v2-8675309-b.json",
+      "sha256": "13ffbce4e147ec77465cd669f46731ccb9bf93c654c6ab4676f575d48e7cc147",
+      "byteIdentical": true
+    }
+  ],
+  "uniqueCatchCalls": 105,
+  "repeatedCatchCalls": 210,
+  "initialization": "Actual Main.Initialize_TileAndNPCData1 and2, with source Lang and ActiveWorldFileData setup. Each case actual NPC.NewNPC in a fresh constructor slot then actual NetMessage.SendData23 birth publication; authored body position/statue/direction/target before capture. Main.npcCatchable, generation, releaseOwner, spawnNeedsSyncing and full named NPC inputs are read back. Fresh RNG belongs to CatchNPC boundary after birth, shared identically by runtime.",
+  "actualCatchability": "303/337/540/625 are false in actual initialized Main.npcCatchable. 303/337/540 still have positive catchItem and execute source statue CatchNPC, but packet23 omits releaseOwner. Sea625 catchItem0 refuses. Remaining30 identities are true.",
+  "priorFixture": {
+    "path": "GoldCritterCatchLinux1458.json.gz",
+    "sha256": "b4fc25bb5fe4a2f2c087a053446af4ff54123deccbf0e21c6dcbe4944be93a93",
+    "retainedImmutable": true,
+    "limitation": "Its wire captures use constructor generation0 and uninitialized Main.npcCatchable. They are not qualified as initialized server packet acceptance. HitEffect/death-sequence component RNG scope remains separately narrow; no wire projection claim."
+  },
+  "sourceFiles": {
+    "NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+    "NetMessage.cs": "7945f2507d4935e597f47bbe63fdae9182e3267bcb6c353dc5029f39aae79ede",
+    "Utils.cs": "5e90754dee2a980e9164c7d9846d0bd9d99ef79a3cd7d2fd2e2ae19e69c17179"
+  },
+  "scope": "Official Linux managed server executed on Windows CoreCLR, capture-only ISocket, no network or GUI, no whole UpdateNPC or Native execution claim."
+}
