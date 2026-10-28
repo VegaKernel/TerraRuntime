@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -21,6 +22,9 @@ def _scalar(value, kind):
 
 
 def validate_request(data):
+    if type(data) is dict and type(data.get('schemaVersion')) is int and data['schemaVersion'] == 2:
+        from .scalar_values import validate_request as value_request
+        return value_request(data)
     if type(data) is not dict or set(data) != {'schemaVersion', 'analysis', 'fields', 'cases'} or \
             type(data['schemaVersion']) is not int or data['schemaVersion'] != 1:
         raise ValueError('Invalid scalar candidate request envelope')
@@ -58,6 +62,9 @@ def validate_request(data):
 
 
 def validate_observation(request, data):
+    if request['schemaVersion'] == 2:
+        from .scalar_values import validate_observation as value_observation
+        return value_observation(request, data)
     entry = request['analysis']['entries'][0]
     identity = entry['type'] + '.' + entry['method'] + '(' + ', '.join(entry['parameterTypes']) + ')'
     count = len(request['cases'])
@@ -138,16 +145,17 @@ def adapt(request_path, output_dir):
         if not {'SourceProbe.dll', 'Microsoft.CodeAnalysis.dll', 'Microsoft.CodeAnalysis.CSharp.dll'} <= pins.keys():
             errors.append('Missing Roslyn/backend closure')
         elif execute('probe', ['dotnet', str(binary), '--adapt-scalar', str(output_dir / 'request.json'), str(output_dir / 'observation.json')], 120):
-            observation_hash = facts.digest(output_dir / 'observation.json')
             try:
-                observation = validate_observation(request, facts.read_json(output_dir / 'observation.json'))
+                observed_bytes = analysis._read_bounded(output_dir / 'observation.json', 64 * 1024 * 1024)
+                observation_hash = hashlib.sha256(observed_bytes).hexdigest()
+                observation = validate_observation(request, facts.parse_json(observed_bytes.decode('utf-8-sig')))
                 if observation.get('sourceSha256') != before['sources'] or \
                         {k: v for k, v in observation.get('referenceSha256', {}).items() if '::' not in k} != before['references']:
                     raise ValueError('Observed source/reference pins differ')
                 for name, key in [('candidate.cs', 'candidateSha256'), ('original-carrier.cs', 'originalCarrierSha256'), ('candidate.dll', 'assemblySha256')]:
                     if facts.digest(output_dir / name) != observation.get(key): raise ValueError('Generated artifact differs: ' + name)
                 for mutant in observation['mutants']:
-                    name = 'omit-' + mutant['mutation'].removeprefix('omit-field-write:') + '.dll'
+                    name = (mutant['mutation'] if request['schemaVersion'] == 2 else 'omit-' + mutant['mutation'].removeprefix('omit-field-write:')) + '.dll'
                     if facts.digest(output_dir / name) != mutant.get('assemblySha256'): raise ValueError('Mutant artifact differs')
                 runtime = observation.get('runtimeReference', {})
                 if analysis._digest_bounded(Path(runtime['path']), 64 * 1024 * 1024) != runtime['sha256']:
@@ -171,6 +179,8 @@ def adapt(request_path, output_dir):
               'originalCarrierCompiled': observation is not None, 'wholeOriginalTypeCompiled': False,
               'validationErrors': errors, 'commands': commands, 'artifacts': artifacts,
               'wallSeconds': time.monotonic() - started,
-              'scope': 'Cache-only automatic semantic bool/int state adaptation and compiled actual-original sampled differential. No whole AI translation, caller/state ownership, numeric/API/RNG mapping or runtime admission.'}
+              'scope': ('Cache-only automatic finite binary32/int/bool return adaptation with exact read-only receiver field maps and actual-original sampled differential. No transitive object, getter, API, RNG, caller/equipment ownership or runtime admission.'
+                        if request['schemaVersion'] == 2 else
+                        'Cache-only automatic semantic bool/int state adaptation and compiled actual-original sampled differential. No whole AI translation, caller/state ownership, numeric/API/RNG mapping or runtime admission.')}
     save('result.json', result)
     return result

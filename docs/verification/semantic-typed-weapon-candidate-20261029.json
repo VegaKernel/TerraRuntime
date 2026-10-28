@@ -1,0 +1,560 @@
+{
+  "schemaVersion": 1,
+  "kind": "semantic-typed-weapon-candidate-component",
+  "accepted": true,
+  "componentAccepted": true,
+  "aggregateAcceptance": false,
+  "candidateOnly": true,
+  "productionAdmissionChanged": false,
+  "baseToolCommit": "7ae9d32a1a161b769f7817cc14e57ca42d91da59",
+  "shippingDeltaPaths": [],
+  "methods": [
+    {
+      "type": "Terraria.Player",
+      "method": "GetWeaponKnockback",
+      "parameterTypes": [
+        "Terraria.Item",
+        "float"
+      ],
+      "returnType": "float",
+      "casesPerRepeat": 1185,
+      "repeats": 2,
+      "modifiers": 5
+    },
+    {
+      "type": "Terraria.Player",
+      "method": "GetWeaponCrit",
+      "parameterTypes": [
+        "Terraria.Item"
+      ],
+      "returnType": "int",
+      "casesPerRepeat": 135,
+      "repeats": 2,
+      "categoryPrecedence": "melee before ranged before magic"
+    }
+  ],
+  "actualTypedOfficialMethodCalls": 2640,
+  "schema1RegressionOfficialMethodCalls": 2028,
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "repeatGeneratedSourceAssemblyCarrierAndFullObservationByteIdentical": true,
+  "sourceToolGuardsAccepted": true,
+  "executedDllGuardsAccepted": true,
+  "toolInputs": {
+    "Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+    "global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+    "tools/vanilla.py": "486e5cb697cc4789f1d671b57831eabb0f815ad2498a8d3e461995263ac4061b",
+    "tools/vanilla_data/capture.py": "bc02043a24f6f14358f2ca71db6baa9aa784d8e1019ecd235f246d4298f8becf",
+    "tools/vanilla_data/cli.py": "4482c34181e64f6ef4565f79084b9248346a06f2d2850420a55b2d740d6095d5",
+    "tools/vanilla_data/pass_probe.py": "7e1238d683b7b3e441ea211d1a07352781f3751ccd87ea30abc0b86245542e36",
+    "tools/vanilla_data/reference.json": "811aac2bf4e8f8e0b541ef5866df4b423f8f3ae48d58f831e4e880f5f265e4b6",
+    "tools/vanilla_data/scalar_candidate.py": "a604d85b5204d956b41a4cc25bddecfe128fcba971e82b1d39789b56019cfd1b",
+    "tools/vanilla_data/scalar_values.py": "4bfb7001ed67b9879f1a51e7c66f7fdd5683f3551937c8883172ccf48d342ea7",
+    "tools/vanilla_data/source_analysis.py": "78a64dea6d5e99eff6f7a0e406e0077ca048e148f670ad294e6669ef10c554b7",
+    "tools/vanilla_data/SourceProbe/CompilationLoader.cs": "0c112206981c94b9f8d8aa0d0d6c3c55afeabbe493ed467b485479755a55be70",
+    "tools/vanilla_data/SourceProbe/InventoryChecks.cs": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8",
+    "tools/vanilla_data/SourceProbe/Program.cs": "a825667be03722d38e1f508d565e1328759da269362c81c2a68a18708b5d16e2",
+    "tools/vanilla_data/SourceProbe/ScalarCandidate.cs": "96d71f6daea0b552da07c26f03292250ad8f3abc3b1bb47903e742e204ac1805",
+    "tools/vanilla_data/SourceProbe/ScalarChecks.cs": "9f46ebe4e70727d3e5c269f4ce8dcfd68fce2c229961b030465c25d04ecb6f64",
+    "tools/vanilla_data/SourceProbe/ScalarValueCandidate.cs": "c974591fad0e70959caa06d2615ed754625dcd90a5278d6f807c36dbb707c8fb",
+    "tools/vanilla_data/SourceProbe/ScalarValueChecks.cs": "8abc9eb6a7d4e87aa3abd183aee672fca746d59ac64d393988c99eb8e360eabe",
+    "tools/vanilla_data/SourceProbe/ScalarValueVerification.cs": "6edadd1c58caaa2fbf3ebbfbd945f8763c26f5915aed6bbc44034f8ee267b1ff",
+    "tools/vanilla_data/SourceProbe/ScalarVerification.cs": "4191a017a143a2025e0ad4367b61bab7ca6b0f7db2bcf69fce589bb888089434",
+    "tools/vanilla_data/SourceProbe/SemanticInventory.cs": "ee445e1665ac43ca9d665abdf5e6373b9ae7023c99c1eacfab6459fe5fd63f86",
+    "tools/vanilla_data/SourceProbe/SourceProbe.csproj": "2ecbd9c81b1d177d6edbd73fbf13756fcaa7ebfde1c177e5c6a0fc3f262ec20c"
+  },
+  "backendDlls": {
+    "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+    "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+    "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+    "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+    "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+    "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+    "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+    "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+    "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+    "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+    "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+    "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+    "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+    "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+    "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+    "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+    "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+    "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+    "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+    "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+    "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+    "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+    "SourceProbe.dll": "75902490a9aa20732ead313cae8e7e4bf33d728f976a963ae23c848d3c21479d",
+    "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+    "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+    "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+    "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+    "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+    "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+  },
+  "originalSourceSha256": {
+    "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618"
+  },
+  "originalAndMetadataReferenceSha256": {
+    "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+    "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+    "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+    "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+    "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+    "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+    "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+    "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+    "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+    "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+    "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+    "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+    "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+    "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+    "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+    "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+    "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+    "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+    "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+    "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+    "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+    "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+    "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+  },
+  "compilationReference": {
+    "path": "C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App\\11.0.0-preview.7.26381.103\\System.Private.CoreLib.dll",
+    "sha256": "be9ffec0164d319398d6d521df547b7e737f330a0c144a9e5d172c5cf6b9d22e"
+  },
+  "editionAndHost": "Pinned official Linux TerrariaServer1458/FNA, executed on Windows x64 CoreCLR .NET11. This is not execution on Linux or .NET Framework x86.",
+  "comparison": {
+    "originalMethodUnchanged": true,
+    "compiledProperOriginalBodyCarrier": true,
+    "wholeOriginalPlayerUnitCompiled": false,
+    "candidateGeneratedByBoundSymbolRewriting": true,
+    "result": "Exact int or raw IEEE binary32 uint32 result bits. No JSON-number rounding or signed-zero normalization.",
+    "inputs": "All mapped readonly Player/Item fields remain explicit, fully named and unchanged; original Player1151/Item119 direct instance fields including inherited fields are fingerprinted before/after. Arrays retain identity, shape and contents; value types recurse; other object fields retain identity without traversing unrelated object internals.",
+    "rng": "Original Main.rand cursor and every physical56slot are recorded and unchanged. No candidate/API/RNG binding is admitted; no RNG checkpoint is restored to manufacture agreement.",
+    "finiteDomain": "Only finite binary32 input/output. Positive/negative zero, smallest subnormal, largest subnormal, smallest normal, adjacent normal and largest positive/negative finite endpoints are exercised. NaN/infinity, widening and numeric casts remain rejected."
+  },
+  "automaticControls": {
+    "compoundAssignmentOmissions": 5,
+    "categoryPrecedenceSwaps": 1,
+    "everyControlChangesBehavior": true,
+    "executionErrors": 0,
+    "details": [
+      {
+        "method": "knockback",
+        "controls": [
+          {
+            "mutation": "omit-operation-0",
+            "cases": 1185,
+            "differences": 387,
+            "errors": 0,
+            "assemblySha256": "4685ff1a94d27e6a0e9d41a018f4a5c04bdcd54dedfd671397b83dbe2edf28d6"
+          },
+          {
+            "mutation": "omit-operation-1",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "fa1cf46ddb62b671812118efd365ab82f32f53e58affc599ac84ac11dbde54fc"
+          },
+          {
+            "mutation": "omit-operation-2",
+            "cases": 1185,
+            "differences": 399,
+            "errors": 0,
+            "assemblySha256": "19fcef30f6cd9b42da5b0ca3da96f85ec98ba8c541c59f7f940285a3229cc713"
+          },
+          {
+            "mutation": "omit-operation-3",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "5f141fbb2712beb2ae0995540eeabc00b23feef9af1db81581a1e2ee5487c69d"
+          },
+          {
+            "mutation": "omit-operation-4",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "20218da8747de7aeaa797866b723cfe3845e467b4a54894dd280ddd30679fae6"
+          }
+        ]
+      },
+      {
+        "method": "crit",
+        "controls": [
+          {
+            "mutation": "swap-category-precedence",
+            "cases": 135,
+            "differences": 30,
+            "errors": 0,
+            "assemblySha256": "d5cde298aa63ad0ff91edffc6a45af130afd4fe9fc62a713aa020a63c8e8b17f"
+          }
+        ]
+      }
+    ]
+  },
+  "originalItemCategoryReadback": {
+    "repeatIdentical": true,
+    "calls": 10,
+    "sha256": "498a0f9b3beeeeae1b843b6d8688d6f1da08a046632c4adca9df754a73c7f7f2",
+    "programSha256": "a7b747a94a76efb6ff9a3d950958e9afed2d78ae9e6e0b57d4fac43adefccc9b",
+    "assemblySha256": "92520865f3fec3e6bd4571151dd1c6fb45d1383b5db52bd3a554c7050a991d93",
+    "rows": [
+      {
+        "requested": 1,
+        "actualType": 1,
+        "categories": {
+          "melee": true,
+          "ranged": false,
+          "magic": false,
+          "summon": false
+        }
+      },
+      {
+        "requested": 39,
+        "actualType": 39,
+        "categories": {
+          "melee": false,
+          "ranged": true,
+          "magic": false,
+          "summon": false
+        }
+      },
+      {
+        "requested": 64,
+        "actualType": 64,
+        "categories": {
+          "melee": false,
+          "ranged": false,
+          "magic": true,
+          "summon": false
+        }
+      },
+      {
+        "requested": 1309,
+        "actualType": 1309,
+        "categories": {
+          "melee": false,
+          "ranged": false,
+          "magic": false,
+          "summon": true
+        }
+      },
+      {
+        "requested": 2,
+        "actualType": 2,
+        "categories": {
+          "melee": false,
+          "ranged": false,
+          "magic": false,
+          "summon": false
+        }
+      }
+    ],
+    "scope": "Actual Item.SetDefaults facts transferred into explicit read-only category inputs. Method verification constructs a separate actual Item with those exact field values; no uninterrupted defaults-to-method caller/world parity claimed."
+  },
+  "toolChecks": {
+    "warningsAsErrorsBuild": true,
+    "pythonTests": 65,
+    "pythonLogSha256": "1712603397c9fc79bda57ba2e8d830e72e3db7be36c240b3215068cd5aaca758",
+    "semanticInventoryChecks": 20,
+    "schema1CapabilityChecks": 18,
+    "schema2CapabilityChecks": 27,
+    "logs": {
+      "build": "9e30e23f59b21ddf70a2a0bd0a5d8d88949e3ec409ad5bb32db3d95f44de10cb",
+      "inventory": "44e8640b842a16fca36d50eb667ef75ed72fed59fe0db0eb74aeda4a11972359",
+      "schema1": "3a098aa7e10611c2284f3b821623f83b7ad4251263ffa89166906c3c6ffd291d",
+      "schema2": "29bea7282680d212e2cecb9f2fbf7247408a117ad4ec90dfa82ae0f2243b7de9"
+    },
+    "checkArtifacts": {
+      "inventory": "62ae910a94138905b6d6d29277409ea90745808de2773b6892e6499b6e1ffdea",
+      "schema1": "b5be7339e5ce55d6fc7f1b2c51084f21092984cfbc9cde143465bff342feb8b1",
+      "schema2": "ad0b6c96623fc581259667601065c79efeef49006e9d904e4481b87f4f759f5d"
+    },
+    "allVanillaPythonTests": 200,
+    "documentationMirroredPages": 135,
+    "documentationMarkdownFiles": 309,
+    "postchecksRecordSha256": "5e4cab62d941534cc005db55f4ccaf2dce8f07f55772569dab485d60317484bd",
+    "postcheckCommands": [
+      {
+        "name": "python-all-final",
+        "exitCode": 0,
+        "command": [
+          "C:\\Users\\Xekep\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/ci",
+          "-p",
+          "test_vanilla*.py"
+        ],
+        "logSha256": "e3ef2b22649bd1c806425029481247a995dd6875da5e36dd188c18f89f83828a"
+      },
+      {
+        "name": "documentation-final",
+        "exitCode": 0,
+        "command": [
+          "C:\\Users\\Xekep\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+          "tools/ci/check_documentation.py",
+          "--changed-base",
+          "7ae9d32a1a161b769f7817cc14e57ca42d91da59"
+        ],
+        "logSha256": "92b2dd74c7c743b9add0170f7725ba754459c1a54fb2186a182e9459f5fc8014"
+      }
+    ]
+  },
+  "qualificationRecord": {
+    "cachePath": ".cache/typed-final/qualification.json",
+    "sha256": "cae8003440203462064f2dab7a9691d8abf8ef7dd4a50e2cac64c7b9b004a6de",
+    "runnerSha256": "8a186a981ffd639d0fdb3f7547e9155b7250c1d941d700a8b8ae0e3bb4333bb5",
+    "runs": [
+      {
+        "label": "knockback",
+        "repeat": "a",
+        "cases": 1185,
+        "resultSha256": "4afa639737406558d41d7493ef514f36d27c12360f815e2fd736c55d717e923d",
+        "observationSha256": "37ead0de4f2676b4d60add9dd1f20cb2025bb0b6de54f29ec27ec5591eb820e6",
+        "requestSha256": "df502f88f315e17489dbc24ab63349c2875dc0137d6af50d92b6ea5b1fb59dd8",
+        "candidateSha256": "6de4c3f54f25fc32ef0061a254c4218e2505a12a3940a6fdcada32520c606061",
+        "assemblySha256": "0d5d869c00dd8fba52c4eee139e519121b1247389995826f0a9c763996c8618d",
+        "carrierSha256": "fd60a7d4a3921718f1f2185e240433772e63908df73d07223d31c57e8ac9ddd1",
+        "mutants": [
+          {
+            "mutation": "omit-operation-0",
+            "cases": 1185,
+            "differences": 387,
+            "errors": 0,
+            "assemblySha256": "4685ff1a94d27e6a0e9d41a018f4a5c04bdcd54dedfd671397b83dbe2edf28d6"
+          },
+          {
+            "mutation": "omit-operation-1",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "fa1cf46ddb62b671812118efd365ab82f32f53e58affc599ac84ac11dbde54fc"
+          },
+          {
+            "mutation": "omit-operation-2",
+            "cases": 1185,
+            "differences": 399,
+            "errors": 0,
+            "assemblySha256": "19fcef30f6cd9b42da5b0ca3da96f85ec98ba8c541c59f7f940285a3229cc713"
+          },
+          {
+            "mutation": "omit-operation-3",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "5f141fbb2712beb2ae0995540eeabc00b23feef9af1db81581a1e2ee5487c69d"
+          },
+          {
+            "mutation": "omit-operation-4",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "20218da8747de7aeaa797866b723cfe3845e467b4a54894dd280ddd30679fae6"
+          }
+        ],
+        "compilationErrorCount": 296,
+        "sourceAndReferenceGuardsAccepted": true,
+        "methodQualified": true,
+        "globalCompilationErrorCount": 296,
+        "actualPlayerDirectFields": 1151,
+        "actualItemDirectFields": 119
+      },
+      {
+        "label": "knockback",
+        "repeat": "b",
+        "cases": 1185,
+        "resultSha256": "7291f0f998770e5feac5bbd76328448cbd4a712b497c140aa3e0a4b57e51609f",
+        "observationSha256": "37ead0de4f2676b4d60add9dd1f20cb2025bb0b6de54f29ec27ec5591eb820e6",
+        "requestSha256": "df502f88f315e17489dbc24ab63349c2875dc0137d6af50d92b6ea5b1fb59dd8",
+        "candidateSha256": "6de4c3f54f25fc32ef0061a254c4218e2505a12a3940a6fdcada32520c606061",
+        "assemblySha256": "0d5d869c00dd8fba52c4eee139e519121b1247389995826f0a9c763996c8618d",
+        "carrierSha256": "fd60a7d4a3921718f1f2185e240433772e63908df73d07223d31c57e8ac9ddd1",
+        "mutants": [
+          {
+            "mutation": "omit-operation-0",
+            "cases": 1185,
+            "differences": 387,
+            "errors": 0,
+            "assemblySha256": "4685ff1a94d27e6a0e9d41a018f4a5c04bdcd54dedfd671397b83dbe2edf28d6"
+          },
+          {
+            "mutation": "omit-operation-1",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "fa1cf46ddb62b671812118efd365ab82f32f53e58affc599ac84ac11dbde54fc"
+          },
+          {
+            "mutation": "omit-operation-2",
+            "cases": 1185,
+            "differences": 399,
+            "errors": 0,
+            "assemblySha256": "19fcef30f6cd9b42da5b0ca3da96f85ec98ba8c541c59f7f940285a3229cc713"
+          },
+          {
+            "mutation": "omit-operation-3",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "5f141fbb2712beb2ae0995540eeabc00b23feef9af1db81581a1e2ee5487c69d"
+          },
+          {
+            "mutation": "omit-operation-4",
+            "cases": 1185,
+            "differences": 195,
+            "errors": 0,
+            "assemblySha256": "20218da8747de7aeaa797866b723cfe3845e467b4a54894dd280ddd30679fae6"
+          }
+        ],
+        "compilationErrorCount": 296,
+        "sourceAndReferenceGuardsAccepted": true,
+        "methodQualified": true,
+        "globalCompilationErrorCount": 296,
+        "actualPlayerDirectFields": 1151,
+        "actualItemDirectFields": 119
+      },
+      {
+        "label": "crit",
+        "repeat": "a",
+        "cases": 135,
+        "resultSha256": "ef857d50d599dc7f1546d50145f044a2372b9aafbc6dd40c95f239861f57cb2e",
+        "observationSha256": "1485e23754d35b968c83b9b1b154b9670b68596110fa94bb13a0a6af1feca9ff",
+        "requestSha256": "81b2fd01afdf02fd8a50943609d6a471cad3c83573be65bc97a07cf70575a7a1",
+        "candidateSha256": "5e2c95a5ab72eed9f6e1ab85c99ad5132a8b6d13d5b5fd3fd6837da84e9d6846",
+        "assemblySha256": "5ff73c915320257a354cdcff864ea7cf1f0a8a56c6a6ff126368049466cac27d",
+        "carrierSha256": "b4cb0aaf38baca9eb0a90d397a6cdeca81c03918e9084b39cfe7d6cd49eb2157",
+        "mutants": [
+          {
+            "mutation": "swap-category-precedence",
+            "cases": 135,
+            "differences": 30,
+            "errors": 0,
+            "assemblySha256": "d5cde298aa63ad0ff91edffc6a45af130afd4fe9fc62a713aa020a63c8e8b17f"
+          }
+        ],
+        "compilationErrorCount": 296,
+        "sourceAndReferenceGuardsAccepted": true,
+        "methodQualified": true,
+        "globalCompilationErrorCount": 296,
+        "actualPlayerDirectFields": 1151,
+        "actualItemDirectFields": 119
+      },
+      {
+        "label": "crit",
+        "repeat": "b",
+        "cases": 135,
+        "resultSha256": "086bbcb231f23a820417b45bf04ebf68af712ff772387171f243ff6e775e3913",
+        "observationSha256": "1485e23754d35b968c83b9b1b154b9670b68596110fa94bb13a0a6af1feca9ff",
+        "requestSha256": "81b2fd01afdf02fd8a50943609d6a471cad3c83573be65bc97a07cf70575a7a1",
+        "candidateSha256": "5e2c95a5ab72eed9f6e1ab85c99ad5132a8b6d13d5b5fd3fd6837da84e9d6846",
+        "assemblySha256": "5ff73c915320257a354cdcff864ea7cf1f0a8a56c6a6ff126368049466cac27d",
+        "carrierSha256": "b4cb0aaf38baca9eb0a90d397a6cdeca81c03918e9084b39cfe7d6cd49eb2157",
+        "mutants": [
+          {
+            "mutation": "swap-category-precedence",
+            "cases": 135,
+            "differences": 30,
+            "errors": 0,
+            "assemblySha256": "d5cde298aa63ad0ff91edffc6a45af130afd4fe9fc62a713aa020a63c8e8b17f"
+          }
+        ],
+        "compilationErrorCount": 296,
+        "sourceAndReferenceGuardsAccepted": true,
+        "methodQualified": true,
+        "globalCompilationErrorCount": 296,
+        "actualPlayerDirectFields": 1151,
+        "actualItemDirectFields": 119
+      },
+      {
+        "label": "EncourageDespawn",
+        "repeat": "a",
+        "cases": 1014,
+        "resultSha256": "908c3150be73f606874e2c9d152fa3cd2bd476f6358e68b3abe3eb1ca79b2828",
+        "observationSha256": "5ce9f1180248fa3d75f6f0bda387b9dd60f4605e070b494261d23f95cd52ccba",
+        "requestSha256": "a0a25c345c17b5ab1fa77c87b14ef0eab14d6123616e63316a2bbc4624d2f7e4",
+        "candidateSha256": "c0c6f8cb36a41ae0119cf0c06769dd7f03cba5d8492955c495bb34c20ce179e1",
+        "assemblySha256": "03a22f4d5d26474b72e8a98e46fcc7b05e8e8327bd130041192d813aed86d7fb",
+        "carrierSha256": "01986311eb8487a702c3d723607a7a297ff2e4f6b27dc1a123d4dc468e8d4eb1",
+        "mutants": [
+          {
+            "mutation": "omit-field-write:RemainingTicks",
+            "cases": 1014,
+            "differences": 468,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "0aeec824e7323442d122c3516bd8acc37234cceb83595a17ce7fc7e649d5526b"
+          },
+          {
+            "mutation": "omit-field-write:ExpiryRequested",
+            "cases": 1014,
+            "differences": 507,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "9702c9a1d3a26eee9e9a771d28bf5746c03b34daf4d70b38ae221762411d0425"
+          }
+        ],
+        "compilationErrorCount": 162,
+        "sourceAndReferenceGuardsAccepted": true,
+        "methodQualified": true,
+        "globalCompilationErrorCount": 162,
+        "actualPlayerDirectFields": null,
+        "actualItemDirectFields": null
+      },
+      {
+        "label": "DiscourageDespawn",
+        "repeat": "a",
+        "cases": 1014,
+        "resultSha256": "ba1a7a47ab27fb8fc27f95f946247b46c41d43b92d54ef790b9ccee8706dd5fb",
+        "observationSha256": "5e69cea13554655e342421306abe7fa176771c3cd377c25ccb594ef9e0d5f79b",
+        "requestSha256": "bbc5065f0a941818f7d971e86c34069e89886c96cabaa21782b873ceda09ebe1",
+        "candidateSha256": "eaee9bccc4559f78c87c3f9867cd00b7f6546daeb270bb89996fbf691daded58",
+        "assemblySha256": "b9058d93e50e986a7aee33ec6073523680ff5fddf3637cdba9fb20a092913838",
+        "carrierSha256": "990928427369263c3963222124b0d430d765a475f195dc2abff8f3ee19e07c7c",
+        "mutants": [
+          {
+            "mutation": "omit-field-write:RemainingTicks",
+            "cases": 1014,
+            "differences": 468,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "47a81413819a94b716bfaa6752174292e61d99561c0ba2f611563bf6adb5ffd3"
+          },
+          {
+            "mutation": "omit-field-write:ExpiryRequested",
+            "cases": 1014,
+            "differences": 507,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "8592ae6dd1d69b4d6ec6b0e4207bb7e6a53cc3dc541cd1d3e3c7852e3155eaed"
+          }
+        ],
+        "compilationErrorCount": 162,
+        "sourceAndReferenceGuardsAccepted": true,
+        "methodQualified": true,
+        "globalCompilationErrorCount": 162,
+        "actualPlayerDirectFields": null,
+        "actualItemDirectFields": null
+      }
+    ]
+  },
+  "historicalRejectedAttempt": {
+    "cachePath": ".cache/typed-real/crit-first",
+    "reason": "A mutation-control AST list replacement failed with nodeInList before a verification observation could be accepted; ordinal reordering corrected it. Historical artifact remains rejected, not relabeled."
+  },
+  "ownershipFences": [
+    "Constructed Item flags and SetDefaults-derived read facts are test preimages, not proof of valid-world or retained equipment ownership.",
+    "Existing production consumers and owners are unchanged. Glove, knockback-buff14, Shroomite/Vortex stealth and other producers require separate ownership/currentness qualification.",
+    "DamageMultiplier/Damage are not generated: source properties, lookup-array aliasing and callee closure remain outside this capability contract.",
+    "No globals, getters, calls, arrays, RNG APIs, reference aliases, unsafe code, ref parameters, actor-field writes or numeric casts are admitted. No full AI/gameplay automatic-port claim."
+  ],
+  "scope": "Tool-only schema2 extension of the existing semantic SourceProbe/adapt-scalar pipeline, preserving schema1. All original-derived bodies and compiled candidates remain ignored cache artifacts. Finite sampled differential evidence is not universal equivalence, production admission, speed measurement, whole Player.Update, combat/equipment or full-world acceptance."
+}
