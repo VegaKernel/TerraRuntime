@@ -65,6 +65,8 @@ Generation writes into an unpublished `Workspace` backed by the contiguous `Worl
 
 Final cleanup rejects out-of-catalog tile/wall identities and unknown runtime tile flags before the normal world-generation finalizer and fresh `.wld` v326 composition take ownership.
 
+Its generation-time framing now also validates the ordinary and table-supported `Check2x1` objects `16/18/29/134/462/649`, removing broken surviving cells in the source order. A complete official isolated `Final Cleanup` fixture pins those branches and shared RNG. This does not extend the ordinary overlay to special seeds or establish full real-prefix parity.
+
 `Finalizer` now enforces the fail-closed `Validator1458` before publication:
 
 - `Finalized` is returned only when the structural validator reports `Valid`;

@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped six-identity source branch below passes Release warnings-as-errors, fast `25,549/25,549`, one unfiltered full `1,566,963/1,566,963` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; further framing, special-seed and real-prefix work is required. The pending-gate wording below is historical.
+
+## Final Cleanup Check2x1 framing, 2026-10-28
+
+Row 109 remains `P`, but the generation-time `TileFrame` slice now executes the official `Check2x1` footprint and ordinary/table support rules for types `16`, `18`, `29`, `134`, `462` and `649`. A registered official `Final Cleanup` `PassLegacy` fixture at `1000 × 500`, seed `1458`, exercises intact pairs, missing members, bad frame spacing, missing solid support and table-only support; six-field all-cell SHA-256 `85db1681ebc66152ef3f1fa2d02d8188bd4bfe5fef94500cd09de650da8f7435`, next RNG `1056314798`. Removing the table-support branch fails the unchanged digest. This is a bounded important-framing branch, not the remaining `TileFrame` families, special-seed tails or real-prefix parity. Grouped validation gates are pending.
+
 Post-acceptance offline-oracle merge (2026-10-28): concurrent tool/documentation changes are preserved on top of the accepted cave-house shipping snapshot. Exact Git comparison shows no `src/`, `tests/`, build-input or tier-configuration change; merged Release warnings-as-errors, 66 new tool regressions and bilingual documentation validation pass. The earlier full/Native results retain their exact shipping scope without a redundant rerun. Row 63 remains `P` and row 109 remains `P`.
 
 Hive/JungleShrines house-protection checkpoint (2026-10-28): the scoped row63 cross-pass boundary below passes Release warnings-as-errors, fast `25,548/25,548`, unfiltered full `1,566,962/1,566,962` with zero skips, and fresh Windows NativeAOT with five smokes. Row63 remains `P` pending full house builder and registered-pass differential. Earlier pending-gate wording below records the pre-acceptance candidate.

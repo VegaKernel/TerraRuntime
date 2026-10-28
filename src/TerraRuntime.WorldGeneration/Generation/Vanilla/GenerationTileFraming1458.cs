@@ -29,7 +29,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// (types <c>233</c>, <c>236</c>, <c>238</c> and <c>702</c>), ordinary torch <c>4</c> through
 /// <c>CheckTorch</c>, all five <c>IsADripTile</c> identities, dart trap <c>136</c>, directional tiles
 /// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one- and two-cell type-<c>185</c>
-/// piles, dye <c>227</c>,
+/// piles, the ordinary/table-supported <c>Check2x1</c> identities <c>16</c>/<c>18</c>/<c>29</c>/
+/// <c>134</c>/<c>462</c>/<c>649</c>, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -116,6 +117,12 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type == 235)
         {
             CheckThreeByOne(i, j);
+            return;
+        }
+
+        if (tile.Type is 16 or 18 or 29 or 134 or 462 or 649)
+        {
+            CheckTwoByOne(i, j, tile.Type);
             return;
         }
 
@@ -527,6 +534,50 @@ internal sealed class GenerationTileFraming1458(
         for (int x = left - 1; x < left + 4; x++)
         for (int y = j - 1; y < j + 2; y++)
             TileFrame(x, y);
+    }
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 WorldGen.Check2x1's ordinary solid-support and
+    /// table-supported type-29/type-462 arms.
+    /// The source checks horizontal frame spacing but does not require matching
+    /// FrameY; a broken object removes only its remaining matching cells before
+    /// re-framing both anchors in source order.
+    /// </summary>
+    private void CheckTwoByOne(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        int left = i - At(i, j).FrameX / 18 % 2;
+        if (!Contains(left, j) || !Contains(left + 1, j) ||
+            !Contains(left, j + 1) || !Contains(left + 1, j + 1))
+            return;
+
+        WorldTile first = At(left, j);
+        WorldTile second = At(left + 1, j);
+        bool supported = type is 29 or 462
+            ? IsTwoByOneTableSupport(left, j + 1) && IsTwoByOneTableSupport(left + 1, j + 1)
+            : SolidTileAllowBottomSlope(left, j + 1) && SolidTileAllowBottomSlope(left + 1, j + 1);
+        bool intact = first.IsActive && second.IsActive && first.Type == type && second.Type == type &&
+            second.FrameX == first.FrameX + 18 && supported;
+        if (intact)
+            return;
+
+        destroyingObject = true;
+        if (At(left, j) is { IsActive: true, Type: var firstType } && firstType == type)
+            KillTile(left, j);
+        if (At(left + 1, j) is { IsActive: true, Type: var secondType } && secondType == type)
+            KillTile(left + 1, j);
+        destroyingObject = false;
+        SquareTileFrame(left, j);
+        SquareTileFrame(left + 1, j);
+    }
+
+    private bool IsTwoByOneTableSupport(int x, int y)
+    {
+        WorldTile tile = At(x, y);
+        return tile.IsActive && GenerationFurnitureTiles1458.IsTable(tile.Type) &&
+            tile.Shape is not (1 or 2 or 3);
     }
 
     /// <summary>The one-cell branch of TerrariaServer 1.4.5.8 <c>WorldGen.CheckPile</c>.</summary>

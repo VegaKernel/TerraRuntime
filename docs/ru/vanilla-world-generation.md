@@ -65,6 +65,8 @@ Generation работает с неопубликованным `Workspace` по
 
 `Final Cleanup` отвергает tile/wall ID вне закреплённых vanilla catalogs и неизвестные runtime tile flags до передачи результата обычному world-generation finalizer и fresh `.wld` v326 composer.
 
+Его framing при генерации теперь также проверяет обычные и table-supported `Check2x1`-объекты `16/18/29/134/462/649`, удаляя сохранившиеся клетки сломанных объектов в исходном порядке. Полная официальная изолированная фикстура `Final Cleanup` закрепляет эти ветви и общий RNG. Это не распространяет ordinary overlay на special seeds и не доказывает parity на реальном prefix.
+
 `Finalizer` теперь требует fail-closed `Validator1458` перед публикацией:
 
 - `Finalized` возвращается только когда структурный валидатор даёт `Valid`;

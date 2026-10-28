@@ -1,5 +1,7 @@
 # NativeAOT and CoreCLR hosting baseline
 
+2026-10-28 Final Cleanup Check2x1 checkpoint: fresh Windows NativeAOT executable SHA256 `34b164f94fa56cb44ef9e86ffbcd6f21f0539ded73d78f6c0d4d8ef9c15090f1` passes exercised loop/protocol/network/world/TUI smokes. Release solution warnings-as-errors, fast `25,549/25,549` and unfiltered full `1,566,963/1,566,963` pass with zero skips. No new production dependency or project edge. Linux NativeAOT and full Final Cleanup parity remain unverified.
+
 2026-10-28 Hive/JungleShrines cave-house handoff: fresh Windows NativeAOT executable SHA256 `46894c63e0d28a62b50e21dfe0dd0927e51e80d6a587527e144ca814e662e12e` passes exercised loop/protocol/network/world/TUI smokes, including wiring and reservation checks. Release solution warnings-as-errors and unfiltered full `1,566,962/1,566,962` pass with zero skips. No production package or project edge changed; Linux NativeAOT and full Buried Chests parity remain unverified.
 
 ## Shimmer cave-house protection and offline pass oracle, 2026-10-28
