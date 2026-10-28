@@ -39,10 +39,14 @@ def _pairs(pairs):
     return result
 
 
-def read_json(path: Path):
+def parse_json(text: str):
     def invalid(value):
         raise ValueError('Non-finite JSON number: ' + value)
-    return json.loads(path.read_text(encoding='utf-8-sig'), object_pairs_hook=_pairs, parse_constant=invalid)
+    return json.loads(text, object_pairs_hook=_pairs, parse_constant=invalid)
+
+
+def read_json(path: Path):
+    return parse_json(path.read_text(encoding='utf-8-sig'))
 
 
 def pins(root: Path = ROOT) -> dict:

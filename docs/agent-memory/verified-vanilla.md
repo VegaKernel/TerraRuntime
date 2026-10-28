@@ -1,5 +1,13 @@
 # Verified vanilla facts
 
+## Actual isolated Grass Wall and prior Shimmer protection, 2026-10-28
+
+Pinned original1.4.5.8 registered Grass Wall GenPass.Apply and current GrassWallPass1458.Apply produce identical17,920-cell WorldTile16 projections and complete physical RNG endpoints on synthetic grass-wall-stain-v1 input for seeds1458/42/8675309. Actual omit-pass control differs in83cells+RNG; extra-rng differs only in RNG. Main.rand and WorldGen.genRand alias in this context; actual UnifiedRandom has one stored inext0..55 and56slots, with the other cursor derived. No dirt-pocket/SpreadGrass/natural-prefix/manifest-tail/raw-Tile-memory/whole-world claim follows.
+
+HouseUtils.AreRoomsValid -> StructureMap.CanPlace checks strict padded-room overlap with prior protected structures. Shimmer contributes AddProtectedStructure and retains a200x200rectangle. Marble/Granite use ordinary AddStructure, so overlap with those alone remains accepted. Actual official/helper comparison found old runtime wrongly accepted padding-only and room overlap; fresh pre-fix normal regression also failed the intended assertion. The fix rejects before any tile/chest/protected-house write and keeps exactly touching boundaries accepted. This closes the retained Shimmer context only; row63 staysP.
+
+Historical CI33268133716 really printed AddPasses72e757af; its exact body artifact expired. Other logged decompiled methods vary beyond whitespace despite nominal same artifact/tool versions. That does not explain the exact old AddPasses body or establish equivalence to current1e073711. Keep the diagnostic fingerprint failure; do not restamp the production catalog.
+
 ## Offline constructor data and worldgen provenance, 2026-10-28
 
 Fresh pinned official1.4.5.8 constructor calls (Classic, seed1458 reset per request, gameMenu=true, dedicated receive role, no content-sample initialization) reproduce the existing756live NPC metadata rows/15columns and3523placement rows. All761NPC and6195item requested identities are captured; zero-life NPCs remain explicit source records rather than invented actors. This does not extend initialized creation/AI/runtime parity. Source worldgen extraction finds109 lexical registrations with weights/outer guards; runtime comparison represents names/order/filter/fingerprints only. Current original AddPasses1e0737 differs from historical catalog72e; the cause remains unresolved, so no equivalent-body or repaired-generator claim follows from matching names. Official snapshot restore is canonical and deactivates NPCs; absent manifest hashes cannot stand in for an exact prefix/cell/RNG observation.

@@ -1,5 +1,11 @@
 # Production graph
 
+## Applied isolated worldgen oracle and Shimmer protection, 2026-10-28
+
+Offline PassProbe references existing WorldGeneration and links the current UnifiedRandom source; it adds no shipping project, dependency or runtime reflection. Shipping graph remains15projects/29edges. Fresh original registered Grass Wall and current runtime execution share an explicit synthetic fixture with actual readback; the Python comparator requires identical input cells/context/full physical RNG before comparing all named WorldTile16 output fields and RNG. The runner binds current source/tool inputs and six executed DLLs before/after. This supports one wall-stain profile, not a natural generation prefix or whole-world parity.
+
+The shipping change only threads existing Workspace into CaveHousePlacement1458.AreRoomsValid and rejects strict overlap of room.Inflate(5) with retained VanillaShimmerStructure before construction. Existing protected-house records remain in their owner. Marble/Granite ordinary AddStructure entries do not become protected. No new registry, random owner or additional draw is introduced; furniture/aging and other protected contexts remain open.
+
 ## Offline official data tools, 2026-10-28
 
 `tools/vanilla.py` orchestrates a separate SDK-only ReferenceProbe and strict Python data adapters. The probe uses pinned official assembly/dependency loading only in that developer process; no src project references the tool. Current shipping graph stays15projects/29edges. NPC constructor metadata and item-placement capture/check/emit/mutate use existing tables without modifying their runtime ownership/admission. Worldgen source metadata and an allowlisted one-method compiled Reset replay are separate operations with explicit unsupported/execution scope; they introduce no world state, RNG owner or new generation implementation. Paired guides and verification evidence describe actual qualification and the unresolved existing AddPasses fingerprint mismatch.

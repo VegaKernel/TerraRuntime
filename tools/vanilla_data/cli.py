@@ -160,6 +160,17 @@ def _mutate(args, data: dict) -> dict:
 
 
 def _worldgen(args) -> dict:
+    if args.action == 'run-pass':
+        from .pass_probe import run_pass
+        return run_pass(args.assembly, args.output_dir, args.seed, args.control)
+    if args.action == 'compare-pass':
+        from . import pass_trace
+        official, official_hash = pass_trace.load_with_hash(args.official, 'official')
+        runtime, runtime_hash = pass_trace.load_with_hash(args.runtime, 'runtime')
+        report = pass_trace.compare(official, runtime)
+        report['officialObservationSha256'] = official_hash
+        report['runtimeObservationSha256'] = runtime_hash
+        return report
     if args.action == 'replay-reset':
         from .worldgen_replay import replay_reset
         return replay_reset(args.tests_dll, args.output_dir)
@@ -187,7 +198,7 @@ def main(argv=None) -> int:
     capture = commands.add_parser('capture', help='Build an isolated probe and invoke pinned official defaults')
     capture.add_argument('--assembly', type=Path, required=True)
     capture.add_argument('--output', type=Path, required=True)
-    worldgen = commands.add_parser('worldgen', help='Source pass catalog and one bounded compiled Reset replay')
+    worldgen = commands.add_parser('worldgen', help='Source pass catalog, compiled Reset replay and fresh isolated cell/RNG comparison')
     worldgen_commands = worldgen.add_subparsers(dest='action', required=True)
     worldgen_capture = worldgen_commands.add_parser('capture')
     worldgen_capture.add_argument('--source-root', type=Path, required=True)
@@ -202,6 +213,15 @@ def main(argv=None) -> int:
     replay = worldgen_commands.add_parser('replay-reset')
     replay.add_argument('--tests-dll', type=Path, required=True)
     replay.add_argument('--output-dir', type=Path, required=True)
+    compare_pass = worldgen_commands.add_parser('compare-pass')
+    compare_pass.add_argument('--official', type=Path, required=True)
+    compare_pass.add_argument('--runtime', type=Path, required=True)
+    compare_pass.add_argument('--report', type=Path)
+    run_pass = worldgen_commands.add_parser('run-pass', help='Fresh isolated Grass Wall observations and cell/RNG comparison')
+    run_pass.add_argument('--assembly', type=Path, required=True)
+    run_pass.add_argument('--output-dir', type=Path, required=True)
+    run_pass.add_argument('--seed', type=int, default=1458)
+    run_pass.add_argument('--control', choices=('normal', 'omit-pass', 'extra-rng'), default='normal')
     for name in ('check', 'emit', 'mutate', 'verify'):
         command = commands.add_parser(name)
         command.add_argument('dataset', choices=[*TARGETS, 'all'] if name != 'emit' else list(TARGETS))
@@ -249,7 +269,7 @@ def main(argv=None) -> int:
             write_new(args.report, json.dumps(report, indent=2, allow_nan=False).encode('utf-8') + b'\n')
         # Full field diagnostics remain in --report. Keep routine terminal output bounded.
         summary = {key: value for key, value in report.items() if key not in (
-            'results', 'check', 'mutation', 'dllsBefore', 'dllsAfter', 'xmlAudit', 'command')}
+            'results', 'check', 'mutation', 'dllsBefore', 'dllsAfter', 'xmlAudit', 'command', 'commands')}
         if 'results' in report:
             summary['datasets'] = [{'dataset': row['dataset'], 'accepted': row['accepted'],
                                     'differences': len(row.get('differences', [])),

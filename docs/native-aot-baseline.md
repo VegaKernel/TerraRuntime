@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Shimmer cave-house protection and offline pass oracle, 2026-10-28
+
+Fresh Windows x64 NativeAOT publish and all five standalone loop/protocol/network/world/TUI smokes pass for the retained Shimmer cave-house fix. Executable SHA256 `e4457bc07329c96b49d8b312dd86ddcdd3da148f874039bf56e044a3c92dddc5`, PE CLR directory `0/0`. Release warnings-as-errors, focused77, fast25,546 and complete affected84,161 pass without failures/errors/skips. Shipping graph remains15projects/29edges; the new reflection-based PassProbe is offline-only and was exercised under CoreCLR. No unfiltered full, Linux Native, fresh TCP or original GUI acceptance is claimed. Exact artifacts, source/DLL guards and isolated-pass scope are recorded in [verification](verification/worldgen-applied-tools-20261028.json).
+
 ## Wiring merge-now integration, 2026-10-28
 
 The user renewed the explicit request to merge wiring into main. The prepared union combines mainb8c3c620 (concurrent fishing, paid ammo/tool continuity and cave-house changes) with wiring70621c21. Both resource-debit paths, fishing/wiring equipment observers and all fixture resources survive the resolved conflicts. This is merge integration, not a new broad vanilla-parity acceptance checkpoint. Git records actual publication.

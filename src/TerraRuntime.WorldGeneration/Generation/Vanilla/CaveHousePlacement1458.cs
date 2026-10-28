@@ -73,7 +73,7 @@ internal static class CaveHousePlacement1458
         }
 
         CaveHouseType1458 type = ResolveHouseType(grid, rooms);
-        if (!AreRoomsValid(grid, state, rooms, type))
+        if (!AreRoomsValid(workspace, grid, state, rooms, type))
             return false;
 
         CaveHousePalette1458 palette = ResolvePalette(type);
@@ -162,6 +162,7 @@ internal static class CaveHousePlacement1458
     }
 
     private static bool AreRoomsValid(
+        Workspace workspace,
         Grid grid,
         ChestPlacementState1458 state,
         IReadOnlyList<CaveHouseRoom1458> rooms,
@@ -170,6 +171,15 @@ internal static class CaveHousePlacement1458
         foreach (CaveHouseRoom1458 room in rooms)
         {
             CaveHouseRoom1458 padded = room.Inflate(5);
+            // HouseUtils.AreRoomsValid -> StructureMap.CanPlace checks protected
+            // overlap before construction. Shimmer retains its protected 200x200
+            // rectangle here; Marble/Granite use AddStructure, not protection.
+            if (workspace.VanillaShimmerStructure is WorldTileRegion shimmer &&
+                padded.Left < shimmer.ExclusiveRight && shimmer.X < padded.Right &&
+                padded.Top < shimmer.ExclusiveBottom && shimmer.Y < padded.Bottom)
+            {
+                return false;
+            }
             foreach (CaveHouseRoom1458 reserved in state.ProtectedHouseRooms)
             {
                 if (padded.Intersects(in reserved))

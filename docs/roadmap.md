@@ -1,5 +1,13 @@
 # TerraRuntime roadmap
 
+## Applied worldgen pass oracle, 2026-10-28
+
+`worldgen run-pass` now executes original registered Grass Wall and current runtime code on the same explicit synthetic input. All17,920projected cells and complete physical RNG agree for seeds1458/42/8675309; deliberate omission and extra-RNG controls fail as expected. The paired [worldgen guide](en/worldgen-source-tools.md) / [RU](ru/worldgen-source-tools.md) documents fresh source/DLL guards and standalone `compare-pass`. This covers wall staining only. Natural-prefix state mapping, dirt-pocket/SpreadGrass branches and other passes remain open; the AddPasses fingerprint diagnostic remains unresolved.
+
+## Cave-house prior Shimmer protection, 2026-10-28
+
+Row 63 remains `P`. Cave-house admission now checks the existing retained Shimmer protected rectangle before structure writes, using source-backed strict overlap with each room expanded by $5\,\text{tiles}$. Boundary touching and ordinary Marble/Granite `AddStructure` regions remain admissible. Direct original `HouseUtils.AreRoomsValid` calls establish this rule; the grouped regression fails on fresh pre-fix production and covers acceptance/refusal, cells, chest metadata and RNG. Other prior protected contexts, furniture, aging and a full registered-pass differential remain required. Scope and behavior are documented in [EN](en/vanilla-worldgen-chest-placement.md) / [RU](ru/vanilla-worldgen-chest-placement.md); this does not promote row 63 or establish full-world parity.
+
 ## Shared data and worldgen tooling, 2026-10-28
 
 Developer tooling now provides one official capture/check/emit/mutate workflow for existing NPC metadata and item-placement tables, plus lexical worldgen catalog capture/check/mutate and an exact allowlisted Reset artifact replay. Repeated captures agree byte-for-byte; complete756/3523row comparisons and44data mutation controls pass. Worldgen109names/order/filter agree, but its old AddPasses fingerprint remains a diagnosed mismatch; no production constant is restamped. Full generated-world/pass cell+RNG parity, source snapshot state mapping and production field-consumer analysis remain separate work. The paired [data tools](en/vanilla-data-tools.md)/[RU](ru/vanilla-data-tools.md) and [worldgen tools](en/worldgen-source-tools.md)/[RU](ru/worldgen-source-tools.md) document the executable workflow and limits. No gameplay behavior or compatibility status is expanded by this tooling checkpoint.

@@ -1,0 +1,623 @@
+{
+  "schemaVersion": 1,
+  "kind": "applied-worldgen-tool-and-scoped-runtime-fix",
+  "date": "2026-10-28",
+  "baseCommit": "c62fda2c632052dcfe49ff5028c2f56a10463c99",
+  "accepted": true,
+  "scope": "Fresh isolated synthetic Grass Wall profile and retained Shimmer cave-house protection. No natural-prefix/whole-world/full-pass compatibility or Linux Native claim.",
+  "oracle": [
+    {
+      "seed": 1458,
+      "control": "normal",
+      "accepted": true,
+      "classification": "equal-projection",
+      "sourceInputCount": 1832,
+      "sourceInputsSha256": "83fdd40e0b03460726f8ba4ec0a9ef972c63b2f4e9663d4cdae0ffdfbc520997",
+      "dllsUnchanged": true,
+      "wallSeconds": 2.4176303000422195,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": true,
+        "comparable": true,
+        "pass": "SurfaceDirtWallsToGrassWalls",
+        "scenario": "grass-wall-stain-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "equal-projection",
+        "cellsCompared": 17920,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": null,
+        "beforeCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b",
+        "officialAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8",
+        "runtimeAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/worldgen-pass-final/1458-normal/result.json",
+          "sha256": "a3873037ce20265797c044ac621d6eac5ab5f3e2e2875063bd7bb99702cc44f3"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-normal/official.json",
+          "sha256": "0bf97e0c46710ae37df934f33ae1e7a97af666496fe35523d741a9ba578c9f55"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-normal/runtime.json",
+          "sha256": "947a51882cd078e2f7713f82c8bc31a3955216b4e4999eaf4a2fae192370820c"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-normal/source-before.json",
+          "sha256": "b92e40378e1d4ff06a4089c9490083c2f2181daa8af466f18fb69eb2a1e402d1"
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "control": "normal",
+      "accepted": true,
+      "classification": "equal-projection",
+      "sourceInputCount": 1832,
+      "sourceInputsSha256": "83fdd40e0b03460726f8ba4ec0a9ef972c63b2f4e9663d4cdae0ffdfbc520997",
+      "dllsUnchanged": true,
+      "wallSeconds": 2.273303500027396,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": true,
+        "comparable": true,
+        "pass": "SurfaceDirtWallsToGrassWalls",
+        "scenario": "grass-wall-stain-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "equal-projection",
+        "cellsCompared": 17920,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": null,
+        "beforeCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b",
+        "officialAfterCellsSha256": "60e8dd0e0080545ddbc6ca843c9e44d830d14bbb2b7df20b437085fbd308b664",
+        "runtimeAfterCellsSha256": "60e8dd0e0080545ddbc6ca843c9e44d830d14bbb2b7df20b437085fbd308b664"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/worldgen-pass-final/42-normal/result.json",
+          "sha256": "10798375cb483dee79ef2575f452cf807424e8c2c0cc8f9e54fa1a42234dc05e"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/42-normal/official.json",
+          "sha256": "797bd609c9e7de8ed49a1608dae8ce3e63dab03c33348e8a05493a0a7233c623"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/42-normal/runtime.json",
+          "sha256": "f12099b1263fa5b7bf0951df807cfaff024908824d768533a61f91ead2c547f4"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/42-normal/source-before.json",
+          "sha256": "b92e40378e1d4ff06a4089c9490083c2f2181daa8af466f18fb69eb2a1e402d1"
+        }
+      ]
+    },
+    {
+      "seed": 8675309,
+      "control": "normal",
+      "accepted": true,
+      "classification": "equal-projection",
+      "sourceInputCount": 1832,
+      "sourceInputsSha256": "83fdd40e0b03460726f8ba4ec0a9ef972c63b2f4e9663d4cdae0ffdfbc520997",
+      "dllsUnchanged": true,
+      "wallSeconds": 2.2399583000224084,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": true,
+        "comparable": true,
+        "pass": "SurfaceDirtWallsToGrassWalls",
+        "scenario": "grass-wall-stain-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "equal-projection",
+        "cellsCompared": 17920,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": null,
+        "beforeCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b",
+        "officialAfterCellsSha256": "c5c032796a2fdd7b1cf0468c28bea9c3db2fa3ce6a80bbcac594cf81d437c1e5",
+        "runtimeAfterCellsSha256": "c5c032796a2fdd7b1cf0468c28bea9c3db2fa3ce6a80bbcac594cf81d437c1e5"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/worldgen-pass-final/8675309-normal/result.json",
+          "sha256": "f4a1acd1b10b7e2bc387d033eb47f5cd8bbd160576fb63c1cb2897a5eaee5b39"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/8675309-normal/official.json",
+          "sha256": "33e12204269904082ab37cdee09ebcb4b5b3d3bed9f4fc95668af707b26db87a"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/8675309-normal/runtime.json",
+          "sha256": "f0edac411a0002081d7e15b9d7bffd95b145aae09f925f8f63b85bc488713f33"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/8675309-normal/source-before.json",
+          "sha256": "b92e40378e1d4ff06a4089c9490083c2f2181daa8af466f18fb69eb2a1e402d1"
+        }
+      ]
+    },
+    {
+      "seed": 1458,
+      "control": "omit-pass",
+      "accepted": false,
+      "classification": "behavior-difference",
+      "sourceInputCount": 1832,
+      "sourceInputsSha256": "83fdd40e0b03460726f8ba4ec0a9ef972c63b2f4e9663d4cdae0ffdfbc520997",
+      "dllsUnchanged": true,
+      "wallSeconds": 2.322129200096242,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": false,
+        "comparable": true,
+        "pass": "SurfaceDirtWallsToGrassWalls",
+        "scenario": "grass-wall-stain-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "behavior-difference",
+        "cellsCompared": 17920,
+        "differentCells": 83,
+        "differentFields": 83,
+        "firstCellDifference": {
+          "index": 2948,
+          "x": 68,
+          "y": 18,
+          "fields": [
+            {
+              "field": "wall",
+              "expected": 65,
+              "actual": 63
+            }
+          ]
+        },
+        "firstRngDifference": {
+          "field": "inext",
+          "expected": 2,
+          "actual": 0
+        },
+        "beforeCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b",
+        "officialAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8",
+        "runtimeAfterCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/worldgen-pass-final/1458-omit-pass/result.json",
+          "sha256": "6d27536a15955e44ade1fb641dd85d2124920a5ea28998ae55ca4e2cd1e7c134"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-omit-pass/official.json",
+          "sha256": "0bf97e0c46710ae37df934f33ae1e7a97af666496fe35523d741a9ba578c9f55"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-omit-pass/runtime.json",
+          "sha256": "8069e23f9a76e2545943edeea5dd7ddccb1c968755adef300064580edac87358"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-omit-pass/source-before.json",
+          "sha256": "b92e40378e1d4ff06a4089c9490083c2f2181daa8af466f18fb69eb2a1e402d1"
+        }
+      ]
+    },
+    {
+      "seed": 1458,
+      "control": "extra-rng",
+      "accepted": false,
+      "classification": "behavior-difference",
+      "sourceInputCount": 1832,
+      "sourceInputsSha256": "83fdd40e0b03460726f8ba4ec0a9ef972c63b2f4e9663d4cdae0ffdfbc520997",
+      "dllsUnchanged": true,
+      "wallSeconds": 2.2572558000683784,
+      "comparison": {
+        "schemaVersion": 1,
+        "operation": "worldgen-compare-pass",
+        "accepted": false,
+        "comparable": true,
+        "pass": "SurfaceDirtWallsToGrassWalls",
+        "scenario": "grass-wall-stain-v1",
+        "inputDifferences": [],
+        "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+        "classification": "behavior-difference",
+        "cellsCompared": 17920,
+        "differentCells": 0,
+        "differentFields": 0,
+        "firstCellDifference": null,
+        "firstRngDifference": {
+          "field": "inext",
+          "expected": 2,
+          "actual": 3
+        },
+        "beforeCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b",
+        "officialAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8",
+        "runtimeAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8"
+      },
+      "artifacts": [
+        {
+          "path": ".cache/worldgen-pass-final/1458-extra-rng/result.json",
+          "sha256": "5e8d88686a4601ea843ad3a1eeeb9fd859036d26380057da8315359121f65dfe"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-extra-rng/official.json",
+          "sha256": "0bf97e0c46710ae37df934f33ae1e7a97af666496fe35523d741a9ba578c9f55"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-extra-rng/runtime.json",
+          "sha256": "d45d5c843d4cac8a36461e144825bc8649c135a0a84ebab7c24e1ed9db188a51"
+        },
+        {
+          "path": ".cache/worldgen-pass-final/1458-extra-rng/source-before.json",
+          "sha256": "b92e40378e1d4ff06a4089c9490083c2f2181daa8af466f18fb69eb2a1e402d1"
+        }
+      ]
+    }
+  ],
+  "runtime": {
+    "build": {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj",
+        "-c",
+        "Release",
+        "-warnaserror",
+        "--no-restore",
+        "-v",
+        "minimal"
+      ],
+      "exitCode": 0,
+      "gatedDllClosureUnchanged": true,
+      "differentDlls": []
+    },
+    "focused": {
+      "accepted": true,
+      "counts": {
+        "total": "77",
+        "passed": "77",
+        "failed": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "13.420",
+        "skipped_tests": []
+      }
+    },
+    "tiers": {
+      "fast": {
+        "executed": true,
+        "exit_code": 0,
+        "wall_seconds": 491.2459507000167,
+        "tests": {
+          "total": "25546",
+          "passed": "25546",
+          "failed": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "489.415",
+          "skipped_tests": []
+        },
+        "accepted": true
+      },
+      "affected": {
+        "executed": true,
+        "exit_code": 0,
+        "wall_seconds": 512.4022287999978,
+        "tests": {
+          "total": "84161",
+          "passed": "84161",
+          "failed": "0",
+          "errors": "0",
+          "skipped": "0",
+          "time": "510.153",
+          "skipped_tests": []
+        },
+        "accepted": true
+      }
+    },
+    "xmlAudit": {
+      "fast": {
+        "selectedMethods": 5241,
+        "executedMethods": 5241,
+        "rows": 25546,
+        "missingMethods": [],
+        "unplannedMethods": [],
+        "path": ".cache/worldgen-applied-candidate-01/fast/tests.xml",
+        "sha256": "b161e604489742565567656040936638bd7e9665a8592540693a2ff90061f4ec"
+      },
+      "affected": {
+        "selectedMethods": 83,
+        "executedMethods": 83,
+        "rows": 84161,
+        "missingMethods": [],
+        "unplannedMethods": [],
+        "path": ".cache/worldgen-applied-candidate-01/affected/tests.xml",
+        "sha256": "e96727e1c9e027289914ba19edb3661c2d103e2c23ecb15991ff90f8128a5ac2"
+      }
+    },
+    "sourceAndDllGuards": {
+      "accepted": true,
+      "sourceInputs": 4008,
+      "executedDlls": 158,
+      "unchanged": true,
+      "scope": "Focused + mandatory fast + complete known affected domains; no unfiltered full/Native claim"
+    },
+    "unfilteredFullExecuted": false,
+    "selectionScope": {
+      "scope": "Mandatory fast plus COMPLETE worldgen/infrastructure affected matrices for the sole changed shipping source. Developer Python/probe files qualified separately. The new grouped Fact/private helpers run in fast; no existing matrix rows sampled.",
+      "shippingSource": [
+        "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.cs"
+      ],
+      "newFact": "TerraRuntime.Tests.CaveHousePriorProtection1458Tests.Cave_house_offers_respect_prior_shimmer_protection_before_any_structure_write",
+      "fullSuiteStarted": false
+    },
+    "causalRegression": {
+      "expectedAssertionRed": true,
+      "exitCode": 1,
+      "wallSeconds": 0.27330670005176216,
+      "testSourceSha256": "c8d908da1c1eb4c73ab1718214dc1f781afe88f868845518863802a3a3862a2e",
+      "dlls": {
+        "Microsoft.Bcl.AsyncInterfaces.dll": "5705d245072d3eb78400547b32147dbb6e2c8b02ba8bda76729798f5efdeaecb",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "TerraRuntime.Contracts.dll": "e7183807d1db75a2ff53cb7633515d8ad0800eb31c56dca3902275baeca8e573",
+        "TerraRuntime.Gameplay.dll": "84f2cb9bc1e308ded9eb1064147ab492aa05a662a515fcd6272bb190f931a28b",
+        "TerraRuntime.Tests.dll": "c040d47627fecf058d214a77483261390aabe7513623880d7d9e77c48947a4c4",
+        "TerraRuntime.World.dll": "682e61c4d661911ac5d6771030eeb4c79e4b879221cb87d57fb139571838d5ff",
+        "TerraRuntime.WorldGeneration.dll": "7699c70993802133633c441a31279205af1eb772d669fca74943f61d5aaabdf7",
+        "xunit.v3.assert.dll": "cd1eee2c41ac7e880a3e6ab03a8b03191e2c4cc567fcf10cf3fc35a38fcaf77c",
+        "xunit.v3.common.dll": "050b5e9b2e07bdae637dab552918140d290b49e83f8741bb74e09f17789a4f74",
+        "xunit.v3.core.dll": "826f76dceb966b4596c2404361b503d41b73042f1ba9f2b8ab649b376f143356"
+      },
+      "runtimeSourceBeforeSha256": "9a3baa28fb3267ae8d0a8d97d364dd6833ee236eddd9e75f00878980dfc03c72",
+      "scope": "Fresh current pre-fix WorldGeneration DLL from completed PassProbe build, same normal Fact source and direct assertion adapter; unprotected and touching cases passed before intended overlap failure."
+    },
+    "independentOfficialBoundary": {
+      "reproduced": true,
+      "rows": [
+        {
+          "name": "unprotected-region-overlap",
+          "source": true,
+          "runtime": true
+        },
+        {
+          "name": "protected-region-outside-padding",
+          "source": true,
+          "runtime": true
+        },
+        {
+          "name": "protected-region-overlaps-house-padding",
+          "source": false,
+          "runtime": true
+        },
+        {
+          "name": "protected-region-inside-house",
+          "source": false,
+          "runtime": true
+        }
+      ],
+      "dllCount": 158,
+      "dllsUnchanged": true,
+      "gameSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "runtimeWorldGenerationSha256": "ec050d3f082af1b650ee61e14e6c22a010a1e9b80bbc70ba6dcfa23e89647935",
+      "scope": "Fresh official HouseUtils.AreRoomsValid helper calls versus existing compiled runtime helper. One explicit room/protected-region context; not a complete pass/house or current-source acceptance."
+    }
+  },
+  "native": {
+    "accepted": true,
+    "publishSucceeded": true,
+    "publishExitCode": 0,
+    "publishCommand": [
+      "powershell.exe",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\build\\publish.ps1",
+      "-RuntimeIdentifier",
+      "win-x64",
+      "-Profile",
+      "native-aot",
+      "-Configuration",
+      "Release",
+      "-NoClean"
+    ],
+    "priorArtifact": null,
+    "publishStartedNs": 1793181869524014400,
+    "smokes": [
+      {
+        "mode": "loop",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\worldgen-applied-candidate-01\\native\\bin\\TerraRuntime.Server.exe",
+          "--loop-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "52885586e7f042d28bb6346bf4b7ff0c8389cb6abbe54327e0a6cac7f2abf0e3"
+      },
+      {
+        "mode": "protocol",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\worldgen-applied-candidate-01\\native\\bin\\TerraRuntime.Server.exe",
+          "--protocol-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "mode": "network",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\worldgen-applied-candidate-01\\native\\bin\\TerraRuntime.Server.exe",
+          "--network-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "mode": "world",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\worldgen-applied-candidate-01\\native\\bin\\TerraRuntime.Server.exe",
+          "--world-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "mode": "tui",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\worldgen-applied-candidate-01\\native\\bin\\TerraRuntime.Server.exe",
+          "--tui-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ],
+    "scope": "Fresh Windows x64 NativeAOT server/five standalone smokes. No Linux Native/GUI/TCP/full-suite claim.",
+    "executablePath": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\worldgen-applied-candidate-01\\native\\bin\\TerraRuntime.Server.exe",
+    "executableSha256": "e4457bc07329c96b49d8b312dd86ddcdd3da148f874039bf56e044a3c92dddc5",
+    "executableBytes": 37509120,
+    "pe": {
+      "machine": "0x8664",
+      "optionalMagic": "0x20b",
+      "clrRva": 0,
+      "clrSize": 0
+    },
+    "sourceAndTestBinBefore": {
+      "source-before.json": {
+        "count": 4008,
+        "manifestSha256": "9976972161f0c6c67efcaf4a1b621648fc3042c056b672760637b9f1a9a7f090",
+        "mismatches": []
+      },
+      "dll-before.json": {
+        "count": 158,
+        "manifestSha256": "45237728a7c08a1dac0398321559ba4690a03209e4ee0e53d3960a387d374d29",
+        "mismatches": []
+      }
+    },
+    "sourceAndTestBinAfter": {
+      "source-before.json": {
+        "count": 4008,
+        "manifestSha256": "9976972161f0c6c67efcaf4a1b621648fc3042c056b672760637b9f1a9a7f090",
+        "mismatches": []
+      },
+      "dll-before.json": {
+        "count": 158,
+        "manifestSha256": "45237728a7c08a1dac0398321559ba4690a03209e4ee0e53d3960a387d374d29",
+        "mismatches": []
+      }
+    },
+    "fastResultSha256": "63d4531056e7b3b462a4cc8622298902e54e0352b0ec5335d46792ae11ad2158",
+    "completedNs": 1793181943755736300,
+    "pins": [
+      {
+        "path": "bin/TerraRuntime.Server.exe",
+        "sha256": "e4457bc07329c96b49d8b312dd86ddcdd3da148f874039bf56e044a3c92dddc5"
+      },
+      {
+        "path": "guard-after.json",
+        "sha256": "bb750132a342c4273b8fa7b32f1c73591c68942be5d8e2c1685fd2d8ccc01392"
+      },
+      {
+        "path": "guard-before.json",
+        "sha256": "bb750132a342c4273b8fa7b32f1c73591c68942be5d8e2c1685fd2d8ccc01392"
+      },
+      {
+        "path": "loop.log",
+        "sha256": "52885586e7f042d28bb6346bf4b7ff0c8389cb6abbe54327e0a6cac7f2abf0e3"
+      },
+      {
+        "path": "network.log",
+        "sha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "path": "protocol.log",
+        "sha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "path": "publish.log",
+        "sha256": "ff52e15ac4d502f013d48c77de1a35604d72aefc1580c8b408657a69e0e8f4e5"
+      },
+      {
+        "path": "tui.log",
+        "sha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      },
+      {
+        "path": "world.log",
+        "sha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      }
+    ]
+  },
+  "pythonTests": {
+    "passed": 117,
+    "failed": 0,
+    "errors": 0,
+    "wallSeconds": 4.831
+  },
+  "shippingGraph": {
+    "projects": 15,
+    "projectReferences": 29,
+    "newShippingDependencies": 0
+  },
+  "dataTools": {
+    "accepted": true,
+    "mutants": 44,
+    "verification": {
+      "path": ".cache/vanilla-data/verify-applied-final-20261028.json",
+      "sha256": "1b2aad4a5aea84073f4d7ae843e037521884ead9801e9eac295f957f68ac96aa"
+    }
+  },
+  "knownDiagnostic": {
+    "accepted": false,
+    "differences": [
+      {
+        "field": "AddPassesSha256",
+        "expected": "1e073711995e1eb38578d7d23e991cf5005fefaf573188ebbdcec261f945347f",
+        "actual": "72e757af1fb0a7b565d397bbb0f9fd1d32a2960838ba636c593e122645ab9672"
+      }
+    ],
+    "operation": "worldgen-check",
+    "runtimeCatalogSha256": "1b76787431deb846201b5e89269bec576fac4a1e16e0dd719b2109097adc41c0",
+    "coverage": {
+      "runtimeWeightComparison": "not-represented-by-runtime-catalog",
+      "seedGateComparison": "recorded-and-fingerprinted-not-executed",
+      "sourceRegistrationCount": 109,
+      "sourceWeightsKnown": 109,
+      "worldCellRngComparison": "not-executed"
+    },
+    "sourceFreshness": "checked",
+    "scope": "Registration metadata/fingerprints only; no generated-world, cell/RNG or AI parity claim",
+    "sourceDifferences": [],
+    "wallSeconds": 0.023308799951337278
+  },
+  "artifacts": [
+    {
+      "path": ".cache/worldgen-applied-candidate-01/accepted.json",
+      "sha256": "7118c5493fe3302e09860678ad22d36edc90b9247269e6106ac0090666c04b1a"
+    },
+    {
+      "path": ".cache/worldgen-applied-candidate-01/focused.xml",
+      "sha256": "769b10becda41dabc1c6c4f00fc8b82bf57c3a860dca46004d148322ef74485b"
+    },
+    {
+      "path": ".cache/worldgen-applied-candidate-01/source-before.json",
+      "sha256": "9976972161f0c6c67efcaf4a1b621648fc3042c056b672760637b9f1a9a7f090"
+    },
+    {
+      "path": ".cache/worldgen-applied-candidate-01/dll-before.json",
+      "sha256": "45237728a7c08a1dac0398321559ba4690a03209e4ee0e53d3960a387d374d29"
+    },
+    {
+      "path": ".cache/worldgen-applied-candidate-01/build-final.log",
+      "sha256": "fdd5d61375f1cfa8f67731f7def65faee144a3d77230819858ebed2268f1b707"
+    },
+    {
+      "path": ".cache/worldgen-applied-candidate-01/native/result.json",
+      "sha256": "abc417058134b9a490654fc1cd2b0fe95e0a9256a6dbf8302ec894a05d69f613"
+    }
+  ]
+}
