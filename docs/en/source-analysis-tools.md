@@ -8,6 +8,8 @@ A separate experimental `source adapt-scalar` operation now **automatically gene
 
 The [main requalification](../verification/semantic-scalar-candidate-main-20261028.json) repeats the actual-original checks on the main checkout. The [combined integration record](../verification/ground-critter-semantic-main-union-20261029.json) keeps this development-tool proof separate from the NPC runtime acceptance while verifying both source sets after merge.
 
+The [schema 2 main receipt](../verification/semantic-typed-weapon-main-20261029.json) separately qualifies the later read-only weapon-stat adaptation. Detailed observations and generated bodies remain in the local cache.
+
 ```mermaid
 flowchart LR
     A[Explicit source files and pinned references] --> B[Roslyn semantic model]
@@ -123,4 +125,38 @@ Tool-only checks:
 ```powershell
 py -3 -m unittest discover -s tools/ci -p test_vanilla_scalar_candidate.py
 dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --candidate-self-test .cache/scalar/checks01.json
+```
+
+## Read-only scalar results, schema 2
+
+`adapt-scalar` also accepts a separate schema2 contract for `int`, `bool` and finite `float` results. Schema1 keeps its original write-only capability rules. Schema2 maps exact own-instance fields and fields of one explicit class parameter as **read-only** inputs. Each mapping adds `receiver` (`this` or the original parameter name) and `access: "readOnly"`; the request adds `returnType`. Every input remains mandatory. The generated candidate receives a flattened typed state by `in`; the class argument disappears only after every use is proved to be a permitted field read.
+
+For example, the `GetWeaponCrit(Terraria.Item)` request uses this shape inside the existing analysis envelope:
+
+```json
+{
+  "schemaVersion": 2,
+  "returnType": "int",
+  "fields": [
+    {"symbol":"Terraria.Player.meleeCrit","target":"MeleeCrit","type":"int","receiver":"this","access":"readOnly"},
+    {"symbol":"Terraria.Player.rangedCrit","target":"RangedCrit","type":"int","receiver":"this","access":"readOnly"},
+    {"symbol":"Terraria.Player.magicCrit","target":"MagicCrit","type":"int","receiver":"this","access":"readOnly"},
+    {"symbol":"Terraria.Item.melee","target":"Melee","type":"bool","receiver":"sItem","access":"readOnly"},
+    {"symbol":"Terraria.Item.ranged","target":"Ranged","type":"bool","receiver":"sItem","access":"readOnly"},
+    {"symbol":"Terraria.Item.magic","target":"Magic","type":"bool","receiver":"sItem","access":"readOnly"}
+  ],
+  "cases": [{"state":{"MeleeCrit":17,"RangedCrit":29,"MagicCrit":41,"Melee":true,"Ranged":true,"Magic":true},
+             "arguments":[{"receiver":"sItem"}],"rngSeed":1458}]
+}
+```
+
+The fragment omits `analysis`: supply the same required envelope as above, selecting `Terraria/Player.cs`, `Terraria.Player.GetWeaponCrit` and parameter type `Terraria.Item`. All float inputs and results use `{"bits":2147483648}`-style uint32 bit records; that example is negative zero. Subnormals and finite boundaries are preserved. NaN, infinity, numeric casts/widening and nonfinite results are refused in this bounded mode. Supported statements include scalar locals, by-value scalar parameter assignments, typed returns and checked-for-whitelist add/subtract/multiply operations. Properties, globals, API/RNG calls, arrays, reference aliases, unsafe blocks and actor-field writes remain rejected.
+
+The [typed weapon evidence](../verification/semantic-typed-weapon-candidate-20261029.json) covers automatically generated `Player.GetWeaponKnockback` and `GetWeaponCrit`, actual unchanged official calls, a proper compiled method-body carrier, raw result bits, unchanged named input facts and full 56-slot RNG. Original Player/Item fingerprints cover every direct field, recursively represented value types and array elements; other references retain identity, without claiming their transitive internals. Automatically generated omitted-modifier and category-precedence mutants must change results with zero execution errors. Constructed Item flag profiles and separate `Item.SetDefaults` category readbacks are explicit test inputs, not valid-world or equipment admission.
+
+No production behavior changes here. Glove, knockback-buff, stealth and other fact producers still require their own retained owners before these candidates could be bound to gameplay. `GetWeaponDamageMultiplier`/`GetWeaponDamage` remain deferred because their property and classification-table closure is not admitted. Generated original-derived bodies stay exclusively in `.cache`.
+
+```powershell
+py -3 -m unittest tools.ci.test_vanilla_source_analysis tools.ci.test_vanilla_scalar_candidate tools.ci.test_vanilla_scalar_values
+dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --value-candidate-self-test .cache/scalar/value-checks01.json
 ```

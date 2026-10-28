@@ -8,6 +8,8 @@
 
 [Повторная квалификация main](../verification/semantic-scalar-candidate-main-20261028.json) заново выполняет проверки по настоящему оригиналу в основном checkout. [Общий интеграционный манифест](../verification/ground-critter-semantic-main-union-20261029.json) отделяет доказательства инструмента разработки от приёмки NPC runtime и проверяет оба набора исходников после merge.
 
+[Приёмка схемы 2 в main](../verification/semantic-typed-weapon-main-20261029.json) отдельно подтверждает последующую read-only адаптацию расчёта оружия. Подробные наблюдения и сгенерированные тела остаются в локальном кэше.
+
 ```mermaid
 flowchart LR
     A[Явные исходные файлы и закреплённые зависимости] --> B[Семантическая модель Roslyn]
@@ -123,4 +125,38 @@ py -3 tools/vanilla.py source adapt-scalar --request .cache/scalar/request.json 
 ```powershell
 py -3 -m unittest discover -s tools/ci -p test_vanilla_scalar_candidate.py
 dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --candidate-self-test .cache/scalar/checks01.json
+```
+
+## Результаты scalar-методов без изменения акторов: схема 2
+
+`adapt-scalar` также принимает отдельную схему2 для результатов `int`, `bool` и конечных `float`. Правила записи схемы1 сохраняются. Схема2 сопоставляет точные поля собственного экземпляра и поля одного явно указанного class-параметра как входы **только для чтения**. Каждая запись добавляет `receiver` (`this` либо исходное имя параметра) и `access: "readOnly"`; запрос добавляет `returnType`. Все входные значения обязательны. Сгенерированный кандидат получает плоское типизированное состояние по `in`; class-аргумент удаляется только после проверки каждого его использования как разрешённого чтения поля.
+
+Пример формы запроса для `GetWeaponCrit(Terraria.Item)` внутри существующей analysis-оболочки:
+
+```json
+{
+  "schemaVersion": 2,
+  "returnType": "int",
+  "fields": [
+    {"symbol":"Terraria.Player.meleeCrit","target":"MeleeCrit","type":"int","receiver":"this","access":"readOnly"},
+    {"symbol":"Terraria.Player.rangedCrit","target":"RangedCrit","type":"int","receiver":"this","access":"readOnly"},
+    {"symbol":"Terraria.Player.magicCrit","target":"MagicCrit","type":"int","receiver":"this","access":"readOnly"},
+    {"symbol":"Terraria.Item.melee","target":"Melee","type":"bool","receiver":"sItem","access":"readOnly"},
+    {"symbol":"Terraria.Item.ranged","target":"Ranged","type":"bool","receiver":"sItem","access":"readOnly"},
+    {"symbol":"Terraria.Item.magic","target":"Magic","type":"bool","receiver":"sItem","access":"readOnly"}
+  ],
+  "cases": [{"state":{"MeleeCrit":17,"RangedCrit":29,"MagicCrit":41,"Melee":true,"Ranged":true,"Magic":true},
+             "arguments":[{"receiver":"sItem"}],"rngSeed":1458}]
+}
+```
+
+В этом фрагменте опущен обязательный `analysis`: добавьте оболочку из предыдущего примера, выбрав `Terraria/Player.cs`, `Terraria.Player.GetWeaponCrit` и тип параметра `Terraria.Item`. Любой float-вход и результат задаётся uint32-битами вида `{"bits":2147483648}`; здесь это отрицательный ноль. Субнормальные и граничные конечные значения сохраняются. NaN, бесконечность, числовые cast/widening и неконечные результаты в этом режиме отклоняются. Поддерживаются scalar locals, присваивание scalar-параметрам по значению, типизированные возвраты и проверенные по списку операции сложения, вычитания и умножения. Properties, globals, API/RNG calls, arrays, reference aliases, unsafe blocks и запись в поля акторов по-прежнему запрещены.
+
+[Доказательство typed weapon](../verification/semantic-typed-weapon-candidate-20261029.json) связывает автоматически сгенерированные `Player.GetWeaponKnockback` и `GetWeaponCrit` с фактическими вызовами неизменённого официального EXE, корректным скомпилированным носителем тела метода, битами результата, неизменными именованными входами и всеми 56 ячейками RNG. Fingerprint исходных Player/Item охватывает все прямые поля, рекурсивно представленные value types и элементы массивов; прочие references сохраняют identity без утверждения об их транзитивных внутренностях. Автоматические mutants удаления модификатора и перестановки приоритета категорий должны менять результат без ошибок исполнения. Созданные профили флагов Item и отдельные чтения категорий через настоящий `Item.SetDefaults` — явные тестовые входы, а не допуск состояния мира или экипировки.
+
+Production-поведение не меняется. Владельцы glove, knockback-buff, stealth и других входных фактов должны отдельно получить допуск до подключения кандидатов к геймплею. `GetWeaponDamageMultiplier`/`GetWeaponDamage` отложены: замыкание property getters и таблиц классификации пока не разрешено. Сгенерированные исходные тела остаются исключительно в `.cache`.
+
+```powershell
+py -3 -m unittest tools.ci.test_vanilla_source_analysis tools.ci.test_vanilla_scalar_candidate tools.ci.test_vanilla_scalar_values
+dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --value-candidate-self-test .cache/scalar/value-checks01.json
 ```
