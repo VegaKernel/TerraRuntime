@@ -2,9 +2,44 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SourceProbe;
 
-if (args.Length != 2) throw new ArgumentException("Expected request.json and new observation.json");
 var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, WriteIndented = true };
+if (args.Length == 2 && args[0] == "--candidate-self-test")
+{
+    var checks = ScalarChecks.Run();
+    using var output = new FileStream(args[1], FileMode.CreateNew, FileAccess.Write);
+    JsonSerializer.Serialize(output, checks, options);
+    Console.WriteLine(JsonSerializer.Serialize(checks, options));
+    return;
+}
+if (args.Length == 3 && args[0] == "--adapt-scalar")
+{
+    string cache = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../../.cache"));
+    string destination = Path.GetDirectoryName(Path.GetFullPath(args[2]))!;
+    if (!destination.StartsWith(cache + Path.DirectorySeparatorChar, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        throw new ArgumentException("Generated original-derived bodies must remain below this tool worktree's .cache");
+    if ((File.GetAttributes(cache) & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("Linked candidate cache is unsupported");
+    for (string? path = destination; path is not null && path != cache; path = Path.GetDirectoryName(path))
+        if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("Linked candidate output is unsupported");
+    using var requestInput = File.OpenRead(args[1]);
+    using var bounded = new MemoryStream();
+    byte[] chunk = new byte[8192]; int count;
+    while ((count = requestInput.Read(chunk, 0, Math.Min(chunk.Length, 1024 * 1024 + 1 - (int)bounded.Length))) > 0)
+    {
+        bounded.Write(chunk, 0, count);
+        if (bounded.Length > 1024 * 1024) throw new ArgumentException("Request exceeds1MiB");
+    }
+    byte[] raw = bounded.ToArray();
+    var scalar = JsonSerializer.Deserialize<ScalarRequest>(raw, options) ?? throw new ArgumentException("Missing scalar request");
+    var loaded = CompilationLoader.Load(scalar.Analysis.SourceRoot, scalar.Analysis.Assembly, scalar.Analysis.Sources);
+    var plan = ScalarCandidate.Plan(loaded, scalar);
+    var observation = ScalarVerification.Run(plan, Path.GetDirectoryName(Path.GetFullPath(args[2]))!);
+    using var output = new FileStream(args[2], FileMode.CreateNew, FileAccess.Write);
+    JsonSerializer.Serialize(output, observation, options);
+    Console.WriteLine("Scalar candidate compiled and checked against original; no production admission");
+    return;
+}
+if (args.Length != 2) throw new ArgumentException("Expected request.json and new observation.json");
 if (args[0] == "--self-test")
 {
     var checks = InventoryChecks.Run();
