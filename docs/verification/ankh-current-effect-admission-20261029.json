@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "kind": "current-effect-admission-health-correction",
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "scope": "Both live and pre-countdown current effects gate the existing whole player phase and narrower fallback health. Current regeneration/DOT and full consumed BuffState currentness; no new owner or hidden source effect filtering.",
+  "history": {
+    "candidate01": "Interrupted after a private real-authority reproduction proved unsupported finalframe bypass. No full/fast/Native/TCP acceptance claimed.",
+    "candidate01Receipt": {
+      "path": ".cache/ankh-union-20261029/candidate-01/accepted.json",
+      "sha256": "ca4ac71f8ae85dd20eaf69f6f5fe426ec20b91bbecc3382a84869ab8faaa3fc3"
+    },
+    "ownedFullChild": {
+      "path": ".cache/ankh-union-20261029/candidate-01/interrupted-process.json",
+      "sha256": "4806c2f219bbc4a959de4a0911ad895e5fc6e2ce2afec936b85a9a3cd8f93aaa"
+    },
+    "initial48NormalOld": {
+      "total": 48,
+      "assertionFailures": 11,
+      "passed": 37,
+      "errors": 0,
+      "receipt": {
+        "path": ".cache/ankh-union-20261029/fence-proof/normal-old-proof.json",
+        "sha256": "eea4145d2e5a5ccea03244d594041c90f3c062568166dc37248d876d050433af"
+      }
+    },
+    "stronger49HealthOld": {
+      "total": 49,
+      "assertionFailures": 18,
+      "passed": 31,
+      "errors": 0,
+      "receipt": {
+        "path": ".cache/ankh-union-20261029/fence-proof/health-old03-proof.json",
+        "sha256": "7bdc59e3f9d759a31ea85aed7caeb79ae449f6c0419b10a32f59df4e7eea5194"
+      }
+    }
+  },
+  "finalChecks": {
+    "warnings": 0,
+    "buildErrors": 0,
+    "build": {
+      "path": ".cache/ankh-union-20261029/fence-proof/health-fixed-build.log",
+      "sha256": "6aa7eb934ca2aefb781dbb917365c9450e6ea9b45d133b87dafbdb8c61dc68f8"
+    },
+    "fixedFocusedAndNeighbors": {
+      "total": 525,
+      "passed": 525,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": {
+        "path": ".cache/ankh-union-20261029/fence-proof/health-fixed.xml",
+        "sha256": "77fd4ef88b7ea60e37b10e10c5c7a8ef4fcb47d7d0a6c50040c58d5736b6d5aa"
+      }
+    },
+    "sameFreshTestDllSha256": "6e74f31a3a9cd9dbb2df194152dc56ef8ffeb1be9483e2be38ad0b036937ad56",
+    "sameFinal49TestSource": true,
+    "savedBeforeHealthFixApplicationReplay": {
+      "total": 49,
+      "assertionFailures": 18,
+      "passed": 31,
+      "errors": 0,
+      "skipped": 0,
+      "xml": {
+        "path": ".cache/ankh-union-20261029/fence-proof/final-health-old.xml",
+        "sha256": "cfacb6435387218862c4a672fb146716f759c59b92ded261aa9add384db9aba6"
+      },
+      "changedDlls": [
+        "TerraRuntime.Application.dll"
+      ],
+      "allOther157DllsAndTestDllIdentical": true
+    },
+    "canonical158DllsUnchangedAfterReplay": true
+  },
+  "coverage": {
+    "ownedContactIdentities": 24,
+    "durations": [
+      1,
+      2
+    ],
+    "knownSupportedCases": 20,
+    "unsupportedKnownPolicyCases": 28,
+    "additionalEffectOnlyProviderMutation": 1,
+    "initialUnsupportedDuration1BypassIds": [
+      31,
+      44,
+      46,
+      48,
+      67,
+      69,
+      70,
+      80,
+      103,
+      120,
+      148
+    ],
+    "FrozenWebbedStonedAlreadyRefused": [
+      47,
+      149,
+      156
+    ]
+  },
+  "independentOriginal": {
+    "entry": "Unmodified initialized Terraria.Player.Update(0)",
+    "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "probeSha256": "c6cdbf951d1e099e9eb99c98be6d7ad8425639bfe2c88b498beb4a62dfa61e04",
+    "probeSourceSha256": "4d0789e338e5f52f696a4b4570a4ea3b7d4c358a4a3430be967521c3f51ea6f9",
+    "repeatIdentical": true,
+    "sourceA": {
+      "path": ".cache/ankh-union-20261029/fence-proof/source-dot/original-a.json",
+      "sha256": "d26378ec32777b93eab454852ab4cf37fbcfe072a99fe955ba2e8b70f723ab1b"
+    },
+    "sourceB": {
+      "path": ".cache/ankh-union-20261029/fence-proof/source-dot/original-b.json",
+      "sha256": "d26378ec32777b93eab454852ab4cf37fbcfe072a99fe955ba2e8b70f723ab1b"
+    },
+    "observations": [
+      {
+        "buff": 20,
+        "inputDuration": 1,
+        "lifeRegenCount": -4,
+        "lifeRegenTimeBits": "3f800000"
+      },
+      {
+        "buff": 20,
+        "inputDuration": 2,
+        "lifeRegenCount": -4,
+        "lifeRegenTimeBits": "3f800000"
+      },
+      {
+        "buff": 24,
+        "inputDuration": 1,
+        "lifeRegenCount": -8,
+        "lifeRegenTimeBits": "3f800000"
+      },
+      {
+        "buff": 24,
+        "inputDuration": 2,
+        "lifeRegenCount": -8,
+        "lifeRegenTimeBits": "3f800000"
+      },
+      {
+        "buff": 39,
+        "inputDuration": 1,
+        "lifeRegenCount": -24,
+        "lifeRegenTimeBits": "3f800000"
+      },
+      {
+        "buff": 39,
+        "inputDuration": 2,
+        "lifeRegenCount": -24,
+        "lifeRegenTimeBits": "3f800000"
+      }
+    ],
+    "scope": "Six ordinary grounded authored original contexts, durations1/2, repeated; confirms final DOT health counts/time only. Fullnamed state/RNG remain rawcache; no copied originalbody or wholeMain/GUI/LinuxNative claim."
+  },
+  "review": "SourceDocs independently reviewed both App admission/currentness paths and adjacent outside/grappling/regen ordering; no additional concrete blocker reported.",
+  "next": "Commit/freeze corrected Ankh union. Root will merge parallel NPC16/projectile usualAI before ONE successor full and fresh Native/TCP; no publication yet."
+}

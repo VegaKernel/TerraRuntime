@@ -1,5 +1,9 @@
 # Production graph
 
+## Corrected current-effect admission and health, 2026-10-29
+
+Whole-phase and fallback-health admission both inspect existing live slots plus the immutable current-effect projection. Health derives supported final-frame DOT/regen from that projection and revalidates its complete BuffState after providers, including effect-only changes. This closes expired unsupported statuses and known final DOT without a new owner, ledger, RNG stream, dependency or project. Corrected union1196 focused cases and same-DLL boundary/numerical controls are green; aggregate full/Native/TCP waits for the parallel NPC16 merge. Candidate01 full was interrupted and never accepted.
+
 ## Isolated scalar-debuff continuation, 2026-10-29
 
 Six current effects22/30/32/33/35/36 reuse existing PlayerBuffState44slots and an immutable ordered pre-countdown projection, shared effectiveequipment/retainedcombat, healthregen, magicpayment and drymovement owners. No new timerledger/RNG/inventory owner, project/dependency or reflection in shipping. Detached phase validates current stores/providers before adopting health, buffslots, motion, clocks and sourceRNG. Explicit before-equipment defense capability retains Weak negativeintermediate; lateclamp/halving produces validated finalcombat. Silence gates fresh represented mana-positive attempts only; paidreceipts continue. Component953green and independent/sourcecausalproof accepted; rootaggregate integration with mainNPC22/tool remains pending.

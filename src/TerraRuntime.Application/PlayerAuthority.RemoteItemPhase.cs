@@ -9,6 +9,10 @@ using TerraRuntime.World;
 namespace TerraRuntime.Application;
 internal sealed partial class PlayerAuthority
 {
+    private static bool IsRepresentedOrdinaryPlayerBuff1458(BuffTypeId type) => type.Value is
+        5 or 16 or 20 or 21 or 22 or 23 or 24 or 30 or 32 or 33 or 35 or 36 or 39 or 93 or 94 or
+        112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123;
+
     // A bounded ordinary remote profile, not the complete Player.Update scheduler. All players
     // share Main.SwapRandom("UpdatePlayers"); skipping an unsupported earlier actor is unsound.
     internal bool TryTickRemotePlayerPhase()
@@ -465,7 +469,10 @@ internal sealed partial class PlayerAuthority
             out int manaMaximumBonus,
             plan.VoidStorageOpen, item.AmmoCycling is not null) ||
             plan.Buffs.IsItemUseCrowdControlled ||
-            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 22 or 23 or 24 or 30 or 32 or 33 or 35 or 36 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)) ||
+            plan.BuffTypes.Any(static type => !IsRepresentedOrdinaryPlayerBuff1458(type)) ||
+            // A duration-one slot can already be gone while UpdateBuffs still
+            // supplies its current effect. Expiration cannot grant admission.
+            effectTypes.Any(static type => !IsRepresentedOrdinaryPlayerBuff1458(type)) ||
             member.MiscFlags1 != 0 ||
             (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||

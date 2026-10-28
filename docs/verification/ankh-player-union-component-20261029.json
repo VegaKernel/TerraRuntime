@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "kind": "corrected-ankh-player-union-component",
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "mergedPublishedMain": "f4a05e19",
+  "unionMergeHead": "039e9bb7ec06820c1816433e7b9331ef0570125e",
+  "equipmentComponent": "0aaab63c3fb148777e5fe80af987d4369287992e",
+  "scalarComponent": "975d44e97a890c2757e4e06f4e050dc7482e9b8d",
+  "scope": "Sixteen equipment grants +six current continuations +current-effect admission/fallback-health correction through existing owners. No NPC source/oldfixture changes or new production edge. Current component only; root holds successorfull/Native/TCP until parallelNPC16 merge.",
+  "checks": {
+    "warnings": 0,
+    "buildErrors": 0,
+    "currentTestDllSha256": "6e74f31a3a9cd9dbb2df194152dc56ef8ffeb1be9483e2be38ad0b036937ad56",
+    "focused": {
+      "total": 1196,
+      "passed": 1196,
+      "errors": 0,
+      "skipped": 0,
+      "receipt": {
+        "path": ".cache/ankh-union-20261029/corrected-focus/result.json",
+        "sha256": "82125f897db1fb602c72f428a843e6d920ccd9d70c2ac91ae1589b07329c5e01"
+      }
+    },
+    "causal": {
+      "path": ".cache/ankh-union-20261029/causal-final/result.json",
+      "sha256": "810c7396e0110d8c94fd274d3fd31ecf1e0829bb183462e6a5415e2ee573e918"
+    },
+    "causalCounts": {
+      "effects": {
+        "total": 398,
+        "assertionFailures": 339,
+        "passed": 59,
+        "errors": 0,
+        "skipped": 0,
+        "sameTestDll": true,
+        "xmlSha256": "228906487fb75d2a02abc9fdc7b2a7f48b919a952699afd3eebc5b81c17b9522",
+        "changedDlls": {
+          "TerraRuntime.Application.dll": "f51731914af5980522f2136b31df7bbc232b1e83c90ea9d4d90d1c5295346064",
+          "TerraRuntime.Gameplay.dll": "f700775b61d54c4f42421e684a84278f642adfe60ffec256ac9f4f2c5be651f1"
+        }
+      },
+      "caps": {
+        "total": 42,
+        "assertionFailures": 9,
+        "passed": 33,
+        "errors": 0,
+        "skipped": 0,
+        "sameTestDll": true,
+        "xmlSha256": "823504b1a9ac2273b14c5a790e595a0098d7b611873113a139c2086247a0f4a0",
+        "changedDlls": {
+          "TerraRuntime.Application.dll": "a23cd022134c33851a5c6d9d6858a5915c7d3a0281e50ce59f5963f303af663c"
+        }
+      },
+      "cleanup": {
+        "total": 51,
+        "assertionFailures": 30,
+        "passed": 21,
+        "errors": 0,
+        "skipped": 0,
+        "sameTestDll": true,
+        "xmlSha256": "2dc8c3c5c50cb4ef8c2d2cb65838e6320f5c623e2e40872a7ccd11bc164d8bcd",
+        "changedDlls": {
+          "TerraRuntime.Application.dll": "a58fd6e09bf208dabfa33b2fda81d30b4e7cf13bf12dde8a88b837c98e8b2655"
+        }
+      }
+    },
+    "boundary": {
+      "path": "docs/verification/ankh-current-effect-admission-20261029.json",
+      "sha256": "c8cdd6988722dc268360a479419d240d7852871f032d8110ae5e58e888cdc9e0"
+    },
+    "sourceInputs": 4086,
+    "testDlls": 158,
+    "graph": "15projects/29edges/no cycles",
+    "domain": "473CSfiles",
+    "pythonCi": "264tests OK beforeboundary CSharp-only correction; tooling source remains identical to published f4",
+    "graphLog": {
+      "path": ".cache/ankh-union-20261029/graph.log",
+      "sha256": "41153afe9d8764a1e4c314f2daf1da5133855d9a305a3c26c91b108b0f7c34fd"
+    },
+    "domainLog": {
+      "path": ".cache/ankh-union-20261029/domain.log",
+      "sha256": "118a6fbb6e16fb5df2cc2a38fc6202ba89e50cc4b53bb6728317c1e70cc4920d"
+    }
+  },
+  "historicalCandidate01": {
+    "accepted": false,
+    "status": "INTERRUPTED after provenunsupported finalframe bypass; never completedfull/fast/Native/TCP",
+    "receipt": {
+      "path": ".cache/ankh-union-20261029/candidate-01/accepted.json",
+      "sha256": "ca4ac71f8ae85dd20eaf69f6f5fe426ec20b91bbecc3382a84869ab8faaa3fc3"
+    }
+  },
+  "stillFenced": [
+    "Confused31/Stoned156 currentwholephase",
+    "otherunrepresented ownedcontacteffects, includingfinalframe",
+    "sixscalaroutsideworldretainedfieldbranch",
+    "AnkhShield1613fireWalk,1921,5355, unknownworld/equipment/caller work"
+  ],
+  "next": "Merge parallel NPC16/projectiles, then freshsource/index/DLL freeze +one audited unfiltered full, Native5smokes, actualRelease/Native TCP. Existing candidate01 preparedTCP paths must not be executed asfinal."
+}
