@@ -1,0 +1,1109 @@
+{
+  "schemaVersion": 1,
+  "kind": "ordinary-melee-ai3-connected-acceptance",
+  "date": "2026-10-28",
+  "accepted": true,
+  "baseCommit": "76e5a9d371d8af329b3e47f68e36332abc8335ce",
+  "cohort": [
+    44,
+    104,
+    140,
+    181,
+    196,
+    197,
+    464,
+    470,
+    489,
+    524,
+    525,
+    526,
+    527,
+    528,
+    529,
+    536,
+    691
+  ],
+  "scope": [
+    "Retained composed NPC phase with exact subtype motion, targeting, frames, status, activity and shared RNG.",
+    "Ghoul dedicated HitEffect choices and resolved-damage propagation through all shared callers.",
+    "All seventeen NPC-specific tables: 43 rules, 48 materializable rewards, exact natural prefixes, conditional world facts and bad-luck-only capability.",
+    "Retained lethal world-fact capture/currentness, including detached Guide-doll batches."
+  ],
+  "runtimeGate": {
+    "accepted": true,
+    "candidate": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03",
+    "configSha256": "49e170283438da9406da9f1d4a66c210ff15a7f31ccbf00d2f3fd7646978cfc7",
+    "discoveredMethods": 5452,
+    "dllManifestSha256": "bafddef01bf1e023754b35facb6677f5e9784db6dfd012fc55faefd051d49f1a",
+    "executedDlls": 158,
+    "finalGuard": {
+      "accepted": true,
+      "changedManifests": [],
+      "dllDifferences": [],
+      "executedDllCount": 158,
+      "sourceDifferences": [],
+      "sourceInputCount": 4045
+    },
+    "runnerPath": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\analyzer-roadmap-20261028\\run-gates.py",
+    "runnerSha256": "9c1464325b222f30cf2777ee93961ab221d748100c1eb372599df7dfe13b45e1",
+    "scope": "Current-source warnings-as-errors build, exact focused classes, mandatory fast, and complete policy-selected affected matrices from explicitly configured shipping paths. Developer tooling is qualified separately. Full runs occur only if affected selection requires the existing conservative policy fallback. No Native/Linux/GUI/fresh TCP acceptance is implied.",
+    "selectionScope": [
+      "src/TerraRuntime.Application/NpcAuthority.cs",
+      "src/TerraRuntime.Application/RuntimeNpcBuffAiStepper1458.cs",
+      "src/TerraRuntime.Application/RuntimeNpcBuffStatus1458.OrdinaryMelee.cs",
+      "src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline.DeathPlanning.cs",
+      "src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline.Loot.cs",
+      "src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline.SpecificLoot.cs",
+      "src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline.VoodooBatch.cs",
+      "src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline.cs",
+      "src/TerraRuntime.Application/RuntimeNpcReplicationRegistry.UndeadNetwork1458.cs",
+      "src/TerraRuntime.Application/ServerRuntimeComposition.cs",
+      "src/TerraRuntime.Application/VanillaNpcCheckActiveAiStepper.cs",
+      "src/TerraRuntime.Application/VanillaNpcWorldMotionAiStepper.cs",
+      "src/TerraRuntime.Application/VanillaOrdinaryMeleeEnvironment1458.cs",
+      "src/TerraRuntime.Application/VanillaOrdinaryMeleePresentation1458.cs",
+      "src/TerraRuntime.Contracts/Gameplay/VanillaOrdinaryMeleeDropItemIds1458.cs",
+      "src/TerraRuntime.Core/Npcs/RuntimeNpcStateOwnershipPolicy.cs",
+      "src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorContext.cs",
+      "src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorStrategies.cs",
+      "src/TerraRuntime.Core/Npcs/VanillaNpcTargetingAiStepper.cs",
+      "src/TerraRuntime.Core/Npcs/VanillaOrdinaryMeleeAccepted1458.cs",
+      "src/TerraRuntime.Gameplay/Items/VanillaDefinitionCatalog.cs",
+      "src/TerraRuntime.Gameplay/Items/VanillaItemPrefixCatalog.cs",
+      "src/TerraRuntime.Gameplay/Items/VanillaOrdinaryMeleeDropCatalog1458.cs",
+      "src/TerraRuntime.Gameplay/Npcs/Simulation/VanillaGroundFighterNpcCatalog.cs",
+      "src/TerraRuntime.Gameplay/Npcs/Simulation/VanillaNpcAiCoverageCatalog.cs",
+      "src/TerraRuntime.Gameplay/Npcs/Simulation/VanillaZombieMotion.cs",
+      "src/TerraRuntime.Gameplay/Npcs/VanillaNpcLootRules.cs",
+      "src/TerraRuntime.Gameplay/Npcs/VanillaOrdinaryMeleeLootCatalog1458.cs",
+      "src/TerraRuntime.Gameplay/Npcs/VanillaUndeadLootCatalog1458.cs",
+      "tests/TerraRuntime.Tests/Fixtures/GhoulHitEffectsLinux1458.json.gz",
+      "tests/TerraRuntime.Tests/Fixtures/GhoulHitEffectsLinux1458.provenance.json",
+      "tests/TerraRuntime.Tests/Fixtures/OrdinaryMeleeLootLinux1458.json.gz",
+      "tests/TerraRuntime.Tests/Fixtures/OrdinaryMeleeLootLinux1458.provenance.json",
+      "tests/TerraRuntime.Tests/Fixtures/OrdinaryMeleeLootRareLinux1458.json.gz",
+      "tests/TerraRuntime.Tests/Fixtures/OrdinaryMeleeLootRareLinux1458.provenance.json",
+      "tests/TerraRuntime.Tests/GhoulHitEffect1458Tests.cs",
+      "tests/TerraRuntime.Tests/GroundRosterDefaults1458Tests.cs",
+      "tests/TerraRuntime.Tests/NpcGroundRosterCreation1458Tests.cs",
+      "tests/TerraRuntime.Tests/NpcRemainingDefinitions1458Tests.cs",
+      "tests/TerraRuntime.Tests/NpcSourceDefaultRoster1458Tests.cs",
+      "tests/TerraRuntime.Tests/OrdinaryMeleeCurrentness1458Tests.cs",
+      "tests/TerraRuntime.Tests/OrdinaryMeleeLoot1458Tests.cs",
+      "tests/TerraRuntime.Tests/OrdinaryMeleeLootWorldOwnership1458Tests.cs",
+      "tests/TerraRuntime.Tests/OrdinaryMeleeRuntime1458Tests.cs",
+      "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj",
+      "tests/TerraRuntime.Tests/VanillaGroundFighterNpcCatalogTests.cs",
+      "tests/TerraRuntime.Tests/VanillaNpcAiCoverageCatalogTests.cs",
+      "tests/TerraRuntime.Tests/VanillaOrdinaryMeleeCohort1458Tests.cs"
+    ],
+    "sourceInputs": 4045,
+    "sourceManifestSha256": "d94a9f920dbf0c3f27d91a0059384dffb4f2b405a9326b88410f4fcb91508b25",
+    "stages": {
+      "affected": {
+        "accepted": true,
+        "afterGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 158,
+          "sourceDifferences": [],
+          "sourceInputCount": 4045
+        },
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-maxThreads",
+          "16",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\affected\\tests.xml"
+        ],
+        "executed": true,
+        "exitCode": 0,
+        "logSha256": "b927e6948f650ef89af743c5c56ae0d5fb25ed6933a0b0060c2b120d1c554917",
+        "methodAudit": {
+          "accepted": true,
+          "counts": {
+            "errors": 0,
+            "failed": 0,
+            "not-run": 0,
+            "passed": 1575076,
+            "skipped": 0,
+            "total": 1575076
+          },
+          "executedMethods": 5452,
+          "missingMethods": [],
+          "plannedMethods": 5452,
+          "unplannedMethods": [],
+          "xmlSha256": "eeefbb2b00a2047bf4a311b4fc849d5ebd9e0121887f393a741cf5b5dc792772"
+        },
+        "planSha256": "c0382b071132f4677657fecb42b1edd3b2373971a6b8e9ec3a72cddb73ea9d79",
+        "tests": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 1575076,
+          "skipped": 0,
+          "total": 1575076
+        },
+        "wallSeconds": 1719.8773276000284
+      },
+      "build": {
+        "accepted": true,
+        "command": [
+          "dotnet",
+          "build",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\TerraRuntime.Tests.csproj",
+          "-c",
+          "Release",
+          "-warnaserror",
+          "-v",
+          "quiet"
+        ],
+        "exitCode": 0,
+        "logSha256": "4d66c941b7118313dcfc0cd0a0407c55fa66d73d07ad2883f11710ad2a391ba5",
+        "sourceGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 0,
+          "sourceDifferences": [],
+          "sourceInputCount": 4045
+        },
+        "wallSeconds": 8.85498040006496
+      },
+      "fast": {
+        "accepted": true,
+        "afterGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 158,
+          "sourceDifferences": [],
+          "sourceInputCount": 4045
+        },
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-maxThreads",
+          "16",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\fast\\tests.xml",
+          "-method-",
+          "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Original_four_accessories_own_repeated_paid_selection_and_entropy",
+          "-method-",
+          "TerraRuntime.Tests.BannerClosest1458Tests.Actual_banner_boundary_matches_original_squared_float_body_dead_ghost_and_ties",
+          "-method-",
+          "TerraRuntime.Tests.BeeRawAi0051458Tests.Original_AI005_and_UpdateNPC_use_None_player_or_non_bee_NPC_targets",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicAi1458Tests.Complete_original_AI_matches_all_phases_and_random_checkpoint",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicAi1458Tests.Default_reflection_predicate_matches_every_original_projectile_identity",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicAi1458Tests.Original_two_slot_reflection_has_exact_old_velocity_and_nonfinite_source_outcomes",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicWorldExecution1458Tests.Retained_whole_AI_then_dry_physics_matches_original_UpdateNPC",
+          "-method-",
+          "TerraRuntime.Tests.BlueSlimeSpawnDefaults1458Tests.Pure_defaults_match_actual_original_spawn_overrides",
+          "-method-",
+          "TerraRuntime.Tests.BlueSlimeSpawnDefaults1458Tests.Store_materializes_owned_body_combat_money_and_source_creation_rng",
+          "-method-",
+          "TerraRuntime.Tests.BossRecovery1458Tests.Complete_original_recovery_and_seasonal_materialization_matches",
+          "-method-",
+          "TerraRuntime.Tests.BossRecoveryPipeline1458Tests.Recovery_suffix_matches_original_post_imported_rng_and_all_seasonal_live_bodies",
+          "-method-",
+          "TerraRuntime.Tests.BuriedChest1458Tests.Chest_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.BuriedChestsPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.CasterSpawnTests.Creation_matches_original_difficulty_world_progression_and_head_presence",
+          "-method-",
+          "TerraRuntime.Tests.CreateOceanCaves1458Tests.Production_pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Committed_caster_matches_original_AI_children_and_RNG",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Five_calls_preserve_queued_teleport_marker_and_ordered_RNG",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Shared_firing_rectangle_matches_original_fractional_edges",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Teleport_query_matches_original_geometry_players_and_RNG",
+          "-method-",
+          "TerraRuntime.Tests.DungeonFurniture1458Tests.Furniture_tiles_dressers_and_random_stream_match_original",
+          "-method-",
+          "TerraRuntime.Tests.DungeonLegacyEntrance1458Tests.Production_entrance_renderer_matches_official_building_and_metadata",
+          "-method-",
+          "TerraRuntime.Tests.DungeonLegacyHall1458Tests.Hall_matches_official_full_cells_endpoint_and_direction",
+          "-method-",
+          "TerraRuntime.Tests.DungeonPitProtection1458Tests.Protected_pit_gates_consumers_but_not_wall_variants",
+          "-method-",
+          "TerraRuntime.Tests.DungeonPitTraps1458Tests.Ordinary_early_feature_matches_all_cells_bounds_flooding_and_shared_random",
+          "-method-",
+          "TerraRuntime.Tests.DungeonPlatforms1458Tests.Building_platforms_and_shelf_objects_match_original_tiles_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.DungeonProductionPrefix1458Tests.Complete_pass_matches_official_cells_chests_anchor_and_rng_on_real_prefix",
+          "-method-",
+          "TerraRuntime.Tests.DungeonSurfaceBuildings1458Tests.Production_renderer_matches_original_whole_building",
+          "-method-",
+          "TerraRuntime.Tests.DungeonSurfaceFeatures1458Tests.Spikes_walls_and_continuation_match_original",
+          "-method-",
+          "TerraRuntime.Tests.DungeonTraps1458Tests.Trap_search_objects_and_random_stream_match_original",
+          "-method-",
+          "TerraRuntime.Tests.DungeonWholePass1458Tests.Complete_ordinary_dungeon_matches_original",
+          "-method-",
+          "TerraRuntime.Tests.EarlyTerrainReference1458Tests.Production_prefix_matches_each_official_stage",
+          "-method-",
+          "TerraRuntime.Tests.EclipseProjectile1458Tests.Ai_matches_original_server",
+          "-method-",
+          "TerraRuntime.Tests.EclipseProjectile1458Tests.Full_update_matches_original_motion_and_liquid_history",
+          "-method-",
+          "TerraRuntime.Tests.FallenLogPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.FloatingEyeAi1458Tests.Original_canonical_and_negative_eye_defaults_scale_before_variant_stats",
+          "-method-",
+          "TerraRuntime.Tests.FloatingEyeAi1458Tests.Whole_original_AI_keeps_source_state_order_actual_bodies_and_shared_random",
+          "-method-",
+          "TerraRuntime.Tests.FloatingEyeWorldExecution1458Tests.Retained_AI_physics_frame_and_CheckActive_match_original_world_tick",
+          "-method-",
+          "TerraRuntime.Tests.FlowerAndMushroomPatchPass1458Tests.Passes_match_official",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLoot1458Tests.All_seventeen_predicates_and_inline_materialization_match_original",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLoot1458Tests.Original_item_money_heal_callbacks_preserve_all_nineteen_global_checkpoints",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLoot1458Tests.Sparse_defaults_and_natural_prefix_match_original_without_item_use_admission",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLootDeath1458Tests.Actual_lethal_commit_matches_original_global_specific_money_healing_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLootOwnership1458Tests.Generalized_metadata_preserves_actual_positive_npc_boss_and_face_fields",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLootOwnership1458Tests.Original_calendar_methods_with_only_date_input_substituted_match_leap_year_and_forced_flags",
+          "-method-",
+          "TerraRuntime.Tests.HiveSlimeAi1458Tests.Actual_AI001_Hive_producer_matches_LOS_capacity_difficulty_and_shared_stream",
+          "-method-",
+          "TerraRuntime.Tests.JunglePlantsPass1458Tests.Jungle_half_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.Level1SandboxRuntimeTests.Sandbox_operations_create_vanilla_large_world_through_the_same_request_path_as_ui",
+          "-method-",
+          "TerraRuntime.Tests.Level1SandboxRuntimeTests.Sandbox_operations_create_vanilla_small_world_through_the_same_request_path_as_ui",
+          "-method-",
+          "TerraRuntime.Tests.LivingTreeGrower1458Tests.Tree_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.LongMossPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.MechSpawners1458Tests.Original_full_BlueSlime_chain_keeps_global_before_contents_and_Gel",
+          "-method-",
+          "TerraRuntime.Tests.MechSpawners1458Tests.Original_global_offers_materialization_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.MechSpawnersDeath1458Tests.Actual_lethal_commit_matches_original_global_contents_specific_money_healing_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.MiningInventoryRegressionTests.More_than_two_world_item_pools_of_mining_switching_tools_and_literal_pickups_keep_working",
+          "-method-",
+          "TerraRuntime.Tests.MoonLordHandTests.State_and_projectiles_match_original_hand_AI",
+          "-method-",
+          "TerraRuntime.Tests.MoonLordHeadTests.Head_state_and_projectiles_match_original",
+          "-method-",
+          "TerraRuntime.Tests.MoonLordIntroductionTests.Original_server_initialization_intro_and_return_match_through_spawn_executor",
+          "-method-",
+          "TerraRuntime.Tests.MossPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.MotherSlimeHitEffect1458Tests.Original_birth_fields_live_body_capacity_and_next_random_match",
+          "-method-",
+          "TerraRuntime.Tests.MothronWorldExecution1458Tests.Accepted_AI_and_collision_match_original_complete_UpdateNPC",
+          "-method-",
+          "TerraRuntime.Tests.NewNpcRandomTests.Vanilla_creation_matches_original_substitution_stats_and_RNG_even_when_full",
+          "-method-",
+          "TerraRuntime.Tests.NpcDeathPrelude1458Tests.Every_original_net_identity_retains_source_credit_and_banner",
+          "-method-",
+          "TerraRuntime.Tests.NpcDeathPrelude1458Tests.Every_original_statue_default_is_preserved",
+          "-method-",
+          "TerraRuntime.Tests.NpcDeathPreludeWire1458Tests.Announcement_identity_and_threshold_match_original_banner_inverse",
+          "-method-",
+          "TerraRuntime.Tests.NpcHealingLoot1458Tests.Healing_matches_original_physical_drops_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.NpcLootColor1458Tests.Actual_defaults_CommonCode_and_recorded_color_packet_match",
+          "-method-",
+          "TerraRuntime.Tests.NpcMoney1458Tests.Exact_original_coin_materialization_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.NpcMoney1458Tests.Spawn_value_matches_original_SetDefaults_and_source_strength",
+          "-method-",
+          "TerraRuntime.Tests.NpcScalingArithmeticTests.Creation_profiles_match_original_platform_arithmetic",
+          "-method-",
+          "TerraRuntime.Tests.NpcSlotAllocationTests.Private_allocation_with_nonzero_start_matches_original_for_every_type_and_slot_arrangement",
+          "-method-",
+          "TerraRuntime.Tests.NpcSpecificLoot1458Tests.Original_item_money_heal_callbacks_preserve_all_nineteen_global_checkpoints",
+          "-method-",
+          "TerraRuntime.Tests.NpcUndeadHitEffects1458Tests.Actual_strike_routes_preserve_dedicated_hit_effect_life_and_shared_rng",
+          "-method-",
+          "TerraRuntime.Tests.OasisBasin1458Tests.Placement_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.OptimizedCanonical1458RegressionTests.Optimized_canonical_small_seed_1458_satisfies_landmark_budget",
+          "-method-",
+          "TerraRuntime.Tests.OptimizedJungleEcologyV2Tests.Canonical_medium_builds_distinct_queen_bee_ready_hives_and_mushroom_pockets",
+          "-method-",
+          "TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_creates_canonical_small_world_without_crashing",
+          "-method-",
+          "TerraRuntime.Tests.PilePass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Actual_animated_remote_crystal_and_fruit_use_is_owner_only_and_does_not_invalidate_context",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Continuous_remote_Update_retains_exact_derived_maximum_duplicates_and_outside_order",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Dead_buff_metadata_matches_all_original_identities",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Genuine_Main_player_phase_sequence_preserves_dead_field_clears_nonpersistent_buffs_and_recovers",
+          "-method-",
+          "TerraRuntime.Tests.PlayerLuckFactors1458Tests.Calculation_matches_original_Player",
+          "-method-",
+          "TerraRuntime.Tests.PlayerSourceBornBase1458Tests.Actual_constructor_health_and_authenticated_pre_post_spawn_packets_preserve_phase_provenance",
+          "-method-",
+          "TerraRuntime.Tests.PlayerZones1458Tests.Source_biome_priority_and_depth_are_not_inferred_from_terrain",
+          "-method-",
+          "TerraRuntime.Tests.PotScatterPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.PrimeMeleeAiTests.Melee_arm_state_projectiles_and_rng_match_original",
+          "-method-",
+          "TerraRuntime.Tests.PrimePhaseTests.Head_phase_restores_spawn_baselines_and_matches_original_motion",
+          "-method-",
+          "TerraRuntime.Tests.PrimePhaseTests.Prime_and_arms_creation_matches_original",
+          "-method-",
+          "TerraRuntime.Tests.PrimeRangedAiTests.Ranged_arm_state_projectiles_and_rng_match_original",
+          "-method-",
+          "TerraRuntime.Tests.PyramidBuilder1458Tests.Geometry_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.PyramidBuilder1458Tests.Wedge_walls_entry_and_staircase_match_official",
+          "-method-",
+          "TerraRuntime.Tests.RawFloatingEye1458Tests.Original_NewNPC_raw_target_private_phase_and_full_UpdateNPC_are_preserved",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeNpcImmortalKnockback1458Tests.Immortal_strike_preserves_life_and_original_weak_or_strong_knockback",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeNpcServerStrikeWire1458Tests.Accepted_server_strike_broadcasts_original_raw_damage_before_final_npc_state",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.All_source_default_boss_flags_and_face_emotes_match_independent_original",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.Original_progression_tiers_weighted_candidates_and_real_Next1_draws_match",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.Real_two_resident_phases_match_original_emitter_lifetime_wire_and_next_rng_or_reject_unknown_context",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownDebuffPair1458Tests.Fresh_observed_life_after_player_phase_then_two_outer_NPC_updates_match_source",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownDebuffTopics1458Tests.Actual_ProbeDebuffs_order_and_short_circuit_next_rng_match",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownItemsSocial1458Tests.Fresh_observed_life_after_health_phase_then_pair_matches_original_context_wire_clocks_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcContact1458Tests.Original_contact_pins_damage_ai_reset_immunity_same_tick_physics_and_random",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcContactVfx1458Tests.Original_pre_ai_visual_offer_and_town_vitals_are_owned",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcDangerDispatcher1458Tests.Source_common_phase_pins_danger_body_combat_home_physics_and_next_random",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcDebuffOuter1458Tests.Genuine_outer_UpdateNPC_continuous_flags_expiry_dot_ai_physics_and_rng_match",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcSocialNurse1458Tests.Source_Nurse_admission_active_13_shot_and_outer_frame_match_original",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcSocialNurse1458Tests.Source_two_resident_AI_and_outer_frames_keep_peer_clock_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.SandboxWorkerTests.Completed_startup_race_does_not_abandon_unobserved_pipe_faults",
+          "-method-",
+          "TerraRuntime.Tests.SandboxWorkerTests.Heartbeat_keeps_a_runtime_alive_without_foreground_probes_and_stops_cleanly",
+          "-method-",
+          "TerraRuntime.Tests.ServerRuntimeNpcDamageIntegrationTests.Lethal_expert_king_slime_hit_runs_live_loot_death_and_instanced_lease_pipeline",
+          "-method-",
+          "TerraRuntime.Tests.ServerRuntimeServerPlayerPerformanceTests.Controlled_physics_ticks_are_deterministic_and_stay_within_allocation_gate",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHandPhaseTests.Hand_phase_matches_original_with_frozen_parent",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHandPhaseTests.Parent_lifecycle_matches_original_and_publishes_only_terminal_despawn",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHandPhaseTests.RedHat_hand_phase_matches_original_with_frozen_parent",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHeadEffectsTests.Head_state_effects_and_RNG_match_original",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHeadEffectsTests.Summoning_terrain_cap_and_full_table_match_original",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronPhaseTests.Head_phase_restores_spawn_baselines_and_matches_original_motion",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronSkullSpawnTests.Accepted_head_spawns_original_projectile_and_preserves_RNG",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronSkullSpawnTests.Aim_matches_both_original_platforms_bit_for_bit",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronStrikeTests.Authoritative_strike_matches_original",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronStrikeTests.Large_authoritative_strike_matches_original_double_defense_math",
+          "-method-",
+          "TerraRuntime.Tests.SlimeBeeRemixSpawnDefaults1458Tests.Pure_defaults_match_actual_original_spawn_overrides",
+          "-method-",
+          "TerraRuntime.Tests.SlimeBeeRemixSpawnDefaults1458Tests.Store_materializes_owned_body_combat_money_and_source_creation_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimeBornTarget1458Tests.Actual_birth_and_four_updates_keep_pre_refresh_selection_and_source_stream",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedDeath1458Tests.Actual_lethal_ingress_matches_original_imported_money_heals_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedGenerator1458Tests.Dedicated_server_generator_matches_original_full_item_table_and_next_draw",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedInitialization1458Tests.Complete_original_AI001_selection_state_children_and_stream_match",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Defaults_and_natural_prefix_match_original",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Direct_rule_materializes_original_stack_body_velocity_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Global_content_precedes_complete_type_specific_original_chain",
+          "-method-",
+          "TerraRuntime.Tests.SlimeNoActiveLifecycle1458Tests.Original_birth_private_AI_and_full_first_update_keep_raw_target_and_atomic_lifecycle",
+          "-method-",
+          "TerraRuntime.Tests.SlimerDeath1458Tests.Actual_lethal_commit_matches_original_global_specific_money_healing_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimerSpawn1458Tests.Actual_dedicated_HitEffect_matches_private_birth_reset_motion_and_next_random",
+          "-method-",
+          "TerraRuntime.Tests.SlimerSpawn1458Tests.Source_reset_defaults_match_genuine_Framework_arithmetic",
+          "-method-",
+          "TerraRuntime.Tests.SpeleothemPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.SphereAiTests.Committed_AI_matches_original_state_and_complete_RNG_continuation",
+          "-method-",
+          "TerraRuntime.Tests.SurfaceChestsPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.TerrainReference1458Tests.Production_terrain_matches_official_cells_liquid_lines_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.TerrariaSocketConnectionTests.A_departed_peer_cannot_hold_the_connection_open_by_never_draining_its_backlog",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLoot1458Tests.Original_dedicated_hit_then_item_money_heal_callbacks_preserve_source_order",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLoot1458Tests.Sparse_defaults_and_natural_prefix_match_original_without_item_use_admission",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLootContextOwnership1458Tests.Source_selected_saved_world_and_extra_gel_contexts_reach_the_live_death_owner",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLootDeath1458Tests.Actual_admitted_actor_death_matches_original_hit_items_money_heals_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.UnderwaterChestsPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.UnderworldLava1458Tests.Real_underworld_pass_restores_lava_before_later_settling",
+          "-method-",
+          "TerraRuntime.Tests.VanillaCreatureFromDeepAi1458Tests.Whole_original_AI_matches_forms_steering_exit_and_difficulty",
+          "-method-",
+          "TerraRuntime.Tests.VanillaEclipseFightersAi1458Tests.Whole_AI_and_projectile_tail_match_original_server",
+          "-method-",
+          "TerraRuntime.Tests.VanillaEclipseGroundFightersAi1458Tests.Complete_AI_and_terrain_match_original_including_finite_rejection",
+          "-method-",
+          "TerraRuntime.Tests.VanillaGhostHoverAi22Tests1458.Source_idle_AI_and_optional_outer_physics_match",
+          "-method-",
+          "TerraRuntime.Tests.VanillaMothronWholeAi1458Tests.Complete_source_AI_fields_peer_mutation_spawn_and_next_random_match",
+          "-method-",
+          "TerraRuntime.Tests.VanillaPsychoAi1458Tests.Complete_AI_state_matches_original_dedicated_server",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_passes_preserve_registered_chest_anchors",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_seed1458_world_survives_real_post_load_liquid_preparation",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_seed_1458_rejects_clouds_as_precalculated_dungeon_surface",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_generation_produces_valid_metadata_and_terrain",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_regression_seeds_finalize_without_world_corruption",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_underworld_retains_forts_connections_and_house_hellforges",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_world_retains_connected_rideable_rail_frames",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Ordinary_crimson_runs_placement_and_downstream_passes_without_coordinate_fallback",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_accepts_canonical_generated_world",
+          "-method-",
+          "TerraRuntime.Tests.WebsAndHoneyPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.WorkerPoolProcessTests.Worker_lifecycle_survives_isolated_process_conditions",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemOwnerFacts1458Tests.Every_item_pickup_rule_matches_independent_original_defaults",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Generation_owned_equipment_projection_matches_original_UpdateEquips_and_FindOwner",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Real_client21_creation_matches_actual_original_body_owner_wire_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemSourceAllocation1458Tests.Every_original_item_keeps_allocation_defaults",
+          "-method-",
+          "TerraRuntime.Tests.WorldLateBossProgressionPersistenceTests.Late_boss_save_matches_official_header_and_preserves_other_bytes",
+          "-method-",
+          "TerraRuntime.Tests.WorldStartupPreparationTests.Generated_vanilla_world_reaches_actual_primary_startup_after_liquid_preparation"
+        ],
+        "executed": true,
+        "exitCode": 0,
+        "logSha256": "a0def0961bb780320b40218e52236e792828c6e08f51d8be46d4d7dc321cfa69",
+        "methodAudit": {
+          "accepted": true,
+          "counts": {
+            "errors": 0,
+            "failed": 0,
+            "not-run": 0,
+            "passed": 33662,
+            "skipped": 0,
+            "total": 33662
+          },
+          "executedMethods": 5285,
+          "missingMethods": [],
+          "plannedMethods": 5285,
+          "unplannedMethods": [],
+          "xmlSha256": "a5eb95a995f89c42cb6094d526c9f37bf5973e7fd6d34b3d3c1100c137c99f4a"
+        },
+        "planSha256": "b9314a52a6c6e5f90aec9221de20cf829a09ac5933681b7072ac80b37a52207d",
+        "tests": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 33662,
+          "skipped": 0,
+          "total": 33662
+        },
+        "wallSeconds": 485.7889438000275
+      },
+      "focused": {
+        "accepted": true,
+        "afterGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 158,
+          "sourceDifferences": [],
+          "sourceInputCount": 4045
+        },
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-maxThreads",
+          "16",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\focused.xml",
+          "-class",
+          "TerraRuntime.Tests.VanillaOrdinaryMeleeCohort1458Tests",
+          "-class",
+          "TerraRuntime.Tests.OrdinaryMeleeRuntime1458Tests",
+          "-class",
+          "TerraRuntime.Tests.OrdinaryMeleeCurrentness1458Tests",
+          "-class",
+          "TerraRuntime.Tests.OrdinaryMeleeLootWorldOwnership1458Tests",
+          "-class",
+          "TerraRuntime.Tests.OrdinaryMeleeLoot1458Tests",
+          "-class",
+          "TerraRuntime.Tests.GhoulHitEffect1458Tests",
+          "-class",
+          "TerraRuntime.Tests.GoldBunnyHitEffect1458Tests",
+          "-class",
+          "TerraRuntime.Tests.NonresidentBunnyFamily1458Tests",
+          "-class",
+          "TerraRuntime.Tests.NonresidentBunnyBloodMoon1458Tests",
+          "-class",
+          "TerraRuntime.Tests.VanillaGroundFighterNpcCatalogTests",
+          "-class",
+          "TerraRuntime.Tests.VanillaNpcAiCoverageCatalogTests",
+          "-class",
+          "TerraRuntime.Tests.GroundRosterDefaults1458Tests",
+          "-class",
+          "TerraRuntime.Tests.NpcGroundRosterCreation1458Tests",
+          "-class",
+          "TerraRuntime.Tests.NpcSourceDefaultRoster1458Tests",
+          "-class",
+          "TerraRuntime.Tests.NpcRemaining1458.NpcRemainingDefinitions1458Tests"
+        ],
+        "executed": true,
+        "exitCode": 0,
+        "logSha256": "e82d041173385681de727192c4a078e619c6790f42bb1e28205eb60c1633a074",
+        "methodAudit": {
+          "accepted": true,
+          "counts": {
+            "errors": 0,
+            "failed": 0,
+            "not-run": 0,
+            "passed": 8221,
+            "skipped": 0,
+            "total": 8221
+          },
+          "executedMethods": 69,
+          "missingMethods": [],
+          "plannedMethods": 69,
+          "unplannedMethods": [],
+          "xmlSha256": "8444db7f196448b88d6ade5379884a6c261c942fdc803495f619b89751f580fb"
+        },
+        "planSha256": "6dca18a8db9d62ae8bf2f0fee24cb8a56ceefe6ba16d513d869f011f36ba7b29",
+        "tests": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 8221,
+          "skipped": 0,
+          "total": 8221
+        },
+        "wallSeconds": 8.101091500022449
+      }
+    },
+    "wallSeconds": 2269.4388934000162
+  },
+  "unfilteredFull": {
+    "discoveredMethods": 5452,
+    "result": {
+      "accepted": true,
+      "afterGuard": {
+        "accepted": true,
+        "changedManifests": [],
+        "dllDifferences": [],
+        "executedDllCount": 158,
+        "sourceDifferences": [],
+        "sourceInputCount": 4045
+      },
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+        "-noLogo",
+        "-noColor",
+        "-maxThreads",
+        "16",
+        "-xml",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\affected\\tests.xml"
+      ],
+      "executed": true,
+      "exitCode": 0,
+      "logSha256": "b927e6948f650ef89af743c5c56ae0d5fb25ed6933a0b0060c2b120d1c554917",
+      "methodAudit": {
+        "accepted": true,
+        "counts": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 1575076,
+          "skipped": 0,
+          "total": 1575076
+        },
+        "executedMethods": 5452,
+        "missingMethods": [],
+        "plannedMethods": 5452,
+        "unplannedMethods": [],
+        "xmlSha256": "eeefbb2b00a2047bf4a311b4fc849d5ebd9e0121887f393a741cf5b5dc792772"
+      },
+      "planSha256": "c0382b071132f4677657fecb42b1edd3b2373971a6b8e9ec3a72cddb73ea9d79",
+      "tests": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 1575076,
+        "skipped": 0,
+        "total": 1575076
+      },
+      "wallSeconds": 1719.8773276000284
+    }
+  },
+  "windowsNative": {
+    "accepted": true,
+    "publishStarted": true,
+    "gate": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03",
+    "scope": "Fresh Windows x64 NativeAOT server and five standalone smokes on the exact root source/TestBin pins. No Linux Native, GUI, fresh TCP or full-suite claim.",
+    "priorArtifact": {
+      "sha256": "c4c51828a464931e6a481ea0d6668b26d1b6916c51384fde8f4a648bbe3e93ae",
+      "mtimeNs": 1793204116673019200
+    },
+    "publishStartedNs": 1793210788020510000,
+    "publishCommand": [
+      "powershell.exe",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\build\\publish.ps1",
+      "-RuntimeIdentifier",
+      "win-x64",
+      "-Profile",
+      "native-aot",
+      "-Configuration",
+      "Release",
+      "-NoClean"
+    ],
+    "smokes": [
+      {
+        "mode": "loop",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\native\\bin\\TerraRuntime.Server.exe",
+          "--loop-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "2b8708581e953379ba95640ee7c9c75e876966fd4561c44ae9ceb270fee546db"
+      },
+      {
+        "mode": "protocol",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\native\\bin\\TerraRuntime.Server.exe",
+          "--protocol-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "mode": "network",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\native\\bin\\TerraRuntime.Server.exe",
+          "--network-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "mode": "world",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\native\\bin\\TerraRuntime.Server.exe",
+          "--world-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "mode": "tui",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\native\\bin\\TerraRuntime.Server.exe",
+          "--tui-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ],
+    "publishSucceeded": true,
+    "publishExitCode": 0,
+    "executablePath": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\final-gate03\\native\\bin\\TerraRuntime.Server.exe",
+    "executableSha256": "20f980fde19a9441a6c855f0ba7d40a1f84b3a147ae0acc2c6d22bfa07c66b7d",
+    "executableBytes": 37542400,
+    "pe": {
+      "machine": "0x8664",
+      "optionalMagic": "0x20b",
+      "clrRva": 0,
+      "clrSize": 0
+    },
+    "sourceAndTestBinBefore": {
+      "source-before.json": {
+        "count": 4045,
+        "manifestSha256": "d94a9f920dbf0c3f27d91a0059384dffb4f2b405a9326b88410f4fcb91508b25",
+        "mismatches": []
+      },
+      "dll-before.json": {
+        "count": 158,
+        "manifestSha256": "bafddef01bf1e023754b35facb6677f5e9784db6dfd012fc55faefd051d49f1a",
+        "mismatches": []
+      }
+    },
+    "sourceAndTestBinAfter": {
+      "source-before.json": {
+        "count": 4045,
+        "manifestSha256": "d94a9f920dbf0c3f27d91a0059384dffb4f2b405a9326b88410f4fcb91508b25",
+        "mismatches": []
+      },
+      "dll-before.json": {
+        "count": 158,
+        "manifestSha256": "bafddef01bf1e023754b35facb6677f5e9784db6dfd012fc55faefd051d49f1a",
+        "mismatches": []
+      }
+    },
+    "fastResultSha256": "abd1ce88a74c108720acb6f93d0dde56f6ebe2f7e765c5ff14ffa389d6278fae",
+    "focusedResultSha256": "1847da524d26da60473a0f4bd84fd0d40eb8f83226d3a2834f6844ca73a5d74b",
+    "completedNs": 1793210874201189800,
+    "pins": [
+      {
+        "path": "bin/TerraRuntime.Server.exe",
+        "sha256": "20f980fde19a9441a6c855f0ba7d40a1f84b3a147ae0acc2c6d22bfa07c66b7d"
+      },
+      {
+        "path": "guard-after.json",
+        "sha256": "c242c4ee410f9ac3dd6a9d96e8201a8bbbcecb94004c75b75914233c63d7b274"
+      },
+      {
+        "path": "guard-before.json",
+        "sha256": "c242c4ee410f9ac3dd6a9d96e8201a8bbbcecb94004c75b75914233c63d7b274"
+      },
+      {
+        "path": "loop.log",
+        "sha256": "2b8708581e953379ba95640ee7c9c75e876966fd4561c44ae9ceb270fee546db"
+      },
+      {
+        "path": "network.log",
+        "sha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "path": "protocol.log",
+        "sha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "path": "publish.log",
+        "sha256": "f8aa64352ed38b7329691d4d312b8e590416d280a60adabe157f421ad66aa2bb"
+      },
+      {
+        "path": "tui.log",
+        "sha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      },
+      {
+        "path": "world.log",
+        "sha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      }
+    ]
+  },
+  "freshTcp": {
+    "schemaVersion": 1,
+    "kind": "npc-ordinary-melee-fresh-live-join-acceptance",
+    "date": "2026-10-28",
+    "accepted": true,
+    "scope": "Exact current Release closure and freshly published Windows x64 NativeAOT, actual localhost TCP: two complete joins, source Banner/Bestiary packet82 before49, then129, authoritative movement/chat82 relay and replacement Hello slot0. Not official GUI, whole gameplay, LinuxNative or graceful-save shutdown acceptance.",
+    "gate": "ordinary-melee-ai3-20261028/final-gate03",
+    "sourceInputs": 4045,
+    "executedManagedDlls": 158,
+    "sourceManifestSha256": "d94a9f920dbf0c3f27d91a0059384dffb4f2b405a9326b88410f4fcb91508b25",
+    "dllManifestSha256": "bafddef01bf1e023754b35facb6677f5e9784db6dfd012fc55faefd051d49f1a",
+    "releaseArtifacts": {
+      "TerraRuntime.Application.dll": "e275e4eed7849a4a04ed73a371c06b3a780eb5f72df1b632f849b0c6c6993728",
+      "TerraRuntime.Core.dll": "0befa3b68c494417606581508f6f99c7540847d20464857cd377261661155901",
+      "TerraRuntime.Gameplay.dll": "469ef146308a483ca1e6bbda172a201cc10ed42b5f60b08d6dffca13f4dadd65",
+      "TerraRuntime.Server.dll": "5681d79de583b76bff1c7db1be645fc2cdd4e6d02525e0901ae5765b1ced0acf",
+      "TerraRuntime.Tests.dll": "7499a45976a2569328cc62d24a41751860590ae0eb88c6984e0de81be0b64b93"
+    },
+    "native": {
+      "executableSha256": "20f980fde19a9441a6c855f0ba7d40a1f84b3a147ae0acc2c6d22bfa07c66b7d",
+      "executableBytes": 37542400,
+      "pe": {
+        "machine": "0x8664",
+        "optionalMagic": "0x20b",
+        "clrRva": 0,
+        "clrSize": 0
+      },
+      "publishAndFiveSmokesResultSha256": "ac17534c0f2471471712b16e6c8fb7e66935df26faffda7605929cf49fcf67c6"
+    },
+    "fixture": {
+      "sourcePath": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\join-roster-live-v1\\source-copy.wld",
+      "sha256": "2289c366a15cdce62fad61888a3bf6f9f76f4e51fcd9b9d99aa8f8c71e4ceec0",
+      "unchanged": true,
+      "usage": "Independent private .wld copy per engine, explicit first-import custody, disposable private runtime/bootstrap/custody paths only"
+    },
+    "probe": {
+      "path": "tools/ci/live_join_relay_probe.py",
+      "sha256": "3727d04a0d7c818916173a01785b4867b98b83fc26393312abb7b45d8145d0ad",
+      "existingAssertionsUnchanged": true,
+      "passiveWrapperSha256": "ddbfb934b789f5647bb43b0c4bea3bde6a8157eaa5501d470dc808f80e1a9a35",
+      "observations": "Full received frame SHA; literal82/49/129 retained in bounded compressed cache capture"
+    },
+    "runs": [
+      {
+        "engine": "Release",
+        "accepted": true,
+        "existingProbeExitCode": 0,
+        "connections": [
+          {
+            "socket": 0,
+            "sections": 15,
+            "framesThrough49": 312,
+            "bannerModule11Count": 1,
+            "bestiaryModule4Count": 295,
+            "literal49": "030031",
+            "literal129": "030081",
+            "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+          },
+          {
+            "socket": 1,
+            "sections": 15,
+            "framesThrough49": 312,
+            "bannerModule11Count": 1,
+            "bestiaryModule4Count": 295,
+            "literal49": "030031",
+            "literal129": "030081",
+            "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+          }
+        ],
+        "movementRelay": true,
+        "chat82AuthorSlot": 0,
+        "replacementScope": "Hello only; packet3 payload0000 proves slot0 is reusable, no third full bootstrap claim",
+        "processStopped": true,
+        "stopMethod": "owned-process terminate; Windows hidden process has no shipping stdin shutdown command",
+        "gracefulShutdownClaim": false,
+        "hostExitCode": 1,
+        "resultPath": ".cache/ordinary-melee-ai3-20261028/live-final03-release-02/qualification.json",
+        "resultSha256": "38dd35c03082c4943e98ddfd3811a73236b06da8ce50fd66cfaebb55c05296d3",
+        "wireSha256": "d5ec5c8233fd5cc719a6461e051327200dd2d187948f5cd7add1a6ad098a8fbc",
+        "probeLogSha256": "f8f13534719d60f4f6e85ecceff773f23704ccfc023b44487d8aa58fc42e5267"
+      },
+      {
+        "engine": "WindowsNative",
+        "accepted": true,
+        "existingProbeExitCode": 0,
+        "connections": [
+          {
+            "socket": 0,
+            "sections": 15,
+            "framesThrough49": 312,
+            "bannerModule11Count": 1,
+            "bestiaryModule4Count": 295,
+            "literal49": "030031",
+            "literal129": "030081",
+            "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+          },
+          {
+            "socket": 1,
+            "sections": 15,
+            "framesThrough49": 312,
+            "bannerModule11Count": 1,
+            "bestiaryModule4Count": 295,
+            "literal49": "030031",
+            "literal129": "030081",
+            "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+          }
+        ],
+        "movementRelay": true,
+        "chat82AuthorSlot": 0,
+        "replacementScope": "Hello only; packet3 payload0000 proves slot0 is reusable, no third full bootstrap claim",
+        "processStopped": true,
+        "stopMethod": "owned-process terminate; Windows hidden process has no shipping stdin shutdown command",
+        "gracefulShutdownClaim": false,
+        "hostExitCode": 1,
+        "resultPath": ".cache/ordinary-melee-ai3-20261028/live-final03-native-02/result.json",
+        "resultSha256": "d5e44fb38dd4c9028b168fc0c7cc0110506c9843a4b077521d143318b2c2f4fb",
+        "wireSha256": "b0495eea4c318bf74c3524505f5009512acc5f2e2426bfc33e71dd6b58e80ef7",
+        "probeLogSha256": "b1d45e9fc45f6e5e5f750dd3e3b1fc9f74503d2ca0c5ddbbd5203e0a8e32eebc"
+      }
+    ],
+    "guards": {
+      "sourceAndCanonicalDllsUnchanged": true,
+      "privateExecutedArtifactsUnchanged": true,
+      "sourceWorldUnchanged": true,
+      "noSharedBuildOrShippingWrite": true
+    },
+    "historicalRejectedPreparation": [
+      {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-final03-release/result.json",
+        "sha256": "a28e5b19dda28cce8b632312da171f99a5307ab7d93026f9e9e3f0f156fd239b",
+        "reason": "Runner incorrectly waited for Information readiness on default Error console logging. Listener existed; no client probe ran. Retained as setup rejection."
+      },
+      {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-final03-release-02/result.json",
+        "sha256": "994f93db1a3071c782f167f9de1aa8b7b51db9d445fbfef4328e373b3c1a05bb",
+        "reason": "Existing actual two-client TCP probe passed, but auxiliary observer expected a third full join. Its replacement contract is Hello only. Separate qualification validates captured unchanged traffic against actual probe contract; original rejected record is immutable."
+      }
+    ]
+  },
+  "sourceAndIndexBridge": {
+    "accepted": true,
+    "sourceInputCount": 4045,
+    "dllCount": 158,
+    "exactSourceAndDllMembership": true,
+    "everyRawInputMatchesGitIndexBlob": true,
+    "originalFixturesUnchanged": 891,
+    "sourceManifest": {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/source-before.json",
+      "sha256": "d94a9f920dbf0c3f27d91a0059384dffb4f2b405a9326b88410f4fcb91508b25"
+    },
+    "dllManifest": {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/dll-before.json",
+      "sha256": "bafddef01bf1e023754b35facb6677f5e9784db6dfd012fc55faefd051d49f1a"
+    }
+  },
+  "componentManifests": [
+    {
+      "path": "docs/verification/npc-ordinary-melee-phase-20261028.json",
+      "sha256": "bc2d4c7474dcd97cc85529f714c72111977ddd92aa8b121e734736ec12087d86"
+    },
+    {
+      "path": "docs/verification/npc-ghoul-hiteffect-20261028.json",
+      "sha256": "36af13874235d8f755908b5590b4c4f02e3247ff7ee34a30e3a23ead5e31381e"
+    },
+    {
+      "path": "docs/verification/npc-ghoul-hiteffect-final03-20261028.json",
+      "sha256": "e0bf385f5b1adfb8fd938f18c97454ab88c489ddd8f4bf1b40482f7e8f9c9562"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-live-join-20261028.json",
+      "sha256": "34693319478d74864ee484c069898f4ebae6c5233aedec0a240765af325727ee"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-loot-20261028.json",
+      "sha256": "dd6050712e773645345e0244123942ec22b9b2c7494507edc3e20535127f6676"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-loot-causal-20261028.json",
+      "sha256": "caff0c6fc7b3ebf2a255f712a85381ff27bcb72bca6a48197af62e30e3610ac9"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-loot-causal-final03-20261028.json",
+      "sha256": "0794fc86d6a9063427cdcf32c82bd9f98a67bd8765576730b32ec061cfba4416"
+    },
+    {
+      "path": "docs/verification/ordinary-melee-loot-world-causal-20261028.json",
+      "sha256": "7e65b4c1153facdb3716b21c5fb722ad3a8313effa25cd3ba6a3a0433a58fca8"
+    }
+  ],
+  "counts": {
+    "ai3Ai7Admitted": 225,
+    "ai3Ai7CreationOnly": 75,
+    "ai3PositiveAdmitted": 149,
+    "globalLifecycle": 489,
+    "globalCreationOnly": 266
+  },
+  "shippingGraph": {
+    "projects": 15,
+    "projectReferences": 29,
+    "newProductionDependencies": 0
+  },
+  "historicalRejectedCandidates": [
+    {
+      "name": "final-gate01",
+      "reason": "Root focused config used the wrong namespace for NpcRemainingDefinitions1458Tests; build accepted, no tests or full/Native started.",
+      "record": {
+        "path": ".cache/ordinary-melee-ai3-20261028/final-gate01/accepted.json",
+        "sha256": "22b7a1d23b8dd35bc64621cc3977a8375a1a45dd3a0c851b0873f5e060be7de6"
+      }
+    },
+    {
+      "name": "final-gate02",
+      "reason": "One old negative control still expected Blood Zombie to have no runtime admission. Retained unsupported Torch Zombie replaces it; stronger independent reentrant-world mutation tests added. Shipping unchanged. No fast/full/Native started.",
+      "record": {
+        "path": ".cache/ordinary-melee-ai3-20261028/final-gate02/accepted.json",
+        "sha256": "ee7afc5cb2174b31c5a515b1d1444e0ca5c4e9b1042ea6f7bfde8ed15e865a74"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/accepted.json",
+      "sha256": "7c522aabfb1c826ad9239c995a20216eb4e40112d7b3d5d2999239ccb7be13ff"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/build.json",
+      "sha256": "a593d64ba6d9c7f9d5455c0f377819e071e63ca62288a449fc0173498c1f0275"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/focused.json",
+      "sha256": "1847da524d26da60473a0f4bd84fd0d40eb8f83226d3a2834f6844ca73a5d74b"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/focused-audit.json",
+      "sha256": "a5f2400c7c47d13067d7e0fd64578abdabc2ecfd17c1e4aabe3a94026afcc87d"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/fast/result.json",
+      "sha256": "abd1ce88a74c108720acb6f93d0dde56f6ebe2f7e765c5ff14ffa389d6278fae"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/fast/audit.json",
+      "sha256": "8c921e8b49190e8c3e342af69abc186da4cb4dbc71c5e9a92becb36764ae9e01"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/affected/result.json",
+      "sha256": "63e3d0dadb6a8d893e5bda6e09eada65f9cfce0db2515c805c04abe7af8c1db3"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/affected/audit.json",
+      "sha256": "9e752bd4a0dbc3889089495e69cf1d795189b5c179eb496715db574212d2cb85"
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/final-gate03/native/result.json",
+      "sha256": "ac17534c0f2471471712b16e6c8fb7e66935df26faffda7605929cf49fcf67c6"
+    }
+  ],
+  "limits": [
+    "FullVanillaAiParity remains false; unsupported door/wiring contacts, Shimmer/lava and unowned status/social work retain whole-phase refusal.",
+    "The NPC oracle compares actual composed NPC phases, not whole-world ticks. Existing legacy frame gaps are explicitly outside source parity; old-to-new stability is qualified.",
+    "Specific-loot captures exclude global rules and full original death. Existing global loot, prelude, money and healing owners remain independently scoped.",
+    "Original Linux assembly was executed on Windows CoreCLR. Linux NativeAOT and official GUI were not exercised. Fresh TCP covers two joins, movement/chat and replacement Hello; it does not prove GUI or graceful-save shutdown."
+  ]
+}

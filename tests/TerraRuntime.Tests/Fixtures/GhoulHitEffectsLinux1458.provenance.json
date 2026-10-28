@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghoul-hit-effect-original-components",
+  "accepted": true,
+  "scope": "258 actual original HitEffect components plus42 original nonlethal StrikeNPC_Inner calls per repeat; no death/loot/UpdateNPC or runtime equivalence.",
+  "records": [
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\original-01.json",
+      "sha256": "3d14a38752483b294f97fcedd9e26b94c9cc16ea75a9115ea264f19fbb33c55e",
+      "actualCalls": 300,
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.dll",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\original-01.json"
+      ],
+      "exitCode": 0
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\original-02.json",
+      "sha256": "3d14a38752483b294f97fcedd9e26b94c9cc16ea75a9115ea264f19fbb33c55e",
+      "actualCalls": 300,
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.dll",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\original-02.json"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "inputsUnchanged": true,
+  "executedUnchanged": true,
+  "before": {
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\Program.cs": "8611c44214db2fbdd6101bfe926972ffa2cddd8315cbbfdf7c7ebd12123ff258",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\Probe.csproj": "894c0ab643f5d0130c02b4b331425a81600303fd9397bb2dc25309c139b43eec",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\qualify.py": "853c29dd31c0c25c0e90e8e0ce6461928603099c7685b507e5fa3e29f3edecf2",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Dust.cs": "a67714b9d1e73c7f23c0c550a95877a3495b7be376711345a651dc5a9a225460",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Gore.cs": "9d27981b8cdbc3c90d70016c4e99ebdb74f71af87e104c4a9be2064bb6e16e9b"
+  },
+  "after": {
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\Program.cs": "8611c44214db2fbdd6101bfe926972ffa2cddd8315cbbfdf7c7ebd12123ff258",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\Probe.csproj": "894c0ab643f5d0130c02b4b331425a81600303fd9397bb2dc25309c139b43eec",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\qualify.py": "853c29dd31c0c25c0e90e8e0ce6461928603099c7685b507e5fa3e29f3edecf2",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Dust.cs": "a67714b9d1e73c7f23c0c550a95877a3495b7be376711345a651dc5a9a225460",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Gore.cs": "9d27981b8cdbc3c90d70016c4e99ebdb74f71af87e104c4a9be2064bb6e16e9b"
+  },
+  "executedBefore": {
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.dll": "a072baa3fad4370ddf7d1ae3224ef92d4c50bcef065ebf00c0495ebf84127152",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.exe": "49ecea51e3a27e46295c5f025d8508265682c661e53f24e9bbf9ac0e0d9bbc64",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.pdb": "7bd664004138c8c04ac228e5bf439ae268886f161c5cdefb2709f2785d20cfdb",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419"
+  },
+  "executedAfter": {
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.dll": "a072baa3fad4370ddf7d1ae3224ef92d4c50bcef065ebf00c0495ebf84127152",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.exe": "49ecea51e3a27e46295c5f025d8508265682c661e53f24e9bbf9ac0e0d9bbc64",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.pdb": "7bd664004138c8c04ac228e5bf439ae268886f161c5cdefb2709f2785d20cfdb",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ghoul-hit-effects-20261028\\bin\\Release\\net11.0\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419"
+  },
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "ghoulTypes": [
+    524,
+    525,
+    526,
+    527
+  ],
+  "componentControls": [
+    44,
+    104,
+    140,
+    181,
+    196,
+    197,
+    464,
+    470,
+    489,
+    528,
+    529,
+    536,
+    691
+  ],
+  "existingCallerControls": [
+    59,
+    186,
+    443
+  ],
+  "fixture": {
+    "path": "tests/TerraRuntime.Tests/Fixtures/GhoulHitEffectsLinux1458.json.gz",
+    "sha256": "3a3a851ec6f1a81bb1e77a7b87b914b22d0da2439c76c21ad724748379107526",
+    "uncompressedSha256": "3d14a38752483b294f97fcedd9e26b94c9cc16ea75a9115ea264f19fbb33c55e"
+  },
+  "facts": [
+    "Nonlethal Ghoul double damage/lifeMax*20 threshold includes fractional final iteration; plain524 rolls before color>0 guard.",
+    "Lethal Ghoul choices are20 Next(3), regardless damage argument.",
+    "Actual StrikeNPC_Inner raw35 with defense19 or20 rounds to25 BEFORE HitEffect, spending oneGhoul/fourLava/oneEskimo/tenGold samples.",
+    "Dedicated Dust/Gore dummy objects are initialized because original callers can dereference their returned sentinels."
+  ],
+  "limits": [
+    "Original Linux assembly on Windows CoreCLR, no Linux-host/GUI/Native proof.",
+    "Component NPC lifeMax3/7/100/500 and damage values are explicit method preimages, not natural creation-default claims.",
+    "No original game method body or IL was patched or copied into production; private probe references no TerraRuntime assemblies."
+  ],
+  "wallSeconds": 2.418817500001751
+}

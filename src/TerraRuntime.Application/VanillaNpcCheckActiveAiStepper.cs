@@ -39,6 +39,10 @@ internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper, INpcA
         if (!inner.TryStepState(in npc, out next))
             return false;
 
+        // The retained melee phase runs CheckActive after its final collision/presentation,
+        // rather than aging the unchanged speculative placeholder here.
+        if (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(npc.TypeIdentity)) return true;
+
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.AiStyle != VanillaNpcAiStyles.Fighter ||

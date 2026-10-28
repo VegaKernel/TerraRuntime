@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "kind": "ordinary-melee-specific-loot-world-currentness-causal",
+  "date": "2026-10-28",
+  "accepted": true,
+  "scope": "Actual environment-lethal pipeline integration for Face Monster 181, Crimson Bunny 464 and Blood Zombie 489. Same final TestDLL; one intentional Application source comparison omitted in a private build. Not an official whole-death differential or full loot parity claim.",
+  "testSource": {
+    "path": "tests/TerraRuntime.Tests/OrdinaryMeleeLootWorldOwnership1458Tests.cs",
+    "sha256": "cd8ea19048fc44641403b9364c461c6b5e6bdf838925eab2d1d547f79693d220",
+    "cases": 17
+  },
+  "sameTestDllSha256": "7499a45976a2569328cc62d24a41751860590ae0eb88c6984e0de81be0b64b93",
+  "mutation": {
+    "path": "RuntimeNpcNetworkCombatPipeline.SpecificLoot.cs",
+    "removedLine": "        CaptureSpecificWorldFacts() == plannedSpecificWorld &&",
+    "beforeSha256": "833df0949d81aa1a6493e26a83ef64143ad3d6efb52ab0ab27583b98f4f615f9",
+    "afterSha256": "5da47a2c4b7165d31ffef9c1baba0515874c0359ef309a3dad793dc4bbc24b71"
+  },
+  "worldMutations": [
+    {
+      "type": 181,
+      "field": "DontStarve",
+      "before": true,
+      "after": false
+    },
+    {
+      "type": 464,
+      "field": "WindSpeedTarget",
+      "before": 0.4,
+      "after": 0.39,
+      "conditionalFact": "Windy true -> false"
+    },
+    {
+      "type": 489,
+      "field": "BloodMoonActive",
+      "before": true,
+      "after": false,
+      "conditionalFact": "BloodMoonNight true -> false"
+    }
+  ],
+  "trigger": "Second read of existing npcSpecificLowTiles callback; its own returned value remains false. Specific world provider is pure. Trigger still executes with the world comparison omitted. Stable paired controls preserve the same callback boundary.",
+  "outcomes": [
+    {
+      "variant": "omitted",
+      "passed": 14,
+      "failed": 3,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 1,
+      "xmlSha256": "78295d9f9914193d43cbebbfd7059aee5dabf43d6869d7d2665e76635dc23482"
+    },
+    {
+      "variant": "fixed",
+      "passed": 17,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "exitCode": 0,
+      "xmlSha256": "244f432fbb062499d07160c23cc1ec104ce62b2af883b04fae41c77dbec17304"
+    }
+  ],
+  "actualOmissionFailures": [
+    {
+      "name": "TerraRuntime.Tests.OrdinaryMeleeLootWorldOwnership1458Tests.World_fact_changed_after_detached_preview_cannot_commit_hp_items_or_shared_entropy(type: 181, change: True)",
+      "exception": "Xunit.Sdk.EqualException",
+      "message": "Assert.Equal() Failure: Values differ\nExpected: Rejected\nActual:   Killed"
+    },
+    {
+      "name": "TerraRuntime.Tests.OrdinaryMeleeLootWorldOwnership1458Tests.World_fact_changed_after_detached_preview_cannot_commit_hp_items_or_shared_entropy(type: 464, change: True)",
+      "exception": "Xunit.Sdk.EqualException",
+      "message": "Assert.Equal() Failure: Values differ\nExpected: Rejected\nActual:   Killed"
+    },
+    {
+      "name": "TerraRuntime.Tests.OrdinaryMeleeLootWorldOwnership1458Tests.World_fact_changed_after_detached_preview_cannot_commit_hp_items_or_shared_entropy(type: 489, change: True)",
+      "exception": "Xunit.Sdk.EqualException",
+      "message": "Assert.Equal() Failure: Values differ\nExpected: Rejected\nActual:   Killed"
+    }
+  ],
+  "dllDifferenceOnly": [
+    "TerraRuntime.Application.dll"
+  ],
+  "applicationDllSha256": {
+    "fixed": "e275e4eed7849a4a04ed73a371c06b3a780eb5f72df1b632f849b0c6c6993728",
+    "omitted": "dfb7e54b9fc20e4289386cbba114d28c632e14b5adeec33cabf79b1209a571b0"
+  },
+  "guards": {
+    "canonicalTestBinUnchanged": true,
+    "canonicalApplicationSourcesUnchanged": true,
+    "privateBuildReusedOnlyAfterExactSourceAndMetadataPins": true
+  },
+  "cacheEvidence": {
+    "result": ".cache/ordinary-melee-ai3-20261028/loot-world-causal-02/result.json",
+    "sha256": "3e2a0912b81f06c9ab7ee1836e658989f68ddf56e59cb630685aaa1a99ec5bfd",
+    "privateBuildSetupSha256": "e46ef97d0285d4a16c0c48801edccfbed6f9550ddf650e3024bac8837049bc66",
+    "runnerSha256": "edcd2920d0bf616e41b152f67b6f785ea5f9da165f663d1b63240cc10f568f21"
+  },
+  "historical01": {
+    "result": ".cache/ordinary-melee-ai3-20261028/loot-world-causal-01/result.json",
+    "sha256": "f86b951342b3dcb23a949251d13b9d422501dccf44ddb0fbec9b0c87123bdb01",
+    "fixedPassed": 17,
+    "omittedPassed": 11,
+    "omittedFailed": 6,
+    "limitation": "01 detected an omitted provider reread; that omission also suppressed the mutation callback. Its six assertion failures are preserved as historical read-boundary evidence, not independently materialized stale-world evidence. 02 separates the mutation callback from the omitted comparison."
+  }
+}

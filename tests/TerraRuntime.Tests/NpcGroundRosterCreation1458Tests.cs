@@ -124,9 +124,9 @@ public sealed class NpcGroundRosterCreation1458Tests
     [Fact]
     public void Definition_materialization_does_not_grant_unverified_autonomous_ai_or_full_parity()
     {
-        // Source identities previously present only as metadata: Snow Flinx, Blood Zombie,
+        // Source identities still fenced after the melee cohort: Snow Flinx, Torch Zombie,
         // ordinary Penguin, Old Man, Travelling Merchant and Skeleton Merchant.
-        foreach (int type in new[] { 185, 489, 148, 37, 368, 453 })
+        foreach (int type in new[] { 185, 590, 148, 37, 368, 453 })
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), out var definition));
             Assert.False(definition.DefinitionOnly);
@@ -164,7 +164,9 @@ public sealed class NpcGroundRosterCreation1458Tests
             bool undeadRuntime = net is 201 or 202 or 203 or 635 or -13 or -14 or
                 >= -37 and <= -26 or >= -55 and <= -44;
             bool nonresidentBunnyRuntime = VanillaNonresidentBunnyCatalog1458.IsSupported(net);
-            bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentBunnyRuntime;
+            bool ordinaryMeleeRuntime = net is 44 or 104 or 140 or 181 or 196 or 197 or 464 or 470 or 489 or
+                524 or 525 or 526 or 527 or 528 or 529 or 536 or 691;
+            bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentBunnyRuntime && !ordinaryMeleeRuntime;
             Assert.Equal(expected, definition.CreationDefaultsOnly);
             Assert.Equal(!expected, definition.SupportsRuntimeLifecycle);
             if (!expected) continue;
@@ -192,7 +194,7 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(store.TryGet(born.Handle, out retained));
             Assert.Equal(retainedDead, retained);
         }
-        Assert.Equal(92, fenced);
+        Assert.Equal(75, fenced);
     }
 
     private sealed class CountingLifecycle : INpcAiStateStepper, INpcAiPrepass1458

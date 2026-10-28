@@ -18,19 +18,19 @@ public sealed class VanillaNpcLootAlternatives1458
     public bool IsValid => rules.Length is >= 2 and <= 4;
 }
 
-/// <summary>Immutable source selection order for the admitted two/three-item option rules.</summary>
+/// <summary>Immutable source selection order for the admitted bounded item-option rules.</summary>
 public sealed class VanillaNpcLootOptions1458
 {
     private readonly ItemTypeId[] items;
     public VanillaNpcLootOptions1458(ReadOnlySpan<ItemTypeId> options)
     {
-        if (options.Length is < 2 or > 3) throw new ArgumentOutOfRangeException(nameof(options));
+        if (options.Length is < 2 or > 10) throw new ArgumentOutOfRangeException(nameof(options));
         items = options.ToArray();
         foreach (var item in items)
             if (item.IsNone) throw new ArgumentException("Options must have verified identities.", nameof(options));
     }
     public ReadOnlySpan<ItemTypeId> Items => items;
-    public bool IsValid => items.Length is >= 2 and <= 3;
+    public bool IsValid => items.Length is >= 2 and <= 10;
 }
 
 /// <summary>1.4.5.8 ItemDropDatabase undead registrations; table support does not grant actor/AI support.</summary>

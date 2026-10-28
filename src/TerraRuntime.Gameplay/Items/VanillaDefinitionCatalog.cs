@@ -419,6 +419,7 @@ public static class VanillaDefinitionCatalog
         if (VanillaInvasionDropCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaTownNpcDropCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaUndeadDropCatalog1458.TryGet(type, out definition)) return true;
+        if (VanillaOrdinaryMeleeDropCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaMechanicalBossItemCatalog1458.TryGet(type, out definition))
             return true;
         if (VanillaEyeOfCthulhuItemCatalog1458.TryGet(type, out definition))

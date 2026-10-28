@@ -35,6 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
+        _ordinaryMelee.RequiresForcedUpdate(in before, in finalized) ||
         _gemBunny.RequiresForcedUpdate(in before, in finalized) ||
         _flyingEye.RequiresRetainedForcedUpdate(in before, in finalized) ||
         _bigMimic.RequiresForcedUpdate(in before, in finalized) ||
@@ -46,6 +47,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          _context.TryFindCandidate((byte)finalized.Target, out var target) && target.Active && !target.Dead));
 
     public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
+        _ordinaryMelee.Deactivates(in before, in completed) ||
         _gemBunny.Deactivates(in before, in completed) ||
         _slimeGround.DeactivatesContainedAfterCompletion(in before, in completed) ||
         _flyingEye.DeactivatesRetainedAfterCompletion(in before, in completed) ||
@@ -78,7 +80,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
     private readonly VanillaBeeAccepted1458 _bee = new();
     private readonly VanillaGemBunnyAccepted1458 _gemBunny = new();
-    private readonly IVanillaNpcBehaviorStrategy _groundFighter;
+    private readonly VanillaGroundFighterNpcBehaviorStrategy _groundFighter;
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventGhost = new VanillaMoonEventGhostNpcBehaviorStrategy();
@@ -132,6 +134,11 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaEmpressOfLightNpcBehaviorStrategy _empressOfLight = new();
     private readonly VanillaMoonLordNpcBehaviorStrategy _moonLord;
     private readonly IVanillaNpcRandom _random;
+    private readonly VanillaOrdinaryMeleeAccepted1458 _ordinaryMelee = new();
+
+    internal VanillaOrdinaryMeleeAccepted1458 OrdinaryMelee => _ordinaryMelee;
+    internal void SetOrdinaryMeleeOwner(RuntimeNpcStore owner, IVanillaOrdinaryMeleeEnvironment1458 world) =>
+        _ordinaryMelee.Configure(owner, world, _random);
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
     private IVanillaDeerclopsEnvironment? _deerclopsEnvironment;
@@ -441,6 +448,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         // AI style membership never grants another critter the same lifecycle.
         if (VanillaGemBunnyAi1458.IsSupported(npc.Type))
             return _gemBunny.TryStep(in npc, in definition, _context, out next);
+
+        if (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(npcType))
+            return _ordinaryMelee.TryStep(in npc, in definition, _context, _groundFighter, _inner, out next);
 
         // AI_069's ocean/enrage guard requires both loaded world dimensions. Do not let an unavailable
         // world context fall through to a generic AI stepper and manufacture an unverified Duke transition.
@@ -2578,6 +2588,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          _flyingEye.HasRetainedPlan(in before) ||
          _bee.HasPlan(in before) ||
          _gemBunny.HasPlan(in before) ||
+         _ordinaryMelee.HasPlan(in before) ||
          _slimeGround.HasContainedPlan(in before) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 

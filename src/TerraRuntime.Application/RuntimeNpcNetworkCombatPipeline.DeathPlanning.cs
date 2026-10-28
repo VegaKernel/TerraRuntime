@@ -116,6 +116,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedUnpublishedClock = null;
         plannedGlobalLootWorld = CaptureGlobalLootWorld();
         plannedSpecificLowTiles = CaptureSpecificLowTiles();
+        plannedSpecificWorld = CaptureSpecificWorldFacts();
         plannedSpecificPlayers = null;
         plannedSpecificInventorySerial = playerAuthority.NpcLootInventorySerial;
         plannedHealingFallback = null;

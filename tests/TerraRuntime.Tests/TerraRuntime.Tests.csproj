@@ -216,6 +216,9 @@
     <EmbeddedResource Include="Fixtures/ammo-conservation-buffs-official-1458.json.gz" LogicalName="AmmoConservationBuffs1458" />
     <EmbeddedResource Include="Fixtures/projectile-npc-status-selection-official-1458.json.gz" LogicalName="ProjectileNpcStatusSelection1458" />
     <EmbeddedResource Include="Fixtures/lava-npc-hit-effect-official-1458.json.gz" LogicalName="LavaNpcHitEffect1458" />
+    <EmbeddedResource Include="Fixtures/GhoulHitEffectsLinux1458.json.gz" LogicalName="GhoulHitEffectsLinux1458" />
+    <EmbeddedResource Include="Fixtures/OrdinaryMeleeLootLinux1458.json.gz" LogicalName="OrdinaryMeleeLootLinux1458" />
+    <EmbeddedResource Include="Fixtures/OrdinaryMeleeLootRareLinux1458.json.gz" LogicalName="OrdinaryMeleeLootRareLinux1458" />
     <EmbeddedResource Include="Fixtures/slime-contained-lava-composed-death-official.json.gz" />
     <EmbeddedResource Include="Fixtures/global-lava-hit-loot-composed-official-1458.json.gz" LogicalName="GlobalLavaHitLootComposed1458" />
     <EmbeddedResource Include="Fixtures/invasion-lifecycle-official-1458.json.gz" LogicalName="InvasionLifecycle1458" />

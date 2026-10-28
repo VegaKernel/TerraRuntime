@@ -125,7 +125,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if ((targeting is not null && (VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc) ||
-            targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc) || targeting.GemBunny.HasPlan(in npc))) ||
+            targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc) || targeting.GemBunny.HasPlan(in npc) ||
+            targeting.OrdinaryMelee.HasPlan(in npc))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -134,9 +135,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         return TryApplyWorldMotion(in npc, in aiState, out next);
     }
 
-    internal bool TryApplyWorldMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next)
+    internal bool TryApplyWorldMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next,
+        VanillaNpcRawPlayer1458? rawTarget = null)
     {
-        if (!TryApplyTerrainMotion(in npc, in proposed, out var adjusted))
+        if (!TryApplyTerrainMotion(in npc, in proposed, out var adjusted, rawTarget))
         {
             next = default;
             return false;
@@ -156,7 +158,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         return true;
     }
 
-    internal bool TryApplyTerrainMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next)
+    internal bool TryApplyTerrainMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next,
+        VanillaNpcRawPlayer1458? rawTarget = null)
     {
         if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var selected) &&
             !selected.SupportsRuntimeLifecycle)
@@ -230,7 +233,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             if (stepUp.Stepped)
                 aiState = aiState with { PositionY = stepUp.PositionY };
 
-            VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState);
+            VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState, rawTarget);
             // Source flag8 is false for Psycho: its ai[2] remains the ambush clock, never door pressure.
             VanillaZombieDoorContactResult doorContact = (definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.ThePossessed)
                 ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai, false, false, false)
@@ -278,10 +281,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 simulation.DirectionX,
                 simulation.DirectionY,
                 obstacleParameters,
-                VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) ? simulation.SpriteDirection : null);
+                VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) ? simulation.SpriteDirection : null);
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
-            if (obstacle.Jumped && VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type))
+            if (obstacle.Jumped && VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type))
                 aiState = aiState with { RequiresImmediateSync = true };
 
             if (doorContact.GroundSupported &&
@@ -294,11 +297,20 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
             // AI_003's Expert elevated-target jump follows obstacle/stuck launches but precedes
             // the type-specific lunge. It deliberately does not set netUpdate itself.
-            if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) &&
+            VanillaNpcTargetCandidate elevated = default;
+            bool hasElevated;
+            if (rawTarget is { } raw)
+            {
+                elevated = raw.Candidate;
+                hasElevated = raw.Slot == aiState.Target;
+            }
+            else hasElevated = aiState.Target < byte.MaxValue && targeting is not null &&
+                targeting.TryGetCandidate((byte)aiState.Target, out elevated);
+            if (VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
                 doorContact.GroundSupported && velocityY == 0f && targeting?.GroundFighterExpertMode == true &&
                 ((velocityX < 0f && simulation.SpriteDirection == -1) ||
                  (velocityX > 0f && simulation.SpriteDirection == 1)) &&
-                aiState.Target < byte.MaxValue && targeting.TryGetCandidate((byte)aiState.Target, out var elevated))
+                hasElevated)
             {
                 float targetBottom = elevated.CenterY + elevated.Height * .5f;
                 if (targetBottom < aiState.PositionY &&
@@ -335,7 +347,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             {
                 velocityX = lungedVelocityX;
                 velocityY = lungedVelocityY;
-                if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type))
+                if (VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type))
                     aiState = aiState with { RequiresImmediateSync = true };
             }
 
@@ -619,6 +631,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        if (targeting is not null && targeting.OrdinaryMelee.HasPlan(in before))
+            return targeting.OrdinaryMelee.Complete(in before, in committed);
         if (targeting is not null && targeting.GemBunny.HasPlan(in before))
         {
             if (gemBunnyLifecycle is null ||
@@ -795,9 +809,12 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         committed.Simulation.Life == 0 &&
         committed.Simulation.TimeLeft == 0;
 
-    private VanillaGroundFighterDoorEnvironment ResolveDoorEnvironment(in NpcStateUpdate aiState)
+    private VanillaGroundFighterDoorEnvironment ResolveDoorEnvironment(in NpcStateUpdate aiState,
+        VanillaNpcRawPlayer1458? rawTarget = null)
     {
         bool bloodMoonActive = worldEvents?.BloodMoonActive == true;
+        if (rawTarget is { IsValid: true } raw && raw.Slot == aiState.Target)
+            return new(bloodMoonActive, true, raw.PositionX + raw.Width / 2, raw.PositionY + raw.Height / 2);
         if (aiState.Target < byte.MaxValue &&
             targeting is not null &&
             targeting.TryGetCandidate(checked((byte)aiState.Target), out VanillaNpcTargetCandidate target) &&

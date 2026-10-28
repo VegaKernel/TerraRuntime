@@ -288,8 +288,9 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability capabilities =
                 OrdinaryCore |
                 VanillaNpcAiCapability.CheckActiveSlice |
-                VanillaNpcAiCapability.GroundFighterTraversalSlice |
-                VanillaNpcAiCapability.GroundFighterDoorPressureSlice;
+                VanillaNpcAiCapability.GroundFighterTraversalSlice;
+            if (!VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(type))
+                capabilities |= VanillaNpcAiCapability.GroundFighterDoorPressureSlice;
             if (type == VanillaNpcIds.AngryBones || type == VanillaNpcIds.ArmoredSkeleton)
                 capabilities |= VanillaNpcAiCapability.GroundFighterCloseRangeLungeSlice;
 

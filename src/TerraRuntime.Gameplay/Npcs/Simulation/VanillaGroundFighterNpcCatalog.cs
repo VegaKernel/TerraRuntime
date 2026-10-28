@@ -211,6 +211,28 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(VanillaNpcIds.Psycho, 18, 40, 70, 40, 550, .5f, 1f, 3.75f,
             motionProfile: VanillaGroundFighterMotionProfile.Psycho)
         ,Fighter(new NpcTypeId(280), 18, 40, 75, 34, 500, .4f, 1f, 2.5f)
+        // Exact ordinary melee cohort: source SetDefaults and AI_003 speed/lunge bands.
+        // Definition registration does not replace the accepted world-phase admission fence.
+        ,Fighter(new(44), 18, 40, 22, 9, 70, .5f, 1f, 1f)
+        ,Fighter(new(104), 18, 40, 70, 38, 350, .4f, 1f, 2f, closeRangeLunge: true)
+        ,Fighter(new(140), 18, 40, 55, 28, 260, .4f, 1f, 1.5f)
+        ,Fighter(new(181), 18, 44, 25, 10, 70, .4f, 1f, 1.5f, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(196), 18, 40, 35, 16, 300, .4f, 1f, 2f, closeRangeLunge: true)
+        ,Fighter(new(197), 18, 40, 50, 28, 280, .45f, 1f, 2f)
+        ,Fighter(new(464), 18, 20, 21, 5, 75, 1f, 1f, 1.5f, closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(470), 16, 34, 21, 5, 75, 1f, 1f, 1.5f, closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(489), 18, 40, 20, 8, 75, .4f, 1f, 1f, scaleAdjustsSpeed: true,
+            motionProfile: VanillaGroundFighterMotionProfile.BloodZombie)
+        ,Fighter(new(524), 24, 44, 50, 26, 180, .6f, 1f, 2f, closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(525), 24, 44, 60, 30, 250, .6f - .1f, 1f, 2f, closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(526), 24, 44, 64, 32, 220, .6f - .1f, 1f, 2f, closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(527), 24, 44, 54, 32, 300, .6f - .2f, 1f, 2f, closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(528), 24, 44, 52, 28, 350, .35f, 1f, 3f,
+            motionProfile: VanillaGroundFighterMotionProfile.Lamia, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(529), 24, 44, 52, 28, 350, .35f, 1f, 3f,
+            motionProfile: VanillaGroundFighterMotionProfile.Lamia, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(536), 18, 40, 14, 8, 200, .5f, 1f, 1f)
+        ,Fighter(new(691), 18, 40, 18, 10, 60, .45f, 1f, .85f)
     ];
 
     private static readonly NpcTypeId[] AdditionalTypes =
@@ -294,7 +316,9 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.LacBeetle,
         VanillaNpcIds.SeaSnail,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
-        new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280), VanillaNpcIds.Psycho, VanillaNpcIds.CreatureFromTheDeep, VanillaNpcIds.Butcher, VanillaNpcIds.Nailhead, VanillaNpcIds.DrManFly, VanillaNpcIds.Frankenstein, VanillaNpcIds.Fritz, VanillaNpcIds.ThePossessed
+        new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280), VanillaNpcIds.Psycho, VanillaNpcIds.CreatureFromTheDeep, VanillaNpcIds.Butcher, VanillaNpcIds.Nailhead, VanillaNpcIds.DrManFly, VanillaNpcIds.Frankenstein, VanillaNpcIds.Fritz, VanillaNpcIds.ThePossessed,
+        new(44), new(104), new(140), new(181), new(196), new(197), new(464), new(470), new(489),
+        new(524), new(525), new(526), new(527), new(528), new(529), new(536), new(691)
     ];
 
     public static int DefinitionCount => Entries.Length;
@@ -304,6 +328,26 @@ public static class VanillaGroundFighterNpcCatalog
     /// <summary>The explicit positive parents of the verified signed undead runtime cohort.</summary>
     public static bool IsUndeadVariantParent(NpcTypeId type) => type.Value is
         3 or 21 or 31 or 132 or 186 or 187 or 188 or 189 or 200 or 201 or 202 or 203 or 223 or 635;
+
+    public static bool IsOrdinaryMeleeCohort1458(NpcTypeId type) => type.Value is
+        44 or 104 or 140 or 181 or 196 or 197 or 464 or 470 or 489 or
+        524 or 525 or 526 or 527 or 528 or 529 or 536 or 691;
+
+    /// <summary>Exact cohorts whose shared source target/network phases are represented.</summary>
+    public static bool UsesVerifiedGroundFighterTargeting1458(NpcTypeId type) =>
+        IsUndeadVariantParent(type) || IsOrdinaryMeleeCohort1458(type);
+
+    public static bool IsOrdinaryMeleeDayDespawnCandidate1458(NpcTypeId type) => type.Value is
+        44 or 104 or 140 or 196 or 197 or 489 or 536 or 691;
+
+    /// <summary>AI003 sound offers only; the Ghoul outer IdleSounds offer is a separate earlier phase.</summary>
+    public static int OrdinaryMeleeAi003AmbientBound1458(NpcTypeId type) => type.Value switch
+    {
+        197 or 691 => 1000,
+        489 => 800,
+        181 => 500,
+        _ => 0
+    };
 
     public static bool TryGetDefinition(NpcTypeId type, out VanillaNpcDefinition definition)
     {

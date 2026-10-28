@@ -129,7 +129,8 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             Assert.True(VanillaNpcAiCoverageCatalog.TryGet(type, out VanillaNpcAiCoverage fighter));
             Assert.True(fighter.Has(VanillaNpcAiCapability.CheckActiveSlice));
             Assert.True(fighter.Has(VanillaNpcAiCapability.GroundFighterTraversalSlice));
-            Assert.True(fighter.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
+            Assert.Equal(!VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(type),
+                fighter.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
             Assert.Equal(
                 type == VanillaNpcIds.AngryBones || type == VanillaNpcIds.ArmoredSkeleton,
                 fighter.Has(VanillaNpcAiCapability.GroundFighterCloseRangeLungeSlice));

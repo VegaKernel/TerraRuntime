@@ -1,0 +1,371 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-ordinary-melee-full-phase-component-qualification",
+  "accepted": true,
+  "aggregateAcceptance": false,
+  "historicalIntermediateQualificationAccepted": true,
+  "historicalIntermediateQualificationSha256": "0719ae15631ad14723e084393042bfdfb1eab576a5c8de95f06e4df4467649ba",
+  "cohort": [
+    44,
+    104,
+    140,
+    181,
+    196,
+    197,
+    464,
+    470,
+    489,
+    524,
+    525,
+    526,
+    527,
+    528,
+    529,
+    536,
+    691
+  ],
+  "entryProfiles": {
+    "original": "Actual official1458 Linux Terraria.NPC.UpdateNPC(0) on Windows CoreCLR, NPC.noSpawnCycle=true each invocation.",
+    "runtime": "Actual composed NpcAuthority.AdvanceWorldTick+TickSimulation with existing sourceSpawnCycle.SuppressNext owner.",
+    "excludedCallers": "World-time and natural-spawn selection/rate phases are excluded; no pure-AI relabeling, copied caller prefix, RNG restoration or projection masks."
+  },
+  "projection": {
+    "npc": "Every explicitly named observed actor field including bit-exact motion/AI/localAI/stats/frames, ordered active buffs and known status; retained nullable observation must be known.",
+    "players": "Actual raw slot0 and inactive constructor slot255 before/after, active/dead/ghost/position/body/aggro/noAggro/itemAnimation.",
+    "rng": "Actual cursor plus all56 physical slots before/after each phase.",
+    "excludedEffects": "Particle and sound command/event identity, full world cells, network packet ordering, combat/drop/catch transactions are not inferred from named NPC/RNG parity."
+  },
+  "freshSourceBirthParityClaim": false,
+  "fixtureImport": "Original SetDefaults output and explicit source-supported preimage imported through real RuntimeNpcStore.TryUpdate, after authoritative spawn and joined-player command owners; includes known wet entryhistory and Remix scale.",
+  "cases": {
+    "perSeed": 214,
+    "newCohortPerSeed": 194,
+    "legacyPerSeed": 20,
+    "phasesPerCase": 96,
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "newCohortExactPhases": 55872,
+    "scenes": [
+      "night",
+      "day-surface",
+      "close",
+      "reverse",
+      "stuck59",
+      "stuck60",
+      "air",
+      "water",
+      "stinky",
+      "frame-boundary",
+      "low-life"
+    ],
+    "extraScenes": [
+      "Blood489 far",
+      "Blood489 Expert low-life",
+      "Face181 Remix",
+      "four Ghoul successful first IdleSounds offer (actual source-searched seed146 override recorded)"
+    ]
+  },
+  "originalRepeatByteIdentical": true,
+  "baseline": {
+    "actualOldRuntimeCaptured": true,
+    "oldCohortPositionRedCases": 582,
+    "initialRepresentedNpcPlayersRngExact": true,
+    "oldStatusKnown": false,
+    "fullSameInputClaim": false,
+    "reason": "Creation-only old lifecycle has no status owner; unknown status is explicit, not filled as empty. Actual first-phase motion differs independently of this unknown."
+  },
+  "legacyControls": {
+    "types": [
+      3,
+      21,
+      53,
+      47,
+      168
+    ],
+    "cases": 60,
+    "phases": 5760,
+    "oldNewRuntimeExactlyEqual": true,
+    "sourceParityAccepted": false,
+    "sourceFrameDifferencesPreserved": true
+  },
+  "negativeControls": [
+    {
+      "label": "final01-omit",
+      "actualControl": "omit-step",
+      "rejectedCasesAgainstNormal": 214,
+      "firstDifference": {
+        "type": 44,
+        "scene": "night",
+        "difference": {
+          "path": "$[0].after.npc.position[0]",
+          "source": "447ffe14",
+          "runtime": "447fc000"
+        }
+      }
+    },
+    {
+      "label": "final01-extra",
+      "actualControl": "extra-rng",
+      "rejectedCasesAgainstNormal": 214,
+      "firstDifference": {
+        "type": 44,
+        "scene": "night",
+        "difference": {
+          "path": "$[0].after.rng.cursor",
+          "source": 0,
+          "runtime": 1
+        }
+      }
+    }
+  ],
+  "deadRaw0Witness": {
+    "type": 104,
+    "phases": 1,
+    "raw0Active": true,
+    "raw0Dead": true,
+    "actualBeforeAfterEqual": true,
+    "sourceRepeatByteIdentical": true,
+    "afterVelocityBits": [
+      "4015c290",
+      "c06ccccd"
+    ],
+    "excluded": "Inactive raw0 behavior is not qualified by this specific witness."
+  },
+  "historicalRuntimeCodeDlls": {
+    "TerraRuntime.Application.dll": "896c61e3d6359d2dfe34b66e5eab9a330edfb6d083a0fa26bf14b782ac156151",
+    "TerraRuntime.Core.dll": "94c9e99d68ce8e293ec2f20679de17dd3d6ba6d496852d176690f0ea204737d3",
+    "TerraRuntime.Gameplay.dll": "c6958aa325ddbd5f9a55dda264f0c34cc76e9c1b9e89ab5adeb1bb540aebb675"
+  },
+  "captureReceipts": [
+    {
+      "name": "v2-source1458-a",
+      "outputSha256": "3d6c074b55ea60f0c2cc8495c987e4e552c1ae09f3a50740875bc37450c8bd35",
+      "receiptSha256": "b1e1b07574f59bde67ef39b4d06db3fba3bfce983e24877c901ba35a5bb87ff1",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-source1458-b",
+      "outputSha256": "3d6c074b55ea60f0c2cc8495c987e4e552c1ae09f3a50740875bc37450c8bd35",
+      "receiptSha256": "91a84c69702c03e5dab1dde7a604363bb59a96f25b246417f39c6e7877a92a36",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-source42-a",
+      "outputSha256": "efa5d438b837f3ff6cc4179511d91b807876418feebc85c0a5cd57076b07059d",
+      "receiptSha256": "d369099aef6183e139f742cda78e097ae07eb1818c4cf2d31ae5d381e12dd3ce",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-source42-b",
+      "outputSha256": "efa5d438b837f3ff6cc4179511d91b807876418feebc85c0a5cd57076b07059d",
+      "receiptSha256": "03dc148281987d5f31bf7674ee2289123ad19f9e285c0d11029147fefa06a765",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-source8675309-a",
+      "outputSha256": "d7a9451c01ce0a6a9870ae8228e65b15b00f12d916e396b47cef3160ea6daeda",
+      "receiptSha256": "fc4a6a08fae0fd8003182204e64b0df9708cd18c63c041e59ac28864202796e9",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-source8675309-b",
+      "outputSha256": "d7a9451c01ce0a6a9870ae8228e65b15b00f12d916e396b47cef3160ea6daeda",
+      "receiptSha256": "0db642c24d35fb254bd33d56d2745cf97dcb2e5fbe11879d653bcc5aae709d01",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-old1458",
+      "outputSha256": "04571b0f0832d5e12b33c0e34df8cc42f9abc5833a7efaf10a3d2b222f9687e4",
+      "receiptSha256": "32a2a0e8c6175954629a5e733b8ab8a4c13f830541f3c3e1736dec2fd32dbfe8",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-old42",
+      "outputSha256": "5f258671b393a002fafb756dd63fecd8f4f234c787e6b69e60f9692a75489b63",
+      "receiptSha256": "d777139ba45daeb105a83a9885743aa837f9146322c1da538710e6ba08b74a86",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "v2-old8675309",
+      "outputSha256": "f0a11e1ff01409cadaa6955bfbe51658c02a6be3661f24a20faa37ae7a86069a",
+      "receiptSha256": "78e65146b6c8155a4a24b3f9a9e30e48843f0f94da10e3e1348369e6fa9498eb",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "final01-1458",
+      "outputSha256": "4f606a34cb7adebce86847f2a78435322574224d5e730128a82755b8ca97de99",
+      "receiptSha256": "aa1bf30ecf73ecffe632cd1db5fd5cdfd0aa21a2e26da0988bbb66513c8c3631",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "final01-42",
+      "outputSha256": "5b95f1f595cf9e9ed975aa14d5286e412360ce4599f00906cacf4d86a535b6cb",
+      "receiptSha256": "1412bcaba642f387b8b16053a36a004c899592aaf0dc2370760d007fa42a289b",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "final01-8675309",
+      "outputSha256": "9fb7a58757a6f92558808ea291b7c9a1d959027ba225e38b63c23444fd92a9d4",
+      "receiptSha256": "50210811486b1d261d895fcdbfdb901041912ed178b3448b75b1d7c6cce8f52b",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "final01-omit",
+      "outputSha256": "395b57f8f4a02017e87817108299a0595f3ad65b373ed6c1cacab3222b26452b",
+      "receiptSha256": "e49e3e2e00f9fee837621ad87cf961a967d9a772a3c03b75b71ba6c991941a4a",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "final01-extra",
+      "outputSha256": "95ec77464f2cde0cd8392425fe6016289b6252e9dfe67ba74de5571cccfbeee2",
+      "receiptSha256": "f398a20bd325e466872fbf619d49176fe575d1ad355e9739ef421688b5d1e6b2",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "dead-source-a",
+      "outputSha256": "dc7cfe9769181b29460a43970df77726bc19880c2d04aeeb458350af6c5d9da4",
+      "receiptSha256": "7cd89ff89d19d6a4f0a6ea7822272c036ca77eb3a31ac864efbe28b9ff64bf50",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "dead-source-b",
+      "outputSha256": "dc7cfe9769181b29460a43970df77726bc19880c2d04aeeb458350af6c5d9da4",
+      "receiptSha256": "c80e1f337568ddd25a417f7040a4adc439adf4abcd357e74a3da972945b957a8",
+      "captureGuardAccepted": true
+    },
+    {
+      "name": "final01-dead",
+      "outputSha256": "1e56a3f1f5b6143765e1e851acd9e2c036600aaaf39318b7bf02b0e021086424",
+      "receiptSha256": "c01df09e075fc904c4633b36f28cfc9779f6f47a8314478a2be02410772536bd",
+      "captureGuardAccepted": true
+    }
+  ],
+  "superseded": "Earlier639px actor/reverse459px peer fixtures were invalid relative to actual joined-player admission (actual638px), retained but excluded. Final v2 actor1023px/reverseinterior peers capture actual raw slot readback.",
+  "candidate": "ordinary-melee-ai3-20261028/final-gate03",
+  "sourceGuardAccepted": true,
+  "canonicalDllGuardAccepted": true,
+  "privateRuntimeClosureExact": true,
+  "runtimeClosureExact": true,
+  "runtimeClosureScope": "Exact actual40DLL executed directory for each capture and157 unchanged runtime dependencies; the sole physical-copy exception is unused TerraRuntime.Tests.dll, explicitly absent from adapter references/executed directory.",
+  "sourceInputCount": 4045,
+  "canonicalDllCount": 158,
+  "copiedDllCount": 158,
+  "gateBuildSha256": "a593d64ba6d9c7f9d5455c0f377819e071e63ca62288a449fc0173498c1f0275",
+  "gateSourceBeforeSha256": "d94a9f920dbf0c3f27d91a0059384dffb4f2b405a9326b88410f4fcb91508b25",
+  "gateDllBeforeSha256": "bafddef01bf1e023754b35facb6677f5e9784db6dfd012fc55faefd051d49f1a",
+  "privateRecaptureResultSha256": "29978f13db162aa7770f4575181b03e932b318d9d70bb174065d37b504542c4b",
+  "privateRecaptureQualificationSha256": "ced8e349f10033988a0bb9264b31bb6d60d9667b9e857fc0b57eafe744a34833",
+  "sourceShippingCodeBeforeAfterSha256": "435a006dc4de4aeb95efb68cbec3bf3388e110f85b0a85cc5c2f9b15f0359bbd",
+  "privatePhysicalClosurePinsSha256": "af58aa7f415e380d68495ae76db9da19754d092202d6c01417f7faacb112ed40",
+  "runtimeCodeDlls": {
+    "TerraRuntime.Application.dll": "e275e4eed7849a4a04ed73a371c06b3a780eb5f72df1b632f849b0c6c6993728",
+    "TerraRuntime.Core.dll": "0befa3b68c494417606581508f6f99c7540847d20464857cd377261661155901",
+    "TerraRuntime.Gameplay.dll": "469ef146308a483ca1e6bbda172a201cc10ed42b5f60b08d6dffca13f4dadd65"
+  },
+  "buildOnlyPredecessorBridge": {
+    "candidate": "ordinary-melee-ai3-20261028/final-gate01",
+    "aggregateAccepted": false,
+    "reason": "Focused-class namespace config error, original gate retained red; completed build remained accepted. Final02 build/source/exact158DLL closure independently rechecked; final03 successor exceptions qualified separately.",
+    "all158DllHashesEqualBetween01And02": true,
+    "shippingCodeHashesEqual": true
+  },
+  "testOnlySuccessorBridge": {
+    "from": "ordinary-melee-ai3-20261028/final-gate02",
+    "to": "ordinary-melee-ai3-20261028/final-gate03",
+    "accepted": true,
+    "sourceDifferences": {
+      "tests/TerraRuntime.Tests/NpcGroundRosterCreation1458Tests.cs": {
+        "recaptured": "ca83e89003745189eebf5a4318704062b4c57542f6cf9d485ee981c0b92c949a",
+        "finalGate": "9bf96ffd99ba62fc90df3f3d5a62d766e9cdbabf9ac7f8539f5e66353a17a309"
+      },
+      "tests/TerraRuntime.Tests/OrdinaryMeleeLootWorldOwnership1458Tests.cs": {
+        "recaptured": "121e9637532eaacb3b8419cb123e67b8e01cfef0d45ec81f806738c751786d64",
+        "finalGate": "cd8ea19048fc44641403b9364c461c6b5e6bdf838925eab2d1d547f79693d220"
+      }
+    },
+    "physicalDllSetExact": false,
+    "physicalDllDifferences": {
+      "TerraRuntime.Tests.dll": {
+        "recaptured": "45f06ad1805642396843c705694020036ee377fd1fd5532ebfa6c0164433259b",
+        "finalGate": "7499a45976a2569328cc62d24a41751860590ae0eb88c6984e0de81be0b64b93"
+      }
+    },
+    "unchangedRuntimeDependencyDllCount": 157,
+    "actualExecutedDllCountPerCapture": 40,
+    "captures": [
+      {
+        "label": "final01-1458",
+        "executedDllCount": 40,
+        "executedDirectoryExact": true,
+        "canonicalMemberDllsEqual": true,
+        "testsAssemblyPresent": false
+      },
+      {
+        "label": "final01-42",
+        "executedDllCount": 40,
+        "executedDirectoryExact": true,
+        "canonicalMemberDllsEqual": true,
+        "testsAssemblyPresent": false
+      },
+      {
+        "label": "final01-8675309",
+        "executedDllCount": 40,
+        "executedDirectoryExact": true,
+        "canonicalMemberDllsEqual": true,
+        "testsAssemblyPresent": false
+      },
+      {
+        "label": "final01-omit",
+        "executedDllCount": 40,
+        "executedDirectoryExact": true,
+        "canonicalMemberDllsEqual": true,
+        "testsAssemblyPresent": false
+      },
+      {
+        "label": "final01-extra",
+        "executedDllCount": 40,
+        "executedDirectoryExact": true,
+        "canonicalMemberDllsEqual": true,
+        "testsAssemblyPresent": false
+      },
+      {
+        "label": "final01-dead",
+        "executedDllCount": 40,
+        "executedDirectoryExact": true,
+        "canonicalMemberDllsEqual": true,
+        "testsAssemblyPresent": false
+      }
+    ],
+    "reason": "Two normal-test census/fixture admission assertions changed; shipping implementation and every actual executed dependency remain exact. The adapter is not TerraRuntime.Tests and never references or loads that assembly. No recapture needed for unused TestDLL-only successor."
+  },
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalFnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "originalSourceSha256": {
+    "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+    "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0"
+  },
+  "adapter": {
+    "assemblyName": "OrdinaryMeleePhaseProbe",
+    "referencesTests": false,
+    "unusedTestDllPresentInPhysicalCopy": true,
+    "harnessSourceSha256": "a5263fc42394568c2df37dde3dea954c709c6e5634cec086f9e9096ff14decc0",
+    "harnessProjectSha256": "615f803c09f15ea36c4ca1b929d93435b87e51796a207ee0745b73715705323a",
+    "harnessDllSha256": "5cfa31b9e565af2b21902d7d3a3abee1181cc0ffa4bd60277ebdd408261b6eab",
+    "runnerSha256": "c8fedb4f8fcd64feedc4ccca9c2828c1558dfd713bb4f52bd3392ad1951e2525",
+    "executionHost": "Windows CoreCLR",
+    "originalEdition": "Official1458Linux"
+  },
+  "semanticInventory": {
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "cache": ".cache/npc-next-cohort-readonly",
+    "recommendationSha256": "069fe6d223025db07c120fda85b62ec6e4439c37aba6540e8de3b713f4033ae8",
+    "reason": "Prior bounded inventory retained compiler/type diagnostics and unresolved frontiers; not accepted as effect closure or port safety. This component qualification derives from actual original execution and separately audited source predicates."
+  },
+  "receiptScope": "Component acceptance only; complete aggregate normal/fast/affected/full/Native gates remain the parent acceptance record. FullVanillaAiParity is not claimed.",
+  "FullVanillaAiParity": false
+}

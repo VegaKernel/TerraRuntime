@@ -51,6 +51,9 @@ public readonly record struct VanillaZombieMotionInput(
     public float MissingHealthAccelerationBonus { get; init; }
     public bool ArmedAttackCanStart { get; init; }
     public bool ArmedAttackMustEnd { get; init; }
+    public float? BloodZombieTargetDistance { get; init; }
+    public float? BloodZombieClosestTargetDistance { get; init; }
+    public bool? BloodZombieExpertMode { get; init; }
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -64,6 +67,7 @@ public readonly record struct VanillaZombieMotionResult(
 {
     public int TimeLeft { get; init; }
     public int SpriteDirection { get; init; }
+    public bool EnteredStuckThreshold { get; init; }
 }
 
 /// <summary>Type-specific horizontal movement branches inside TerrariaServer 1.4.5.8 AI_003_Fighters.</summary>
@@ -89,7 +93,9 @@ public enum VanillaGroundFighterMotionProfile : byte
     Psycho = 17,
     Butcher = 18,
     DrManFly = 19,
-    Fritz = 20
+    Fritz = 20,
+    Lamia = 21,
+    BloodZombie = 22
 }
 
 /// <summary>
@@ -139,6 +145,16 @@ public static class VanillaZombieMotion
             return false;
         }
 
+        if (input.MotionProfile == VanillaGroundFighterMotionProfile.BloodZombie &&
+            (input.BloodZombieExpertMode is null ||
+             input.BloodZombieTargetDistance is not { } currentDistance || !float.IsFinite(currentDistance) || currentDistance < 0f ||
+             input.ClosestTarget.HasTarget &&
+                (input.BloodZombieClosestTargetDistance is not { } closestDistance || !float.IsFinite(closestDistance) || closestDistance < 0f)))
+        {
+            result = default;
+            return false;
+        }
+
         VanillaZombieTargetRefresh closestTarget = input.ClosestTarget;
         float velocityX = input.VelocityX;
         float velocityY = input.VelocityY;
@@ -152,6 +168,7 @@ public static class VanillaZombieMotion
         float ai3 = input.Ai.Ai3;
         int targetRefreshes = 0;
         int timeLeft = input.TimeLeft;
+        bool enteredStuckThreshold = false;
 
         bool suppressesStuckTracking = input.MotionProfile is
             VanillaGroundFighterMotionProfile.StationaryArcher or
@@ -179,6 +196,9 @@ public static class VanillaZombieMotion
                 ai3 = 0f;
             if (input.JustHit)
                 ai3 = 0f;
+            // AI003 requests synchronization before its raw target overlap can
+            // reset this counter again. Preserve that source offer separately.
+            enteredStuckThreshold = ai3 == input.StuckThreshold;
             if (input.TargetOverlaps)
                 ai3 = 0f;
         }
@@ -232,6 +252,15 @@ public static class VanillaZombieMotion
         }
 
         float maximumSpeed = input.BaseMaximumHorizontalSpeed;
+        if (input.MotionProfile == VanillaGroundFighterMotionProfile.BloodZombie)
+        {
+            float distance = targetRefreshes > 0 && closestTarget.HasTarget
+                ? input.BloodZombieClosestTargetDistance!.Value
+                : input.BloodZombieTargetDistance!.Value;
+            float distancePenalty = MathF.Min(distance * .0025f, 1.5f);
+            maximumSpeed = (input.BloodZombieExpertMode!.Value ? 3f : 2.5f) - distancePenalty;
+            maximumSpeed *= .8f;
+        }
         if (input.ScaleAdjustsMaximumHorizontalSpeed)
             // The original Windows x86 fighter keeps the subtraction/product wider until the
             // speed assignment. Separate original multi-update captures expose signed-body drift.
@@ -310,6 +339,15 @@ public static class VanillaZombieMotion
                 velocityX *= .9f;
             ApplyStandardMotion(maximumSpeed, input.HorizontalAcceleration, input.OverspeedGroundDamping);
         }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Lamia)
+        {
+            // The shared three-pixel band brakes a Lamia's reversal only on
+            // the ground and only before an in-band acceleration offer.
+            if (velocityY == 0f && MathF.Abs(velocityX) <= maximumSpeed &&
+                ((directionX > 0 && velocityX < 0f) || (directionX < 0 && velocityX > 0f)))
+                velocityX *= .99f;
+            ApplyStandardMotion(maximumSpeed, input.HorizontalAcceleration, input.OverspeedGroundDamping);
+        }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.SeaSnail)
         {
             if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
@@ -377,7 +415,8 @@ public static class VanillaZombieMotion
             targetRefreshes)
         {
             TimeLeft = timeLeft,
-            SpriteDirection = spriteDirection
+            SpriteDirection = spriteDirection,
+            EnteredStuckThreshold = enteredStuckThreshold
         };
         return true;
 

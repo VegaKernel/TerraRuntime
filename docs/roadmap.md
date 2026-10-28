@@ -1,5 +1,15 @@
 # TerraRuntime roadmap
 
+## Ordinary melee connected block, 2026-10-28
+
+Seventeen exact AI3 identities now use the existing retained NPC/status/RNG phase, subtype movement and complete admitted presentation, combat and NPC-specific loot owners. AI3/AI7 runtime admission rises from 208 to **225 of 300**; 75 identities remain creation-only. Positive AI3 admission is **149 of 191**. Global explicit lifecycle admission is 489, with 266 creation-only definitions and one zero-body metadata-only definition. This counts explicit supported slices, not complete vanilla behavior.
+
+Three-seed original/runtime comparison matches **55,872 actual composed NPC phases**, including status, named state, actual raw player facts and all physical RNG slots. Sixty old-to-new control scenarios preserve previous behavior; their pre-existing source frame gaps remain excluded from source parity. Dedicated Ghoul HitEffect choices, 43 ordered specific-loot rules and all 48 materializable rewards are independently captured. Real omission/extra-RNG and unchanged-test runtime controls reject the intended faults. Retained death world-fact guards reject changes to Don't Starve, blood-night and kite-wind conditions before adoption.
+
+Release warnings-as-errors, focused `8,221/8,221`, fast `33,662/33,662` and one unfiltered full `1,575,076/1,575,076` pass with zero failures, errors, skips or not-run cases. Actual XML covers all `5,452` discovered methods. Fresh Windows x64 NativeAOT passes all five smokes. Actual Release and Native TCP checks pass two complete joins, the source Banner/Bestiary `82` sequence before `49/129`, movement/chat and replacement Hello. [TCP evidence](verification/npc-ordinary-melee-live-join-20261028.json) retains that bounded scope. [Combined acceptance](verification/npc-ordinary-melee-acceptance-20261028.json) binds exact source/DLL/index bytes and component scopes. All 891 original fixtures remain unchanged; there is no new shipping project or dependency.
+
+`FullVanillaAiParity` remains false. Unsupported door/switch contact, friendly overlap, Shimmer/lava, unowned statuses and humanoid social poses retain whole-phase refusal. The phase oracle excludes whole-world ticks; specific-loot captures exclude global rules and complete original death. Linux NativeAOT, original GUI and graceful-save shutdown are not established by this checkpoint.
+
 ## Analyzer-applied gameplay, NPC and worldgen union, 2026-10-28
 
 The semantic inventories have been applied to shipping behavior: world-item creation ownership now belongs only to the initial publication, with canonical state for later packet `21`, partial pickup and stack merging; five ordinary bunny identities reuse the existing nonresident owner, adding four lifecycle definitions and reducing AI3/AI7 creation-only identities from 96 to 92; cave-house tile mutations now preserve or reset the exact independent shape and metadata fields. The concurrent main Final Cleanup Check2x1 change is retained.

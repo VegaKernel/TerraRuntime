@@ -362,7 +362,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                     publishUpdate: !captainRetainedBirth, captainForceUpdate))
                 throw new InvalidOperationException("Accepted Captain client strike lost its exact revision.");
             PublishTownStrikeRandom(townStrike);
-            if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in current);
+            if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in current, result.ResolvedDamage);
             NpcSnapshot dead;
             if (current.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&
                 TryResolveWallOfFleshRoot(in current, out NpcSnapshot wallRoot))

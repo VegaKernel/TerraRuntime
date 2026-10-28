@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-ordinary-melee-fresh-live-join-acceptance",
+  "date": "2026-10-28",
+  "accepted": true,
+  "scope": "Exact current Release closure and freshly published Windows x64 NativeAOT, actual localhost TCP: two complete joins, source Banner/Bestiary packet82 before49, then129, authoritative movement/chat82 relay and replacement Hello slot0. Not official GUI, whole gameplay, LinuxNative or graceful-save shutdown acceptance.",
+  "gate": "ordinary-melee-ai3-20261028/final-gate03",
+  "sourceInputs": 4045,
+  "executedManagedDlls": 158,
+  "sourceManifestSha256": "d94a9f920dbf0c3f27d91a0059384dffb4f2b405a9326b88410f4fcb91508b25",
+  "dllManifestSha256": "bafddef01bf1e023754b35facb6677f5e9784db6dfd012fc55faefd051d49f1a",
+  "releaseArtifacts": {
+    "TerraRuntime.Application.dll": "e275e4eed7849a4a04ed73a371c06b3a780eb5f72df1b632f849b0c6c6993728",
+    "TerraRuntime.Core.dll": "0befa3b68c494417606581508f6f99c7540847d20464857cd377261661155901",
+    "TerraRuntime.Gameplay.dll": "469ef146308a483ca1e6bbda172a201cc10ed42b5f60b08d6dffca13f4dadd65",
+    "TerraRuntime.Server.dll": "5681d79de583b76bff1c7db1be645fc2cdd4e6d02525e0901ae5765b1ced0acf",
+    "TerraRuntime.Tests.dll": "7499a45976a2569328cc62d24a41751860590ae0eb88c6984e0de81be0b64b93"
+  },
+  "native": {
+    "executableSha256": "20f980fde19a9441a6c855f0ba7d40a1f84b3a147ae0acc2c6d22bfa07c66b7d",
+    "executableBytes": 37542400,
+    "pe": {
+      "machine": "0x8664",
+      "optionalMagic": "0x20b",
+      "clrRva": 0,
+      "clrSize": 0
+    },
+    "publishAndFiveSmokesResultSha256": "ac17534c0f2471471712b16e6c8fb7e66935df26faffda7605929cf49fcf67c6"
+  },
+  "fixture": {
+    "sourcePath": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\join-roster-live-v1\\source-copy.wld",
+    "sha256": "2289c366a15cdce62fad61888a3bf6f9f76f4e51fcd9b9d99aa8f8c71e4ceec0",
+    "unchanged": true,
+    "usage": "Independent private .wld copy per engine, explicit first-import custody, disposable private runtime/bootstrap/custody paths only"
+  },
+  "probe": {
+    "path": "tools/ci/live_join_relay_probe.py",
+    "sha256": "3727d04a0d7c818916173a01785b4867b98b83fc26393312abb7b45d8145d0ad",
+    "existingAssertionsUnchanged": true,
+    "passiveWrapperSha256": "ddbfb934b789f5647bb43b0c4bea3bde6a8157eaa5501d470dc808f80e1a9a35",
+    "observations": "Full received frame SHA; literal82/49/129 retained in bounded compressed cache capture"
+  },
+  "runs": [
+    {
+      "engine": "Release",
+      "accepted": true,
+      "existingProbeExitCode": 0,
+      "connections": [
+        {
+          "socket": 0,
+          "sections": 15,
+          "framesThrough49": 312,
+          "bannerModule11Count": 1,
+          "bestiaryModule4Count": 295,
+          "literal49": "030031",
+          "literal129": "030081",
+          "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+        },
+        {
+          "socket": 1,
+          "sections": 15,
+          "framesThrough49": 312,
+          "bannerModule11Count": 1,
+          "bestiaryModule4Count": 295,
+          "literal49": "030031",
+          "literal129": "030081",
+          "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+        }
+      ],
+      "movementRelay": true,
+      "chat82AuthorSlot": 0,
+      "replacementScope": "Hello only; packet3 payload0000 proves slot0 is reusable, no third full bootstrap claim",
+      "processStopped": true,
+      "stopMethod": "owned-process terminate; Windows hidden process has no shipping stdin shutdown command",
+      "gracefulShutdownClaim": false,
+      "hostExitCode": 1,
+      "resultPath": ".cache/ordinary-melee-ai3-20261028/live-final03-release-02/qualification.json",
+      "resultSha256": "38dd35c03082c4943e98ddfd3811a73236b06da8ce50fd66cfaebb55c05296d3",
+      "wireSha256": "d5ec5c8233fd5cc719a6461e051327200dd2d187948f5cd7add1a6ad098a8fbc",
+      "probeLogSha256": "f8f13534719d60f4f6e85ecceff773f23704ccfc023b44487d8aa58fc42e5267"
+    },
+    {
+      "engine": "WindowsNative",
+      "accepted": true,
+      "existingProbeExitCode": 0,
+      "connections": [
+        {
+          "socket": 0,
+          "sections": 15,
+          "framesThrough49": 312,
+          "bannerModule11Count": 1,
+          "bestiaryModule4Count": 295,
+          "literal49": "030031",
+          "literal129": "030081",
+          "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+        },
+        {
+          "socket": 1,
+          "sections": 15,
+          "framesThrough49": 312,
+          "bannerModule11Count": 1,
+          "bestiaryModule4Count": 295,
+          "literal49": "030031",
+          "literal129": "030081",
+          "literal82Then49SequenceSha256": "3f5a02635731ea21fbf9be24e2778a01d6f11e413a0ad18053b3c4a9b9a4c19c"
+        }
+      ],
+      "movementRelay": true,
+      "chat82AuthorSlot": 0,
+      "replacementScope": "Hello only; packet3 payload0000 proves slot0 is reusable, no third full bootstrap claim",
+      "processStopped": true,
+      "stopMethod": "owned-process terminate; Windows hidden process has no shipping stdin shutdown command",
+      "gracefulShutdownClaim": false,
+      "hostExitCode": 1,
+      "resultPath": ".cache/ordinary-melee-ai3-20261028/live-final03-native-02/result.json",
+      "resultSha256": "d5e44fb38dd4c9028b168fc0c7cc0110506c9843a4b077521d143318b2c2f4fb",
+      "wireSha256": "b0495eea4c318bf74c3524505f5009512acc5f2e2426bfc33e71dd6b58e80ef7",
+      "probeLogSha256": "b1d45e9fc45f6e5e5f750dd3e3b1fc9f74503d2ca0c5ddbbd5203e0a8e32eebc"
+    }
+  ],
+  "guards": {
+    "sourceAndCanonicalDllsUnchanged": true,
+    "privateExecutedArtifactsUnchanged": true,
+    "sourceWorldUnchanged": true,
+    "noSharedBuildOrShippingWrite": true
+  },
+  "historicalRejectedPreparation": [
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/live-final03-release/result.json",
+      "sha256": "a28e5b19dda28cce8b632312da171f99a5307ab7d93026f9e9e3f0f156fd239b",
+      "reason": "Runner incorrectly waited for Information readiness on default Error console logging. Listener existed; no client probe ran. Retained as setup rejection."
+    },
+    {
+      "path": ".cache/ordinary-melee-ai3-20261028/live-final03-release-02/result.json",
+      "sha256": "994f93db1a3071c782f167f9de1aa8b7b51db9d445fbfef4328e373b3c1a05bb",
+      "reason": "Existing actual two-client TCP probe passed, but auxiliary observer expected a third full join. Its replacement contract is Hello only. Separate qualification validates captured unchanged traffic against actual probe contract; original rejected record is immutable."
+    }
+  ]
+}

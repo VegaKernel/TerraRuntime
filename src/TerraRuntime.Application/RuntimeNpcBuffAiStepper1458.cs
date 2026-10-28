@@ -46,6 +46,9 @@ internal sealed class RuntimeNpcBuffAiStepper1458(INpcAiStateStepper inner,
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) || !definition.SupportsRuntimeLifecycle)
         { next = default; return false; }
+        // Its captured status/visual phase shares the same detached RNG as AI and collision.
+        if (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(npc.TypeIdentity))
+            return inner.TryStepState(in npc, out next);
         if (retainedSlimeStatuses && (npc.TypeIdentity == VanillaNpcIds.BlueSlime ||
             npc.TypeIdentity == VanillaNpcIds.LavaSlime ||
             npc.TypeIdentity == VanillaNpcIds.Zombie && buffPhase is not null))

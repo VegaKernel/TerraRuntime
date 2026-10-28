@@ -307,6 +307,7 @@ internal sealed class ServerRuntimeComposition
             townLootLanguage: VanillaTownNpcLootLanguage1458.English,
             invasionProgressPublisher: invasionProgressPublisher, invasionStartPublisher: invasionStartPublisher,
             worldStateAdopted: worldStateAdopted);
+        npcAuthority.BindSpecificLootWorldSource(() => sourcePlayerWorld?.DontStarveWorld);
         playersAuthority.SetTorchFavorPrelude(npcAuthority.DeathPrelude);
         projectileAuthority.BindFishingNpcs(npcAuthority);
         var worldTileAuthority = new WorldTileAuthority(

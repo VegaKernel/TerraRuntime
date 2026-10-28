@@ -21,13 +21,17 @@ internal static class RuntimeNpcStateOwnershipPolicy
             HomeTileY = update.Simulation.HomeTileY ?? -1,
             Homeless = update.Simulation.Homeless ?? false,
             CatchableNpcTempImmunityCounter = update.Simulation.CatchableNpcTempImmunityCounter ??
-                (IsOwnedBunny(update.Type, update.NetId) ? 90 : null),
-            ReleaseOwner = update.Simulation.ReleaseOwner ?? (IsOwnedBunny(update.Type, update.NetId) ? (short)255 : null),
+                (IsOwnedBunny(update.Type, update.NetId) ? 90 :
+                    VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(new(update.Type)) && update.Type == update.NetId ? 0 : null),
+            ReleaseOwner = update.Simulation.ReleaseOwner ??
+                (IsOwnedBunny(update.Type, update.NetId) ||
+                    VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(new(update.Type)) && update.Type == update.NetId ? (short)255 : null),
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {
             // A fresh NPC constructor owns zero. SetDefaults/Transform do not reset this source field.
-            if (definition.Type == VanillaNpcIds.Zombie)
+            if (definition.Type == VanillaNpcIds.Zombie ||
+                VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(definition.Type))
                 simulation = simulation with { ShimmerTransparency = simulation.ShimmerTransparency ?? 0f };
             if (simulation.LifeMax == 0)
             {

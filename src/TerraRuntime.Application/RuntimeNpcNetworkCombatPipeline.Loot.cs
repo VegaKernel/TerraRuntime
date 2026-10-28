@@ -10,13 +10,21 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
-    private void ExecuteNpcNonlethalHitEffects(in NpcSnapshot npc, int resolvedDamage = 0)
+    private void ExecuteNpcNonlethalHitEffects(in NpcSnapshot npc, int resolvedDamage)
     {
         if (npc.TypeIdentity == VanillaNpcIds.LavaSlime && npc.Simulation.LifeMax > 0)
         {
             // HitEffect uses the post-defense damage and a double threshold, including a fractional final particle.
             double particles = (double)resolvedDamage / npc.Simulation.LifeMax * 80.0;
             for (int particle = 0; particle < particles; particle++) random.NextInt32(0, 8);
+        }
+        if (npc.Type is >= 524 and <= 527 && npc.Simulation.LifeMax > 0)
+        {
+            // HitEffect receives the rounded post-defense strike damage. Its
+            // double threshold includes the final fractional particle, and the
+            // plain Ghoul still rolls before the source checks its zero color.
+            double particles = (double)resolvedDamage / npc.Simulation.LifeMax * 20.0;
+            for (int particle = 0; particle < particles; particle++) random.NextInt32(0, 4);
         }
         // Dedicated NPC.HitEffect still makes the Eskimo Zombie's gore choice, even though
         // Gore.NewGore and Dust.NewDust perform no server-side particle allocation.
@@ -46,6 +54,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (npc.TypeIdentity.Value is 186 or 432) random.NextInt32(0, 2);
         if (npc.Type == 443)
             for (int choice = 0; choice < 20; choice++) random.NextInt32(232, 234);
+        if (npc.Type is >= 524 and <= 527)
+            for (int choice = 0; choice < 20; choice++) random.NextInt32(0, 3);
         if (npc.TypeIdentity == VanillaNpcIds.Bee || npc.TypeIdentity == VanillaNpcIds.SmallBee)
         {
             // NPC.HitEffect (1.4.5.8) still makes six noGravity choices after dedicated Dust.NewDust returns.
@@ -644,6 +654,17 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return SourceRandom.Next(chanceDenominator);
         }
         public int NextInt32(int inclusiveMin, int exclusiveMax) => SourceRandom.Next(inclusiveMin, exclusiveMax);
+        public bool TryRollOnlyBadLuck(int chanceDenominator, out int result)
+        {
+            result = 0;
+            if (chanceDenominator < 1 || !float.IsFinite(Luck)) return false;
+            // Terraria.GameContent.Luck.RollOnlyBadLuck ignores positive luck, and its
+            // negative-luck branch uses a different nested range from ordinary RollLuck.
+            result = Luck < 0f && NextFloat() < -Luck
+                ? SourceRandom.Next(SourceRandom.Next(chanceDenominator / 2, chanceDenominator))
+                : SourceRandom.Next(chanceDenominator);
+            return true;
+        }
         public float NextFloat() => (float)SourceRandom.NextDouble();
         public float NextFloatDirection() => NextFloat() * 2f - 1f;
     }

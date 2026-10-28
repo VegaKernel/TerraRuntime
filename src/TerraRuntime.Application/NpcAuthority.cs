@@ -16,6 +16,7 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal sealed partial class NpcAuthority
 {
+    internal void BindSpecificLootWorldSource(Func<bool?> source) => combat.BindSpecificLootWorldSource(source);
     private readonly PlayerAuthority players;
     private readonly RuntimePlayerSnapshotLookup playerSnapshots;
     private readonly RuntimeNpcRawPlayerSlots1458 rawPlayerSlots;
@@ -337,6 +338,8 @@ internal sealed partial class NpcAuthority
                         playerSnapshots: playerSnapshots),
                     progressionMutations: progression);
                 pirateGhostMotion = worldMotion;
+                vanillaTargeting.SetOrdinaryMeleeOwner(npcs, new VanillaOrdinaryMeleeEnvironment1458(
+                    worldTiles, npcs, npcBuffStatus, worldMotion, CaptureOrdinaryMeleeWorldFacts1458, npcReplication));
                 gemBunnyLifecycle = new RuntimeGemBunnyLifecycle1458(worldTiles, worldSurfaceTiles, npcs,
                     combat, expertMode, npcReplication, npcBuffStatus);
                 vanillaTargeting.SetGemBunnyOwner(npcs, new VanillaGemBunnyEnvironment1458(worldTiles, npcs,
@@ -2095,6 +2098,10 @@ internal sealed partial class NpcAuthority
     }
 
     private bool? CaptureBunnyBloodMoon() => worldClock?.BloodMoonActive;
+
+    private OrdinaryMeleeWorldFacts1458 CaptureOrdinaryMeleeWorldFacts1458() => new(
+        worldClock is not null, worldClock?.DayTime ?? true, worldClock?.EclipseActive ?? false,
+        CaptureDifficulty() >= 2f, worldClock?.GetGoodWorld ?? false, naturalSpawnWorldFacts?.RemixWorld ?? false);
 
     private RuntimeTownNpcScheduleConditions1458 CaptureGemBunnyConditions() => new(
         worldClock?.DayTime ?? true, worldClock?.Raining ?? false,

@@ -14,7 +14,12 @@ public enum VanillaNpcLootRuleKind : byte
     NotExpertCommon = 7,
     OneFromOptions = 8,
     FailedRollChain = 9,
-    ExpertGetsOneReroll = 10
+    ExpertGetsOneReroll = 10,
+    DontStarveCommon = 11,
+    NotDontStarveCommon = 12,
+    BloodMoonNotFromStatueCommon = 13,
+    WindyCommon = 14,
+    OnlyBadLuckCommon = 15
 }
 
 /// <summary>
@@ -34,7 +39,7 @@ public readonly record struct VanillaNpcLootRule(
     VanillaNpcLootOptions1458? Options = null)
 {
     public bool IsValid =>
-        (Kind is >= VanillaNpcLootRuleKind.ExtraGel and <= VanillaNpcLootRuleKind.ExpertGetsOneReroll) &&
+        (Kind is >= VanillaNpcLootRuleKind.ExtraGel and <= VanillaNpcLootRuleKind.OnlyBadLuckCommon) &&
         !ItemType.IsNone &&
         NormalChanceDenominator > 0 &&
         ExpertChanceDenominator > 0 &&
@@ -200,6 +205,7 @@ public static class VanillaNpcLootRuleCatalog
         if (npcType == VanillaNpcIds.MeteorHead) { table = MeteorHeadTable; return true; }
         if (VanillaInvasionNpcLootCatalog1458.TryGet(npcType, out table)) return true;
         if (VanillaUndeadLootCatalog1458.TryGet(npcType, out table)) return true;
+        if (VanillaOrdinaryMeleeLootCatalog1458.TryGet(npcType, out table)) return true;
 
         table = default;
         return false;
@@ -216,7 +222,12 @@ public readonly record struct VanillaNpcLootContext(
     bool DropExtraGel,
     bool SpawnedFromStatue = false,
     bool? LowTiles = null,
-    bool? HasSickle = null);
+    bool? HasSickle = null)
+{
+    public bool? DontStarveWorld { get; init; }
+    public bool? BloodMoonNight { get; init; }
+    public bool? WindyEnoughForKites { get; init; }
+}
 
 /// <summary>
 /// Semantic random/luck boundary matching Terraria's CommonDrop call order. For production NPC loot the source
@@ -227,6 +238,11 @@ public interface INpcLootRollSource
     int RollLuck(int chanceDenominator);
 
     int NextInt32(int inclusiveMin, int exclusiveMax);
+
+    // ScalingWithOnlyBadLuck is a different source roll, not an alias of RollLuck.
+    // Adapters without this capability refuse the rule rather than changing its entropy.
+    bool TryRollOnlyBadLuck(int chanceDenominator, out int result)
+    { result = 0; return false; }
 }
 
 /// <summary>One concrete item drop produced by evaluated NPC loot rules.</summary>
@@ -255,6 +271,11 @@ public static class VanillaNpcLootEvaluator
         if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon &&
             !TryGetSickleEligibility(in context, out _)) return false;
         if (rule.Kind == VanillaNpcLootRuleKind.LowTilesCommon && !context.LowTiles.HasValue) return false;
+        if ((rule.Kind is VanillaNpcLootRuleKind.DontStarveCommon or VanillaNpcLootRuleKind.NotDontStarveCommon) &&
+            !context.DontStarveWorld.HasValue) return false;
+        if (rule.Kind == VanillaNpcLootRuleKind.BloodMoonNotFromStatueCommon &&
+            !context.SpawnedFromStatue && !context.BloodMoonNight.HasValue) return false;
+        if (rule.Kind == VanillaNpcLootRuleKind.WindyCommon && !context.WindyEnoughForKites.HasValue) return false;
         if (rule.Alternatives is { } chain)
             foreach (ref readonly var alternative in chain.Rules)
                 if (!TryValidateRuleContext(in alternative, in context)) return false;
@@ -314,6 +335,11 @@ public static class VanillaNpcLootEvaluator
         if (rule.Kind == VanillaNpcLootRuleKind.ExpertCommon && !context.IsExpertMode) return true;
         if (rule.Kind == VanillaNpcLootRuleKind.NotExpertCommon && context.IsExpertMode) return true;
         if (rule.Kind == VanillaNpcLootRuleKind.LowTilesCommon && context.LowTiles != true) return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.DontStarveCommon && context.DontStarveWorld != true) return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.NotDontStarveCommon && context.DontStarveWorld != false) return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.BloodMoonNotFromStatueCommon &&
+            (context.SpawnedFromStatue || context.BloodMoonNight != true)) return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.WindyCommon && context.WindyEnoughForKites != true) return true;
         if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon)
         {
             if (!TryGetSickleEligibility(in context, out bool eligible)) return false;
@@ -325,7 +351,13 @@ public static class VanillaNpcLootEvaluator
             : rule.NormalChanceDenominator;
 
         // CommonDrop always performs Player.RollLuck before any stack RNG, including denominator 1.
-        bool success = rolls.RollLuck(denominator) < 1;
+        int roll;
+        if (rule.Kind == VanillaNpcLootRuleKind.OnlyBadLuckCommon)
+        {
+            if (!rolls.TryRollOnlyBadLuck(denominator, out roll)) return false;
+        }
+        else roll = rolls.RollLuck(denominator);
+        bool success = roll < 1;
         // CommonDropWithRerolls short-circuits its logical OR once a roll has succeeded.
         if (!success && rule.Kind == VanillaNpcLootRuleKind.ExpertGetsOneReroll && context.IsExpertMode)
             success = rolls.RollLuck(denominator) < 1;

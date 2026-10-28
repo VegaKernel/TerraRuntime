@@ -1,5 +1,11 @@
 # Production graph
 
+## Ordinary melee retained phase and specific loot, 2026-10-28
+
+Seventeen exact positive AI3 identities reuse the existing targeting, ground-fighter mechanics, RuntimeNpcStore previews, canonical status owner, terrain motion, activity, combat, loot allocator and replication registry. The retained phase captures raw player slots (including inactive/dead slots 0 and 255), target candidates, world facts and terrain versions before detached RNG execution. NPC/status/shared-RNG adoption requires the same retained inputs after the unchanged placeholder is accepted. Unsupported humanoid social poses, door/switch contacts, friendly overlaps, Shimmer/lava and unowned status work refuse before adoption. There is no second NPC table, mutable simulation owner or RNG stream.
+
+The existing NPC-specific loot evaluator registers 43 ordered source rules and 48 rewards for this cohort. Nullable Don't Starve metadata comes from the existing source-player world owner; blood-night and kite-wind facts come from the authoritative world clock. Death previews retain these facts and recheck them before adoption, including detached Guide-doll batches. Unknown required facts refuse rather than becoming false. ScalingWithOnlyBadLuck has its own explicit roll capability; an adapter without it refuses the rule. Sparse reward defaults and natural-prefix facts grant materialization only, without item-use or equipment admission. All source loading and differential reflection remain offline. Combined acceptance is recorded in docs/verification/npc-ordinary-melee-acceptance-20261028.json; source/DLL/index membership is exact.
+
 ## Analyzer-applied runtime ownership, 2026-10-28
 
 The shipping graph remains 15 projects and 29 references. World-item creation ownership is retained with an allocation operation only for its initial Drop publication; direct/deferred adoption share the same canonical active state with Ownership.None. Trusted direct and reserved creation paths similarly project their initial event argument, and existing-slot synchronization/partial takes/merges normalize stale hints without changing quantity custody, owner or clocks. A source no-broadcast lease skips ApplySpawnOwnership; no new item owner or funding ledger was added. Creation callback snapshots are publication projections, not exact current-state preimages.

@@ -149,6 +149,11 @@ public static class VanillaItemPrefixCatalog
                 (Contains(GetRollablePrefixes(townFamily), prefix) &&
                  VanillaItemPrefixTable1458.TryGet(itemType, out var townStats) &&
                  VanillaItemPrefixTable1458.Accepts(in townStats, prefix.Value));
+        var ordinaryMeleeFamily = VanillaOrdinaryMeleeDropCatalog1458.GetPrefixFamily(itemType);
+        if (ordinaryMeleeFamily != VanillaItemPrefixFamily.None)
+            return prefix == VanillaPrefixIds.None ||
+                (Contains(GetRollablePrefixes(ordinaryMeleeFamily), prefix) &&
+                 VanillaOrdinaryMeleeDropCatalog1458.AcceptsNaturalPrefix(itemType, prefix));
         var undeadFamily = VanillaUndeadDropCatalog1458.GetPrefixFamily(itemType);
         if (undeadFamily != VanillaItemPrefixFamily.None)
             return prefix == VanillaPrefixIds.None ||

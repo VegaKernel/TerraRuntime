@@ -587,7 +587,7 @@ internal sealed class VanillaNpcBehaviorContext
         if (rawPlayerSlots is null ||
             (definition.Type != VanillaNpcIds.BlueSlime && definition.Type != VanillaNpcIds.LavaSlime &&
              definition.AiStyle != VanillaNpcAiStyles.DemonEye &&
-             !VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) &&
+             !VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
              !VanillaGemBunnyAi1458.IsSupported(definition.Type.Value)))
             return false;
         foreach (var candidate in Candidates)

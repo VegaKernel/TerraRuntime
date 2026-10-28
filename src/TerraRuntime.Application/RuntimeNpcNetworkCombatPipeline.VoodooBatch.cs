@@ -57,6 +57,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var beforeProgression = progression.CaptureSnapshot();
         ulong beforePrelude = deathPrelude.Revision;
         var beforeWorld = CaptureGlobalLootWorld(); var beforeLow = CaptureSpecificLowTiles();
+        var beforeSpecificWorld = CaptureSpecificWorldFacts();
         ulong inventorySerial = playerAuthority.NpcLootInventorySerial;
         var beforeSeason = seasonalItemContextSource?.Invoke();
         var beforeClock = CaptureDollClock();
@@ -81,6 +82,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             requireOwnedPlayerHealth: requireOwnedPlayerHealth, rawPlayerSlots: rawPlayerSlots,
             npcSpecificDropExtraGel: npcSpecificDropExtraGel, npcSpecificGoodWorld: npcSpecificGoodWorld,
             townNameSource: townNameSource, townLootLanguage: townLootLanguage);
+        detached.BindSpecificLootWorldSource(() => beforeSpecificWorld.DontStarve);
         detached.bossRecoveryDaily.CopyFrom(bossRecoveryDaily);
         if (!interactions.CopyDeathPreviewTo(detached.interactions)) return false;
         var sourceInteractions = new Dictionary<NpcHandle, PlayerSlotId[]>();
@@ -167,6 +169,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 !IsCurrentBurnableDoll(in sourceDoll) || progression.CaptureSnapshot() != beforeProgression ||
                 deathPrelude.Revision != beforePrelude || CaptureGlobalLootWorld() != beforeWorld ||
                 CaptureSpecificLowTiles() != beforeLow || playerAuthority.NpcLootInventorySerial != inventorySerial ||
+                CaptureSpecificWorldFacts() != beforeSpecificWorld ||
                 seasonalItemContextSource?.Invoke() != beforeSeason || CaptureDollClock() != beforeClock) return false;
             if ((bossRecoveryDaily.EyeKilled, bossRecoveryDaily.WallKilled) != beforeDaily ||
                 !TryBuildGuideDollWallSpawn(in sourceDoll, out var currentWall) || currentWall != initialWall) return false;

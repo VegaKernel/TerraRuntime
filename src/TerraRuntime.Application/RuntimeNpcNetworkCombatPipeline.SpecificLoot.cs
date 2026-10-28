@@ -10,13 +10,31 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private RuntimeItemOwnerPlayerCapture1458[]? plannedSpecificPlayers;
     private bool? plannedSpecificLowTiles;
     private ulong plannedSpecificInventorySerial;
+    private Func<bool?>? specificDontStarveWorldSource;
+    private SpecificWorldFacts plannedSpecificWorld;
+
+    private readonly record struct SpecificWorldFacts(bool? DontStarve, bool? BloodMoonNight, bool? Windy);
+
+    internal void BindSpecificLootWorldSource(Func<bool?> source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (specificDontStarveWorldSource is not null)
+            throw new InvalidOperationException("NPC-specific world source is already bound.");
+        specificDontStarveWorldSource = source;
+    }
+
+    private SpecificWorldFacts CaptureSpecificWorldFacts() => new(
+        specificDontStarveWorldSource?.Invoke(),
+        worldClock is { } clock ? !clock.DayTime && clock.BloodMoonActive : null,
+        worldClock is { } weather ? MathF.Abs(weather.WindSpeedTarget) >= .4f : null);
 
     private bool? CaptureSpecificLowTiles() => npcSpecificLowTiles is not null
         ? npcSpecificLowTiles() : skyblockLowTiles ? null : false;
 
     private bool TryCaptureSpecificLootContext(in NpcSnapshot npc, out VanillaNpcLootContext context)
     {
-        bool? lowTiles = CaptureSpecificLowTiles();
+        bool? lowTiles = IsPreviewingDeath ? plannedSpecificLowTiles : CaptureSpecificLowTiles();
+        var world = IsPreviewingDeath ? plannedSpecificWorld : CaptureSpecificWorldFacts();
         bool? hasSickle = null;
         if (lowTiles != false && VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(npc.TypeIdentity, out var table) &&
             HasSickleCondition(table.Rules))
@@ -37,7 +55,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         context = new(expertMode || npcSpecificGoodWorld || worldClock?.GetGoodWorld == true,
             DropExtraGel: npcSpecificDropExtraGel,
             SpawnedFromStatue: npc.Simulation.SpawnedFromStatue,
-            LowTiles: lowTiles, HasSickle: hasSickle);
+            LowTiles: lowTiles, HasSickle: hasSickle)
+        {
+            DontStarveWorld = world.DontStarve,
+            BloodMoonNight = world.BloodMoonNight,
+            WindyEnoughForKites = world.Windy
+        };
         return true;
     }
 
@@ -71,6 +94,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool IsSpecificLootContextCurrent() =>
         CaptureSpecificLowTiles() == plannedSpecificLowTiles &&
+        CaptureSpecificWorldFacts() == plannedSpecificWorld &&
         (plannedSpecificPlayers is null ||
             (plannedSpecificInventorySerial < ulong.MaxValue &&
              playerAuthority.NpcLootInventorySerial == plannedSpecificInventorySerial &&

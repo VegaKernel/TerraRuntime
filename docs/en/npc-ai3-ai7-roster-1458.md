@@ -1,5 +1,11 @@
 # AI3 and AI7 NPC definitions, Terraria 1.4.5.8
 
+## Ordinary melee cohort accepted, 2026-10-28
+
+Seventeen exact AI3 identities now use the existing retained NPC/status/RNG phase, subtype movement and complete admitted presentation, combat and NPC-specific loot owners. AI3/AI7 runtime admission rises from 208 to **225 of 300**; 75 identities remain creation-only. Positive AI3 admission is **149 of 191**. Global explicit lifecycle admission is 489, with 266 creation-only definitions and one zero-body metadata-only definition. This counts explicit supported slices, not complete vanilla behavior.
+
+[Runtime evidence](npc-ai3-ai7-runtime-1458.md).
+
 [Русский](../ru/npc-ai3-ai7-roster-1458.md) · [Source definition roster](npc-source-definition-roster-1458.md)
 
 The complete source census contains **300 identities**: AI3 has **191 positive types and 27 signed NetIDs**; AI7 has **82 positive types and no signed variants**. The source is the locally decompiled official dedicated server, `NPC.SetDefaults`, `SetDefaultsFromNetId`, `ScaleStats` and special-world adjustments. Numeric original-assembly captures supply independent expectations. No decompiled bodies, localized game text or assets are distributed.
@@ -37,6 +43,8 @@ The newly materialized positive IDs are:
 ## Runtime ownership
 
 Definitions feed the existing `RuntimeNpcStore` creation paths and `RuntimeNpcStateOwnershipPolicy`. The world supplies the existing spawn context and shared RNG. Source dimensions are materialized before later visual-scale changes; signed variants preserve their own integer rounding and source type. AI7 includes residents, critters and special actors; membership alone does not grant resident housing, commerce or combat.
+
+The following table records the historical first runtime checkpoint, before the remaining-defaults extension and later cohorts. Current counts are given above.
 
 | Definition state | Identities | Creation/defaults | Vanilla runtime lifecycle |
 | --- | ---: | --- | --- |
