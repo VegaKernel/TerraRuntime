@@ -40,7 +40,7 @@ internal sealed partial class PlayerAuthority
                 // Original source records for these known None vanity accessories prove
                 // no functional grants, but they can block inherited matching favorites.
                 if (index is >= 13 and <= 19 &&
-                    (item.ItemNetId is 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321 &&
+                    (item.ItemNetId is 885 or 886 or 887 or 888 or 889 or 890 or 891 or 892 or 893 or 3781 or 901 or 902 or 903 or 904 or 5354 or 1612 or 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321 &&
                      item.PrefixId == default ||
                      item.ItemNetId is 6168 or 6169 or 6193 or 6194 &&
                      item.PrefixId.Value is 0 or >= 62 and <= 80))
@@ -74,7 +74,7 @@ internal sealed partial class PlayerAuthority
             bool sharingBlocker = inactiveArmor && item.ItemNetId == VanillaItemIds.CopperBroadsword.Value;
             bool cyclingAccessory = allowAmmoCycling && index is >= 3 and <= 9 && item.ItemNetId is 6168 or 6169 or 6193 or 6194;
             bool provenAccessory = index is >= 3 and <= 9 &&
-                item.ItemNetId is 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321;
+                item.ItemNetId is 885 or 886 or 887 or 888 or 889 or 890 or 891 or 892 or 893 or 3781 or 901 or 902 or 903 or 904 or 5354 or 1612 or 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321;
             if (index is >= 3 and <= 9 && item.ItemNetId is 555 or 854 or 3033 or 3034 or 3035)
             {
                 if (item.PrefixId != default)
@@ -86,7 +86,7 @@ internal sealed partial class PlayerAuthority
             }
             else if (provenAccessory)
             {
-                if (item.PrefixId.Value is >= 77 and <= 80 && item.ItemNetId is not (489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321))
+                if (item.PrefixId.Value is >= 77 and <= 80 && item.ItemNetId is not (885 or 886 or 887 or 888 or 889 or 890 or 891 or 892 or 893 or 3781 or 901 or 902 or 903 or 904 or 5354 or 1612 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321))
                     return false;
                 // Arcane is staged through the common effective-slot mana owner; Ankh
                 // immunity writers still require a separate buff-phase owner.
@@ -119,6 +119,7 @@ internal sealed partial class PlayerAuthority
             return false;
         return combat with
         {
+            BuffImmunity = VanillaPlayerBuffImmunity1458.None,
             Defense = 0,
             ArmorPenetration = 0,
             NoKnockback = false,

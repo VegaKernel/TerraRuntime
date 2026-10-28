@@ -1,5 +1,9 @@
 # Production graph
 
+## Isolated Ankh equipment component, 2026-10-28
+
+Sixteen immunity accessories add bounded immutable flags to the existing combat snapshot; the existing equipment selector and whole-player admission own grants. NPC contact still spends proc RNG before immunity. Late cure uses existing44slots/provenance/DelBuff compaction and per-update poison/noItems carriers; existing player phase adopts buff/HP/items/RNG before observers. No new inventory/timer/RNG owner, production package or project edge. Component evidence only; main/aggregate integration pending.
+
 ## Ordinary melee retained phase and specific loot, 2026-10-28
 
 Seventeen exact positive AI3 identities reuse the existing targeting, ground-fighter mechanics, RuntimeNpcStore previews, canonical status owner, terrain motion, activity, combat, loot allocator and replication registry. The retained phase captures raw player slots (including inactive/dead slots 0 and 255), target candidates, world facts and terrain versions before detached RNG execution. NPC/status/shared-RNG adoption requires the same retained inputs after the unchanged placeholder is accepted. Unsupported humanoid social poses, door/switch contacts, friendly overlaps, Shimmer/lava and unowned status work refuse before adoption. There is no second NPC table, mutable simulation owner or RNG stream.

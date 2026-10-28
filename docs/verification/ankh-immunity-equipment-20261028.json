@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "kind": "ankh-equipment-immunity-component",
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "baseCommit": "02b769ec7e6605477e54e45d5d2401910cb7a777",
+  "worktree": "TerraRuntime-next-equipment",
+  "branch": "gameplay/ankh-immunities-20261028",
+  "ids": [
+    885,
+    886,
+    887,
+    888,
+    889,
+    890,
+    891,
+    892,
+    893,
+    3781,
+    901,
+    902,
+    903,
+    904,
+    5354,
+    1612
+  ],
+  "scope": "Sixteen source immunity grants/prevention through existing equipment/retained combat/NPCcontact owners. Source-ordered current Poisoned20/Cursed23 cleanup and effect continuity on existing44slots. Other active harmful effects retain fullphase fences;1613 fireWalk/1921cold/5355Shimmer excluded. No new ledger/owner/project/dependency.",
+  "original": {
+    "mainFixture": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/AnkhEquipmentLinux1458.json.gz",
+      "sha256": "d0b0e34ab5e8744b01da52a38c1e7db2a50ed5b7aaa442e2e35acbb2df3b1f18"
+    },
+    "mainProvenance": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/AnkhEquipmentLinux1458.provenance.json",
+      "sha256": "268aa3c5b15d900a9ed60cad27642af897ea010edb832693d286abd393ca2cf8"
+    },
+    "sharingFixture": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/AnkhEquipmentSharingLinux1458.json.gz",
+      "sha256": "c4626b3b2cd8b93361466138508af00dd9b60121d7c48bccf15c6314f3e0d406"
+    },
+    "sharingProvenance": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/AnkhEquipmentSharingLinux1458.provenance.json",
+      "sha256": "b6f393531e1c7f78e28755e389b10b09781ec7dd7edb2fa95861be45742c3dd7"
+    },
+    "rows": 435,
+    "repeatedRows": 870,
+    "actualWholePlayerUpdatePhases": 144,
+    "wholeRole": "remote255; actual unmodified Player.Update0, timers/flags projection only, no unknown wire regeneration clocks/fullstate claim",
+    "sharingRows": 16,
+    "sharingRepeatIdentical": true,
+    "edition": "originalLinux1.4.5.8managedexecutedonWindowsCoreCLR",
+    "observed": "InitializedMain1/2; actualItem.SetDefaults/Prefix/ResetEffects/UpdateEquips/AddBuff/StatusFromNPC; fullphysicalRNG. Source poison/noItems survives cureframe; adjacent sourceDelBuff skip and slot43 independently observed. Source immunity check follows NPCproc RNG."
+  },
+  "validation": {
+    "releaseWarningsAsErrors": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0,
+      "log": {
+        "path": ".cache/ankh/current-build03.log",
+        "sha256": "0f4d72787eef325d1e126680d4a9adb3751f42be7b550b4a58a9a6db0018cd49"
+      }
+    },
+    "focused": {
+      "passed": 454,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": {
+        "path": ".cache/ankh/focus02.xml",
+        "sha256": "e10ad65d8ea2b3a4a093c993deeb47fe2e00aa562f59a75f9669744e21ab3e93"
+      }
+    },
+    "existingNeighbors": {
+      "passed": 19,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": {
+        "path": ".cache/ankh/neighbors01.xml",
+        "sha256": "52de06f38edb454136390803e4b7a7cce0bb9abf6366d685acc88f7d5abcd21a"
+      },
+      "scope": "Existing functional equipment/defensive phases, NPCcontact rules/network andserverplayercontact. Source-heavy checks run all indexed4832equipmentphases and220032contact rows inside their existing Facts."
+    }
+  },
+  "causality": {
+    "oldProduction": {
+      "sameTestDllSha256": "dd11e4ef9e0fc750f666509582d7b348a1f9bdc640145abd608b98937c08b58d",
+      "normalTestSourceSha256": "0685976cfc16d8f045d4eeffc16225f3feefb8654d63afbcafe81e37973309ef",
+      "oldPassed": 3,
+      "oldAssertionFailures": 384,
+      "fixedPassed": 387,
+      "errors": 0,
+      "skipped": 0,
+      "oldXml": {
+        "path": ".cache/ankh/baseline/old.xml",
+        "sha256": "409fddeda9b037ddb6a6b2630ae370b84a527b8d4dd544f12503bbc54f0b2d52"
+      },
+      "fixedXml": {
+        "path": ".cache/ankh/baseline/fixed.xml",
+        "sha256": "c77559a476adc97add9b668c221e212afacd0fcebc12e72b400b4482637264b0"
+      },
+      "scope": "Unchanged387normal source-backed tests run firstagainstold main metadata beforeproduction edits, thenexact sameTestDLL againstnewApp+Gameplay only;3no-gearcontrols staygreen."
+    },
+    "cleanupOmission": {
+      "finalTestDllSha256": "025554f23e2564a17fd71ffbcd1c099c190d2ba8da3fd510b2557ff372e07a7a",
+      "passed": 21,
+      "assertionFailures": 30,
+      "errors": 0,
+      "skipped": 0,
+      "recursiveDllCount": 158,
+      "canonicalAndPrivateDllGuard": true,
+      "sourceAndMetadataRevalidated": true,
+      "result": {
+        "path": ".cache/ankh/omit-cleanup/result03.json",
+        "sha256": "6deb62a22d9eece3197088023f3fb89927093df9f43f2992eff35bedfac11642"
+      },
+      "scope": "Exactly one sourceorderedcleanupcall removedinprivatecurrentApp; samefinal454TestDLL andall157otherDLLs byteidentical. No loadererrors count as evidence."
+    }
+  },
+  "historicalRejectedSetups": [
+    {
+      "path": ".cache/ankh/omit-cleanup/copy-rejection.json",
+      "reason": "C:diskfull whilecopying TestDLL beforeanytestexecution; partialcopy immutable, no causal claim. OwncachemovedtoE andoldpathjunction; complete03proof usesfresh finalTestDLL."
+    }
+  ],
+  "notRun": [
+    "aggregatefast",
+    "unfilteredfull",
+    "Nativepublish/smokes",
+    "freshTCP",
+    "originalGUI",
+    "LinuxNative"
+  ],
+  "publication": "isolatedcomponentonly; no mainmerge/push authorized here",
+  "overrides": null
+}

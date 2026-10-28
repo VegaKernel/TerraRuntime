@@ -136,6 +136,7 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
                 1282 or 1283 or 1284 or 1285 or 1286 or 1287 or 4256 => new(1),
             76 or 77 or 78 or 79 or 689 or 692 or 695 or 698 or 1550 or 2202 or
                 2759 or 2765 => new(2),
+            885 or 886 or 887 or 888 or 889 or 890 or 891 or 892 or 893 or 3781 or 901 or 902 or 903 or 904 or 5354 or 1612 or
             49 or 156 or 211 or 854 or 3033 or 3034 or 3035 or 935 or 2998 or 489 or 490 or 491 or 555 or 1301 or 1321 or 1613 or
                 1858 or 3110 or 3212 or 4989 or 5000 or 5107 => new(-1, true),
             2609 => new(-1, true, 26),

@@ -1,5 +1,9 @@
 # Work state
 
+## Isolated Ankh equipment component, 2026-10-28
+
+Branch gameplay/ankh-immunities-20261028 in TerraRuntime-next-equipment starts at02b769ec; no main merge/push yet. Sixteen Ankh-line grants reuse effective equipment, retained combat fields, source NPC proc RNG and existing44buffslots. Only Poison20/Cursed23 current-affliction cleanup is admitted; other active harmful states stay fenced,1613fireWalk/1921cold/5355Shimmer remain excluded. ReleaseWAE0/0, new454/454 and existing19neighborFacts pass. Same387TestDLL gives384oldassertfail/3controls then387fixedgreen; exactfinal454TestDLL cleanupomission has30assertfail/21controls,158DLL/sourceguards green. Component only: aggregatefast/full/Native/TCP notrun. Evidence docs/verification/ankh-immunity-equipment-20261028.json; cache E-backed through original .cache/ankh junction. Preserve NPC22 worktree and its independent gates.
+
 ## Ordinary melee and Check2x1 merge integration, 2026-10-28
 
 Merge5415e106 preserves NPC checkpoint08152d8f and concurrentmain3c4c2c75. Merged Release warnings-as-errors, focused8311/8311, mandatoryfast33662/33662, complete worldgen/infrastructure84161/84161 pass without failures/errors/skips. Fresh WindowsNative074283e1/allfive smokes, actualRelease+NativeTCPtwojoins/82→49→129/movement-chat/replacementHello and re-captured55872NPCphases are green. Shipping NPC code/resources remain exact; the source delta from the NPC checkpoint is only WorldGeneration/GenerationTileFraming1458 plus its existing test expansion.

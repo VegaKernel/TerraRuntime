@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Source Ankh-line immunity observations, 2026-10-28
+
+Actual initialized original1458 Item.SetDefaults/UpdateEquips/AddBuff confirms885..893 grant30/36/20/22/32/35/23/33/31 respectively;3781?156,901?33+36,902?30+20,903?32+31,904?35+23,5354?22+156,1612 allten. Source StatusFromNPC spends its proc draws before AddBuff immunity. Actual unmodified remote Player.Update0 preserves thisframe poison/noItems after lateimmuneDelBuff; forward compaction canleave adjacentCursed oneextra update, andslot43 retains source special compaction. Original16favorite-source GetEffectiveArmor/UpdateEquips confirms accessorytrue,wing/armorparts-1,expertOnlyfalse,incompatibility-1. Fixtures AnkhEquipmentLinux1458 andAnkhEquipmentSharingLinux1458 retain actual outputs; no wholeMain/GUI/Native or unknownregenerationclock claim.
+
 ## Ordinary melee final connected acceptance, 2026-10-28
 
 Seventeen exact AI3 identities now use the existing retained NPC/status/RNG phase, subtype movement and complete admitted presentation, combat and NPC-specific loot owners. AI3/AI7 runtime admission rises from 208 to **225 of 300**; 75 identities remain creation-only. Positive AI3 admission is **149 of 191**. Global explicit lifecycle admission is 489, with 266 creation-only definitions and one zero-body metadata-only definition. This counts explicit supported slices, not complete vanilla behavior.

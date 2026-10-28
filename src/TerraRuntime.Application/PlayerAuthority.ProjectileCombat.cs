@@ -20,6 +20,7 @@ internal sealed partial class PlayerAuthority
     }
 
     private static bool IsValidDerivedCombat(in VanillaPlayerCombatSnapshot combat) =>
+        (combat.BuffImmunity & ~VanillaPlayerBuffImmunity1458.All) == 0 &&
         combat.AmmoCyclingMode <= AmmoCyclingMode1458.Random &&
         (combat.AmmoCyclingMode == AmmoCyclingMode1458.None || combat.AmmoCyclerDamage) &&
         combat.Defense >= 0 && combat.MeleeCrit >= 0 && combat.RangedCrit >= 0 && combat.MagicCrit >= 0 &&

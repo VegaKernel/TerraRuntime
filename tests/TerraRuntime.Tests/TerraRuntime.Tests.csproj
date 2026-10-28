@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/AnkhEquipmentLinux1458.json.gz" LogicalName="AnkhEquipmentLinux1458" />
+    <EmbeddedResource Include="Fixtures/AnkhEquipmentSharingLinux1458.json.gz" LogicalName="AnkhEquipmentSharingLinux1458" />
     <EmbeddedResource Include="Fixtures/AmmoProjectileDeathLinux1458.json.gz" LogicalName="AmmoProjectileDeathLinux1458" />
     <EmbeddedResource Include="Fixtures/AmmoProjectileDeathWindows1458.json.gz" LogicalName="AmmoProjectileDeathWindows1458" />
     <EmbeddedResource Include="Fixtures/WiringOriginalLinux1458.json.gz" LogicalName="WiringOriginalLinux1458" />
