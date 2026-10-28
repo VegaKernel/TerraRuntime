@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-ordinary-melee-merged-union-phase-qualification",
+  "accepted": true,
+  "aggregateAcceptance": false,
+  "FullVanillaAiParity": false,
+  "candidate": "ordinary-melee-ai3-20261028/union-gate01",
+  "head": "5415e106fbae2b9e02c4d9e4f67d50a2fb702e37",
+  "sourceGuardAccepted": true,
+  "canonicalDllGuardAccepted": true,
+  "privateRuntimeClosureExact": true,
+  "runtimeClosureExact": true,
+  "sourceInputCount": 4045,
+  "canonicalDllCount": 158,
+  "copiedDllCount": 158,
+  "fullPhysicalDllSetEqual": true,
+  "freshRecaptureOnUnionClosure": true,
+  "historicalPriorComponent": {
+    "path": "docs/verification/npc-ordinary-melee-phase-20261028.json",
+    "sha256": "bc2d4c7474dcd97cc85529f714c72111977ddd92aa8b121e734736ec12087d86",
+    "changed": false
+  },
+  "sourceChangesSincePriorCandidate": {
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.cs": {
+      "prior": "854b7f3580a00cf3e56f08b95ac1e80f35ab6ddf61d17703d553df27380d5d86",
+      "union": "e1e1ca2d7d5c524392c0e84abf8d4944fefa4ffd2736f5245ccfb120b846be61"
+    },
+    "tests/TerraRuntime.Tests/SourceBackedFinal1458Tests.cs": {
+      "prior": "aee09994bd66fc2c9b0eb29106d2febc5e0e9376b9b5e4dc895928e4582cfba6",
+      "union": "5e6550e33f082155fdd1712368b31221f89e548f5d6d7901d0744541d0e036d3"
+    }
+  },
+  "npcShippingSourcesUnchanged": true,
+  "gateBuildSha256": "33897b3cfd60b61b476ffb916f84014c44413c0889caa9ebd81315e54c049dc7",
+  "gateSourceBeforeSha256": "78cf0ecfec22442f72efdae8cb88f7ae638d3055cc511ff4846f17eb44f3e9fb",
+  "gateDllBeforeSha256": "732d071aade3155decaad01b6d4368979433c7c83172737845328615f5b00ccc",
+  "privateResultSha256": "b0d89187c16d1324fb152df00174b0125a833c292a4799ecca5d3a0f14afa4bd",
+  "privateQualificationSha256": "a4a274c27e3c7b2312ac413b384f2fbc4e644a2a3745822914adefe0715bfbfa",
+  "copiedPhysicalClosurePinsSha256": "f6a3a0d1b7a617704d1d49bc3e3355e97dad9ac5cbd9c3e74d89dca3507621f9",
+  "runtimeCodeDlls": {
+    "TerraRuntime.Application.dll": "9abfa69b94edbbb5dd44ee03fa4807b62b7f331b4ff8a6e9fe00ce486fe3ab02",
+    "TerraRuntime.Core.dll": "29fdb50dde53fa4b659b9a60a6ee5aecf61390422674fff3fefc64027b5c33bd",
+    "TerraRuntime.Gameplay.dll": "e0c79d5fc462e1004c1f293a468e64216b17c8a516a5eb7b6e40bbdc6d09f743",
+    "TerraRuntime.Contracts.dll": "d25d51aa128258425f1ad2e400b2c4bf524672ef750a518e7101acd77ef2b631",
+    "TerraRuntime.World.dll": "bfed2a521157e92de30861afb4a5a5d740b7aa9c7b95e41aecdbfc9268892a26"
+  },
+  "executedDirectoryGuards": [
+    {
+      "name": "union01-1458",
+      "executedDllCount": 40,
+      "executedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "unusedTestsDllAbsent": true
+    },
+    {
+      "name": "union01-42",
+      "executedDllCount": 40,
+      "executedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "unusedTestsDllAbsent": true
+    },
+    {
+      "name": "union01-8675309",
+      "executedDllCount": 40,
+      "executedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "unusedTestsDllAbsent": true
+    },
+    {
+      "name": "union01-omit",
+      "executedDllCount": 40,
+      "executedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "unusedTestsDllAbsent": true
+    },
+    {
+      "name": "union01-extra",
+      "executedDllCount": 40,
+      "executedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "unusedTestsDllAbsent": true
+    },
+    {
+      "name": "union01-dead",
+      "executedDllCount": 40,
+      "executedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "unusedTestsDllAbsent": true
+    }
+  ],
+  "cohort": [
+    44,
+    104,
+    140,
+    181,
+    196,
+    197,
+    464,
+    470,
+    489,
+    524,
+    525,
+    526,
+    527,
+    528,
+    529,
+    536,
+    691
+  ],
+  "entryProfiles": {
+    "original": "Actual official1458 Linux Terraria.NPC.UpdateNPC(0) on Windows CoreCLR, NPC.noSpawnCycle=true each invocation.",
+    "runtime": "Actual composed NpcAuthority.AdvanceWorldTick+TickSimulation with existing sourceSpawnCycle.SuppressNext owner.",
+    "excludedCallers": "World-time and natural-spawn selection/rate phases are excluded; no pure-AI relabeling, copied caller prefix, RNG restoration or projection masks."
+  },
+  "projection": {
+    "npc": "Every explicitly named observed actor field including bit-exact motion/AI/localAI/stats/frames, ordered active buffs and known status; retained nullable observation must be known.",
+    "players": "Actual raw slot0 and inactive constructor slot255 before/after, active/dead/ghost/position/body/aggro/noAggro/itemAnimation.",
+    "rng": "Actual cursor plus all56 physical slots before/after each phase.",
+    "excludedEffects": "Particle and sound command/event identity, full world cells, network packet ordering, combat/drop/catch transactions are not inferred from named NPC/RNG parity."
+  },
+  "freshSourceBirthParityClaim": false,
+  "fixtureImport": "Original SetDefaults output and explicit source-supported preimage imported through real RuntimeNpcStore.TryUpdate, after authoritative spawn and joined-player command owners; includes known wet entryhistory and Remix scale.",
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "casesPerSeed": 214,
+  "cohortCasesPerSeed": 194,
+  "phasesPerCase": 96,
+  "exactCohortPhases": 55872,
+  "originalCorporaUnchanged": true,
+  "originalRepeatByteIdentical": true,
+  "captureReceipts": [
+    {
+      "name": "v2-source1458-a",
+      "outputSha256": "3d6c074b55ea60f0c2cc8495c987e4e552c1ae09f3a50740875bc37450c8bd35",
+      "receiptSha256": "b1e1b07574f59bde67ef39b4d06db3fba3bfce983e24877c901ba35a5bb87ff1"
+    },
+    {
+      "name": "v2-source1458-b",
+      "outputSha256": "3d6c074b55ea60f0c2cc8495c987e4e552c1ae09f3a50740875bc37450c8bd35",
+      "receiptSha256": "91a84c69702c03e5dab1dde7a604363bb59a96f25b246417f39c6e7877a92a36"
+    },
+    {
+      "name": "v2-source42-a",
+      "outputSha256": "efa5d438b837f3ff6cc4179511d91b807876418feebc85c0a5cd57076b07059d",
+      "receiptSha256": "d369099aef6183e139f742cda78e097ae07eb1818c4cf2d31ae5d381e12dd3ce"
+    },
+    {
+      "name": "v2-source42-b",
+      "outputSha256": "efa5d438b837f3ff6cc4179511d91b807876418feebc85c0a5cd57076b07059d",
+      "receiptSha256": "03dc148281987d5f31bf7674ee2289123ad19f9e285c0d11029147fefa06a765"
+    },
+    {
+      "name": "v2-source8675309-a",
+      "outputSha256": "d7a9451c01ce0a6a9870ae8228e65b15b00f12d916e396b47cef3160ea6daeda",
+      "receiptSha256": "fc4a6a08fae0fd8003182204e64b0df9708cd18c63c041e59ac28864202796e9"
+    },
+    {
+      "name": "v2-source8675309-b",
+      "outputSha256": "d7a9451c01ce0a6a9870ae8228e65b15b00f12d916e396b47cef3160ea6daeda",
+      "receiptSha256": "0db642c24d35fb254bd33d56d2745cf97dcb2e5fbe11879d653bcc5aae709d01"
+    },
+    {
+      "name": "dead-source-a",
+      "outputSha256": "dc7cfe9769181b29460a43970df77726bc19880c2d04aeeb458350af6c5d9da4",
+      "receiptSha256": "7cd89ff89d19d6a4f0a6ea7822272c036ca77eb3a31ac864efbe28b9ff64bf50"
+    },
+    {
+      "name": "dead-source-b",
+      "outputSha256": "dc7cfe9769181b29460a43970df77726bc19880c2d04aeeb458350af6c5d9da4",
+      "receiptSha256": "c80e1f337568ddd25a417f7040a4adc439adf4abcd357e74a3da972945b957a8"
+    },
+    {
+      "name": "union01-1458",
+      "outputSha256": "5cc15bc6442d2c85401fb27cc7e236dee5b02a780e64ed6af138404046455e0a",
+      "receiptSha256": "09201d8639e967f3b9464aa9cfa2b55d2dd159dfabe00517a746738e41f8b50e"
+    },
+    {
+      "name": "union01-42",
+      "outputSha256": "c0a4ede9575cafaf42deb15487ebd0b7244eea3f17a0eefdb52069812aeaafde",
+      "receiptSha256": "b32dc788bcc1ccd66d6fc75b3a568ba356e264d78ae4aae195ce074010678648"
+    },
+    {
+      "name": "union01-8675309",
+      "outputSha256": "62eb5f3f8aca5697e62eafb4b1813219ec7dab45170316ec4d83d889d9790028",
+      "receiptSha256": "0a6a2353c8acc4f3be1be00ceba4da6e1f7be230a237aeb94dc8596e4cdc6da3"
+    },
+    {
+      "name": "union01-omit",
+      "outputSha256": "d41d4ca5b60a7c0fcb6273d5a67f778f84e878e5cb03a9c9aa6e982f9803c665",
+      "receiptSha256": "2df06cfb909983698fc1e89a586d4effd9af6b3cc69206bbeadd3e2bb06e7669"
+    },
+    {
+      "name": "union01-extra",
+      "outputSha256": "923373414c27ec9b2acaf03f8fd2684c988275ccc446bc6e03cc58b0dee169df",
+      "receiptSha256": "ca0b56d0ddc007bb594571fed52d9b52fe36cee2428a77117ec6acbfb88981ec"
+    },
+    {
+      "name": "union01-dead",
+      "outputSha256": "7c7f386447700bccf536a40146303e8f77c9dae777887ea94fd8a3213f49f9ad",
+      "receiptSha256": "786d7548159910bacfa5ede8d2b5d04a21fc2cc0c34692dad1670a24710bcf19"
+    }
+  ],
+  "legacyControls": {
+    "types": [
+      3,
+      21,
+      53,
+      47,
+      168
+    ],
+    "cases": 60,
+    "phases": 5760,
+    "oldNewRuntimeExactlyEqual": true,
+    "sourceParityAccepted": false,
+    "sourceFrameDifferencesPreserved": true
+  },
+  "baseline": {
+    "actualOldRuntimeCaptured": true,
+    "oldCohortPositionRedCases": 582,
+    "initialRepresentedNpcPlayersRngExact": true,
+    "oldStatusKnown": false,
+    "fullSameInputClaim": false,
+    "reason": "Creation-only old lifecycle has no status owner; unknown status is explicit, not filled as empty. Actual first-phase motion differs independently of this unknown."
+  },
+  "negativeControls": [
+    {
+      "label": "union01-omit",
+      "actualControl": "omit-step",
+      "rejectedCasesAgainstNormal": 214,
+      "firstDifference": {
+        "type": 44,
+        "scene": "night",
+        "difference": {
+          "path": "$[0].after.npc.position[0]",
+          "source": "447ffe14",
+          "runtime": "447fc000"
+        }
+      }
+    },
+    {
+      "label": "union01-extra",
+      "actualControl": "extra-rng",
+      "rejectedCasesAgainstNormal": 214,
+      "firstDifference": {
+        "type": 44,
+        "scene": "night",
+        "difference": {
+          "path": "$[0].after.rng.cursor",
+          "source": 0,
+          "runtime": 1
+        }
+      }
+    }
+  ],
+  "deadRaw0Witness": {
+    "type": 104,
+    "phases": 1,
+    "raw0Active": true,
+    "raw0Dead": true,
+    "actualBeforeAfterEqual": true,
+    "sourceRepeatByteIdentical": true,
+    "afterVelocityBits": [
+      "4015c290",
+      "c06ccccd"
+    ],
+    "excluded": "Inactive raw0 behavior is not qualified by this specific witness."
+  },
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalFnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "originalSourceSha256": {
+    "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+    "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0"
+  },
+  "semanticInventory": {
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "cache": ".cache/npc-next-cohort-readonly",
+    "recommendationSha256": "069fe6d223025db07c120fda85b62ec6e4439c37aba6540e8de3b713f4033ae8",
+    "reason": "Prior bounded inventory retained compiler/type diagnostics and unresolved frontiers; not accepted as effect closure or port safety. This component qualification derives from actual original execution and separately audited source predicates."
+  },
+  "scope": "Fresh three-seed actual NpcAuthority NPC-phase captures on exact merged union closure, compared against immutable repeated original UpdateNPC observations. Named NPC/rawplayer/status/fullphysicalRNG equality only. Legacy old/new stability preserves existing source-frame gaps; dead raw0 witness is active+dead only. Omission and extra-RNG controls are successful rejections, not parity greens. No world-time, spawn selection/rate, complete AI parity, combat/drop/catch or aggregate/Native/full-suite acceptance is inferred."
+}

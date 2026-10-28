@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "canonical-document-artifact-byte-bridge",
+  "accepted": true,
+  "scope": "Previously recorded component hashes identify raw working-tree artifact bytes. Git stores LF text. Preserved raw preimages and this normalization-only map bind those hashes to the committed JSON documents without changing their JSON values, original captures or shipping inputs.",
+  "rows": [
+    {
+      "path": "docs/verification/npc-ghoul-hiteffect-20261028.json",
+      "workingPreimageSha256": "36af13874235d8f755908b5590b4c4f02e3247ff7ee34a30e3a23ead5e31381e",
+      "canonicalGitBlobSha256": "d1e662d6f9fb798c254acb9078bb39d76e10ab1a1a27e924437b6faf1236f029",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/npc-ghoul-hiteffect-20261028.json"
+    },
+    {
+      "path": "docs/verification/npc-ghoul-hiteffect-final03-20261028.json",
+      "workingPreimageSha256": "e0bf385f5b1adfb8fd938f18c97454ab88c489ddd8f4bf1b40482f7e8f9c9562",
+      "canonicalGitBlobSha256": "f37b2d98ddc7fd81b7322371380da0cccd50b6ac6dfa3578fc8ca5959aaf0cb2",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/npc-ghoul-hiteffect-final03-20261028.json"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-live-join-20261028.json",
+      "workingPreimageSha256": "34693319478d74864ee484c069898f4ebae6c5233aedec0a240765af325727ee",
+      "canonicalGitBlobSha256": "b76d8c740faafc4055cb9464edd08b12d53b6d27a120fdab2ec4bd00eeea5e90",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/npc-ordinary-melee-live-join-20261028.json"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-loot-20261028.json",
+      "workingPreimageSha256": "dd6050712e773645345e0244123942ec22b9b2c7494507edc3e20535127f6676",
+      "canonicalGitBlobSha256": "58e5c745738c45760f6ce611b71b7b9b815194ce73b60c984ac827fd24ca039c",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/npc-ordinary-melee-loot-20261028.json"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-loot-causal-20261028.json",
+      "workingPreimageSha256": "caff0c6fc7b3ebf2a255f712a85381ff27bcb72bca6a48197af62e30e3610ac9",
+      "canonicalGitBlobSha256": "616aae729a17aefd3c45ba26e580f2dc213eb801038f6344bce522ab12629f52",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/npc-ordinary-melee-loot-causal-20261028.json"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-loot-causal-final03-20261028.json",
+      "workingPreimageSha256": "0794fc86d6a9063427cdcf32c82bd9f98a67bd8765576730b32ec061cfba4416",
+      "canonicalGitBlobSha256": "f3cb7c9616f346db106337a47ae662bc3296953997539c8553460147d796a244",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/npc-ordinary-melee-loot-causal-final03-20261028.json"
+    },
+    {
+      "path": "docs/verification/ordinary-melee-loot-world-causal-20261028.json",
+      "workingPreimageSha256": "7e65b4c1153facdb3716b21c5fb722ad3a8313effa25cd3ba6a3a0433a58fca8",
+      "canonicalGitBlobSha256": "01cf678d0c9670f575e1c7e9cc2181ff19a21e6d1001999f5bffb1bcf57ad1b8",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/ordinary-melee-loot-world-causal-20261028.json"
+    },
+    {
+      "path": "docs/verification/npc-ordinary-melee-union-live-join-20261028.json",
+      "workingPreimageSha256": "63142165c39a0dd54ef5cd63a87e65c1016207a3e2066afa74842c767dbc2fa9",
+      "canonicalGitBlobSha256": "455bfb38601a6dd48c2fd401b6cd68f11605498b813e0d047d94b0bf2e5447ab",
+      "onlyCrlfToLf": true,
+      "preimage": ".cache/ordinary-melee-ai3-20261028/doc-working-preimages/npc-ordinary-melee-union-live-join-20261028.json"
+    }
+  ],
+  "shippingInputsUnchanged": true,
+  "knownMergeSourceDelta": [
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.cs",
+    "tests/TerraRuntime.Tests/SourceBackedFinal1458Tests.cs"
+  ],
+  "npcShippingSourceAndResourcesExact": true
+}

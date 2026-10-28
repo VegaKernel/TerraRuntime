@@ -19,6 +19,8 @@ Higher evidence layers are required whenever a lower layer can share the same wr
 
 ### Focused CI execution
 
+Private nested adapters in a single compiled test owner do not make that file a shared test helper. The selector keeps the owner's complete affected matrices and the separate mandatory fast tier. Additional visible classes, unrecognized declarations, missing files, shared contracts, RNG and evidence/configuration changes retain the conservative full fallback. No method exclusion or golden row is changed. The [selector qualification](../verification/test-tier-private-adapters-20261028.json) records the unchanged-test old-rule failure, 23 regressions and exact partition/filter checks against fresh discovery.
+
 Source-contract workflows invoke the executable xUnit runner with native method filters. Repeated `-method` arguments form an OR over fully qualified method names, including their class names:
 
 ```bash

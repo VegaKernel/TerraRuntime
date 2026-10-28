@@ -38,6 +38,21 @@ def matches(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
 
 
+def potentially_shared_classes(text: str) -> list[str]:
+    declared = []
+    for match in re.finditer(r"\bclass\s+(\w+)", text):
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        prefix = text[line_start:match.start()]
+        # A private class cannot be a file/namespace-level declaration in the
+        # freshly compiled C# input. It is local to its enclosing test owner.
+        # Unrecognized modifiers, comments and additional visible classes keep
+        # the conservative shared-helper fallback; this is not a C# parser.
+        if re.fullmatch(r"\s*private(?:\s+(?:sealed|abstract|static|partial|new|unsafe))*\s+", prefix):
+            continue
+        declared.append(match.group(1))
+    return declared
+
+
 def select(policy: dict, methods: set[str], tier: str, paths: list[str],
            root: Path = ROOT, fallback: str | None = None) -> dict:
     heavy = {entry["method"]: entry for entry in policy["heavy_methods"]}
@@ -64,7 +79,7 @@ def select(policy: dict, methods: set[str], tier: str, paths: list[str],
                     fallback = f"Removed test/helper: {path}"
                     break
                 text = test_file.read_text(encoding="utf-8-sig")
-                declared = re.findall(r"\bclass\s+(\w+)", text)
+                declared = potentially_shared_classes(text)
                 owners = {name for name in declared if any(
                     method.startswith(f"TerraRuntime.Tests.{name}.") for method in methods)}
                 if len(declared) != 1 or not owners:

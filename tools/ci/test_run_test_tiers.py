@@ -95,6 +95,36 @@ class TestTierSelection(unittest.TestCase):
             self.assertEqual(["npc", "world"], plan["domains"])
             self.assertEqual(2, plan["selected_method_count"])
 
+    def test_private_nested_adapters_keep_the_complete_owner_domain(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            file = root / "tests/TerraRuntime.Tests/WorldTests.cs"
+            file.parent.mkdir(parents=True)
+            file.write_text("namespace TerraRuntime.Tests;\nclass WorldTests {\n"
+                            "    private sealed class Adapter {}\n"
+                            "    private class Fixture {}\n}\n")
+            plan = self.plan("affected", [file.relative_to(root).as_posix()], root=root)
+            self.assertEqual("affected", plan["mode"])
+            self.assertEqual(["world"], plan["domains"])
+            self.assertEqual(["TerraRuntime.Tests.WorldTests.Matrix"], plan["selected_methods"])
+
+    def test_private_adapter_does_not_hide_a_separate_visible_helper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            file = root / "tests/TerraRuntime.Tests/NpcTests.cs"
+            file.parent.mkdir(parents=True)
+            for visibility in ("public", "internal", ""):
+                with self.subTest(visibility=visibility):
+                    file.write_text("class NpcTests {\n    private sealed class Adapter {}\n}\n"
+                                    + visibility + " class SharedFixture {}\n")
+                    self.assertEqual("full", self.plan("affected", [file.relative_to(root).as_posix()], root=root)["mode"])
+
+    def test_private_text_in_a_string_does_not_hide_a_real_visible_owner(self):
+        text = ('class NpcTests {\n private const string Text = "private class SharedFixture {}";\n}\n'
+                'public class SharedFixture {}\n')
+        self.assertIn("SharedFixture", tiers.potentially_shared_classes(text))
+        self.assertIn("NpcTests", tiers.potentially_shared_classes(text))
+
     def test_full_args_never_contain_filters_even_on_fallback(self):
         for plan in [self.plan("full"), self.plan("affected", ["unknown.file"])]:
             args = tiers.runner_args(Path("test.dll"), plan, self.policy, Path("out.xml"), 4)

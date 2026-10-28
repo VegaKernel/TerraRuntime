@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "kind": "ordinary-melee-root-union-actual-tcp-live-join",
+  "acceptedBounded": true,
+  "aggregateAcceptance": false,
+  "scope": "Fresh actual localhost TCP for the root17-ordinary-melee union, Release and Windows x64 NativeAOT. Two accepted joins each15 bootstrap sections, Banner11 then295 Bestiary4 before49,129, two-client movement13/chat82 and third replacement Hello3. Private copied worlds and binaries; original world immutable. Not the separate22-critter worktree, official GUI, gameplay parity, full test suite or graceful save shutdown acceptance.",
+  "runner": {
+    "path": ".cache/ordinary-melee-ai3-20261028/run-live-union.py",
+    "sha256": "215d571649577d7ed8601147c9427df77c7285fd863242180927fed56a860830"
+  },
+  "passiveCaptureWrapper": {
+    "path": ".cache/ordinary-melee-ai3-20261028/capture-live-join.py",
+    "sha256": "ddbfb934b789f5647bb43b0c4bea3bde6a8157eaa5501d470dc808f80e1a9a35"
+  },
+  "unchangedShippingProbe": {
+    "path": "tools/ci/live_join_relay_probe.py",
+    "sha256": "3727d04a0d7c818916173a01785b4867b98b83fc26393312abb7b45d8145d0ad"
+  },
+  "guardedRootInputs": {
+    "sourceCount": 4045,
+    "sourceManifest": {
+      "path": ".cache/ordinary-melee-ai3-20261028/union-gate02/source-before.json",
+      "sha256": "b4ee52ec1bf5f965b63ae409cd470d204ec54ec50d3264bfaf1aa6062684d80c"
+    },
+    "canonicalDllCount": 158,
+    "canonicalDllManifest": {
+      "path": ".cache/ordinary-melee-ai3-20261028/union-gate02/dll-before.json",
+      "sha256": "732d071aade3155decaad01b6d4368979433c7c83172737845328615f5b00ccc"
+    },
+    "verifiedCurrentBeforeAndAfterRuns": true
+  },
+  "nativeArtifact": {
+    "receipt": {
+      "path": ".cache/ordinary-melee-ai3-20261028/union-gate01/native/result.json",
+      "sha256": "68f8f818c31153d0ed0aabf34ecc64896f6bee5accfeb511b0c14581c12a7c0f"
+    },
+    "executableSha256": "074283e101d82ee86775d3ae4184d397aca74fed76d8a0d95ffdd0c12abe6da7",
+    "nativePublishSourceManifest": {
+      "path": ".cache/ordinary-melee-ai3-20261028/union-gate01/source-before.json",
+      "sha256": "78cf0ecfec22442f72efdae8cb88f7ae638d3055cc511ff4846f17eb44f3e9fb"
+    },
+    "sourceBridgeDifferenceOnly": [
+      "tools/ci/run_test_tiers.py"
+    ],
+    "allShippingSourcesIdentical": true,
+    "all158CanonicalDllsIdentical": true,
+    "bridgeScope": "Native publication predates only the separately qualified nonshipping test-tier selector fix. No republish or newNative build is claimed here."
+  },
+  "runs": [
+    {
+      "variant": "release",
+      "acceptedBounded": true,
+      "receipt": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-release-02/result.json",
+        "sha256": "ff5fb751cc32b000cb907447e6f73ab72fbe21682e468f69ea25150f3f106457"
+      },
+      "setup": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-release-02/setup.json",
+        "sha256": "3d39256072b1986893c280140d4c7572f8c493466b03757a503e2da1e6acd7ca"
+      },
+      "wire": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-release-02/wire.json.gz",
+        "sha256": "ad02b53747f84378c97edf8e09e56b6c9ac35286fa31c8f091f24006f61e062b"
+      },
+      "hostLog": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-release-02/host.log",
+        "sha256": "a71d54cb37a09e848d0c1d1dbb2ed4362ee2e130b81a31599275cbbc8597d49c"
+      },
+      "probeLog": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-release-02/probe.log",
+        "sha256": "99d8764f7c1ffca75c3bc22cfc42d0a893caaad8dcc8d1cd5890d6a097998f97"
+      },
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\live-union-release-02\\bin\\TerraRuntime.Server.dll",
+        "--world",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\live-union-release-02\\world\\source-copy.wld",
+        "--bind",
+        "127.0.0.1",
+        "--port",
+        "17861",
+        "--max-players",
+        "2",
+        "--no-tui",
+        "--import-world-custody"
+      ],
+      "environmentOverrides": {
+        "TERRARUNTIME_LOG_CONSOLE_LEVEL": "Information",
+        "TERRARUNTIME_LOG_DIRECTORY": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\live-union-release-02\\logs"
+      },
+      "executedFiles": {
+        "ColorHelper.dll": "c8269624b18b4896cbab5bc97d6050e61e5ad395974b1b32351f8682d8d39317",
+        "JetBrains.Annotations.dll": "0295966b8d44522eec6a3c560fbe4efcfa878d3e16ff1ab0fb3478ab17001381",
+        "Markdig.dll": "6231c6a7216466cbe7fdeab7463a30ed29275cf90042ba64b49e1205d45e7eb5",
+        "Microsoft.Bcl.AsyncInterfaces.dll": "5705d245072d3eb78400547b32147dbb6e2c8b02ba8bda76729798f5efdeaecb",
+        "Microsoft.Extensions.Configuration.Binder.dll": "e02d79ea407e364826744409cb729969ad787ed9b6171cf6ce8881dffa9da7ea",
+        "Microsoft.Extensions.Configuration.dll": "e4721f9230b5bc6f82c7fda4efdf3bd648d936dbd254387a0375d571017725a2",
+        "Microsoft.Extensions.Configuration.FileExtensions.dll": "c48ea0bd13c56886bd4895c362ecab10388dfa40b219a94ccffaa76abeb692a7",
+        "Microsoft.Extensions.Configuration.Json.dll": "063d52874c6f7aa048972d82e62227683ddd101332f46d594f3b500452d64dfe",
+        "Microsoft.Extensions.FileProviders.Physical.dll": "ec3beace52339100009bdc970ec4ed82e19040f16caff1c7ce2378c2bd785512",
+        "Microsoft.Extensions.FileSystemGlobbing.dll": "a19d53870bd3c6ceff7fcdec13f57ab6e15e9ed2d87286bcde65677d7e5c16d7",
+        "Microsoft.Testing.Extensions.MSBuild.dll": "69d1426649a79e05008b6f37914482ab1abefd603d24fe683314bc993e9c6520",
+        "Microsoft.Testing.Extensions.TrxReport.Abstractions.dll": "ce045911e4db7d82c8de0075c78944e1ba8922a60c70d299a99366f0a6f4cab2",
+        "Microsoft.Testing.Platform.dll": "8a58cef87471c51220b7f9c0944401d575fe02d5666aab12a86b2804d650d8f3",
+        "Microsoft.TestPlatform.CommunicationUtilities.dll": "e38a359aa502bb1867d6092dca9aba5c130dd6f9111decea8156aa746b2c69e6",
+        "Microsoft.TestPlatform.CoreUtilities.dll": "f6e2495c44640d8915b2aefc938f391c970300266da014350ff35512a448ee84",
+        "Microsoft.TestPlatform.CrossPlatEngine.dll": "d55399bc66dc5b451d60ad82662452ca4a5f735918135dfc91ca9b5e3e38a6ab",
+        "Microsoft.TestPlatform.PlatformAbstractions.dll": "7b919ce4429c3b7b8fa2c36fd641b70b2f459a30ecb7c65fd80f437673cec930",
+        "Microsoft.TestPlatform.Utilities.dll": "01ffd64d25a4bd905aef9594d2aa700e020273a90a77a8720af6bec8b4fd5444",
+        "Microsoft.VisualStudio.CodeCoverage.Shim.dll": "a753bc15f23a957f4f91a059376e4472c6bacd1503622de4b9b2b079ad8ea289",
+        "Microsoft.VisualStudio.TestPlatform.Common.dll": "059aa2f335c3f7b14ac3fb7caa1625bc2767581b9548e9ff53a246c7f2f94d6a",
+        "Microsoft.VisualStudio.TestPlatform.ObjectModel.dll": "f83e38ee9020baa42e284e2299e233070ffa86ce4b10213583f9b7c8a521bcd0",
+        "Multiplicity.Packets.dll": "6b839f929524831b4a41a2ce05b69dfb239c82a4dbeb976cfdf1ae8f9e40d7eb",
+        "Newtonsoft.Json.dll": "22c649f75fce5be7c7ccda8880473b634ef69ecf33f5d1ab8ad892caf47d5a07",
+        "Onigwrap.dll": "692899f8a9fbda37b309d88f982f25820195fcd88f9b5b99a373fa61a496907c",
+        "System.IO.Abstractions.dll": "ff31c7bc7e65cccd6764228bfc4baa261ee9dd567825f6fedeadd960cd738acd",
+        "System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+        "Terminal.Gui.dll": "77ad96c1e5b8e11a0b63a7c459ff8933e283bce27b5f2e6b2349a3f110c26a3d",
+        "TerraRuntime.Application.dll": "9abfa69b94edbbb5dd44ee03fa4807b62b7f331b4ff8a6e9fe00ce486fe3ab02",
+        "TerraRuntime.Contracts.dll": "d25d51aa128258425f1ad2e400b2c4bf524672ef750a518e7101acd77ef2b631",
+        "TerraRuntime.Core.dll": "29fdb50dde53fa4b659b9a60a6ee5aecf61390422674fff3fefc64027b5c33bd",
+        "TerraRuntime.Extensibility.dll": "5053e721a5a618b3247a7504d851252c67ffc232162b96fd2c405d2a59a30488",
+        "TerraRuntime.Extensible.Server.dll": "68fb32c2079b36c1d63eefcf543136594712570cba512f9f97403f245a71e561",
+        "TerraRuntime.Gameplay.dll": "e0c79d5fc462e1004c1f293a468e64216b17c8a516a5eb7b6e40bbdc6d09f743",
+        "TerraRuntime.HostContracts.dll": "bbff581cf26d67a9d173cfe6998f207b9eed201572f6513ed253f65ec55c2f1f",
+        "TerraRuntime.HostModuleFixture.dll": "eb186d955a4db814a9057afbb2d60dd0fa299c54fc1e4215e14299b6d32ecc65",
+        "TerraRuntime.Network.dll": "d2f5c6f1ece237887eca296d825baeca312b2d0341c919a25b6413c2da624cc5",
+        "TerraRuntime.Protocol.dll": "fc23c496f51b01c7c31f1c7493960eda18ca46cd118079d8863f32ce9c9fc318",
+        "TerraRuntime.Protocol.Multiplicity.dll": "2799d451108e8f50d936dd14a75a2dc5201fe17f4601d10538986650a31fe3ef",
+        "TerraRuntime.Schematics.dll": "49e85a18b9251628f6983da1562d705e3350ba7acd88f7e73f19e1d031338cbf",
+        "TerraRuntime.Server.dll": "13355bdc369088d77d676529cfcda962d351dd6d58e1af7cdc1753c33bf21d2f",
+        "TerraRuntime.Tests.dll": "bec6e007cfe6e81959d1c0a73d684a6027f81f18af5c557d6a967ab43076dfd0",
+        "TerraRuntime.Transport.dll": "5b874189c2d2af93ceedaa630516d03f8dbaaf92af5b15cd10f350804860bf26",
+        "TerraRuntime.WorkerPoolProbe.dll": "9b1b1d54b464a57255654fc04132fcf2444f8a6859e4727f75e92e22f03f491a",
+        "TerraRuntime.World.dll": "bfed2a521157e92de30861afb4a5a5d740b7aa9c7b95e41aecdbfc9268892a26",
+        "TerraRuntime.WorldGeneration.dll": "4fe367cc867d491c860b9d236205a54cb4d7c4eeecfc20bdde42133871af9154",
+        "TestableIO.System.IO.Abstractions.dll": "b67b1633678ccc9cb5a5c322e549d1b6fc2c6447013634686ed04c30010d73b1",
+        "TestableIO.System.IO.Abstractions.Wrappers.dll": "7a131018963a6f70535a199ba231e0d17fc063cc368a8a22f07f29ce009798a8",
+        "Testably.Abstractions.FileSystem.Interface.dll": "e4e2bd926c0f353b30866f2fd70aa5525aec5540b2ef3424ab0d0138c090cf47",
+        "testhost.dll": "92cbdf52db5249112f9f53f1fcdaf9f9aa3fce467141c688a31a7fe095e4d304",
+        "TextMateSharp.dll": "989bf40e3bea1c3d26636f115171175cd2efd0945829148954e3219514b4ecb9",
+        "TextMateSharp.Grammars.dll": "027d5b51d78ec5b4238b08f5265569d6e32a31df6f7d21f49acf37216877c4cb",
+        "Wcwidth.dll": "d7b4366f0024ca0a5516d6d83417487dd421e4df35006bca6982fca8e20f9b8b",
+        "xunit.abstractions.dll": "3166dc70323fb30ccf1cedb0fe86f2ad122c46d254542342d90386efc4c9285c",
+        "xunit.runner.visualstudio.testadapter.dll": "21916b70a45fa2f9a4ca145b14866846b0ca1f7e2578d744b22c2f76538076c6",
+        "xunit.v3.assert.dll": "cd1eee2c41ac7e880a3e6ab03a8b03191e2c4cc567fcf10cf3fc35a38fcaf77c",
+        "xunit.v3.common.dll": "050b5e9b2e07bdae637dab552918140d290b49e83f8741bb74e09f17789a4f74",
+        "xunit.v3.core.dll": "826f76dceb966b4596c2404361b503d41b73042f1ba9f2b8ab649b376f143356",
+        "xunit.v3.runner.common.dll": "4d5c2311a0b2f4fb0932644dbc845be331a64f9d84cd72003c95a2bc4d6c4d7c",
+        "xunit.v3.runner.inproc.console.dll": "68ea7c0e26a6f3246cd34033bf2177622070c3bcc885641c9b8048f1eaf1a8b7",
+        "xunit.v3.runner.utility.netcore.dll": "16ab8139154531f22d71d712a27fbe79623f2491b3fedfbe0a45b2081ba04140",
+        "cs/Microsoft.Testing.Extensions.MSBuild.resources.dll": "8ae7409c0747c6d2a962e9415b9f6e9a2d2f7dfda309b913a5376c9d94a1bbf8",
+        "cs/Microsoft.Testing.Platform.resources.dll": "d9d86f3e9bba04e61797160125bc4d5a768e1c7d9d444093cff98854435aa5d4",
+        "cs/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "b983773dc5112854fe411fa22223e929c7fa230a1a843fcc58023237aca326f4",
+        "cs/Microsoft.TestPlatform.CoreUtilities.resources.dll": "26be9bb3a8932ba04014e4ae9b8f20a0222a3e2c1a1b41cec11d49bff609ce72",
+        "cs/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "2f776bf0e946ffcd3f8a38af2653137785eb55db3cdb0c5a392bbe07d2ccc082",
+        "cs/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "cd637384e1b3973be3c18409ed886f8234e2e3c3a65edf7d721d154e26aa64f3",
+        "cs/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "12b0829d24f6f53f0e22fcbe370d3f91b67bbcaca7f0d82323d08cd7752f4519",
+        "de/Microsoft.Testing.Extensions.MSBuild.resources.dll": "9564c55e4a23c64fe8da29ed608a18e66a4350d3a6b56b9b1df9f61147e82e97",
+        "de/Microsoft.Testing.Platform.resources.dll": "177d5ebe3a1a64b81a8fdf08f3e0bd090e1a567053e3d444525c7b52b95ab90a",
+        "de/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "d11f2a5262947fc1b6d426a6e1828325cedf40fee28e29ed856804ec9ef3f15c",
+        "de/Microsoft.TestPlatform.CoreUtilities.resources.dll": "403e0eaf8528656c0b47c31cd5fe9a25b8fd733adccb8e6d47a09f28658b5283",
+        "de/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "7ad3c45f58aa4d030fd5d65d9d4ac9cabbc06d79d071c29727b5376cd3459d77",
+        "de/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "ca308a5d314fa7d7e9cae94083cc1f62375ac225094d289961d9bce49b564b65",
+        "de/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "e91489bb7ec3e2e97d19cf32bc5e3f7fc57e994e0315f0870fd2024ccb2cf337",
+        "es/Microsoft.Testing.Extensions.MSBuild.resources.dll": "2ae8c8fc071347e7f50fd9e865c5dc4c9d84b8c9218772920e752b9169fad4d8",
+        "es/Microsoft.Testing.Platform.resources.dll": "b98614b6be9ac964667734d69b6635556a5f27436a3f7e6c36b570bd50b4a9a5",
+        "es/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "ddbdd3bf9afe6ddd3babd4f0358ab2f4697fc5d5ec72b60cb772085af9bf9859",
+        "es/Microsoft.TestPlatform.CoreUtilities.resources.dll": "7ec8e83494a8a50f1158c85d29b98e87c85d74ad5c4d94e2e9656e1cf60b0dff",
+        "es/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "67063a36cfcae95b3ea4646b88c3cf3642f0914dfc06ecc5fc4d3f77e0e97e64",
+        "es/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "b5340851bd9cb979d497f67123d09f91ba20ac9d2b3e0e17076fd2abd615c933",
+        "es/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "f19c11474e9074d5407f9b5a78cfb0bc1b4aeb90ffec819a676f63509cec443a",
+        "fr/Microsoft.Testing.Extensions.MSBuild.resources.dll": "f04f3c4994584537b4779dcf1d895ed8b25d83b51bbe9894e21dd89f90555b53",
+        "fr/Microsoft.Testing.Platform.resources.dll": "420d1327e577532d20d3eb76c874b94b0bc78762a5cb1e31d18ac6ec9f027f8f",
+        "fr/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "044cf1373cc4527fff78adb5ad70489532303b58ba0de2c059c422926af46c4b",
+        "fr/Microsoft.TestPlatform.CoreUtilities.resources.dll": "78d675cbab45a56cc8916466ba13f16fab18a44fd3ad4481c8f5f4e13b1f8b5d",
+        "fr/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "3fe869c312793444f9509af17ca0b14f444cbddef60a47251f441a5d7859a05f",
+        "fr/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "5a8f4f4ea8b5a332883a67202877bd19100b21d766bf0443ffec21610dfb2ecf",
+        "fr/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "ba030af725dea6bceb72c4eb49ccc3520222a97ea0fae812e16b7ba78450b98a",
+        "fr-FR/Terminal.Gui.resources.dll": "0791ce960cdfec3ea0efe5bf15248be7280a32a7c4b5f24bc5957beba4ae3d7b",
+        "it/Microsoft.Testing.Extensions.MSBuild.resources.dll": "6340fd37bfd2b05b2242f190ecd15a20a413f3735f6ebd0554b93d5c54e99a9f",
+        "it/Microsoft.Testing.Platform.resources.dll": "8bb731a3d33fd41d85853d784b15c9ede1ec77a14c5f39a2471d3115faad9e8c",
+        "it/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "b023b85f510d1e5c6d5183ba51614ea1b6dee5c25ab287773bebc8cdb36e3168",
+        "it/Microsoft.TestPlatform.CoreUtilities.resources.dll": "a1ac732615a7dc5c59e01a1570da23210ede65ef24d5bb101294cf68481fe984",
+        "it/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "b6b4b25e77f51f4ef5252512d1ea2cd8025ff388852ea93897b136bcc33bb5e0",
+        "it/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "b9f6be59cc1c05594f9b19db9e72add58d6b37661397f81a62d4fee37e7be621",
+        "it/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "93911f7a3c20cecd88ddb85dfdaaa9bf768e72a0fa5f745f3f3ae40dc78da66b",
+        "ja/Microsoft.Testing.Extensions.MSBuild.resources.dll": "c6575f6d2e82e26c2a6815ca12d45eca5a36959b158a547725f18393fd266e6b",
+        "ja/Microsoft.Testing.Platform.resources.dll": "f9382418b032e5ef9790eef8c9ac6bf25e4f0dc7d7f31767fcedfa3c7ff81acc",
+        "ja/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "5db61a11e8c40176f0293658e48bc955ebed6a3dd46d3808aacc762f71732544",
+        "ja/Microsoft.TestPlatform.CoreUtilities.resources.dll": "1ded53cdfde469bbb90d12f371891d3789a835e976557541c43166f027f7f111",
+        "ja/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "f6d2748ee250f131374c306d7dc8a905464dbda3f75e857d333946c7ff89494c",
+        "ja/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "c55083e71e3a5bb8dbe36e10eb12b301ccfd809e8fe1187350beb6774c7f794b",
+        "ja/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "c2c077136e3ccfd8a249758979c0f754fe3c8a35b0c6478aa7a87ea38a817690",
+        "ja-JP/Terminal.Gui.resources.dll": "4dc59fb7eb30c12f3de59a6fed9f06c6e019b2bbe10749100a4cb05ada1648ac",
+        "ko/Microsoft.Testing.Extensions.MSBuild.resources.dll": "4765609e03a0888838bc55eb1c5051904046cd264ed7b4fe3ad4c1f4085d0be4",
+        "ko/Microsoft.Testing.Platform.resources.dll": "ed56dd7efbb67a30bba49640b9d53f4ebe5d7d37785e3632576b9d48a97a6665",
+        "ko/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "7026d9d93b3fb7b521fc4a35fcb8348020fe466c054309e8ec0d27e84a555cb9",
+        "ko/Microsoft.TestPlatform.CoreUtilities.resources.dll": "fdc5422bb6f99cb357515ac6edd47c6f495da1da0eca43b7f85fdb7fd1c2492a",
+        "ko/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "e5231e879c215210cfe0b6d8f5740f8ecb2b08afa98ee4055fff6ba10ddac96c",
+        "ko/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "e90ac368f79ea0e99f44fe1133db10af08c3653749056362822b2c8f414ccd64",
+        "ko/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "4f427ed5c7c78043c7a9a7c9dc659133d96f6100ca9ba8719857709832e4bb58",
+        "pl/Microsoft.Testing.Extensions.MSBuild.resources.dll": "fbe728afefcb55077898d65c6b42fcf833cecab5814220acec2162897f3c18b0",
+        "pl/Microsoft.Testing.Platform.resources.dll": "94fc1a32a23fe2a633eb820a97e0ebfb5584e58aaddd7de9100567c02602d5e3",
+        "pl/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "0d1c05f1c3dfa21fbaca7537910bea9a54a52a9a800caf1c7d46691fb3a41eaa",
+        "pl/Microsoft.TestPlatform.CoreUtilities.resources.dll": "4b7843359aea21962c73c7474d374410fe8d039a30ac7902f5f09a19a52c778a",
+        "pl/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "2f82d58fb67a8261ad060a2633b872c7867f48608368144db3a93bf4debe2444",
+        "pl/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "911ef37ee7d78eb7132581aeaeb7753e81589600535c3c2244b1c447b61e1a5a",
+        "pl/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "88993b0056f183385a9e9e67931932bce0e564d288164ad43b2cc1bf6cacfb1c",
+        "pt-BR/Microsoft.Testing.Extensions.MSBuild.resources.dll": "45e5230604bbaaf0bbf0164264f773dcf3a5099a0a789ecf1cab5050590d6843",
+        "pt-BR/Microsoft.Testing.Platform.resources.dll": "c95803b19d186bb42d2dda4b3ec9a4b54346b1ad10d2ad6a2d5f0d30cf7b7ce5",
+        "pt-BR/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "f2292ef0dd72f1a95892714f17e5d49259452e27332d54dbff308236a50d7d40",
+        "pt-BR/Microsoft.TestPlatform.CoreUtilities.resources.dll": "119f896f964ce17da4558c72b728d832fa19abc2dcf12bbed7cc386b741edd6b",
+        "pt-BR/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "ea5d8ecffcb9371d3e559e1d477ebdf5e7c3bd0663746fdccebd9330df2b9008",
+        "pt-BR/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "b33e6b979805fa9047ebfb7722c4c3b07b1d3706acc108883b8c30d77d10db72",
+        "pt-BR/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "976fae7c172b9170340633a3fe1a3f0ec6fc0731f4bf089ddaf611d60d446f40",
+        "pt-PT/Terminal.Gui.resources.dll": "eb5cec260b08c7bd866168d1eb6da624d9856dee04cae02c57173a97d33897f9",
+        "ru/Microsoft.Testing.Extensions.MSBuild.resources.dll": "364cf3d49d3d7cad7f18ef1e1a8161e9bbf898542d13bcb158e5c26f63e42e49",
+        "ru/Microsoft.Testing.Platform.resources.dll": "d6f7ee9068dd390f9e14672f57b0a43962508823a2b4a53dbb2b1c1dda919588",
+        "ru/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "4b29d6fadb5b709c5c90f25a8934e6c3c58027cf35aa28c6ef7100ab30f9cd39",
+        "ru/Microsoft.TestPlatform.CoreUtilities.resources.dll": "67820043048cca339e29b563b1ed9da9f7d702b67c0cadd0b643f5781bc78789",
+        "ru/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "4970c26bed952eccea42fbd3c7064bdd690eb5a7e538a77ce78ffed487877d9b",
+        "ru/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "fcaedb770d94be752a6c9befe5d2b8219bb8d1bfce83f2dc9011fa4b7eebd00a",
+        "ru/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "f7084df5889cd4a8d141f73be63b267519ae4daa75c6394cf39c4a96fba35d68",
+        "tr/Microsoft.Testing.Extensions.MSBuild.resources.dll": "89250e0bd6c75778d4452687e03dbd83c44018327781fbf0962b4d5d13cb465b",
+        "tr/Microsoft.Testing.Platform.resources.dll": "7c1fce20e36df8eaa25874b8c32e6bec230a0a17acf4dead0113dc47d407c1c8",
+        "tr/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "ef6bf78a0fd4613b1ffe8dc560b0f2f5cf2c05724fc8aed314f9ced18a90cf03",
+        "tr/Microsoft.TestPlatform.CoreUtilities.resources.dll": "a4d0c1d36f10425e39cdaade487220a9808e6f6954998644c57011fbeb3a33a0",
+        "tr/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "6ad665b04f30253b05acdbcf02196af45332a95091e112e55d2f2379273d9cac",
+        "tr/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "96efbcb535b02ad348598505210ae60b3d24ba7b8d364547ec89d353e891fae2",
+        "tr/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "5a392fba8650b4b574e5e7c42615f5c6d2a879c3838cf5b5219856185b33c8f5",
+        "zh-Hans/Microsoft.Testing.Extensions.MSBuild.resources.dll": "80c0bce8ae117e4444a68850a5ce8a645b332c68c208b4e9574d6fff0085a87e",
+        "zh-Hans/Microsoft.Testing.Platform.resources.dll": "01ae4b46f67cd3aa41281ffb5236449345987601cb1aa1abfaa96e58dac80107",
+        "zh-Hans/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "61e5b362940ca90e3b89a452218fb1d3882aea679a1b73e6ad868d0ac1bb88fc",
+        "zh-Hans/Microsoft.TestPlatform.CoreUtilities.resources.dll": "4a8c0ef1c60069942082fa7493dbe683033e14e15dff09c8ba8c230e2a4443c6",
+        "zh-Hans/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "0b12a586cd3759757f641a6219f491aff7c5fbdf603a6339b98faa57ce6eb7c0",
+        "zh-Hans/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "8fb34ecf4343a77647006f0ad1fb41e8c4dd48cf38fe97b93c345b743f538908",
+        "zh-Hans/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "396cc3c959cfc9f24bbe7a2d38846dfb97b696a9610eb95234306cbcdebd4f06",
+        "zh-Hans/Terminal.Gui.resources.dll": "02dae569e87499aebf77a8f310916b24a0ebbd4e68415bedfa9fe919b7418f6c",
+        "zh-Hant/Microsoft.Testing.Extensions.MSBuild.resources.dll": "ffc1e6bb331e943b5a6049d5c18b5f6f0f716c079d17d461ad2248c563ca8775",
+        "zh-Hant/Microsoft.Testing.Platform.resources.dll": "89efc1d04c105f7b8e705a929499ff55d217115d8bd83f89598831ded69fcb74",
+        "zh-Hant/Microsoft.TestPlatform.CommunicationUtilities.resources.dll": "b411fe26d281ec982d0432f1b0bce2c1c86f200d17e837bbbe91086f8e38270f",
+        "zh-Hant/Microsoft.TestPlatform.CoreUtilities.resources.dll": "a9012f419d3b66a730d635760f63fea1721a63b2105a4146c2d1309bb6f31b14",
+        "zh-Hant/Microsoft.TestPlatform.CrossPlatEngine.resources.dll": "540bee11c69534fc48bb4a9626683a6203e9f1f4bae15ff72069eaf9f65f5e81",
+        "zh-Hant/Microsoft.VisualStudio.TestPlatform.Common.resources.dll": "d69e7127de46141b6406fd968d4a66271dda99271701f912d56ce6813af48cf2",
+        "zh-Hant/Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll": "b90f264a4d72987fd0aa0d11fc51dd248f831740bcd72d281045e16936fda16b",
+        "runtimes/win-x86/native/libonigwrap.dll": "4da3ee819e73494cf96b125df360a1d6cf225fc3c70ff2216f521ee73b3b290a",
+        "runtimes/win-x64/native/libonigwrap.dll": "435c563677fe6fab2cbd8d6a437ef72d9a8fc62db1f720ec30b38fd316834d28",
+        "runtimes/win-arm64/native/libonigwrap.dll": "0f09da4817e359853d240a82be512589c925299d991e8dcd3fcd29aceed931fd"
+      },
+      "connections": [
+        {
+          "socket": 0,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129": 1
+        },
+        {
+          "socket": 1,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129": 1
+        }
+      ],
+      "movement13AndChat82CheckedByUnmodifiedProbe": true,
+      "thirdConnectionHello3Literal": "0500030000",
+      "ownedHiddenProcessStopped": true,
+      "processId": 123348,
+      "durationSeconds": 5.572132500004955
+    },
+    {
+      "variant": "native",
+      "acceptedBounded": true,
+      "receipt": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-native-02/result.json",
+        "sha256": "418596e1e5f0d712ac5d15dc649590c979ea445eb9d85a5b3b0362fe343168bf"
+      },
+      "setup": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-native-02/setup.json",
+        "sha256": "1688804be9a73f47ebb80fbb520bfd4e703383b7bc83dde9251608bb247b93f8"
+      },
+      "wire": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-native-02/wire.json.gz",
+        "sha256": "65ed1aeb63e2f51bde9b5c3c3800b3b440da30e1cb160396d7f83ebe6245635b"
+      },
+      "hostLog": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-native-02/host.log",
+        "sha256": "69b70e4183b4ff9bc44a8acb8f8dd483f9a186f63cfff38037ea554600d6b101"
+      },
+      "probeLog": {
+        "path": ".cache/ordinary-melee-ai3-20261028/live-union-native-02/probe.log",
+        "sha256": "f713e6b169a643440123a246729607802852c0a0c8b5c50ecadbe9cf5d548e6f"
+      },
+      "command": [
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\live-union-native-02\\TerraRuntime.Server.exe",
+        "--world",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\live-union-native-02\\world\\source-copy.wld",
+        "--bind",
+        "127.0.0.1",
+        "--port",
+        "17862",
+        "--max-players",
+        "2",
+        "--no-tui",
+        "--import-world-custody"
+      ],
+      "environmentOverrides": {
+        "TERRARUNTIME_LOG_CONSOLE_LEVEL": "Information",
+        "TERRARUNTIME_LOG_DIRECTORY": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\ordinary-melee-ai3-20261028\\live-union-native-02\\logs"
+      },
+      "executedFiles": {
+        "TerraRuntime.Server.exe": "074283e101d82ee86775d3ae4184d397aca74fed76d8a0d95ffdd0c12abe6da7"
+      },
+      "connections": [
+        {
+          "socket": 0,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129": 1
+        },
+        {
+          "socket": 1,
+          "bootstrapSections": 15,
+          "banner11Before49": 1,
+          "bestiary4AfterBannerBefore49": 295,
+          "packet49": 1,
+          "packet129": 1
+        }
+      ],
+      "movement13AndChat82CheckedByUnmodifiedProbe": true,
+      "thirdConnectionHello3Literal": "0500030000",
+      "ownedHiddenProcessStopped": true,
+      "processId": 7048,
+      "durationSeconds": 4.990825499990024
+    }
+  ],
+  "priorArtifactsPreserved": true,
+  "diagnosticHistory": "First Native union attempt completed the existing probe and stopped its owned process but cache-only successor report generation raised NameError. That attempt remains unqualified and preserved. Both accepted runs above are fresh attempt02 after correcting only that receipt-path expression; old final03 artifacts and shipping assertions were untouched."
+}

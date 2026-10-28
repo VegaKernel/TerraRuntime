@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "private-nested-test-adapter-classification",
+  "accepted": true,
+  "scope": "A private nested C# adapter is not an additional shared file-level helper. Visible additional classes, removed files, evidence/contracts/configuration changes and unknown paths preserve full fallback. Method exclusions and every golden row are unchanged.",
+  "inputs": [
+    {
+      "path": "tools/ci/run_test_tiers.py",
+      "sha256": "fc46cad51d2fe38cbcd17d3a08aae44fd5dc44861c7eed1b3db9d4fe9e1addc9"
+    },
+    {
+      "path": "tools/ci/test_run_test_tiers.py",
+      "sha256": "ad43007d53b173b9503f22dabf6e973116a861b7a5d8d324121a77d8b7369c62"
+    },
+    {
+      "path": "tools/ci/test_tiers.json",
+      "sha256": "ce26f6aa1020dc605db7333d760609ca6c240bac7c59f6e3bc9aea9dce320c43"
+    }
+  ],
+  "sameUnchangedRegressionSource": true,
+  "oldControl": {
+    "exitCode": 1,
+    "assertionFailures": 1,
+    "runnerErrors": 0,
+    "command": [
+      "py",
+      "-m",
+      "unittest",
+      "test_run_test_tiers.TestTierSelection.test_private_nested_adapters_keep_the_complete_owner_domain",
+      "-v"
+    ],
+    "log": {
+      "path": ".cache/ordinary-melee-ai3-20261028/tier-qualification/old-red.log",
+      "sha256": "5dd1456ad26c438daeb3a81017b812574c66634c50d3d16ef1ba6d4210e2461e"
+    }
+  },
+  "fixedRegressionTests": 23,
+  "fixedLog": {
+    "path": ".cache/ordinary-melee-ai3-20261028/tier-qualification/fixed.log",
+    "sha256": "38440fa17a864dc121a78917bd1e7531ad91193d21c8a3e784153dc57529f5de"
+  },
+  "freshDiscovery": {
+    "path": ".cache/ordinary-melee-ai3-20261028/union-gate01/discovery.json",
+    "sha256": "e94b724b15f6ec1e00e8d385a1edd90ed57514f67bd39705eb428abc1b6cdd9b"
+  },
+  "discoveredMethods": 5452,
+  "fastPlanByteForByteMethodSelectionUnchanged": true,
+  "fastMethods": 5285,
+  "heavyMethods": 167,
+  "allDomainMatricesExactlyPartitionExcludedMethods": true,
+  "fastAndMatricesExactlyCoverFullWithoutOverlap": true,
+  "affectedMethods": 83,
+  "affectedPlan": {
+    "path": ".cache/ordinary-melee-ai3-20261028/tier-qualification/affected-plan.json",
+    "sha256": "ba58fdfc500d693f03ce07f940ba9dfc392d3f46dd69a6a051a2941cd1574fa3"
+  },
+  "exactRunnerInclusionsValidated": true,
+  "shippingBuildAndDllChanges": false,
+  "interruptedFullNotAccepted": true
+}
