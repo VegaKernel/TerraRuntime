@@ -4,6 +4,8 @@
 
 The original `TerrariaServer.exe` `1.4.5.8` and its decompiled source remain local reference inputs. The report contains identities, diagnostics and analysis facts; it does not emit copied method bodies. The repository's independent-reimplementation rule still applies to production changes.
 
+A separate experimental `source adapt-scalar` operation now **automatically generates** a bounded candidate from the bound source method. Unlike `analyze`, it compiles the generated candidate and a proper original-method carrier, and explicitly executes the untouched official assembly for differential checks. It writes original-derived bodies only below this worktree's `.cache`; nothing is included in shipping projects automatically. The two operations have separate acceptance scopes.
+
 ```mermaid
 flowchart LR
     A[Explicit source files and pinned references] --> B[Roslyn semantic model]
@@ -73,3 +75,50 @@ dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --self
 ```
 
 Create the cache parent directory first and use a new result filename. The executable checks use author-written synthetic C# and core-library metadata; they need no original game files. They cover overloads, recursion, mutation forms, opaque effects and genuine traversal/error refusals. The Python checks exercise request bounds, exact entry/provenance binding, input/output drift and backend failures. Neither set is a gameplay parity test.
+
+## Experimental automatic scalar adaptation
+
+This is an executable prototype for instance `void` helpers with explicitly mapped mutable `int`/`bool` fields and by-value `int`/`bool` arguments. It resolves exact Roslyn symbols, checks the complete bound method against a small operation whitelist, and transforms those field references into a generated typed state passed by `ref`. Parameter shadowing remains distinct. Fields must be observed and written; mapping two source fields to one target is refused. Attributes and their implicit protocols, properties, other receivers, globals, calls, arrays, locals, loops, exceptions, numeric conversions, ref/in/out arguments and unowned effects are rejected. Resolved metadata alone never grants a translation capability.
+
+The request nests a regular analysis request and adds exact field mappings and explicit differential cases. Set `maxDepth=0` and `maxMethods=1`. Replace the clearly local example paths:
+
+```json
+{
+  "schemaVersion": 1,
+  "analysis": {
+    "schemaVersion": 1,
+    "sourceRoot": "C:/local/Terraria1458/decompiled",
+    "assembly": "C:/local/Terraria1458/Linux/TerrariaServer.exe",
+    "sources": ["Terraria/NPC.cs"],
+    "entries": [{"path": "Terraria/NPC.cs", "type": "Terraria.NPC",
+                 "method": "EncourageDespawn", "parameterTypes": ["int"]}],
+    "maxDepth": 0,
+    "maxMethods": 1
+  },
+  "fields": [
+    {"symbol": "Terraria.NPC.timeLeft", "target": "RemainingTicks", "type": "int"},
+    {"symbol": "Terraria.NPC.despawnEncouraged", "target": "ExpiryRequested", "type": "bool"}
+  ],
+  "cases": [
+    {"state": {"RemainingTicks": 750, "ExpiryRequested": false},
+     "arguments": [10], "rngSeed": 1458}
+  ]
+}
+```
+
+```powershell
+py -3 tools/vanilla.py source adapt-scalar --request .cache/scalar/request.json --output-dir .cache/scalar/run01
+```
+
+The new cache directory also contains `candidate.cs`, `original-carrier.cs`, their compiled assembly and one compiled write-omission mutant per state field. The unchanged original method body is compiled only inside a cache-only proper carrier; the entire original NPC source unit is not claimed to compile. The original NPC unit's global diagnostics are reported separately from the qualified method span. Both mapped output fields are compared against the carrier and the **actual untouched official method**, with full original RNG cursor/56-slot checkpoints. Every write-omission control must produce a state difference; runner exceptions do not count as detected mutants. Each input, backend/Roslyn closure and emitted artifact is pinned.
+
+The [prototype proof](../verification/semantic-scalar-candidate-20261028.json) qualifies automatic generation of real `NPC.EncourageDespawn(int)` and `DiscourageDespawn(int)`: each uses 1,014 signed-int edge/boolean/three-seed cases, with two identical repeats. The generated source, compiled candidate and complete observed state/RNG repeat identically. Omitting the time write differs in 468 cases; omitting the flag write differs in 507, for each helper. These are two small NPC helpers, not automatic AI3/AI7 or world-generation conversion. There is no measured development-speed claim or new runtime admission.
+
+The useful next step is a source-selected cohort of scalar leaf helpers with explicit return/state contracts, then separately qualified arithmetic conversions and owned API/RNG calls. Arrays, aliases, collision and publication transactions need their actual owners before broader AI can be generated. Generated candidates remain review inputs under the repository's independent production implementation rule.
+
+Tool-only checks:
+
+```powershell
+py -3 -m unittest discover -s tools/ci -p test_vanilla_scalar_candidate.py
+dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --candidate-self-test .cache/scalar/checks01.json
+```

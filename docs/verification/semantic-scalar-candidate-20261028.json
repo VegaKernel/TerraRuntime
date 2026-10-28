@@ -1,0 +1,543 @@
+{
+  "schemaVersion": 1,
+  "kind": "automatic-semantic-scalar-candidate-prototype",
+  "acceptedBounded": true,
+  "productionAdmission": false,
+  "wholeAiTranslation": false,
+  "scope": "Two real NPC scalar helpers automatically adapted from bound original C# into typed ref-state candidates, compiled and compared with an unchanged proper method carrier and actual untouched official1458 methods. Original-derived bodies/DLLs remain cache-only; no shipping source/project/dependency is changed.",
+  "baseMain": "02b769ec",
+  "toolWorktreeBranch": "tools/semantic-candidate-20261028",
+  "pr122Review": {
+    "head": "d4562889ef8ba32099598bb945b880221314cb13",
+    "programSha256": "53a1258eb281d28a84083d12ee0f21b9bc03fef80aa80d20c5891874463192c0",
+    "decision": "Do not merge as-is; reuse the useful candidate/compile/differential idea inside existing semantic SourceProbe.",
+    "findings": "Separate syntax-only staticvoid/membertext mapper, no original instance AI adaptation or symbol/alias/property proof; hardcoded synthetic verifier compares only Velocity/Speed and misses the other state fields. No new duplicate project/workflow/Roslyn NuGet dependency was imported."
+  },
+  "automaticTransformation": {
+    "entrySelection": "Exact source path/type/method/parameter identity, clean method-span diagnostics and closed semantic inventory. Source accesses use exact IFieldSymbol identities, not token spelling.",
+    "mapping": [
+      {
+        "symbol": "Terraria.NPC.timeLeft",
+        "sourceType": "int",
+        "target": "CandidateState.RemainingTicks"
+      },
+      {
+        "symbol": "Terraria.NPC.despawnEncouraged",
+        "sourceType": "bool",
+        "target": "CandidateState.ExpiryRequested"
+      }
+    ],
+    "codeGeneration": "Roslyn rewrites the accepted source method body and its receiver fields, creates staticRun(refCandidateState,originalByValueArgs), preserving conditions/order. No generated algorithm was manually rewritten.",
+    "rejects": [
+      "unmapped/wrong-owner/wrong-type fields",
+      "target alias collisions",
+      "properties/other receivers/static fields",
+      "readonly/ref/in/out state or arguments",
+      "locals/loops/arrays",
+      "calls/delegates/virtual/overrides",
+      "method/return/parameter attributes and implicit synchronized protocol",
+      "exceptions/unknown operations",
+      "numeric conversions/unknown RNG or API effects"
+    ],
+    "allMappedStateFieldsCompared": true,
+    "allWrittenFieldOmissionsMustDiffer": true
+  },
+  "originalExecutionProfile": {
+    "assembly": "official1458Linux managed TerrariaServer.exe",
+    "host": "Windows CoreCLR",
+    "bootstrap": "Original Program.SavePath points to privateoutput, Main.dedServ=true/netMode2; actualNPC constructors followed by explicit two-field state and freshly seeded originalUnifiedRandom before each method call. No SetDefaults/fullMain initialization/update caller is claimed; admitted bodies have no global/call accesses.",
+    "sourceBodyCompilation": "Complete unchanged method body in a generated cache-only proper carrier, plus generatedcandidate. Entire originalNPC unit has162 global diagnostics and is not claimed to compile; both selected method spans are clean.",
+    "pins": {
+      "toolInputs": {
+        "Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+        "global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+        "tools/vanilla.py": "486e5cb697cc4789f1d671b57831eabb0f815ad2498a8d3e461995263ac4061b",
+        "tools/vanilla_data/SourceProbe/CompilationLoader.cs": "0c112206981c94b9f8d8aa0d0d6c3c55afeabbe493ed467b485479755a55be70",
+        "tools/vanilla_data/SourceProbe/InventoryChecks.cs": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8",
+        "tools/vanilla_data/SourceProbe/Program.cs": "3329b8cc1491031520f3b1b0dae351592a709b1b57e03a82330143a72727c315",
+        "tools/vanilla_data/SourceProbe/ScalarCandidate.cs": "96d71f6daea0b552da07c26f03292250ad8f3abc3b1bb47903e742e204ac1805",
+        "tools/vanilla_data/SourceProbe/ScalarChecks.cs": "9f46ebe4e70727d3e5c269f4ce8dcfd68fce2c229961b030465c25d04ecb6f64",
+        "tools/vanilla_data/SourceProbe/ScalarVerification.cs": "4191a017a143a2025e0ad4367b61bab7ca6b0f7db2bcf69fce589bb888089434",
+        "tools/vanilla_data/SourceProbe/SemanticInventory.cs": "ee445e1665ac43ca9d665abdf5e6373b9ae7023c99c1eacfab6459fe5fd63f86",
+        "tools/vanilla_data/SourceProbe/SourceProbe.csproj": "2ecbd9c81b1d177d6edbd73fbf13756fcaa7ebfde1c177e5c6a0fc3f262ec20c",
+        "tools/vanilla_data/capture.py": "bc02043a24f6f14358f2ca71db6baa9aa784d8e1019ecd235f246d4298f8becf",
+        "tools/vanilla_data/cli.py": "b17243a566560bb21c9ab72e9053a696531fdd5d49e877b41ef0f20121a9c0cc",
+        "tools/vanilla_data/pass_probe.py": "7e1238d683b7b3e441ea211d1a07352781f3751ccd87ea30abc0b86245542e36",
+        "tools/vanilla_data/reference.json": "811aac2bf4e8f8e0b541ef5866df4b423f8f3ae48d58f831e4e880f5f265e4b6",
+        "tools/vanilla_data/scalar_candidate.py": "2a730f48fcacda8306c67fc1eda1da17793c0cc64078efe6e759fcc05e17587b",
+        "tools/vanilla_data/source_analysis.py": "c7aefa1d435d1877ca478eb2f9d315d47fe12a7af4edff75c5700042639707d8"
+      },
+      "backendClosure": {
+        "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+        "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+        "SourceProbe.dll": "3101c93228dcf38023948e72193f1f45411748ca3d1daef325182733d9820863",
+        "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+        "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+        "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+        "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+        "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+        "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+        "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+        "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+        "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+        "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+        "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+        "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+        "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+        "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+        "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+        "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+        "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+        "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+        "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+        "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+        "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+        "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+        "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+        "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+        "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+        "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+      },
+      "sourceSha256": {
+        "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4"
+      },
+      "referenceSha256": {
+        "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+        "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+        "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+        "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+        "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+        "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+        "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+        "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+        "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+      },
+      "runtimeReference": {
+        "path": "C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App\\11.0.0-preview.7.26381.103\\System.Private.CoreLib.dll",
+        "sha256": "be9ffec0164d319398d6d521df547b7e737f330a0c144a9e5d172c5cf6b9d22e"
+      }
+    }
+  },
+  "caseDomain": {
+    "intValues": [
+      -2147483648,
+      -100,
+      -1,
+      0,
+      1,
+      9,
+      10,
+      11,
+      749,
+      750,
+      751,
+      9999,
+      2147483647
+    ],
+    "flagValues": [
+      false,
+      true
+    ],
+    "rngSeeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "casesPerMethodPerRepeat": 1014,
+    "methods": 2,
+    "identicalRepeats": 2,
+    "actualOfficialCalls": 4056,
+    "properCarrierCalls": 4056,
+    "generatedCandidateCalls": 4056,
+    "mutantCalls": 8112,
+    "repeatedObservationSourceAndCandidateAssemblyByteIdentical": true,
+    "notExhaustiveIntDomain": true
+  },
+  "runs": [
+    {
+      "method": "Terraria.NPC.EncourageDespawn(int)",
+      "repeat": "a",
+      "cases": 1014,
+      "actualOfficialCalls": 1014,
+      "compiledCarrierCalls": 1014,
+      "generatedCandidateCalls": 1014,
+      "request": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-a/request.json",
+        "sha256": "59550ee91611cb263ab745f2efb91eefee59773b65726b5415578e4812e299c5"
+      },
+      "inputManifest": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-a/input-before.json",
+        "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+      },
+      "result": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-a/result.json",
+        "sha256": "0351121a3c6e8a6deefaec9df0f4d76fdd207e5659b7ebc22ba139244bb32448"
+      },
+      "observation": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-a/observation.json",
+        "sha256": "5ce9f1180248fa3d75f6f0bda387b9dd60f4605e070b494261d23f95cd52ccba"
+      },
+      "generatedCandidate": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-a/candidate.cs",
+        "sha256": "c0c6f8cb36a41ae0119cf0c06769dd7f03cba5d8492955c495bb34c20ce179e1"
+      },
+      "originalCarrier": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-a/original-carrier.cs",
+        "sha256": "01986311eb8487a702c3d723607a7a297ff2e4f6b27dc1a123d4dc468e8d4eb1"
+      },
+      "candidateAssembly": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-a/candidate.dll",
+        "sha256": "03a22f4d5d26474b72e8a98e46fcc7b05e8e8327bd130041192d813aed86d7fb"
+      },
+      "mutants": [
+        {
+          "mutation": "omit-field-write:RemainingTicks",
+          "cases": 1014,
+          "differences": 468,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "0aeec824e7323442d122c3516bd8acc37234cceb83595a17ce7fc7e649d5526b"
+        },
+        {
+          "mutation": "omit-field-write:ExpiryRequested",
+          "cases": 1014,
+          "differences": 507,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "9702c9a1d3a26eee9e9a771d28bf5746c03b34daf4d70b38ae221762411d0425"
+        }
+      ],
+      "all56PhysicalRngSlotsAndCursorUnchanged": true,
+      "guardsUnchanged": true,
+      "commands": [
+        {
+          "command": [
+            "dotnet",
+            "build",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+            "-c",
+            "Release",
+            "-warnaserror",
+            "-v",
+            "quiet"
+          ],
+          "exitCode": 0,
+          "name": "build"
+        },
+        {
+          "command": [
+            "dotnet",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+            "--adapt-scalar",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\EncourageDespawn-a\\request.json",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\EncourageDespawn-a\\observation.json"
+          ],
+          "exitCode": 0,
+          "name": "probe"
+        }
+      ]
+    },
+    {
+      "method": "Terraria.NPC.EncourageDespawn(int)",
+      "repeat": "b",
+      "cases": 1014,
+      "actualOfficialCalls": 1014,
+      "compiledCarrierCalls": 1014,
+      "generatedCandidateCalls": 1014,
+      "request": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-b/request.json",
+        "sha256": "59550ee91611cb263ab745f2efb91eefee59773b65726b5415578e4812e299c5"
+      },
+      "inputManifest": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-b/input-before.json",
+        "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+      },
+      "result": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-b/result.json",
+        "sha256": "8522e4a9d4e28d78ee8362f7a4aa28c2cc5b12b10d10d19339caf29ba24c2a2a"
+      },
+      "observation": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-b/observation.json",
+        "sha256": "5ce9f1180248fa3d75f6f0bda387b9dd60f4605e070b494261d23f95cd52ccba"
+      },
+      "generatedCandidate": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-b/candidate.cs",
+        "sha256": "c0c6f8cb36a41ae0119cf0c06769dd7f03cba5d8492955c495bb34c20ce179e1"
+      },
+      "originalCarrier": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-b/original-carrier.cs",
+        "sha256": "01986311eb8487a702c3d723607a7a297ff2e4f6b27dc1a123d4dc468e8d4eb1"
+      },
+      "candidateAssembly": {
+        "path": ".cache/scalar-release-final/EncourageDespawn-b/candidate.dll",
+        "sha256": "03a22f4d5d26474b72e8a98e46fcc7b05e8e8327bd130041192d813aed86d7fb"
+      },
+      "mutants": [
+        {
+          "mutation": "omit-field-write:RemainingTicks",
+          "cases": 1014,
+          "differences": 468,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "0aeec824e7323442d122c3516bd8acc37234cceb83595a17ce7fc7e649d5526b"
+        },
+        {
+          "mutation": "omit-field-write:ExpiryRequested",
+          "cases": 1014,
+          "differences": 507,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "9702c9a1d3a26eee9e9a771d28bf5746c03b34daf4d70b38ae221762411d0425"
+        }
+      ],
+      "all56PhysicalRngSlotsAndCursorUnchanged": true,
+      "guardsUnchanged": true,
+      "commands": [
+        {
+          "command": [
+            "dotnet",
+            "build",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+            "-c",
+            "Release",
+            "-warnaserror",
+            "-v",
+            "quiet"
+          ],
+          "exitCode": 0,
+          "name": "build"
+        },
+        {
+          "command": [
+            "dotnet",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+            "--adapt-scalar",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\EncourageDespawn-b\\request.json",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\EncourageDespawn-b\\observation.json"
+          ],
+          "exitCode": 0,
+          "name": "probe"
+        }
+      ]
+    },
+    {
+      "method": "Terraria.NPC.DiscourageDespawn(int)",
+      "repeat": "a",
+      "cases": 1014,
+      "actualOfficialCalls": 1014,
+      "compiledCarrierCalls": 1014,
+      "generatedCandidateCalls": 1014,
+      "request": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-a/request.json",
+        "sha256": "dd755fdf75681bab46d8d92c7c6a343762ece294409f464dd25ba46576413303"
+      },
+      "inputManifest": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-a/input-before.json",
+        "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+      },
+      "result": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-a/result.json",
+        "sha256": "df8bd28197bac1eded7622a240b8e3b2c445384d4ec2e3b3b6a8df8cf700d203"
+      },
+      "observation": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-a/observation.json",
+        "sha256": "5e69cea13554655e342421306abe7fa176771c3cd377c25ccb594ef9e0d5f79b"
+      },
+      "generatedCandidate": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-a/candidate.cs",
+        "sha256": "eaee9bccc4559f78c87c3f9867cd00b7f6546daeb270bb89996fbf691daded58"
+      },
+      "originalCarrier": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-a/original-carrier.cs",
+        "sha256": "990928427369263c3963222124b0d430d765a475f195dc2abff8f3ee19e07c7c"
+      },
+      "candidateAssembly": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-a/candidate.dll",
+        "sha256": "b9058d93e50e986a7aee33ec6073523680ff5fddf3637cdba9fb20a092913838"
+      },
+      "mutants": [
+        {
+          "mutation": "omit-field-write:RemainingTicks",
+          "cases": 1014,
+          "differences": 468,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "47a81413819a94b716bfaa6752174292e61d99561c0ba2f611563bf6adb5ffd3"
+        },
+        {
+          "mutation": "omit-field-write:ExpiryRequested",
+          "cases": 1014,
+          "differences": 507,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "8592ae6dd1d69b4d6ec6b0e4207bb7e6a53cc3dc541cd1d3e3c7852e3155eaed"
+        }
+      ],
+      "all56PhysicalRngSlotsAndCursorUnchanged": true,
+      "guardsUnchanged": true,
+      "commands": [
+        {
+          "command": [
+            "dotnet",
+            "build",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+            "-c",
+            "Release",
+            "-warnaserror",
+            "-v",
+            "quiet"
+          ],
+          "exitCode": 0,
+          "name": "build"
+        },
+        {
+          "command": [
+            "dotnet",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+            "--adapt-scalar",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\DiscourageDespawn-a\\request.json",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\DiscourageDespawn-a\\observation.json"
+          ],
+          "exitCode": 0,
+          "name": "probe"
+        }
+      ]
+    },
+    {
+      "method": "Terraria.NPC.DiscourageDespawn(int)",
+      "repeat": "b",
+      "cases": 1014,
+      "actualOfficialCalls": 1014,
+      "compiledCarrierCalls": 1014,
+      "generatedCandidateCalls": 1014,
+      "request": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-b/request.json",
+        "sha256": "dd755fdf75681bab46d8d92c7c6a343762ece294409f464dd25ba46576413303"
+      },
+      "inputManifest": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-b/input-before.json",
+        "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+      },
+      "result": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-b/result.json",
+        "sha256": "8b0d6098ad3f64e4f0de7a0874bb0b40c763aa108da8c620cf779ecd9cb25aef"
+      },
+      "observation": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-b/observation.json",
+        "sha256": "5e69cea13554655e342421306abe7fa176771c3cd377c25ccb594ef9e0d5f79b"
+      },
+      "generatedCandidate": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-b/candidate.cs",
+        "sha256": "eaee9bccc4559f78c87c3f9867cd00b7f6546daeb270bb89996fbf691daded58"
+      },
+      "originalCarrier": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-b/original-carrier.cs",
+        "sha256": "990928427369263c3963222124b0d430d765a475f195dc2abff8f3ee19e07c7c"
+      },
+      "candidateAssembly": {
+        "path": ".cache/scalar-release-final/DiscourageDespawn-b/candidate.dll",
+        "sha256": "b9058d93e50e986a7aee33ec6073523680ff5fddf3637cdba9fb20a092913838"
+      },
+      "mutants": [
+        {
+          "mutation": "omit-field-write:RemainingTicks",
+          "cases": 1014,
+          "differences": 468,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "47a81413819a94b716bfaa6752174292e61d99561c0ba2f611563bf6adb5ffd3"
+        },
+        {
+          "mutation": "omit-field-write:ExpiryRequested",
+          "cases": 1014,
+          "differences": 507,
+          "assertion": "Complete two-state projection differs from untouched official reference",
+          "assemblySha256": "8592ae6dd1d69b4d6ec6b0e4207bb7e6a53cc3dc541cd1d3e3c7852e3155eaed"
+        }
+      ],
+      "all56PhysicalRngSlotsAndCursorUnchanged": true,
+      "guardsUnchanged": true,
+      "commands": [
+        {
+          "command": [
+            "dotnet",
+            "build",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+            "-c",
+            "Release",
+            "-warnaserror",
+            "-v",
+            "quiet"
+          ],
+          "exitCode": 0,
+          "name": "build"
+        },
+        {
+          "command": [
+            "dotnet",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+            "--adapt-scalar",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\DiscourageDespawn-b\\request.json",
+            "E:\\TerraRuntime-agent-cache\\TerraRuntime-semantic-port-20261028\\.cache\\scalar-release-final\\DiscourageDespawn-b\\observation.json"
+          ],
+          "exitCode": 0,
+          "name": "probe"
+        }
+      ]
+    }
+  ],
+  "qualification": {
+    "path": ".cache/scalar-release-final/qualification.json",
+    "sha256": "b4f3abbdb4f811abef6252b42ce9c8a8a2a945165449bd245e543da3c7587bdb"
+  },
+  "toolChecks": {
+    "pythonAnalysisPassed": 37,
+    "pythonScalarPassed": 10,
+    "inventorySemanticPassed": 20,
+    "candidateSemanticPassed": 18,
+    "build": "SourceProbe warnings-as-errors0/0, included in each common CLI run.",
+    "receipt": {
+      "path": ".cache/scalar-release-final/checks.json",
+      "sha256": "8dffd12faa189292289786733070b0653cab39f8aa8733ddfee68af3693b4e84"
+    },
+    "candidateSelfTests": {
+      "path": ".cache/scalar-release-final/scalar-checks.json",
+      "sha256": "b5be7339e5ce55d6fc7f1b2c51084f21092984cfbc9cde143465bff342feb8b1"
+    },
+    "inventorySelfTests": {
+      "path": ".cache/scalar-release-final/inventory-checks.json",
+      "sha256": "62ae910a94138905b6d6d29277409ea90745808de2773b6892e6499b6e1ffdea"
+    },
+    "pythonTestInputs": [
+      {
+        "path": "tools/ci/test_vanilla_source_analysis.py",
+        "sha256": "b736a7f47482c59bc1d22392b39c68e2ebdda45f8766edfa4666b289e1bf2ad5"
+      },
+      {
+        "path": "tools/ci/test_vanilla_scalar_candidate.py",
+        "sha256": "d06d9fe0259c3e6f4191ff14882dd031e619fdb0737bf920d805c65cd671c2d0"
+      }
+    ],
+    "existingOriginalAnalysisResult": {
+      "path": ".cache/scalar-release-final/analysis-original/result.json",
+      "sha256": "dca3c23f1303b13f75d7bc134a98144e562dc13fa75d4e56af1c393e429c0146"
+    },
+    "sparseDocumentationScope": "Only the two changed mirrored pages can be checked locally; full repository link check reports absent pre-existing src/tests targets because this is a tools/docs sparse checkout. Root performs full documentation gate after integration."
+  },
+  "nextUsefulStage": {
+    "immediatelyCompatibleCandidate": "Player.ApplyAttackCooldown(int), sourcePlayer44796; no newgameplay claim because current soleproducer shieldraise is fenced.",
+    "connectedLargerCandidate": "Player.GetWeaponKnockback/GetWeaponCrit then GetWeaponDamageMultiplier/GetWeaponDamage, sourcePlayer53987..54071.",
+    "requiredContracts": "Typedfloat/intreturns, locals and explicitreadonlyPlayer/Item facts; then independently qualified arithmetic/conversions, bounded ID-set lookup and ownedcallee/API/RNG contracts. Source caller integration and authoritative state/publication owners remain manual admission work."
+  },
+  "limitations": "No AI3/AI7/full worldgen automatic port, caller/lifecycle integration, arrays/alias safety, accepted numeric conversion, shipping NativeAOT proof or measured speedup. No production roadmap count is advanced. Existing independent implementation/review and runtime differential gates still apply.",
+  "rejectedPreliminaryRuns": "Private early diagnostics for uninitialized Main.SavePath and uintRNG cursor reader were corrected before qualified final runs; their cache artifacts are retained and not included. Earlier32case and pre-extra-guard4056call snapshots are historical, not the final evidence above."
+}

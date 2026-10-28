@@ -213,6 +213,9 @@ def main(argv=None) -> int:
     source_analyze = source_actions.add_parser('analyze')
     source_analyze.add_argument('--request', type=Path, required=True)
     source_analyze.add_argument('--output-dir', type=Path, required=True)
+    source_adapt = source_actions.add_parser('adapt-scalar', help='Cache-only bounded semantic bool/int candidate and actual-original differential')
+    source_adapt.add_argument('--request', type=Path, required=True)
+    source_adapt.add_argument('--output-dir', type=Path, required=True)
     capture = commands.add_parser('capture', help='Build an isolated probe and invoke pinned official defaults')
     capture.add_argument('--assembly', type=Path, required=True)
     capture.add_argument('--output', type=Path, required=True)
@@ -271,8 +274,12 @@ def main(argv=None) -> int:
     started = time.perf_counter()
     try:
         if args.command == 'source':
-            from .source_analysis import analyze
-            report = analyze(args.request, args.output_dir)
+            if args.action == 'adapt-scalar':
+                from .scalar_candidate import adapt
+                report = adapt(args.request, args.output_dir)
+            else:
+                from .source_analysis import analyze
+                report = analyze(args.request, args.output_dir)
         elif args.command == 'capture':
             report = _capture(args)
         elif args.command == 'worldgen':
