@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/ScalarDebuffPlayerLinux1458.v8.json.gz" LogicalName="ScalarDebuffPlayerLinux1458" />
+    <EmbeddedResource Include="Fixtures/ScalarDebuffControlsLinux1458.json.gz" LogicalName="ScalarDebuffControlsLinux1458" />
     <EmbeddedResource Include="Fixtures/AnkhEquipmentLinux1458.json.gz" LogicalName="AnkhEquipmentLinux1458" />
     <EmbeddedResource Include="Fixtures/AnkhEquipmentSharingLinux1458.json.gz" LogicalName="AnkhEquipmentSharingLinux1458" />
     <EmbeddedResource Include="Fixtures/AmmoProjectileDeathLinux1458.json.gz" LogicalName="AmmoProjectileDeathLinux1458" />

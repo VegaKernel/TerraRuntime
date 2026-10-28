@@ -1,5 +1,9 @@
 # Production graph
 
+## Isolated scalar-debuff continuation, 2026-10-29
+
+Six current effects22/30/32/33/35/36 reuse existing PlayerBuffState44slots and an immutable ordered pre-countdown projection, shared effectiveequipment/retainedcombat, healthregen, magicpayment and drymovement owners. No new timerledger/RNG/inventory owner, project/dependency or reflection in shipping. Detached phase validates current stores/providers before adopting health, buffslots, motion, clocks and sourceRNG. Explicit before-equipment defense capability retains Weak negativeintermediate; lateclamp/halving produces validated finalcombat. Silence gates fresh represented mana-positive attempts only; paidreceipts continue. Component953green and independent/sourcecausalproof accepted; rootaggregate integration with mainNPC22/tool remains pending.
+
 ## Isolated Ankh equipment component, 2026-10-28
 
 Sixteen immunity accessories add bounded immutable flags to the existing combat snapshot; the existing equipment selector and whole-player admission own grants. NPC contact still spends proc RNG before immunity. Late cure uses existing44slots/provenance/DelBuff compaction and per-update poison/noItems carriers; existing player phase adopts buff/HP/items/RNG before observers. No new inventory/timer/RNG owner, production package or project edge. Component evidence only; main/aggregate integration pending.

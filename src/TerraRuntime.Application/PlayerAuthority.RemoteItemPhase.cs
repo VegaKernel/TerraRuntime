@@ -465,7 +465,7 @@ internal sealed partial class PlayerAuthority
             out int manaMaximumBonus,
             plan.VoidStorageOpen, item.AmmoCycling is not null) ||
             plan.Buffs.IsItemUseCrowdControlled ||
-            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 23 or 24 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)) ||
+            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 20 or 21 or 22 or 23 or 24 or 30 or 32 or 33 or 35 or 36 or 39 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)) ||
             member.MiscFlags1 != 0 ||
             (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
@@ -489,6 +489,10 @@ internal sealed partial class PlayerAuthority
             }
         };
         bool outside = VanillaPlayerHealthContext1458.IsRemoteOutOfRange(plan.X, plan.Y, 20, 42, world.MaxTilesX, world.MaxTilesY);
+        // Outside UpdateBuffs runs on the retained, unreset fields. The six
+        // scalar continuations below qualify the ordinary in-world phase only.
+        if (outside && effectTypes.Any(static type => type.Value is 22 or 30 or 32 or 33 or 35 or 36))
+            return false;
         bool ghost = (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0;
         if (member.IsDead && plan.Buffs.HasOwnedFoodSlots)
         {
@@ -708,9 +712,9 @@ internal sealed partial class PlayerAuthority
         int sicknessDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(94));
         VanillaPlayerCombatSnapshot buffCombat;
         bool foodEffects = effectTypes.Any(static type => type.Value is 26 or 206 or 207);
-        if (foodEffects || equipmentCombat.AmmoCyclerDamage)
+        if (foodEffects || effectTypes.Any(static type => type.Value == 33) || equipmentCombat.AmmoCyclerDamage)
         {
-            if (!TryBuildSourceOrderedFoodCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat, item.AmmoCycling is not null))
+            if (!TryBuildSourceOrderedBuffCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat, item.AmmoCycling is not null))
                 return false;
         }
         else if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, effectTypes, out buffCombat))
@@ -760,6 +764,14 @@ internal sealed partial class PlayerAuthority
             };
         }
 
+        // Source clamps only after gear and permanent boosters. The current
+        // Broken Armor flag survives the later immunity removal of its timer.
+        derivedCombat = derivedCombat with { Defense = Math.Max(0, derivedCombat.Defense) };
+        if (plan.Buffs.HasBrokenArmorEffect)
+            derivedCombat = derivedCombat with { Defense = derivedCombat.Defense / 2 };
+        float movementDebuff = plan.Buffs.HasSlowEffect ? .5f : 1f;
+        buffCombat = buffCombat with { MoveSpeed = buffCombat.MoveSpeed * movementDebuff };
+        derivedCombat = derivedCombat with { MoveSpeed = buffCombat.MoveSpeed };
         if (!IsValidDerivedCombat(in derivedCombat))
             return false;
         // UpdateEquips precedes this writer in original Player.Update. An open
@@ -839,18 +851,18 @@ internal sealed partial class PlayerAuthority
         plan.PublishBuffs |= plan.Buffs.RemoveEquipmentImmuneBuffs(in derivedCombat);
         bool left = (member.ControlFlags & 4) != 0;
         bool right = (member.ControlFlags & 8) != 0;
-        var horizontal = ResolveRemoteHorizontalIntent(left, right, plan.Vx);
         var jump = (member.ControlFlags & 16) != 0 ? ServerPlayerJumpIntent.Held : ServerPlayerJumpIntent.Released;
         var source = plan.Before;
         var previousJump = physical.Jump;
         var contacts = physical.Contacts;
-        // Food contributes moveSpeed before the ordinary source horizontal multiplier.
-        // It changes maxRunSpeed and acceleration, not accRunSpeed or slowdown.
+        // Food/Weak change moveSpeed; Slow also scales the separate source
+        // accRunSpeed cap. The ordinary profile owns oldStyleParkour=false.
         var foodHorizontal = new VanillaServerPlayerHorizontalProfile1458(VanillaServerPlayerHorizontalControl.MaximumRunSpeed * buffCombat.MoveSpeed,
-            VanillaServerPlayerHorizontalControl.MaximumRunSpeed,
+            VanillaServerPlayerHorizontalControl.MaximumRunSpeed * movementDebuff,
             VanillaServerPlayerHorizontalControl.RunAcceleration * buffCombat.MoveSpeed,
             VanillaServerPlayerHorizontalControl.RunSlowdown,
             false);
+        var horizontal = ResolveRemoteHorizontalIntent(left, right, plan.Vx, foodHorizontal.MaximumRunSpeed);
         if (!TryAdvanceLocalTilePrefix(plan, in world, random)) return false;
         if (!physics.TryStep(in source,
             horizontal,
@@ -1095,6 +1107,7 @@ internal sealed partial class PlayerAuthority
             RuntimePlayerMagicRefill1458? refill = null;
             bool localAttempt = facts.ControlUseItem &&
                 !facts.Cursed &&
+                (prepaid || !plan.Buffs.HasSilenceEffect) &&
                 !facts.CrowdControlled &&
                 !facts.SelectionBuffered &&
                 !deferredGem &&
@@ -1129,7 +1142,7 @@ internal sealed partial class PlayerAuthority
                 item.SlowMagicUse,
                 facts.ControlUseItem,
                 same ? previous!.Value.GemLastUseSuccess : facts.LastUseSuccess,
-                facts.Cursed,
+                facts.Cursed || (!prepaid && plan.Buffs.HasSilenceEffect),
                 facts.CrowdControlled,
                 facts.SelectionBuffered || deferredGem,
                 true)
@@ -1240,7 +1253,8 @@ internal sealed partial class PlayerAuthority
             bool prepaid = priorPayment is { AwaitingPhase: true } paid && paid.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum);
             RuntimePlayerMagicRefill1458? refill = null;
             int available = mana.Mana;
-            bool attempt = facts.ControlUseItem && localMagicClocks.ReleaseUseItem && localMagicClocks.Animation == 0 && !facts.Cursed && !facts.CrowdControlled && !facts.SelectionBuffered && !localMagicDeferred;
+            bool attempt = facts.ControlUseItem && localMagicClocks.ReleaseUseItem && localMagicClocks.Animation == 0 && !facts.Cursed &&
+                (prepaid || !plan.Buffs.HasSilenceEffect) && !facts.CrowdControlled && !facts.SelectionBuffered && !localMagicDeferred;
             if (!VanillaChanneledMagicWeaponStats1458.TryResolve(selected.ItemType,
                 selected.Prefix,
                 world.WindowsItemPrefixArithmetic,
@@ -1279,7 +1293,7 @@ internal sealed partial class PlayerAuthority
                 item.SlowMagicUse,
                 facts.ControlUseItem,
                 facts.LastUseSuccess,
-                facts.Cursed,
+                facts.Cursed || (!prepaid && plan.Buffs.HasSilenceEffect),
                 facts.CrowdControlled,
                 facts.SelectionBuffered || localMagicDeferred,
                 prepaid,
@@ -1522,13 +1536,12 @@ internal sealed partial class PlayerAuthority
         return unknown ? null : false;
     }
 
-    private static ServerPlayerHorizontalIntent ResolveRemoteHorizontalIntent(bool left, bool right, float velocityX)
+    private static ServerPlayerHorizontalIntent ResolveRemoteHorizontalIntent(bool left, bool right, float velocityX, float maximumRunSpeed)
     {
         // Player.HorizontalMovement (1.4.5.8) tests left below its run-speed cap before right.
-        // Both remote controls remain set: at or beyond the negative cap the right branch wins.
-        // This phase admits neutral equipment only, so both source caps are the baseline cap.
-        var profile = VanillaServerPlayerHorizontalProfile1458.Baseline;
-        if (left && (!right || velocityX > -profile.MaximumRunSpeed))
+        // Both controls remain set: the first source branch tests the current
+        // maxRunSpeed, including this frame's food, Weak and Slow writes.
+        if (left && (!right || velocityX > -maximumRunSpeed))
             return ServerPlayerHorizontalIntent.Left;
         return right ? ServerPlayerHorizontalIntent.Right : ServerPlayerHorizontalIntent.Stop;
     }

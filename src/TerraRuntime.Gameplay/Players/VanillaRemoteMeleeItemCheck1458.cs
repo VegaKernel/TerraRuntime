@@ -29,11 +29,13 @@ public static class VanillaRemoteMeleeItemCheck1458
         if (!TryGet(facts.Item, facts.Prefix, facts.WindowsItemPrefixArithmetic,
                 out int useAnimation, out bool autoReuse, out bool miningTool))
             return false;
+        float scaledAnimation = useAnimation * meleeAnimationMultiplier;
         if (!float.IsFinite(meleeAnimationMultiplier) || meleeAnimationMultiplier <= 0f ||
-            meleeAnimationMultiplier > 1f)
+            !float.IsFinite(scaledAnimation) || scaledAnimation >= short.MaxValue + 1f)
             return false;
         // Source ApplyItemAnimation consumes the already capped/inverted owned phase speed.
-        useAnimation = Math.Max(1, (int)(useAnimation * meleeAnimationMultiplier));
+        // Weak makes this reciprocal greater than one; it lengthens the animation.
+        useAnimation = Math.Max(1, (int)scaledAnimation);
         var controls = new PlayerRemoteItemControls1458(facts.ControlUseItem, facts.LastUseSuccess,
             facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered);
         if (!VanillaRemoteItemClocks1458.TryStep(previous, useAnimation, autoReuse, true,

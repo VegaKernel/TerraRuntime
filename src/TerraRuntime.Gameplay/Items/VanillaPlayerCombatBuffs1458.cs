@@ -7,13 +7,21 @@ namespace TerraRuntime.Gameplay.Items;
 public static class VanillaPlayerCombatBuffs1458
 {
     public static bool TryApply(in VanillaPlayerCombatSnapshot before, ReadOnlySpan<BuffTypeId> active,
-        out VanillaPlayerCombatSnapshot after)
+        out VanillaPlayerCombatSnapshot after) => TryApplyCore(in before, active, false, out after);
+
+    /// <summary>UpdateBuffs precedes equipment and the later defense clamp. Weak may
+    /// therefore leave a negative intermediate; this is not a final combat snapshot.</summary>
+    public static bool TryApplyBeforeEquipment(in VanillaPlayerCombatSnapshot before, ReadOnlySpan<BuffTypeId> active,
+        out VanillaPlayerCombatSnapshot after) => TryApplyCore(in before, active, true, out after);
+
+    private static bool TryApplyCore(in VanillaPlayerCombatSnapshot before, ReadOnlySpan<BuffTypeId> active,
+        bool beforeEquipment, out VanillaPlayerCombatSnapshot after)
     {
         after = before;
         if ((before.BuffImmunity & ~VanillaPlayerBuffImmunity1458.All) != 0 || active.Length > 44 || !float.IsFinite(before.MinionDamage) || before.MinionDamage <= 0f ||
             !float.IsFinite(before.MeleeAttackSpeed) || !float.IsFinite(before.MinionKnockback) || !float.IsFinite(before.MoveSpeed) ||
             !float.IsFinite(before.PickSpeed)) return false;
-        if (before.Defense < 0 || before.MeleeCrit < 0 || before.RangedCrit < 0 || before.MagicCrit < 0) return false;
+        if (before.Defense < (beforeEquipment ? -176 : 0) || before.MeleeCrit < 0 || before.RangedCrit < 0 || before.MagicCrit < 0) return false;
         foreach (var type in active)
         {
             // Source Player.UpdateBuffs 1.4.5.8 preserves indexed order and duplicate slots.
@@ -46,6 +54,13 @@ public static class VanillaPlayerCombatBuffs1458
                     MoveSpeed = after.MoveSpeed + movement,
                     PickSpeed = after.PickSpeed - pick
                 };
+            }
+            else if (type.Value == 33)
+            {
+                if (after.Defense < int.MinValue + 4) return false;
+                after = after with { MeleeDamage = after.MeleeDamage - .051f,
+                    MeleeAttackSpeed = after.MeleeAttackSpeed - .051f,
+                    Defense = after.Defense - 4, MoveSpeed = after.MoveSpeed - .1f };
             }
             else if (type.Value == 5)
             {

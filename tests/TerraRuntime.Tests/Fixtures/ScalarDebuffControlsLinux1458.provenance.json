@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "efc9e467ec317e152db20c20519d72b35415dcc18490417d6b2c8945bada7d2f",
+  "sourceProbeSha256": "10c6bc6d9306f535956c89d629ddc2de2386a52c6ac82f9e2757d9b191a89fd0",
+  "probeSha256": "5f56c647d9021ce37495f37ddfcf3ca5a6f71b60e713b4be638fb24338741852",
+  "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "scope": "Actual unmodified Player.Update0 on original initialized dedicated remote role255, ordinary grounded400x400 world/floor103, bothLeftRight true, Weak33/Slow32, initial vx -3/-2.8/-1.6/0/1.6/2.8/3. One update each; full named player projection and physical RNG. Source/runtime matched physical preimages; not wholeMain.",
+  "captures": [
+    {
+      "seed": 1458,
+      "a": ".cache/ankh/six/control/original-1458-a.json",
+      "b": ".cache/ankh/six/control/original-1458-b.json",
+      "sha256": "07b0c0d67050d87c835b1b1dfce04b6499704ebcc00fb1b768f738ddefea0dcb"
+    },
+    {
+      "seed": 42,
+      "a": ".cache/ankh/six/control/original-42-a.json",
+      "b": ".cache/ankh/six/control/original-42-b.json",
+      "sha256": "21302ea1843c364e8677d48c08b0d3dc7e4af0bd5c8b4a4207445d095064d506"
+    },
+    {
+      "seed": 8675309,
+      "a": ".cache/ankh/six/control/original-8675309-a.json",
+      "b": ".cache/ankh/six/control/original-8675309-b.json",
+      "sha256": "c16cda1d4976dc958fe2c40200b490c53f47e2d2d9830430859eb8d887f4cc23"
+    }
+  ],
+  "rows": 42,
+  "includingIdenticalRepeats": 84
+}

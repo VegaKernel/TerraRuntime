@@ -131,7 +131,7 @@ public sealed class FunctionalCombatEquipmentPhase1458Tests
         }
         Assert.Equal(101, supported);
         var invalidFacts = new PlayerRemoteMeleeItemFacts1458(new(24), true, true, false, false, false);
-        foreach (float invalid in new[] { 0f, -1f, float.NaN, float.PositiveInfinity, 1.01f })
+        foreach (float invalid in new[] { 0f, -1f, float.NaN, float.PositiveInfinity, float.MaxValue })
         {
             int offers = 0;
             Assert.False(VanillaRemoteMeleeItemCheck1458.TryStep(initial, in invalidFacts,

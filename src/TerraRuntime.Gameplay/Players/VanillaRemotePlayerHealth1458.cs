@@ -18,6 +18,12 @@ public static class VanillaRemotePlayerHealth1458
     public static PlayerNpcHealthState1458? Step(PlayerNpcHealthState1458? previous, int maximum,
         bool outside, bool ghost, bool dead, bool supported, bool expert, bool moving,
         int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno, bool aegisCrystal, bool wellFed)
+        => Step(previous, maximum, outside, ghost, dead, supported, expert, moving, regenerationSlots,
+            poisoned, onFire, cursedInferno, aegisCrystal, wellFed, bleeding: false);
+
+    public static PlayerNpcHealthState1458? Step(PlayerNpcHealthState1458? previous, int maximum,
+        bool outside, bool ghost, bool dead, bool supported, bool expert, bool moving,
+        int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno, bool aegisCrystal, bool wellFed, bool bleeding)
     {
         // Player.Update returns outside the world before Ghost/UpdateDead and before regeneration.
         if (outside || ghost) return previous;
@@ -34,6 +40,9 @@ public static class VanillaRemotePlayerHealth1458
         if (cursedInferno) ApplyDot(ref rate, ref time, 24);
         time++;
         if (aegisCrystal) time += .2f;
+        // Source UpdateLifeRegen resets the natural timer after its ordinary
+        // increments. Bleeding does not cancel positive potion regeneration.
+        if (bleeding) time = 0f;
         float natural = 0f;
         ReadOnlySpan<int> boundaries = [300, 600, 900, 1200, 1500, 1800, 2400, 3000];
         foreach (int boundary in boundaries)

@@ -10,6 +10,7 @@ internal sealed partial class PlayerBuffState
             return false;
 
         var effects = CaptureDebuffFlags();
+        var effectTypes = CaptureEffectTypes();
         bool noItems = HasNoItemsEffect;
         bool changed = false;
         // Player.Update walks forward after UpdateBuffs/UpdateEquips. DelBuff
@@ -27,6 +28,7 @@ internal sealed partial class PlayerBuffState
         // them when removing their timers. Reuse the existing per-update
         // carrier; the next owned buff update clears it normally.
         contactDebuffsForUpdate = effects;
+        contactEffectTypesForUpdate ??= effectTypes;
         contactNoItemsForUpdate |= noItems;
         InvalidateFoodClockLineage();
         return true;

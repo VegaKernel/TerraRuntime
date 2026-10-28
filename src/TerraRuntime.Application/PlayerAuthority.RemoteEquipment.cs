@@ -151,23 +151,24 @@ internal sealed partial class PlayerAuthority
         == VanillaPlayerCombatSnapshot.Baseline;
     }
 
-    private bool TryBuildSourceOrderedFoodCombat(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+    private bool TryBuildSourceOrderedBuffCombat(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
         PlayerAppearanceCommitRequest? appearance,
         ReadOnlySpan<BuffTypeId> buffs,
         out VanillaPlayerCombatSnapshot combat, bool allowAmmoCycling = false)
     {
         // The caller has already passed the unchanged whole-phase equipment admission.
-        // For the newly represented food family, replay UpdateBuffs before UpdateEquips
+        // For food and Weak, replay UpdateBuffs before UpdateEquips
         // rather than commuting Single additions over equipment/prefix grants.
         combat = default;
         var baseline = VanillaPlayerCombatSnapshot.Baseline;
-        if (!VanillaPlayerCombatBuffs1458.TryApply(in baseline, buffs, out var beforeEquipment))
+        if (!VanillaPlayerCombatBuffs1458.TryApplyBeforeEquipment(in baseline, buffs, out var beforeEquipment))
             return false;
         bool? extraAccessory = appearance is { } owned ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
         var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
         {
             LocalVanityArmor = combatEquipmentLocalVanityArmor,
-            EnableAmmoCyclingAccessories = allowAmmoCycling
+            EnableAmmoCyclingAccessories = allowAmmoCycling,
+            SourceBuffDefenseBeforeEquipment = true
         };
         return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, in beforeEquipment, out combat, out _);
     }

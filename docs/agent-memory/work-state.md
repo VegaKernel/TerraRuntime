@@ -1,5 +1,13 @@
 # Work state
 
+## Isolated six current-debuff continuations, 2026-10-29
+
+Branch gameplay/ankh-scalar-debuffs-20261028 builds on frozen sixteen-accessory0aaab63 in TerraRuntime-next-equipment. Adds ordinary in-world22/30/32/33/35/36 using existing buff/equipment/health/item/movement owners. Weak preserves source indexed food order and negative defense before gear/lateclamp; Slow scales both caps/current simultaneous-control selection; Bleed resets natural timer late; BrokenArmor halves final defense; Silence blocks fresh magic only, preserves paidcontinuations; Darkness currentflag is dedicated-neutral. Immutable currenteffects share existing44slots, no new timers/RNG/inventory owner. Confused31,Stoned156, six outside-world retained-field continuation and broader equipment/environment effects remain fenced.
+
+Release WAE0/0, final953/953 focused+neighbors pass (zeroerrors/skips). Original V8 raw3240contexts/12960updates per repeat identical across3seeds; runtime accepts324remote and24local contexts through4phases plus42simultaneous-control contexts =1434 fullprojected observations including56RNG+cursor. Same finalTestDLL72008c55e884a566f4c547303be6a213609476e39c818521684f66c281e57f2a gives prior-six behavior389assertfail/9controls (currentcarrierAPI alreadyprepared), six-effect omission339/59 and fixed-cap omission9/33; no loader errors counted. Canonical158DLL/1047App+Gameplay sourceguards pass. V6/V7 prototypes immutable andexplicitlyunqualified forruntimeinitialcomparison; actualsource/runtime heat0 isowned, nooffset. Earlier V7 firstassertionred notbehaviorproof. Newnormal24localtests use realemptyserverepoch beforejoining andexistingtypedbuffadoption, no transfer provenance invention.
+
+Component only: docs/verification/scalar-debuff-player-20261029.json, pairedsource docs and repairedUTF8RU16page. Cache E-backed through .cache/ankh; finalproof .cache/ankh/six/causal/result.json. Parentrootalreadymerged16intoisolatedintegration ef668dc0(currentmain1c4). Merge this logical six commit there preserving NPC22+automatictools, then ONE aggregate fast/full/Native gate before mainpublication. No sixfull/Native/TCP/push claim. Root owns finalunion. Source/tests frozen after finalbuild12; remaining edits docs/memory only.
+
 ## CURRENT unpublished gameplay integration, 2026-10-29
 
 Branch gameplay/ankh-integration-20261029 combines accepted main1c4d8c9e with component0aaab63; only documentation conflicts were resolved by preserving both histories. No aggregate gameplay acceptance is claimed. Wait for six additional source-ordered status continuations on the sibling equipment branch, then merge them and run one combined gate. Primary main remains the published NPC/tool checkpoint; no deployment/push of this branch yet.
