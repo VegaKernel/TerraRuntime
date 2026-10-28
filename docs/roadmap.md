@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+## Offline Roslyn semantic analysis, 2026-10-28
+
+`source analyze` now provides reproducible symbol-based dependency and read/write inventories, bounded source-callee traversal, explicit RNG/call identities and conservative opaque effect frontiers. Actual embedded ReLogic metadata and coherent NPC/Main source inputs remove the feasibility pilot's missing-reference/type-identity errors; ambiguous source/metadata extension calls still reject qualification. Original bodies are not emitted or committed. [EN guide](en/source-analysis-tools.md), [RU guide](ru/source-analysis-tools.md) and [qualification](verification/semantic-source-analysis-20261028.json) describe the exact method-span boundary.
+
+Fresh SDK-only warnings-as-errors, 233 Python checks, 20 executable synthetic checks and all nine expected common-CLI outcomes pass. An isolated real rule omission fails the unchanged deconstruction regression. Shipping source, tests, build inputs and tier policy remain byte-identical to accepted main `1c4e5aaa`; its full/Native evidence keeps that shipping scope, without another runtime matrix run. The analyzer does not translate code, resolve runtime owner bindings, prove whole-project compilation or advance any parity classification.
+
 ## Applied worldgen, NPC and player caller block, 2026-10-28
 
 The merged shipping tree preserves the concurrent Hive/JungleShrines house-protection work and adds three scoped behavior corrections: QuickCleanup preserves independent half-brick/slope state; the town schedule continues an existing Dryad state24 animation through its exit and emotes; local-owner item phases reproduce the heat threshold and pre-ItemCheck cracked-brick RNG offers. Retained placement alternatives advance only across an exact witnessed prefix; unsupported thin-ice/cracked-tile mutations refuse before state adoption.

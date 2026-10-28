@@ -1,5 +1,9 @@
 # Production graph
 
+## Offline Roslyn analyzer, 2026-10-28
+
+Shipping graph remains 15 projects/29 references with no source/build changes from accepted main1c4e5aaa. SourceProbe is an unreferenced developer console project using the installed SDK's Roslyn assemblies through MSBuildToolsPath; it adds no production package or solution project. Python `source analyze` validates the closed bounded request, binds exact read bytes to admitted official metadata, builds privately, and guards explicit source/reference/tool membership and executed DLLs. The backend parses source and embedded managed metadata without executing the original. Inventories expose body-local diagnostics, lexical accesses/calls and opaque alias/dispatch/protocol frontiers; no new runtime owner or translated algorithm is introduced.
+
 ## Applied source parity block, 2026-10-28
 
 Shipping graph remains15projects/29edges. QuickCleanup now uses existing canonical shape helpers for independent halfbrick+slope states. The existing town schedule admits only Dryad state24 continuation, retaining dry/ordinary/type/frame provenance and existing emote publication ownership. Local-owner player phases use the exact local heat threshold and the source's two CheckCrackedBrickBreak offers, before dry movement/ItemCheck; remote callers retain their old role semantics. Two bounded footprint reads refuse unrepresented thin-ice/cracked mutations before custody/RNG adoption, preserving established high-velocity cases without an invented speed cap.

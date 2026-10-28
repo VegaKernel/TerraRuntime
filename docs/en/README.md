@@ -23,6 +23,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [World generation source catalog, pass oracle and Reset replay tools](worldgen-source-tools.md)
 - [NPC behavior source comparison tools](npc-source-tools.md)
 - [Gameplay behavior source comparison tools](gameplay-source-tools.md)
+- [Roslyn source dependency and state-access analysis](source-analysis-tools.md)
 
 - [Frost Legion state and completion](frost-legion-state-1458.md)
 - [Paid boss intents and event prerequisites](paid-boss-summons-1458.md)

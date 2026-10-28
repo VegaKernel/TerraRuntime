@@ -208,6 +208,11 @@ def _behavior(args) -> dict:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
+    source = commands.add_parser('source', help='Offline Roslyn method dependency and state-access inventory')
+    source_actions = source.add_subparsers(dest='action', required=True)
+    source_analyze = source_actions.add_parser('analyze')
+    source_analyze.add_argument('--request', type=Path, required=True)
+    source_analyze.add_argument('--output-dir', type=Path, required=True)
     capture = commands.add_parser('capture', help='Build an isolated probe and invoke pinned official defaults')
     capture.add_argument('--assembly', type=Path, required=True)
     capture.add_argument('--output', type=Path, required=True)
@@ -265,7 +270,10 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     started = time.perf_counter()
     try:
-        if args.command == 'capture':
+        if args.command == 'source':
+            from .source_analysis import analyze
+            report = analyze(args.request, args.output_dir)
+        elif args.command == 'capture':
             report = _capture(args)
         elif args.command == 'worldgen':
             report = _worldgen(args)

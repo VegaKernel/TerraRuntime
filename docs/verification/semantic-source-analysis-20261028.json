@@ -1,0 +1,2073 @@
+{
+  "schemaVersion": 1,
+  "kind": "semantic-source-tool-qualification",
+  "accepted": true,
+  "toolInputs": {
+    "Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+    "global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+    "tools/vanilla.py": "486e5cb697cc4789f1d671b57831eabb0f815ad2498a8d3e461995263ac4061b",
+    "tools/vanilla_data/capture.py": "bc02043a24f6f14358f2ca71db6baa9aa784d8e1019ecd235f246d4298f8becf",
+    "tools/vanilla_data/cli.py": "3ebfbfffd174a7ea9ca8e2120fa4c45271ce6f50aad4b924863174727f373d43",
+    "tools/vanilla_data/pass_probe.py": "7e1238d683b7b3e441ea211d1a07352781f3751ccd87ea30abc0b86245542e36",
+    "tools/vanilla_data/reference.json": "811aac2bf4e8f8e0b541ef5866df4b423f8f3ae48d58f831e4e880f5f265e4b6",
+    "tools/vanilla_data/source_analysis.py": "1581fd986733a1084d3040865a657d445cf1c185a7668308c548b2914e006922",
+    "tools/vanilla_data/SourceProbe/CompilationLoader.cs": "0c112206981c94b9f8d8aa0d0d6c3c55afeabbe493ed467b485479755a55be70",
+    "tools/vanilla_data/SourceProbe/InventoryChecks.cs": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8",
+    "tools/vanilla_data/SourceProbe/Program.cs": "2a054064cae1e60c144b6f9be1482fc344ecbed9444e434e3d1eb64d21f9f062",
+    "tools/vanilla_data/SourceProbe/SemanticInventory.cs": "ee445e1665ac43ca9d665abdf5e6373b9ae7023c99c1eacfab6459fe5fd63f86",
+    "tools/vanilla_data/SourceProbe/SourceProbe.csproj": "2ecbd9c81b1d177d6edbd73fbf13756fcaa7ebfde1c177e5c6a0fc3f262ec20c"
+  },
+  "toolInputsSha256": "054fca119a30a3dd5d82e9eb79ef2ea7d9f7aecb269e9cce6f3b97da74c1bde8",
+  "checks": {
+    "build": {
+      "command": [
+        "dotnet",
+        "build",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+        "-c",
+        "Release",
+        "-warnaserror",
+        "-v",
+        "quiet"
+      ],
+      "exitCode": 0,
+      "wallSeconds": 0.539495800039731,
+      "logSha256": "b77855db9c7aaabe7806a863aea7a5a82aacd1d8780090ab30274172097895fb"
+    },
+    "synthetic": {
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+        "--self-test",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\synthetic.json"
+      ],
+      "exitCode": 0,
+      "wallSeconds": 0.9111137000145391,
+      "logSha256": "44e8640b842a16fca36d50eb667ef75ed72fed59fe0db0eb74aeda4a11972359"
+    },
+    "python": {
+      "command": [
+        "py",
+        "-3",
+        "-X",
+        "utf8",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/ci",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0,
+      "wallSeconds": 8.520078899920918,
+      "logSha256": "c8dbb3bb95355c4f4feaf8da9d49b73b4638f15fbc16b30ac436e69ed86ced89",
+      "tests": 233
+    }
+  },
+  "cases": [
+    {
+      "name": "utils",
+      "expectedAccepted": true,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\utils-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\utils"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 1.9271295999642462,
+        "logSha256": "3da35917cc34b7ba9e0c02e09a1b8aec0999480d6eeb53950a2e761968f1e76b"
+      },
+      "result": {
+        "accepted": true,
+        "analysisErrors": [],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\utils\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\utils\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 85,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "62f2595de42b4f6bb0d92ca9a6a92bd548682587bbc7367324fa9a09e7b45058",
+        "inputsUnchanged": true,
+        "methods": 1,
+        "observationSha256": "8a94de4cde584d26f4252435ca526a8e0f8fb3e71fdba109c4981e8ed0ce212c",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": true,
+        "validationErrors": [],
+        "wallSeconds": 1.7043108000652865
+      },
+      "observation": {
+        "accepted": true,
+        "sourceClosureComplete": true,
+        "entries": [
+          "Terraria.Utils.GetLerpValue(float, float, float, bool)"
+        ],
+        "compilationErrorCount": 85,
+        "errors": [],
+        "frontiers": [],
+        "sourceSha256": {
+          "Terraria/Utils.cs": "5e90754dee2a980e9164c7d9846d0bd9d99ef79a3cd7d2fd2e2ae19e69c17179"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Terraria.Utils.GetLerpValue(float, float, float, bool)",
+          "qualified": true,
+          "diagnostics": [],
+          "calls": 0,
+          "rngCalls": 0,
+          "accesses": 0
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/utils/request.json",
+          "sha256": "bc3ab16d2c3ba8065070cc423c81b6ea50f7cf524d92e150d89f6e10beb74810"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/utils/input-before.json",
+          "sha256": "1847644b8d1ee33cbf882b9c441f4adc7357825790e3bcd020396987688d44f5"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/utils/observation.json",
+          "sha256": "8a94de4cde584d26f4252435ca526a8e0f8fb3e71fdba109c4981e8ed0ce212c"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/utils/result.json",
+          "sha256": "33f1fc4cd1779c2fe0d16b62d0f52636a430b96786accaba90f23cd0a851c32a"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/utils/build.log",
+          "sha256": "1a83cf4c6830b9046698be3ad77db637fac76bd59dab90865bfc81f4a6131fbd"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/utils/probe.log",
+          "sha256": "2bf2647f9154af73c7694acebdd4129a6446c8d536dcbe64431db0e9ed920015"
+        }
+      ]
+    },
+    {
+      "name": "dryad",
+      "expectedAccepted": true,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\dryad-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\dryad"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 15.263501200010069,
+        "logSha256": "e4acb0550adc959bca06d79d117a7007e6f737f642c1d2d2f27876b52013cec0"
+      },
+      "result": {
+        "accepted": true,
+        "analysisErrors": [],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\dryad\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\dryad\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 121,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "d79304f402e2ba6a4a59dd5555d04a47b02295ce87ef0d3dc3f9de8ef23fa943",
+        "inputsUnchanged": true,
+        "methods": 1,
+        "observationSha256": "636bbef9cd167bb538b4c4678753ee800328cfdb6589f295aa77dc6b3e4e1909",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 15.030070000095293
+      },
+      "observation": {
+        "accepted": true,
+        "sourceClosureComplete": false,
+        "entries": [
+          "Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "compilationErrorCount": 121,
+        "errors": [],
+        "frontiers": [
+          "array-alias-and-index-effects-not-proven: Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "metadata-or-nonmethod-body: Microsoft.Xna.Framework.Vector2.operator +(Microsoft.Xna.Framework.Vector2, Microsoft.Xna.Framework.Vector2)",
+          "metadata-or-nonmethod-body: Microsoft.Xna.Framework.Vector2.Vector2(float, float)",
+          "metadata-or-nonmethod-body: Terraria.DataStructures.EntitySource_DebugCommand.EntitySource_DebugCommand()",
+          "metadata-or-nonmethod-body: Terraria.Projectile.NewProjectile(Terraria.DataStructures.IEntitySource, Microsoft.Xna.Framework.Vector2, Microsoft.Xna.Framework.Vector2, int, int, float, int, float, float, float, Terraria.NewProjectileModifier)",
+          "metadata-or-nonmethod-body: Terraria.Tile.active()",
+          "metadata-or-nonmethod-body: Terraria.Utils.Clamp<T>(T, T, T)",
+          "metadata-or-nonmethod-body: Terraria.Utils.ToTileCoordinates(Microsoft.Xna.Framework.Vector2)",
+          "metadata-or-nonmethod-body: Terraria.Utils.ToWorldCoordinates(Microsoft.Xna.Framework.Point, float, float)",
+          "property-accessor-effects-not-traversed: Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "sourceSha256": {
+          "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+          "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "qualified": true,
+          "diagnostics": [],
+          "calls": 10,
+          "rngCalls": 0,
+          "accesses": 34
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/dryad/request.json",
+          "sha256": "b1f007703d187ed8342605bc38b3b4d8acf04ecd8209c5edae5d838b11fa754e"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/dryad/input-before.json",
+          "sha256": "b9e919579a4f1955ebb5302cc2f2dfb51e2b66d135e1049a996bd452f7f78d8e"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/dryad/observation.json",
+          "sha256": "636bbef9cd167bb538b4c4678753ee800328cfdb6589f295aa77dc6b3e4e1909"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/dryad/result.json",
+          "sha256": "8999c8c52a9fd800a6b89c551a64423146378a187f03f59a8bee4d8d8fde224f"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/dryad/build.log",
+          "sha256": "799ea94f764c6c04ae0918bf4964f4f965fd2cc8d58945aec9d60240ae7ec3a5"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/dryad/probe.log",
+          "sha256": "911b9f9ca757eb23becf9c114a1aa496564045535b68b73c4f1685df5a1c5f69"
+        }
+      ]
+    },
+    {
+      "name": "house",
+      "expectedAccepted": true,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\house-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\house"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 1.6651248999405652,
+        "logSha256": "207c8a86d01710bb53efd29fa863b8f547d6ccbe2c6ff81ef7b6948e719b0c12"
+      },
+      "result": {
+        "accepted": true,
+        "analysisErrors": [],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\house\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\house\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 0,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "d5c515c6f654b721d1263232b28468cec5808f5e225cca5b50003ea25e7c288c",
+        "inputsUnchanged": true,
+        "methods": 1,
+        "observationSha256": "87c1e450e26046429190556c79ba0fa0f559fa7701c75aea466d06aa0adbc04f",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 1.451298899948597
+      },
+      "observation": {
+        "accepted": true,
+        "sourceClosureComplete": false,
+        "entries": [
+          "Terraria.GameContent.Biomes.CaveHouse.HouseUtils.AreRoomsValid(System.Collections.Generic.IEnumerable<Microsoft.Xna.Framework.Rectangle>, Terraria.WorldBuilding.StructureMap, Terraria.GameContent.Biomes.CaveHouse.HouseType)"
+        ],
+        "compilationErrorCount": 0,
+        "errors": [],
+        "frontiers": [
+          "implicit-protocol-calls-not-expanded: Terraria.GameContent.Biomes.CaveHouse.HouseUtils.AreRoomsValid(System.Collections.Generic.IEnumerable<Microsoft.Xna.Framework.Rectangle>, Terraria.WorldBuilding.StructureMap, Terraria.GameContent.Biomes.CaveHouse.HouseType)",
+          "metadata-or-nonmethod-body: Microsoft.Xna.Framework.Point.Point(int, int)",
+          "metadata-or-nonmethod-body: Terraria.WorldBuilding.Conditions.HasLava.HasLava()",
+          "metadata-or-nonmethod-body: Terraria.WorldBuilding.GenSearch.RequireAll(bool)",
+          "metadata-or-nonmethod-body: Terraria.WorldBuilding.Searches.Chain(Terraria.WorldBuilding.GenSearch, params Terraria.WorldBuilding.GenCondition[])",
+          "metadata-or-nonmethod-body: Terraria.WorldBuilding.Searches.Rectangle.Rectangle(int, int)",
+          "metadata-or-nonmethod-body: Terraria.WorldBuilding.StructureMap.CanPlace(Microsoft.Xna.Framework.Rectangle, bool[], int)",
+          "metadata-or-nonmethod-body: Terraria.WorldBuilding.WorldUtils.Find(Microsoft.Xna.Framework.Point, Terraria.WorldBuilding.GenSearch, out Microsoft.Xna.Framework.Point)",
+          "ref-out-alias-effects-not-proven: Terraria.GameContent.Biomes.CaveHouse.HouseUtils.AreRoomsValid(System.Collections.Generic.IEnumerable<Microsoft.Xna.Framework.Rectangle>, Terraria.WorldBuilding.StructureMap, Terraria.GameContent.Biomes.CaveHouse.HouseType)"
+        ],
+        "sourceSha256": {
+          "Terraria.GameContent.Biomes.CaveHouse/HouseUtils.cs": "5d49136bfab8f3b3d00b160a8496d39aab872138fee62c9de92ab3250939556b"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Terraria.GameContent.Biomes.CaveHouse.HouseUtils.AreRoomsValid(System.Collections.Generic.IEnumerable<Microsoft.Xna.Framework.Rectangle>, Terraria.WorldBuilding.StructureMap, Terraria.GameContent.Biomes.CaveHouse.HouseType)",
+          "qualified": true,
+          "diagnostics": [],
+          "calls": 8,
+          "rngCalls": 0,
+          "accesses": 8
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/house/request.json",
+          "sha256": "f6b267459f49f8e8204ffa77521b148822c48306700eff6d1ef251251fd2c1f5"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/house/input-before.json",
+          "sha256": "b3aef16af217eeb7918f715d8253dff43dd9ef90e749817c02a38b2eae4f6639"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/house/observation.json",
+          "sha256": "87c1e450e26046429190556c79ba0fa0f559fa7701c75aea466d06aa0adbc04f"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/house/result.json",
+          "sha256": "010087b9663a1c0299c9695e35ecbfedecb59bcd0ee03677e55492910223d942"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/house/build.log",
+          "sha256": "799ea94f764c6c04ae0918bf4964f4f965fd2cc8d58945aec9d60240ae7ec3a5"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/house/probe.log",
+          "sha256": "911b9f9ca757eb23becf9c114a1aa496564045535b68b73c4f1685df5a1c5f69"
+        }
+      ]
+    },
+    {
+      "name": "rooms",
+      "expectedAccepted": true,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\rooms-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\rooms"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 1.6616913999896497,
+        "logSha256": "772f933e2c894ee3987eafa4cf571ff3a8ed64f241d7b7cac413cd6b826b34a5"
+      },
+      "result": {
+        "accepted": true,
+        "analysisErrors": [],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\rooms\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\rooms\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 0,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "d5c515c6f654b721d1263232b28468cec5808f5e225cca5b50003ea25e7c288c",
+        "inputsUnchanged": true,
+        "methods": 1,
+        "observationSha256": "9760023362080bcb0d1843357fc0c4e34c3848742083e562d914a2a68672cf25",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 1.4149772999808192
+      },
+      "observation": {
+        "accepted": true,
+        "sourceClosureComplete": false,
+        "entries": [
+          "Terraria.GameContent.Biomes.CaveHouse.HouseUtils.GetRandomizedRoomCountInABigAbandonedHouse()"
+        ],
+        "compilationErrorCount": 0,
+        "errors": [],
+        "frontiers": [
+          "metadata-or-nonmethod-body: System.Math.Max(int, int)",
+          "metadata-or-nonmethod-body: Terraria.Utilities.UnifiedRandom.Next(int, int)",
+          "metadata-or-nonmethod-body: Terraria.Utilities.UnifiedRandom.Next(int)",
+          "property-accessor-effects-not-traversed: Terraria.GameContent.Biomes.CaveHouse.HouseUtils.GetRandomizedRoomCountInABigAbandonedHouse()"
+        ],
+        "sourceSha256": {
+          "Terraria.GameContent.Biomes.CaveHouse/HouseUtils.cs": "5d49136bfab8f3b3d00b160a8496d39aab872138fee62c9de92ab3250939556b"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Terraria.GameContent.Biomes.CaveHouse.HouseUtils.GetRandomizedRoomCountInABigAbandonedHouse()",
+          "qualified": true,
+          "diagnostics": [],
+          "calls": 3,
+          "rngCalls": 2,
+          "accesses": 4
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/rooms/request.json",
+          "sha256": "dd94482abe9d6db9a0dd2bb8bfcf8dae41c53f5d48b826c54c6addf1e490989e"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/rooms/input-before.json",
+          "sha256": "b3aef16af217eeb7918f715d8253dff43dd9ef90e749817c02a38b2eae4f6639"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/rooms/observation.json",
+          "sha256": "9760023362080bcb0d1843357fc0c4e34c3848742083e562d914a2a68672cf25"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/rooms/result.json",
+          "sha256": "25caea09ddf2598dab72774ef137c25e00da55e8998082aaeb8753ad81c58797"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/rooms/build.log",
+          "sha256": "1a83cf4c6830b9046698be3ad77db637fac76bd59dab90865bfc81f4a6131fbd"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/rooms/probe.log",
+          "sha256": "911b9f9ca757eb23becf9c114a1aa496564045535b68b73c4f1685df5a1c5f69"
+        }
+      ]
+    },
+    {
+      "name": "npc-incomplete",
+      "expectedAccepted": false,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-incomplete-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-incomplete"
+        ],
+        "exitCode": 1,
+        "wallSeconds": 9.692510699969716,
+        "logSha256": "bfd353469901f66818aeb222074531aa53e2f2f35ac28bbdc989c57e5308ccd9"
+      },
+      "result": {
+        "accepted": false,
+        "analysisErrors": [
+          "method-not-qualified: Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-incomplete\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-incomplete\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 162,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "05334c5bf6ebb7d7ac3cdcdb3acc07d81086a8f56ec5d534bd03ed753ee8eb5c",
+        "inputsUnchanged": true,
+        "methods": 1,
+        "observationSha256": "ead406c9b191c950d62186c195e5f885dc308067c4a097cc644882f1f50cc582",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 9.474352800054476
+      },
+      "observation": {
+        "accepted": false,
+        "sourceClosureComplete": false,
+        "entries": [
+          "Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "compilationErrorCount": 162,
+        "errors": [
+          "method-not-qualified: Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "frontiers": [
+          "array-alias-and-index-effects-not-proven: Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "metadata-or-nonmethod-body: Microsoft.Xna.Framework.Vector2.operator +(Microsoft.Xna.Framework.Vector2, Microsoft.Xna.Framework.Vector2)",
+          "metadata-or-nonmethod-body: Microsoft.Xna.Framework.Vector2.Vector2(float, float)",
+          "metadata-or-nonmethod-body: Terraria.DataStructures.EntitySource_DebugCommand.EntitySource_DebugCommand()",
+          "metadata-or-nonmethod-body: Terraria.Projectile.NewProjectile(Terraria.DataStructures.IEntitySource, Microsoft.Xna.Framework.Vector2, Microsoft.Xna.Framework.Vector2, int, int, float, int, float, float, float, Terraria.NewProjectileModifier)",
+          "metadata-or-nonmethod-body: Terraria.Tile.active()",
+          "metadata-or-nonmethod-body: Terraria.Utils.Clamp<T>(T, T, T)",
+          "metadata-or-nonmethod-body: Terraria.Utils.ToTileCoordinates(Microsoft.Xna.Framework.Vector2)",
+          "metadata-or-nonmethod-body: Terraria.Utils.ToWorldCoordinates(Microsoft.Xna.Framework.Point, float, float)",
+          "property-accessor-effects-not-traversed: Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "sourceSha256": {
+          "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "qualified": false,
+          "diagnostics": [
+            {
+              "id": "CS0029",
+              "line": 19224,
+              "severity": "error"
+            }
+          ],
+          "calls": 10,
+          "rngCalls": 0,
+          "accesses": 34
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-incomplete/request.json",
+          "sha256": "fbfb4f173586fd4722c38bfb209818f96d1123cb22c6d6752d6d6d8c51436ca5"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-incomplete/input-before.json",
+          "sha256": "aefcaf80912f4a89497aea5ecb20ac02270893ae2042a3c4c52b2582a071af70"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-incomplete/observation.json",
+          "sha256": "ead406c9b191c950d62186c195e5f885dc308067c4a097cc644882f1f50cc582"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-incomplete/result.json",
+          "sha256": "b7571c21f1ca6710013860a51a8c686ab4078118c2f02195cf44d1c312cdbb4e"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-incomplete/build.log",
+          "sha256": "e1da24d4c7e330325b8ce2a4319622284d6e26f564dd09ffdddbc842af91d238"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-incomplete/probe.log",
+          "sha256": "b4e0f5a7efe3a15c4fc14d21af993e1782acf36f394a019fc1b0c2e0d6247190"
+        }
+      ]
+    },
+    {
+      "name": "npc-ambiguous",
+      "expectedAccepted": false,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-ambiguous-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-ambiguous"
+        ],
+        "exitCode": 1,
+        "wallSeconds": 15.092517099925317,
+        "logSha256": "68b94beec041d52731ed002406a989327a023f876cdc45f502fc9d4fde6523c4"
+      },
+      "result": {
+        "accepted": false,
+        "analysisErrors": [
+          "method-not-qualified: Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-ambiguous\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\npc-ambiguous\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 2844,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "54dff6fd02028cfe09cca674c8ff643d3cdd2d530f430ffa046b9028d8f214b1",
+        "inputsUnchanged": true,
+        "methods": 2,
+        "observationSha256": "853d664dc9dd9a27ae0029587766993ed03bc9b0c0349e56e874bf113fe8963f",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 14.83515289996285
+      },
+      "observation": {
+        "accepted": false,
+        "sourceClosureComplete": false,
+        "entries": [
+          "Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "compilationErrorCount": 2844,
+        "errors": [
+          "method-not-qualified: Terraria.NPC.HaveDryadDoStardewAnimation()"
+        ],
+        "frontiers": [
+          "array-alias-and-index-effects-not-proven: Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "invalid-operation: Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "metadata-or-nonmethod-body: Microsoft.Xna.Framework.Vector2.operator +(Microsoft.Xna.Framework.Vector2, Microsoft.Xna.Framework.Vector2)",
+          "metadata-or-nonmethod-body: Microsoft.Xna.Framework.Vector2.Vector2(float, float)",
+          "metadata-or-nonmethod-body: Terraria.DataStructures.EntitySource_DebugCommand.EntitySource_DebugCommand()",
+          "metadata-or-nonmethod-body: Terraria.Projectile.NewProjectile(Terraria.DataStructures.IEntitySource, Microsoft.Xna.Framework.Vector2, Microsoft.Xna.Framework.Vector2, int, int, float, int, float, float, float, Terraria.NewProjectileModifier)",
+          "metadata-or-nonmethod-body: Terraria.Tile.active()",
+          "property-accessor-effects-not-traversed: Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "unresolved-invocation: Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "virtual: System.IComparable<T>.CompareTo(T)"
+        ],
+        "sourceSha256": {
+          "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+          "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+          "Terraria/Utils.cs": "5e90754dee2a980e9164c7d9846d0bd9d99ef79a3cd7d2fd2e2ae19e69c17179"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Terraria.NPC.HaveDryadDoStardewAnimation()",
+          "qualified": false,
+          "diagnostics": [
+            {
+              "id": "CS0121",
+              "line": 19238,
+              "severity": "error"
+            },
+            {
+              "id": "CS0121",
+              "line": 19258,
+              "severity": "error"
+            }
+          ],
+          "calls": 8,
+          "rngCalls": 0,
+          "accesses": 34
+        },
+        {
+          "id": "Terraria.Utils.Clamp<T>(T, T, T)",
+          "qualified": true,
+          "diagnostics": [],
+          "calls": 2,
+          "rngCalls": 0,
+          "accesses": 0
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-ambiguous/request.json",
+          "sha256": "b8fb1ed6e566b4936d9783c1af62a1b4c15f70b04c7b47d72d3c87daee1c570e"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-ambiguous/input-before.json",
+          "sha256": "ccb2321e15c121b7306bcfd2f0e2cb24f48772ce20a810b6606be6cab8670831"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-ambiguous/observation.json",
+          "sha256": "853d664dc9dd9a27ae0029587766993ed03bc9b0c0349e56e874bf113fe8963f"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-ambiguous/result.json",
+          "sha256": "1285a3c600320d2ad9c61cc3630c3f6f7493212cae4c084bf1f57971d4ae933e"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-ambiguous/build.log",
+          "sha256": "e1da24d4c7e330325b8ce2a4319622284d6e26f564dd09ffdddbc842af91d238"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/npc-ambiguous/probe.log",
+          "sha256": "b440ac17ceabafb1afd17ab28afc0e61d029f1cef2d14adeaa8747007068af66"
+        }
+      ]
+    },
+    {
+      "name": "absent-entry",
+      "expectedAccepted": false,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\absent-entry-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\absent-entry"
+        ],
+        "exitCode": 1,
+        "wallSeconds": 2.0118982999119908,
+        "logSha256": "905a64d3b6e08c8139e93496e64b25f301178e6588d396b1f60f6cd65c1f2ef6"
+      },
+      "result": {
+        "accepted": false,
+        "analysisErrors": [
+          "entry-not-unique: Terraria.Utils.MissingMethod"
+        ],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\absent-entry\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\absent-entry\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 85,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "62f2595de42b4f6bb0d92ca9a6a92bd548682587bbc7367324fa9a09e7b45058",
+        "inputsUnchanged": true,
+        "methods": 0,
+        "observationSha256": "823ebe72464adf1acc2e8e6ea47ea9ef944186e14e549d3e045ae7834dbf8373",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 1.7994265001034364
+      },
+      "observation": {
+        "accepted": false,
+        "sourceClosureComplete": false,
+        "entries": [],
+        "compilationErrorCount": 85,
+        "errors": [
+          "entry-not-unique: Terraria.Utils.MissingMethod"
+        ],
+        "frontiers": [],
+        "sourceSha256": {
+          "Terraria/Utils.cs": "5e90754dee2a980e9164c7d9846d0bd9d99ef79a3cd7d2fd2e2ae19e69c17179"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/absent-entry/request.json",
+          "sha256": "208c20c4dc739b7e70135c4494ad851410307675a778f548c8f517ccc478e1ff"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/absent-entry/input-before.json",
+          "sha256": "1847644b8d1ee33cbf882b9c441f4adc7357825790e3bcd020396987688d44f5"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/absent-entry/observation.json",
+          "sha256": "823ebe72464adf1acc2e8e6ea47ea9ef944186e14e549d3e045ae7834dbf8373"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/absent-entry/result.json",
+          "sha256": "2090239a248e216eb5c4504e307f20278fb060eca441a2d0478113c47da0428f"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/absent-entry/build.log",
+          "sha256": "e1da24d4c7e330325b8ce2a4319622284d6e26f564dd09ffdddbc842af91d238"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/absent-entry/probe.log",
+          "sha256": "7110779a13c0dfde168fcf3ff4b050f94dfa64625617091696659aa84b7d362e"
+        }
+      ]
+    },
+    {
+      "name": "depth-cutoff",
+      "expectedAccepted": false,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\depth-cutoff-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\depth-cutoff"
+        ],
+        "exitCode": 1,
+        "wallSeconds": 1.5949462000280619,
+        "logSha256": "1c32c6fed3ae201fd3e124769ac3b810bf046f5d6983beda55c265669582b078"
+      },
+      "result": {
+        "accepted": false,
+        "analysisErrors": [
+          "depth-limit: Example.Demo.A()"
+        ],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\depth-cutoff\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\depth-cutoff\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 0,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "0888cd43c7b2aef7a05c44d9fe378d3408c1b59a276885ae8046af1f56ee93f6",
+        "inputsUnchanged": true,
+        "methods": 1,
+        "observationSha256": "8701e47c09318c31c465482c6f56258fb72a433e8e2bfb812cba14952e16ef20",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 1.3755519000114873
+      },
+      "observation": {
+        "accepted": false,
+        "sourceClosureComplete": false,
+        "entries": [
+          "Example.Demo.Tick()"
+        ],
+        "compilationErrorCount": 0,
+        "errors": [
+          "depth-limit: Example.Demo.A()"
+        ],
+        "frontiers": [],
+        "sourceSha256": {
+          "Demo.cs": "c87d97406ef274e692e1b33ccad76856d578ab3f858f045b2eb2ff3f7a37d2f7"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Example.Demo.Tick()",
+          "qualified": true,
+          "diagnostics": [],
+          "calls": 1,
+          "rngCalls": 0,
+          "accesses": 0
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/depth-cutoff/request.json",
+          "sha256": "918ae72ce6c9b6b48939bdbfddf3a3cfa478b1a162e0a6db267802f74f82f986"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/depth-cutoff/input-before.json",
+          "sha256": "c398f0ee5ec1e9ceedd410eaa9cd7817c59c3e7ac0e2eed27bcfc1301e40ff33"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/depth-cutoff/observation.json",
+          "sha256": "8701e47c09318c31c465482c6f56258fb72a433e8e2bfb812cba14952e16ef20"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/depth-cutoff/result.json",
+          "sha256": "81acedbc12649fa9498dc55dfd8ba8be33dc93f7e87ea55ad22ca9585be88db4"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/depth-cutoff/build.log",
+          "sha256": "7f2846445164574fb96c02a244641e2a13a2668eba39731533eafe7b9f61a415"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/depth-cutoff/probe.log",
+          "sha256": "b4e0f5a7efe3a15c4fc14d21af993e1782acf36f394a019fc1b0c2e0d6247190"
+        }
+      ]
+    },
+    {
+      "name": "method-cutoff",
+      "expectedAccepted": false,
+      "execution": {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "tools/vanilla.py",
+          "source",
+          "analyze",
+          "--request",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\method-cutoff-request.json",
+          "--output-dir",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\method-cutoff"
+        ],
+        "exitCode": 1,
+        "wallSeconds": 1.558572700014338,
+        "logSha256": "2165994fc1b3ef6c622eb913b1aa589864309557d0cfa156124182f21d4106cf"
+      },
+      "result": {
+        "accepted": false,
+        "analysisErrors": [
+          "method-limit: Example.Demo.A()"
+        ],
+        "analysisOnly": true,
+        "commands": [
+          {
+            "command": [
+              "dotnet",
+              "build",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\SourceProbe.csproj",
+              "-c",
+              "Release",
+              "-warnaserror",
+              "-v",
+              "quiet"
+            ],
+            "exitCode": 0,
+            "name": "build"
+          },
+          {
+            "command": [
+              "dotnet",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\method-cutoff\\request.json",
+              "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\method-cutoff\\observation.json"
+            ],
+            "exitCode": 0,
+            "name": "probe"
+          }
+        ],
+        "compilationErrorCount": 0,
+        "dllsAfter": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "dllsBefore": {
+          "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+          "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+          "SourceProbe.dll": "cd061b21b23348cf2d949536b9df0de09581b6b61ff8aee063b5d6e110d9a2b7",
+          "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+          "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+          "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+          "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+          "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+          "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+          "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+          "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+          "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+          "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+          "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+          "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+          "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+          "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+          "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+          "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+          "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+          "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+          "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+          "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+          "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+          "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+          "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+          "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+          "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+          "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+        },
+        "inputSha256": "0888cd43c7b2aef7a05c44d9fe378d3408c1b59a276885ae8046af1f56ee93f6",
+        "inputsUnchanged": true,
+        "methods": 1,
+        "observationSha256": "c0a452ed2a043a55fc61dfa00294c9ab8227634e5962cabe521a8135384678d9",
+        "operation": "source-analyze",
+        "schemaVersion": 1,
+        "scope": "Explicit method-span semantic inventory only; no automatic translation, full-project compilation, effect equivalence or vanilla parity.",
+        "sourceClosureComplete": false,
+        "validationErrors": [],
+        "wallSeconds": 1.2974614000413567
+      },
+      "observation": {
+        "accepted": false,
+        "sourceClosureComplete": false,
+        "entries": [
+          "Example.Demo.Tick()"
+        ],
+        "compilationErrorCount": 0,
+        "errors": [
+          "method-limit: Example.Demo.A()"
+        ],
+        "frontiers": [],
+        "sourceSha256": {
+          "Demo.cs": "c87d97406ef274e692e1b33ccad76856d578ab3f858f045b2eb2ff3f7a37d2f7"
+        },
+        "referenceSha256": {
+          "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+          "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+          "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+          "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+          "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+          "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+          "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+          "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+          "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+          "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+          "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+          "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+          "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+          "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+          "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+          "TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "TerrariaServer.exe::Terraria.Libraries.CsvHelper.CsvHelper.dll": "3d1a08960b8d55c74b088a64d47966fcf77a54a65bc2171f0275ee27bb330f6d",
+          "TerrariaServer.exe::Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll": "725f244d65ff6d323adc53066cfa02dba3faaf01b6e6c597fe6aea608fd68c0d",
+          "TerrariaServer.exe::Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07",
+          "TerrariaServer.exe::Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll": "67a8c47c3366be8d661470e1bf2fe9db9329f7a383c240320a786fece876de95",
+          "TerrariaServer.exe::Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+          "TerrariaServer.exe::Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll": "7ea3fb92edce2b606f9f8695483e1c20270470a63af3aed1b30a20a1be9fcbfc",
+          "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf",
+          "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+        }
+      },
+      "methods": [
+        {
+          "id": "Example.Demo.Tick()",
+          "qualified": true,
+          "diagnostics": [],
+          "calls": 1,
+          "rngCalls": 0,
+          "accesses": 0
+        }
+      ],
+      "artifacts": [
+        {
+          "path": ".cache/source-analysis-20261028/final-01/method-cutoff/request.json",
+          "sha256": "8c3e62dc9abfc8392257ad3b13dbd75db59bd42dc4044f8b05614a739f825e32"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/method-cutoff/input-before.json",
+          "sha256": "c398f0ee5ec1e9ceedd410eaa9cd7817c59c3e7ac0e2eed27bcfc1301e40ff33"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/method-cutoff/observation.json",
+          "sha256": "c0a452ed2a043a55fc61dfa00294c9ab8227634e5962cabe521a8135384678d9"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/method-cutoff/result.json",
+          "sha256": "09b672591882a73918943d90bdfc4cd48aba546b4abaff02c654cfc02e5d3b78"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/method-cutoff/build.log",
+          "sha256": "799ea94f764c6c04ae0918bf4964f4f965fd2cc8d58945aec9d60240ae7ec3a5"
+        },
+        {
+          "path": ".cache/source-analysis-20261028/final-01/method-cutoff/probe.log",
+          "sha256": "b4e0f5a7efe3a15c4fc14d21af993e1782acf36f394a019fc1b0c2e0d6247190"
+        }
+      ]
+    }
+  ],
+  "mutation": {
+    "build": {
+      "command": [
+        "dotnet",
+        "build",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\mutant\\SourceProbe.csproj",
+        "-c",
+        "Release",
+        "-warnaserror",
+        "-v",
+        "quiet"
+      ],
+      "exitCode": 0,
+      "wallSeconds": 0.7743812999688089,
+      "logSha256": "9bc088029b5e6ab2a8927ab23790492b48fcfcf63387b29f4fbe23e1cab33235"
+    },
+    "execution": {
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\mutant\\bin\\Release\\net11.0\\SourceProbe.dll",
+        "--self-test",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\source-analysis-20261028\\final-01\\mutant\\checks.json"
+      ],
+      "exitCode": 3762504530,
+      "wallSeconds": 1.7517262999899685,
+      "logSha256": "5deba24bd7cba3b0030cf630cc3ad699286a3d7751778d428d0260b398da4b1f"
+    },
+    "unchangedRegressionSha256": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8"
+  },
+  "shippingInputsUnchangedFrom": "1c4e5aaa",
+  "limits": [
+    "Developer-only metadata analysis; no game execution or automatic translation.",
+    "Method-span qualification is not full-project compilation or complete effect proof.",
+    "No new shipping runtime/Native/TCP/gameplay parity claim."
+  ],
+  "date": "2026-10-28",
+  "shippingGraph": {
+    "projects": 15,
+    "projectReferences": 29,
+    "newProductionDependencies": 0
+  },
+  "syntheticChecks": {
+    "accepted": true,
+    "checks": 20,
+    "names": [
+      "exact-overload-and-source-callee",
+      "increment-is-read-write",
+      "source-depth-budget-rejects",
+      "source-method-budget-rejects",
+      "recursive-symbol-visited-once",
+      "ref-out-effects-retained",
+      "property-and-array-mutations-opaque",
+      "resolved-metadata-not-pure",
+      "delegate-target-opaque",
+      "unresolved-invocation-rejects",
+      "dynamic-invocation-rejects",
+      "absent-entry-rejects",
+      "global-errors-never-hidden",
+      "virtual-dispatch-not-inlined",
+      "ref-local-alias-stays-opaque",
+      "ref-return-alias-stays-opaque",
+      "deconstruction-targets-are-writes",
+      "implicit-dispose-stays-opaque",
+      "implicit-iterator-stays-opaque",
+      "pointer-store-stays-opaque"
+    ],
+    "scope": "Author-written synthetic compiler/semantic cases; no original game execution or vanilla behavior acceptance."
+  },
+  "artifacts": [
+    {
+      "path": ".cache/source-analysis-20261028/final-01/result.json",
+      "sha256": "a59bd74e01a6de004269f29bdb280001f030b154f8617ca0d339f31463577623"
+    },
+    {
+      "path": ".cache/source-analysis-20261028/final-01/build.log",
+      "sha256": "b77855db9c7aaabe7806a863aea7a5a82aacd1d8780090ab30274172097895fb"
+    },
+    {
+      "path": ".cache/source-analysis-20261028/final-01/synthetic.json",
+      "sha256": "62ae910a94138905b6d6d29277409ea90745808de2773b6892e6499b6e1ffdea"
+    },
+    {
+      "path": ".cache/source-analysis-20261028/final-01/synthetic.log",
+      "sha256": "44e8640b842a16fca36d50eb667ef75ed72fed59fe0db0eb74aeda4a11972359"
+    },
+    {
+      "path": ".cache/source-analysis-20261028/final-01/python.log",
+      "sha256": "c8dbb3bb95355c4f4feaf8da9d49b73b4638f15fbc16b30ac436e69ed86ced89"
+    },
+    {
+      "path": ".cache/source-analysis-20261028/final-01/mutant.log",
+      "sha256": "5deba24bd7cba3b0030cf630cc3ad699286a3d7751778d428d0260b398da4b1f"
+    },
+    {
+      "path": ".cache/source-analysis-20261028/final-01/mutant-build.log",
+      "sha256": "9bc088029b5e6ab2a8927ab23790492b48fcfcf63387b29f4fbe23e1cab33235"
+    }
+  ],
+  "validationPolicy": "Only developer tooling changed. No shipping fast/full or Native rerun; source/test/build/tier inputs are unchanged from accepted main1c4e5aaa. All tool tests and actual analyses are fresh.",
+  "testSourceSha256": "b736a7f47482c59bc1d22392b39c68e2ebdda45f8766edfa4666b289e1bf2ad5"
+}
