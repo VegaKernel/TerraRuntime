@@ -1,5 +1,13 @@
 # TerraRuntime roadmap
 
+## Applied worldgen, NPC and player caller block, 2026-10-28
+
+The merged shipping tree preserves the concurrent Hive/JungleShrines house-protection work and adds three scoped behavior corrections: QuickCleanup preserves independent half-brick/slope state; the town schedule continues an existing Dryad state24 animation through its exit and emotes; local-owner item phases reproduce the heat threshold and pre-ItemCheck cracked-brick RNG offers. Retained placement alternatives advance only across an exact witnessed prefix; unsupported thin-ice/cracked-tile mutations refuse before state adoption.
+
+Release warnings-as-errors, focused `134/134`, fast `25,552/25,552` and one unfiltered full `1,566,966/1,566,966` pass with no failures, errors or skips. The full XML independently covers all `5,414` discovered methods. Fresh Windows x64 NativeAOT and all five smokes pass. All 19 expected original/runtime differential outcomes and 196 Python checks pass. Every one of 891 existing fixture files is unchanged; eight new caller-specific companions retain their narrower scope. See [acceptance](verification/applied-source-parity-20261028.json) and paired [worldgen](en/worldgen-source-tools.md), [NPC](en/npc-source-tools.md) and [gameplay](en/gameplay-source-tools.md) guides.
+
+This does not establish complete AI7, whole Player.Update or whole-world parity. Dryad animation initiation, unsupported tile mutations, Linux NativeAOT and fresh official GUI/TCP acceptance remain open. Row63 and row109 remain `P`; the historical AddPasses fingerprint diagnostic remains unresolved.
+
 Post-acceptance offline-oracle merge (2026-10-28): concurrent tool/documentation changes are preserved on top of the accepted cave-house shipping snapshot. Exact Git comparison shows no `src/`, `tests/`, build-input or tier-configuration change; merged Release warnings-as-errors, 66 new tool regressions and bilingual documentation validation pass. The earlier full/Native results retain their exact shipping scope without a redundant rerun. Row 63 remains `P` and row 109 remains `P`.
 
 Hive/JungleShrines house-protection checkpoint (2026-10-28): the scoped row63 cross-pass boundary below passes Release warnings-as-errors, fast `25,548/25,548`, unfiltered full `1,566,962/1,566,962` with zero skips, and fresh Windows NativeAOT with five smokes. Row63 remains `P` pending full house builder and registered-pass differential. Earlier pending-gate wording below records the pre-acceptance candidate.

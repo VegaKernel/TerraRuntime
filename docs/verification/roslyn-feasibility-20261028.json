@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "kind": "roslyn-local-feasibility-summary",
+  "date": "2026-10-28",
+  "status": "bounded semantic analysis demonstrated; automatic adaptation not implemented or accepted",
+  "compiler": "Microsoft.CodeAnalysis.CSharp, Version=5.10.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+  "elapsedMs": 1241,
+  "methods": [
+    {
+      "source": "Terraria/Utils.cs",
+      "sourceSha256": "5e90754dee2a980e9164c7d9846d0bd9d99ef79a3cd7d2fd2e2ae19e69c17179",
+      "entry": "Terraria.Utils.GetLerpValue(float, float, float, bool)",
+      "startLine": 315,
+      "scope": "Full original source file syntax tree with pinned official Linux metadata references; not a full original source-project compilation, execution or transitive effect proof.",
+      "errorCountInMethod": 0,
+      "operationRoot": "Block",
+      "invalidOperations": 0,
+      "loops": 0,
+      "elapsedMs": 445,
+      "resolvedInvocations": 0,
+      "invocationCount": 0,
+      "invocationSignatures": [],
+      "fieldOrPropertyDependencies": 0,
+      "assignmentCount": 0,
+      "diagnostics": []
+    },
+    {
+      "source": "Terraria/NPC.cs",
+      "sourceSha256": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+      "entry": "Terraria.NPC.HaveDryadDoStardewAnimation()",
+      "startLine": 19220,
+      "scope": "Full original source file syntax tree with pinned official Linux metadata references; not a full original source-project compilation, execution or transitive effect proof.",
+      "errorCountInMethod": 2,
+      "operationRoot": "Block",
+      "invalidOperations": 0,
+      "loops": 2,
+      "elapsedMs": 676,
+      "resolvedInvocations": 5,
+      "invocationCount": 5,
+      "invocationSignatures": [
+        "Microsoft.Xna.Framework.Vector2.ToTileCoordinates()",
+        "Terraria.Utils.Clamp<int>(int, int, int)",
+        "Terraria.Tile.active()",
+        "Microsoft.Xna.Framework.Point.ToWorldCoordinates(float, float)",
+        "Terraria.Projectile.NewProjectile(Terraria.DataStructures.IEntitySource, Microsoft.Xna.Framework.Vector2, Microsoft.Xna.Framework.Vector2, int, int, float, int, float, float, float, Terraria.NewProjectileModifier)"
+      ],
+      "fieldOrPropertyDependencies": 18,
+      "assignmentCount": 12,
+      "diagnostics": [
+        {
+          "id": "CS0029",
+          "line": 19224
+        },
+        {
+          "id": "CS0012",
+          "line": 19238
+        }
+      ]
+    },
+    {
+      "source": "Terraria.GameContent.Biomes.CaveHouse/HouseUtils.cs",
+      "sourceSha256": "5d49136bfab8f3b3d00b160a8496d39aab872138fee62c9de92ab3250939556b",
+      "entry": "Terraria.GameContent.Biomes.CaveHouse.HouseUtils.AreRoomsValid(System.Collections.Generic.IEnumerable<Microsoft.Xna.Framework.Rectangle>, Terraria.WorldBuilding.StructureMap, Terraria.GameContent.Biomes.CaveHouse.HouseType)",
+      "startLine": 264,
+      "scope": "Full original source file syntax tree with pinned official Linux metadata references; not a full original source-project compilation, execution or transitive effect proof.",
+      "errorCountInMethod": 0,
+      "operationRoot": "Block",
+      "invalidOperations": 0,
+      "loops": 1,
+      "elapsedMs": 28,
+      "resolvedInvocations": 5,
+      "invocationCount": 5,
+      "invocationSignatures": [
+        "Terraria.WorldBuilding.WorldUtils.Find(Microsoft.Xna.Framework.Point, Terraria.WorldBuilding.GenSearch, out Microsoft.Xna.Framework.Point)",
+        "Terraria.WorldBuilding.Searches.Chain(Terraria.WorldBuilding.GenSearch, params Terraria.WorldBuilding.GenCondition[])",
+        "Terraria.WorldBuilding.GenSearch.RequireAll(bool)",
+        "Terraria.WorldBuilding.StructureMap.CanPlace(Microsoft.Xna.Framework.Rectangle, bool[], int)",
+        "Terraria.WorldBuilding.StructureMap.CanPlace(Microsoft.Xna.Framework.Rectangle, bool[], int)"
+      ],
+      "fieldOrPropertyDependencies": 8,
+      "assignmentCount": 0,
+      "diagnostics": []
+    },
+    {
+      "source": "Terraria.GameContent.Biomes.CaveHouse/HouseUtils.cs",
+      "sourceSha256": "5d49136bfab8f3b3d00b160a8496d39aab872138fee62c9de92ab3250939556b",
+      "entry": "Terraria.GameContent.Biomes.CaveHouse.HouseUtils.GetRandomizedRoomCountInABigAbandonedHouse()",
+      "startLine": 49,
+      "scope": "Full original source file syntax tree with pinned official Linux metadata references; not a full original source-project compilation, execution or transitive effect proof.",
+      "errorCountInMethod": 0,
+      "operationRoot": "Block",
+      "invalidOperations": 0,
+      "loops": 0,
+      "elapsedMs": 7,
+      "resolvedInvocations": 3,
+      "invocationCount": 3,
+      "invocationSignatures": [
+        "Terraria.Utilities.UnifiedRandom.Next(int, int)",
+        "System.Math.Max(int, int)",
+        "Terraria.Utilities.UnifiedRandom.Next(int)"
+      ],
+      "fieldOrPropertyDependencies": 3,
+      "assignmentCount": 1,
+      "diagnostics": []
+    }
+  ],
+  "referenceCount": 18,
+  "references": [
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\FNA.dll",
+      "sha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\I18N.dll",
+      "sha256": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\I18N.West.dll",
+      "sha256": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\Mono.Security.dll",
+      "sha256": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\mscorlib.dll",
+      "sha256": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Configuration.dll",
+      "sha256": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Core.dll",
+      "sha256": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Data.dll",
+      "sha256": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.dll",
+      "sha256": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Drawing.dll",
+      "sha256": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Numerics.dll",
+      "sha256": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Runtime.Serialization.dll",
+      "sha256": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Security.dll",
+      "sha256": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Windows.Forms.dll",
+      "sha256": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Xml.dll",
+      "sha256": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\System.Xml.Linq.dll",
+      "sha256": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\WindowsBase.dll",
+      "sha256": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf"
+    },
+    {
+      "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/official1458/server/1458/Linux\\TerrariaServer.exe",
+      "sha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034"
+    }
+  ],
+  "privateArtifacts": [
+    {
+      "path": ".cache/roslyn-feasibility-20261028/report.json",
+      "sha256": "8dd03464184de27652d4b8c32077b7be81298fd955e3a679cf8b3e0599a38d9e"
+    },
+    {
+      "path": ".cache/roslyn-feasibility-20261028/Scanner.csproj",
+      "sha256": "75904c3d6e42854433770a62d67a154246994ba1f7a7190716dd2343dbbedb9e"
+    },
+    {
+      "path": ".cache/roslyn-feasibility-20261028/Program.cs",
+      "sha256": "381a65c0f4d303662c5fd4ce11d6aa6927d559b7ffc54f208910f0dceb93cac0"
+    }
+  ],
+  "findings": [
+    "Three selected method spans have zero compiler errors; the NPC sample has CS0029 and CS0012.",
+    "Every selected invocation resolved, but this does not prove transitive effects or a valid semantic model.",
+    "The NPC sample has zero Invalid IOperation nodes despite actual compiler errors: diagnostics must gate transformations.",
+    "No translated game method, shipping source, tracked tool, production reference or dependency was added."
+  ],
+  "nextPilot": "Read-only symbol-based read/write/call/RNG inventory and missing-runtime-binding report over a bounded selected callee closure, after resolving coherent source/metadata identity and embedded references.",
+  "limits": [
+    "Only diagnostics within selected method spans are collected; full source unit/project is not accepted.",
+    "Resolved calls have unknown effects until their bodies/metadata contracts are separately summarized.",
+    "Array aliases, virtual dispatch, delegates, source-vs-binary signatures and static initialization remain unproven.",
+    "No translation, game execution or behavior equivalence is claimed.",
+    "No transformation, execution parity or measured development speedup is established.",
+    "Original method bodies remain local reference material under AGENTS.md."
+  ]
+}

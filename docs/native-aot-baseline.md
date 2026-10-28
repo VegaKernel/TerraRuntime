@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Applied source parity union, 2026-10-28
+
+Fresh Windows x64 NativeAOT on the merged worldgen/NPC/gameplay tree produces executable SHA256 `52582fa87773db343d6d6510b7e97b62b52b4544e37eebc04bc3f9c94e0b8423`, PE CLR directory `0/0`, and passes loop/protocol/network/world/TUI smokes. Release warnings-as-errors, focused `134/134`, fast `25,552/25,552` and unfiltered full `1,566,966/1,566,966` pass with no failures/errors/skips; all `5,414` discovered methods are audited. Exact `4,020` source/config/resource inputs and `158` executed TestBin DLLs remain unchanged through the gates, Native publication and final index bridge. Shipping graph remains 15 projects and 29 references; no new production dependency or runtime reflection is introduced. [Evidence](verification/applied-source-parity-20261028.json) records the private executable, source/DLL and XML hashes. Linux NativeAOT, fresh TCP and official GUI were not exercised for this checkpoint.
+
 2026-10-28 Hive/JungleShrines cave-house handoff: fresh Windows NativeAOT executable SHA256 `46894c63e0d28a62b50e21dfe0dd0927e51e80d6a587527e144ca814e662e12e` passes exercised loop/protocol/network/world/TUI smokes, including wiring and reservation checks. Release solution warnings-as-errors and unfiltered full `1,566,962/1,566,962` pass with zero skips. No production package or project edge changed; Linux NativeAOT and full Buried Chests parity remain unverified.
 
 ## Shimmer cave-house protection and offline pass oracle, 2026-10-28
