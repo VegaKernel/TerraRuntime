@@ -19,6 +19,9 @@ MAX_CELLS = 262_144
 MAX_FILE_BYTES = 16 * 1024 * 1024
 CONTEXT = {'width', 'height', 'worldSurface', 'seed', 'netMode', 'dedServ', 'gameMenu',
            'skyblock', 'getGoodWorld', 'dontStarve', 'remix', 'predecessorState'}
+CLEANUP_CONTEXT = {'rockLayer', 'beachDistance', 'oceanLevel', 'notTheBees', 'dualDungeons',
+                   'roundLandmasses', 'contentFactFields', 'contentFacts'}
+CONTENT_FIELDS = ['type', 'solid', 'solidTop', 'saveSlopes', 'platform', 'canClearDuringGeneration']
 SCOPE = ('Supplied bounded synthetic pass observations, complete named WorldTile16 projection '
          'and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.')
 
@@ -70,7 +73,8 @@ def validate(data: dict, engine: str) -> tuple[bytes, bytes]:
     if data.get('projection') != PROJECTION:
         raise ValueError('Cell projections differ or omit represented fields')
     context = data.get('context')
-    if not isinstance(context, dict) or set(context) != CONTEXT:
+    cleanup = data['pass'] == 'QuickCleanup'
+    if not isinstance(context, dict) or set(context) != CONTEXT | (CLEANUP_CONTEXT if cleanup else set()):
         raise ValueError('Explicit pass context is incomplete/unknown')
     for name in ('width', 'height'):
         if type(context[name]) is not int or context[name] <= 0:
@@ -89,9 +93,37 @@ def validate(data: dict, engine: str) -> tuple[bytes, bytes]:
             raise ValueError('Expected explicit Boolean world context: ' + name)
     if context['predecessorState'] != 'explicit-synthetic-not-natural-prefix':
         raise ValueError('Only the explicit synthetic predecessor-state profile is represented')
+    if cleanup:
+        rock = context['rockLayer']
+        if type(rock) not in (int, float) or not math.isfinite(rock) or not 0 <= rock < context['height']:
+            raise ValueError('Invalid explicit cleanup rock layer')
+        if type(context['beachDistance']) is not int or not 0 < context['beachDistance'] < context['width']:
+            raise ValueError('Invalid explicit cleanup beach distance')
+        ocean = context['oceanLevel']
+        if type(ocean) not in (int, float) or ocean != (context['worldSurface'] + rock) / 2 + 40:
+            raise ValueError('Invalid explicit cleanup ocean level')
+        if any(context[key] is not False for key in ('notTheBees', 'dualDungeons', 'roundLandmasses')):
+            raise ValueError('Only ordinary-world cleanup is represented')
+        if context['contentFactFields'] != CONTENT_FIELDS:
+            raise ValueError('Incomplete cleanup content-fact projection')
+        rows = context['contentFacts']
+        if not isinstance(rows, list) or not 1 <= len(rows) <= 756:
+            raise ValueError('Missing/oversized cleanup content facts')
+        previous = -1
+        for row in rows:
+            if not isinstance(row, list) or len(row) != len(CONTENT_FIELDS) or any(type(value) is not int for value in row):
+                raise ValueError('Incomplete cleanup content fact')
+            if not previous < row[0] <= 65535 or any(value not in (0, 1) for value in row[1:]):
+                raise ValueError('Invalid/duplicate cleanup content fact')
+            previous = row[0]
     if not isinstance(data.get('provenance'), dict) or not data['provenance']:
         raise ValueError('Execution provenance is missing')
-    return _state(data.get('input'), count), _state(data.get('output'), count)
+    before, after = _state(data.get('input'), count), _state(data.get('output'), count)
+    if cleanup:
+        represented = {row[0] for row in context['contentFacts']}
+        if any(cell[0] not in represented for payload in (before, after) for cell in CELL.iter_unpack(payload)):
+            raise ValueError('Cleanup content facts omit a represented cell identity')
+    return before, after
 
 
 def load_with_hash(path: Path, engine: str) -> tuple[dict, str]:

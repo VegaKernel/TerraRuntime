@@ -5,6 +5,9 @@ Hive/JungleShrines house-protection checkpoint (2026-10-28): the scoped row63 cr
 ## Cave-house prior Hive and JungleShrines protection, 2026-10-28
 
 Row 63 remains `P`, but the existing HiveBiome and JungleShrines passes now publish their accepted `StructureMap.AddProtectedStructure` rectangles to the later cave-house candidate boundary. Hive regions include their original five-cell padding; shrine regions retain their unpadded source area. `HouseUtils.CanPlace(room, blacklist, 5)` rejects strict overlap with each room's own five-cell padding and accepts exact touching. Direct source-backed overlap tests, two official canonical JungleShrines cell/anchor/RNG fixtures and canonical generation test publication cover the handoff. Both missing-consumer and missing-publisher omissions fail unchanged regressions. Complete house decoration/aging and remaining earlier protected structures still prevent promotion from `P`; grouped gates are pending.
+## Three behavior-tool directions active, 2026-10-28
+
+Offline tools now execute and compare ordinary synthetic QuickCleanup, sixteen AI3 Ice Golem frames with explicit caller pulse retirement, and twenty-four PickAmmo boundary calls. Fresh CLI qualification covers three seeds pernewdomain, real omission/extra-RNG controls, and preserved GrassWall;170Python tests and bilingual docs pass. Production sources and compatibility classifications are unchanged. AI7/fullNPCUpdate, authoritative player admission/ItemCheck/UpdateEquips, other worldgen branches and natural-prefix/whole-world parity remain work. Guides: [worldgen EN](en/worldgen-source-tools.md) / [RU](ru/worldgen-source-tools.md), [NPC EN](en/npc-source-tools.md) / [RU](ru/npc-source-tools.md), [gameplay EN](en/gameplay-source-tools.md) / [RU](ru/gameplay-source-tools.md). Exact guards and observations: [verification](verification/three-domain-oracles-20261028.json).
 
 ## Applied worldgen pass oracle, 2026-10-28
 

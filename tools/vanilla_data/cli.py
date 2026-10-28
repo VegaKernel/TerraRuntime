@@ -162,7 +162,7 @@ def _mutate(args, data: dict) -> dict:
 def _worldgen(args) -> dict:
     if args.action == 'run-pass':
         from .pass_probe import run_pass
-        return run_pass(args.assembly, args.output_dir, args.seed, args.control)
+        return run_pass(args.assembly, args.output_dir, args.seed, args.control, profile=args.profile)
     if args.action == 'compare-pass':
         from . import pass_trace
         official, official_hash = pass_trace.load_with_hash(args.official, 'official')
@@ -192,6 +192,18 @@ def _worldgen(args) -> dict:
     return worldgen.mutate(data, args.repo)
 
 
+def _behavior(args) -> dict:
+    from .behavior_probe import adapter, run_behavior
+    if args.action == 'run':
+        return run_behavior(args.command, args.assembly, args.output_dir, args.seed, args.control)
+    trace = adapter(args.command)
+    official, official_hash = trace.load_with_hash(args.official, 'official')
+    runtime, runtime_hash = trace.load_with_hash(args.runtime, 'runtime')
+    result = trace.compare(official, runtime)
+    result.update(officialObservationSha256=official_hash, runtimeObservationSha256=runtime_hash)
+    return result
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -217,11 +229,24 @@ def main(argv=None) -> int:
     compare_pass.add_argument('--official', type=Path, required=True)
     compare_pass.add_argument('--runtime', type=Path, required=True)
     compare_pass.add_argument('--report', type=Path)
-    run_pass = worldgen_commands.add_parser('run-pass', help='Fresh isolated Grass Wall observations and cell/RNG comparison')
+    run_pass = worldgen_commands.add_parser('run-pass', help='Fresh isolated pass observations and cell/RNG comparison')
     run_pass.add_argument('--assembly', type=Path, required=True)
     run_pass.add_argument('--output-dir', type=Path, required=True)
     run_pass.add_argument('--seed', type=int, default=1458)
     run_pass.add_argument('--control', choices=('normal', 'omit-pass', 'extra-rng'), default='normal')
+    run_pass.add_argument('--profile', choices=('grass-wall', 'quick-cleanup'), default='grass-wall')
+    for domain in ('npc', 'gameplay'):
+        behavior = commands.add_parser(domain, help='Fresh bounded original/runtime behavior comparison')
+        actions = behavior.add_subparsers(dest='action', required=True)
+        run = actions.add_parser('run')
+        run.add_argument('--assembly', type=Path, required=True)
+        run.add_argument('--output-dir', type=Path, required=True)
+        run.add_argument('--seed', type=int, default=1458)
+        run.add_argument('--control', choices=('normal', 'omit-step', 'extra-rng'), default='normal')
+        compare_behavior = actions.add_parser('compare')
+        compare_behavior.add_argument('--official', type=Path, required=True)
+        compare_behavior.add_argument('--runtime', type=Path, required=True)
+        compare_behavior.add_argument('--report', type=Path)
     for name in ('check', 'emit', 'mutate', 'verify'):
         command = commands.add_parser(name)
         command.add_argument('dataset', choices=[*TARGETS, 'all'] if name != 'emit' else list(TARGETS))
@@ -240,6 +265,8 @@ def main(argv=None) -> int:
             report = _capture(args)
         elif args.command == 'worldgen':
             report = _worldgen(args)
+        elif args.command in ('npc', 'gameplay'):
+            report = _behavior(args)
         else:
             data = facts.load(args.reference)
             if args.command == 'check':

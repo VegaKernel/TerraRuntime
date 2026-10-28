@@ -2,7 +2,11 @@
 
 [Захват, сравнение и генерация официальных данных](vanilla-data-tools.md).
 
-[Каталог исходных проходов генерации мира и повтор проверки Reset](worldgen-source-tools.md).
+[Каталог исходных проходов генерации мира, оракул проходов и повтор проверки Reset](worldgen-source-tools.md).
+
+[Сравнение поведения NPC с оригиналом](npc-source-tools.md).
+
+[Сравнение геймплея с оригиналом](gameplay-source-tools.md).
 
 Связанная рыбалка: [удочка, наживка и улов](fishing-authority-1458.md), [задания Рыбака](angler-quest-authority-1458.md), [открытие ящиков](fishing-crates-authority-1458.md).
 

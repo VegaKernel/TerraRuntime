@@ -3,6 +3,11 @@
 ## Retained worldgen protected regions, 2026-10-28
 
 The existing isolated `Workspace` now carries accepted HiveBiome protected rectangles (already expanded by source padding five) and JungleShrines protected rectangles (raw source areas) from their respective earlier generation passes to `CaveHousePlacement1458`. Each producer publishes a detached bounded array after its own pass; the cave-house owner only reads it during pre-write admission. This joins the existing retained Shimmer rectangle without adding a shipping project, dependency, RNG owner or persisted world field. Marble/Granite AddStructure regions are deliberately not treated as protected. Absent regions remain empty; no alternate structure registry is introduced.
+## Three-domain offline execution, 2026-10-28
+
+Shipping graph remains15projects/29edges with unchanged production inputs. PassProbe extends the existing WorldGeneration reference with a named QuickCleanup profile. New offline NpcProbe references Core and GameplayProbe references Gameplay; both link the existing UnifiedRandom source. No production project references a probe. Reflection, original managed assembly loading and fixture mutation stay in separate developer processes. Shared behavior_probe.py owns fresh-build/process/provenance/source/DLL guards for both behavior domains; domain modules own strict complete state schemas and comparison. CLI retains separate run and supplied-observation compare commands.
+
+NPC uses the actual RuntimeNpcStore/executor and targeting stepper. Its explicit carrier supplies hit pulses and matches source-backed outer pulse retirement; raw direct-AI flags are preserved. Gameplay invokes real selection, selector advance, conservation and launch helpers against a detached stock fixture; no authoritative inventory ledger is added or exercised. Unknown observed nullable NPC fields refuse capture rather than becoming guessed defaults. Verification and scope are in work-state and docs/verification/three-domain-oracles-20261028.json.
 
 ## Applied isolated worldgen oracle and Shimmer protection, 2026-10-28
 
