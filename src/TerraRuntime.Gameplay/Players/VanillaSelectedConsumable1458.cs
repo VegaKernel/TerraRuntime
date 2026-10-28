@@ -480,18 +480,21 @@ public static class VanillaSelectedConsumable1458
         return true;
     }
 
-    /// <summary>Before ResetEffects, remote manaHeat visuals; returns the reset neutral heat.</summary>
+    /// <summary>Before ResetEffects, caller-qualified manaHeat visuals; returns the reset neutral heat.</summary>
     public static bool TryStepHeat(float? previousHeat, Func<double> nextDouble,
-        Func<int, int, int> nextInteger, out float resetHeat)
+        Func<int, int, int> nextInteger, out float resetHeat, bool localOwner = false)
     {
         resetHeat = 1f;
         if (previousHeat is not { } heat || !float.IsFinite(heat) || heat is < 0f or > 2f ||
             nextDouble is null || nextInteger is null) return false;
         if (heat != 1f)
         {
+            // Player.Update 1.4.5.8 uses a clamped heat ramp for Main.myPlayer;
+            // remote actors retain the fixed visual probability.
+            float threshold = localOwner ? 1f - Math.Clamp((heat - 1.3f) / (1f - 1.3f), 0f, 1f) : .3f;
             for (int i = 0; i < 2; i++)
             {
-                if ((float)nextDouble() * 6f < .3f)
+                if ((float)nextDouble() * 6f < threshold)
                 {
                     nextInteger(10, 26);
                     nextDouble();

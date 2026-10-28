@@ -9,6 +9,11 @@ using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Npcs;
 
 // Offline adapter only: invokes both existing AI bodies, never reproduces AI logic.
+if (args.Length == 7 && args[6] == "ai7-dryad")
+{
+    TownScenario.Run(args[..6]);
+    return;
+}
 if (args.Length is not (5 or 6))
     throw new ArgumentException("NpcProbe <official|runtime> <official-exe> <reference.json> <new-output.json> <seed> [normal|omit-step|extra-rng]");
 string engine = args[0], official = Path.GetFullPath(args[1]), outputPath = Path.GetFullPath(args[3]);

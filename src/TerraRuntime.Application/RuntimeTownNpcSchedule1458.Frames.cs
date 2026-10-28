@@ -53,6 +53,22 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             int phase = state.Type == VanillaNpcIds.Zoologist.Value ? 2 : 6;
             index = clock < windup || clock >= windup + phase * 4 ? 0 : socialBase + (int)((clock - windup) / phase);
         }
+        else if (next.Ai.Ai0 == 24f && next.Type == VanillaNpcIds.Dryad.Value)
+        {
+            if (!index.HasValue) return false;
+            // Source FindFrame advances this clock before validating its old frame.
+            // Emotes belong to the accepted presentation phase, not a later timer.
+            clock++;
+            if (index != 0 && (index < socialBase || index > socialBase + 1))
+            { index = 0; clock = 0d; }
+            index = clock % 12d < 6d ? socialBase : socialBase + 1;
+            if (clock is 60d or 150d)
+            {
+                emotes[0] = new(default, (ushort)(clock == 60d ? 60 : 90), (byte)(clock == 60d ? 87 : 3));
+                emoteCount = 1;
+            }
+            if (clock >= 240d) index = 0;
+        }
         else if (next.Ai.Ai0 is 3f or 4f or 16f or 17f)
         {
             if (!index.HasValue) return false;

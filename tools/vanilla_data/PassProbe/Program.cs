@@ -12,7 +12,7 @@ using TerraRuntime.WorldGeneration.Vanilla;
 // An offline isolated-pass probe. It calls the original registered pass and the
 // current runtime body; it does not copy either algorithm or generate a world.
 if (args.Length is not (5 or 6 or 7))
-    throw new ArgumentException("PassProbe <official|runtime> <official-exe> <reference.json> <new-output.json> <seed> [normal|omit-pass|extra-rng] [grass-wall|quick-cleanup]");
+    throw new ArgumentException("PassProbe <official|runtime> <official-exe> <reference.json> <new-output.json> <seed> [normal|omit-pass|extra-rng] [grass-wall|quick-cleanup|quick-cleanup-shapes]");
 string engine = args[0];
 string assemblyPath = Path.GetFullPath(args[1]);
 string outputPath = Path.GetFullPath(args[3]);
@@ -20,7 +20,7 @@ int seed = int.Parse(args[4], System.Globalization.CultureInfo.InvariantCulture)
 string control = args.Length >= 6 ? args[5] : "normal";
 string profile = args.Length == 7 ? args[6] : "grass-wall";
 if (engine is not ("official" or "runtime") || control is not ("normal" or "omit-pass" or "extra-rng") ||
-    profile is not ("grass-wall" or "quick-cleanup") || engine == "official" && control != "normal")
+    profile is not ("grass-wall" or "quick-cleanup" or "quick-cleanup-shapes") || engine == "official" && control != "normal")
     throw new ArgumentException("Unsupported engine/control/profile");
 if (File.Exists(outputPath)) throw new IOException("Output exists; use a new path");
 Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
@@ -40,18 +40,19 @@ void CheckReference()
 CheckReference();
 var closure = Directory.EnumerateFiles(AppContext.BaseDirectory, "*.dll", SearchOption.AllDirectories)
     .ToDictionary(path => Path.GetRelativePath(AppContext.BaseDirectory, path).Replace('\\', '/'), Hash);
-bool cleanup = profile == "quick-cleanup";
+bool cleanup = profile != "grass-wall";
 int width = cleanup ? 800 : 160, height = cleanup ? 160 : 112;
 const double surface = 70;
 double rockLayer = cleanup ? 85 : 95;
 const int beachDistance = 380;
 string passId = cleanup ? "QuickCleanup" : "SurfaceDirtWallsToGrassWalls";
-string scenario = cleanup ? "quick-cleanup-ordinary-v1" : "grass-wall-stain-v1";
+string scenario = profile == "quick-cleanup-shapes" ? "quick-cleanup-independent-shapes-v1" : cleanup ? "quick-cleanup-ordinary-v1" : "grass-wall-stain-v1";
 string runtimeTypeName = "TerraRuntime.WorldGeneration.Vanilla." + (cleanup ? "QuickCleanupPass1458" : "GrassWallPass1458");
 ushort[] factTypes = [0, 1, 3, 19, 53, 59, 123, 130, 137, 224, 225, 367, 368, 397, 495];
 const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
 WorldTile[] Fixture()
 {
+    if (profile == "quick-cleanup-shapes") return CleanupShapeFixture();
     if (cleanup) return CleanupFixture();
     var cells = new WorldTile[width * height];
     // Deliberately exercises green-wall staining, not a naturally generated
@@ -71,6 +72,31 @@ WorldTile[] Fixture()
         cell.TrySetSourceShape(code % 7 == 0, (byte)(code % 5));
         cells[y * width + x] = cell;
     }
+    return cells;
+}
+WorldTile[] CleanupShapeFixture()
+{
+    var cells = new WorldTile[width * height];
+    void Put(int x, int y, ushort type, bool half = false, byte slope = 0, bool active = true)
+    {
+        var cell = new WorldTile
+        {
+            Type = type, Flags = (active ? WorldTileFlags.Active : 0) | WorldTileFlags.WireBlue | WorldTileFlags.InvisibleWall,
+            FrameX = 36, FrameY = -18, Wall = 2, TileColor = 7, WallColor = 9,
+            LiquidAmount = 13, LiquidKind = WorldLiquidKind.Shimmer
+        };
+        if (!cell.TrySetSourceShape(half, slope)) throw new InvalidOperationException("Invalid fixture source shape");
+        cells[y * width + x] = cell;
+    }
+    Put(530, 60, 1, true, 2, active: false); // Inactive ClearSlope clears both independent fields.
+    Put(534, 60, 3, true, 1); // A plant cannot retain either shape field.
+    Put(538, 60, 225, true, 4); // Pearlstone half-brick exemption wins even with a bottom slope.
+    Put(542, 60, 1, true, 4); Put(542, 61, 1); // Half-brick tests support below, not above.
+    Put(546, 60, 1, true, 4); Put(546, 59, 1); // Support above alone does not hold a half-brick.
+    Put(550, 60, 19, true, 3); // Platform and protected material preserve both fields.
+    Put(554, 60, 397, true, 3);
+    Put(75, 50, 53, true, 4); // Ocean anchor slope(0) retains halfBrick(true).
+    Put(79, 50, 53); Put(79, 51, 1, true, 4, active: false); // New dirt clears both fields.
     return cells;
 }
 WorldTile[] CleanupFixture()

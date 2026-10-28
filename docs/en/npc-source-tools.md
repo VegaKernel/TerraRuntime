@@ -27,4 +27,19 @@ Final common-runner qualification rebuilds the adapter with the unknown-field gu
 
 ## Limits
 
-This fixture covers one actual AI3 lane. It does not cover AI7, emitted projectiles, collision/gravity, buffs, death, spawning/despawning, networking or a natural world lifecycle. Calling the original Linux-distributed assembly on a Windows CoreCLR host does not establish Linux OS or NativeAOT compatibility. It does not promote NPC compatibility classifications or replace existing independent fixtures and gameplay acceptance gates.
+The default fixture covers one actual AI3 lane. It does not cover AI7, emitted projectiles, collision/gravity, buffs, death, spawning/despawning, networking or a natural world lifecycle. Calling the original Linux-distributed assembly on a Windows CoreCLR host does not establish Linux OS or NativeAOT compatibility. These tools do not promote NPC compatibility classifications or replace existing independent fixtures and gameplay acceptance gates.
+
+## Dryad AI7 continuation
+
+```sh
+python tools/vanilla.py npc run --assembly /path/to/TerrariaServer.exe --output-dir .cache/npc-tools/dryad --seed 1458 --profile ai7-dryad
+python tools/vanilla.py npc compare --official .cache/npc-tools/dryad/official.json --runtime .cache/npc-tools/dryad/runtime.json --profile ai7-dryad --report .cache/npc-tools/dryad-comparison.json
+```
+
+`ai007-dryad-stardew-v1` supplies the state of an already active Dryad Stardew animation. It executes all 480 animation ticks and sixteen subsequent idle ticks through original `NPC.UpdateNPC`, including `AI_007_TownEntities` and `FindFrame`, versus the current `ServerRuntimeState.Tick` town phase. Both start from the same complete named input projection and physical RNG on one dry stone floor, with no connected players or world clock. The runtime's surface is explicitly attached rather than inferred. Original dedicated-server buffers and disconnected client records permit real packet serialization without a listener or external network connection.
+
+The separate strict profile records motion and old motion, AI/local AI, life/defense/counters, home state, frame index, binary64 frame counter and the full physical RNG at every one of the 496 frames. It observes actual runtime packet `91` emote values and original `EmoteBubble` records, including event timing. Frames cannot be reordered or omitted, and reads are bounded to $8\,\mathrm{MiB}$. Omission and extra-RNG controls invoke real changed executions. This profile does not normalize any state or apply the AI3 `JustHit` carrier.
+
+The first fresh pair exposed a genuine missing implementation: the original advanced the animation and emitted emotes at zero-based frames `59` and `149`; the old runtime refused state `24` and froze all 496 frames. The new normal regression also failed on freshly built old production at the first position comparison. This led to the bounded [Dryad continuation](npc-ai3-ai7-runtime-1458.md#dryad-stardew-animation-continuation) in the existing town owner. Initiating the animation, general AI7, state `14` magic combat, wet residents, natural worlds and multiplayer protocol parity remain outside this fixture.
+
+The fixed backend prototype matches every represented state/RNG frame and both emote events at seed `1458`. Actual omission and extra-RNG runs fail at frame `0` on motion and RNG respectively. The unchanged new regression and complete locomotion/conversation neighbors pass `74/74`, retaining the non-Dryad state `24` negative cases. The old/fixed test DLLs differ, so the causal regression claim identifies the unchanged test source rather than an identical test binary. Raw evidence remains under `.cache/npc-town-applied-old` and `.cache/npc-town-applied-fixed`; final combined source-guarded qualification and production gates are recorded separately.

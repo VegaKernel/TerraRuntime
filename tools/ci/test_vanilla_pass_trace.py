@@ -152,6 +152,23 @@ class PassTraceTests(unittest.TestCase):
         self.assertFalse(report['accepted'])
         self.assertEqual(['context'], report['inputDifferences'])
 
+    def test_cleanup_combined_halfbrick_and_slope_bits_are_preserved(self):
+        left, right = cleanup_observation('official'), cleanup_observation('runtime')
+        for data in (left, right):
+            data['scenario'] = 'quick-cleanup-independent-shapes-v1'
+            for state in ('input', 'output'):
+                set_cell(data, state, 0, 'shape', 5)
+                set_cell(data, state, 0, 'flags', 0x801)
+        self.assertTrue(trace.compare(left, right)['accepted'])
+        set_cell(right, 'output', 0, 'flags', 1)
+        result = trace.compare(left, right)
+        self.assertFalse(result['accepted'])
+        self.assertEqual('flags', result['firstCellDifference']['fields'][0]['field'])
+        set_cell(right, 'output', 0, 'flags', 0x801)
+        set_cell(right, 'output', 0, 'shape', 0)
+        with self.assertRaisesRegex(ValueError, 'half-brick-with-slope'):
+            trace.compare(left, right)
+
     def test_file_size_and_duplicate_json_guards_apply_before_comparison(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / 'bad.json'

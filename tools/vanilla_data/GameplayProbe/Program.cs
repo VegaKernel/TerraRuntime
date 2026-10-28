@@ -8,6 +8,12 @@ using TerraRuntime.Gameplay.Items;
 
 // SDK-only boundary experiment: invoke the original method, or current compiled
 // helpers. No ItemCheck/UpdateEquips, packet admission or projectile birth is implied.
+if (args.Length == 7 && args[6] == "owned-bow")
+{
+    OwnedAmmoProbe.Run(args);
+    return;
+}
+if (args.Length == 7 && args[6] == "pick-ammo") args = args[..6];
 if (args.Length is not (5 or 6))
     throw new ArgumentException("GameplayProbe <official|runtime> <official-exe> <reference.json> <new-output.json> <seed> [normal|omit-step|extra-rng]");
 string engine = args[0], assemblyPath = Path.GetFullPath(args[1]), outputPath = Path.GetFullPath(args[3]);

@@ -12,6 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 from vanilla_data import gameplay_trace as trace
+from vanilla_data import gameplay_owned_trace as owned
 
 
 def observation(engine):
@@ -143,6 +144,89 @@ class GameplayTraceTests(unittest.TestCase):
             path.write_text('{"schemaVersion":1,"schemaVersion":1}', encoding='utf-8')
             with self.assertRaises(ValueError):
                 trace.load_with_hash(path, 'official')
+
+
+def owned_observation(engine):
+    state = dict(inventory=[[0, 0, 0, 0] for _ in range(58)], animation=0, animationMax=0,
+                 itemTime=0, itemTimeMax=0, release=False, reuse=0, manaHeatBits=0,
+                 rng=dict(algorithm='terraria1458-unifiedrandom-inext21', ownerAlias=['Main.rand'], inext=0, seedArray=list(range(56))))
+    state['inventory'][0] = [39, 1, 0, 0]
+    state['inventory'][54] = [40, 4, 0, 0]
+    initial = copy.deepcopy(state)
+    frames = []
+    for step in range(65):
+        before = copy.deepcopy(state)
+        state['manaHeatBits'] = 0x3f800000
+        state['rng']['inext'] = (step + 1) % 56
+        proof = (dict(kind='owned-authority', connectionAssigned=True, knownPhase=True, knownClocks=True,
+                      fundedAmmo=4, paidUses=0) if engine == 'runtime' else
+                 dict(kind='original-player', active=True, dead=False, life=100, projectileCount=0))
+        frames.append(dict(step=step, held=step in (1, 2, 32, 33), before=before, after=copy.deepcopy(state), proof=proof))
+    provenance = dict(entry=owned.OFFICIAL_ENTRY if engine == 'official' else owned.RUNTIME_ENTRY,
+                      control='normal', officialAssemblySha256='b' * 64, dependenciesSha256={'FNA.dll': 'c' * 64}, probeSha256='a' * 64)
+    if engine == 'runtime':
+        provenance['runtimeAssemblySha256'] = 'd' * 64
+    return dict(schemaVersion=1, kind='gameplay-behavior-observation', engine=engine, scenario=owned.SCENARIO,
+                seed=14, context=copy.deepcopy(owned.CONTEXT), input=initial, frames=frames, provenance=provenance,
+                executedDlls={'GameplayProbe.dll': 'a' * 64, owned.RUNTIME_DLL: 'd' * 64})
+
+
+class OwnedGameplayTraceTests(unittest.TestCase):
+    def setUp(self):
+        self.official, self.runtime = owned_observation('official'), owned_observation('runtime')
+
+    def test_complete_physical_and_distinct_owned_evidence(self):
+        self.assertTrue(owned.compare(self.official, self.runtime)['accepted'])
+
+    def test_final_rng_slot_difference_detected(self):
+        self.runtime['frames'][-1]['after']['rng']['seedArray'][55] += 1
+        report = owned.compare(self.official, self.runtime)
+        self.assertFalse(report['accepted'])
+        self.assertIn('seedArray[55]', report['firstDifference']['field'])
+
+    def test_retired_unknown_or_unfunded_owner_refuses(self):
+        for name, value in (('knownPhase', False), ('knownClocks', False), ('fundedAmmo', 3), ('paidUses', 1)):
+            data = copy.deepcopy(self.runtime)
+            data['frames'][1]['proof'][name] = value
+            with self.assertRaises(ValueError):
+                owned.validate(data, 'runtime')
+
+    def test_original_death_or_unobserved_birth_refuses(self):
+        for name, value in (('dead', True), ('active', False), ('projectileCount', 1)):
+            data = copy.deepcopy(self.official)
+            data['frames'][1]['proof'][name] = value
+            with self.assertRaises(ValueError):
+                owned.validate(data, 'official')
+
+    def test_incomplete_or_discontinuous_preimage_refuses(self):
+        for edit in (lambda d: d['frames'][1]['before']['inventory'].pop(),
+                     lambda d: d['frames'][1]['before'].update(release=True),
+                     lambda d: d['frames'].pop(3),
+                     lambda d: d['frames'][1].update(held=False)):
+            data = copy.deepcopy(self.runtime)
+            edit(data)
+            with self.assertRaises(ValueError):
+                owned.validate(data, 'runtime')
+
+    def test_role_reversal_and_unknown_projection_refuses(self):
+        self.runtime['context']['sourceCaller'] = 'ItemCheck'
+        with self.assertRaises(ValueError):
+            owned.validate(self.runtime, 'runtime')
+
+    def test_different_physical_initial_rng_is_incomparable(self):
+        self.runtime['input']['rng']['seedArray'][0] += 1
+        self.runtime['frames'][0]['before'] = copy.deepcopy(self.runtime['input'])
+        self.assertEqual('incomparable-input', owned.compare(self.official, self.runtime)['classification'])
+
+    def test_load_bound_and_exact_raw_hash(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'owned.json'
+            raw = json.dumps(self.runtime).encode()
+            path.write_bytes(raw)
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), owned.load_with_hash(path, 'runtime')[1])
+            path.write_bytes(b' ' * (owned.MAX_BYTES + 1))
+            with self.assertRaises(ValueError):
+                owned.load_with_hash(path, 'runtime')
 
 
 if __name__ == '__main__':

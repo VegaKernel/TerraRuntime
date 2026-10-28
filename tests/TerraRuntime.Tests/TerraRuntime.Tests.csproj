@@ -1042,4 +1042,14 @@
     <EmbeddedResource Include="Fixtures/AnglerOriginal1458.json.gz" LogicalName="AnglerOriginal1458" />
     <EmbeddedResource Include="Fixtures/FishingNpcBirthOriginal1458.json.gz" LogicalName="FishingNpcBirthOriginal1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/OwnedAmmoCallerLinux1458.jsonl.gz" LogicalName="OwnedAmmoCallerLinux1458" />
+    <EmbeddedResource Include="Fixtures/OwnedAmmoCallerWindows1458.jsonl.gz" LogicalName="OwnedAmmoCallerWindows1458" />
+    <EmbeddedResource Include="Fixtures/OwnedAmmoCyclingCallerLinux1458.jsonl.gz" LogicalName="OwnedAmmoCyclingCallerLinux1458" />
+    <EmbeddedResource Include="Fixtures/OwnedAmmoCyclingCallerWindows1458.jsonl.gz" LogicalName="OwnedAmmoCyclingCallerWindows1458" />
+    <EmbeddedResource Include="Fixtures/OwnedAmmoLastArrowCallerLinux1458.jsonl.gz" LogicalName="OwnedAmmoLastArrowCallerLinux1458" />
+    <EmbeddedResource Include="Fixtures/tool-frame-reset-full-caller-v1.json.gz" LogicalName="ToolFrameResetFullCaller1458" />
+    <EmbeddedResource Include="Fixtures/placement-normal-switch-full-caller-v1.json.gz" LogicalName="PlacementNormalSwitchFullCaller1458" />
+    <EmbeddedResource Include="Fixtures/released-tool-full-caller-v1.json.gz" LogicalName="ReleasedToolFullCaller1458" />
+  </ItemGroup>
 </Project>

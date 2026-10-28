@@ -1,5 +1,11 @@
 # Production graph
 
+## Applied source parity block, 2026-10-28
+
+Shipping graph remains15projects/29edges. QuickCleanup now uses existing canonical shape helpers for independent halfbrick+slope states. The existing town schedule admits only Dryad state24 continuation, retaining dry/ordinary/type/frame provenance and existing emote publication ownership. Local-owner player phases use the exact local heat threshold and the source's two CheckCrackedBrickBreak offers, before dry movement/ItemCheck; remote callers retain their old role semantics. Two bounded footprint reads refuse unrepresented thin-ice/cracked mutations before custody/RNG adoption, preserving established high-velocity cases without an invented speed cap.
+
+Retained placement selection/target branches carry only the witnessed admitted prefix. Witness creation requires the exact previous canonical endpoint; continuation requires the exact afterimage, then replays the same offers on detached previews. Intervening unrelated entropy cannot restore authority. A witness clone is allocated only for a matching retained placement history, not ordinary players. No new random owner, payment ledger, production reflection or dependency was added. Existing ownership/rollback and literal-wire assertions remain. Versioned reference companions preserve oldsubmethod captures and record their wider source caller explicitly; fullgate is required for shared testresource changes.
+
 ## Three-domain offline execution, 2026-10-28
 
 Shipping graph remains15projects/29edges with unchanged production inputs. PassProbe extends the existing WorldGeneration reference with a named QuickCleanup profile. New offline NpcProbe references Core and GameplayProbe references Gameplay; both link the existing UnifiedRandom source. No production project references a probe. Reflection, original managed assembly loading and fixture mutation stay in separate developer processes. Shared behavior_probe.py owns fresh-build/process/provenance/source/DLL guards for both behavior domains; domain modules own strict complete state schemas and comparison. CLI retains separate run and supplied-observation compare commands.

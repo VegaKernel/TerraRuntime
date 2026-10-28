@@ -113,9 +113,10 @@ internal sealed partial class PlayerAuthority
         }
         if (plan.BeforeItem?.ToolUse?.PlacementAlternative is { } old &&
             old.HasSelectionAlternative && old.HistoryEpoch == tools.PlacementHistoryEpoch &&
-            old.MatchesCanonical(beforeCommon) && IsPlacementAlternativeContext(plan, old, world))
+            MatchesPlacementCallerPrefix(plan, old, beforeCommon) && IsPlacementAlternativeContext(plan, old, world))
         {
             var alternative = old.CreateAlternativePreview();
+            ReplayPlacementCallerPrefix(plan, old, alternative);
             int alternativeCrit = alternative.Next(3);
             var definition = placement.Clocks;
             var alternativeFacts = facts with { LocalOwner = true, SelectionBuffered = true,
@@ -142,5 +143,24 @@ internal sealed partial class PlayerAuthority
                 plan.Member.OwnedPermanentUpgradeMask, world);
         next = AdvancePlacementTargets(plan, world, beforeCommon, afterCommon, facts, next);
         plan.Item = item with { ToolUse = tools with { PlacementAlternative = next } };
+    }
+
+    private static bool MatchesPlacementCallerPrefix(RemoteItemPhasePlan1458 plan,
+        RuntimePlayerPlacementAlternative1458 history, VanillaUnifiedRandom1458 beforeCommon)
+    {
+        // The prefix witness was recorded only after exact equality with this
+        // history's prior canonical endpoint. Require its exact afterimage too:
+        // any further consumer between tile checks and ItemCheck rejects it.
+        return ReferenceEquals(plan.PlacementPrefixHistory, history)
+            ? plan.PlacementPrefixAfter is { } after && after.HasSameState(beforeCommon)
+            : history.MatchesCanonical(beforeCommon);
+    }
+
+    private static void ReplayPlacementCallerPrefix(RemoteItemPhasePlan1458 plan,
+        RuntimePlayerPlacementAlternative1458 history, VanillaUnifiedRandom1458 preview)
+    {
+        if (!ReferenceEquals(plan.PlacementPrefixHistory, history) || !plan.PlacementPrefixOffers) return;
+        preview.Next(2, 12);
+        preview.Next(2, 12);
     }
 }

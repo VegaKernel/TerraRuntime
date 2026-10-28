@@ -11,18 +11,25 @@ from . import capture as facts
 from .pass_probe import source_inputs, dll_pins
 
 PROJECTS = {'npc': 'NpcProbe', 'gameplay': 'GameplayProbe'}
+PROFILES = {'npc': {'ai3-ice-golem': 'npc_trace', 'ai7-dryad': 'npc_town_trace'},
+            'gameplay': {'pick-ammo': 'gameplay_trace', 'owned-bow': 'gameplay_owned_trace'}}
+DEFAULT_PROFILES = {'npc': 'ai3-ice-golem', 'gameplay': 'pick-ammo'}
 CONTROLS = ('normal', 'omit-step', 'extra-rng')
 
 
-def adapter(domain: str):
-    if domain not in PROJECTS:
-        raise ValueError('Unsupported behavior domain')
-    return importlib.import_module('.' + domain + '_trace', __package__)
+def adapter(domain: str, profile: str | None = None):
+    if domain not in PROFILES or (profile is not None and type(profile) is not str):
+        raise ValueError('Unsupported behavior domain/profile')
+    selected = DEFAULT_PROFILES[domain] if profile is None else profile
+    if selected not in PROFILES[domain]:
+        raise ValueError('Unsupported behavior domain/profile')
+    return importlib.import_module('.' + PROFILES[domain][selected], __package__)
 
 
 def run_behavior(domain: str, assembly: Path, output_dir: Path,
-                 seed: int = 1458, control: str = 'normal') -> dict:
-    trace = adapter(domain)
+                 seed: int = 1458, control: str = 'normal', *, profile: str | None = None) -> dict:
+    trace = adapter(domain, profile)
+    selected_profile = profile or DEFAULT_PROFILES[domain]
     if type(seed) is not int or not -0x80000000 <= seed <= 0x7fffffff or control not in CONTROLS:
         raise ValueError('Unsupported seed/control')
     assembly = assembly.resolve(strict=True)
@@ -70,8 +77,11 @@ def run_behavior(domain: str, assembly: Path, output_dir: Path,
     if built and not errors:
         for engine in ('official', 'runtime'):
             mode = control if engine == 'runtime' else 'normal'
-            if not execute(engine, ['dotnet', str(binary), engine, str(assembly), str(facts.PIN_PATH),
-                                   str(output_dir / (engine + '.json')), str(seed), mode], 30):
+            command = ['dotnet', str(binary), engine, str(assembly), str(facts.PIN_PATH),
+                       str(output_dir / (engine + '.json')), str(seed), mode]
+            if selected_profile != DEFAULT_PROFILES[domain]:
+                command.append(selected_profile)
+            if not execute(engine, command, 30):
                 break
         if not errors:
             try:
@@ -122,7 +132,7 @@ def run_behavior(domain: str, assembly: Path, output_dir: Path,
     accepted = not errors and compared is not None and compared['accepted']
     report = {'schemaVersion': 1, 'operation': domain + '-run', 'accepted': accepted,
               'classification': 'execution-or-input-failure' if errors else compared['classification'] if compared else 'no-observation',
-              'scenario': trace.SCENARIO, 'seed': seed, 'control': control,
+              'scenario': trace.SCENARIO, 'profile': selected_profile, 'seed': seed, 'control': control,
               'sourceInputCount': len(before), 'sourceInputsUnchanged': unchanged,
               'sourceInputsSha256': facts.data_digest(before), 'dllsBefore': pins, 'dllsAfter': after,
               'dllsUnchanged': pins == after, 'commands': commands, 'validationErrors': errors,

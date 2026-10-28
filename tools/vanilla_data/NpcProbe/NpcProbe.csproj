@@ -5,6 +5,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../src/TerraRuntime.Application/TerraRuntime.Application.csproj" />
     <ProjectReference Include="../../../src/TerraRuntime.Core/TerraRuntime.Core.csproj" />
     <Compile Include="../../../src/TerraRuntime.Core/VanillaUnifiedRandom1458.cs" Link="RuntimeRandom.cs" />
   </ItemGroup>

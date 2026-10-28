@@ -385,7 +385,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
             reached=before.Mana.Mana<after.Maximum && after.Mana>=after.Maximum;
             var expected=f.PlayerRandom.Clone();
             Assert.True(TerraRuntime.Gameplay.Players.VanillaSelectedConsumable1458.TryStepHeat(
-                before.ManaHeat,expected.NextDouble,expected.Next,out _));
+                before.ManaHeat,expected.NextDouble,expected.Next,out _, localOwner:true));
             if(reached)
             {
                 Assert.Equal(0,local.Clocks.Selected.Animation);Assert.Equal(0,local.Clocks.ReuseDelay);
@@ -393,6 +393,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
                 // the caller after selection; five suppressed-dust scale draws.
                 for(int d=0;d<5;d++)expected.Next(20,26);
             }
+            expected.Next(2,12);expected.Next(2,12);
             int roll=expected.Next(3);int crit=local.Clocks.Selected.RevolverCritBonus;
             f.State.Tick();Assert.NotNull(f.Member.ItemPhase);
             Assert.True(f.PlayerRandom.HasSameState(expected));
@@ -400,7 +401,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
             Assert.Equal(after.Mana,f.Member.Mana);
         }
         Assert.True(reached);Assert.Equal(200,f.Member.Mana);
-        var next=f.PlayerRandom.Clone();next.Next(3);f.State.Tick();Assert.True(f.PlayerRandom.HasSameState(next));
+        var next=f.PlayerRandom.Clone();next.Next(2,12);next.Next(2,12);next.Next(3);f.State.Tick();Assert.True(f.PlayerRandom.HasSameState(next));
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles,50,52));
         f.Kill();Assert.False(f.Tiles.Get(50,52).IsActive);Assert.Equal(1,f.Items.ActiveCount);
     }
@@ -409,8 +410,8 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
     {
         using var f=new Fixture(false);f.Equip(7,113,1);f.Select(7);f.SetMana(199);
         f.Control(7,packetFirst);var random=f.PlayerRandom.Clone();
-        Assert.True(TerraRuntime.Gameplay.Players.VanillaSelectedConsumable1458.TryStepHeat(f.Member.ItemPhase!.Value.ManaHeat,random.NextDouble,random.Next,out _));
-        for(int i=0;i<5;i++)random.Next(20,26);random.Next(3);
+        Assert.True(TerraRuntime.Gameplay.Players.VanillaSelectedConsumable1458.TryStepHeat(f.Member.ItemPhase!.Value.ManaHeat,random.NextDouble,random.Next,out _,localOwner:true));
+        for(int i=0;i<5;i++)random.Next(20,26);random.Next(2,12);random.Next(2,12);random.Next(3);
         if(packetFirst)
         {
             long births=f.Projectiles.PromotedClientProjectileSpawns;
@@ -430,7 +431,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
         RunEarlierRemote(true,localFirst);
     private void RunEarlierRemote(bool duplicate,bool localFirst)
     {
-        using var f=new Fixture(false);var remote=f.AddLocalAfterExistingRemote();
+        using var f=new Fixture(false,itemUseCaller:RuntimeItemUseCaller1458.DedicatedRemote);var remote=f.AddLocalAfterExistingRemote();
         Assert.Equal(0,remote.Slot.Value);Assert.Equal(1,f.Player.Slot.Value);
         f.Equip(7,113,1);f.Select(7);f.Control(7,false);f.State.Tick();
         bool discriminates=false;
@@ -439,14 +440,14 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
             var a=f.PlayerRandom.Clone();var b=a.Clone();int first=a.Next(3);
             for(int i=0;i<5;i++)b.Next(20,26);
             bool earlyDiff=(first==0)!=(b.Next(3)==0);
-            var beforeFeedback=f.PlayerRandom.Clone();beforeFeedback.Next(3);int prematureLocal=beforeFeedback.Next(3);
-            var afterFeedback=f.PlayerRandom.Clone();afterFeedback.Next(3);for(int i=0;i<5;i++)afterFeedback.Next(20,26);int sourceLocal=afterFeedback.Next(3);
+            var beforeFeedback=f.PlayerRandom.Clone();beforeFeedback.Next(3);beforeFeedback.Next(2,12);beforeFeedback.Next(2,12);int prematureLocal=beforeFeedback.Next(3);
+            var afterFeedback=f.PlayerRandom.Clone();afterFeedback.Next(3);for(int i=0;i<5;i++)afterFeedback.Next(20,26);afterFeedback.Next(2,12);afterFeedback.Next(2,12);int sourceLocal=afterFeedback.Next(3);
             if(earlyDiff && (prematureLocal==0)!=(sourceLocal==0)){discriminates=true;break;}
             f.State.Tick();
         }
         Assert.True(discriminates);f.SetMana(199);f.Control(7,true);
         var before=f.PlayerRandom.Clone();var expected=before.Clone();
-        expected.Next(3);for(int i=0;i<5;i++)expected.Next(20,26);int expectedLocalRoll=expected.Next(3);
+        expected.Next(3);for(int i=0;i<5;i++)expected.Next(20,26);expected.Next(2,12);expected.Next(2,12);int expectedLocalRoll=expected.Next(3);
         int localCritBefore=f.ToolClock.Clocks.Selected.RevolverCritBonus;
         // Equal total draw count can hide wrong Next(max) chronology in state;
         // compare the source-derived common roll's retained crit accumulator too.
@@ -644,10 +645,10 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
     }
     public void Seven_gem_entropy_births_keep_all_source_keys_before_tool_continuation(string edition,short staff,bool earlierRemote)
     {
-        using var f=new Fixture(false,12345);if(earlierRemote)f.AddLocalAfterExistingRemote();
+        using var f=new Fixture(false,12345,itemUseCaller:earlierRemote?RuntimeItemUseCaller1458.DedicatedRemote:RuntimeItemUseCaller1458.LocalOwnerProjection);if(earlierRemote)f.AddLocalAfterExistingRemote();
         f.Equip(7,staff,1);f.Equip(1,3509,1);f.Select(7);f.SetMana();f.Control(7,false);f.State.Tick();f.SetMana(199);f.Control(7,true);
         var source=Fixture.GemSource(edition,staff);var before=f.PlayerRandom.Clone();var expected=before.Clone();
-        if(earlierRemote)expected.Next(3);for(int i=0;i<5;i++)expected.Next(20,26);int crit=expected.Next(3);
+        if(earlierRemote)expected.Next(3);for(int i=0;i<5;i++)expected.Next(20,26);expected.Next(2,12);expected.Next(2,12);int crit=expected.Next(3);
         int beforeCrit=f.ToolClock.Clocks.Selected.RevolverCritBonus;long births=f.Projectiles.PromotedClientProjectileSpawns;
         f.SourceGemBirths(edition,staff);Assert.Equal(births,f.Projectiles.PromotedClientProjectileSpawns);Assert.Equal(199,f.Member.Mana);
         Assert.NotNull(f.ToolClock.WeaponShoot?.PendingReport);Assert.True(f.PlayerRandom.HasSameState(before));
@@ -1003,7 +1004,8 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
                 if(member.ItemUseCaller==RuntimeItemUseCaller1458.LocalOwnerProjection && ToolClock.LocalClocksKnown && paid is null)
                 {
                     Assert.True(TerraRuntime.Gameplay.Players.VanillaSelectedConsumable1458.TryStepHeat(
-                        member.ItemPhase!.Value.ManaHeat,cursor.NextDouble,cursor.Next,out _));
+                        member.ItemPhase!.Value.ManaHeat,cursor.NextDouble,cursor.Next,out _,localOwner:true));
+                    cursor.Next(2,12);cursor.Next(2,12);
                     cursor.Next(3);
                 }
                 TerraRuntime.Gameplay.Items.VanillaProjectileWeaponCombatCatalog.PrepareAmmoConservation(definition,ammunition,combat,cursor.Next);

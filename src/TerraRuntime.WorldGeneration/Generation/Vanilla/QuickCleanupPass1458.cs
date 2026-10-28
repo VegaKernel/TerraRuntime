@@ -114,14 +114,15 @@ internal sealed class QuickCleanupPass1458(
     {
         ref WorldTile anchor = ref At(x, y);
         if (anchor.Shape is 4 or 5)
-            anchor.Shape = 0;
+            // Source slope(0) leaves the independent halfBrick bit untouched.
+            anchor.TrySetSourceShape(anchor.IsHalfBrick, 0);
 
         for (int row = y + 1; row < y + random.Next(4, 7) && RowIsClear(x, row); row++)
         {
             ref WorldTile cell = ref At(x, row);
             cell.Type = Dirt;
             cell.Flags |= WorldTileFlags.Active;
-            cell.Shape = 0;
+            cell.ClearSourceShape();
             SandFill++;
         }
     }
@@ -220,7 +221,7 @@ internal sealed class QuickCleanupPass1458(
         ref WorldTile cell = ref At(x, y);
         if (!cell.IsActive || !SaveSlopes(cell.Type))
         {
-            cell.Shape = 0;
+            cell.ClearSourceShape();
             return;
         }
 
@@ -230,12 +231,14 @@ internal sealed class QuickCleanupPass1458(
             return;
         }
 
-        bool topCut = cell.Shape is 2 or 3 || cell.Shape == 1;
+        // Terraria1458 can retain halfBrick together with any slope. The source
+        // checks halfBrick before bottomSlope, so support below wins in that case.
+        bool topCut = cell.Shape is 2 or 3 || cell.IsHalfBrick;
         bool bottomCut = cell.Shape is 4 or 5;
         if (topCut)
         {
             // Pearlstone keeps its half brick; every other identity, and Pearlstone's own slopes, do not.
-            if (cell.Type == Pearlstone && cell.Shape == 1)
+            if (cell.Type == Pearlstone && cell.IsHalfBrick)
                 return;
 
             if (!SolidTile(x, y + 1) || TrapBeside(x, y))

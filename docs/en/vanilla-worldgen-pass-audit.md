@@ -663,7 +663,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 71 | Cave Walls | LateStructure | C | CaveWallVariety / regions / RNG |
 | 72 | Jungle Trees | LateStructure | C | tree grower / placement / RNG |
 | 73 | Floating Island Houses | LateStructure | C | IslandHouse / furniture / loot / RNG |
-| 74 | Quick Cleanup | SurfaceFinish | C | `QuickCleanup`: the ocean's liquid and its sand columns, the hive and temple walls, the borrowed wall and the slope cleanup: 16 official complete-delegate fixtures |
+| 74 | Quick Cleanup | SurfaceFinish | C | `QuickCleanup`: the ocean's liquid and its sand columns, the hive and temple walls, the borrowed wall and the slope cleanup: 16 official complete-delegate fixtures. Independent half-brick/slope state additionally has an applied original/runtime differential and a normal regression; natural-prefix/all-state parity remains open |
 | 75 | Pots | SurfaceFinish | C | `PotsGraveyardsAndBoulderPiles`: the column walk, its two crowding rules, the nine-arm style cascade and the two-by-two footprint: 8 official complete-delegate fixtures |
 | 76 | Hellforge | SurfaceFinish | C | fort geometry / placement / RNG |
 | 77 | Spreading Grass | SurfaceFinish | C | `SpreadingGrassOnSurfaceSunflowersEvilsOnSurfaceAndLavaCleanup`: the surface re-skin, the column walk and the green `SpreadGrass`, with no shared RNG at all: 24 official complete-delegate fixtures |

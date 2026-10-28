@@ -14,6 +14,7 @@ CONTROLS = ('normal', 'omit-pass', 'extra-rng')
 PROFILES = {
     'grass-wall': ('SurfaceDirtWallsToGrassWalls', 'grass-wall-stain-v1', 'Grass Wall', 'GrassWallPass1458'),
     'quick-cleanup': ('QuickCleanup', 'quick-cleanup-ordinary-v1', 'Quick Cleanup', 'QuickCleanupPass1458'),
+    'quick-cleanup-shapes': ('QuickCleanup', 'quick-cleanup-independent-shapes-v1', 'Quick Cleanup', 'QuickCleanupPass1458'),
 }
 
 

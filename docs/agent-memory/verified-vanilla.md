@@ -1,5 +1,15 @@
 # Verified vanilla facts
 
+## Applied shape, Dryad and owned caller facts, 2026-10-28
+
+Original QuickCleanup can retain halfBrick beside any slope. Its slope-only ocean-anchor reset preserves halfBrick, ClearSlope clears both, halfBrick takes support-below precedence and Pearlstone's exception reads independent halfBrick. Actual sameinput original/current initially differs7cells and unchanged normalFact fails; fixed full128000cell+RNG profiles match3seeds.
+
+Actual original NPC.UpdateNPC/AI007/FindFrame advances existing Dryad24 through480ticks plus16idleframes; old runtime freezes, unchanged normalFact fails. Continuation dampshorizontal motion, owns timer/facing/cooldown, preserves exact frameCounter/frameIndex and emits sourcepacket91 emotes at frames59/149. Fixed496frames+RNG/emotes match. Initiation, state14/wet and nonDryad24 remain unrepresented.
+
+Player.Update uses Utils.Remap(manaHeat,1.3f,1f,1f,0f) for Main.myPlayer, .3f for remote. Local CheckCrackedBrickBreak, even on empty ordinary terrain, spends two Next(2,12) before collision/ItemCheck, except shimmer/outsideInWorld(center,10). True immutableoriginal65Updateframes match liveauthoritativefundedbow phases at14/1458/8675309, realpickup4->2 and2receipts. Old normalFact fails; fixed passes. Diagnostic copiedCecilartifact located calls only, never qualified behavior.
+
+Old Ammo/Tool resources explicitly called ItemCheck/selected-item/limitedprefix rather than fullUpdate; they cannot be compared unchanged to the newly corrected wholelocalphase. Fresh versioned companions execute original caller components and recompute coupledpackets/conservation/clock/fullRNG, retaining oldresources. Tool heat-stage is an exact recorded originalIL segment, not an unmodified wholeUpdate call. Actual new last-arrow case yields1,1,0. Retained placement histories must advance admittedprefix offers too; actual Fast sourceHitTilebuffer remains500 while old integratedruntime dropped0. Exact witness repair passes the unchanged sourceassertion and unrelated-entropy adversary.
+
 ## Executed ordinary cleanup, AI3 carrier and PickAmmo boundary, 2026-10-28
 
 Actual original registered Quick Cleanup matches current QuickCleanupPass1458 on all128,000WorldTile16cells and complete RNG for seeds1458/42/8675309 with ordinary flags and observed participating content facts. It changes67/62/65cells respectively. The fixture has800columns because the original readonly beach distance is380; both ocean and non-ocean contexts are represented. This is an explicit synthetic ordinary-world profile, not a natural generation prefix or special-seed acceptance.

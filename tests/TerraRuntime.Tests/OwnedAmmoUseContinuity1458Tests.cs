@@ -58,7 +58,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         var failures=new List<string>();
         foreach(string edition in new[]{"Linux","Windows"})
         {
-            using var resource=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("AmmoContinuity"+edition+"First1458")!;
+            using var resource=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("OwnedAmmoCaller"+edition+"1458")!;
             using var zip=new GZipStream(resource,CompressionMode.Decompress);
             using var reader=new StreamReader(zip);
             int cases=0;
@@ -84,6 +84,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         foreach(var step in row.GetProperty("steps").EnumerateArray())
         {
             int tick=I(step,"tick");
+            SameRandom(step.GetProperty("callerRandomBefore"),f.PlayerRandom,label+" expanded-caller entry/"+tick);
             var check=step.GetProperty("checkFrames").EnumerateArray().Select(x=>Convert.FromHexString(x.GetString()!)).ToArray();
             var sync=step.GetProperty("syncFrames").EnumerateArray().Select(x=>Convert.FromHexString(x.GetString()!)).ToArray();
             var sourceAfter=step.GetProperty("after");
@@ -171,13 +172,19 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
     }
     private static JsonDocument Read(int item,string mode,int seed)
     {
-        using var compressed=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("AmmoContinuityLinuxFirst1458")!;
+        using var compressed=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("OwnedAmmoCallerLinux1458")!;
         using var zip=new GZipStream(compressed,CompressionMode.Decompress);using var reader=new StreamReader(zip);
-        string prefix="{\"schema\":2,\"item\":"+item+",\"mode\":\""+mode+"\",\"seed\":"+seed+",";
+        string prefix="{\"schema\":4,\"item\":"+item+",\"mode\":\""+mode+"\",\"seed\":"+seed+",";
         while(reader.ReadLine() is { } line)if(line.StartsWith(prefix,StringComparison.Ordinal))return JsonDocument.Parse(line);
         throw new InvalidOperationException("Missing independent source profile.");
     }
     private static int I(JsonElement e,string name)=>e.GetProperty(name).GetInt32();
+    private static JsonDocument ReadLastArrow()
+    {
+        using var resource=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("OwnedAmmoLastArrowCallerLinux1458")!;
+        using var zip=new GZipStream(resource,CompressionMode.Decompress);using var reader=new StreamReader(zip);
+        return JsonDocument.Parse(reader.ReadLine()??throw new InvalidOperationException("Missing actual last-arrow source profile."));
+    }
     private static ToolClockState1458 Clock(JsonElement e)=>new(new(I(e,"itemTime"),I(e,"itemTimeMax"),I(e,"itemAnimation"),I(e,"itemAnimationMax"),e.GetProperty("releaseUseItem").GetBoolean(),0,I(e,"revolverCritChanceBonus")),I(e,"toolTime"),e.GetProperty("poundRelease").GetBoolean(),e.GetProperty("channel").GetBoolean()){ReuseDelay=I(e,"reuseDelay")};
     [UnsafeAccessor(UnsafeAccessorKind.Field,Name="seedArray")]private static extern ref int[] Cells(VanillaUnifiedRandom1458 r);
     [UnsafeAccessor(UnsafeAccessorKind.Field,Name="inext")]private static extern ref uint Cursor(VanillaUnifiedRandom1458 r);
