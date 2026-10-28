@@ -32,7 +32,7 @@ class PassProbeTests(unittest.TestCase):
             engine, output = args[2], Path(args[5])
             profile = args[8]
             pass_id, scenario, registered, runtime_type = probe.PROFILES[profile]
-            data = cleanup_observation(engine) if profile == 'quick-cleanup' else observation(engine)
+            data = cleanup_observation(engine) if profile != 'grass-wall' else observation(engine)
             data['pass'] = pass_id
             data['scenario'] = scenario
             data['executedDlls'] = dict(self.pins)
@@ -88,6 +88,12 @@ class PassProbeTests(unittest.TestCase):
         self.assertTrue(report['accepted'], report)
         self.assertEqual('QuickCleanup', report['pass'])
         self.assertEqual('quick-cleanup', report['profile'])
+
+    def test_independent_shape_profile_selects_distinct_scenario(self):
+        report = self.invoke(profile='quick-cleanup-shapes')
+        self.assertTrue(report['accepted'], report)
+        self.assertEqual('quick-cleanup-independent-shapes-v1', report['scenario'])
+        self.assertEqual('quick-cleanup-shapes', report['commands'][1]['command'][-1])
 
     def test_cleanup_wrong_registered_or_runtime_entry_is_rejected(self):
         for wrong in ('entry', 'registered'):

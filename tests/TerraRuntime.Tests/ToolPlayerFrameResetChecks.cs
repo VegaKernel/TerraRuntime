@@ -18,7 +18,20 @@ internal static partial class ToolPlayerBoundaryChecks
         using var unzip = new GZipStream(stream!, CompressionMode.Decompress);
         using var source = JsonDocument.Parse(unzip);
         Assert.Equal(12, source.RootElement.GetArrayLength());
-        foreach (var row in source.RootElement.EnumerateArray()) CurrentFrameResetRow(row);
+        using var caller = PlacementSource("ToolFrameResetFullCaller1458");
+        var rows = caller.RootElement.GetProperty("platforms").GetProperty(platform).GetProperty("rows");
+        Assert.Equal(12, rows.GetArrayLength());
+        foreach (var component in source.RootElement.EnumerateArray())
+        {
+            var row = rows.EnumerateArray().Single(r => r.GetProperty("mode").GetString() == component.GetProperty("mode").GetString());
+            Assert.Equal(component.GetProperty("steps").GetArrayLength(), row.GetProperty("steps").GetArrayLength());
+            for (int i = 0; i < row.GetProperty("steps").GetArrayLength(); i++)
+                foreach (string name in new[] { "inputFrames", "actionFrames", "syncFrames" })
+                    Assert.Equal(component.GetProperty("steps")[i].GetProperty(name).GetRawText(), row.GetProperty("steps")[i].GetProperty(name).GetRawText());
+            // Preserve the earlier component proof; whole owned ticks additionally
+            // execute the source local heat/tile caller prefix before ItemCheck.
+            CurrentFrameResetRow(row);
+        }
     }
 
     private static void CurrentFrameResetRow(JsonElement row)
@@ -33,7 +46,8 @@ internal static partial class ToolPlayerBoundaryChecks
         using var transport = new PlacementTransport(f);
         transport.Post([3, 0, 138]); // finish configured character stock import, before measured use.
         f.Apply(new PlayerMovementRuntimeCommand(f.Connection,
-            new(f.Connection.Player.Slot,64,16,0,64,0,736,806,false,0,0,false,0,false,0,0,0,0,false,0,0)));
+            new(f.Connection.Player.Slot,64,16,0,64,0,736,806,false,0,0,false,0,false,0,0,0,0,false,0,0))
+            { ItemUseCaller = RuntimeItemUseCaller1458.LocalOwnerProjection });
         PlacementFunding(Inventory(f.Players))[f.Connection.Player.Slot.Value * 59] = 1;
         var inventory = f.CaptureInventory();
         int actionCount = 0;

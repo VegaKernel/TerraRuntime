@@ -273,7 +273,19 @@ internal static partial class ToolPlayerBoundaryChecks
 
     private static void PlacementNormalSwitch(JsonElement row)
     {
+        var component = row;
+        using var caller = PlacementSource("PlacementNormalSwitchFullCaller1458");
+        row = caller.RootElement.GetProperty("platforms").GetProperty(OperatingSystem.IsWindows() ? "Windows" : "Linux")
+            .GetProperty("rows").EnumerateArray().Single(r => r.GetProperty("mode").GetString() == "paidNormalSwitch");
+        for (int i = 0; i < row.GetProperty("steps").GetArrayLength(); i++)
+            foreach (string name in new[] { "inputFrames", "actionFrames", "syncFrames" })
+                Assert.Equal(component.GetProperty("steps")[i].GetProperty(name).GetRawText(), row.GetProperty("steps")[i].GetProperty(name).GetRawText());
         using var f = PlacementScene(2, 3);
+        // The original companion is Main.myPlayer from its first tick, before
+        // TrySyncingInput emits its first packet13. Qualify that trusted role.
+        f.Apply(new PlayerMovementRuntimeCommand(f.Connection,
+            new(f.Connection.Player.Slot,96,16,0,64,0,736,806,false,0,0,false,0,false,0,0,0,0,false,0,0))
+            { ItemUseCaller = RuntimeItemUseCaller1458.LocalOwnerProjection });
         PlacementFunding(Inventory(f.Players))[f.Connection.Player.Slot.Value * 59] = 3;
         using var transport = new PlacementTransport(f);
         using var crit = PlacementSource("PlacementCrit" + (OperatingSystem.IsWindows() ? "Windows" : "Linux") + "1458");
@@ -305,7 +317,7 @@ internal static partial class ToolPlayerBoundaryChecks
                 Assert.Equal(clock.GetProperty("toolTime").GetInt32(), f.Tools.Clocks.ToolTime);
             }
             if (tick <= 9 || tick is 15 or 28)
-                Assert.Equal(crit.RootElement[0].GetProperty("steps")[tick].GetProperty("after").GetProperty("clock").GetProperty("revolverCritChanceBonus").GetInt32(), f.Member.ItemPhase!.Value.Selected.RevolverCritBonus);
+                Assert.Equal(step.GetProperty("after").GetProperty("clock").GetProperty("revolverCritChanceBonus").GetInt32(), f.Member.ItemPhase!.Value.Selected.RevolverCritBonus);
             if (tick is 15 or 28)
                 PlacementHitOracle(crit.RootElement[0].GetProperty("steps")[tick].GetProperty("after").GetProperty("hitTile"), f.Tools.Hits);
             Assert.True(CurrentLucyRandom(f).HasSameState(ReadLucyRandom(step.GetProperty("afterRandom"))),
@@ -322,7 +334,17 @@ internal static partial class ToolPlayerBoundaryChecks
 
     private static void PlacementFastSwitch(JsonElement row, bool externalRandomDraw = false)
     {
+        var component = row;
+        using var caller = PlacementSource("PlacementNormalSwitchFullCaller1458");
+        row = caller.RootElement.GetProperty("platforms").GetProperty(OperatingSystem.IsWindows() ? "Windows" : "Linux")
+            .GetProperty("rows").EnumerateArray().Single(r => r.GetProperty("mode").GetString() == "paidFastSwapSwitch");
+        for (int i = 0; i < row.GetProperty("steps").GetArrayLength(); i++)
+            foreach (string name in new[] { "inputFrames", "actionFrames", "syncFrames" })
+                Assert.Equal(component.GetProperty("steps")[i].GetProperty(name).GetRawText(), row.GetProperty("steps")[i].GetProperty(name).GetRawText());
         using var f = PlacementScene(2, 3);
+        f.Apply(new PlayerMovementRuntimeCommand(f.Connection,
+            new(f.Connection.Player.Slot,96,16,0,64,0,736,806,false,0,0,false,0,false,0,0,0,0,false,0,0))
+            { ItemUseCaller = RuntimeItemUseCaller1458.LocalOwnerProjection });
         f.Apply(new PlayerEquipmentRuntimeCommand(f.Connection, new(f.Connection.Player.Slot, 1, 1, 0, 2774, 0)));
         f.Tiles.Set(49, 50, new WorldTile { Type = 226, Flags = WorldTileFlags.Active });
         PlacementFunding(Inventory(f.Players))[f.Connection.Player.Slot.Value * 59] = 3;
@@ -343,6 +365,11 @@ internal static partial class ToolPlayerBoundaryChecks
             {
                 CurrentLucyRandom(f).Next(100); // external entropy, not this retained source-history participant
                 refusedEndpoint = CurrentLucyRandom(f).Clone();
+                // Actual local CheckCrackedBrickBreak spends both speed offers
+                // before ItemCheck even on this dry ordinary support. An invalid
+                // alternative must not resync across these real caller samples.
+                refusedEndpoint.Next(2, 12);
+                refusedEndpoint.Next(2, 12);
                 refusedEndpoint.Next(3); // one ordinary shared ItemCheck sample, no hidden resync
             }
             foreach (var encoded in step.GetProperty("inputFrames").EnumerateArray())
@@ -380,7 +407,7 @@ internal static partial class ToolPlayerBoundaryChecks
             {
                 PlacementHitOracle(crit.RootElement[1].GetProperty("steps")[tick].GetProperty("after").GetProperty("hitReplace"), f.Tools.ReplacementHits);
                 PlacementHitOracle(crit.RootElement[1].GetProperty("steps")[tick].GetProperty("after").GetProperty("hitTile"), f.Tools.Hits);
-                Assert.Equal(crit.RootElement[1].GetProperty("steps")[tick].GetProperty("after").GetProperty("clock").GetProperty("revolverCritChanceBonus").GetInt32(), f.Member.ItemPhase!.Value.Selected.RevolverCritBonus);
+                Assert.Equal(step.GetProperty("after").GetProperty("clock").GetProperty("revolverCritChanceBonus").GetInt32(), f.Member.ItemPhase!.Value.Selected.RevolverCritBonus);
                 Assert.Equal((byte)1, f.Tools.SourceSlot);
                 Assert.Equal(2774, f.Tools.SourceItem.Value);
                 Assert.True(CurrentLucyRandom(f).HasSameState(ReadLucyRandom(step.GetProperty("afterRandom"))),

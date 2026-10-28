@@ -8,6 +8,8 @@
 
 [Сравнение геймплея с оригиналом](gameplay-source-tools.md).
 
+[Анализ зависимостей и обращений к состоянию через Roslyn](source-analysis-tools.md).
+
 Связанная рыбалка: [удочка, наживка и улов](fishing-authority-1458.md), [задания Рыбака](angler-quest-authority-1458.md), [открытие ящиков](fishing-crates-authority-1458.md).
 
 [English](../en/README.md) · [README репозитория](../../README.md) · [Roadmap](../roadmap.md)

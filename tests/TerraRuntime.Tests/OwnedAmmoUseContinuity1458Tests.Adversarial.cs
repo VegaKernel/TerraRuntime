@@ -174,7 +174,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
                 Assert.True(f.ToolClock.LocalClocksKnown);Assert.Equal(clocks.Selected.ItemTime-1,f.ToolClock.Clocks.Selected.ItemTime);
                 Assert.Equal(serial,f.ToolClock.WeaponShootHistory!.NextSerial);
                 Assert.False(f.ToolClock.WeaponShootHistory.Uses[0].Retired);
-                var expected=before.Clone();expected.Next(3);Assert.True(f.PlayerRandom.HasSameState(expected));
+                var expected=before.Clone();expected.Next(2,12);expected.Next(2,12);expected.Next(3);Assert.True(f.PlayerRandom.HasSameState(expected));
             }
             foreach(var report in reports)f.OriginalAmmoFrame(report);
             Assert.Equal(1,f.Projectiles.PromotedClientProjectileSpawns);Assert.Equal(11,f.Item(54).Stack);
@@ -227,7 +227,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
             }
             else
             {
-                var expected=before.Clone();expected.Next(3);
+                var expected=before.Clone();expected.Next(2,12);expected.Next(2,12);expected.Next(3);
                 Assert.True(f.PlayerRandom.HasSameState(expected));Assert.Null(f.ToolClock.WeaponShootHistory);
                 Assert.Equal(12,f.Item(54).Stack);Assert.Equal(12,f.Funded(54));
             }
@@ -235,21 +235,20 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
     }
 
     [Fact]
-    public void Source_conserved_second_use_keeps_the_last_funded_arrow_until_third_payment()
+    public void Source_conserved_first_two_uses_keep_the_last_funded_arrow_until_third_payment()
     {
-        using var source=Read(39,"box",7);var row=source.RootElement;
+        using var source=ReadLastArrow();var row=source.RootElement;
         var sourceShots=row.GetProperty("steps").EnumerateArray().Where(step=>step.GetProperty("checkFrames")
             .EnumerateArray().Any(w=>Convert.FromHexString(w.GetString()!)[2]==27)).ToArray();
-        Assert.Equal(new[]{11,11,10},sourceShots.Select(s=>I(s.GetProperty("after").GetProperty("inventory")[54],"stack")));
-        using var f=Start(row);f.Equip(54,40,2);f.Fund(54,2);
+        Assert.Equal(new[]{1,1,0},sourceShots.Select(s=>I(s.GetProperty("after").GetProperty("inventory")[54],"stack")));
+        using var f=Start(row);f.Fund(54,1);
         var reports=new List<byte[]>();var inventory=new List<byte[]>();
         foreach(var step in row.GetProperty("steps").EnumerateArray().Take(65))
         {
             ApplyDelayedInputs(f,step,reports,inventory);f.State.Tick();
-            // The original full-stock conservation predicate never reads stack
-            // beyond positive availability. Starting2 substitutes12 minus10;
-            // both remain positive at all three captured Shoot preimages.
-            int expected=I(step.GetProperty("after").GetProperty("inventory")[54],"stack")-10;
+            // This fresh original episode starts with one actual arrow;
+            // last-stack TurnToAir and packet5 bytes are observed unchanged.
+            int expected=I(step.GetProperty("after").GetProperty("inventory")[54],"stack");
             Assert.Equal(expected,f.Item(54).Stack);Assert.Equal(expected,f.Funded(54));
             SameRandom(step.GetProperty("random"),f.PlayerRandom,"source-qualified conserved-last stock projection");
             if(I(step,"tick")==32)
@@ -261,17 +260,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         }
         Assert.Equal(3,reports.Count);Assert.True(f.Item(54).IsEmpty);Assert.Equal(0,f.Funded(54));
         var random=f.PlayerRandom.Clone();
-        foreach(var original in inventory)
-        {
-            var wire=original.ToArray();
-            if(wire[2]==5)
-            {
-                short stack=checked((short)(BinaryPrimitives.ReadInt16LittleEndian(wire.AsSpan(6))-10));
-                BinaryPrimitives.WriteInt16LittleEndian(wire.AsSpan(6),stack);
-                if(stack==0){wire[8]=0;BinaryPrimitives.WriteInt16LittleEndian(wire.AsSpan(9),0);wire[11]=0;}
-            }
-            f.OriginalAmmoFrame(wire);
-        }
+        foreach(var wire in inventory)f.OriginalAmmoFrame(wire);
         foreach(var report in reports)f.OriginalAmmoFrame(report);
         Assert.Equal(3,f.Projectiles.PromotedClientProjectileSpawns);
         Assert.True(f.Item(54).IsEmpty);Assert.Equal(0,f.Funded(54));Assert.True(f.PlayerRandom.HasSameState(random));
@@ -319,14 +308,14 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         foreach(bool remoteInputFirst in new[]{false,true})
         {
             using var source=Read(98,"repeat",0);var row=source.RootElement;
-            using var f=new LocalWeaponClockRuntimeChecks1458.Fixture(false,0,false,new NoProjectileUpdates());
+            using var f=new LocalWeaponClockRuntimeChecks1458.Fixture(false,0,false,new NoProjectileUpdates(),RuntimeItemUseCaller1458.DedicatedRemote);
             var remote=f.AddLocalAfterExistingRemote();f.Equip(0,98,1);f.Equip(54,97,12);f.Select(0);
             f.Control(0,false);f.Fund(54,12);f.State.Tick();
             Assert.True(f.Players.TryGet(remote,out var remoteMember));
             int remoteCrit=remoteMember.ItemPhase!.Value.Selected.RevolverCritBonus;
             int localCrit=f.ToolClock.Clocks.Selected.RevolverCritBonus;
             var before=f.PlayerRandom.Clone();var expected=before.Clone();
-            int remoteRoll=expected.Next(3),localRoll=expected.Next(3);
+            int remoteRoll=expected.Next(3);expected.Next(2,12);expected.Next(2,12);int localRoll=expected.Next(3);
             Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(new(98),out var weapon));
             Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetAmmo(VanillaProjectileAmmoFamily.Bullet,new(97),out var ammo));
             var combat=f.Member.ItemPhase!.Value.DerivedCombat!.Value;

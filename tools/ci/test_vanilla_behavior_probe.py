@@ -133,6 +133,24 @@ class BehaviorProbeTests(unittest.TestCase):
                 self.assertEqual(0, code)
                 run.assert_called_once_with(domain, self.assembly, self.folder / 'out', -7, 'extra-rng')
 
+    def test_named_profiles_never_fall_back_to_the_default_adapter(self):
+        with patch.object(probe.importlib, 'import_module') as load:
+            for domain, profile in (('npc', 'ai7-dryad'), ('gameplay', 'owned-bow')):
+                probe.adapter(domain, profile)
+                load.assert_called_with('.' + probe.PROFILES[domain][profile], probe.__package__)
+            load.reset_mock()
+            for invalid in ('', 'unknown', False, 0):
+                with self.subTest(profile=invalid), self.assertRaises(ValueError):
+                    probe.adapter('npc', invalid)
+            load.assert_not_called()
+
+    def test_cli_preserves_the_requested_owned_profile(self):
+        with redirect_stdout(io.StringIO()), \
+             patch.object(probe, 'run_behavior', return_value={'accepted': True}) as run:
+            self.assertEqual(0, cli.main(['gameplay', 'run', '--profile', 'owned-bow',
+                                         '--assembly', str(self.assembly), '--output-dir', str(self.folder / 'out')]))
+        run.assert_called_once_with('gameplay', self.assembly, self.folder / 'out', 1458, 'normal', profile='owned-bow')
+
     def test_cli_compares_supplied_observations_without_running_a_backend(self):
         official = self.folder / 'official.json'
         runtime = self.folder / 'runtime.json'

@@ -156,12 +156,14 @@ public static class GemStaffBoundaryChecks
                     // both entry boundaries have the same common draw.
                     var prefix=new VanillaUnifiedRandom1458(0);Restore(prefix,beforeRandom);
                     var beforeOwned=m.ItemPhase!.Value;
-                    Assert.True(VanillaSelectedConsumable1458.TryStepHeat(beforeOwned.ManaHeat,prefix.NextDouble,prefix.Next,out _));
+                    bool localCaller=m.ItemUseCaller==RuntimeItemUseCaller1458.LocalOwnerProjection;
+                    Assert.True(VanillaSelectedConsumable1458.TryStepHeat(beforeOwned.ManaHeat,prefix.NextDouble,prefix.Next,out _,localOwner:localCaller));
                     var manaFacts=new PlayerManaRegenerationFacts1458(m.VelocityX,m.VelocityY,false,false,false,0,0,0);
                     Assert.True(VanillaRemoteManaRegeneration1458.TryStep(beforeOwned.Mana with {Mana=m.Mana,Maximum=200},in manaFacts,out var afterRegen,out _));
                     if(beforeOwned.ToolUse is {LocalClocksKnown:true} local && local.Clocks.Selected.Animation==0 && local.Clocks.ReuseDelay==0 &&
                         m.Mana<afterRegen.Maximum && afterRegen.Mana>=afterRegen.Maximum)
                         for(int particle=0;particle<5;particle++)prefix.Next(20,26);
+                    if(localCaller){prefix.Next(2,12);prefix.Next(2,12);}
                     if(prefix.Next(0,3)==0)expectedComposedCrit-=2;
                     var rawCommon=new VanillaUnifiedRandom1458(0);Restore(rawCommon,beforeRandom);
                     if(rawCommon.Next(0,3)==0)expectedRawCrit-=2;

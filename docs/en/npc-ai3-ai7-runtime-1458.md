@@ -1,5 +1,11 @@
 # AI3/AI7 runtime admission, Terraria 1.4.5.8
 
+## Dryad Stardew animation continuation
+
+The existing unified town phase now continues an already active Dryad state `24` instead of refusing every update. It retains source horizontal damping and world physics, right-facing pose, the 480-tick timer and return to ordinary idle/cooldown. Source frame timing alternates Dryad frames `19`/`20`, emits emotes `87` for 60 ticks at animation tick `60` and `3` for 90 ticks at tick `150`, and uses standing frame `0` from tick `240` onward. Effects are published after the existing accepted NPC/status/RNG commit; no extra owner or delayed emote queue is introduced.
+
+The [actual AI7 oracle](npc-source-tools.md#dryad-ai7-continuation) covers the complete continuation and subsequent idle RNG. The initiating `HaveDryadDoStardewAnimation` interaction remains separate. Non-Dryad state `24`, state `14` magic combat and wet residents retain their admission fences. This scoped continuation does not change definition counts or `FullVanillaAiParity`.
+
 [Русский](../ru/npc-ai3-ai7-runtime-1458.md) · [Definition census](npc-ai3-ai7-roster-1458.md)
 
 Creation defaults and runtime admission are separate contracts. The starting roster had 133 `CreationDefaultsOnly` identities among the 300 AI3/AI7 identities. Runtime work starts with an explicit connected cohort, verifies the original update and death paths, and keeps every other identity fenced. `FullVanillaAiParity` remains false.

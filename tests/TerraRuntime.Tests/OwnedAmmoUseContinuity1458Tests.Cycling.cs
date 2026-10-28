@@ -13,7 +13,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         var failures=new List<string>();
         foreach(string edition in new[]{"Linux","Windows"})
         {
-            using var resource=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("AmmoCyclingItemCheck"+edition+"1458")!;
+            using var resource=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("OwnedAmmoCyclingCaller"+edition+"1458")!;
             using var zip=new GZipStream(resource,CompressionMode.Decompress);
             using var reader=new StreamReader(zip);
             int cases=0;
@@ -194,7 +194,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
 
     private static JsonDocument ReadCyclingRow(int item,string mode,int gear,int seed)
     {
-        using var resource=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("AmmoCyclingItemCheckLinux1458")!;
+        using var resource=typeof(OwnedAmmoUseContinuity1458Tests).Assembly.GetManifestResourceStream("OwnedAmmoCyclingCallerLinux1458")!;
         using var zip=new GZipStream(resource,CompressionMode.Decompress);using var reader=new StreamReader(zip);
         while(reader.ReadLine() is { } line)
         {
@@ -216,6 +216,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         foreach(var step in row.GetProperty("steps").EnumerateArray())
         {
             int tick=I(step,"tick");
+            SameRandom(step.GetProperty("callerRandomBefore"),f.PlayerRandom,label+" expanded-caller entry/"+tick);
             var check=step.GetProperty("checkFrames").EnumerateArray().Select(x=>Convert.FromHexString(x.GetString()!)).ToArray();
             var sync=step.GetProperty("syncFrames").EnumerateArray().Select(x=>Convert.FromHexString(x.GetString()!)).ToArray();
             var sourceAfter=step.GetProperty("after");

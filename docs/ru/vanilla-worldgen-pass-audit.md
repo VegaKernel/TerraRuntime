@@ -556,7 +556,7 @@ Final Cleanup теперь вызывает ограниченную generation-
 | 71 | Cave Walls | LateStructure | C | CaveWallVariety / regions / RNG |
 | 72 | Jungle Trees | LateStructure | C | tree grower / placement / RNG |
 | 73 | Floating Island Houses | LateStructure | C | IslandHouse / furniture / loot / RNG |
-| 74 | Quick Cleanup | SurfaceFinish | C | `QuickCleanup`: жидкость океана и его песчаные колонки, стены улья и храма, занятая стена и зачистка наклонов: 16 официальных сравнений полного делегата |
+| 74 | Quick Cleanup | SurfaceFinish | C | `QuickCleanup`: жидкость океана и его песчаные колонки, стены улья и храма, занятая стена и зачистка наклонов: 16 официальных сравнений полного делегата. Независимое состояние полублока/склона дополнительно имеет применённое сравнение оригинала с runtime и обычную регрессию; совместимость естественного предшествующего и всего состояния остаётся открытой |
 | 75 | Pots | SurfaceFinish | C | `PotsGraveyardsAndBoulderPiles`: обход колонки, два правила сгона, девятиветочный каскад стиля и след два на два: 8 официальных сравнений полного делегата |
 | 76 | Hellforge | SurfaceFinish | C | fort geometry / placement / RNG |
 | 77 | Spreading Grass | SurfaceFinish | C | `SpreadingGrassOnSurfaceSunflowersEvilsOnSurfaceAndLavaCleanup`: переобтяжка поверхности, обход колонок и зелёный `SpreadGrass`, вообще без общего RNG: 24 официальных сравнения полного делегата |

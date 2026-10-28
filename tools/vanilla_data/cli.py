@@ -195,8 +195,9 @@ def _worldgen(args) -> dict:
 def _behavior(args) -> dict:
     from .behavior_probe import adapter, run_behavior
     if args.action == 'run':
-        return run_behavior(args.command, args.assembly, args.output_dir, args.seed, args.control)
-    trace = adapter(args.command)
+        options = {'profile': args.profile} if args.profile is not None else {}
+        return run_behavior(args.command, args.assembly, args.output_dir, args.seed, args.control, **options)
+    trace = adapter(args.command, args.profile)
     official, official_hash = trace.load_with_hash(args.official, 'official')
     runtime, runtime_hash = trace.load_with_hash(args.runtime, 'runtime')
     result = trace.compare(official, runtime)
@@ -207,6 +208,11 @@ def _behavior(args) -> dict:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
+    source = commands.add_parser('source', help='Offline Roslyn method dependency and state-access inventory')
+    source_actions = source.add_subparsers(dest='action', required=True)
+    source_analyze = source_actions.add_parser('analyze')
+    source_analyze.add_argument('--request', type=Path, required=True)
+    source_analyze.add_argument('--output-dir', type=Path, required=True)
     capture = commands.add_parser('capture', help='Build an isolated probe and invoke pinned official defaults')
     capture.add_argument('--assembly', type=Path, required=True)
     capture.add_argument('--output', type=Path, required=True)
@@ -234,8 +240,9 @@ def main(argv=None) -> int:
     run_pass.add_argument('--output-dir', type=Path, required=True)
     run_pass.add_argument('--seed', type=int, default=1458)
     run_pass.add_argument('--control', choices=('normal', 'omit-pass', 'extra-rng'), default='normal')
-    run_pass.add_argument('--profile', choices=('grass-wall', 'quick-cleanup'), default='grass-wall')
+    run_pass.add_argument('--profile', choices=('grass-wall', 'quick-cleanup', 'quick-cleanup-shapes'), default='grass-wall')
     for domain in ('npc', 'gameplay'):
+        from .behavior_probe import PROFILES
         behavior = commands.add_parser(domain, help='Fresh bounded original/runtime behavior comparison')
         actions = behavior.add_subparsers(dest='action', required=True)
         run = actions.add_parser('run')
@@ -243,10 +250,12 @@ def main(argv=None) -> int:
         run.add_argument('--output-dir', type=Path, required=True)
         run.add_argument('--seed', type=int, default=1458)
         run.add_argument('--control', choices=('normal', 'omit-step', 'extra-rng'), default='normal')
+        run.add_argument('--profile', choices=tuple(PROFILES[domain]))
         compare_behavior = actions.add_parser('compare')
         compare_behavior.add_argument('--official', type=Path, required=True)
         compare_behavior.add_argument('--runtime', type=Path, required=True)
         compare_behavior.add_argument('--report', type=Path)
+        compare_behavior.add_argument('--profile', choices=tuple(PROFILES[domain]))
     for name in ('check', 'emit', 'mutate', 'verify'):
         command = commands.add_parser(name)
         command.add_argument('dataset', choices=[*TARGETS, 'all'] if name != 'emit' else list(TARGETS))
@@ -261,7 +270,10 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     started = time.perf_counter()
     try:
-        if args.command == 'capture':
+        if args.command == 'source':
+            from .source_analysis import analyze
+            report = analyze(args.request, args.output_dir)
+        elif args.command == 'capture':
             report = _capture(args)
         elif args.command == 'worldgen':
             report = _worldgen(args)

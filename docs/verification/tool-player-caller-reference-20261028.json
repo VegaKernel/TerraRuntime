@@ -1,0 +1,163 @@
+{
+  "scope": "Actual original source-derived Player.Update heat IL interval plus matching local role, ResetEffects, CheckIceBreak, CheckCrackedBrickBreak and ItemCheck components. This is not an unmodified whole Player.Update execution. Captured coupled outputs are never manually offset. All six old fixtures remain byte-identical to HEAD. Released companion projects only seven local replayed rows; raw fourteen-row source captures remain private.",
+  "records": [
+    {
+      "family": "frame",
+      "platform": "Linux",
+      "replayedLocalRows": 12,
+      "oldFixtureSha256": "fd415a10ad60fed5cd6e2970acf1bd78197b167e7e89ce9e8fd9aa7832354a7e",
+      "oldFixtureUnchanged": true,
+      "replayedLocalLiteralWireArraysCompared": 264,
+      "heatAdapterSha256": "e7e765fe8944089daf73fb8ae0476032dc09eb89635f69ae815e5c8b67ffdc7f",
+      "heatIl": {
+        "begin": 1862,
+        "finish": 2308,
+        "instructions": 141,
+        "methodSha256": "0e1673b4ba9dcc21cd5c05d02f39a7a4cc6719d36ce03cc76383dc92408867cd",
+        "methodToken": 100666208,
+        "module": "2112d06c-e89d-4f6a-9f65-00cde02e2815",
+        "scope": "Exact unmodified original Player.Update IL heat guard/body only; remaining Update is not executed. Original ResetEffects and ItemCheck are separate calls."
+      },
+      "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "playerSourceSha256": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+      "programSha256": "daf91ad3f1b5ee001a43f069b99672a07980605c470c6e258a3c4953b833a408",
+      "rawCaptureSha256": "b78fb42f4d714c5951e2cdc95501f214fc9bebac7ece34259c0a6bed07b922ce"
+    },
+    {
+      "family": "frame",
+      "platform": "Windows",
+      "replayedLocalRows": 12,
+      "oldFixtureSha256": "fd415a10ad60fed5cd6e2970acf1bd78197b167e7e89ce9e8fd9aa7832354a7e",
+      "oldFixtureUnchanged": true,
+      "replayedLocalLiteralWireArraysCompared": 264,
+      "heatAdapterSha256": "e7e765fe8944089daf73fb8ae0476032dc09eb89635f69ae815e5c8b67ffdc7f",
+      "heatIl": {
+        "begin": 1862,
+        "finish": 2308,
+        "instructions": 141,
+        "methodSha256": "e30064433af0628bb9d90f215c13370de94bbd56a6794d1db45c15ab89eccfce",
+        "methodToken": 100666205,
+        "module": "c61c4c0f-ddd7-4974-9e50-9f9b19d7e1cc",
+        "scope": "Exact unmodified original Player.Update IL heat guard/body only; remaining Update is not executed. Original ResetEffects and ItemCheck are separate calls."
+      },
+      "officialAssemblySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+      "playerSourceSha256": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+      "programSha256": "8899292ee4c05030d22c77c9451f7b67a19fc4ffd9481b0d099f6c91deb21611",
+      "rawCaptureSha256": "b78fb42f4d714c5951e2cdc95501f214fc9bebac7ece34259c0a6bed07b922ce"
+    },
+    {
+      "family": "placement",
+      "platform": "Linux",
+      "replayedLocalRows": 2,
+      "oldFixtureSha256": "a33ef966c721dcec53b5c14e5e3939ec73059bade61f6fdb757e7f392da067e9",
+      "oldFixtureUnchanged": true,
+      "replayedLocalLiteralWireArraysCompared": 240,
+      "heatAdapterSha256": "e7e765fe8944089daf73fb8ae0476032dc09eb89635f69ae815e5c8b67ffdc7f",
+      "heatIl": {
+        "begin": 1862,
+        "finish": 2308,
+        "instructions": 141,
+        "methodSha256": "0e1673b4ba9dcc21cd5c05d02f39a7a4cc6719d36ce03cc76383dc92408867cd",
+        "methodToken": 100666208,
+        "module": "2112d06c-e89d-4f6a-9f65-00cde02e2815",
+        "scope": "Exact unmodified original Player.Update IL heat guard/body only; remaining Update is not executed. Original ResetEffects and ItemCheck are separate calls."
+      },
+      "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "playerSourceSha256": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+      "programSha256": "51ecbcaca2b4a797737977046ba14f3e582fc0cc8c93a8779b6dc7791ccbb29f",
+      "rawCaptureSha256": "0ea86c0af0ec2d684d3ced1a40bb7c6db87d081d73f377908985679654019c5b"
+    },
+    {
+      "family": "placement",
+      "platform": "Windows",
+      "replayedLocalRows": 2,
+      "oldFixtureSha256": "a33ef966c721dcec53b5c14e5e3939ec73059bade61f6fdb757e7f392da067e9",
+      "oldFixtureUnchanged": true,
+      "replayedLocalLiteralWireArraysCompared": 240,
+      "heatAdapterSha256": "e7e765fe8944089daf73fb8ae0476032dc09eb89635f69ae815e5c8b67ffdc7f",
+      "heatIl": {
+        "begin": 1862,
+        "finish": 2308,
+        "instructions": 141,
+        "methodSha256": "e30064433af0628bb9d90f215c13370de94bbd56a6794d1db45c15ab89eccfce",
+        "methodToken": 100666205,
+        "module": "c61c4c0f-ddd7-4974-9e50-9f9b19d7e1cc",
+        "scope": "Exact unmodified original Player.Update IL heat guard/body only; remaining Update is not executed. Original ResetEffects and ItemCheck are separate calls."
+      },
+      "officialAssemblySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+      "playerSourceSha256": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+      "programSha256": "7920711a1dcdcf7518abe49bf7fd46e602d582649fc313e244db9a5b65a6b51f",
+      "rawCaptureSha256": "0ea86c0af0ec2d684d3ced1a40bb7c6db87d081d73f377908985679654019c5b"
+    },
+    {
+      "family": "released",
+      "platform": "Linux",
+      "replayedLocalRows": 7,
+      "oldFixtureSha256": "d7e683847c557b01c5ef6fa538f86de73ded91690133770d66f8c820972426e0",
+      "oldFixtureUnchanged": true,
+      "replayedLocalLiteralWireArraysCompared": 182,
+      "heatAdapterSha256": "e7e765fe8944089daf73fb8ae0476032dc09eb89635f69ae815e5c8b67ffdc7f",
+      "heatIl": {
+        "begin": 1862,
+        "finish": 2308,
+        "instructions": 141,
+        "methodSha256": "0e1673b4ba9dcc21cd5c05d02f39a7a4cc6719d36ce03cc76383dc92408867cd",
+        "methodToken": 100666208,
+        "module": "2112d06c-e89d-4f6a-9f65-00cde02e2815",
+        "scope": "Exact unmodified original Player.Update IL heat guard/body only; remaining Update is not executed. Original ResetEffects and ItemCheck are separate calls."
+      },
+      "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "playerSourceSha256": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+      "programSha256": "350068638d05e8f03d2fe1274d754784cd4f4a384c6867646a9962b076d47ef6",
+      "rawCaptureSha256": "247c5f30d35425102e369dd5190cc233f15015d68eaeb13c3ec51eb49628c2bb"
+    },
+    {
+      "family": "released",
+      "platform": "Windows",
+      "replayedLocalRows": 7,
+      "oldFixtureSha256": "d7e683847c557b01c5ef6fa538f86de73ded91690133770d66f8c820972426e0",
+      "oldFixtureUnchanged": true,
+      "replayedLocalLiteralWireArraysCompared": 182,
+      "heatAdapterSha256": "e7e765fe8944089daf73fb8ae0476032dc09eb89635f69ae815e5c8b67ffdc7f",
+      "heatIl": {
+        "begin": 1862,
+        "finish": 2308,
+        "instructions": 141,
+        "methodSha256": "e30064433af0628bb9d90f215c13370de94bbd56a6794d1db45c15ab89eccfce",
+        "methodToken": 100666205,
+        "module": "c61c4c0f-ddd7-4974-9e50-9f9b19d7e1cc",
+        "scope": "Exact unmodified original Player.Update IL heat guard/body only; remaining Update is not executed. Original ResetEffects and ItemCheck are separate calls."
+      },
+      "officialAssemblySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+      "playerSourceSha256": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+      "programSha256": "eae7b616b0e6256d1f9b4ba86eddf8cd99c730703fadaa9e6e50b264285dc1d8",
+      "rawCaptureSha256": "247c5f30d35425102e369dd5190cc233f15015d68eaeb13c3ec51eb49628c2bb"
+    }
+  ],
+  "newFixtureHashes": {
+    "tool-frame-reset-full-caller-v1.json.gz": "3d494aaa1a20be48af875317ed1f926d5eb969463d7341d99bf50e3bee7a9eab",
+    "placement-normal-switch-full-caller-v1.json.gz": "79a9228a731a984996c164e417c5830d4f670fa9229baf35d827118c7c68089e",
+    "released-tool-full-caller-v1.json.gz": "11cabc8f2ef7fe9621c7e8494d08aed22ff856aeeb5cab6dedc7b067440b8aa1"
+  },
+  "totalReplayedLocalRows": 42,
+  "totalLiteralWireArraysCompared": 1372,
+  "runtimeTests": {
+    "oldProduction": {
+      "xml": ".cache/tool-caller-prefix-proof/focused-03.xml",
+      "total": 3,
+      "failed": 1,
+      "failure": "Fast retained replacement history buffer expected 500, actual 0; existing assertion unchanged."
+    },
+    "fixedProduction": {
+      "xml": ".cache/tool-caller-prefix-proof/focused-04.xml",
+      "total": 3,
+      "failed": 0,
+      "testSeconds": 8.37,
+      "buildWarnings": 0,
+      "buildErrors": 0
+    },
+    "placementHelperSha256OldAndFixed": "177a208e8425a959ea08b1a17f97539483f7b0258766bb13d76ed251c3951189",
+    "scope": "Actual local Test DLL execution only; source data captured from Linux/CoreCLR and Windows/CLR4 x86 official editions on this Windows host. No Linux OS Test DLL run claimed."
+  },
+  "integrationFix": "Only a retained placement history whose full canonical RNG matches the actual local prefix input receives a witness. Continuations require the exact witnessed afterimage at ItemCheck, replay the admitted zero/two Next(2,12) offers in detached branch previews, and preserve all context/world/inventory/entropy guards."
+}

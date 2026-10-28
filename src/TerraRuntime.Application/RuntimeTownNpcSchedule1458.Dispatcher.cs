@@ -150,7 +150,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         meleeCount = 0;
         socialPeer = null;
         if (!VanillaTownNpcFacts1458.TryGetHousingCategory(home.NpcType, out int category) || category != VanillaTownNpcFacts1458.OrdinaryHousingCategory ||
-            before.Simulation.Wet || before.Ai.Ai0 is 14f or 24f ||
+            before.Simulation.Wet || before.Ai.Ai0 == 14f ||
+            before.Ai.Ai0 == 24f && before.TypeIdentity != VanillaNpcIds.Dryad ||
             VanillaWorldCollision.TryGetWetContact(tiles, before.PositionX, before.PositionY,
                 GetWidth(home.NpcType), GetHeight(home.NpcType), out _)) return false;
         if (before.Handle.Slot >= TerrariaNpcTalkCodec.MaximumNpcSlots ||
@@ -256,6 +257,20 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 force = true;
             }
         }
+        else if (ai.Ai0 == 24f && type == VanillaNpcIds.Dryad)
+        {
+            // 1.4.5.8 AI_007: continue an already admitted Stardew animation.
+            // Its initiating interaction and magical projectile attacks are separate owners.
+            ai = ai with { Ai1 = ai.Ai1 - 1f };
+            local = local with { Ai3 = local.Ai3 + 1f };
+            direction = 1;
+            if (ai.Ai1 <= 0f)
+            {
+                ai = ai with { Ai0 = 0f, Ai1 = 480f, Ai2 = 0f };
+                local = local with { Ai1 = 480f };
+                force = true;
+            }
+        }
         else if (ai.Ai0 is 5f or 9f)
         {
             ai = ai with { Ai1 = ai.Ai1 - 1f };
@@ -305,7 +320,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         else return false;
         update = new(source.Type, source.NetId, source.PositionX, source.PositionY,
             source.VelocityX * .8f, source.VelocityY, source.Target, ai,
-            source.Simulation with { DirectionX = direction, DirectionY = -1, LocalAi = local });
+            source.Simulation with { DirectionX = direction, DirectionY = -1, LocalAi = local,
+                SpriteDirection = source.Ai.Ai0 == 24f && type == VanillaNpcIds.Dryad ? 1 : source.Simulation.SpriteDirection });
         return true;
     }
 }

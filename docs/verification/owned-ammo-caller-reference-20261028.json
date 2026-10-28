@@ -1,0 +1,290 @@
+{
+  "schemaVersion": 1,
+  "operation": "owned-ammo-expanded-caller-reference",
+  "status": "actual original source capture qualified; current runtime focused acceptance recorded separately",
+  "caller": "Original local CheckIceBreak -> CheckCrackedBrickBreak -> ItemCheck/PickAmmo/Shoot -> TrySyncingMyPlayer; original ResetEffects/UpdateBuffs/UpdateEquips establish observed neutral manaHeat1; cycling also executes Update_AmmoCycler.",
+  "scope": "Expanded submethod caller on explicit fixed ordinary scene; no whole Player.Update, projectileAI, GUI or Native parity claim. No translated game algorithm or postcapture numeric/packet edits.",
+  "normalProfilesPerEdition": 176,
+  "cyclingProfilesPerEdition": 704,
+  "lastArrowCompanions": 1,
+  "actualProfiles": 1761,
+  "actualPhases": 422640,
+  "completePhysicalRng": "before/after actual caller prefix and final step; cursor plus all56slots",
+  "oldResourcesPreserved": {
+    "tests/TerraRuntime.Tests/Fixtures/AmmoContinuityLinuxFirst1458.jsonl.gz": "35f1177513145bc889ec930020e4b38ca30b4f072b26ea2f58630a4098a10e07",
+    "tests/TerraRuntime.Tests/Fixtures/AmmoContinuityWindowsFirst1458.jsonl.gz": "67196bd3a79b94dc610d7174f9f457bc83bcf4303313e4ad1bb8356e3a59554b",
+    "tests/TerraRuntime.Tests/Fixtures/AmmoCycling/ItemCheck-Linux.jsonl.gz": "3bb96b2f9ecad420efb18a566f2cbd4fc59e96cf05ab1ec2be092f8055f9d823",
+    "tests/TerraRuntime.Tests/Fixtures/AmmoCycling/ItemCheck-Windows.jsonl.gz": "4eaeb7a870e667857d5c637b6c2d65d3f28caa42ec03491948c61a89c6770c36"
+  },
+  "records": [
+    {
+      "originalGenerator": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\next-work-on-c\\authoritative-ammo-continuity-20261026-v1\\immutable-original-scene-v2\\Source\\Linux\\Program.cs",
+      "originalGeneratorSha256": "13fbefc97ca764c7412780c7a8b5b52845d329e2d6ca056ddfd731e5d19069d9",
+      "newGeneratorSha256": "e6f5fdba233e48475f0babcf1635bbc7cc67c6294ff3e694f0048dc5b1b071e2",
+      "officialAssembly": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+      "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "newProjectSha256": "97714022f0e9bba782e2a7fce6735b89cbd58e164b0ccec12ee2ca2b57f9fcb4",
+      "profile": "continuity/Linux",
+      "resource": "tests\\TerraRuntime.Tests\\Fixtures\\OwnedAmmoCallerLinux1458.jsonl.gz",
+      "logicalName": "OwnedAmmoCallerLinux1458",
+      "schema": 4,
+      "profiles": 176,
+      "phases": 42240,
+      "sourceUses": 465,
+      "actualPrefixObservations": 42240,
+      "captureErrors": 0,
+      "rawCaptureSha256": "cd232b48ea10264f55f9b457da6357da006f8653eee9bbef13dc005bdf61e24a",
+      "resourceSha256": "ec7a60d68b54ff173a7ec069fb900ba4674a707198c0d33d433aa40f7f6acd56",
+      "resourceBytes": 5337872,
+      "boxPatterns": [
+        {
+          "seed": 0,
+          "shots": [
+            [
+              0,
+              11
+            ],
+            [
+              32,
+              10
+            ],
+            [
+              64,
+              9
+            ]
+          ]
+        },
+        {
+          "seed": 7,
+          "shots": [
+            [
+              0,
+              12
+            ],
+            [
+              32,
+              12
+            ],
+            [
+              64,
+              11
+            ]
+          ]
+        }
+      ],
+      "projection": "All currently asserted inventory/clocks/literalframes/HitTile501 and physical RNG; unused perphase bank/armor/projectile duplicate projections excluded at capture; raw JSON row bytes preserved exactly in JSONL.",
+      "executedProbeSha256": "42eb91618e2867e93ff65c6ec6dede332cd1641621777e1fa18c3282f3e6f03e",
+      "executedProbeDllClosure": {
+        "Newtonsoft.Json.dll": "22c649f75fce5be7c7ccda8880473b634ef69ecf33f5d1ab8ad892caf47d5a07",
+        "OwnedAmmoContinuitySceneLinuxSourceProbe.dll": "42eb91618e2867e93ff65c6ec6dede332cd1641621777e1fa18c3282f3e6f03e"
+      },
+      "officialAdjacentDlls": {
+        "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+        "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf"
+      }
+    },
+    {
+      "originalGenerator": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\next-work-on-c\\authoritative-ammo-continuity-20261026-v1\\immutable-original-scene-v2\\Source\\Windows\\Program.cs",
+      "originalGeneratorSha256": "1c0a2980ba98e4bfbfc29d70c7cc92ecec418555e1f532cbf25ee22505370775",
+      "newGeneratorSha256": "2000d3f1b0082a89ab199357fcaa732f522a1aa3336e4cd005b3f7b1fc8ae981",
+      "officialAssembly": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Windows\\TerrariaServer.exe",
+      "officialAssemblySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+      "newProjectSha256": "814c30323a594ca22b132afde55347efa05fedaeb2a433f2d410ab15ff64be75",
+      "profile": "continuity/Windows",
+      "resource": "tests\\TerraRuntime.Tests\\Fixtures\\OwnedAmmoCallerWindows1458.jsonl.gz",
+      "logicalName": "OwnedAmmoCallerWindows1458",
+      "schema": 4,
+      "profiles": 176,
+      "phases": 42240,
+      "sourceUses": 465,
+      "actualPrefixObservations": 42240,
+      "captureErrors": 0,
+      "rawCaptureSha256": "208085ae5fbe5ce58957abf5417c7a2e7548d3af91ca15a2e1eb153e955b6739",
+      "resourceSha256": "8f6d01174cc6ee0ba414397d5fd622deb89cbc236da9d1b6eff6226baf7fe7de",
+      "resourceBytes": 5337891,
+      "boxPatterns": [
+        {
+          "seed": 0,
+          "shots": [
+            [
+              0,
+              11
+            ],
+            [
+              32,
+              10
+            ],
+            [
+              64,
+              9
+            ]
+          ]
+        },
+        {
+          "seed": 7,
+          "shots": [
+            [
+              0,
+              12
+            ],
+            [
+              32,
+              12
+            ],
+            [
+              64,
+              11
+            ]
+          ]
+        }
+      ],
+      "projection": "All currently asserted inventory/clocks/literalframes/HitTile501 and physical RNG; unused perphase bank/armor/projectile duplicate projections excluded at capture; raw JSON row bytes preserved exactly in JSONL.",
+      "executedProbeSha256": "98b9643ac3cd1d9eb04c8b4b803e4073c64200b3cfd165e2168c659ddf00e8eb",
+      "executedProbeDllClosure": {
+        "Newtonsoft.Json.dll": "e1e27af7b07eeedf5ce71a9255f0422816a6fc5849a483c6714e1b472044fa9d"
+      },
+      "officialAdjacentDlls": {
+        "ReLogic.Native.dll": "0c132a8967c4cf437b3edbddb00f8e224b989ca8b90252fd965f73dca7f531a0"
+      }
+    },
+    {
+      "originalGenerator": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\next-work-on-c\\ammo-cycling-equipment-20261026-v1\\immutable-original-itemcheck-v1\\Linux\\Program.cs",
+      "originalGeneratorSha256": "2250f33f3d939b3d8efe30cf695adf28371e252f17689c3723e70674a088607e",
+      "newGeneratorSha256": "94cc0c453cc03271b4e71db4ba1cea7d10f99c5834d54b5a03b76b29acf1889a",
+      "officialAssembly": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+      "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "newProjectSha256": "f4655e2d4c0c2a5e047d8aacd5f9f375c1c90f3712a77b8c60dfc1dfdcd66614",
+      "profile": "cycling/Linux",
+      "resource": "tests\\TerraRuntime.Tests\\Fixtures\\OwnedAmmoCyclingCallerLinux1458.jsonl.gz",
+      "logicalName": "OwnedAmmoCyclingCallerLinux1458",
+      "schema": 5,
+      "profiles": 704,
+      "phases": 168960,
+      "sourceUses": 1861,
+      "actualPrefixObservations": 168960,
+      "captureErrors": 0,
+      "rawCaptureSha256": "939734c1f4bb581a380a5ce108e14a84f2e78dc2422aa444250fbf2a08bd8e14",
+      "resourceSha256": "3308da37d0b68656ce90645e8c6e60f8a9ed4af1182a317b073771d332d0ddff",
+      "resourceBytes": 22191060,
+      "boxPatterns": [],
+      "projection": "All currently asserted inventory/clocks/literalframes/HitTile501 and physical RNG; unused perphase bank/armor/projectile duplicate projections excluded at capture; raw JSON row bytes preserved exactly in JSONL.",
+      "executedProbeSha256": "607234ebf276b7408596aac953ba64e6fa79adfcbca543ee0bb0c62dcb6bc735",
+      "executedProbeDllClosure": {
+        "AmmoCyclingItemCheckLinuxSourceProbe.dll": "607234ebf276b7408596aac953ba64e6fa79adfcbca543ee0bb0c62dcb6bc735",
+        "Newtonsoft.Json.dll": "22c649f75fce5be7c7ccda8880473b634ef69ecf33f5d1ab8ad892caf47d5a07"
+      },
+      "officialAdjacentDlls": {
+        "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+        "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf"
+      }
+    },
+    {
+      "originalGenerator": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\next-work-on-c\\ammo-cycling-equipment-20261026-v1\\immutable-original-itemcheck-v1\\Windows\\Program.cs",
+      "originalGeneratorSha256": "7b99db7f686de0064e853678fdeed90c194c923bb9584fcf6eacc4ef428adc93",
+      "newGeneratorSha256": "9640c4ccfee84d9a86b533bd026104ff634d7c38f5f6e6c4adee2ebc1f492116",
+      "officialAssembly": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Windows\\TerrariaServer.exe",
+      "officialAssemblySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+      "newProjectSha256": "c5f5c7087ccfbe341578739c7f90cf8a0243a19dc75affe16fef7d4a314e453a",
+      "profile": "cycling/Windows",
+      "resource": "tests\\TerraRuntime.Tests\\Fixtures\\OwnedAmmoCyclingCallerWindows1458.jsonl.gz",
+      "logicalName": "OwnedAmmoCyclingCallerWindows1458",
+      "schema": 5,
+      "profiles": 704,
+      "phases": 168960,
+      "sourceUses": 1861,
+      "actualPrefixObservations": 168960,
+      "captureErrors": 0,
+      "rawCaptureSha256": "73ed1d39d8114330f0114db2a4649f7abfd149c2e676e6ebc952cb4afd8ea162",
+      "resourceSha256": "f3fdd6918d6da3b376c7e7f0fee4fa3b3cb797bb3270556290714dfbbd36992d",
+      "resourceBytes": 22191082,
+      "boxPatterns": [],
+      "projection": "All currently asserted inventory/clocks/literalframes/HitTile501 and physical RNG; unused perphase bank/armor/projectile duplicate projections excluded at capture; raw JSON row bytes preserved exactly in JSONL.",
+      "executedProbeSha256": "2a55c53c3fc64a7f388c0af3a411cf75c56855652d8f66f1cb2d84963714d0f7",
+      "executedProbeDllClosure": {
+        "Newtonsoft.Json.dll": "e1e27af7b07eeedf5ce71a9255f0422816a6fc5849a483c6714e1b472044fa9d"
+      },
+      "officialAdjacentDlls": {
+        "ReLogic.Native.dll": "0c132a8967c4cf437b3edbddb00f8e224b989ca8b90252fd965f73dca7f531a0"
+      }
+    },
+    {
+      "originalGenerator": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\next-work-on-c\\authoritative-ammo-continuity-20261026-v1\\immutable-original-scene-v2\\Source\\Linux\\Program.cs",
+      "originalGeneratorSha256": "13fbefc97ca764c7412780c7a8b5b52845d329e2d6ca056ddfd731e5d19069d9",
+      "newGeneratorSha256": "54315069bfdb87194b977d35bad74e88f57e2fa3e28c3f84fa874daf8b4bb50e",
+      "officialAssembly": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+      "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "newProjectSha256": "97714022f0e9bba782e2a7fce6735b89cbd58e164b0ccec12ee2ca2b57f9fcb4",
+      "profile": "last-arrow/Linux",
+      "resource": "tests\\TerraRuntime.Tests\\Fixtures\\OwnedAmmoLastArrowCallerLinux1458.jsonl.gz",
+      "logicalName": "OwnedAmmoLastArrowCallerLinux1458",
+      "schema": 4,
+      "profiles": 1,
+      "phases": 240,
+      "sourceUses": 3,
+      "actualPrefixObservations": 240,
+      "captureErrors": 0,
+      "rawCaptureSha256": "a2c790b628c26ed96c6ddd5bc9e9b74d4b18cff93f031b4aee439c34d335d37f",
+      "resourceSha256": "241db8f39bfc02af5cd64930d31e20fb9dc12cf9ee6b6d51963b8d28bfc9bd97",
+      "resourceBytes": 29965,
+      "boxPatterns": [],
+      "projection": "All currently asserted inventory/clocks/literalframes/HitTile501 and physical RNG; unused perphase bank/armor/projectile duplicate projections excluded at capture; raw JSON row bytes preserved exactly in JSONL.",
+      "executedProbeSha256": "9b222d322934c153e4b85056e99ad883c837cb6b9552dc982e5d69e48d35b6dd",
+      "executedProbeDllClosure": {
+        "Newtonsoft.Json.dll": "22c649f75fce5be7c7ccda8880473b634ef69ecf33f5d1ab8ad892caf47d5a07",
+        "OwnedAmmoContinuitySceneLinuxSourceProbe.dll": "9b222d322934c153e4b85056e99ad883c837cb6b9552dc982e5d69e48d35b6dd"
+      },
+      "officialAdjacentDlls": {
+        "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+        "I18N.dll": "d87308179b69ca7879f890278bd2c54d429fc32126fb83dd1d1fecf9847e5172",
+        "I18N.West.dll": "e9054516fe6d75f376f7091b406001404b2ef54d2e52941431ecf54888c68e6c",
+        "Mono.Posix.dll": "27efd3467eb9cd8f1736969a386521cdde7c562292dfc3660e5e17af84e0658d",
+        "Mono.Security.dll": "816a336c0e8c4f49292e7e81d630e4018f1034ccf5ce4e3c7e55e6bc420cf585",
+        "mscorlib.dll": "f3c572c4368aab5bab4ca6bd83d0eecf4027ff153b0149b6b3c3571a59a17984",
+        "System.Configuration.dll": "d4b87c89820a983a9d7a1203ad659da3cc97fc307f5e0802e8217a3b4ba0dfb3",
+        "System.Core.dll": "1c8ecd6347d8cbd7b2426a6d70fa13801cba46f1a1ac1060565b633caa56af46",
+        "System.Data.dll": "a7bafac3416fee9ff71040105a7f7daefd929b9b25db58c94495e5590676d051",
+        "System.dll": "b186cc07d7dc6dbabf1bf2c268d72223d57ee5228400e3e2acbd428fc03e8cdf",
+        "System.Drawing.dll": "ac8a0902494a1fed2911032d7cca37d8d37954d3b551933d38ad30333c7d05d8",
+        "System.Numerics.dll": "9d7feded918a419a44ba265f7434fb43a2560db3763c10479b34155e8aa30d77",
+        "System.Runtime.Serialization.dll": "109de79302a2d2a32fba7fa04fc912ed7d0e4e941c813f091d6b505e490eef89",
+        "System.Security.dll": "b44a83de4277a22d9f18ba2114ae1c6fbf698a606ba8dfc2bee3d604218be33f",
+        "System.Windows.Forms.dll": "0c850cd1d5343599a1c3cb2751e280903fb3668c29ef0aed93e3d84c453beecf",
+        "System.Xml.dll": "3cc6358058255df27898684cef88a527f86b471bc4d79e03e0f8dc25ecdf5e39",
+        "System.Xml.Linq.dll": "291f5a1e50a73682ecf2ea40747422840c10c8974cd81575b5821acceaf73d52",
+        "WindowsBase.dll": "d4db491de06752ee77e2d2090a086bd4b79c7987efdcd9373ed4272df85edbbf"
+      }
+    }
+  ]
+}

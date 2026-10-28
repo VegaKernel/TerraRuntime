@@ -1,8 +1,19 @@
 # Production graph
 
+## Offline Roslyn analyzer, 2026-10-28
+
+Shipping graph remains 15 projects/29 references with no source/build changes from accepted main1c4e5aaa. SourceProbe is an unreferenced developer console project using the installed SDK's Roslyn assemblies through MSBuildToolsPath; it adds no production package or solution project. Python `source analyze` validates the closed bounded request, binds exact read bytes to admitted official metadata, builds privately, and guards explicit source/reference/tool membership and executed DLLs. The backend parses source and embedded managed metadata without executing the original. Inventories expose body-local diagnostics, lexical accesses/calls and opaque alias/dispatch/protocol frontiers; no new runtime owner or translated algorithm is introduced.
+
+## Applied source parity block, 2026-10-28
+
+Shipping graph remains15projects/29edges. QuickCleanup now uses existing canonical shape helpers for independent halfbrick+slope states. The existing town schedule admits only Dryad state24 continuation, retaining dry/ordinary/type/frame provenance and existing emote publication ownership. Local-owner player phases use the exact local heat threshold and the source's two CheckCrackedBrickBreak offers, before dry movement/ItemCheck; remote callers retain their old role semantics. Two bounded footprint reads refuse unrepresented thin-ice/cracked mutations before custody/RNG adoption, preserving established high-velocity cases without an invented speed cap.
+
+Retained placement selection/target branches carry only the witnessed admitted prefix. Witness creation requires the exact previous canonical endpoint; continuation requires the exact afterimage, then replays the same offers on detached previews. Intervening unrelated entropy cannot restore authority. A witness clone is allocated only for a matching retained placement history, not ordinary players. No new random owner, payment ledger, production reflection or dependency was added. Existing ownership/rollback and literal-wire assertions remain. Versioned reference companions preserve oldsubmethod captures and record their wider source caller explicitly; fullgate is required for shared testresource changes.
+
 ## Retained worldgen protected regions, 2026-10-28
 
 The existing isolated `Workspace` now carries accepted HiveBiome protected rectangles (already expanded by source padding five) and JungleShrines protected rectangles (raw source areas) from their respective earlier generation passes to `CaveHousePlacement1458`. Each producer publishes a detached bounded array after its own pass; the cave-house owner only reads it during pre-write admission. This joins the existing retained Shimmer rectangle without adding a shipping project, dependency, RNG owner or persisted world field. Marble/Granite AddStructure regions are deliberately not treated as protected. Absent regions remain empty; no alternate structure registry is introduced.
+
 ## Three-domain offline execution, 2026-10-28
 
 Shipping graph remains15projects/29edges with unchanged production inputs. PassProbe extends the existing WorldGeneration reference with a named QuickCleanup profile. New offline NpcProbe references Core and GameplayProbe references Gameplay; both link the existing UnifiedRandom source. No production project references a probe. Reflection, original managed assembly loading and fixture mutation stay in separate developer processes. Shared behavior_probe.py owns fresh-build/process/provenance/source/DLL guards for both behavior domains; domain modules own strict complete state schemas and comparison. CLI retains separate run and supplied-observation compare commands.

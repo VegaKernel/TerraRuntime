@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../../src/TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
+    <ProjectReference Include="../../../src/TerraRuntime.Application/TerraRuntime.Application.csproj" />
     <Compile Include="../../../src/TerraRuntime.Core/VanillaUnifiedRandom1458.cs" Link="RuntimeRandom.cs" />
   </ItemGroup>
 </Project>

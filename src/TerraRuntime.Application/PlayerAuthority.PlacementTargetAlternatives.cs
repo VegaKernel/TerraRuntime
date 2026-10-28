@@ -20,7 +20,7 @@ internal sealed partial class PlayerAuthority
             return selectionAlternative;
         var old = plan.BeforeItem?.ToolUse?.PlacementAlternative;
         bool retain = old is not null && old.HistoryEpoch == tools.PlacementHistoryEpoch &&
-            old.MatchesCanonical(beforeCommon) && IsPlacementAlternativeContext(plan, old, world);
+            MatchesPlacementCallerPrefix(plan, old, beforeCommon) && IsPlacementAlternativeContext(plan, old, world);
         var reads = selectionAlternative?.Reads ?? (retain ? old!.Reads : sourceWorld.CreateToolReadPreparation());
         if (reads is null || !reads.IsCurrent) return selectionAlternative;
         var targets = new List<RuntimePlayerPlacementTarget1458>();
@@ -29,6 +29,7 @@ internal sealed partial class PlayerAuthority
             {
                 if (!reach.Contains(pose, prior.X, prior.Y)) continue;
                 var preview = prior.CreatePreview();
+                ReplayPlacementCallerPrefix(plan, old!, preview);
                 int roll = preview.Next(3);
                 var localFacts = facts with { LocalOwner = true, SelectionBuffered = false,
                     LastUseSuccess = tools.LastUseSuccess, AnimationMultiplier = tools.PlacementSpeed };

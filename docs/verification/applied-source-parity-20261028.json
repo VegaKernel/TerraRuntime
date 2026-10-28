@@ -1,0 +1,2304 @@
+{
+  "schemaVersion": 1,
+  "kind": "applied-source-parity-acceptance",
+  "date": "2026-10-28",
+  "accepted": true,
+  "baseCommit": "16debef5ae7d9487dffa295a3e513cac05db80d0",
+  "concurrentMain": "9cdda13a94f00b29d34985958efdfd5b0fd65f73",
+  "testedMerge": "6f934ee8",
+  "scope": "Independent-shape QuickCleanup; Dryad-only state24 continuation; local-owner heat and cracked-brick caller RNG; witnessed retained placement histories. Includes concurrent Hive/Shrine protection. No whole vanilla parity claim.",
+  "runtimeGate": {
+    "accepted": true,
+    "candidate": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03",
+    "configSha256": "d4141813a618c052ed778b04fee6874235e3a9aaee10f8bbd77fa48db1557ffe",
+    "discoveredMethods": 5414,
+    "dllManifestSha256": "b307577dbafce6109c5a64b0bbbf55257a22f7a6562cd89925e01189f2984169",
+    "executedDlls": 158,
+    "finalGuard": {
+      "accepted": true,
+      "changedManifests": [],
+      "dllDifferences": [],
+      "executedDllCount": 158,
+      "sourceDifferences": [],
+      "sourceInputCount": 4020
+    },
+    "runnerPath": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\run-gates.py",
+    "runnerSha256": "9c1464325b222f30cf2777ee93961ab221d748100c1eb372599df7dfe13b45e1",
+    "scope": "Current-source warnings-as-errors build, exact focused classes, mandatory fast, and complete policy-selected affected matrices from explicitly configured shipping paths. Developer tooling is qualified separately. Full runs occur only if affected selection requires the existing conservative policy fallback. No Native/Linux/GUI/fresh TCP acceptance is implied.",
+    "selectionScope": [
+      "src/TerraRuntime.Application/PlayerAuthority.LocalTilePrefix.cs",
+      "src/TerraRuntime.Application/PlayerAuthority.PlacementAlternative.cs",
+      "src/TerraRuntime.Application/PlayerAuthority.PlacementTargetAlternatives.cs",
+      "src/TerraRuntime.Application/PlayerAuthority.RemoteItemPhase.cs",
+      "src/TerraRuntime.Application/RuntimeTownNpcSchedule1458.Dispatcher.cs",
+      "src/TerraRuntime.Application/RuntimeTownNpcSchedule1458.Frames.cs",
+      "src/TerraRuntime.Gameplay/Players/VanillaSelectedConsumable1458.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/HiveBiome1458.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/JungleStructurePipeline1458.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/QuickCleanupPass1458.cs",
+      "src/TerraRuntime.WorldGeneration/Workspace.cs",
+      "tests/TerraRuntime.Tests/CaveHousePriorProtection1458Tests.cs",
+      "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCallerLinux1458.jsonl.gz",
+      "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCallerWindows1458.jsonl.gz",
+      "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCyclingCallerLinux1458.jsonl.gz",
+      "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCyclingCallerWindows1458.jsonl.gz",
+      "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoLastArrowCallerLinux1458.jsonl.gz",
+      "tests/TerraRuntime.Tests/Fixtures/placement-normal-switch-full-caller-v1.json.gz",
+      "tests/TerraRuntime.Tests/Fixtures/released-tool-full-caller-v1.json.gz",
+      "tests/TerraRuntime.Tests/Fixtures/tool-frame-reset-full-caller-v1.json.gz",
+      "tests/TerraRuntime.Tests/GemStaffBoundaryChecks.cs",
+      "tests/TerraRuntime.Tests/LocalWeaponClockRuntimeChecks1458.cs",
+      "tests/TerraRuntime.Tests/OwnedAmmoUseContinuity1458Tests.Adversarial.cs",
+      "tests/TerraRuntime.Tests/OwnedAmmoUseContinuity1458Tests.Cycling.cs",
+      "tests/TerraRuntime.Tests/OwnedAmmoUseContinuity1458Tests.cs",
+      "tests/TerraRuntime.Tests/OwnedBowPlayerUpdateSource1458Tests.cs",
+      "tests/TerraRuntime.Tests/QuickCleanupIndependentShape1458Tests.cs",
+      "tests/TerraRuntime.Tests/RuntimeDryadStardewContinuation1458Tests.cs",
+      "tests/TerraRuntime.Tests/SourceBackedJungleStructures1458Tests.cs",
+      "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj",
+      "tests/TerraRuntime.Tests/ToolPlayerFrameResetChecks.cs",
+      "tests/TerraRuntime.Tests/ToolPlayerPlacementRuntimeChecks.cs",
+      "tests/TerraRuntime.Tests/ToolPlayerReleasedPickSourceChecks.cs",
+      "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs"
+    ],
+    "sourceInputs": 4020,
+    "sourceManifestSha256": "0dd98687b7695bc17fc862351ec12df7144e043b68e7458f904e7d8093fcdc3e",
+    "stages": {
+      "affected": {
+        "accepted": true,
+        "afterGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 158,
+          "sourceDifferences": [],
+          "sourceInputCount": 4020
+        },
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-maxThreads",
+          "4",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\affected\\tests.xml"
+        ],
+        "executed": true,
+        "exitCode": 0,
+        "logSha256": "e8cdd923acabdbe7ce7c3f00770a14fc5ac6446d45cf61483815caa6ab30a13d",
+        "methodAudit": {
+          "accepted": true,
+          "counts": {
+            "errors": 0,
+            "failed": 0,
+            "not-run": 0,
+            "passed": 1566966,
+            "skipped": 0,
+            "total": 1566966
+          },
+          "executedMethods": 5414,
+          "missingMethods": [],
+          "plannedMethods": 5414,
+          "unplannedMethods": [],
+          "xmlSha256": "22035d1727cd53b0bb8e3db2aaa049b351aa854c078d1780ea71de7f091c024d"
+        },
+        "planSha256": "a2fc8e1a334251ac835ab0f3aee60f16a80fbd6a16997cf20882533bd133bcb7",
+        "tests": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 1566966,
+          "skipped": 0,
+          "total": 1566966
+        },
+        "wallSeconds": 1371.9761331999907
+      },
+      "build": {
+        "accepted": true,
+        "command": [
+          "dotnet",
+          "build",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\TerraRuntime.Tests.csproj",
+          "-c",
+          "Release",
+          "-warnaserror",
+          "-v",
+          "quiet"
+        ],
+        "exitCode": 0,
+        "logSha256": "afdea82a636361c90843eed6f11e3c98a09889be80f2878ea2b1f7872ba4a7f9",
+        "sourceGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 0,
+          "sourceDifferences": [],
+          "sourceInputCount": 4020
+        },
+        "wallSeconds": 28.858938900055364
+      },
+      "fast": {
+        "accepted": true,
+        "afterGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 158,
+          "sourceDifferences": [],
+          "sourceInputCount": 4020
+        },
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-maxThreads",
+          "4",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\fast\\tests.xml",
+          "-method-",
+          "TerraRuntime.Tests.OwnedAmmoUseContinuity1458Tests.Original_four_accessories_own_repeated_paid_selection_and_entropy",
+          "-method-",
+          "TerraRuntime.Tests.BannerClosest1458Tests.Actual_banner_boundary_matches_original_squared_float_body_dead_ghost_and_ties",
+          "-method-",
+          "TerraRuntime.Tests.BeeRawAi0051458Tests.Original_AI005_and_UpdateNPC_use_None_player_or_non_bee_NPC_targets",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicAi1458Tests.Complete_original_AI_matches_all_phases_and_random_checkpoint",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicAi1458Tests.Default_reflection_predicate_matches_every_original_projectile_identity",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicAi1458Tests.Original_two_slot_reflection_has_exact_old_velocity_and_nonfinite_source_outcomes",
+          "-method-",
+          "TerraRuntime.Tests.BigMimicWorldExecution1458Tests.Retained_whole_AI_then_dry_physics_matches_original_UpdateNPC",
+          "-method-",
+          "TerraRuntime.Tests.BlueSlimeSpawnDefaults1458Tests.Pure_defaults_match_actual_original_spawn_overrides",
+          "-method-",
+          "TerraRuntime.Tests.BlueSlimeSpawnDefaults1458Tests.Store_materializes_owned_body_combat_money_and_source_creation_rng",
+          "-method-",
+          "TerraRuntime.Tests.BossRecovery1458Tests.Complete_original_recovery_and_seasonal_materialization_matches",
+          "-method-",
+          "TerraRuntime.Tests.BossRecoveryPipeline1458Tests.Recovery_suffix_matches_original_post_imported_rng_and_all_seasonal_live_bodies",
+          "-method-",
+          "TerraRuntime.Tests.BuriedChest1458Tests.Chest_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.BuriedChestsPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.CasterSpawnTests.Creation_matches_original_difficulty_world_progression_and_head_presence",
+          "-method-",
+          "TerraRuntime.Tests.CreateOceanCaves1458Tests.Production_pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Committed_caster_matches_original_AI_children_and_RNG",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Five_calls_preserve_queued_teleport_marker_and_ordered_RNG",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Shared_firing_rectangle_matches_original_fractional_edges",
+          "-method-",
+          "TerraRuntime.Tests.DarkCasterAiTests.Teleport_query_matches_original_geometry_players_and_RNG",
+          "-method-",
+          "TerraRuntime.Tests.DungeonFurniture1458Tests.Furniture_tiles_dressers_and_random_stream_match_original",
+          "-method-",
+          "TerraRuntime.Tests.DungeonLegacyEntrance1458Tests.Production_entrance_renderer_matches_official_building_and_metadata",
+          "-method-",
+          "TerraRuntime.Tests.DungeonLegacyHall1458Tests.Hall_matches_official_full_cells_endpoint_and_direction",
+          "-method-",
+          "TerraRuntime.Tests.DungeonPitProtection1458Tests.Protected_pit_gates_consumers_but_not_wall_variants",
+          "-method-",
+          "TerraRuntime.Tests.DungeonPitTraps1458Tests.Ordinary_early_feature_matches_all_cells_bounds_flooding_and_shared_random",
+          "-method-",
+          "TerraRuntime.Tests.DungeonPlatforms1458Tests.Building_platforms_and_shelf_objects_match_original_tiles_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.DungeonProductionPrefix1458Tests.Complete_pass_matches_official_cells_chests_anchor_and_rng_on_real_prefix",
+          "-method-",
+          "TerraRuntime.Tests.DungeonSurfaceBuildings1458Tests.Production_renderer_matches_original_whole_building",
+          "-method-",
+          "TerraRuntime.Tests.DungeonSurfaceFeatures1458Tests.Spikes_walls_and_continuation_match_original",
+          "-method-",
+          "TerraRuntime.Tests.DungeonTraps1458Tests.Trap_search_objects_and_random_stream_match_original",
+          "-method-",
+          "TerraRuntime.Tests.DungeonWholePass1458Tests.Complete_ordinary_dungeon_matches_original",
+          "-method-",
+          "TerraRuntime.Tests.EarlyTerrainReference1458Tests.Production_prefix_matches_each_official_stage",
+          "-method-",
+          "TerraRuntime.Tests.EclipseProjectile1458Tests.Ai_matches_original_server",
+          "-method-",
+          "TerraRuntime.Tests.EclipseProjectile1458Tests.Full_update_matches_original_motion_and_liquid_history",
+          "-method-",
+          "TerraRuntime.Tests.FallenLogPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.FloatingEyeAi1458Tests.Original_canonical_and_negative_eye_defaults_scale_before_variant_stats",
+          "-method-",
+          "TerraRuntime.Tests.FloatingEyeAi1458Tests.Whole_original_AI_keeps_source_state_order_actual_bodies_and_shared_random",
+          "-method-",
+          "TerraRuntime.Tests.FloatingEyeWorldExecution1458Tests.Retained_AI_physics_frame_and_CheckActive_match_original_world_tick",
+          "-method-",
+          "TerraRuntime.Tests.FlowerAndMushroomPatchPass1458Tests.Passes_match_official",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLoot1458Tests.All_seventeen_predicates_and_inline_materialization_match_original",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLoot1458Tests.Original_item_money_heal_callbacks_preserve_all_nineteen_global_checkpoints",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLoot1458Tests.Sparse_defaults_and_natural_prefix_match_original_without_item_use_admission",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLootDeath1458Tests.Actual_lethal_commit_matches_original_global_specific_money_healing_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLootOwnership1458Tests.Generalized_metadata_preserves_actual_positive_npc_boss_and_face_fields",
+          "-method-",
+          "TerraRuntime.Tests.GlobalNpcLootOwnership1458Tests.Original_calendar_methods_with_only_date_input_substituted_match_leap_year_and_forced_flags",
+          "-method-",
+          "TerraRuntime.Tests.HiveSlimeAi1458Tests.Actual_AI001_Hive_producer_matches_LOS_capacity_difficulty_and_shared_stream",
+          "-method-",
+          "TerraRuntime.Tests.JunglePlantsPass1458Tests.Jungle_half_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.Level1SandboxRuntimeTests.Sandbox_operations_create_vanilla_large_world_through_the_same_request_path_as_ui",
+          "-method-",
+          "TerraRuntime.Tests.Level1SandboxRuntimeTests.Sandbox_operations_create_vanilla_small_world_through_the_same_request_path_as_ui",
+          "-method-",
+          "TerraRuntime.Tests.LivingTreeGrower1458Tests.Tree_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.LongMossPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.MechSpawners1458Tests.Original_full_BlueSlime_chain_keeps_global_before_contents_and_Gel",
+          "-method-",
+          "TerraRuntime.Tests.MechSpawners1458Tests.Original_global_offers_materialization_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.MechSpawnersDeath1458Tests.Actual_lethal_commit_matches_original_global_contents_specific_money_healing_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.MiningInventoryRegressionTests.More_than_two_world_item_pools_of_mining_switching_tools_and_literal_pickups_keep_working",
+          "-method-",
+          "TerraRuntime.Tests.MoonLordHandTests.State_and_projectiles_match_original_hand_AI",
+          "-method-",
+          "TerraRuntime.Tests.MoonLordHeadTests.Head_state_and_projectiles_match_original",
+          "-method-",
+          "TerraRuntime.Tests.MoonLordIntroductionTests.Original_server_initialization_intro_and_return_match_through_spawn_executor",
+          "-method-",
+          "TerraRuntime.Tests.MossPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.MotherSlimeHitEffect1458Tests.Original_birth_fields_live_body_capacity_and_next_random_match",
+          "-method-",
+          "TerraRuntime.Tests.MothronWorldExecution1458Tests.Accepted_AI_and_collision_match_original_complete_UpdateNPC",
+          "-method-",
+          "TerraRuntime.Tests.NewNpcRandomTests.Vanilla_creation_matches_original_substitution_stats_and_RNG_even_when_full",
+          "-method-",
+          "TerraRuntime.Tests.NpcDeathPrelude1458Tests.Every_original_net_identity_retains_source_credit_and_banner",
+          "-method-",
+          "TerraRuntime.Tests.NpcDeathPrelude1458Tests.Every_original_statue_default_is_preserved",
+          "-method-",
+          "TerraRuntime.Tests.NpcDeathPreludeWire1458Tests.Announcement_identity_and_threshold_match_original_banner_inverse",
+          "-method-",
+          "TerraRuntime.Tests.NpcHealingLoot1458Tests.Healing_matches_original_physical_drops_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.NpcLootColor1458Tests.Actual_defaults_CommonCode_and_recorded_color_packet_match",
+          "-method-",
+          "TerraRuntime.Tests.NpcMoney1458Tests.Exact_original_coin_materialization_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.NpcMoney1458Tests.Spawn_value_matches_original_SetDefaults_and_source_strength",
+          "-method-",
+          "TerraRuntime.Tests.NpcScalingArithmeticTests.Creation_profiles_match_original_platform_arithmetic",
+          "-method-",
+          "TerraRuntime.Tests.NpcSlotAllocationTests.Private_allocation_with_nonzero_start_matches_original_for_every_type_and_slot_arrangement",
+          "-method-",
+          "TerraRuntime.Tests.NpcSpecificLoot1458Tests.Original_item_money_heal_callbacks_preserve_all_nineteen_global_checkpoints",
+          "-method-",
+          "TerraRuntime.Tests.NpcUndeadHitEffects1458Tests.Actual_strike_routes_preserve_dedicated_hit_effect_life_and_shared_rng",
+          "-method-",
+          "TerraRuntime.Tests.OasisBasin1458Tests.Placement_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.OptimizedCanonical1458RegressionTests.Optimized_canonical_small_seed_1458_satisfies_landmark_budget",
+          "-method-",
+          "TerraRuntime.Tests.OptimizedJungleEcologyV2Tests.Canonical_medium_builds_distinct_queen_bee_ready_hives_and_mushroom_pockets",
+          "-method-",
+          "TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_creates_canonical_small_world_without_crashing",
+          "-method-",
+          "TerraRuntime.Tests.PilePass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Actual_animated_remote_crystal_and_fruit_use_is_owner_only_and_does_not_invalidate_context",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Continuous_remote_Update_retains_exact_derived_maximum_duplicates_and_outside_order",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Dead_buff_metadata_matches_all_original_identities",
+          "-method-",
+          "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Genuine_Main_player_phase_sequence_preserves_dead_field_clears_nonpersistent_buffs_and_recovers",
+          "-method-",
+          "TerraRuntime.Tests.PlayerLuckFactors1458Tests.Calculation_matches_original_Player",
+          "-method-",
+          "TerraRuntime.Tests.PlayerSourceBornBase1458Tests.Actual_constructor_health_and_authenticated_pre_post_spawn_packets_preserve_phase_provenance",
+          "-method-",
+          "TerraRuntime.Tests.PlayerZones1458Tests.Source_biome_priority_and_depth_are_not_inferred_from_terrain",
+          "-method-",
+          "TerraRuntime.Tests.PotScatterPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.PrimeMeleeAiTests.Melee_arm_state_projectiles_and_rng_match_original",
+          "-method-",
+          "TerraRuntime.Tests.PrimePhaseTests.Head_phase_restores_spawn_baselines_and_matches_original_motion",
+          "-method-",
+          "TerraRuntime.Tests.PrimePhaseTests.Prime_and_arms_creation_matches_original",
+          "-method-",
+          "TerraRuntime.Tests.PrimeRangedAiTests.Ranged_arm_state_projectiles_and_rng_match_original",
+          "-method-",
+          "TerraRuntime.Tests.PyramidBuilder1458Tests.Geometry_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.PyramidBuilder1458Tests.Wedge_walls_entry_and_staircase_match_official",
+          "-method-",
+          "TerraRuntime.Tests.RawFloatingEye1458Tests.Original_NewNPC_raw_target_private_phase_and_full_UpdateNPC_are_preserved",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeNpcImmortalKnockback1458Tests.Immortal_strike_preserves_life_and_original_weak_or_strong_knockback",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeNpcServerStrikeWire1458Tests.Accepted_server_strike_broadcasts_original_raw_damage_before_final_npc_state",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.All_source_default_boss_flags_and_face_emotes_match_independent_original",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.Original_progression_tiers_weighted_candidates_and_real_Next1_draws_match",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.Real_two_resident_phases_match_original_emitter_lifetime_wire_and_next_rng_or_reject_unknown_context",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownDebuffPair1458Tests.Fresh_observed_life_after_player_phase_then_two_outer_NPC_updates_match_source",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownDebuffTopics1458Tests.Actual_ProbeDebuffs_order_and_short_circuit_next_rng_match",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownItemsSocial1458Tests.Fresh_observed_life_after_health_phase_then_pair_matches_original_context_wire_clocks_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcContact1458Tests.Original_contact_pins_damage_ai_reset_immunity_same_tick_physics_and_random",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcContactVfx1458Tests.Original_pre_ai_visual_offer_and_town_vitals_are_owned",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcDangerDispatcher1458Tests.Source_common_phase_pins_danger_body_combat_home_physics_and_next_random",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcDebuffOuter1458Tests.Genuine_outer_UpdateNPC_continuous_flags_expiry_dot_ai_physics_and_rng_match",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcSocialNurse1458Tests.Source_Nurse_admission_active_13_shot_and_outer_frame_match_original",
+          "-method-",
+          "TerraRuntime.Tests.RuntimeTownNpcSocialNurse1458Tests.Source_two_resident_AI_and_outer_frames_keep_peer_clock_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.SandboxWorkerTests.Completed_startup_race_does_not_abandon_unobserved_pipe_faults",
+          "-method-",
+          "TerraRuntime.Tests.SandboxWorkerTests.Heartbeat_keeps_a_runtime_alive_without_foreground_probes_and_stops_cleanly",
+          "-method-",
+          "TerraRuntime.Tests.ServerRuntimeNpcDamageIntegrationTests.Lethal_expert_king_slime_hit_runs_live_loot_death_and_instanced_lease_pipeline",
+          "-method-",
+          "TerraRuntime.Tests.ServerRuntimeServerPlayerPerformanceTests.Controlled_physics_ticks_are_deterministic_and_stay_within_allocation_gate",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHandPhaseTests.Hand_phase_matches_original_with_frozen_parent",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHandPhaseTests.Parent_lifecycle_matches_original_and_publishes_only_terminal_despawn",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHandPhaseTests.RedHat_hand_phase_matches_original_with_frozen_parent",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHeadEffectsTests.Head_state_effects_and_RNG_match_original",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronHeadEffectsTests.Summoning_terrain_cap_and_full_table_match_original",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronPhaseTests.Head_phase_restores_spawn_baselines_and_matches_original_motion",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronSkullSpawnTests.Accepted_head_spawns_original_projectile_and_preserves_RNG",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronSkullSpawnTests.Aim_matches_both_original_platforms_bit_for_bit",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronStrikeTests.Authoritative_strike_matches_original",
+          "-method-",
+          "TerraRuntime.Tests.SkeletronStrikeTests.Large_authoritative_strike_matches_original_double_defense_math",
+          "-method-",
+          "TerraRuntime.Tests.SlimeBeeRemixSpawnDefaults1458Tests.Pure_defaults_match_actual_original_spawn_overrides",
+          "-method-",
+          "TerraRuntime.Tests.SlimeBeeRemixSpawnDefaults1458Tests.Store_materializes_owned_body_combat_money_and_source_creation_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimeBornTarget1458Tests.Actual_birth_and_four_updates_keep_pre_refresh_selection_and_source_stream",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedDeath1458Tests.Actual_lethal_ingress_matches_original_imported_money_heals_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedGenerator1458Tests.Dedicated_server_generator_matches_original_full_item_table_and_next_draw",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedInitialization1458Tests.Complete_original_AI001_selection_state_children_and_stream_match",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Defaults_and_natural_prefix_match_original",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Direct_rule_materializes_original_stack_body_velocity_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Global_content_precedes_complete_type_specific_original_chain",
+          "-method-",
+          "TerraRuntime.Tests.SlimeNoActiveLifecycle1458Tests.Original_birth_private_AI_and_full_first_update_keep_raw_target_and_atomic_lifecycle",
+          "-method-",
+          "TerraRuntime.Tests.SlimerDeath1458Tests.Actual_lethal_commit_matches_original_global_specific_money_healing_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.SlimerSpawn1458Tests.Actual_dedicated_HitEffect_matches_private_birth_reset_motion_and_next_random",
+          "-method-",
+          "TerraRuntime.Tests.SlimerSpawn1458Tests.Source_reset_defaults_match_genuine_Framework_arithmetic",
+          "-method-",
+          "TerraRuntime.Tests.SpeleothemPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.SphereAiTests.Committed_AI_matches_original_state_and_complete_RNG_continuation",
+          "-method-",
+          "TerraRuntime.Tests.SurfaceChestsPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.TerrainReference1458Tests.Production_terrain_matches_official_cells_liquid_lines_and_next_rng",
+          "-method-",
+          "TerraRuntime.Tests.TerrariaSocketConnectionTests.A_departed_peer_cannot_hold_the_connection_open_by_never_draining_its_backlog",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLoot1458Tests.Original_dedicated_hit_then_item_money_heal_callbacks_preserve_source_order",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLoot1458Tests.Sparse_defaults_and_natural_prefix_match_original_without_item_use_admission",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLootContextOwnership1458Tests.Source_selected_saved_world_and_extra_gel_contexts_reach_the_live_death_owner",
+          "-method-",
+          "TerraRuntime.Tests.UndeadLootDeath1458Tests.Actual_admitted_actor_death_matches_original_hit_items_money_heals_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.UnderwaterChestsPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.UnderworldLava1458Tests.Real_underworld_pass_restores_lava_before_later_settling",
+          "-method-",
+          "TerraRuntime.Tests.VanillaCreatureFromDeepAi1458Tests.Whole_original_AI_matches_forms_steering_exit_and_difficulty",
+          "-method-",
+          "TerraRuntime.Tests.VanillaEclipseFightersAi1458Tests.Whole_AI_and_projectile_tail_match_original_server",
+          "-method-",
+          "TerraRuntime.Tests.VanillaEclipseGroundFightersAi1458Tests.Complete_AI_and_terrain_match_original_including_finite_rejection",
+          "-method-",
+          "TerraRuntime.Tests.VanillaGhostHoverAi22Tests1458.Source_idle_AI_and_optional_outer_physics_match",
+          "-method-",
+          "TerraRuntime.Tests.VanillaMothronWholeAi1458Tests.Complete_source_AI_fields_peer_mutation_spawn_and_next_random_match",
+          "-method-",
+          "TerraRuntime.Tests.VanillaPsychoAi1458Tests.Complete_AI_state_matches_original_dedicated_server",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_passes_preserve_registered_chest_anchors",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_seed1458_world_survives_real_post_load_liquid_preparation",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_seed_1458_rejects_clouds_as_precalculated_dungeon_surface",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_generation_produces_valid_metadata_and_terrain",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_regression_seeds_finalize_without_world_corruption",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_underworld_retains_forts_connections_and_house_hellforges",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_world_retains_connected_rideable_rail_frames",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Ordinary_crimson_runs_placement_and_downstream_passes_without_coordinate_fallback",
+          "-method-",
+          "TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_accepts_canonical_generated_world",
+          "-method-",
+          "TerraRuntime.Tests.WebsAndHoneyPass1458Tests.Pass_matches_official",
+          "-method-",
+          "TerraRuntime.Tests.WorkerPoolProcessTests.Worker_lifecycle_survives_isolated_process_conditions",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemOwnerFacts1458Tests.Every_item_pickup_rule_matches_independent_original_defaults",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Generation_owned_equipment_projection_matches_original_UpdateEquips_and_FindOwner",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Real_client21_creation_matches_actual_original_body_owner_wire_and_rng",
+          "-method-",
+          "TerraRuntime.Tests.WorldItemSourceAllocation1458Tests.Every_original_item_keeps_allocation_defaults",
+          "-method-",
+          "TerraRuntime.Tests.WorldLateBossProgressionPersistenceTests.Late_boss_save_matches_official_header_and_preserves_other_bytes",
+          "-method-",
+          "TerraRuntime.Tests.WorldStartupPreparationTests.Generated_vanilla_world_reaches_actual_primary_startup_after_liquid_preparation"
+        ],
+        "executed": true,
+        "exitCode": 0,
+        "logSha256": "c3e8eda32cc94e9c7cd7bfff86a1a0679473cdded94a37c57a33a7ad9f7fa1a0",
+        "methodAudit": {
+          "accepted": true,
+          "counts": {
+            "errors": 0,
+            "failed": 0,
+            "not-run": 0,
+            "passed": 25552,
+            "skipped": 0,
+            "total": 25552
+          },
+          "executedMethods": 5247,
+          "missingMethods": [],
+          "plannedMethods": 5247,
+          "unplannedMethods": [],
+          "xmlSha256": "6a8be77caa5d0483262342574f0c6a796e19339b4a71316328e5f54d0fd0aa0a"
+        },
+        "planSha256": "f1480c00541c84ea8b77e6b921d02bc818d766074df50805af22e23c1bf9dbf4",
+        "tests": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 25552,
+          "skipped": 0,
+          "total": 25552
+        },
+        "wallSeconds": 456.7946756000165
+      },
+      "focused": {
+        "accepted": true,
+        "afterGuard": {
+          "accepted": true,
+          "changedManifests": [],
+          "dllDifferences": [],
+          "executedDllCount": 158,
+          "sourceDifferences": [],
+          "sourceInputCount": 4020
+        },
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+          "-noLogo",
+          "-noColor",
+          "-maxThreads",
+          "4",
+          "-xml",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\focused.xml",
+          "-class",
+          "TerraRuntime.Tests.QuickCleanupIndependentShape1458Tests",
+          "-class",
+          "TerraRuntime.Tests.QuickCleanupPass1458Tests",
+          "-class",
+          "TerraRuntime.Tests.SourceBackedSurfaceFinish1458Tests",
+          "-class",
+          "TerraRuntime.Tests.RuntimeDryadStardewContinuation1458Tests",
+          "-class",
+          "TerraRuntime.Tests.RuntimeTownNpcLocomotion1458Tests",
+          "-class",
+          "TerraRuntime.Tests.RuntimeTownNpcConversation1458Tests",
+          "-class",
+          "TerraRuntime.Tests.OwnedBowPlayerUpdateSource1458Tests",
+          "-class",
+          "TerraRuntime.Tests.PlayerItemPhaseOwnership1458Tests",
+          "-class",
+          "TerraRuntime.Tests.SelectedConsumablePhases1458Tests",
+          "-class",
+          "TerraRuntime.Tests.ToolPlayer.OwnedToolFrameReset1458Tests",
+          "-class",
+          "TerraRuntime.Tests.ToolPlayer.OwnedLocalPlacementAuthority1458Tests",
+          "-class",
+          "TerraRuntime.Tests.ToolPlayer.OwnedReleasedToolPoundContinuity1458Tests",
+          "-class",
+          "TerraRuntime.Tests.CaveHousePriorProtection1458Tests",
+          "-class",
+          "TerraRuntime.Tests.SourceBackedJungleStructures1458Tests"
+        ],
+        "executed": true,
+        "exitCode": 0,
+        "logSha256": "5914e8b41d90001be5ae42dcefc19320bdd7d6c6916e916635a6eed613e58e53",
+        "methodAudit": {
+          "accepted": true,
+          "counts": {
+            "errors": 0,
+            "failed": 0,
+            "not-run": 0,
+            "passed": 134,
+            "skipped": 0,
+            "total": 134
+          },
+          "executedMethods": 67,
+          "missingMethods": [],
+          "plannedMethods": 67,
+          "unplannedMethods": [],
+          "xmlSha256": "c4ead5c1cc1d79d5f52dea637baca14b75766ed51fe54272bfab9ae7a70db2cc"
+        },
+        "planSha256": "c81224709cf8a02f8270c1343eeebd0cbfa807deeaf72ed613d78b5fddf9749f",
+        "tests": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 134,
+          "skipped": 0,
+          "total": 134
+        },
+        "wallSeconds": 9.373303700005636
+      }
+    },
+    "wallSeconds": 1915.3590038000839
+  },
+  "unfilteredFull": {
+    "executed": true,
+    "allDiscoveredMethods": 5414,
+    "plan": {
+      "changed_paths": [
+        "src/TerraRuntime.Application/PlayerAuthority.LocalTilePrefix.cs",
+        "src/TerraRuntime.Application/PlayerAuthority.PlacementAlternative.cs",
+        "src/TerraRuntime.Application/PlayerAuthority.PlacementTargetAlternatives.cs",
+        "src/TerraRuntime.Application/PlayerAuthority.RemoteItemPhase.cs",
+        "src/TerraRuntime.Application/RuntimeTownNpcSchedule1458.Dispatcher.cs",
+        "src/TerraRuntime.Application/RuntimeTownNpcSchedule1458.Frames.cs",
+        "src/TerraRuntime.Gameplay/Players/VanillaSelectedConsumable1458.cs",
+        "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.cs",
+        "src/TerraRuntime.WorldGeneration/Generation/Vanilla/HiveBiome1458.cs",
+        "src/TerraRuntime.WorldGeneration/Generation/Vanilla/JungleStructurePipeline1458.cs",
+        "src/TerraRuntime.WorldGeneration/Generation/Vanilla/QuickCleanupPass1458.cs",
+        "src/TerraRuntime.WorldGeneration/Workspace.cs",
+        "tests/TerraRuntime.Tests/CaveHousePriorProtection1458Tests.cs",
+        "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCallerLinux1458.jsonl.gz",
+        "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCallerWindows1458.jsonl.gz",
+        "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCyclingCallerLinux1458.jsonl.gz",
+        "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCyclingCallerWindows1458.jsonl.gz",
+        "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoLastArrowCallerLinux1458.jsonl.gz",
+        "tests/TerraRuntime.Tests/Fixtures/placement-normal-switch-full-caller-v1.json.gz",
+        "tests/TerraRuntime.Tests/Fixtures/released-tool-full-caller-v1.json.gz",
+        "tests/TerraRuntime.Tests/Fixtures/tool-frame-reset-full-caller-v1.json.gz",
+        "tests/TerraRuntime.Tests/GemStaffBoundaryChecks.cs",
+        "tests/TerraRuntime.Tests/LocalWeaponClockRuntimeChecks1458.cs",
+        "tests/TerraRuntime.Tests/OwnedAmmoUseContinuity1458Tests.Adversarial.cs",
+        "tests/TerraRuntime.Tests/OwnedAmmoUseContinuity1458Tests.Cycling.cs",
+        "tests/TerraRuntime.Tests/OwnedAmmoUseContinuity1458Tests.cs",
+        "tests/TerraRuntime.Tests/OwnedBowPlayerUpdateSource1458Tests.cs",
+        "tests/TerraRuntime.Tests/QuickCleanupIndependentShape1458Tests.cs",
+        "tests/TerraRuntime.Tests/RuntimeDryadStardewContinuation1458Tests.cs",
+        "tests/TerraRuntime.Tests/SourceBackedJungleStructures1458Tests.cs",
+        "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj",
+        "tests/TerraRuntime.Tests/ToolPlayerFrameResetChecks.cs",
+        "tests/TerraRuntime.Tests/ToolPlayerPlacementRuntimeChecks.cs",
+        "tests/TerraRuntime.Tests/ToolPlayerReleasedPickSourceChecks.cs",
+        "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs"
+      ],
+      "discovered_methods": 5414,
+      "domains": [
+        "infrastructure",
+        "items",
+        "npc_ai",
+        "npc_creation",
+        "npc_loot",
+        "players",
+        "town",
+        "world",
+        "worldgen"
+      ],
+      "excluded_method_count": 0,
+      "mode": "full",
+      "reason": "Shared or unclassified test helper: tests/TerraRuntime.Tests/CaveHousePriorProtection1458Tests.cs",
+      "selected_method_count": 5414,
+      "tier": "affected"
+    },
+    "planArtifact": {
+      "path": ".cache/applied-gaps-20261028/candidate-03/affected/plan.json",
+      "sha256": "a2fc8e1a334251ac835ab0f3aee60f16a80fbd6a16997cf20882533bd133bcb7"
+    },
+    "result": {
+      "accepted": true,
+      "afterGuard": {
+        "accepted": true,
+        "changedManifests": [],
+        "dllDifferences": [],
+        "executedDllCount": 158,
+        "sourceDifferences": [],
+        "sourceInputCount": 4020
+      },
+      "command": [
+        "dotnet",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+        "-noLogo",
+        "-noColor",
+        "-maxThreads",
+        "4",
+        "-xml",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\affected\\tests.xml"
+      ],
+      "executed": true,
+      "exitCode": 0,
+      "logSha256": "e8cdd923acabdbe7ce7c3f00770a14fc5ac6446d45cf61483815caa6ab30a13d",
+      "methodAudit": {
+        "accepted": true,
+        "counts": {
+          "errors": 0,
+          "failed": 0,
+          "not-run": 0,
+          "passed": 1566966,
+          "skipped": 0,
+          "total": 1566966
+        },
+        "executedMethods": 5414,
+        "missingMethods": [],
+        "plannedMethods": 5414,
+        "unplannedMethods": [],
+        "xmlSha256": "22035d1727cd53b0bb8e3db2aaa049b351aa854c078d1780ea71de7f091c024d"
+      },
+      "planSha256": "a2fc8e1a334251ac835ab0f3aee60f16a80fbd6a16997cf20882533bd133bcb7",
+      "tests": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 1566966,
+        "skipped": 0,
+        "total": 1566966
+      },
+      "wallSeconds": 1371.9761331999907
+    }
+  },
+  "native": {
+    "accepted": true,
+    "publishStarted": true,
+    "gate": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03",
+    "scope": "Fresh Windows x64 NativeAOT server and five standalone smokes on the exact root source/TestBin pins. No Linux Native, GUI, fresh TCP or full-suite claim.",
+    "priorArtifact": {
+      "sha256": "e4457bc07329c96b49d8b312dd86ddcdd3da148f874039bf56e044a3c92dddc5",
+      "mtimeNs": 1793181938072313100
+    },
+    "publishStartedNs": 1793192695278538100,
+    "publishCommand": [
+      "powershell.exe",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\build\\publish.ps1",
+      "-RuntimeIdentifier",
+      "win-x64",
+      "-Profile",
+      "native-aot",
+      "-Configuration",
+      "Release",
+      "-NoClean"
+    ],
+    "smokes": [
+      {
+        "mode": "loop",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\native\\bin\\TerraRuntime.Server.exe",
+          "--loop-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "937caab2ea99254c7bbaed34390562feba7b846dab7f80b104a32b8963983973"
+      },
+      {
+        "mode": "protocol",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\native\\bin\\TerraRuntime.Server.exe",
+          "--protocol-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "mode": "network",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\native\\bin\\TerraRuntime.Server.exe",
+          "--network-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "mode": "world",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\native\\bin\\TerraRuntime.Server.exe",
+          "--world-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "mode": "tui",
+        "command": [
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\native\\bin\\TerraRuntime.Server.exe",
+          "--tui-smoke"
+        ],
+        "exitCode": 0,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ],
+    "publishSucceeded": true,
+    "publishExitCode": 0,
+    "executablePath": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\applied-gaps-20261028\\candidate-03\\native\\bin\\TerraRuntime.Server.exe",
+    "executableSha256": "52582fa87773db343d6d6510b7e97b62b52b4544e37eebc04bc3f9c94e0b8423",
+    "executableBytes": 37499392,
+    "pe": {
+      "machine": "0x8664",
+      "optionalMagic": "0x20b",
+      "clrRva": 0,
+      "clrSize": 0
+    },
+    "sourceAndTestBinBefore": {
+      "source-before.json": {
+        "count": 4020,
+        "manifestSha256": "0dd98687b7695bc17fc862351ec12df7144e043b68e7458f904e7d8093fcdc3e",
+        "mismatches": []
+      },
+      "dll-before.json": {
+        "count": 158,
+        "manifestSha256": "b307577dbafce6109c5a64b0bbbf55257a22f7a6562cd89925e01189f2984169",
+        "mismatches": []
+      }
+    },
+    "sourceAndTestBinAfter": {
+      "source-before.json": {
+        "count": 4020,
+        "manifestSha256": "0dd98687b7695bc17fc862351ec12df7144e043b68e7458f904e7d8093fcdc3e",
+        "mismatches": []
+      },
+      "dll-before.json": {
+        "count": 158,
+        "manifestSha256": "b307577dbafce6109c5a64b0bbbf55257a22f7a6562cd89925e01189f2984169",
+        "mismatches": []
+      }
+    },
+    "fastResultSha256": "b4e54cd78f5452e3402db83849b017c3084adebda637bc8bc65372fa89801484",
+    "focusedResultSha256": "96835f7c52e020ae60711ba225ac8bd335d8c18bb82bb658b699095a6befebab",
+    "completedNs": 1793192763457832100,
+    "pins": [
+      {
+        "path": "bin/TerraRuntime.Server.exe",
+        "sha256": "52582fa87773db343d6d6510b7e97b62b52b4544e37eebc04bc3f9c94e0b8423"
+      },
+      {
+        "path": "guard-after.json",
+        "sha256": "1169637af1d14a7e8d4a654d7e1e853534a36dc41794d9e5127381dc5442ef9b"
+      },
+      {
+        "path": "guard-before.json",
+        "sha256": "1169637af1d14a7e8d4a654d7e1e853534a36dc41794d9e5127381dc5442ef9b"
+      },
+      {
+        "path": "loop.log",
+        "sha256": "937caab2ea99254c7bbaed34390562feba7b846dab7f80b104a32b8963983973"
+      },
+      {
+        "path": "network.log",
+        "sha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "path": "protocol.log",
+        "sha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "path": "publish.log",
+        "sha256": "23d025c7af38b2011312f3665f9d843e663d005240f8eae81868f3276345f445"
+      },
+      {
+        "path": "tui.log",
+        "sha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      },
+      {
+        "path": "world.log",
+        "sha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      }
+    ]
+  },
+  "profiles": {
+    "qualification": {
+      "accepted": true,
+      "runs": [
+        {
+          "accepted": true,
+          "classification": "equal-projection",
+          "validationErrors": [],
+          "wallSeconds": 9.185538500081748,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "worldgen",
+          "profile": "quick-cleanup-shapes",
+          "seed": 1458,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "equal-projection",
+          "validationErrors": [],
+          "wallSeconds": 5.1827158000087366,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "worldgen",
+          "profile": "quick-cleanup-shapes",
+          "seed": 42,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "equal-projection",
+          "validationErrors": [],
+          "wallSeconds": 5.285710500087589,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "worldgen",
+          "profile": "quick-cleanup-shapes",
+          "seed": 8675309,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": false,
+          "classification": "behavior-difference",
+          "validationErrors": [],
+          "wallSeconds": 5.421863199910149,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "worldgen",
+          "profile": "quick-cleanup-shapes",
+          "seed": 1458,
+          "control": "omit-pass",
+          "exitCode": 1
+        },
+        {
+          "accepted": false,
+          "classification": "behavior-difference",
+          "validationErrors": [],
+          "wallSeconds": 5.0854050000198185,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "worldgen",
+          "profile": "quick-cleanup-shapes",
+          "seed": 1458,
+          "control": "extra-rng",
+          "exitCode": 1
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 5.805215100059286,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "npc",
+          "profile": "ai7-dryad",
+          "seed": 1458,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 5.78267860005144,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "npc",
+          "profile": "ai7-dryad",
+          "seed": 42,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 5.784518799977377,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "npc",
+          "profile": "ai7-dryad",
+          "seed": 8675309,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": false,
+          "classification": "npc-state-mismatch",
+          "validationErrors": [],
+          "wallSeconds": 5.491336400038563,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "npc",
+          "profile": "ai7-dryad",
+          "seed": 1458,
+          "control": "omit-step",
+          "exitCode": 1
+        },
+        {
+          "accepted": false,
+          "classification": "rng-state-mismatch",
+          "validationErrors": [],
+          "wallSeconds": 5.711907099932432,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "npc",
+          "profile": "ai7-dryad",
+          "seed": 1458,
+          "control": "extra-rng",
+          "exitCode": 1
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 6.972707899985835,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "gameplay",
+          "profile": "owned-bow",
+          "seed": 14,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 6.960803799913265,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "gameplay",
+          "profile": "owned-bow",
+          "seed": 1458,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 6.29369860002771,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "gameplay",
+          "profile": "owned-bow",
+          "seed": 8675309,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": false,
+          "classification": "behavior-mismatch",
+          "validationErrors": [],
+          "wallSeconds": 6.572515000007115,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "gameplay",
+          "profile": "owned-bow",
+          "seed": 14,
+          "control": "omit-step",
+          "exitCode": 1
+        },
+        {
+          "accepted": false,
+          "classification": "behavior-mismatch",
+          "validationErrors": [],
+          "wallSeconds": 5.958755499916151,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "gameplay",
+          "profile": "owned-bow",
+          "seed": 14,
+          "control": "extra-rng",
+          "exitCode": 1
+        },
+        {
+          "accepted": true,
+          "classification": "equal-projection",
+          "validationErrors": [],
+          "wallSeconds": 3.8864011999685317,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "worldgen",
+          "profile": "grass-wall",
+          "seed": 1458,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "equal-projection",
+          "validationErrors": [],
+          "wallSeconds": 5.079804499982856,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "worldgen",
+          "profile": "quick-cleanup",
+          "seed": 1458,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 4.0285613999003544,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "npc",
+          "profile": "ai3-ice-golem",
+          "seed": 1458,
+          "control": "normal",
+          "exitCode": 0
+        },
+        {
+          "accepted": true,
+          "classification": "match",
+          "validationErrors": [],
+          "wallSeconds": 3.2514185999752954,
+          "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+          "domain": "gameplay",
+          "profile": "pick-ammo",
+          "seed": 1458,
+          "control": "normal",
+          "exitCode": 0
+        }
+      ],
+      "wallSeconds": 125.94084990001284,
+      "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29"
+    },
+    "runs": [
+      {
+        "accepted": true,
+        "classification": "equal-projection",
+        "seed": 1458,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 9.185538500081748,
+        "comparison": {
+          "schemaVersion": 1,
+          "operation": "worldgen-compare-pass",
+          "accepted": true,
+          "comparable": true,
+          "pass": "QuickCleanup",
+          "scenario": "quick-cleanup-independent-shapes-v1",
+          "inputDifferences": [],
+          "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+          "classification": "equal-projection",
+          "cellsCompared": 128000,
+          "differentCells": 0,
+          "differentFields": 0,
+          "firstCellDifference": null,
+          "firstRngDifference": null,
+          "beforeCellsSha256": "ff4b2f6db081ea9c6136d8863086b99378a10dc931a5eac6869660f8e907da1c",
+          "officialAfterCellsSha256": "df9a72bb5a2fd3ef5add5118c3385b31a1461caf6e0901e5a23375dcae3d72f0",
+          "runtimeAfterCellsSha256": "df9a72bb5a2fd3ef5add5118c3385b31a1461caf6e0901e5a23375dcae3d72f0"
+        },
+        "domain": "worldgen",
+        "profile": "quick-cleanup-shapes",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-normal/result.json",
+            "sha256": "288d7eef25301f5b066bf5999e9e2de9aaf9582dce34a7ae70bb5670f11860fb"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-normal/official.json",
+            "sha256": "67324de85562044a699ac6a961c992d9b84b5035479afabc15cf168fca8f85d2"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-normal/runtime.json",
+            "sha256": "03bf7fc24fc3c94876d2e30527ae13b9dcaef6f4a5354d406cc2157566f46df8"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-normal/build.log",
+            "sha256": "f06257bbc3c54a7410be32003bebecbbcce2d06f63a0b173bf42b50a1d7849cf"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "equal-projection",
+        "seed": 42,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.1827158000087366,
+        "comparison": {
+          "schemaVersion": 1,
+          "operation": "worldgen-compare-pass",
+          "accepted": true,
+          "comparable": true,
+          "pass": "QuickCleanup",
+          "scenario": "quick-cleanup-independent-shapes-v1",
+          "inputDifferences": [],
+          "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+          "classification": "equal-projection",
+          "cellsCompared": 128000,
+          "differentCells": 0,
+          "differentFields": 0,
+          "firstCellDifference": null,
+          "firstRngDifference": null,
+          "beforeCellsSha256": "ff4b2f6db081ea9c6136d8863086b99378a10dc931a5eac6869660f8e907da1c",
+          "officialAfterCellsSha256": "8bf4a447826a2a3c64304b1591147bdf2c4e79bd6ceec1c4210ef302e0e1abf0",
+          "runtimeAfterCellsSha256": "8bf4a447826a2a3c64304b1591147bdf2c4e79bd6ceec1c4210ef302e0e1abf0"
+        },
+        "domain": "worldgen",
+        "profile": "quick-cleanup-shapes",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-42-normal/result.json",
+            "sha256": "1991f6f4a491f9ce436aa15515e1ee1bfce70243e1a96032f6fc76cd3d6de540"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-42-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-42-normal/official.json",
+            "sha256": "55fd338119cfce4840051aed1d0bd216fa27223806c2f9b5909795caef4939c9"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-42-normal/runtime.json",
+            "sha256": "e35fdfa8e5d18222aa67137505710fe321488af14f8bd8ac3c67ebfea762b347"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-42-normal/build.log",
+            "sha256": "4d7cf037e241d7692fc77d370491dcf425a6fc9fd4d5707d31dbc73846e10274"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "equal-projection",
+        "seed": 8675309,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.285710500087589,
+        "comparison": {
+          "schemaVersion": 1,
+          "operation": "worldgen-compare-pass",
+          "accepted": true,
+          "comparable": true,
+          "pass": "QuickCleanup",
+          "scenario": "quick-cleanup-independent-shapes-v1",
+          "inputDifferences": [],
+          "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+          "classification": "equal-projection",
+          "cellsCompared": 128000,
+          "differentCells": 0,
+          "differentFields": 0,
+          "firstCellDifference": null,
+          "firstRngDifference": null,
+          "beforeCellsSha256": "ff4b2f6db081ea9c6136d8863086b99378a10dc931a5eac6869660f8e907da1c",
+          "officialAfterCellsSha256": "df9a72bb5a2fd3ef5add5118c3385b31a1461caf6e0901e5a23375dcae3d72f0",
+          "runtimeAfterCellsSha256": "df9a72bb5a2fd3ef5add5118c3385b31a1461caf6e0901e5a23375dcae3d72f0"
+        },
+        "domain": "worldgen",
+        "profile": "quick-cleanup-shapes",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-8675309-normal/result.json",
+            "sha256": "9bed64cd9241b578ca07f12e4cb00444f0feddc5845d5143b71ff453f26f44ff"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-8675309-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-8675309-normal/official.json",
+            "sha256": "9712f51647e61aa92a36c724e849ee751fef4759cf5ef4aadb87860fdeb5d714"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-8675309-normal/runtime.json",
+            "sha256": "912a208dcb87e6873436bd56f7070f11dc99c50769467279e8ce7dc46bf8056a"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-8675309-normal/build.log",
+            "sha256": "8c78c54689483e1a20fcc67ed09cfb54c9e2425570705eb4a1123f5cef6eba57"
+          }
+        ]
+      },
+      {
+        "accepted": false,
+        "classification": "behavior-difference",
+        "seed": 1458,
+        "control": "omit-pass",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.421863199910149,
+        "comparison": {
+          "schemaVersion": 1,
+          "operation": "worldgen-compare-pass",
+          "accepted": false,
+          "comparable": true,
+          "pass": "QuickCleanup",
+          "scenario": "quick-cleanup-independent-shapes-v1",
+          "inputDifferences": [],
+          "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+          "classification": "behavior-difference",
+          "cellsCompared": 128000,
+          "differentCells": 20,
+          "differentFields": 30,
+          "firstCellDifference": {
+            "index": 40075,
+            "x": 75,
+            "y": 50,
+            "fields": [
+              {
+                "field": "flags",
+                "expected": 261,
+                "actual": 2309
+              },
+              {
+                "field": "shape",
+                "expected": 1,
+                "actual": 5
+              },
+              {
+                "field": "liquidKind",
+                "expected": 0,
+                "actual": 3
+              }
+            ]
+          },
+          "firstRngDifference": {
+            "field": "inext",
+            "expected": 11,
+            "actual": 0
+          },
+          "beforeCellsSha256": "ff4b2f6db081ea9c6136d8863086b99378a10dc931a5eac6869660f8e907da1c",
+          "officialAfterCellsSha256": "df9a72bb5a2fd3ef5add5118c3385b31a1461caf6e0901e5a23375dcae3d72f0",
+          "runtimeAfterCellsSha256": "ff4b2f6db081ea9c6136d8863086b99378a10dc931a5eac6869660f8e907da1c"
+        },
+        "domain": "worldgen",
+        "profile": "quick-cleanup-shapes",
+        "cliExitCode": 1,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-omit-pass/result.json",
+            "sha256": "d028c2727229a8feda91374dec743115b507ea571fbd42dab08536bd347e8906"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-omit-pass/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-omit-pass/official.json",
+            "sha256": "67324de85562044a699ac6a961c992d9b84b5035479afabc15cf168fca8f85d2"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-omit-pass/runtime.json",
+            "sha256": "96e72bfdcd1a17a51f490714886283ec2c2c5f36180bc70ee62c60aba75d7d7e"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-omit-pass/build.log",
+            "sha256": "45a535867eca95be739a1983bfc3f7e5a51e856bb65c3811719a0def3756a4b0"
+          }
+        ]
+      },
+      {
+        "accepted": false,
+        "classification": "behavior-difference",
+        "seed": 1458,
+        "control": "extra-rng",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.0854050000198185,
+        "comparison": {
+          "schemaVersion": 1,
+          "operation": "worldgen-compare-pass",
+          "accepted": false,
+          "comparable": true,
+          "pass": "QuickCleanup",
+          "scenario": "quick-cleanup-independent-shapes-v1",
+          "inputDifferences": [],
+          "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+          "classification": "behavior-difference",
+          "cellsCompared": 128000,
+          "differentCells": 0,
+          "differentFields": 0,
+          "firstCellDifference": null,
+          "firstRngDifference": {
+            "field": "inext",
+            "expected": 11,
+            "actual": 12
+          },
+          "beforeCellsSha256": "ff4b2f6db081ea9c6136d8863086b99378a10dc931a5eac6869660f8e907da1c",
+          "officialAfterCellsSha256": "df9a72bb5a2fd3ef5add5118c3385b31a1461caf6e0901e5a23375dcae3d72f0",
+          "runtimeAfterCellsSha256": "df9a72bb5a2fd3ef5add5118c3385b31a1461caf6e0901e5a23375dcae3d72f0"
+        },
+        "domain": "worldgen",
+        "profile": "quick-cleanup-shapes",
+        "cliExitCode": 1,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-extra-rng/result.json",
+            "sha256": "e9997b6b6b7a9fdd027222163171c8f68c1ed3001befcb86679f50d13af1a651"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-extra-rng/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-extra-rng/official.json",
+            "sha256": "67324de85562044a699ac6a961c992d9b84b5035479afabc15cf168fca8f85d2"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-extra-rng/runtime.json",
+            "sha256": "1055ed982d820dfba0dc8acafd902fc0f38ce5f723666fe6bae75c321e4c7bc8"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-shapes-1458-extra-rng/build.log",
+            "sha256": "003a642fa1c2d4d19079dc366c698c4bef85d5677a45a1a138916cdd61438062"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 1458,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.805215100059286,
+        "comparison": {
+          "accepted": true,
+          "classification": "match",
+          "comparedFrames": 496,
+          "scenario": "ai007-dryad-stardew-v1",
+          "scope": "One explicit Dryad state24 continuation through480 animation frames and16 idle frames; actual original NPC.UpdateNPC and runtime town phase, represented motion/combat/frame state, emote events and full physical Main.rand. No animation initiation, general AI7, magic combat, multiplayer traffic, natural world, Native or Linux OS parity claim.",
+          "officialObservationSha256": "3cef11f9dacc972da7be91a0bacc8bd3bec1b6b22c5c890e22639ff7dc834d24",
+          "runtimeObservationSha256": "f28c1b8662573b1e13b220222f58205c5eb62679d04334881847816a73bedeab"
+        },
+        "domain": "npc",
+        "profile": "ai7-dryad",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-normal/result.json",
+            "sha256": "33bc757510ebe1643e3b344bf5813acd0ff4718c28605cc6988129305a5c7052"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-normal/official.json",
+            "sha256": "3cef11f9dacc972da7be91a0bacc8bd3bec1b6b22c5c890e22639ff7dc834d24"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-normal/runtime.json",
+            "sha256": "f28c1b8662573b1e13b220222f58205c5eb62679d04334881847816a73bedeab"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-normal/build.log",
+            "sha256": "440303288312d77394c94ba3f8444700ad737e7b2495acddf032ae024b1702e9"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 42,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.78267860005144,
+        "comparison": {
+          "accepted": true,
+          "classification": "match",
+          "comparedFrames": 496,
+          "scenario": "ai007-dryad-stardew-v1",
+          "scope": "One explicit Dryad state24 continuation through480 animation frames and16 idle frames; actual original NPC.UpdateNPC and runtime town phase, represented motion/combat/frame state, emote events and full physical Main.rand. No animation initiation, general AI7, magic combat, multiplayer traffic, natural world, Native or Linux OS parity claim.",
+          "officialObservationSha256": "0e2d01dc8e08ac8a6773b554ab9c9fb26e79c0ce5df8bb8a971decda9ac98b02",
+          "runtimeObservationSha256": "f310f975a7e5a1fc03fca66105ecfcf322b87848e56282846e0a0a5b8f095236"
+        },
+        "domain": "npc",
+        "profile": "ai7-dryad",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-42-normal/result.json",
+            "sha256": "6610c731855bdfc86d52cd38c9d0c10436c0edf378de2e0b33ed03337f9fe7e3"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-42-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-42-normal/official.json",
+            "sha256": "0e2d01dc8e08ac8a6773b554ab9c9fb26e79c0ce5df8bb8a971decda9ac98b02"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-42-normal/runtime.json",
+            "sha256": "f310f975a7e5a1fc03fca66105ecfcf322b87848e56282846e0a0a5b8f095236"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-42-normal/build.log",
+            "sha256": "d2e62e39f71c50ac454c6dc9dd85f8a34412e19b99b7b6ec7979867fb54e4b0c"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 8675309,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.784518799977377,
+        "comparison": {
+          "accepted": true,
+          "classification": "match",
+          "comparedFrames": 496,
+          "scenario": "ai007-dryad-stardew-v1",
+          "scope": "One explicit Dryad state24 continuation through480 animation frames and16 idle frames; actual original NPC.UpdateNPC and runtime town phase, represented motion/combat/frame state, emote events and full physical Main.rand. No animation initiation, general AI7, magic combat, multiplayer traffic, natural world, Native or Linux OS parity claim.",
+          "officialObservationSha256": "1859839b8b789558da20d9fdb4c686d34801343c4d15660f0c9f6b5f480dd7ba",
+          "runtimeObservationSha256": "31833839e12f29db6d9196cfdb800912bd8bbf86215a33397438ccba3f275aa5"
+        },
+        "domain": "npc",
+        "profile": "ai7-dryad",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-8675309-normal/result.json",
+            "sha256": "73e43e0ad47ae1c5b0388b2f8366c3c82e60d5b5dcc12e5b2e569796c06c374b"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-8675309-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-8675309-normal/official.json",
+            "sha256": "1859839b8b789558da20d9fdb4c686d34801343c4d15660f0c9f6b5f480dd7ba"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-8675309-normal/runtime.json",
+            "sha256": "31833839e12f29db6d9196cfdb800912bd8bbf86215a33397438ccba3f275aa5"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-8675309-normal/build.log",
+            "sha256": "a6fa023a4199a8813be3c68426eec4ccdef61d5f8fef4b00fa4422a9d8883be0"
+          }
+        ]
+      },
+      {
+        "accepted": false,
+        "classification": "npc-state-mismatch",
+        "seed": 1458,
+        "control": "omit-step",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.491336400038563,
+        "comparison": {
+          "accepted": false,
+          "classification": "npc-state-mismatch",
+          "firstDifference": "frames[0].after.npc.position[0]",
+          "expected": "441fd99a",
+          "actual": "441fc000",
+          "frame": 0,
+          "scenario": "ai007-dryad-stardew-v1",
+          "scope": "One explicit Dryad state24 continuation through480 animation frames and16 idle frames; actual original NPC.UpdateNPC and runtime town phase, represented motion/combat/frame state, emote events and full physical Main.rand. No animation initiation, general AI7, magic combat, multiplayer traffic, natural world, Native or Linux OS parity claim.",
+          "officialObservationSha256": "3cef11f9dacc972da7be91a0bacc8bd3bec1b6b22c5c890e22639ff7dc834d24",
+          "runtimeObservationSha256": "8ea8dd62b3999d140e97b8326f246721515274635ca76c13069c0e3e0fa096d7"
+        },
+        "domain": "npc",
+        "profile": "ai7-dryad",
+        "cliExitCode": 1,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-omit-step/result.json",
+            "sha256": "8a0d8a639cb6907fdba9f5c687ba1f010f1201697e506df77ab9bca105e87d3f"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-omit-step/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-omit-step/official.json",
+            "sha256": "3cef11f9dacc972da7be91a0bacc8bd3bec1b6b22c5c890e22639ff7dc834d24"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-omit-step/runtime.json",
+            "sha256": "8ea8dd62b3999d140e97b8326f246721515274635ca76c13069c0e3e0fa096d7"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-omit-step/build.log",
+            "sha256": "7f02afa8903a6c054c2bf22453cf665ab77101d08ed54bd56930c2d166b87867"
+          }
+        ]
+      },
+      {
+        "accepted": false,
+        "classification": "rng-state-mismatch",
+        "seed": 1458,
+        "control": "extra-rng",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.711907099932432,
+        "comparison": {
+          "accepted": false,
+          "classification": "rng-state-mismatch",
+          "firstDifference": "frames[0].after.rng.inext",
+          "expected": 0,
+          "actual": 1,
+          "frame": 0,
+          "scenario": "ai007-dryad-stardew-v1",
+          "scope": "One explicit Dryad state24 continuation through480 animation frames and16 idle frames; actual original NPC.UpdateNPC and runtime town phase, represented motion/combat/frame state, emote events and full physical Main.rand. No animation initiation, general AI7, magic combat, multiplayer traffic, natural world, Native or Linux OS parity claim.",
+          "officialObservationSha256": "3cef11f9dacc972da7be91a0bacc8bd3bec1b6b22c5c890e22639ff7dc834d24",
+          "runtimeObservationSha256": "dd6c254cb294072bc5029986b29120ed5fab53e016e82341e9a2040456011794"
+        },
+        "domain": "npc",
+        "profile": "ai7-dryad",
+        "cliExitCode": 1,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-extra-rng/result.json",
+            "sha256": "d79872ed2475dd192a1c18cc9462e6e2ccab7f1bb2307d9b2bd85f58bdcd94a5"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-extra-rng/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-extra-rng/official.json",
+            "sha256": "3cef11f9dacc972da7be91a0bacc8bd3bec1b6b22c5c890e22639ff7dc834d24"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-extra-rng/runtime.json",
+            "sha256": "dd6c254cb294072bc5029986b29120ed5fab53e016e82341e9a2040456011794"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai7-dryad-1458-extra-rng/build.log",
+            "sha256": "7d0983885da4463bca533d78064b7be07302c247e16725f4cff02e66259014d0"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 14,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 6.972707899985835,
+        "comparison": {
+          "schemaVersion": 1,
+          "kind": "owned-gameplay-comparison",
+          "scenario": "owned-bow-player-update-v1",
+          "scope": "Sixty-five actual headless local Player.Update frames versus a genuinely joined LocalOwnerProjection through commands and State.Tick: physical inventory, item clocks, heat and complete physical RNG; runtime funded quantities and paid receipts are independently checked. Ordinary empty scene only; no cracked/thin-ice mutation, packet27 delivery, projectile simulation, GUI, Native or complete Player.Update parity claim.",
+          "accepted": true,
+          "classification": "match",
+          "framesCompared": 65,
+          "differentFields": 0,
+          "firstDifference": null,
+          "officialObservationSha256": "f3951c841ef660ef96903d1f13b04d1e3a7a45b21bb2ad379bc06f4944d17cc9",
+          "runtimeObservationSha256": "07b8e8cb455a98213caecc180792920414c9e269c9ffccf896dcbc2a884db25b"
+        },
+        "domain": "gameplay",
+        "profile": "owned-bow",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-normal/result.json",
+            "sha256": "2bde77abc616af6c13636a560e5801e36b65ae3a9c7441603e6757ee90cb8fc5"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-normal/official.json",
+            "sha256": "f3951c841ef660ef96903d1f13b04d1e3a7a45b21bb2ad379bc06f4944d17cc9"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-normal/runtime.json",
+            "sha256": "07b8e8cb455a98213caecc180792920414c9e269c9ffccf896dcbc2a884db25b"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-normal/build.log",
+            "sha256": "daf30228acc5572e50a1fd5b9f81795d3aeadbea26914064b0c6e6a7fc724cea"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 1458,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 6.960803799913265,
+        "comparison": {
+          "schemaVersion": 1,
+          "kind": "owned-gameplay-comparison",
+          "scenario": "owned-bow-player-update-v1",
+          "scope": "Sixty-five actual headless local Player.Update frames versus a genuinely joined LocalOwnerProjection through commands and State.Tick: physical inventory, item clocks, heat and complete physical RNG; runtime funded quantities and paid receipts are independently checked. Ordinary empty scene only; no cracked/thin-ice mutation, packet27 delivery, projectile simulation, GUI, Native or complete Player.Update parity claim.",
+          "accepted": true,
+          "classification": "match",
+          "framesCompared": 65,
+          "differentFields": 0,
+          "firstDifference": null,
+          "officialObservationSha256": "67956b7b229411a2134d3b623a686626abcd1a131a3b65452c73b51cb3b4ecc8",
+          "runtimeObservationSha256": "62220c5adf648811debc06408449e85b5489403d65cd7141184009309c24aba4"
+        },
+        "domain": "gameplay",
+        "profile": "owned-bow",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-1458-normal/result.json",
+            "sha256": "70906786d56bb95527feb8f4cd54d4f6bca2481049b6dc29f9ac3d4f9d03dbd6"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-1458-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-1458-normal/official.json",
+            "sha256": "67956b7b229411a2134d3b623a686626abcd1a131a3b65452c73b51cb3b4ecc8"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-1458-normal/runtime.json",
+            "sha256": "62220c5adf648811debc06408449e85b5489403d65cd7141184009309c24aba4"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-1458-normal/build.log",
+            "sha256": "0256f62d7ef66a675ffa822ffaeea63a4099daf460193ac9e4b31646ea7d323b"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 8675309,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 6.29369860002771,
+        "comparison": {
+          "schemaVersion": 1,
+          "kind": "owned-gameplay-comparison",
+          "scenario": "owned-bow-player-update-v1",
+          "scope": "Sixty-five actual headless local Player.Update frames versus a genuinely joined LocalOwnerProjection through commands and State.Tick: physical inventory, item clocks, heat and complete physical RNG; runtime funded quantities and paid receipts are independently checked. Ordinary empty scene only; no cracked/thin-ice mutation, packet27 delivery, projectile simulation, GUI, Native or complete Player.Update parity claim.",
+          "accepted": true,
+          "classification": "match",
+          "framesCompared": 65,
+          "differentFields": 0,
+          "firstDifference": null,
+          "officialObservationSha256": "4264eb88a7cc727fba9573451528b5cf3b6c6e2afe07c730b1a761a50dfd7bad",
+          "runtimeObservationSha256": "8c519514f14f8bb4c8c5526e3d9295e853fc498e5857ee7c761ed19b23b15b41"
+        },
+        "domain": "gameplay",
+        "profile": "owned-bow",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-8675309-normal/result.json",
+            "sha256": "319e0e8f7b6fc1f247e24f512f3fe8fb01c6e8205ab2097f5fb511c6589c6126"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-8675309-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-8675309-normal/official.json",
+            "sha256": "4264eb88a7cc727fba9573451528b5cf3b6c6e2afe07c730b1a761a50dfd7bad"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-8675309-normal/runtime.json",
+            "sha256": "8c519514f14f8bb4c8c5526e3d9295e853fc498e5857ee7c761ed19b23b15b41"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-8675309-normal/build.log",
+            "sha256": "cbdd0ede2e1713f63904b6e199de4a8dc932d812247280c733ce82855e9574d7"
+          }
+        ]
+      },
+      {
+        "accepted": false,
+        "classification": "behavior-mismatch",
+        "seed": 14,
+        "control": "omit-step",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 6.572515000007115,
+        "comparison": {
+          "schemaVersion": 1,
+          "kind": "owned-gameplay-comparison",
+          "scenario": "owned-bow-player-update-v1",
+          "scope": "Sixty-five actual headless local Player.Update frames versus a genuinely joined LocalOwnerProjection through commands and State.Tick: physical inventory, item clocks, heat and complete physical RNG; runtime funded quantities and paid receipts are independently checked. Ordinary empty scene only; no cracked/thin-ice mutation, packet27 delivery, projectile simulation, GUI, Native or complete Player.Update parity claim.",
+          "accepted": false,
+          "classification": "behavior-mismatch",
+          "framesCompared": 65,
+          "differentFields": 390,
+          "firstDifference": {
+            "field": "frames[32].after.inventory[54][1]",
+            "expected": 2,
+            "actual": 3
+          },
+          "officialObservationSha256": "f3951c841ef660ef96903d1f13b04d1e3a7a45b21bb2ad379bc06f4944d17cc9",
+          "runtimeObservationSha256": "86661ccc0f0c78ff3872ad85b4891519e5b55a14021dfd95fa23244f72dfb0dd"
+        },
+        "domain": "gameplay",
+        "profile": "owned-bow",
+        "cliExitCode": 1,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-omit-step/result.json",
+            "sha256": "d263fbc097d5a9e570ffc9b1784dd6b9aa25856c51303c7541aaa95201d66de1"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-omit-step/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-omit-step/official.json",
+            "sha256": "f3951c841ef660ef96903d1f13b04d1e3a7a45b21bb2ad379bc06f4944d17cc9"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-omit-step/runtime.json",
+            "sha256": "86661ccc0f0c78ff3872ad85b4891519e5b55a14021dfd95fa23244f72dfb0dd"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-omit-step/build.log",
+            "sha256": "7c49697652e60c44865dd7a612494fb1035f0d63c5d4c958340da937dc1cfc94"
+          }
+        ]
+      },
+      {
+        "accepted": false,
+        "classification": "behavior-mismatch",
+        "seed": 14,
+        "control": "extra-rng",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.958755499916151,
+        "comparison": {
+          "schemaVersion": 1,
+          "kind": "owned-gameplay-comparison",
+          "scenario": "owned-bow-player-update-v1",
+          "scope": "Sixty-five actual headless local Player.Update frames versus a genuinely joined LocalOwnerProjection through commands and State.Tick: physical inventory, item clocks, heat and complete physical RNG; runtime funded quantities and paid receipts are independently checked. Ordinary empty scene only; no cracked/thin-ice mutation, packet27 delivery, projectile simulation, GUI, Native or complete Player.Update parity claim.",
+          "accepted": false,
+          "classification": "behavior-mismatch",
+          "framesCompared": 65,
+          "differentFields": 130,
+          "firstDifference": {
+            "field": "frames[32].after.rng.inext",
+            "expected": 46,
+            "actual": 47
+          },
+          "officialObservationSha256": "f3951c841ef660ef96903d1f13b04d1e3a7a45b21bb2ad379bc06f4944d17cc9",
+          "runtimeObservationSha256": "12bbff4b5b9f21be4cd70538b911b1df946604b413a4b54dabe992af882abb30"
+        },
+        "domain": "gameplay",
+        "profile": "owned-bow",
+        "cliExitCode": 1,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-extra-rng/result.json",
+            "sha256": "ede7d00818ba7666f87dba0b6f73cbaeb32b581db3c7ae22db9ea53e30410df2"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-extra-rng/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-extra-rng/official.json",
+            "sha256": "f3951c841ef660ef96903d1f13b04d1e3a7a45b21bb2ad379bc06f4944d17cc9"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-extra-rng/runtime.json",
+            "sha256": "12bbff4b5b9f21be4cd70538b911b1df946604b413a4b54dabe992af882abb30"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/owned-bow-14-extra-rng/build.log",
+            "sha256": "32a6ebde50e47ce56ff1a4e00f6d3175460741f1e9a617a403cb7759c1613a4d"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "equal-projection",
+        "seed": 1458,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 3.8864011999685317,
+        "comparison": {
+          "schemaVersion": 1,
+          "operation": "worldgen-compare-pass",
+          "accepted": true,
+          "comparable": true,
+          "pass": "SurfaceDirtWallsToGrassWalls",
+          "scenario": "grass-wall-stain-v1",
+          "inputDifferences": [],
+          "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+          "classification": "equal-projection",
+          "cellsCompared": 17920,
+          "differentCells": 0,
+          "differentFields": 0,
+          "firstCellDifference": null,
+          "firstRngDifference": null,
+          "beforeCellsSha256": "685482cf92f05dbf57e3bfc0e66fb326adc07eefb6f59020eb105067b44b1c7b",
+          "officialAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8",
+          "runtimeAfterCellsSha256": "20948d0defe3f7802af0654825043947799f2234bf7bdc6dce62ce27b53ef3e8"
+        },
+        "domain": "worldgen",
+        "profile": "grass-wall",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/grass-wall-1458-normal/result.json",
+            "sha256": "380b9c22b06d98575bf9bb96ea674298bf378b58af4f25be0ef6351cd5dd95f8"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/grass-wall-1458-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/grass-wall-1458-normal/official.json",
+            "sha256": "50c3549377ad0f423e4411b65286178ac40eefc58ce65ac0fb29c679cffc0b12"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/grass-wall-1458-normal/runtime.json",
+            "sha256": "e3672783c09901858a3f0d45b712fcb61107510386cba219c7f3cc29c6b34878"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/grass-wall-1458-normal/build.log",
+            "sha256": "162a43d0a67663d97779af68e660822fb408b9491789d188cbef3b991859a3b9"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "equal-projection",
+        "seed": 1458,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 5.079804499982856,
+        "comparison": {
+          "schemaVersion": 1,
+          "operation": "worldgen-compare-pass",
+          "accepted": true,
+          "comparable": true,
+          "pass": "QuickCleanup",
+          "scenario": "quick-cleanup-ordinary-v1",
+          "inputDifferences": [],
+          "scope": "Supplied bounded synthetic pass observations, complete named WorldTile16 projection and reported RNG state. No natural-prefix/full-Tile-memory/whole-world parity claim.",
+          "classification": "equal-projection",
+          "cellsCompared": 128000,
+          "differentCells": 0,
+          "differentFields": 0,
+          "firstCellDifference": null,
+          "firstRngDifference": null,
+          "beforeCellsSha256": "4ed28116b3120d21f697ea18fa1b4a3c5d5944c184e0d203e1a52469c9fb002f",
+          "officialAfterCellsSha256": "104f8ef338bad93909d1f5fa01a39fdc16143feef4e98c1723f6dcb7f2d0cbf3",
+          "runtimeAfterCellsSha256": "104f8ef338bad93909d1f5fa01a39fdc16143feef4e98c1723f6dcb7f2d0cbf3"
+        },
+        "domain": "worldgen",
+        "profile": "quick-cleanup",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-1458-normal/result.json",
+            "sha256": "a76fbcc4d46d9983c3eeff31cc32298ba05d44368653036fc515b5f859df1d74"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-1458-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-1458-normal/official.json",
+            "sha256": "557da702a145deda045102962f6bfaa851105accdd319b817139ae24dfbd41c2"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-1458-normal/runtime.json",
+            "sha256": "42dff08855006a551a91005a2ed911584bfbdf1b3eae4ba7b0e60a80cc65bc1f"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/quick-cleanup-1458-normal/build.log",
+            "sha256": "27a6f7723b015e026ed4e353a33dc0a0a80690a54e6fe3f63a756b1224479676"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 1458,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 4.0285613999003544,
+        "comparison": {
+          "accepted": true,
+          "classification": "match",
+          "comparedFrames": 16,
+          "scenario": "ai003-ice-golem-airborne-v1",
+          "scope": "Sixteen type243 Ice Golem AI+explicit caller justHit-retirement frames on identical airborne input; retained motion, attack timers, target and full physical Main.rand state. No NPC.Update, collision/gravity, projectile-spawn, world lifecycle, AI7, Native or full NPC parity claim.",
+          "officialObservationSha256": "e86c811131ac648b47119976b47131b27b6ca0e335a2e179f5d832166c64cc53",
+          "runtimeObservationSha256": "90f9acd1a4805397c8d395374bffcacf3c6cb3952b516cfa4d0894b9f347004a"
+        },
+        "domain": "npc",
+        "profile": "ai3-ice-golem",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai3-ice-golem-1458-normal/result.json",
+            "sha256": "6bbfbfbe315ada451b4058b63183f2e63c4b71e7091bac565224ffd87d71b663"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai3-ice-golem-1458-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai3-ice-golem-1458-normal/official.json",
+            "sha256": "e86c811131ac648b47119976b47131b27b6ca0e335a2e179f5d832166c64cc53"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai3-ice-golem-1458-normal/runtime.json",
+            "sha256": "90f9acd1a4805397c8d395374bffcacf3c6cb3952b516cfa4d0894b9f347004a"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/ai3-ice-golem-1458-normal/build.log",
+            "sha256": "8478d4d817ab543cf8dc6a382d218cea414d31ed667e6de8e88438619e44f9e1"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "classification": "match",
+        "seed": 1458,
+        "control": "normal",
+        "sourceInputCount": 1844,
+        "sourceInputsSha256": "63faceead0b95441d15e4ffa3ca350bc263fdad0e5ce7c341ac79ae410b76c29",
+        "wallSeconds": 3.2514185999752954,
+        "comparison": {
+          "schemaVersion": 1,
+          "kind": "gameplay-behavior-comparison",
+          "scenario": "pick-ammo-random-conservation-v1",
+          "scope": "Twenty-four Wooden Bow PickAmmo boundary calls on explicit projected effects and 58 ordinary inventory slots; complete selector, launch binary32 bits and physical Main.rand state. Runtime stock debit is a detached caller projection. No ItemCheck/UpdateEquips, authoritative inventory admission, packet27, projectile birth or full player parity claim.",
+          "accepted": true,
+          "classification": "match",
+          "framesCompared": 24,
+          "differentFields": 0,
+          "firstDifference": null,
+          "officialObservationSha256": "c2f5ee9f43d20a71dd2cbd797def862a5718d698bfeb0a5eb50c049fadb391fa",
+          "runtimeObservationSha256": "c5f9329c42818e4fe108b9cc3ee387bc6f3029c5810002dc87a4fcdc55e06b1e"
+        },
+        "domain": "gameplay",
+        "profile": "pick-ammo",
+        "cliExitCode": 0,
+        "artifacts": [
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/pick-ammo-1458-normal/result.json",
+            "sha256": "aadf56ec540003a46ec6c942c342e74f44d175d339b324eecf5e8ce8d935fbcc"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/pick-ammo-1458-normal/source-before.json",
+            "sha256": "5dfcf90e342728fa98768ffe71124c1417075f4991223b2e2972b0fb80357a34"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/pick-ammo-1458-normal/official.json",
+            "sha256": "c2f5ee9f43d20a71dd2cbd797def862a5718d698bfeb0a5eb50c049fadb391fa"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/pick-ammo-1458-normal/runtime.json",
+            "sha256": "c5f9329c42818e4fe108b9cc3ee387bc6f3029c5810002dc87a4fcdc55e06b1e"
+          },
+          {
+            "path": ".cache/applied-gaps-20261028/profiles-03/pick-ammo-1458-normal/build.log",
+            "sha256": "6e47e01cfe636aad1a29ac7c32f414c581fda5876e7094865966730ca3ee33e6"
+          }
+        ]
+      }
+    ]
+  },
+  "python": {
+    "accepted": true,
+    "tests": 196,
+    "wallSeconds": 10.805293599958532,
+    "runs": [
+      {
+        "accepted": true,
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/ci",
+          "-p",
+          "test_vanilla*.py"
+        ],
+        "exitCode": 0,
+        "tests": 135,
+        "wallSeconds": 9.438471099943854,
+        "logPath": ".cache/applied-gaps-20261028/python-tests.log"
+      },
+      {
+        "command": [
+          "py",
+          "-3",
+          "-X",
+          "utf8",
+          "-c",
+          "import sys,unittest; sys.path.insert(0,'tools/ci'); suite=unittest.defaultTestLoader.loadTestsFromNames(['test_check_documentation', 'test_gameplay_acceptance_tools', 'test_generate_item_prefix_world_table', 'test_live_join_relay_probe', 'test_run_test_tiers']); result=unittest.TextTestRunner().run(suite); sys.exit(not result.wasSuccessful())"
+        ],
+        "exitCode": 0,
+        "tests": 61,
+        "logPath": ".cache/applied-gaps-20261028/python-ci-tests.log"
+      }
+    ],
+    "logArtifacts": [
+      {
+        "path": ".cache/applied-gaps-20261028/python-tests.log",
+        "sha256": "d52710857ed5e90e7f5e42c214dc88bb88386a0262251443536a6495af5090dc"
+      },
+      {
+        "path": ".cache/applied-gaps-20261028/python-ci-tests.log",
+        "sha256": "58f25842e042051ec47397e678ec0fe3b75552c0146aa44c8f0e3003606cc7dc"
+      }
+    ]
+  },
+  "shippingGraph": {
+    "projects": 15,
+    "projectReferences": 29,
+    "newProductionDependencies": 0
+  },
+  "references": {
+    "originalFixtureCount": 891,
+    "allOriginalFixturesUnchanged": true,
+    "newFixtures": [
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCallerLinux1458.jsonl.gz",
+        "sha256": "ec7a60d68b54ff173a7ec069fb900ba4674a707198c0d33d433aa40f7f6acd56"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCallerWindows1458.jsonl.gz",
+        "sha256": "8f6d01174cc6ee0ba414397d5fd622deb89cbc236da9d1b6eff6226baf7fe7de"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCyclingCallerLinux1458.jsonl.gz",
+        "sha256": "3308da37d0b68656ce90645e8c6e60f8a9ed4af1182a317b073771d332d0ddff"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoCyclingCallerWindows1458.jsonl.gz",
+        "sha256": "f3fdd6918d6da3b376c7e7f0fee4fa3b3cb797bb3270556290714dfbbd36992d"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/OwnedAmmoLastArrowCallerLinux1458.jsonl.gz",
+        "sha256": "241db8f39bfc02af5cd64930d31e20fb9dc12cf9ee6b6d51963b8d28bfc9bd97"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/placement-normal-switch-full-caller-v1.json.gz",
+        "sha256": "79a9228a731a984996c164e417c5830d4f670fa9229baf35d827118c7c68089e"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/released-tool-full-caller-v1.json.gz",
+        "sha256": "11cabc8f2ef7fe9621c7e8494d08aed22ff856aeeb5cab6dedc7b067440b8aa1"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/tool-frame-reset-full-caller-v1.json.gz",
+        "sha256": "3d494aaa1a20be48af875317ed1f926d5eb969463d7341d99bf50e3bee7a9eab"
+      }
+    ],
+    "ownedProfiles": 1761,
+    "ownedPhases": 422640,
+    "toolLocalRows": 42,
+    "toolUnchangedLiteralArrays": 1372,
+    "manifests": [
+      {
+        "path": "docs/verification/owned-ammo-caller-reference-20261028.json",
+        "sha256": "4489c943288d0e987d3ac8bae5d9ff04bdae4213cc0e2140649c348744b98ee5"
+      },
+      {
+        "path": "docs/verification/tool-player-caller-reference-20261028.json",
+        "sha256": "0a7fba4d6c053ee8efa7001fbb956da675d559d326d6637f1a9c0f313e46e1ce"
+      }
+    ]
+  },
+  "causalRegressionArtifacts": [
+    {
+      "path": ".cache/worldgen-shapes-applied/old-01/old-red.json",
+      "sha256": "d40cbe4c99c86f93159d9d8add49cc0334269c2f8c0b931bd00ac39889794159"
+    },
+    {
+      "path": ".cache/worldgen-shapes-applied/old-01/test.xml",
+      "sha256": "4b7393c13b02701de45a82b7cc7acd22ccfaf7e99cc2ef5221d7c8903cb16adb"
+    },
+    {
+      "path": ".cache/npc-town-applied-old/comparison.json",
+      "sha256": "d5d8107706ab9ed84d1a4eaa4262b317c33fad467653930a02254094881c08a8"
+    },
+    {
+      "path": ".cache/npc-town-applied-old/normal-old.xml",
+      "sha256": "eb289f20fb0212644dc09bb0731ad332b8fb957242f5fc9e679e0590bef71afc"
+    },
+    {
+      "path": ".cache/owned-gameplay-prototype/old-normal.xml",
+      "sha256": "ee9d65b68a8b49521dd49cb6ed51bb1d4a263397070b79c8161f29d33c72768e"
+    },
+    {
+      "path": ".cache/tool-caller-prefix-proof/focused-03.xml",
+      "sha256": "1b0022a21467e913e9ca7a21dbfdd40feeafdf9cf1384970295654dfc4e51fb5"
+    },
+    {
+      "path": ".cache/tool-caller-prefix-proof/focused-04.xml",
+      "sha256": "992becff5a3e71e405e49a75279cb5ccedbd76f65229191963025d25e2dfbc9f"
+    }
+  ],
+  "indexBridge": {
+    "result": {
+      "accepted": true,
+      "testedInputCount": 4020,
+      "differences": [],
+      "scope": "Every tested source/config/resource input matches its raw Git index blob and frozen SHA256; binary fixtures are not newline-normalized."
+    },
+    "artifact": {
+      "path": ".cache/applied-gaps-20261028/index-bridge.json",
+      "sha256": "7191356ed388bfd3c84fe117425040ac9b96f097cde659a3be3a5cb9f3fc7416"
+    }
+  },
+  "constructorData": {
+    "accepted": true,
+    "verification": {
+      "path": ".cache/applied-gaps-20261028/data-verify.json",
+      "sha256": "41b6ee089b550b85426a0f1c65003055788e95f9416ae799774cc2998aa3caa3"
+    },
+    "capture": {
+      "path": ".cache/applied-gaps-20261028/data-capture.json",
+      "sha256": "04d7e85fd3389534c7d000811d4a1eb9a84854e2b9d16c0e0d39e7837ae1c71b"
+    }
+  },
+  "knownMetadataDiagnostic": {
+    "accepted": false,
+    "differences": [
+      {
+        "field": "AddPassesSha256",
+        "expected": "1e073711995e1eb38578d7d23e991cf5005fefaf573188ebbdcec261f945347f",
+        "actual": "72e757af1fb0a7b565d397bbb0f9fd1d32a2960838ba636c593e122645ab9672"
+      }
+    ],
+    "operation": "worldgen-check",
+    "runtimeCatalogSha256": "1b76787431deb846201b5e89269bec576fac4a1e16e0dd719b2109097adc41c0",
+    "coverage": {
+      "runtimeWeightComparison": "not-represented-by-runtime-catalog",
+      "seedGateComparison": "recorded-and-fingerprinted-not-executed",
+      "sourceRegistrationCount": 109,
+      "sourceWeightsKnown": 109,
+      "worldCellRngComparison": "not-executed"
+    },
+    "sourceFreshness": "checked",
+    "scope": "Registration metadata/fingerprints only; no generated-world, cell/RNG or AI parity claim",
+    "sourceDifferences": [],
+    "wallSeconds": 0.04101950000040233
+  },
+  "rejectedOrAbortedCandidates": {
+    "candidate01": "Fast19failures; no affected or Native publish.",
+    "candidate02": "Interrupted before fast result/full/Native to merge concurrent main; no acceptance claimed."
+  },
+  "limits": [
+    "Linux Native not exercised",
+    "No fresh TCP or official GUI acceptance",
+    "Dryad animation initiation/state14/wet/nonDryad24 excluded",
+    "Thin-ice/cracked tile mutations fail closed in the represented local caller",
+    "New ammo companion corpus is expanded component caller, not full Player.Update",
+    "Tool heat stage is source-derived IL interval, not whole unmodified Player.Update"
+  ],
+  "artifacts": [
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/accepted.json",
+      "sha256": "3b7e69090f4ae38c6966d3769382c2975be338a85e4e68d695da6791a6ea15e8"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/source-before.json",
+      "sha256": "0dd98687b7695bc17fc862351ec12df7144e043b68e7458f904e7d8093fcdc3e"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/dll-before.json",
+      "sha256": "b307577dbafce6109c5a64b0bbbf55257a22f7a6562cd89925e01189f2984169"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/build.json",
+      "sha256": "467f4843b4a8cd99cd1a452da4c3764d55077ea8eb2d58467f7e406b8a4c9055"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/focused.json",
+      "sha256": "96835f7c52e020ae60711ba225ac8bd335d8c18bb82bb658b699095a6befebab"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/focused-audit.json",
+      "sha256": "08b30e8ce56f4bc5e31caf5952c07ba622af6425ef7c1b8be85b341b1ea7184c"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/fast/result.json",
+      "sha256": "b4e54cd78f5452e3402db83849b017c3084adebda637bc8bc65372fa89801484"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/fast/audit.json",
+      "sha256": "977b0421902d2ffd8d65f9b48952afd70f73a776749d50fa74998f8d45ccb1ba"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/affected/result.json",
+      "sha256": "6d3471ff9d837f8bbb04aee98e5ef732f2c1f55ef814e692d8a3898a5bfeab93"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/affected/audit.json",
+      "sha256": "45d97bb6d19ecd844ca232a81d7a89b3a6da779cddf19f0a87a92b27f4e23aec"
+    },
+    {
+      "path": ".cache/applied-gaps-20261028/candidate-03/native/result.json",
+      "sha256": "66379ed4ea310863b564779fd7d58ce00501154a448037b5fc0a6ab00b2d7662"
+    }
+  ]
+}

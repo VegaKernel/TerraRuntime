@@ -39,7 +39,19 @@ internal static partial class ToolPlayerBoundaryChecks
             }
         }
         string own = OperatingSystem.IsWindows() ? "Windows" : "Linux";
-        using var source = PlacementSource("ReleasedTool" + own + "1458");
+        using var component = PlacementSource("ReleasedTool" + own + "1458");
+        using var caller = PlacementSource("ReleasedToolFullCaller1458");
+        using var source = JsonDocument.Parse(caller.RootElement.GetProperty("platforms").GetProperty(own).GetProperty("rows").GetRawText());
+        Assert.Equal(7, source.RootElement.GetArrayLength());
+        AssertReleasedSourceHistoryEquivalence(source);
+        foreach (var row in source.RootElement.EnumerateArray())
+        {
+            var old = component.RootElement.EnumerateArray().Single(r => r.GetProperty("local").GetBoolean() == row.GetProperty("local").GetBoolean() &&
+                r.GetProperty("mode").GetString() == row.GetProperty("mode").GetString());
+            for (int i = 0; i < row.GetProperty("steps").GetArrayLength(); i++)
+                foreach (string name in new[] { "checkFrames", "syncFrames" })
+                    Assert.Equal(old.GetProperty("steps")[i].GetProperty(name).GetRawText(), row.GetProperty("steps")[i].GetProperty(name).GetRawText());
+        }
         foreach (string mode in new[] { "ready", "remaining", "remaining-no-buffer", "no-building", "old-range-edge", "no-rerelease" })
             ReleasedPickSourceRow(ReleasedPickRow(source, mode));
         ReleasedPickSourceRow(ReleasedPickRow(source, "ready"), staleEvent: true);

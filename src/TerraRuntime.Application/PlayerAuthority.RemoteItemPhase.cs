@@ -554,7 +554,8 @@ internal sealed partial class PlayerAuthority
             return true;
         }
 
-        if (!VanillaSelectedConsumable1458.TryStepHeat(item.ManaHeat, random.NextDouble, random.Next, out float heat))
+        if (!VanillaSelectedConsumable1458.TryStepHeat(item.ManaHeat, random.NextDouble, random.Next, out float heat,
+            plan.BeforeItemUseCaller == RuntimeItemUseCaller1458.LocalOwnerProjection))
             return false;
         if (item.ToolTime is not >= 0 || !VanillaRemoteMeleeItemCheck1458.TryStepAttackCooldown(item.AttackCD, item.Selected.Animation, out int attackCD))
             return false;
@@ -847,6 +848,7 @@ internal sealed partial class PlayerAuthority
             VanillaServerPlayerHorizontalControl.RunAcceleration * buffCombat.MoveSpeed,
             VanillaServerPlayerHorizontalControl.RunSlowdown,
             false);
+        if (!TryAdvanceLocalTilePrefix(plan, in world, random)) return false;
         if (!physics.TryStep(in source,
             horizontal,
             jump,
@@ -1546,6 +1548,9 @@ internal sealed partial class PlayerAuthority
         internal RuntimePlayerToolActorCapture1458? BeforeToolInputActor { get; } = item?.ToolUse?.Input?.Actor;
         internal ulong BeforeToolInputRevision { get; } = item?.ToolUse?.Input?.Revision ?? 0;
         internal RuntimePlayerPlacementAlternative1458? PlacementChosenAlternative { get; set; }
+        internal RuntimePlayerPlacementAlternative1458? PlacementPrefixHistory { get; set; }
+        internal VanillaUnifiedRandom1458? PlacementPrefixAfter { get; set; }
+        internal bool PlacementPrefixOffers { get; set; }
         internal VanillaUnifiedRandom1458? SourceRandom { get; set; }
         internal RuntimePlayerInventoryStore.ShopJournalCapture? AmmoInventoryBefore { get; set; }
         internal AmmoCyclingState1458? AmmoCyclingAfterShoot { get; set; }
