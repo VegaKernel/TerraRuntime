@@ -1,5 +1,12 @@
 # TerraRuntime roadmap
 
+Merged Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped row109 branch below is verified with concurrent gameplay/QuickCleanup changes. Release WAE0/0, fast `25,553/25,553`, unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes pass. Row109 remains `P`; earlier parent-tree gate numbers below are historical, not merged acceptance.
+
+Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped six-identity source branch below passes Release warnings-as-errors, fast `25,549/25,549`, one unfiltered full `1,566,963/1,566,963` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; further framing, special-seed and real-prefix work is required. The pending-gate wording below is historical.
+
+## Final Cleanup Check2x1 framing, 2026-10-28
+
+Row 109 remains `P`, but the generation-time `TileFrame` slice now executes the official `Check2x1` footprint and ordinary/table support rules for types `16`, `18`, `29`, `134`, `462` and `649`. A registered official `Final Cleanup` `PassLegacy` fixture at `1000 × 500`, seed `1458`, exercises intact pairs, missing members, bad frame spacing, missing solid support and table-only support; six-field all-cell SHA-256 `85db1681ebc66152ef3f1fa2d02d8188bd4bfe5fef94500cd09de650da8f7435`, next RNG `1056314798`. Removing the table-support branch fails the unchanged digest. This is a bounded important-framing branch, not the remaining `TileFrame` families, special-seed tails or real-prefix parity. Grouped validation gates are pending.
 ## Offline Roslyn semantic analysis, 2026-10-28
 
 `source analyze` now provides reproducible symbol-based dependency and read/write inventories, bounded source-callee traversal, explicit RNG/call identities and conservative opaque effect frontiers. Actual embedded ReLogic metadata and coherent NPC/Main source inputs remove the feasibility pilot's missing-reference/type-identity errors; ambiguous source/metadata extension calls still reject qualification. Original bodies are not emitted or committed. [EN guide](en/source-analysis-tools.md), [RU guide](ru/source-analysis-tools.md) and [qualification](verification/semantic-source-analysis-20261028.json) describe the exact method-span boundary.

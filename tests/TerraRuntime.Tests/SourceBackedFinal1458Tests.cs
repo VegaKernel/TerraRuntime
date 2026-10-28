@@ -850,6 +850,58 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_two_by_one_frame_important_objects_match_official_passlegacy()
+    {
+        // Registered TerrariaServer 1.4.5.8 FinalCleanup PassLegacy, 1000x500, seed1458.
+        // Six Check2x1 identities cover intact pairs, missing members, bad frame spacing,
+        // absent ordinary support, and table-only supports. The source full-grid six-field
+        // digest and next RNG are pinned.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        foreach ((int left, ushort type, short frameX, bool rightMember, bool rightSupport) in new[]
+        {
+            (500, (ushort)16, (short)0, true, true), (540, (ushort)16, (short)0, true, false),
+            (580, (ushort)16, (short)0, false, true), (620, (ushort)18, (short)360, true, true),
+            (660, (ushort)18, (short)360, true, false), (700, (ushort)134, (short)0, true, true),
+            (740, (ushort)649, (short)0, true, true), (780, (ushort)649, (short)0, true, false)
+        })
+        {
+            var first = new WorldTile { Type = type, FrameX = frameX, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(left, 100, in first);
+            if (rightMember)
+            {
+                var second = new WorldTile { Type = type,
+                    FrameX = (short)(frameX + (left == 700 ? 36 : 18)), Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(left + 1, 100, in second);
+            }
+            var support = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(left, 101, in support);
+            if (rightSupport) workspace.TileStore.Set(left + 1, 101, in support);
+        }
+        foreach ((int left, ushort type, bool tableSupport) in new[]
+            { (820, (ushort)29, true), (840, (ushort)29, false),
+              (860, (ushort)462, true), (880, (ushort)462, false) })
+        {
+            var first = new WorldTile { Type = type, Flags = WorldTileFlags.Active };
+            var second = new WorldTile { Type = type, FrameX = 18, Flags = WorldTileFlags.Active };
+            var support = new WorldTile { Type = tableSupport ? (ushort)19 : (ushort)1,
+                Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(left, 100, in first);
+            workspace.TileStore.Set(left + 1, 100, in second);
+            workspace.TileStore.Set(left, 101, in support);
+            workspace.TileStore.Set(left + 1, 101, in support);
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("85DB1681EBC66152EF3F1FA2D02D8188BD4BFE5FEF94500CD09DE650DA8F7435", HashFixture(workspace));
+        Assert.Equal(1056314798, random.Next());
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);

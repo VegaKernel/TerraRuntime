@@ -8,6 +8,10 @@ Original AI007's explicitly selected ordinary Bunny46/303/337/443/540 share the 
 
 Actual unframed Actions.SetTileKeepWall clears prior tile paint/coatings/liquid/shape/frames, retains wires and both actuation bits and restores wall type. WorldUtils.ClearTile(frameNeighbors:false) clears active/inactive/shape while retaining type, frames, liquid, paint, wires and actuator. Support-beam landing clears both independent shape components. Source/runtime160 primitive transitions and4096 explicit border-stage cells plus physical RNG agree across three seeds; interior framing, furniture, aging and the registered house pass remain unqualified.
 
+## Final Cleanup two-by-one framing, 2026-10-28
+
+TerrariaServer 1.4.5.8 `WorldGen.TileFrame` reaches `Check2x1` for tile identities `16`, `18`, `29`, `103`, `134`, `462` and `649`. The six currently admitted identities use pair membership and adjacent frameX spacing of 18, but do not require matching frameY. Types16/18/134/649 use `SolidTileAllowBottomSlope` under both cells; types29/462 require active `Main.tileTable` support without half brick or top slope. Broken objects remove only their still-active matching cells under `destroyObject`, then `SquareTileFrame` both anchors in order. Source `Main.tileFrameImportant[19]`, `Main.tileSolid[19]` and `Main.tileTable[19]` are all true in the ordinary source context; headless probes that leave these false give misleading platform frames. The registered full-pass six-field `1000x500` fixture at seed1458 yields SHA256 `85db1681ebc66152ef3f1fa2d02d8188bd4bfe5fef94500cd09de650da8f7435`, next RNG1056314798. Type103's separate `AnchorValid(Table)` arm is not yet ported by this slice.
+
 ## Applied shape, Dryad and owned caller facts, 2026-10-28
 
 Original QuickCleanup can retain halfBrick beside any slope. Its slope-only ocean-anchor reset preserves halfBrick, ClearSlope clears both, halfBrick takes support-below precedence and Pearlstone's exception reads independent halfBrick. Actual sameinput original/current initially differs7cells and unchanged normalFact fails; fixed full128000cell+RNG profiles match3seeds.
