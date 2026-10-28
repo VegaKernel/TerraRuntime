@@ -1,5 +1,9 @@
 # Complete vanilla worldgen pass audit — 2026-09-08
 
+Complete Check2x1 scoped acceptance (2026-10-28): the seven-identity official `Final Cleanup` fixture below is joined by Release fast `25,553/25,553`, unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes. Row109 stays `P` for chest metadata, other important framing, special-seed tails and real-prefix parity; Linux NativeAOT is locally unverified.
+
+Final Cleanup type103 table anchor (2026-10-28): row109 stays `P`, but all seven `Check2x1` identities now have source-shaped framing. The direct registered `Final Cleanup` `1000 × 500`, seed1458, full-grid/RNG fixture accepts both stable top-slope platform directions for type103 and rejects two invalid bands. Six-field SHA-256 `54540a1918e846f23f2328043dcc0f8f73b1d92764254cc8e5278948c79503ed`, next RNG `1056314798`; omitting the type103 branch fails the unchanged digest. The six-identity note below is historical. Persistent chest metadata, other important objects, special-seed tails and real-prefix parity remain open.
+
 Merged Final Cleanup Check2x1 gate (2026-10-28): the scoped official fixture below passes Release fast `25,553/25,553`, unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes on the merged gameplay/QuickCleanup tree. Row109 remains `P`; type103, chest metadata, other framing, special-seed tails and real-prefix parity remain open. Linux NativeAOT is locally unverified.
 
 Final Cleanup Check2x1 acceptance (2026-10-28): the six-identity official fixture below is joined by Release fast `25,549/25,549`, unfiltered full `1,566,963/1,566,963` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; type103, chest metadata, further framing families, special-seed tails and real-prefix parity remain open. Linux NativeAOT is locally unverified.

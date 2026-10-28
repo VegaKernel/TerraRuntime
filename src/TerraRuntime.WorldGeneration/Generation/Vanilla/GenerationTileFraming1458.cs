@@ -30,7 +30,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <c>CheckTorch</c>, all five <c>IsADripTile</c> identities, dart trap <c>136</c>, directional tiles
 /// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one- and two-cell type-<c>185</c>
 /// piles, the ordinary/table-supported <c>Check2x1</c> identities <c>16</c>/<c>18</c>/<c>29</c>/
-/// <c>134</c>/<c>462</c>/<c>649</c>, dye <c>227</c>,
+/// <c>103</c>/<c>134</c>/<c>462</c>/<c>649</c>, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -120,7 +120,7 @@ internal sealed class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type is 16 or 18 or 29 or 134 or 462 or 649)
+        if (tile.Type is 16 or 18 or 29 or 103 or 134 or 462 or 649)
         {
             CheckTwoByOne(i, j, tile.Type);
             return;
@@ -538,7 +538,7 @@ internal sealed class GenerationTileFraming1458(
 
     /// <summary>
     /// TerrariaServer 1.4.5.8 WorldGen.Check2x1's ordinary solid-support and
-    /// table-supported type-29/type-462 arms.
+    /// table-supported type-29/type-462 and AnchorValid(Table) type-103 arms.
     /// The source checks horizontal frame spacing but does not require matching
     /// FrameY; a broken object removes only its remaining matching cells before
     /// re-framing both anchors in source order.
@@ -555,9 +555,12 @@ internal sealed class GenerationTileFraming1458(
 
         WorldTile first = At(left, j);
         WorldTile second = At(left + 1, j);
-        bool supported = type is 29 or 462
-            ? IsTwoByOneTableSupport(left, j + 1) && IsTwoByOneTableSupport(left + 1, j + 1)
-            : SolidTileAllowBottomSlope(left, j + 1) && SolidTileAllowBottomSlope(left + 1, j + 1);
+        bool supported = type switch
+        {
+            29 or 462 => IsTwoByOneTableSupport(left, j + 1) && IsTwoByOneTableSupport(left + 1, j + 1),
+            103 => IsTwoByOneType103Support(left, j + 1) && IsTwoByOneType103Support(left + 1, j + 1),
+            _ => SolidTileAllowBottomSlope(left, j + 1) && SolidTileAllowBottomSlope(left + 1, j + 1)
+        };
         bool intact = first.IsActive && second.IsActive && first.Type == type && second.Type == type &&
             second.FrameX == first.FrameX + 18 && supported;
         if (intact)
@@ -578,6 +581,28 @@ internal sealed class GenerationTileFraming1458(
         WorldTile tile = At(x, y);
         return tile.IsActive && GenerationFurnitureTiles1458.IsTable(tile.Type) &&
             tile.Shape is not (1 or 2 or 3);
+    }
+
+    private bool IsTwoByOneType103Support(int x, int y)
+    {
+        if (IsTwoByOneTableSupport(x, y))
+            return true;
+
+        // WorldGen.AnchorValid(tile, AnchorType.Table), TerrariaServer 1.4.5.8.
+        // A platform's frame band, not only its identity, determines whether a
+        // top-sloped half of a two-cell object can keep its table anchor.
+        WorldTile tile = At(x, y);
+        if (!tile.IsActive || tile.IsActuated)
+            return false;
+        if (VanillaTileIds.IsPlatform(tile.TileType))
+        {
+            int band = tile.FrameX / 18; // TileObjectData.PlatformFrameWidth().
+            return (tile.Shape != 1 && band is >= 0 and <= 7) ||
+                band is >= 12 and <= 16 or >= 25 and <= 26;
+        }
+        return VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+                   VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) ||
+               GenerationFurnitureTiles1458.IsTable(tile.Type) && tile.Shape == 0;
     }
 
     /// <summary>The one-cell branch of TerrariaServer 1.4.5.8 <c>WorldGen.CheckPile</c>.</summary>

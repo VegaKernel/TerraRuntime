@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+Final Cleanup complete Check2x1 checkpoint (2026-10-28): all seven `Check2x1` identities below pass Release warnings-as-errors, fast `25,553/25,553`, one unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; the earlier pending-gate wording below is historical and does not imply complete Final Cleanup parity.
+
+## Final Cleanup complete Check2x1 dispatch, 2026-10-28
+
+Row109 remains `P`, but the source-shaped generation `TileFrame` slice now covers every `WorldGen.Check2x1` identity: `16/18/29/103/134/462/649`. Type103 additionally follows `AnchorValid(Table)` for frame-qualified platform support. A direct original registered `Final Cleanup` full-pass fixture at `1000 × 500`, seed1458, preserves two valid top-slope directions and rejects two invalid frame bands; six-field full-grid SHA-256 `54540a1918e846f23f2328043dcc0f8f73b1d92764254cc8e5278948c79503ed`, next RNG `1056314798`. Removing the type103 arm fails the unchanged digest. This closes the `Check2x1` dispatch only; persistent chest framing, other important object families, special-seed tails and real-prefix parity remain. Grouped gates are pending.
+
 Merged Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped row109 branch below is verified with concurrent gameplay/QuickCleanup changes. Release WAE0/0, fast `25,553/25,553`, unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes pass. Row109 remains `P`; earlier parent-tree gate numbers below are historical, not merged acceptance.
 
 Final Cleanup Check2x1 checkpoint (2026-10-28): the scoped six-identity source branch below passes Release warnings-as-errors, fast `25,549/25,549`, one unfiltered full `1,566,963/1,566,963` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; further framing, special-seed and real-prefix work is required. The pending-gate wording below is historical.
