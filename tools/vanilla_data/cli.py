@@ -213,7 +213,7 @@ def main(argv=None) -> int:
     source_analyze = source_actions.add_parser('analyze')
     source_analyze.add_argument('--request', type=Path, required=True)
     source_analyze.add_argument('--output-dir', type=Path, required=True)
-    source_adapt = source_actions.add_parser('adapt-scalar', help='Cache-only bounded semantic bool/int candidate and actual-original differential')
+    source_adapt = source_actions.add_parser('adapt-scalar', help='Cache-only bounded scalar state/return candidate and actual-original differential')
     source_adapt.add_argument('--request', type=Path, required=True)
     source_adapt.add_argument('--output-dir', type=Path, required=True)
     capture = commands.add_parser('capture', help='Build an isolated probe and invoke pinned official defaults')
