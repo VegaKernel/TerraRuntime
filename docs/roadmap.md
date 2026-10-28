@@ -1,5 +1,11 @@
 # TerraRuntime roadmap
 
+Hive/JungleShrines house-protection checkpoint (2026-10-28): the scoped row63 cross-pass boundary below passes Release warnings-as-errors, fast `25,548/25,548`, unfiltered full `1,566,962/1,566,962` with zero skips, and fresh Windows NativeAOT with five smokes. Row63 remains `P` pending full house builder and registered-pass differential. Earlier pending-gate wording below records the pre-acceptance candidate.
+
+## Cave-house prior Hive and JungleShrines protection, 2026-10-28
+
+Row 63 remains `P`, but the existing HiveBiome and JungleShrines passes now publish their accepted `StructureMap.AddProtectedStructure` rectangles to the later cave-house candidate boundary. Hive regions include their original five-cell padding; shrine regions retain their unpadded source area. `HouseUtils.CanPlace(room, blacklist, 5)` rejects strict overlap with each room's own five-cell padding and accepts exact touching. Direct source-backed overlap tests, two official canonical JungleShrines cell/anchor/RNG fixtures and canonical generation test publication cover the handoff. Both missing-consumer and missing-publisher omissions fail unchanged regressions. Complete house decoration/aging and remaining earlier protected structures still prevent promotion from `P`; grouped gates are pending.
+
 ## Applied worldgen pass oracle, 2026-10-28
 
 `worldgen run-pass` now executes original registered Grass Wall and current runtime code on the same explicit synthetic input. All17,920projected cells and complete physical RNG agree for seeds1458/42/8675309; deliberate omission and extra-RNG controls fail as expected. The paired [worldgen guide](en/worldgen-source-tools.md) / [RU](ru/worldgen-source-tools.md) documents fresh source/DLL guards and standalone `compare-pass`. This covers wall staining only. Natural-prefix state mapping, dirt-pocket/SpreadGrass branches and other passes remain open; the AddPasses fingerprint diagnostic remains unresolved.

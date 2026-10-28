@@ -56,6 +56,67 @@ public sealed class CaveHousePriorProtection1458Tests
         }
     }
 
+    [Fact]
+    public void Cave_house_offers_respect_prior_hive_padding_without_blocking_touching_bounds()
+    {
+        // HiveBiome.AddProtectedStructure(origin-50, 100x100, padding 5) stores a
+        // 110x110 protected image. HouseUtils.CanPlace pads each proposed room by
+        // another five cells; touching is accepted, strict overlap is rejected.
+        var baseline = Create();
+        Assert.True(CaveHousePlacement1458.TryPlace(baseline.Workspace, baseline.State, baseline.Random,
+            300, 190, out var accepted));
+        int right = accepted.Rooms.Max(room => room.Right);
+        int top = accepted.Rooms.Min(room => room.Top);
+
+        var touching = Create();
+        touching.Workspace.SetVanillaHiveProtectedAreas([new WorldTileRegion(right + 5, top - 40, 110, 110)]);
+        Assert.True(CaveHousePlacement1458.TryPlace(touching.Workspace, touching.State, touching.Random,
+            300, 190, out var touchingResult));
+        Assert.Equal(accepted.Rooms, touchingResult.Rooms);
+        Assert.Equal(baseline.Workspace.TileStore.Tiles.ToArray(), touching.Workspace.TileStore.Tiles.ToArray());
+        Assert.Equal(baseline.Random.Next(), touching.Random.Next());
+
+        var blocked = Create();
+        blocked.Workspace.SetVanillaHiveProtectedAreas([new WorldTileRegion(right + 4, top - 40, 110, 110)]);
+        WorldTile[] before = blocked.Workspace.TileStore.Tiles.ToArray();
+        Assert.False(CaveHousePlacement1458.TryPlace(blocked.Workspace, blocked.State, blocked.Random,
+            300, 190, out _));
+        Assert.Equal(before, blocked.Workspace.TileStore.Tiles.ToArray());
+        Assert.Equal(0, blocked.Workspace.GeneratedChestCount);
+        Assert.Empty(blocked.State.ProtectedHouseRooms);
+        Assert.Equal(2, blocked.Random.Calls);
+    }
+
+    [Fact]
+    public void Cave_house_offers_respect_prior_jungle_shrine_rectangles()
+    {
+        // WorldGen.JungleShrines calls GenVars.structures.AddProtectedStructure(area)
+        // without additional padding. HouseUtils.CanPlace applies its five-cell
+        // candidate padding when the later cave-house pass reads that shared map.
+        var baseline = Create();
+        Assert.True(CaveHousePlacement1458.TryPlace(baseline.Workspace, baseline.State, baseline.Random,
+            300, 190, out var accepted));
+        int right = accepted.Rooms.Max(room => room.Right);
+        int top = accepted.Rooms.Min(room => room.Top);
+
+        var touching = Create();
+        touching.Workspace.SetVanillaJungleShrineProtectedAreas([new WorldTileRegion(right + 5, top + 2, 3, 3)]);
+        Assert.True(CaveHousePlacement1458.TryPlace(touching.Workspace, touching.State, touching.Random,
+            300, 190, out var touchingResult));
+        Assert.Equal(accepted.Rooms, touchingResult.Rooms);
+        Assert.Equal(baseline.Random.Next(), touching.Random.Next());
+
+        var blocked = Create();
+        blocked.Workspace.SetVanillaJungleShrineProtectedAreas([new WorldTileRegion(right + 4, top + 2, 3, 3)]);
+        WorldTile[] before = blocked.Workspace.TileStore.Tiles.ToArray();
+        Assert.False(CaveHousePlacement1458.TryPlace(blocked.Workspace, blocked.State, blocked.Random,
+            300, 190, out _));
+        Assert.Equal(before, blocked.Workspace.TileStore.Tiles.ToArray());
+        Assert.Equal(0, blocked.Workspace.GeneratedChestCount);
+        Assert.Empty(blocked.State.ProtectedHouseRooms);
+        Assert.Equal(2, blocked.Random.Calls);
+    }
+
     private static (Workspace Workspace, ChestPlacementState1458 State, CountingRandom Random) Create()
     {
         var workspace = new Workspace(600, 500);

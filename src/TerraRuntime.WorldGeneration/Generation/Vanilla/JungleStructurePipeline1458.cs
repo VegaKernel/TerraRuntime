@@ -216,7 +216,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
 
     private readonly JungleStructureStage1458 stage;
     private readonly JungleStructureState1458 state;
-    private readonly List<(int X, int Y, int Width, int Height)> protectedShrines = [];
+    private readonly List<WorldTileRegion> protectedShrines = [];
 
     public JungleStructurePass1458(
         JungleStructureStage1458 stage,
@@ -708,6 +708,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             context.CancellationToken);
 
         int placed = biome.Apply();
+        workspace.SetVanillaHiveProtectedAreas(biome.CaptureProtectedAreas());
 
         context.ReportProgress(1d, $"Growing bee hives ({placed})");
     }
@@ -719,6 +720,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             (ushort)bootstrap.JungleHut, state.WorldSurface, state.RockLayer,
             context.CancellationToken);
         workspace.SetVanillaJungleShrineChestAnchors(state.JungleChestCandidates);
+        workspace.SetVanillaJungleShrineProtectedAreas(protectedShrines.ToArray());
 
         context.ReportProgress(
             1d,
@@ -734,6 +736,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         pass.ApplyJungleChestsCore(new RuntimeGrid(workspace), new VanillaRandom(random),
             dungeonSide, jungleHut, worldSurface, rockLayer, default);
         workspace.SetVanillaJungleShrineChestAnchors(state.JungleChestCandidates);
+        workspace.SetVanillaJungleShrineProtectedAreas(pass.protectedShrines.ToArray());
         return state.JungleChestCandidates;
     }
 
@@ -776,7 +779,8 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
 
                 BuildJungleShrine(grid, x, y, halfWidth, halfHeight, jungleHut, random);
                 state.JungleChestCandidates.Add(new WorldGenerationPoint(x, y));
-                protectedShrines.Add((x - halfWidth - 1, y - halfHeight - 1, halfWidth + 1, halfHeight + 1));
+                protectedShrines.Add(new WorldTileRegion(
+                    x - halfWidth - 1, y - halfHeight - 1, halfWidth + 1, halfHeight + 1));
                 totalFailures = 0;
                 break;
             }
@@ -810,10 +814,10 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         if (areaX < 0 || areaY < 0 || areaX + areaWidth > grid.Width - 1 ||
             areaY + areaHeight > grid.Height - 1)
             return false;
-        foreach ((int protectedX, int protectedY, int protectedWidth, int protectedHeight) in protectedShrines)
+        foreach (WorldTileRegion protectedArea in protectedShrines)
         {
-            if (areaX - 1 < protectedX + protectedWidth && protectedX < areaX + areaWidth + 1 &&
-                areaY - 1 < protectedY + protectedHeight && protectedY < areaY + areaHeight + 1)
+            if (areaX - 1 < protectedArea.ExclusiveRight && protectedArea.X < areaX + areaWidth + 1 &&
+                areaY - 1 < protectedArea.ExclusiveBottom && protectedArea.Y < areaY + areaHeight + 1)
                 return false;
         }
         for (int scanX = areaX - 1; scanX < areaX + areaWidth + 1; scanX++)

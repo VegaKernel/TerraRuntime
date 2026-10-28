@@ -46,7 +46,10 @@ internal sealed class HiveBiome1458(
 
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
-    private readonly List<(int X, int Y, int Width, int Height)> protectedAreas = [];
+    private readonly List<WorldTileRegion> protectedAreas = [];
+
+    /// <summary>The accepted HiveBiome AddProtectedStructure rectangles, including its five-cell padding.</summary>
+    internal WorldTileRegion[] CaptureProtectedAreas() => protectedAreas.ToArray();
 
     /// <summary>Where a Bee Larva should later be framed, one per accepted hive.</summary>
     public List<(int X, int Y)> LarvaAnchors { get; } = [];
@@ -155,7 +158,7 @@ internal sealed class HiveBiome1458(
         }
 
         CreateStandForLarva(cursorX, cursorY);
-        protectedAreas.Add((originX - 50 - 5, originY - 50 - 5, 110, 110));
+        protectedAreas.Add(new WorldTileRegion(originX - 55, originY - 55, 110, 110));
         return true;
     }
 
@@ -473,9 +476,10 @@ internal sealed class HiveBiome1458(
         if (x < 0 || y < 0 || x + areaWidth > width - 1 || y + areaHeight > height - 1)
             return false;
 
-        foreach ((int px, int py, int pw, int ph) in protectedAreas)
+        foreach (WorldTileRegion protectedArea in protectedAreas)
         {
-            if (x < px + pw && px < x + areaWidth && y < py + ph && py < y + areaHeight)
+            if (x < protectedArea.ExclusiveRight && protectedArea.X < x + areaWidth &&
+                y < protectedArea.ExclusiveBottom && protectedArea.Y < y + areaHeight)
                 return false;
         }
 

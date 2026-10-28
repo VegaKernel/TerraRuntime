@@ -1,5 +1,9 @@
 # Production graph
 
+## Retained worldgen protected regions, 2026-10-28
+
+The existing isolated `Workspace` now carries accepted HiveBiome protected rectangles (already expanded by source padding five) and JungleShrines protected rectangles (raw source areas) from their respective earlier generation passes to `CaveHousePlacement1458`. Each producer publishes a detached bounded array after its own pass; the cave-house owner only reads it during pre-write admission. This joins the existing retained Shimmer rectangle without adding a shipping project, dependency, RNG owner or persisted world field. Marble/Granite AddStructure regions are deliberately not treated as protected. Absent regions remain empty; no alternate structure registry is introduced.
+
 ## Applied isolated worldgen oracle and Shimmer protection, 2026-10-28
 
 Offline PassProbe references existing WorldGeneration and links the current UnifiedRandom source; it adds no shipping project, dependency or runtime reflection. Shipping graph remains15projects/29edges. Fresh original registered Grass Wall and current runtime execution share an explicit synthetic fixture with actual readback; the Python comparator requires identical input cells/context/full physical RNG before comparing all named WorldTile16 output fields and RNG. The runner binds current source/tool inputs and six executed DLLs before/after. This supports one wall-stain profile, not a natural generation prefix or whole-world parity.

@@ -1,5 +1,7 @@
 # NativeAOT and CoreCLR hosting baseline
 
+2026-10-28 Hive/JungleShrines cave-house handoff: fresh Windows NativeAOT executable SHA256 `46894c63e0d28a62b50e21dfe0dd0927e51e80d6a587527e144ca814e662e12e` passes exercised loop/protocol/network/world/TUI smokes, including wiring and reservation checks. Release solution warnings-as-errors and unfiltered full `1,566,962/1,566,962` pass with zero skips. No production package or project edge changed; Linux NativeAOT and full Buried Chests parity remain unverified.
+
 ## Shimmer cave-house protection and offline pass oracle, 2026-10-28
 
 Fresh Windows x64 NativeAOT publish and all five standalone loop/protocol/network/world/TUI smokes pass for the retained Shimmer cave-house fix. Executable SHA256 `e4457bc07329c96b49d8b312dd86ddcdd3da148f874039bf56e044a3c92dddc5`, PE CLR directory `0/0`. Release warnings-as-errors, focused77, fast25,546 and complete affected84,161 pass without failures/errors/skips. Shipping graph remains15projects/29edges; the new reflection-based PassProbe is offline-only and was exercised under CoreCLR. No unfiltered full, Linux Native, fresh TCP or original GUI acceptance is claimed. Exact artifacts, source/DLL guards and isolated-pass scope are recorded in [verification](verification/worldgen-applied-tools-20261028.json).

@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Prior Hive/JungleShrines structures at cave-house admission, 2026-10-28
+
+TerrariaServer 1.4.5.8 `HiveBiome.Place` calls `StructureMap.AddProtectedStructure(new Rectangle(origin.X-50, origin.Y-50, 100, 100), 5)` after accepting the hive. `WorldGen.JungleShrines` calls `GenVars.structures.AddProtectedStructure(area)` after building each accepted hut; its area starts at `(x-halfWidth-1,y-halfHeight-1)` and has size `(halfWidth+1,halfHeight+1)` without extra padding. Later `HouseUtils.AreRoomsValid` calls `structures.CanPlace(room, BlacklistedTiles, 5)` for ordinary worlds. The source `StructureMap` uses strict overlap: the proposed room's five-cell padding must not intersect the Hive's already-padded rectangle or a raw shrine rectangle, while exact touching is permitted. This is a geometry/admission fact; a canonical whole `UndergroundHousesAndBuriedChests` pass differential and remaining protected producers are not established.
+
 ## Actual isolated Grass Wall and prior Shimmer protection, 2026-10-28
 
 Pinned original1.4.5.8 registered Grass Wall GenPass.Apply and current GrassWallPass1458.Apply produce identical17,920-cell WorldTile16 projections and complete physical RNG endpoints on synthetic grass-wall-stain-v1 input for seeds1458/42/8675309. Actual omit-pass control differs in83cells+RNG; extra-rng differs only in RNG. Main.rand and WorldGen.genRand alias in this context; actual UnifiedRandom has one stored inext0..55 and56slots, with the other cursor derived. No dirt-pocket/SpreadGrass/natural-prefix/manifest-tail/raw-Tile-memory/whole-world claim follows.
