@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "kind": "semantic-typed-weapon-main-publication-component",
+  "accepted": true,
+  "componentAccepted": true,
+  "aggregateGameplayAcceptance": false,
+  "candidateOnly": true,
+  "productionAdmissionChanged": false,
+  "immutablePredecessor": {
+    "commit": "68c3e789f700984a8633a1c2ce871c47ebbf553a",
+    "path": "docs/verification/semantic-typed-weapon-candidate-20261029.json",
+    "sha256": "6c181586dc25cde3cc2869622040e8e4b06978768e7235662e913968e466a7b0"
+  },
+  "mainMergeHeadAtExecution": "ee997c317c9b687b61f9107d56da1e8cfe8e4bf9",
+  "freshStandaloneChecks": {
+    "record": ".cache/semantic-typed-main-20261029/checks/accepted.json",
+    "sha256": "45a8cf950ae6ff37f6875ab5e9ea77ddc4840a63dff37c6beabdd8c1ac474894",
+    "warningsAsErrorsBuild": true,
+    "allCiPythonTests": 264,
+    "semanticInventoryChecks": 20,
+    "schema1Checks": 18,
+    "schema2Checks": 27,
+    "documentationMirroredPages": 135,
+    "documentationMarkdownFiles": 309
+  },
+  "freshActualOriginalReplay": {
+    "record": ".cache/typed-final/qualification.json",
+    "sha256": "a84788789e6240b2bffe02b52f9c76f54500a50b45c5b2c033957050506821a7",
+    "runnerSha256": "74cfdfffd42c5aefe13a5586d7ca06719fbe8a7352d1bd81943c1ca44b786d82",
+    "typedOfficialCalls": 2640,
+    "schema1RegressionOfficialCalls": 2028,
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "allFullObservationsAndGeneratedArtifactsExactPredecessor": true,
+    "generatedArtifactBridgeSha256": "0929afacc6caa0450c5a59501578c619d926089b5a4f302c29c3371901847ab5"
+  },
+  "guards": {
+    "protectedProductionInputs": 4067,
+    "productionSourceMembershipAndHashesUnchanged": true,
+    "productionManifestSha256": "51a5f0a5149264ee6f7cc6c4d3c713485152107f9dd4de4995c837a747ad737f",
+    "toolSourceInputs": 21,
+    "toolSourceAndRawIndexExactPredecessor": true,
+    "toolInputMapSha256": "7ad2c68ea2523f400a4b093fbdf8f001c5e2bd98655f33ebd3449a51cd178486",
+    "freshBackendClosureSha256": "0dc8ee9fe6ac5df08438e0a01b3313f915efc521b634ecd334d14e6a4021016e",
+    "cacheInputRecordSha256": "b0681c33de24ec9550ba2370fb29bcf824b7a789880bf798a02848499ac60b32"
+  },
+  "methods": [
+    {
+      "method": "Player.GetWeaponKnockback",
+      "returnType": "float",
+      "casesPerRepeat": 1185,
+      "identicalRepeats": 2,
+      "observationSha256": "37ead0de4f2676b4d60add9dd1f20cb2025bb0b6de54f29ec27ec5591eb820e6",
+      "actualControlDifferences": [
+        387,
+        195,
+        399,
+        195,
+        195
+      ]
+    },
+    {
+      "method": "Player.GetWeaponCrit",
+      "returnType": "int",
+      "casesPerRepeat": 135,
+      "identicalRepeats": 2,
+      "observationSha256": "1485e23754d35b968c83b9b1b154b9670b68596110fa94bb13a0a6af1feca9ff",
+      "actualControlDifferences": [
+        30
+      ]
+    }
+  ],
+  "comparisonScope": {
+    "results": "Exact int values or finite IEEE binary32 bits, including signed zero and subnormals.",
+    "inputs": "Full named mapped readonly facts and unchanged Player1151/Item119 direct-field fingerprints; inherited fields, value types, array identity/contents and other reference identities are included. Unrelated transitive object internals are not claimed.",
+    "rng": "Actual official Main.rand cursor and all56 physical slots are unchanged; no RNG restore or invented state.",
+    "controls": "Five compiled compound-modifier omissions plus one category-precedence swap cause real result differences with zero execution errors.",
+    "host": "Official1458 Linux EXE/FNA on Windows x64 .NET11 CoreCLR; no Linux execution claim."
+  },
+  "retention": "Raw requests, generated original-derived bodies, assemblies, observations and per-run receipts stay in ignored cache/CI artifacts. Git retains this compact final record and its immutable component only.",
+  "limits": [
+    "No production actor/equipment/item-use admission or new full-app/Native acceptance. Existing4067 protected shipping inputs remain exact to accepted NPCfinal03.",
+    "Glove, knockback-buff and stealth fact producers retain their separate ownership/currentness fences.",
+    "DamageMultiplier/Damage, properties, globals, casts, APIs/RNG, arrays, aliases and whole-game translation remain outside schema2.",
+    "SetDefaults category readback is inherited from the component; main repeats the exact explicit transferred read facts, without a new uninterrupted defaults-to-method caller claim."
+  ]
+}

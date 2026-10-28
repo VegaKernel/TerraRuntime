@@ -8,6 +8,8 @@ A separate experimental `source adapt-scalar` operation now **automatically gene
 
 The [main requalification](../verification/semantic-scalar-candidate-main-20261028.json) repeats the actual-original checks on the main checkout. The [combined integration record](../verification/ground-critter-semantic-main-union-20261029.json) keeps this development-tool proof separate from the NPC runtime acceptance while verifying both source sets after merge.
 
+The [schema 2 main receipt](../verification/semantic-typed-weapon-main-20261029.json) separately qualifies the later read-only weapon-stat adaptation. Detailed observations and generated bodies remain in the local cache.
+
 ```mermaid
 flowchart LR
     A[Explicit source files and pinned references] --> B[Roslyn semantic model]

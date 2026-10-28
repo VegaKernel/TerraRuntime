@@ -1,5 +1,11 @@
 # Work state
 
+## CURRENT typed automatic candidates accepted, 2026-10-29
+
+Main now also integrates tool checkpoint68c3e789: schema2 automatically generates read-only Player/Item scalar candidates for GetWeaponKnockback/GetWeaponCrit, with typed float/int returns and exact finite binary32 bits. Freshmain264Python CI-tool tests,20inventory+18schema1+27schema2 checks and2640newWeapon/2028oldtimer official calls pass. Every observed state/result/RNG and generated source/carrier/candidate/mutantDLL matches the independently qualified component;21toolinputs/rawindex and all4067 NPC shipping inputs remain exact. Compact publication receipt docs/verification/semantic-typed-weapon-main-20261029.json; raw rows and original-derived bodies staycacheonly. No new production full/Native execution is claimed for these tool-only changes. Push accepted main after documentation check; Git records publication.
+
+Latest user asks whether all NPC can finish today: answer is no for full vanilla parity;90% AI3/AI7 is an attempted milestone, not a guarantee. Currentaccepted247/300 leaves53;23 more reach90%. pass_oracle starts an isolated next large NPC cohort audit/implementation frompublished1c4; preserve ordinary/ground-critter owners and require meaningful usual AI/attack/loot behavior, not walking-only metric padding. User asked about generatedJSON: keep used numericgoldens/provenance/generators, compact final records inGit, detailed/intermediate records cache/CI. Current880gzipfixtures114.8MiB,47verificationJSON1.8MiB at1c4 baseline; no deletion authorized.
+
 ## CURRENT main union ready for publication, 2026-10-29
 
 Primary main merges NPC checkpointa498d8fa and semantic-tool checkpoint7ae9d32a. All4067 shipping/build/test/resource inputs and raw index bytes match accepted NEXT final03; immutable158DLL closure, full1575840/all5485methods, fast34426 audited from the same full, Nativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/all5smokes and actualRelease+NativeTCP remain exact. The disjoint tool merge does not require or claim another production full/Native execution. Combined evidence docs/verification/ground-critter-semantic-main-union-20261029.json. Push this accepted main; Git records actual publication. AI3/AI7 lifecycle247/300=82.3%, global511/244; FullVanillaAiParity false.
