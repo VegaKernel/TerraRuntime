@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+Post-acceptance offline-oracle merge (2026-10-28): concurrent tool/documentation changes are preserved on top of the accepted cave-house shipping snapshot. Exact Git comparison shows no `src/`, `tests/`, build-input or tier-configuration change; merged Release warnings-as-errors, 66 new tool regressions and bilingual documentation validation pass. The earlier full/Native results retain their exact shipping scope without a redundant rerun. Row 63 remains `P` and row 109 remains `P`.
+
 Hive/JungleShrines house-protection checkpoint (2026-10-28): the scoped row63 cross-pass boundary below passes Release warnings-as-errors, fast `25,548/25,548`, unfiltered full `1,566,962/1,566,962` with zero skips, and fresh Windows NativeAOT with five smokes. Row63 remains `P` pending full house builder and registered-pass differential. Earlier pending-gate wording below records the pre-acceptance candidate.
 
 ## Cave-house prior Hive and JungleShrines protection, 2026-10-28
