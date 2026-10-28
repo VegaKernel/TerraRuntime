@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Shared data and worldgen tooling, 2026-10-28
+
+Developer tooling now provides one official capture/check/emit/mutate workflow for existing NPC metadata and item-placement tables, plus lexical worldgen catalog capture/check/mutate and an exact allowlisted Reset artifact replay. Repeated captures agree byte-for-byte; complete756/3523row comparisons and44data mutation controls pass. Worldgen109names/order/filter agree, but its old AddPasses fingerprint remains a diagnosed mismatch; no production constant is restamped. Full generated-world/pass cell+RNG parity, source snapshot state mapping and production field-consumer analysis remain separate work. The paired [data tools](en/vanilla-data-tools.md)/[RU](ru/vanilla-data-tools.md) and [worldgen tools](en/worldgen-source-tools.md)/[RU](ru/worldgen-source-tools.md) document the executable workflow and limits. No gameplay behavior or compatibility status is expanded by this tooling checkpoint.
+
 ## Wiring merge-now integration, 2026-10-28
 
 The user renewed the explicit request to merge wiring into main. The prepared union combines mainb8c3c620 (concurrent fishing, paid ammo/tool continuity and cave-house changes) with wiring70621c21. Both resource-debit paths, fishing/wiring equipment observers and all fixture resources survive the resolved conflicts. This is merge integration, not a new broad vanilla-parity acceptance checkpoint. Git records actual publication.

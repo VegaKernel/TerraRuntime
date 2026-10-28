@@ -19,6 +19,9 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 
 ## Subsystem and engineering guides
 
+- [Official data capture, comparison and generation tools](vanilla-data-tools.md)
+- [World generation source catalog and Reset replay tools](worldgen-source-tools.md)
+
 - [Frost Legion state and completion](frost-legion-state-1458.md)
 - [Paid boss intents and event prerequisites](paid-boss-summons-1458.md)
 - [Paid event invocation](paid-event-invocation-1458.md)

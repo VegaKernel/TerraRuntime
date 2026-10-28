@@ -1,5 +1,9 @@
 # Production graph
 
+## Offline official data tools, 2026-10-28
+
+`tools/vanilla.py` orchestrates a separate SDK-only ReferenceProbe and strict Python data adapters. The probe uses pinned official assembly/dependency loading only in that developer process; no src project references the tool. Current shipping graph stays15projects/29edges. NPC constructor metadata and item-placement capture/check/emit/mutate use existing tables without modifying their runtime ownership/admission. Worldgen source metadata and an allowlisted one-method compiled Reset replay are separate operations with explicit unsupported/execution scope; they introduce no world state, RNG owner or new generation implementation. Paired guides and verification evidence describe actual qualification and the unresolved existing AddPasses fingerprint mismatch.
+
 ## Wiring merge-now integration, 2026-10-28
 
 The user renewed the explicit request to merge wiring into main. The prepared union combines mainb8c3c620 (concurrent fishing, paid ammo/tool continuity and cave-house changes) with wiring70621c21. Both resource-debit paths, fishing/wiring equipment observers and all fixture resources survive the resolved conflicts. This is merge integration, not a new broad vanilla-parity acceptance checkpoint. Git records actual publication.

@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "kind": "developer-tool-qualification",
+  "date": "2026-10-28",
+  "accepted": true,
+  "scope": "Offline data/worldgen developer tools only. No production behavior, AI/parity, source-restamp, fresh Native or whole-world acceptance.",
+  "productionSourcesAndTestInputsUnchanged": true,
+  "protectedInputCount": 4001,
+  "baseCommit": "a23bcc561bbb8e1516a56e36cde687ec5f91ee07",
+  "data": {
+    "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "dependenciesSha256": {
+      "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171"
+    },
+    "probeSha256": "6f263d41b1f4bb2fe64021cb047265422bc014974fcf9bbdba9cbfd20f3fb74d",
+    "profile": {
+      "framework": ".NET 11.0.0-preview.7.26381.103",
+      "gameMenu": true,
+      "getGoodWorld": false,
+      "hardMode": false,
+      "hostOs": "Microsoft Windows 10.0.19045",
+      "name": "classic-constructor-coreclr",
+      "netMode": 2,
+      "remixWorld": false,
+      "scope": "Fresh instances, default spawn parameters, no content-sample initialization/world/update/AI. Assembly edition is not host OS.",
+      "seed": 1458
+    },
+    "capturedRows": {
+      "item-placement": 6195,
+      "npc-defaults": 761
+    },
+    "checkedRows": {
+      "npc-defaults": 756,
+      "item-placement": 3523
+    },
+    "capturesByteIdentical": true,
+    "captureSha256": "689f6a79fefeee8a5f8aae5e3bdd97b01c61afac0bd59a554a5c1c424000f3d4",
+    "dataSha256": "ab358933f062578c499c0886487e9799b7e6e4f882850c5921b02989b0e99514",
+    "mutationCount": 44,
+    "cachedCheckWallSeconds": [
+      0.26502259995322675,
+      0.2506841999711469,
+      0.2918982000555843
+    ],
+    "cachedCheckMedianWallSeconds": 0.26502259995322675
+  },
+  "worldgen": {
+    "capturePasses": 109,
+    "weightsCaptured": 109,
+    "currentCatalogAccepted": false,
+    "currentDifferences": [
+      {
+        "field": "AddPassesSha256",
+        "expected": "1e073711995e1eb38578d7d23e991cf5005fefaf573188ebbdcec261f945347f",
+        "actual": "72e757af1fb0a7b565d397bbb0f9fd1d32a2960838ba636c593e122645ab9672"
+      }
+    ],
+    "metadataMutantsDetectedOnPrivateAlignedCopy": 5,
+    "sourceDriftDetected": true,
+    "replayAccepted": true,
+    "replayDlls": 158,
+    "replayScope": "Compiled artifact replay of the existing official Reset checkpoint. No fresh official call, compiler, current-tree acceptance, world generation, NativeAOT or all-pass parity claim."
+  },
+  "resetReplay": {
+    "accepted": true,
+    "method": "TerraRuntime.Tests.VanillaReferenceDifferentialCheckpoint1458Tests.Official_reference_seed_8675309_keeps_pinned_reset_dungeon_side_and_anchor",
+    "testAssemblySha256": "6b0b7e15446858fa547d12c81465eae689faa94b07e2d355296a6d525fb1e3af",
+    "dllCount": 158,
+    "dllsUnchanged": true,
+    "xmlSha256": "861abf74d1f92a4bcdb55b6827f07b7ed44ab54c77ffed583ecdbb4473421f4d",
+    "wallSeconds": 0.9865945000201464,
+    "scope": "Compiled artifact replay of the existing official Reset checkpoint. No fresh official call, compiler, current-tree acceptance, world generation, NativeAOT or all-pass parity claim."
+  },
+  "checks": {
+    "python-tests": {
+      "exitCode": 0,
+      "logSha256": "2b3b6aac71a3f882b60d7d34aa0861b8952fd822261d30be5bb717b2196064ef",
+      "log": ".cache/vanilla-data-qualification-v2/python-tests.log"
+    },
+    "documentation": {
+      "exitCode": 0,
+      "logSha256": "d7733890e8c19de07d4157ddf3dc7d037a1f2bb4109a50e1ab4fe32987f851e7",
+      "log": ".cache/vanilla-data-qualification-v2/documentation.log"
+    },
+    "project-graph": {
+      "exitCode": 0,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053",
+      "log": ".cache/vanilla-data-qualification-v2/project-graph.log"
+    },
+    "diff": {
+      "exitCode": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "log": ".cache/vanilla-data-qualification-v2/diff.log"
+    }
+  },
+  "qualificationEvidence": {
+    "combined-result.json": "61eb317b636faea8640990886e0e0cf41922127bc43ceb5e8691f4654104abb1",
+    "verify.json": "a07adf414be3e6fff58ae1b7d95461b6361d5e81f06b0504a891d22d3bfe3646",
+    "worldgen.json": "04704908c563f72ac0ae73ee01810c5e6f8fc2400474ba8ecce782553e1e7c44",
+    "worldgen-current-check.json": "67dd18dc5e2b4b57bbe0a2bcdfd97eb0518aae1f9ba60a15f9a8a543030ec689",
+    "worldgen-private-mutations.json": "ca7dba55712e6c4f7be768c6da5b2cd6f04383592c978cf15bec6df71c2be901",
+    "worldgen-source-drift.json": "e0bb91f901a69a22c270cc5579f8727aea197186809da430130eed24e6051c95",
+    "reset-replay/result.json": "5470b0803a0c0cb2779f2f3077d118e0416595ce25b44f5bd70a9627f858c8b6"
+  },
+  "knownOpenIssue": "Current worldgen catalog AddPassesSha256 remains RED versus freshly extracted source; cause unresolved; no production constant updated.",
+  "pythonTestCases": 104
+}

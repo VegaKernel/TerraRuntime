@@ -1,0 +1,11 @@
+{
+  "gameVersion": "1.4.5.8",
+  "assemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "assemblyFlavor": "official-linux-server",
+  "dependenciesSha256": {
+    "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171"
+  },
+  "npcPositiveCount": 696,
+  "npcNegativeCount": 65,
+  "itemCount": 6196
+}
