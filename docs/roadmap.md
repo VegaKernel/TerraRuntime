@@ -10,6 +10,14 @@ Release warnings-as-errors, focused `8,221/8,221`, fast `33,662/33,662` and one 
 
 `FullVanillaAiParity` remains false. Unsupported door/switch contact, friendly overlap, Shimmer/lava, unowned statuses and humanoid social poses retain whole-phase refusal. The phase oracle excludes whole-world ticks; specific-loot captures exclude global rules and complete original death. Linux NativeAOT, original GUI and graceful-save shutdown are not established by this checkpoint.
 
+
+Merged complete Check2x1 checkpoint (2026-10-28): the seven-identity row109 slice below passes Release WAE0/0, fast `25,587/25,587`, unfiltered full `1,567,001/1,567,001` without skips, and fresh Windows NativeAOT with five smokes on the tree also containing concurrent CaveHouse/NPC/world-item work. Row109 remains `P`; earlier parent-tree numbers below are historical, not this merge's acceptance.
+
+Final Cleanup complete Check2x1 checkpoint (2026-10-28): all seven `Check2x1` identities below pass Release warnings-as-errors, fast `25,553/25,553`, one unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; the earlier pending-gate wording below is historical and does not imply complete Final Cleanup parity.
+
+## Final Cleanup complete Check2x1 dispatch, 2026-10-28
+
+Row109 remains `P`, but the source-shaped generation `TileFrame` slice now covers every `WorldGen.Check2x1` identity: `16/18/29/103/134/462/649`. Type103 additionally follows `AnchorValid(Table)` for frame-qualified platform support. A direct original registered `Final Cleanup` full-pass fixture at `1000 × 500`, seed1458, preserves two valid top-slope directions and rejects two invalid frame bands; six-field full-grid SHA-256 `54540a1918e846f23f2328043dcc0f8f73b1d92764254cc8e5278948c79503ed`, next RNG `1056314798`. Removing the type103 arm fails the unchanged digest. This closes the `Check2x1` dispatch only; persistent chest framing, other important object families, special-seed tails and real-prefix parity remain. Grouped gates are pending.
 ## Analyzer-applied gameplay, NPC and worldgen union, 2026-10-28
 
 The semantic inventories have been applied to shipping behavior: world-item creation ownership now belongs only to the initial publication, with canonical state for later packet `21`, partial pickup and stack merging; five ordinary bunny identities reuse the existing nonresident owner, adding four lifecycle definitions and reducing AI3/AI7 creation-only identities from 96 to 92; cave-house tile mutations now preserve or reset the exact independent shape and metadata fields. The concurrent main Final Cleanup Check2x1 change is retained.

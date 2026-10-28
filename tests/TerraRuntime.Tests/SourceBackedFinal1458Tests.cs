@@ -853,8 +853,9 @@ public sealed class SourceBackedFinal1458Tests
     public void Final_cleanup_two_by_one_frame_important_objects_match_official_passlegacy()
     {
         // Registered TerrariaServer 1.4.5.8 FinalCleanup PassLegacy, 1000x500, seed1458.
-        // Six Check2x1 identities cover intact pairs, missing members, bad frame spacing,
-        // absent ordinary support, and table-only supports. The source full-grid six-field
+        // All seven Check2x1 identities cover intact pairs, missing members, bad frame spacing,
+        // absent ordinary support, table-only support, and type103's frame-qualified
+        // top-sloped platform anchor. The source full-grid six-field
         // digest and next RNG are pinned.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
@@ -892,13 +893,34 @@ public sealed class SourceBackedFinal1458Tests
             workspace.TileStore.Set(left, 101, in support);
             workspace.TileStore.Set(left + 1, 101, in support);
         }
+        var neighbourPlatform = new WorldTile { Type = 19, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(939, 101, in neighbourPlatform);
+        foreach ((int left, short platformFrame) in new[]
+            { (900, (short)0), (920, (short)144), (940, (short)450), (960, (short)144) })
+        {
+            var first = new WorldTile { Type = 103, Flags = WorldTileFlags.Active };
+            var second = new WorldTile { Type = 103, FrameX = 18, Flags = WorldTileFlags.Active };
+            var leftSupport = new WorldTile { Type = 19, FrameX = platformFrame,
+                Shape = left >= 940 ? (byte)3 : (byte)2, Flags = WorldTileFlags.Active };
+            var rightSupport = new WorldTile { Type = 19, FrameX = platformFrame,
+                Shape = left is 900 or 940 ? (byte)0 : left >= 940 ? (byte)3 : (byte)2,
+                Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(left, 100, in first);
+            workspace.TileStore.Set(left + 1, 100, in second);
+            workspace.TileStore.Set(left, 101, in leftSupport);
+            workspace.TileStore.Set(left + 1, 101, in rightSupport);
+        }
 
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
-        Assert.Equal("85DB1681EBC66152EF3F1FA2D02D8188BD4BFE5FEF94500CD09DE650DA8F7435", HashFixture(workspace));
+        Assert.Equal("54540A1918E846F23F2328043DCC0F8F73B1D92764254CC8E5278948C79503ED", HashFixture(workspace));
         Assert.Equal(1056314798, random.Next());
+        Assert.True(workspace.TileStore.Get(900, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(920, 100).IsActive);
+        Assert.True(workspace.TileStore.Get(940, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(960, 100).IsActive);
     }
 
     [Fact]
