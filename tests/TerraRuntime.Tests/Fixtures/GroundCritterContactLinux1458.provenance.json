@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "kind": "original-surviving-hostile-contact-caller",
+  "scope": "Actual original victim NPC.UpdateNPC(0), peer NPC1 frozen as explicit caller preimage. Runtime tests observe victim publication before the later peer turn. Not whole all-NPC phase or fullStrike/parity evidence.",
+  "fixture": "GroundCritterContactLinux1458.json.gz",
+  "fixtureSha256": "6a90cfbefc44887e27d01637a38967d5423162eef2c513ce0b5cbf3f47132cc3",
+  "sourceQualificationPath": ".cache/ai7-critter-20261028/contact-qualification.json",
+  "sourceQualificationSha256": "c22bc59164b755acaa44d571f8b2ed983081ee6f9095355550f4208e1ba475f8",
+  "sourceQualification": {
+    "schemaVersion": 1,
+    "kind": "actual-original-ground-critter-contact-caller-qualification",
+    "accepted": true,
+    "aggregateAcceptance": false,
+    "runtimeParityClaim": false,
+    "fixture": "GroundCritterContactLinux1458.v1.json.gz",
+    "fixtureSha256": "6a90cfbefc44887e27d01637a38967d5423162eef2c513ce0b5cbf3f47132cc3",
+    "cases": 16,
+    "actualOriginalUpdateNpcCallsBothRepeats": 32,
+    "originalRepeatByteIdentical": true,
+    "goldPhysicalDraws": 11,
+    "regularPhysicalDraws": 1,
+    "goldAdditionalPhysicalDraws": 10,
+    "allVictimsSurviveLife5To4": true,
+    "allVictimsImmune255After30": true,
+    "peerNpcStateUnchanged": true,
+    "rngReferenceSha256": "5c1124eca27c1c0612b48c20a64c93c278c2a04f5a356490e1a1971de385c9cc",
+    "rngReferenceBackendSha256": "bb7b23272d6b40b584de64f9a4345dd1b19e03046effeb739d8b4634c7e310ed",
+    "rngReferenceProgramSha256": "11aa31e109fda00f1b752dfbb668f61f44218268f5607a0d65514195a5023075",
+    "receipts": [
+      {
+        "name": "contact-1458-a",
+        "receiptSha256": "c95f1739bbbd3b8a0880fda02ae89a16d3cf765a1d3e9af9abffd71a2c1b1b0d",
+        "outputSha256": "817f0266801624a488112e165160ddc8aaadb5c8ceeb2bbd7940fda45cec896d",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "ebd2282e3c6c4cc28b15a0aa69fa3cbe3e55bf78659b4d2513e191f32902895d",
+          "runnerSha256": "dc11b40fd5fe9ca0d5759a9cc7eda5535b36623397f3c7589a651bedc1dc61ef",
+          "executedDirectory": {
+            "Probe.dll": "5cb218c823c2ca6f3250858cf0974c3fef4e8e4cf1bcac1fec1210b6a534ef4f"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      },
+      {
+        "name": "contact-1458-b",
+        "receiptSha256": "b9e2e20522e66f0713f07c653eb14962e4032a304ce01a628108c0b019c13eb6",
+        "outputSha256": "817f0266801624a488112e165160ddc8aaadb5c8ceeb2bbd7940fda45cec896d",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "ebd2282e3c6c4cc28b15a0aa69fa3cbe3e55bf78659b4d2513e191f32902895d",
+          "runnerSha256": "dc11b40fd5fe9ca0d5759a9cc7eda5535b36623397f3c7589a651bedc1dc61ef",
+          "executedDirectory": {
+            "Probe.dll": "5cb218c823c2ca6f3250858cf0974c3fef4e8e4cf1bcac1fec1210b6a534ef4f"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      },
+      {
+        "name": "contact-42-a",
+        "receiptSha256": "32a4d1a326d1bec03945313d8ee6fe1f2eb94cde73a94fc0a45c25d3efc9dfac",
+        "outputSha256": "8c8537310628a959b22bc73910da7358cd5f88d7f9a01cb23b06c37a9a8781bf",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "ebd2282e3c6c4cc28b15a0aa69fa3cbe3e55bf78659b4d2513e191f32902895d",
+          "runnerSha256": "dc11b40fd5fe9ca0d5759a9cc7eda5535b36623397f3c7589a651bedc1dc61ef",
+          "executedDirectory": {
+            "Probe.dll": "5cb218c823c2ca6f3250858cf0974c3fef4e8e4cf1bcac1fec1210b6a534ef4f"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      },
+      {
+        "name": "contact-42-b",
+        "receiptSha256": "f58989747f239a639399ddb74a119f3c3a8fdd027ce7c84f721c674139820ae2",
+        "outputSha256": "8c8537310628a959b22bc73910da7358cd5f88d7f9a01cb23b06c37a9a8781bf",
+        "inputAndExecutionPins": {
+          "officialSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+          "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+          "projectSha256": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+          "sourceSha256": "ebd2282e3c6c4cc28b15a0aa69fa3cbe3e55bf78659b4d2513e191f32902895d",
+          "runnerSha256": "dc11b40fd5fe9ca0d5759a9cc7eda5535b36623397f3c7589a651bedc1dc61ef",
+          "executedDirectory": {
+            "Probe.dll": "5cb218c823c2ca6f3250858cf0974c3fef4e8e4cf1bcac1fec1210b6a534ef4f"
+          },
+          "originalSourceSha256": {
+            "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+            "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "Terraria/Player.cs": "a82bac2c18210e21e0fb59537b4c7d99e0647bc2c2b645dff066974763188618",
+            "Terraria.ID/NPCID.cs": "a91f815c97500929f5655526fb7ffa9cc56f6968bcfb9c4b7b927bed635d50f0",
+            "Terraria.GameContent/Luck.cs": "b1204dd625193f1ce5a19d6597f212c7d0c7ea63224ee888aa748c0207d9b26f",
+            "Terraria.GameContent.ItemDropRules/ItemDropDatabase.cs": "d0f23d2c8b460547f2e38ac68046b2df78b66fdcc1c7b75bec7dc857b225d541"
+          }
+        }
+      }
+    ],
+    "scope": "Actual original victim NPC.UpdateNPC(0) including surviving hostile NPC contact, with peer1 actual NPC3 damage1 frozen as explicit caller input. This is not whole-all-NPCs NpcAuthority phase parity. Physical draw counts independently match fresh actual UnifiedRandom.Next endpoints; no emulation/restoration of live NPC RNG."
+  }
+}

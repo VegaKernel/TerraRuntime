@@ -54,6 +54,10 @@ public readonly record struct VanillaZombieMotionInput(
     public float? BloodZombieTargetDistance { get; init; }
     public float? BloodZombieClosestTargetDistance { get; init; }
     public bool? BloodZombieExpertMode { get; init; }
+    public float? TurningCritterTargetOffsetX { get; init; }
+    public float? TurningCritterClosestTargetOffsetX { get; init; }
+    public bool? TurningCritterTargetDead { get; init; }
+    public bool? TurningCritterClosestTargetDead { get; init; }
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -95,7 +99,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     DrManFly = 19,
     Fritz = 20,
     Lamia = 21,
-    BloodZombie = 22
+    BloodZombie = 22,
+    TurningCritter = 23
 }
 
 /// <summary>
@@ -156,6 +161,13 @@ public static class VanillaZombieMotion
         }
 
         VanillaZombieTargetRefresh closestTarget = input.ClosestTarget;
+        if (input.MotionProfile == VanillaGroundFighterMotionProfile.TurningCritter &&
+            (input.TurningCritterTargetOffsetX is not { } currentCritterOffset || !float.IsFinite(currentCritterOffset) ||
+             input.TurningCritterTargetDead is null ||
+             closestTarget.HasTarget &&
+                (input.TurningCritterClosestTargetOffsetX is not { } closestCritterOffset || !float.IsFinite(closestCritterOffset) ||
+                 input.TurningCritterClosestTargetDead is null)))
+        { result = default; return false; }
         float velocityX = input.VelocityX;
         float velocityY = input.VelocityY;
         int directionX = input.DirectionX;
@@ -339,6 +351,22 @@ public static class VanillaZombieMotion
                 velocityX *= .9f;
             ApplyStandardMotion(maximumSpeed, input.HorizontalAcceleration, input.OverspeedGroundDamping);
         }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.TurningCritter)
+        {
+            bool refreshed = targetRefreshes > 0 && closestTarget.HasTarget;
+            float offset = refreshed ? input.TurningCritterClosestTargetOffsetX!.Value : input.TurningCritterTargetOffsetX!.Value;
+            bool dead = refreshed ? input.TurningCritterClosestTargetDead!.Value : input.TurningCritterTargetDead!.Value;
+            if (!dead && velocityY == 0f && MathF.Abs(offset) is > 0f and < 100f &&
+                (velocityX < 0f && offset < 0f || velocityX > 0f && offset > 0f))
+            {
+                velocityY = -4f;
+                velocityX += directionX * 3f;
+            }
+            if (velocityY == 0f && MathF.Abs(velocityX) <= maximumSpeed &&
+                (directionX == 1 && velocityX < 0f || directionX == -1 && velocityX > 0f))
+                velocityX *= .8f;
+            ApplyStandardMotion(maximumSpeed, input.HorizontalAcceleration, input.OverspeedGroundDamping);
+        }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Lamia)
         {
             // The shared three-pixel band brakes a Lamia's reversal only on
@@ -505,5 +533,6 @@ public static class VanillaGroundFighterBehaviorCatalog
 {
     public static bool TryGet(NpcTypeId type, out VanillaGroundFighterBehaviorParameters parameters) =>
         VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out parameters) ||
+        VanillaNonresidentGroundCritterCatalog1458.TryGetHostileFighterParameters(type, out parameters) ||
         VanillaMoonEventGroundFighterCatalog1458.TryGetBehavior(type, out parameters);
 }

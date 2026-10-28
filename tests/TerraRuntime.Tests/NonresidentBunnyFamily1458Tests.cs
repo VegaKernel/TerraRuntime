@@ -56,7 +56,9 @@ public sealed class NonresidentBunnyFamily1458Tests
                 });
             Assert.True(npcs.TrySpawnVanilla(in creation, out var birth));
             Assert.Equal(false, birth.Simulation.TownNpc);
-            Assert.Equal(90, birth.Simulation.CatchableNpcTempImmunityCounter);
+            // Actual initialized NewNPC/91-phase source capture: seasonal303/337/540
+            // retain catchItem but Main.npcCatchable is false, so protection stays zero.
+            Assert.Equal(type is 46 or 443 ? 90 : 0, birth.Simulation.CatchableNpcTempImmunityCounter);
             Assert.Equal((short)255, birth.Simulation.ReleaseOwner);
             var beforeRandom = random.Clone();
             if (wholeWorld) world.Tick();
@@ -69,7 +71,7 @@ public sealed class NonresidentBunnyFamily1458Tests
             Assert.Equal((ushort)0, current.Target);
             Assert.True(current.Simulation.CollideY);
             Assert.Equal(-1f, current.Simulation.LocalAi.Ai3);
-            Assert.Equal(89, current.Simulation.CatchableNpcTempImmunityCounter);
+            Assert.Equal(type is 46 or 443 ? 89 : 0, current.Simulation.CatchableNpcTempImmunityCounter);
             if (!wholeWorld) Assert.True(beforeRandom.HasSameState(random));
         }
     }

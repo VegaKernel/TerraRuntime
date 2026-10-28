@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-final02-combat-catch-causal-successor",
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "predecessor": {
+    "path": "docs/verification/ground-critter-combat-catch-20261028.json",
+    "sha256": "df80e40b994f91aafd5d89520f1a1542a52fb550a75aa359f411d91eba097dbd"
+  },
+  "sourceManifest": {
+    "path": ".cache/ground-critter/final-gate02/source-before.json",
+    "sha256": "097ef2d4fef4b7b8bed0db1c65735726abcfef4cdd101b892803afe10fb2bf57"
+  },
+  "dllManifest": {
+    "path": ".cache/ground-critter/final-gate02/dll-before.json",
+    "sha256": "f2c567c2762fc889b47738f9fc8a63fb2a149106ad07371d1105cb1d8f520603"
+  },
+  "controlResult": {
+    "path": ".cache/ground-critter-combat-catch/causal-prepared-04/executed/result.json",
+    "sha256": "2ba9d65e0203c3d4a789de3feea569b1121e8ddd22691322c01b0cf288bb254d"
+  },
+  "actualFinalTestDllSha256": "ca2a0cfe76abdafbdb021971fd6b2ee806e251e6dafc9befbf7402c9e89e599f",
+  "scope": "Actual final02 TestDLL against the final shipping Application and three freshly built private copies with only the specified semantic omission. All other157 DLL members exact. Existing immutable original component fixtures are used unchanged.",
+  "outcomes": [
+    {
+      "variant": "old-gold-predicate",
+      "control": "fixed",
+      "total": 51,
+      "passed": 51,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xmlSha256": "b0e7808acf81791cf76e2d834badee11748f5fc51169fb1dabba8122a609e473"
+    },
+    {
+      "variant": "old-gold-predicate",
+      "control": "omitted",
+      "total": 51,
+      "passed": 18,
+      "failed": 33,
+      "errors": 0,
+      "skipped": 0,
+      "xmlSha256": "aadee561621d07ca34a263f8f2fc49f97e553ec91daee48a603e8ab5317d7821"
+    },
+    {
+      "variant": "old-gem-only-statue",
+      "control": "fixed",
+      "total": 120,
+      "passed": 120,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xmlSha256": "377388174bb13a4cdee1a23668fca959ccfdacd7bf2d6bca507332a9c858efde"
+    },
+    {
+      "variant": "old-gem-only-statue",
+      "control": "omitted",
+      "total": 120,
+      "passed": 33,
+      "failed": 87,
+      "errors": 0,
+      "skipped": 0,
+      "xmlSha256": "4cb72dfe8d806c631c48e87c32dcc9476c79eb11333848da8289c878c29fa73f"
+    },
+    {
+      "variant": "omit-surviving-contact",
+      "control": "fixed",
+      "total": 20,
+      "passed": 20,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xmlSha256": "ca4d93b07cc9c2fc5a0f5be203fa2db80506ac645717813dca313b0e967eb582"
+    },
+    {
+      "variant": "omit-surviving-contact",
+      "control": "omitted",
+      "total": 20,
+      "passed": 12,
+      "failed": 8,
+      "errors": 0,
+      "skipped": 0,
+      "xmlSha256": "e26a5c152de9aa56b5dc8356902b90791cf549509e8fbeb1e91ee35b66cc7d55"
+    }
+  ],
+  "sourceInputs": 4067,
+  "canonicalDlls": 158,
+  "provenanceByteBridge": [
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchLinux1458.provenance.json",
+      "beforeSha256": "1e04065d33ce1b00d5011346216b18b3f8219d96ba478bed4f7a67ebe5e67ad3",
+      "afterSha256": "7ddc266602e1d945450084f66f224f24be9433e4d612b7b5ecfd6137b1c0b11f",
+      "onlyCrlfToLf": true,
+      "jsonValuesIdentical": true,
+      "rawPreimage": {
+        "path": ".cache/ground-critter/pre-final-lf/tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchLinux1458.provenance.json",
+        "sha256": "1e04065d33ce1b00d5011346216b18b3f8219d96ba478bed4f7a67ebe5e67ad3"
+      }
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterBirthProtectionLinux1458.provenance.json",
+      "beforeSha256": "567ba6bbc4e65c1385e8beaf92647e1630d1c6418943ae0d9c6607264b0472a9",
+      "afterSha256": "696ab4660552f465e36cc061c629ef3f164339fde8ad2e060f62851fdea8239a",
+      "onlyCrlfToLf": true,
+      "jsonValuesIdentical": true,
+      "rawPreimage": {
+        "path": ".cache/ground-critter/pre-final-lf/tests/TerraRuntime.Tests/Fixtures/GroundCritterBirthProtectionLinux1458.provenance.json",
+        "sha256": "567ba6bbc4e65c1385e8beaf92647e1630d1c6418943ae0d9c6607264b0472a9"
+      }
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterContactLinux1458.provenance.json",
+      "beforeSha256": "794b47ba1ede06e95ba294a4ea77922e8a56e72e7b0d07749a175a8c680f2eeb",
+      "afterSha256": "8bca45866ad64c63a95079e91da71499b57b83468b3eb609311dd3bced505ac0",
+      "onlyCrlfToLf": true,
+      "jsonValuesIdentical": true,
+      "rawPreimage": {
+        "path": ".cache/ground-critter/pre-final-lf/tests/TerraRuntime.Tests/Fixtures/GroundCritterContactLinux1458.provenance.json",
+        "sha256": "794b47ba1ede06e95ba294a4ea77922e8a56e72e7b0d07749a175a8c680f2eeb"
+      }
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterFindFrameLinux1458.provenance.json",
+      "beforeSha256": "a716bf4fd61a71666e14e1d02bc11489aa1188e351de4c75a54f2ea0b7a20c14",
+      "afterSha256": "8bb4fdea00a2cf8618a6cfcd83288d04323764fa1bb6c31d1ca3ab35b03a4b84",
+      "onlyCrlfToLf": true,
+      "jsonValuesIdentical": true,
+      "rawPreimage": {
+        "path": ".cache/ground-critter/pre-final-lf/tests/TerraRuntime.Tests/Fixtures/GroundCritterFindFrameLinux1458.provenance.json",
+        "sha256": "a716bf4fd61a71666e14e1d02bc11489aa1188e351de4c75a54f2ea0b7a20c14"
+      }
+    }
+  ],
+  "limits": [
+    "Original component captures and historical manifests retain their original raw pins. The explicit bridge qualifies only CRLF-to-LF new provenance serialization, with identical JSON values and immutable gzip resources.",
+    "Catch V1 wire/bootstrap remains unqualified. Actual initialized V2 owns the packet23/106 assertions; V1 supplies only its separately qualified HitEffect component.",
+    "Positive NPC contact assertions observe the actual surviving victim path before the peer turn, including ForcedUpdate; this is not a full all-NPC world tick.",
+    "No full original death/global loot or whole AI7, GUI, Linux host or aggregate acceptance is implied."
+  ]
+}

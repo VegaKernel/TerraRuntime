@@ -11,7 +11,9 @@ namespace TerraRuntime.Core.Npcs;
 /// </summary>
 internal static class RuntimeNpcStateOwnershipPolicy
 {
-    private static bool IsOwnedBunny(int type, int netId) => VanillaNonresidentBunnyCatalog1458.IsSupported(type) && type == netId;
+    private static bool IsOwnedGroundCritter(int type, int netId) => VanillaNonresidentGroundCritterCatalog1458.IsSupported(type) && type == netId;
+    private static int? GroundCritterProtectionAtSpawn(int type, int netId) =>
+        IsOwnedGroundCritter(type, netId) ? VanillaNonresidentGroundCritterCatalog1458.HasCatchProtection(type) ? 90 : 0 : null;
 
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
@@ -21,10 +23,10 @@ internal static class RuntimeNpcStateOwnershipPolicy
             HomeTileY = update.Simulation.HomeTileY ?? -1,
             Homeless = update.Simulation.Homeless ?? false,
             CatchableNpcTempImmunityCounter = update.Simulation.CatchableNpcTempImmunityCounter ??
-                (IsOwnedBunny(update.Type, update.NetId) ? 90 :
-                    VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(new(update.Type)) && update.Type == update.NetId ? 0 : null),
+                (GroundCritterProtectionAtSpawn(update.Type, update.NetId) ??
+                    (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(new(update.Type)) && update.Type == update.NetId ? 0 : null)),
             ReleaseOwner = update.Simulation.ReleaseOwner ??
-                (IsOwnedBunny(update.Type, update.NetId) ||
+                (IsOwnedGroundCritter(update.Type, update.NetId) ||
                     VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(new(update.Type)) && update.Type == update.NetId ? (short)255 : null),
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
@@ -111,6 +113,9 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
         simulation = simulation with
         {
+            // A source same-identity AI-style change survives omitted local updates. SetDefaults
+            // for a changed identity restores its definition's style; slot reuse gets a fresh state.
+            AiStyleOverride = sameDefinition ? simulation.AiStyleOverride ?? previous.Simulation.AiStyleOverride : null,
             // SetDefaults/Transform do not clear source stair-fall history.
             StairFall = simulation.StairFall ?? previous.Simulation.StairFall ?? false,
             // SetDefaults resets home memory, unlike stairFall. Omitted same-identity updates
@@ -119,9 +124,9 @@ internal static class RuntimeNpcStateOwnershipPolicy
             HomeTileY = simulation.HomeTileY ?? (sameDefinition ? previous.Simulation.HomeTileY : -1),
             Homeless = simulation.Homeless ?? (sameDefinition ? previous.Simulation.Homeless : false),
             CatchableNpcTempImmunityCounter = simulation.CatchableNpcTempImmunityCounter ??
-                (sameDefinition ? previous.Simulation.CatchableNpcTempImmunityCounter : IsOwnedBunny(update.Type, update.NetId) ? 90 : null),
+                (sameDefinition ? previous.Simulation.CatchableNpcTempImmunityCounter : GroundCritterProtectionAtSpawn(update.Type, update.NetId)),
             ReleaseOwner = simulation.ReleaseOwner ??
-                (sameDefinition ? previous.Simulation.ReleaseOwner : IsOwnedBunny(update.Type, update.NetId) ? (short)255 : null),
+                (sameDefinition ? previous.Simulation.ReleaseOwner : IsOwnedGroundCritter(update.Type, update.NetId) ? (short)255 : null),
             ShimmerTransparency = sameDefinition ? simulation.ShimmerTransparency : previous.Simulation.ShimmerTransparency,
             TownNpc = sameDefinition ? simulation.TownNpc :
                 VanillaNpcTownFlags1458.TryGet(new(update.Type), out bool townNpc) ? townNpc : null,

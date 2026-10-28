@@ -10,7 +10,11 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
-    private void ExecuteNpcNonlethalHitEffects(in NpcSnapshot npc, int resolvedDamage)
+    private void ExecuteNpcNonlethalHitEffects(in NpcSnapshot npc, int resolvedDamage) =>
+        ExecuteNpcNonlethalHitEffectsOnRandom1458(in npc, resolvedDamage, random);
+
+    internal static void ExecuteNpcNonlethalHitEffectsOnRandom1458(in NpcSnapshot npc, int resolvedDamage,
+        IVanillaNpcRandom random)
     {
         if (npc.TypeIdentity == VanillaNpcIds.LavaSlime && npc.Simulation.LifeMax > 0)
         {
@@ -29,9 +33,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         // Dedicated NPC.HitEffect still makes the Eskimo Zombie's gore choice, even though
         // Gore.NewGore and Dust.NewDust perform no server-side particle allocation.
         if (npc.TypeIdentity.Value == 186) random.NextInt32(0, 5);
-        // NPC.HitEffect 1.4.5.8 chooses Gold Bunny dust identities in the
-        // caller, before dedicated Dust.NewDust returns without allocating.
-        if (npc.Type == 443)
+        // NPC.HitEffect chooses these admitted gold critters' dust identities
+        // before dedicated Dust.NewDust returns without allocating.
+        if (VanillaNonresidentGroundCritterCatalog1458.IsGoldCritter(npc.Type))
             for (int choice = 0; choice < 10; choice++) random.NextInt32(232, 234);
     }
 
@@ -52,7 +56,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         VanillaTownNpcDeathHitEffect1458.ConsumeLethalChoices(npc.TypeIdentity, random);
         // Both Eskimo identities choose a death gore variant on the dedicated server.
         if (npc.TypeIdentity.Value is 186 or 432) random.NextInt32(0, 2);
-        if (npc.Type == 443)
+        if (VanillaNonresidentGroundCritterCatalog1458.IsGoldCritter(npc.Type))
             for (int choice = 0; choice < 20; choice++) random.NextInt32(232, 234);
         if (npc.Type is >= 524 and <= 527)
             for (int choice = 0; choice < 20; choice++) random.NextInt32(0, 3);

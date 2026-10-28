@@ -699,6 +699,18 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         return TryStepCommon(in npc, in definition, in parameters, context, inner, out next, preview);
     }
 
+    internal bool TryStepHostileGroundCritterPreview(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, INpcAiStateStepper inner, IVanillaNpcRandom preview,
+        out NpcStateUpdate next)
+    {
+        next = default;
+        if (npc.Type != npc.NetId ||
+            !VanillaNonresidentGroundCritterCatalog1458.TryGetEffectiveFighterDefinition(npc.Type, npc.Simulation, definition, out var effective) ||
+            !VanillaNonresidentGroundCritterCatalog1458.TryGetHostileFighterParameters(definition.Type, out var parameters))
+            return false;
+        return TryStepCommon(in npc, in effective, in parameters, context, inner, out next, preview);
+    }
+
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -775,9 +787,12 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
     {
         NpcSnapshot npc = sourceNpc;
         bool ordinaryMelee = VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(definition.Type);
+        bool hostileCritter = VanillaNonresidentGroundCritterCatalog1458.IsTurningSquirrel(npc.Type) &&
+            npc.Simulation.AiStyleOverride?.Value == 3;
+        bool retainedTargetRead = ordinaryMelee || hostileCritter;
         IVanillaNpcRandom activeRandom = sourceRandom ?? random;
         NpcRawPlayerSlotSnapshot1458 meleeCurrentTarget = default;
-        if (ordinaryMelee &&
+        if (retainedTargetRead &&
             (sourceRandom is null || npc.Target > byte.MaxValue ||
              !context.TryCaptureRawPlayer((byte)npc.Target, out meleeCurrentTarget) ||
              meleeCurrentTarget.Facts.Slot != npc.Target || !meleeCurrentTarget.Facts.IsValid ||
@@ -936,11 +951,11 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             return false;
         }
         int startingDirectionY = npc.Simulation.DirectionY;
-        if (ordinaryMelee && meleeCurrentTarget.Facts.PositionY + meleeCurrentTarget.Facts.Height == npc.PositionY + fighterBody.Height)
+        if (retainedTargetRead && meleeCurrentTarget.Facts.PositionY + meleeCurrentTarget.Facts.Height == npc.PositionY + fighterBody.Height)
         {
             startingDirectionY = -1;
         }
-        else if (!ordinaryMelee && npc.Target < byte.MaxValue &&
+        else if (!retainedTargetRead && npc.Target < byte.MaxValue &&
             context.TryFindCandidate(checked((byte)npc.Target), out VanillaNpcTargetCandidate currentTarget) &&
             currentTarget.Active &&
             !currentTarget.Dead &&
@@ -997,7 +1012,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
                 ? selected
                 : default;
         NpcRawPlayerSlotSnapshot1458 meleeClosestTarget = default;
-        if (ordinaryMelee && closest.HasTarget)
+        if (retainedTargetRead && closest.HasTarget)
         {
             if (!context.TryCaptureRawPlayer((byte)closest.Target, out meleeClosestTarget) ||
                 meleeClosestTarget.Facts.Slot != closest.Target || !meleeClosestTarget.Facts.IsValid ||
@@ -1040,12 +1055,12 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
                 retainedTarget.CenterY < npc.PositionY + definition.Height * .5f ? -1 : 1);
         }
         int fighterDirectionY = closest.DirectionY;
-        if (ordinaryMelee && closest.HasTarget && fighterDirectionY > 0 &&
+        if (retainedTargetRead && closest.HasTarget && fighterDirectionY > 0 &&
             meleeClosestTarget.Facts.PositionY + meleeClosestTarget.Facts.Height * .5f <= npc.PositionY + fighterBody.Height)
         {
             fighterDirectionY = -1;
         }
-        else if (!ordinaryMelee && closest.HasTarget &&
+        else if (!retainedTargetRead && closest.HasTarget &&
             fighterDirectionY > 0 &&
             context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate selectedCandidate) &&
             selectedCandidate.CenterY <= npc.PositionY + fighterBody.Height)
@@ -1095,7 +1110,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             Target: npc.Target,
             Ai: fighterAi,
             Scale: simulation.Scale,
-            TargetOverlaps: ordinaryMelee
+            TargetOverlaps: retainedTargetRead
                 ? RawTargetOverlaps(meleeCurrentTarget.Facts, in npc, fighterBody)
                 : context.TargetOverlapsNpc(in npc, in definition),
             ClosestTarget: fighterTarget)
@@ -1128,7 +1143,13 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             BloodZombieTargetDistance = ordinaryMelee && definition.Type.Value == 489
                 ? RawTargetDistance(meleeCurrentTarget.Facts, in npc, fighterBody) : null,
             BloodZombieClosestTargetDistance = ordinaryMelee && definition.Type.Value == 489 && closest.HasTarget
-                ? RawTargetDistance(meleeClosestTarget.Facts, in npc, fighterBody) : null
+                ? RawTargetDistance(meleeClosestTarget.Facts, in npc, fighterBody) : null,
+            TurningCritterTargetOffsetX = hostileCritter ? meleeCurrentTarget.Facts.PositionX + meleeCurrentTarget.Facts.Width * .5f -
+                (npc.PositionX + fighterBody.Width * .5f) : null,
+            TurningCritterTargetDead = hostileCritter ? meleeCurrentTarget.Facts.Dead : null,
+            TurningCritterClosestTargetOffsetX = hostileCritter && closest.HasTarget ?
+                meleeClosestTarget.Facts.PositionX + meleeClosestTarget.Facts.Width * .5f - (npc.PositionX + fighterBody.Width * .5f) : null,
+            TurningCritterClosestTargetDead = hostileCritter && closest.HasTarget ? meleeClosestTarget.Facts.Dead : null
         };
 
         bool armedMelee = parameters.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad;
@@ -1271,7 +1292,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             // SetTargetTrackingValues owns the source netUpdate offer before world collision.
             VanillaNetworkPhase = VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type),
             RequiresLowPrioritySync = VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) && npc.Simulation.JustHit,
-            RequiresImmediateSync = ordinaryMelee && result.EnteredStuckThreshold ||
+            RequiresImmediateSync = retainedTargetRead && result.EnteredStuckThreshold ||
                 VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
                 result.TargetRefreshes > 0 && !npc.Simulation.CollideX && !npc.Simulation.CollideY &&
                 (closest.Target != npc.Target || closest.DirectionX != npc.Simulation.DirectionX ||

@@ -15,12 +15,15 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         ref var stamp = ref gemBunnyHomes[snapshot.Handle.Slot];
         if (stamp.Owner.IsAssigned && (stamp.Owner.Generation.Value > snapshot.Handle.Generation.Value ||
             stamp.Owner == snapshot.Handle && (stamp.Retired || stamp.Revision.Value > snapshot.Revision.Value))) return;
-        bool gem = VanillaGemBunnyAi1458.IsSupported(snapshot.Type);
+        bool cohort = VanillaGroundCritterAi1458.IsSupported(snapshot.Type);
+        bool gem = cohort && snapshot.Simulation.AiStyleOverride?.Value != 3;
         if (stamp.Owner.IsAssigned && (stamp.Owner != snapshot.Handle || kind == NpcStateCommitKind.Despawn || !gem))
             Volatile.Write(ref townHomeBaselineFrames[snapshot.Handle.Slot], null);
-        if (!gem) return;
+        // Retain the last observed revision when a squirrel changes style, so a
+        // delayed older AI7 event cannot restore its retired home baseline.
+        if (!cohort && !stamp.Owner.IsAssigned) return;
         stamp = new() { Owner = snapshot.Handle, Revision = snapshot.Revision, Retired = kind == NpcStateCommitKind.Despawn };
-        if (stamp.Retired) return;
+        if (stamp.Retired || !gem) return;
         if (snapshot.Simulation.HomeTileX is not { } x || x is < short.MinValue or > short.MaxValue ||
             snapshot.Simulation.HomeTileY is not { } y || y is < short.MinValue or > short.MaxValue ||
             snapshot.Simulation.Homeless is not { } homeless) return;
@@ -45,8 +48,11 @@ internal sealed partial class RuntimeNpcReplicationRegistry
     internal static bool TryPrepareGemBunnyHome(in NpcSnapshot before, in NpcStateUpdate after, out byte[]? frame)
     {
         frame = null;
-        if (!VanillaGemBunnyAi1458.IsSupported(before.Type) || after.Type != before.Type ||
+        if (!VanillaGroundCritterAi1458.IsSupported(before.Type) || after.Type != before.Type ||
             after.Simulation.TownNpc != false || before.Handle.Slot >= 200) return false;
+        // The turning phase still executes AI7 home updates before changing style.
+        // Later AI3 phases do not publish source UpdateHomeTileState transitions.
+        if (before.Simulation.AiStyleOverride?.Value == 3) return true;
         if (before.Simulation.HomeTileX == after.Simulation.HomeTileX &&
             before.Simulation.HomeTileY == after.Simulation.HomeTileY &&
             before.Simulation.Homeless == after.Simulation.Homeless) return true;

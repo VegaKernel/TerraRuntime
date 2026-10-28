@@ -23,7 +23,7 @@ public sealed class GemBunnyRuntime1458Tests
         {
             sequences++;
             var tiles = Scene(group.Key.Scene);
-            var terrain = new VanillaGemBunnyTerrain1458(tiles);
+            var terrain = new VanillaGroundCritterTerrain1458(tiles);
             var first = group.First().GetProperty("before");
             var state = State(first);
             var random = new VanillaUnifiedRandom1458(1458);
@@ -51,7 +51,7 @@ public sealed class GemBunnyRuntime1458Tests
                 terrain.FindRestingSpot(state.HomeX, state.HomeY, group.Key.Scene != "night", [],
                     out state.RestingX, out state.RestingY);
                 state.ShelterWeather = group.Key.Scene == "night";
-                var danger = new GemBunnyDanger1458(group.Key.Scene is "danger" or "dangerBlocked", -1, false);
+                var danger = new GroundCritterDanger1458(group.Key.Scene is "danger" or "dangerBlocked", -1, false);
                 Assert.True(state.TryStep(terrain, danger, new SystemVanillaNpcRandom(random)));
                 Assert.True(terrain.IsCurrent);
                 var expected = row.GetProperty("after");
@@ -71,7 +71,7 @@ public sealed class GemBunnyRuntime1458Tests
     public void Terrain_plan_rejects_a_changed_tile_section_and_preserves_canonical_collision_owner()
     {
         var tiles = Scene("wall");
-        var terrain = new VanillaGemBunnyTerrain1458(tiles);
+        var terrain = new VanillaGroundCritterTerrain1458(tiles);
         var step = terrain.StepUp(639f, 1580f, .57f, 0f, 18, 20, true);
         Assert.True(terrain.IsCurrent);
         Assert.Equal(VanillaWorldPlayerStepCollision.StepUp(tiles, 639f, 1580f, .57f, 18, 20,
@@ -80,7 +80,7 @@ public sealed class GemBunnyRuntime1458Tests
         Assert.False(terrain.IsCurrent);
     }
 
-    private static VanillaGemBunnyAi1458 State(JsonElement row) => new()
+    private static VanillaGroundCritterAi1458 State(JsonElement row) => new()
     {
         X = F(row, "x"), Y = F(row, "y"), Vx = F(row, "vx"), Vy = F(row, "vy"),
         OldX = F(row, "oldX"), OldY = F(row, "oldY"), OldVx = F(row, "oldVx"), OldVy = F(row, "oldVy"),
@@ -92,7 +92,7 @@ public sealed class GemBunnyRuntime1458Tests
         Local = Ai(row.GetProperty("local")), Gravity = .3f
     };
 
-    private static void AssertState(JsonElement expected, VanillaGemBunnyAi1458 actual)
+    private static void AssertState(JsonElement expected, VanillaGroundCritterAi1458 actual)
     {
         Assert.Equal(F(expected, "x"), actual.X);
         Assert.Equal(F(expected, "y"), actual.Y);

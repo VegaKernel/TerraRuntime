@@ -22,7 +22,7 @@ public sealed partial class RuntimeNpcStore
 
     private bool TryUpdateCore(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot, bool forceSync, bool publish)
     {
-        if (!IsCurrentHandleCandidate(handle) || !IsValid(in update))
+        if (!IsCurrentHandleCandidate(handle))
         {
             snapshot = default;
             return false;
@@ -35,7 +35,24 @@ public sealed partial class RuntimeNpcStore
             return false;
         }
 
-        NpcStateUpdate normalized = RuntimeNpcStateOwnershipPolicy.PreserveUnownedUpdateState(in update, in state.Update);
+        // Source SetDefaults on an identity change resets aiStyle. A trusted transform
+        // commonly starts from the existing snapshot, so validate after removing only
+        // that exact inherited field; arbitrary new overrides must still be refused.
+        NpcStateUpdate candidate = update;
+        if ((update.Type != state.Update.Type || update.NetId != state.Update.NetId) &&
+            update.Simulation.AiStyleOverride == state.Update.Simulation.AiStyleOverride)
+            candidate = update with { Simulation = update.Simulation with { AiStyleOverride = null } };
+        if (!IsValid(in candidate))
+        {
+            snapshot = default;
+            return false;
+        }
+        NpcStateUpdate normalized = RuntimeNpcStateOwnershipPolicy.PreserveUnownedUpdateState(in candidate, in state.Update);
+        if (!IsValid(in normalized))
+        {
+            snapshot = default;
+            return false;
+        }
         if (!TryAdvance(ref state.Revision))
         {
             snapshot = default;

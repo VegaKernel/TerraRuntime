@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-final03-test-only-source-and-runtime-closure-bridge",
+  "accepted": true,
+  "componentAccepted": true,
+  "aggregateAcceptance": false,
+  "candidate": "ground-critter/final-gate03",
+  "sourceGuardAccepted": true,
+  "canonicalDllGuardAccepted": true,
+  "sourceInputCount": 4067,
+  "canonicalDllCount": 158,
+  "runtimeClosureExact": true,
+  "runtimeClosureScope": "All157 runtime dependencies are byte-identical02\u219203; actual six40DLL phase-probe execution directories and canonical members are exact03 and never contain/reference TestDLL. Physical158copy differs only unusedTestsDLL, explicitly listed.",
+  "unchangedRuntimeDllCount": 157,
+  "sourceDifference": {
+    "path": "tests/TerraRuntime.Tests/NpcDefinitionOnlyLifecycle1458Tests.cs",
+    "beforeSha256": "afd1e654bc0e97b59eacfb5786b288163de0d0e2187f546f0ca18035c3752dc3",
+    "afterSha256": "eefa321e350ce7afa6640a5504f4200493ae9e4c6997ead11fc9452c79d038fc",
+    "oldGitHeadBlobHashMatches": true,
+    "exactEdits": "Exclude AiStyleOverride only from the intentional pre-extension serializer and add three explicit null-state assertions. All remaining bytes, including historical hash assertion, are unchanged."
+  },
+  "physicalDllSetAll158Equal": false,
+  "solePhysicalDllDifference": {
+    "path": "tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll",
+    "beforeSha256": "ca2a0cfe76abdafbdb021971fd6b2ee806e251e6dafc9befbf7402c9e89e599f",
+    "afterSha256": "999a9935426278f94b3423a37a420463a0a7e3a5ffe3b12d63849084acc32198",
+    "executedByPhaseProbe": false
+  },
+  "executedPhaseDirectoryBridges": [
+    {
+      "capture": "final02-1458",
+      "executedDllCount": 40,
+      "actualExecutedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "testsAssemblyAbsent": true
+    },
+    {
+      "capture": "final02-42",
+      "executedDllCount": 40,
+      "actualExecutedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "testsAssemblyAbsent": true
+    },
+    {
+      "capture": "final02-8675309",
+      "executedDllCount": 40,
+      "actualExecutedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "testsAssemblyAbsent": true
+    },
+    {
+      "capture": "final02-omit",
+      "executedDllCount": 40,
+      "actualExecutedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "testsAssemblyAbsent": true
+    },
+    {
+      "capture": "final02-extra",
+      "executedDllCount": 40,
+      "actualExecutedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "testsAssemblyAbsent": true
+    },
+    {
+      "capture": "final02-surface",
+      "executedDllCount": 40,
+      "actualExecutedDirectoryExact": true,
+      "canonicalMembersExact": true,
+      "testsAssemblyAbsent": true
+    }
+  ],
+  "priorPhaseComponent": {
+    "path": "docs/verification/ground-critter-phase-final02-20261028.json",
+    "sha256": "2137537d0e79923450be0d22c5ce2abafc090c0be372adb2de8b59fecd5e7ded",
+    "immutable": true
+  },
+  "phaseEvidenceRetained": {
+    "strictActiveFullProjectionPhases": 63744,
+    "strictSurfaceCompanionPhases": 960,
+    "terminalKnownProjectionPhases": 4224,
+    "terminalFullInactiveStatusParityAccepted": false,
+    "strictWholeCorpusAccepted": false,
+    "legacyOldNewStableCases": 60,
+    "legacySourceFullParityClaim": false,
+    "actualOmitRejections": 374,
+    "actualExtraRngRejections": 384,
+    "unsupportedAi3OneOmissionNoops": 10
+  },
+  "actualFinal03TestDllReplay": {
+    "path": "docs/verification/ground-critter-final03-causal-replay-20261028.json",
+    "sha256": "6c7deee746405aaa18ea6384671c11f8be2e27b47ee15fe131af3ed2c38f30bb",
+    "componentAccepted": true,
+    "fixedCases": 742,
+    "individualOmissions": 8,
+    "genuineExpectedAssertionFailures": 450,
+    "errors": 0,
+    "skipped": 0
+  },
+  "source03ManifestSha256": "51a5f0a5149264ee6f7cc6c4d3c713485152107f9dd4de4995c837a747ad737f",
+  "dll03ManifestSha256": "deb80f3d19427ee23a951899bf86b4fe3d4304e6fc012b51994567e45ea96765",
+  "build03Sha256": "dd292340291a80dd37ac8a13f71608f3ad90edb53bb7f4452880133c6b7ccdcd",
+  "bridgeInputsSha256": "964f00574dc326bde056adb67c5d059a53c70cd07247e40da69c7ce4e5a46dfc",
+  "scope": "Test-only successor qualification of the immutable02 phase component; no redundant phase rerun because every actually executed runtime dependency remains exact. Inactive status remains unowned and strict full-corpus result stays red. No complete AI/freshbirth/world/network/combat/death or aggregate acceptance claim is added."
+}

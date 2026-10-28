@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Ground-critter final checkpoint, 2026-10-28
+
+Ground-critter checkpoint2026-10-28: source4067/DLL158/index exact, old891fixtures unchanged; AI3/AI7 lifecycle247/300 (82.3%), global511/244. Existing retained owner now handles34critters and live squirrel7→3; no parallel store/RNG/dependency, graph15/29. Phase63744active+960surface/fullRNG strict,60legacy stability controls; terminal4224NPC/raw/RNGonly, inactivebuffownership unqualified. WAE/focus1391/full1575840/all5485methods and fast34426 actual subset of same unfiltered run green, freshWindowsNativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/5smokes/actualRelease+NativeTCP green. FullVanillaAiParity false; LinuxNative/GUI/gracefulsave open. See docs/verification/ground-critter-acceptance-20261028.json.
+
 ## Ordinary melee final union, 2026-10-28
 
 Fresh Windows x64 NativeAOT executable SHA256 `20f980fde19a9441a6c855f0ba7d40a1f84b3a147ae0acc2c6d22bfa07c66b7d`, $37,542,400\,\mathrm{bytes}$, PE CLR directory `0/0`, passes loop/protocol/network/world/TUI smokes. Release warnings-as-errors, focused `8,221/8,221`, fast `33,662/33,662` and one unfiltered full `1,575,076/1,575,076` pass with zero failures, errors, skips or not-run cases. Actual XML covers all `5,452` discovered methods. Exact 4,045 source/config/resource inputs and 158 test-bin DLLs retain bytes and membership through the gates and raw Git index bridge. Shipping graph remains 15 projects /29 references, no new production dependency or reflection. [Acceptance](verification/npc-ordinary-melee-acceptance-20261028.json) records exact scopes; Actual Release/Native TCP joins, packet82/49/129 order, movement/chat and replacement Hello pass separately; see the linked acceptance. Linux NativeAOT, original GUI and graceful-save shutdown remain unverified for this checkpoint.

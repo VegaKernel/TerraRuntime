@@ -81,6 +81,10 @@ public readonly record struct NpcSimulationState(
     bool NoTileCollide,
     float Scale)
 {
+    /// <summary>Retained live NPC.aiStyle when an admitted transition changes behavior without changing identity.
+    /// Null uses the definition's source style; it does not grant a generic behavior capability.</summary>
+    public NpcAiStyleId? AiStyleOverride { get; init; }
+
     /// <summary>Server-owned physical dimensions when AI changes NPC.width/height independently of visual scale.
     /// Null leaves the definition/scale rule in control; an explicit size shares the simulation revision.</summary>
     public NpcHitboxDimensions? HitboxOverride { get; init; }

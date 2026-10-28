@@ -57,7 +57,7 @@ public sealed class NonresidentBunnyBloodMoon1458Tests
             {
                 Assert.True(after.Revision.Value > before.Revision.Value);
                 Assert.Equal(59f, after.Ai.Ai1);
-                Assert.Equal(89, after.Simulation.CatchableNpcTempImmunityCounter);
+                Assert.Equal(type is 46 or 443 or 646 ? 89 : 0, after.Simulation.CatchableNpcTempImmunityCounter);
             }
         }
     }

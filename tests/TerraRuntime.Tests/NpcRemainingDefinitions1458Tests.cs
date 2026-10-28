@@ -143,8 +143,9 @@ public sealed class NpcRemainingDefinitions1458Tests
                 if(d.SupportsRuntimeLifecycle)lifecycle++;
             }
         Assert.Equal(690,created);Assert.Equal(1,metadata);
-        // Previous431, the verified37 undead/gem cohort, four bunny siblings and17 ordinary melee actors.
-        Assert.Equal(489, lifecycle + CountSignedLifecycle());
+        // Previous431, the verified37 undead/gem cohort, four bunny siblings,
+        // seventeen ordinary melee actors and twenty-two nonresident ground critters.
+        Assert.Equal(511, lifecycle + CountSignedLifecycle());
         int signed=0;
         for(short net=-65;net<0;net++) for(int type=1;type<=696;type++)
             if(VanillaNpcDefinitionCatalog.TryGet(new(type),new(net),out var d) && !d.DefinitionOnly) signed++;

@@ -16,6 +16,8 @@
     <EmbeddedResource Include="Fixtures/WorldItemReservationOriginalLinux1458.json.gz" LogicalName="WorldItemReservationOriginalLinux1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeLinux1458.json.gz" LogicalName="UndeadVariantsRuntimeLinux1458" />
     <EmbeddedResource Include="Fixtures/GemBunnyRuntimeLinux1458.json.gz" LogicalName="GemBunnyRuntimeLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCritterFindFrameLinux1458.json.gz" LogicalName="GroundCritterFindFrameLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCritterBirthProtectionLinux1458.json.gz" LogicalName="GroundCritterBirthProtectionLinux1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsRuntimeWindows1458.json.gz" LogicalName="UndeadVariantsRuntimeWindows1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsTransitionsLinux1458.json.gz" LogicalName="UndeadVariantsTransitionsLinux1458" />
     <EmbeddedResource Include="Fixtures/UndeadVariantsTransitionsWindows1458.json.gz" LogicalName="UndeadVariantsTransitionsWindows1458" />
@@ -219,6 +221,9 @@
     <EmbeddedResource Include="Fixtures/GhoulHitEffectsLinux1458.json.gz" LogicalName="GhoulHitEffectsLinux1458" />
     <EmbeddedResource Include="Fixtures/OrdinaryMeleeLootLinux1458.json.gz" LogicalName="OrdinaryMeleeLootLinux1458" />
     <EmbeddedResource Include="Fixtures/OrdinaryMeleeLootRareLinux1458.json.gz" LogicalName="OrdinaryMeleeLootRareLinux1458" />
+    <EmbeddedResource Include="Fixtures/GoldCritterCatchLinux1458.json.gz" LogicalName="GoldCritterCatchLinux1458" />
+    <EmbeddedResource Include="Fixtures/GoldCritterCatchInitializedLinux1458.v2.json.gz" LogicalName="GoldCritterCatchInitializedLinux1458v2" />
+    <EmbeddedResource Include="Fixtures/GroundCritterContactLinux1458.json.gz" LogicalName="GroundCritterContactLinux1458" />
     <EmbeddedResource Include="Fixtures/slime-contained-lava-composed-death-official.json.gz" />
     <EmbeddedResource Include="Fixtures/global-lava-hit-loot-composed-official-1458.json.gz" LogicalName="GlobalLavaHitLootComposed1458" />
     <EmbeddedResource Include="Fixtures/invasion-lifecycle-official-1458.json.gz" LogicalName="InvasionLifecycle1458" />

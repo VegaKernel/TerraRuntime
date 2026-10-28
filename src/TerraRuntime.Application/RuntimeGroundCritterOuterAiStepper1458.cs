@@ -5,8 +5,8 @@ using TerraRuntime.Gameplay.Npcs;
 namespace TerraRuntime.Application;
 
 // NPC.UpdateNPC's AI007 lower-world strike precedes buff/AI/gravity processing.
-internal sealed class RuntimeGemBunnyOuterAiStepper1458(INpcAiStateStepper inner,
-    RuntimeGemBunnyLifecycle1458 lifecycle, int worldHeightTiles, TerraRuntime.Core.VanillaUnifiedRandom1458 random,
+internal sealed class RuntimeGroundCritterOuterAiStepper1458(INpcAiStateStepper inner,
+    RuntimeGroundCritterLifecycle1458 lifecycle, int worldHeightTiles, TerraRuntime.Core.VanillaUnifiedRandom1458 random,
     Func<bool?>? bloodMoonOwner = null)
     : INpcAiStateStepper, INpcAiStateStepperWrapper, INpcAiPrepass1458
 {
@@ -16,11 +16,12 @@ internal sealed class RuntimeGemBunnyOuterAiStepper1458(INpcAiStateStepper inner
     public bool TryRunPrepass(in NpcSnapshot npc, out bool consumed)
     {
         consumed = false;
-        bool convertible = VanillaNonresidentBunnyCatalog1458.IsEvilConvertible(npc.Type);
+        bool convertible = VanillaNonresidentGroundCritterCatalog1458.IsEvilConvertible(npc.Type);
         if (convertible && bloodMoonOwner?.Invoke() is not false) return false;
-        if (VanillaGemBunnyAi1458.IsSupported(npc.Type) && !npc.Simulation.DontTakeDamage &&
+        if (VanillaGroundCritterAi1458.IsSupported(npc.Type) && !npc.Simulation.DontTakeDamage &&
             npc.Simulation.Immortal == false &&
             VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) &&
+            (npc.Simulation.AiStyleOverride?.Value ?? definition.AiStyle.Value) == 7 &&
             definition.TryResolveHitbox(npc.Simulation, out var body) &&
             npc.PositionY > worldHeightTiles * 16f - 640f + body.Height)
         {

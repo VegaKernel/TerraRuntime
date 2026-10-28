@@ -140,7 +140,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var plan = new RuntimeNpcDeathDropPlan1458(dead.Handle, dead.Revision, liveRandom);
         if (pendingGemBunnyDeath is { } critter)
         {
-            if (!VanillaGemBunnyAi1458.IsSupported(dead.Type) || pendingProjectileStrike is not null ||
+            if (!VanillaGroundCritterAi1458.IsSupported(dead.Type) || pendingProjectileStrike is not null ||
                 pendingTownStrike is not null || !liveRandom.HasSameState(critter.BeforeRandom) ||
                 !critter.IsCurrent()) return false;
             plan.Random.CopyStateFrom(critter.AfterRandom);

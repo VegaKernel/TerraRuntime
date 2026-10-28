@@ -34,9 +34,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     private readonly IVanillaGroundFighterDoorOpeningSink? doorOpeningSink;
     private readonly RuntimeWorldProgressionMutations progressionMutations;
     private readonly IKingSlimeDeathRandom kingSlimeDeathRandom;
-    private RuntimeGemBunnyLifecycle1458? gemBunnyLifecycle;
+    private RuntimeGroundCritterLifecycle1458? gemBunnyLifecycle;
 
-    internal void SetGemBunnyLifecycle(RuntimeGemBunnyLifecycle1458 lifecycle) =>
+    internal void SetGroundCritterLifecycle(RuntimeGroundCritterLifecycle1458 lifecycle) =>
         gemBunnyLifecycle = lifecycle ?? throw new ArgumentNullException(nameof(lifecycle));
 
     public VanillaNpcWorldMotionAiStepper(INpcAiStateStepper inner, WorldTileStore tiles)
@@ -125,7 +125,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if ((targeting is not null && (VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc) ||
-            targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc) || targeting.GemBunny.HasPlan(in npc) ||
+            targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc) || targeting.GroundCritter.HasPlan(in npc) ||
             targeting.OrdinaryMelee.HasPlan(in npc))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
@@ -176,6 +176,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             next = aiState;
             return true;
         }
+        bool hostileGroundCritter = VanillaNonresidentGroundCritterCatalog1458.TryGetEffectiveFighterDefinition(
+            npc.Type, npc.Simulation, definition, out var fighterDefinition);
+        if (hostileGroundCritter) definition = fighterDefinition;
 
         NpcSimulationState simulation = aiState.Simulation;
         if (!definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox))
@@ -195,6 +198,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             !(definition.Type == VanillaNpcIds.CreatureFromTheDeep && npc.Simulation.Wet) &&
             !(definition.Type == VanillaNpcIds.ThePossessed && simulation.NoGravity))
         {
+            bool verifiedFighter = hostileGroundCritter ||
+                VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type);
             bool hasFighterProfile = VanillaGroundFighterBehaviorCatalog.TryGet(
                 definition.Type,
                 out VanillaGroundFighterBehaviorParameters fighterProfile);
@@ -234,8 +239,14 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 aiState = aiState with { PositionY = stepUp.PositionY };
 
             VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState, rawTarget);
-            // Source flag8 is false for Psycho: its ai[2] remains the ambush clock, never door pressure.
-            VanillaZombieDoorContactResult doorContact = (definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.ThePossessed)
+            // Turning squirrels have source flag8=false: preserve their AI fields
+            // without door pressure, but retain the actual support used by jumps.
+            VanillaZombieDoorContactResult doorContact = hostileGroundCritter
+                ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai,
+                    velocityY == 0f && simulation.DirectionX != 0 &&
+                    VanillaWorldZombieDoorContact.HasGroundSupport(tiles, aiState.PositionX, aiState.PositionY,
+                        hitboxWidth, hitboxHeight), false, false)
+                : (definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.ThePossessed)
                 ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai, false, false, false)
                 : VanillaWorldZombieDoorContact.Resolve(
                 tiles,
@@ -281,10 +292,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 simulation.DirectionX,
                 simulation.DirectionY,
                 obstacleParameters,
-                VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) ? simulation.SpriteDirection : null);
+                verifiedFighter ? simulation.SpriteDirection : null);
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
-            if (obstacle.Jumped && VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type))
+            if (obstacle.Jumped && verifiedFighter)
                 aiState = aiState with { RequiresImmediateSync = true };
 
             if (doorContact.GroundSupported &&
@@ -306,7 +317,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             }
             else hasElevated = aiState.Target < byte.MaxValue && targeting is not null &&
                 targeting.TryGetCandidate((byte)aiState.Target, out elevated);
-            if (VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
+            if (verifiedFighter &&
                 doorContact.GroundSupported && velocityY == 0f && targeting?.GroundFighterExpertMode == true &&
                 ((velocityX < 0f && simulation.SpriteDirection == -1) ||
                  (velocityX > 0f && simulation.SpriteDirection == 1)) &&
@@ -331,7 +342,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 }
             }
 
-            if (hasFighterProfile &&
+            if (!hostileGroundCritter && hasFighterProfile &&
                 fighterProfile.CloseRangeLunge &&
                 doorEnvironment.HasTarget &&
                 VanillaGroundFighterCloseRangeLunge.TryResolve(
@@ -416,6 +427,9 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             next = default;
             return false;
         }
+        if (VanillaNonresidentGroundCritterCatalog1458.TryGetEffectiveFighterDefinition(
+                aiState.Type, aiState.Simulation, definition, out var fighterDefinition))
+            definition = fighterDefinition;
         var simulation = aiState.Simulation;
         int hitboxWidth = hitbox.Width, hitboxHeight = hitbox.Height;
         float velocityX = aiState.VelocityX, velocityY = aiState.VelocityY;
@@ -450,6 +464,11 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
             !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
         { next = default; return false; }
+        // Collision observes a turn performed by AI007 immediately, even though
+        // that first update did not execute the AI003 terrain section.
+        if (VanillaNonresidentGroundCritterCatalog1458.TryGetEffectiveFighterDefinition(
+                aiState.Type, aiState.Simulation, definition, out var fighterDefinition))
+            definition = fighterDefinition;
         var simulation = aiState.Simulation;
         int hitboxWidth = hitbox.Width, hitboxHeight = hitbox.Height;
         float velocityX = aiState.VelocityX, velocityY = aiState.VelocityY;
@@ -633,14 +652,14 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     {
         if (targeting is not null && targeting.OrdinaryMelee.HasPlan(in before))
             return targeting.OrdinaryMelee.Complete(in before, in committed);
-        if (targeting is not null && targeting.GemBunny.HasPlan(in before))
+        if (targeting is not null && targeting.GroundCritter.HasPlan(in before))
         {
             if (gemBunnyLifecycle is null ||
-                !targeting.GemBunny.TryGetConditions(in before, out bool dayTime, out bool eclipse))
-            { targeting.GemBunny.Cancel(); return default; }
+                !targeting.GroundCritter.TryGetConditions(in before, out bool dayTime, out bool eclipse))
+            { targeting.GroundCritter.Cancel(); return default; }
             // Invasion only changes Collision_DecideFallThroughPlatforms for townNPC=true.
             // These exact seven nonresident subtypes retain their captured day/eclipse/home policy.
-            return gemBunnyLifecycle.Complete(in before, in committed, targeting.GemBunny,
+            return gemBunnyLifecycle.Complete(in before, in committed, targeting.GroundCritter,
                 dayTime, eclipse, invasionActive: false);
         }
         if (targeting is not null && targeting.HasBeePlan(in before))

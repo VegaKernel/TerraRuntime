@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-original-gold-and-statue-catch-components",
+  "scope": "Actual original dedicated HitEffect, ordered HitEffect+Money+Heals components, or CatchNPC per separately initialized case. Original game bodies are not included. No fullStrike, UpdateNPC, GUI, Windows CLR4 or Native claim.",
+  "fixture": "GoldCritterCatchLinux1458.json.gz",
+  "fixtureSha256": "b4fc25bb5fe4a2f2c087a053446af4ff54123deccbf0e21c6dcbe4944be93a93",
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "sourceInputs": {
+    "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "Terraria/Utils.cs": "5e90754dee2a980e9164c7d9846d0bd9d99ef79a3cd7d2fd2e2ae19e69c17179",
+    "Terraria/NetMessage.cs": "7945f2507d4935e597f47bbe63fdae9182e3267bcb6c353dc5029f39aae79ede"
+  },
+  "probeSourceSha256": "77cc2009d3c9721395eb1752b9eedc641fd5db7c51d8ed5240fc4dd6612159b9",
+  "probeDllSha256": "4e00a2dc76d4b1fe31063074e2625f8c7736dde8e56d17b6d265d7b94fce0275",
+  "captureSocketSourceSha256": "e4222d3ee9e0b09034a8bd4b6eb8a5b716033d0d190c6e84dac7a11a5e70172a",
+  "captureSocketDllSha256": "13e80d70f35bdf1366b49b34fd4f2140d72a7c80221db869492971c0331afb7d",
+  "captureSocketScope": "Bounded source NetMessage serialization into in-memory ISocket; source calls unchanged, no TCP/listener or official clients. Observations reset per case.",
+  "resetBoundary": "NPC.SetDefaults and fixture arrays precede fresh Main.rand(seed); each component row pins that explicit post-default preimage.",
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "observations": 147,
+  "repeatPairs": [
+    {
+      "seed": 1458,
+      "aSha256": "d12fbb89c20d5891bc2238751cba458d49e3678274294c9ddefdb550ceffee45",
+      "bSha256": "d12fbb89c20d5891bc2238751cba458d49e3678274294c9ddefdb550ceffee45",
+      "identical": true,
+      "episodesPerCapture": 49,
+      "namedEntryCallsPerCapture": 57
+    },
+    {
+      "seed": 42,
+      "aSha256": "af09471747b2f579aa7e95eae605393241467d6666ab60fccc0c30cb0edbc9f9",
+      "bSha256": "af09471747b2f579aa7e95eae605393241467d6666ab60fccc0c30cb0edbc9f9",
+      "identical": true,
+      "episodesPerCapture": 49,
+      "namedEntryCallsPerCapture": 57
+    },
+    {
+      "seed": 8675309,
+      "aSha256": "5fadb5fc5e18cac3d2d02117f332fe4c89f8f7261967f972755233b4ef6bdacf",
+      "bSha256": "5fadb5fc5e18cac3d2d02117f332fe4c89f8f7261967f972755233b4ef6bdacf",
+      "identical": true,
+      "episodesPerCapture": 49,
+      "namedEntryCallsPerCapture": 57
+    }
+  ],
+  "casesPerSeed": {
+    "hitEffect": 10,
+    "deathSequence": 4,
+    "statueCatchOrUncatchable625": 35
+  },
+  "sourceFacts": {
+    "goldTypes": [
+      443,
+      445,
+      447,
+      539
+    ],
+    "hitEffectPositiveLifeChoices": 10,
+    "hitEffectZeroLifeChoices": 20,
+    "positiveStatueCatch": "PoofOfSmoke then inactive23 then106, no item birth",
+    "seaTurtle625": "catchItem0 refuses before statue branch for both statue values"
+  },
+  "limits": [
+    "Actual named component calls, not whole NPC.UpdateNPC or full StrikeNPC/NPCLoot.",
+    "Linux official managed assembly executed by CoreCLR on Windows; no separate original Windows CLR4 claim.",
+    "Dedicated Dust/Gore short circuits initialized with source-sized arrays; their caller RNG and packet effects are observed."
+  ],
+  "actualRepeatedEpisodes": 294,
+  "actualRepeatedNamedEntryCalls": 342,
+  "countingScope": "49 observation episodes per capture: 10 HitEffect + 4 ordered three-method episodes + 35 CatchNPC = 57 named original entry calls. Six captures provide294 episodes and342 named calls. Backend console labels its49 rows as calls; those are episodes."
+}

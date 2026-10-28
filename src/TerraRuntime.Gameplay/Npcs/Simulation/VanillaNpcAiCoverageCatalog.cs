@@ -126,7 +126,7 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         const int hardmodeBossBehaviorCount = 35;
-        int nonresidentBunnyBehaviorCount = VanillaNonresidentBunnyCatalog1458.Types.Length;
+        int nonresidentBunnyBehaviorCount = VanillaNonresidentGroundCritterCatalog1458.Types.Length;
         var entries = new VanillaNpcAiCoverage[
             16 + hardmodeBossBehaviorCount + nonresidentBunnyBehaviorCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
@@ -489,7 +489,7 @@ public static class VanillaNpcAiCoverageCatalog
 
         // Exact nonresident bunnies own AI007 movement and the existing accepted outer phases.
         // Shared style7 membership grants no town lifecycle or parity claim to another identity.
-        foreach (int type in VanillaNonresidentBunnyCatalog1458.Types)
+        foreach (int type in VanillaNonresidentGroundCritterCatalog1458.Types)
             entries[index++] = Partial(new(type), OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice);
 
         if (index != entries.Length)

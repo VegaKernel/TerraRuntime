@@ -36,7 +36,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
         _ordinaryMelee.RequiresForcedUpdate(in before, in finalized) ||
-        _gemBunny.RequiresForcedUpdate(in before, in finalized) ||
+        _groundCritter.RequiresForcedUpdate(in before, in finalized) ||
         _flyingEye.RequiresRetainedForcedUpdate(in before, in finalized) ||
         _bigMimic.RequiresForcedUpdate(in before, in finalized) ||
         _mothron.RequiresForcedUpdate(in before, in finalized) ||
@@ -48,7 +48,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
         _ordinaryMelee.Deactivates(in before, in completed) ||
-        _gemBunny.Deactivates(in before, in completed) ||
+        _groundCritter.Deactivates(in before, in completed) ||
         _slimeGround.DeactivatesContainedAfterCompletion(in before, in completed) ||
         _flyingEye.DeactivatesRetainedAfterCompletion(in before, in completed) ||
         _bee.Deactivates(in before, in completed);
@@ -79,7 +79,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaSlimeGroundNpcBehaviorStrategy _slimeGround;
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
     private readonly VanillaBeeAccepted1458 _bee = new();
-    private readonly VanillaGemBunnyAccepted1458 _gemBunny = new();
+    private readonly VanillaGroundCritterAccepted1458 _groundCritter = new();
     private readonly VanillaGroundFighterNpcBehaviorStrategy _groundFighter;
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
@@ -328,11 +328,11 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     internal bool HasBeePlan(in NpcSnapshot before) => _bee.HasPlan(in before);
 
-    internal VanillaGemBunnyAccepted1458 GemBunny => _gemBunny;
+    internal VanillaGroundCritterAccepted1458 GroundCritter => _groundCritter;
 
-    internal void SetGemBunnyOwner(RuntimeNpcStore owner, IVanillaGemBunnyEnvironment1458 environment,
+    internal void SetGroundCritterOwner(RuntimeNpcStore owner, IVanillaGroundCritterEnvironment1458 environment,
         int widthTiles, double surfaceTiles) =>
-        _gemBunny.Configure(owner, environment, _random, widthTiles, surfaceTiles);
+        _groundCritter.Configure(owner, environment, _random, widthTiles, surfaceTiles);
 
     internal bool TryGetBeePlan(in NpcSnapshot before, in NpcSnapshot accepted, out NpcStateUpdate planned) =>
         _bee.TryGetPlan(in before, in accepted, out planned);
@@ -446,8 +446,8 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         // These seven nonresident AI007 subtypes use the retained serial/RNG transaction;
         // AI style membership never grants another critter the same lifecycle.
-        if (VanillaGemBunnyAi1458.IsSupported(npc.Type))
-            return _gemBunny.TryStep(in npc, in definition, _context, out next);
+        if (VanillaGroundCritterAi1458.IsSupported(npc.Type))
+            return _groundCritter.TryStep(in npc, in definition, _context, _groundFighter, _inner, out next);
 
         if (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(npcType))
             return _ordinaryMelee.TryStep(in npc, in definition, _context, _groundFighter, _inner, out next);
@@ -2587,7 +2587,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          _flyingEye.HasRetainedPlan(in before) ||
          _bee.HasPlan(in before) ||
-         _gemBunny.HasPlan(in before) ||
+         _groundCritter.HasPlan(in before) ||
          _ordinaryMelee.HasPlan(in before) ||
          _slimeGround.HasContainedPlan(in before) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));

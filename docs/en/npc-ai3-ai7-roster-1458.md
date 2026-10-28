@@ -1,5 +1,11 @@
 # AI3 and AI7 NPC definitions, Terraria 1.4.5.8
 
+## Ground-critter block accepted, 2026-10-28
+
+The connected catalog now selects the exact old twelve bunnies plus 22 new AI7 identities: `148`, `149`, `299`, `300`, `361`, `366`, `367`, `445`, `447`, `538`, `539`, `610`, `616`, `617`, `625`, `639..645`. Its accepted census is **247/300 (82.3%)** lifecycle and 53 creation-only, with positive AI3 unchanged at 149/191 and 26 signed lifecycle variants. Global lifecycle admission is 511 and creation-only 244. The bounded source/runtime comparison and aggregate gates are accepted; the earlier 17-enemy checkpoint below remains historical. [Acceptance record](../verification/ground-critter-acceptance-20261028.json).
+
+Initialized original birth evidence also distinguishes CatchNPC's positive catch item from temporary protection. Seasonal bunnies 303/337/540 have catchItem2019 but false `Main.npcCatchable`, counter0 and friendly=false at real NewNPC birth and through 91 updates. This corrects the former universal 90-tick protection assumption without changing their admission or original numeric definition fixtures. See the [runtime continuation and component provenance](npc-ai3-ai7-runtime-1458.md#ground-critter-continuation-accepted-2026-10-28).
+
 ## Ordinary melee cohort accepted, 2026-10-28
 
 Seventeen exact AI3 identities now use the existing retained NPC/status/RNG phase, subtype movement and complete admitted presentation, combat and NPC-specific loot owners. AI3/AI7 runtime admission rises from 208 to **225 of 300**; 75 identities remain creation-only. Positive AI3 admission is **149 of 191**. Global explicit lifecycle admission is 489, with 266 creation-only definitions and one zero-body metadata-only definition. This counts explicit supported slices, not complete vanilla behavior.

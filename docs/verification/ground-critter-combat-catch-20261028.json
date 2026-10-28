@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-combat-catch-component-verification",
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "overrides": null,
+  "scope": "Bounded NPC1458 gold HitEffect, source-initialized statue CatchNPC, and actual victim surviving-contact caller. This component does not certify full AI7, whole Main update, GUI-client acceptance, Native or Linux host execution.",
+  "official": {
+    "edition": "TerrariaServer1.4.5.8 Linux managed assembly",
+    "host": "Windows CoreCLR",
+    "assemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034"
+  },
+  "initializedCatchV2": {
+    "fixture": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchInitializedLinux1458.v2.json.gz",
+      "sha256": "ea9be9ec68a1f06bbce6f49770b1904b4dc5d65425c07b964b992ad7222ebb1d"
+    },
+    "provenance": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchInitializedLinux1458.v2.provenance.json",
+      "sha256": "049e4ff0d85914e506a94164394538ac4831384ceefcc7c29b301d060ffd6f33"
+    },
+    "actualBootstrap": "Main.Initialize_TileAndNPCData1/2 with actual Lang/WorldFileData setup; NPC.NewNPC in fresh constructor slot then actual NetMessage23 birth publication. Authored body/statue/directions/target are recorded. A fresh captured RNG starts after creation/publication, identically in runtime.",
+    "inputs": "Full named NPC fields, actual generation1, Main.npcCatchable, releaseOwner255, spawnNeedsSyncingfalse and source clock/world context are read back; runtime test asserts represented wire preimages before catch.",
+    "uniqueCatchCalls": 105,
+    "callsIncludingIdenticalRepeats": 210,
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "catchableFalse": [
+      303,
+      337,
+      540,
+      625
+    ],
+    "catchabilityDistinction": "303/337/540 retain positive catchItem and execute statue CatchNPC despite Main.npcCatchablefalse, so source packet23 omits releaseOwner. Sea625 catchItem0 refuses before smoke/removal/RNG. Remaining30 identities have catchabletrue.",
+    "observed": "Actual inactive23 then literal106, complete physical RNG cursor+56slots and item/activity state;105 original rows in normal tests. Duplicate/reentrant/detached/custom-RNG guards are authored runtime cases.",
+    "notClaimed": "Whole creation RNG parity, UpdateNPC, TCP/GUI client or Native execution."
+  },
+  "goldHitEffect": {
+    "fixture": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchLinux1458.json.gz",
+      "sha256": "b4fc25bb5fe4a2f2c087a053446af4ff54123deccbf0e21c6dcbe4944be93a93"
+    },
+    "provenance": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GoldCritterCatchLinux1458.provenance.json",
+      "sha256": "1e04065d33ce1b00d5011346216b18b3f8219d96ba478bed4f7a67ebe5e67ad3"
+    },
+    "types": [
+      443,
+      445,
+      447,
+      539
+    ],
+    "observed": "Actual original dedicated HitEffect evaluates10 nonlethal or20 lethal Next(232,234) choices. Separate actual ordered HitEffect→zero-value Money→uninjured-player Heals component captures check existing death-owner order. No full StrikeNPC/NPCLoot-table parity claim.",
+    "v1WireBootstrapQualified": false,
+    "v1WireLimitation": "Constructor generation0 and uninitialized Main.npcCatchable make its catch packet subset unqualified for initialized-server wire acceptance. Those raw original records remain immutable. V1 HitEffect/death-component RNG assertions retain their narrower independently bounded scope; wire tests select initializedV2."
+  },
+  "survivingContact": {
+    "fixture": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterContactLinux1458.json.gz",
+      "sha256": "6a90cfbefc44887e27d01637a38967d5423162eef2c513ce0b5cbf3f47132cc3"
+    },
+    "provenance": {
+      "path": "tests/TerraRuntime.Tests/Fixtures/GroundCritterContactLinux1458.provenance.json",
+      "sha256": "794b47ba1ede06e95ba294a4ea77922e8a56e72e7b0d07749a175a8c680f2eeb"
+    },
+    "originalQualification": {
+      "path": ".cache/ai7-critter-20261028/contact-qualification.json",
+      "sha256": "c22bc59164b755acaa44d571f8b2ed983081ee6f9095355550f4208e1ba475f8"
+    },
+    "uniqueCases": 16,
+    "seeds": [
+      1458,
+      42
+    ],
+    "types": [
+      46,
+      443,
+      361,
+      445,
+      300,
+      447,
+      299,
+      539
+    ],
+    "originalBoundary": "Actual victim NPC.UpdateNPC(0), overlapping actual SetDefaults NPC3 peer in slot1 with damage1 explicitly frozen. Peer is observed but not advanced; this is not whole-all-NPCs-phase parity.",
+    "runtimeBoundary": "Real NpcAuthority composed phase; passive accepted ForcedUpdate observer compares victim body/status/full RNG before physical peer slot1 advances. The original peer preimage remains unchanged at that observation.",
+    "observed": "Life5→4 and hostileContactImmunity30. Actual original physical RNG advances1 regular or11 gold draws. Shared nonlethal HitEffect helper runs exactly once on detached phase RNG after accepted surviving contact and before collision. Existing lethal20 owner is not duplicated.",
+    "refusal": "Four gold late-conveyor cases prove staged contact advances preview RNG while refused completion retains placeholderHP5 and preserves live physical RNG. No revision rollback claim."
+  },
+  "sameTestDllCausal": {
+    "testDllSha256": "028b2730e46e6482ceae2f6f1076e329381c785bb4e27583cf7b7a4ca1c3c7f2",
+    "fixedCases": 191,
+    "fixedPassed": 191,
+    "mutantAssertionFailures": 128,
+    "errors": 0,
+    "skipped": 0,
+    "variantControls": [
+      {
+        "variant": "old-gold-predicate",
+        "testClass": "GoldCritterHitEffect1458Tests",
+        "fixedPassed": 51,
+        "mutantPassed": 18,
+        "mutantAssertionFailures": 33,
+        "errors": 0,
+        "skipped": 0,
+        "privateBuildExitCode": 0,
+        "fixedXml": {
+          "path": ".cache/ground-critter-combat-catch/causal-prepared-03/executed/old-gold-predicate-fixed.xml",
+          "sha256": "e54b1530a8f02d2a2223314c45c8733e2f53b4fa780e2ef6c93c657b2cbd4f91"
+        },
+        "mutantXml": {
+          "path": ".cache/ground-critter-combat-catch/causal-prepared-03/executed/old-gold-predicate-omitted.xml",
+          "sha256": "14dbe278774d7a9ec5c3ab0a2eb14551383f08fe7c7b0d0d8d6d9daf53658da8"
+        }
+      },
+      {
+        "variant": "old-gem-only-statue",
+        "testClass": "NpcStatueCatch1458Tests",
+        "fixedPassed": 120,
+        "mutantPassed": 33,
+        "mutantAssertionFailures": 87,
+        "errors": 0,
+        "skipped": 0,
+        "privateBuildExitCode": 0,
+        "fixedXml": {
+          "path": ".cache/ground-critter-combat-catch/causal-prepared-03/executed/old-gem-only-statue-fixed.xml",
+          "sha256": "d91a348875878cab1dabf69dbc20000416b8b1dfa720fda41a16dc2818846ace"
+        },
+        "mutantXml": {
+          "path": ".cache/ground-critter-combat-catch/causal-prepared-03/executed/old-gem-only-statue-omitted.xml",
+          "sha256": "3f9bb85fe977603323e10401a1e06fae4c7fcc76e55881c4065543c4081c6ee6"
+        }
+      },
+      {
+        "variant": "omit-surviving-contact",
+        "testClass": "GroundCritterNonlethalContact1458Tests",
+        "fixedPassed": 20,
+        "mutantPassed": 12,
+        "mutantAssertionFailures": 8,
+        "errors": 0,
+        "skipped": 0,
+        "privateBuildExitCode": 0,
+        "fixedXml": {
+          "path": ".cache/ground-critter-combat-catch/causal-prepared-03/executed/omit-surviving-contact-fixed.xml",
+          "sha256": "75e1693a714654e639d3d672a9afb8221df77c3e28ac0f982d40a63673e28979"
+        },
+        "mutantXml": {
+          "path": ".cache/ground-critter-combat-catch/causal-prepared-03/executed/omit-surviving-contact-omitted.xml",
+          "sha256": "dee43fff2b8b664e295e9f584797aabf60d7355c3ba43019e1606b1e7fceeb88"
+        }
+      }
+    ],
+    "isolation": "Each private build compiles current Application source with exactly documented mutation. Only Application DLL changes in the copied158-DLL closure; fresh TestDLL and other157 DLLs remain byte-identical. Loader/nonassertion failures are rejected, not counted as causal proof.",
+    "guards": {
+      "canonical158DllMembershipAndHashesUnchanged": true,
+      "canonical754ApplicationSourcesUnchanged": true,
+      "privateExecutedDllsUnchanged": true
+    },
+    "setup": {
+      "path": ".cache/ground-critter-combat-catch/causal-prepared-03/setup.json",
+      "sha256": "81a44dd8da4c9c1d49c3caeae421d3f1c6e369a3bfaf6909de81fee02f125540"
+    },
+    "result": {
+      "path": ".cache/ground-critter-combat-catch/causal-prepared-03/executed/result.json",
+      "sha256": "df1ce1f7665d0c7d3c2f1d8dd2d2069ca480ce71f34f4d6c3d9eedbd031c1420"
+    }
+  },
+  "focusedNeighbors": {
+    "passed": 1263,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "sourceAndDllGuard": true,
+    "result": {
+      "path": ".cache/ground-critter/focus02/result.json",
+      "sha256": "9a882e2f625dd66e46c9c178db24cd5bdf151a01e2176965e1f244b64a80dd37"
+    },
+    "xml": {
+      "path": ".cache/ground-critter/focus02/tests.xml",
+      "sha256": "ba3f03da816054cb367df839bcbf8abf34586030dff7bbe99cd6ef9370310837"
+    },
+    "scope": "Focused1263 cases including composed34 state/home/currentness/frames, fighter physics and legacy neighbors; not aggregate full/fast/Native acceptance."
+  },
+  "historicalRejectedSetups": [
+    {
+      "path": ".cache/ground-critter/focus01/failure-summary.json",
+      "scope": "116 assertion failures:100 catchwire comparisons used uninitialized V1 carrier,16 source-contact comparisons filtered only Update and missed real ForcedUpdate. Production expectations/RNG were not restamped; source-initializedV2 and correct passive event observation resolve these distinct fixture defects."
+    },
+    {
+      "path": ".cache/ground-critter-combat-catch/causal-prepared-02/executed/old-gem-only-statue-build.log",
+      "scope": "Authorwritten private mutant incorrectly used a two-argument TryDespawn; compile failure is not causal behavior evidence. Historical outputs remain; complete authoritative controls use03 with actual old one-argument call."
+    }
+  ]
+}

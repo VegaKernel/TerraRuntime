@@ -1,5 +1,9 @@
 # Production graph
 
+## Ground-critter retained owner, 2026-10-28
+
+Ground-critter checkpoint2026-10-28: source4067/DLL158/index exact, old891fixtures unchanged; AI3/AI7 lifecycle247/300 (82.3%), global511/244. Existing retained owner now handles34critters and live squirrel7→3; no parallel store/RNG/dependency, graph15/29. Phase63744active+960surface/fullRNG strict,60legacy stability controls; terminal4224NPC/raw/RNGonly, inactivebuffownership unqualified. WAE/focus1391/full1575840/all5485methods and fast34426 actual subset of same unfiltered run green, freshWindowsNativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/5smokes/actualRelease+NativeTCP green. FullVanillaAiParity false; LinuxNative/GUI/gracefulsave open. See docs/verification/ground-critter-acceptance-20261028.json.
+
 ## Ordinary melee retained phase and specific loot, 2026-10-28
 
 Seventeen exact positive AI3 identities reuse the existing targeting, ground-fighter mechanics, RuntimeNpcStore previews, canonical status owner, terrain motion, activity, combat, loot allocator and replication registry. The retained phase captures raw player slots (including inactive/dead slots 0 and 255), target candidates, world facts and terrain versions before detached RNG execution. NPC/status/shared-RNG adoption requires the same retained inputs after the unchanged placeholder is accepted. Unsupported humanoid social poses, door/switch contacts, friendly overlaps, Shimmer/lava and unowned status work refuse before adoption. There is no second NPC table, mutable simulation owner or RNG stream.

@@ -1,36 +1,65 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Npcs;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
 // Called by the existing world-motion dispatcher after the Core plan's unpublished acceptance.
-internal sealed class RuntimeGemBunnyLifecycle1458(
+internal sealed class RuntimeGroundCritterLifecycle1458(
     WorldTileStore tiles, double surface, RuntimeNpcStore npcs,
     RuntimeNpcNetworkCombatPipeline combat, bool expertMode = false, RuntimeNpcReplicationRegistry? replication = null,
-    RuntimeNpcBuffStatus1458? status = null)
+    RuntimeNpcBuffStatus1458? status = null, VanillaNpcWorldMotionAiStepper? fighterMotion = null)
 {
-    internal NpcSnapshot Complete(in NpcSnapshot before, in NpcSnapshot accepted, VanillaGemBunnyAccepted1458 ai,
+    internal NpcSnapshot Complete(in NpcSnapshot before, in NpcSnapshot accepted, VanillaGroundCritterAccepted1458 ai,
         bool dayTime, bool eclipse, bool invasionActive)
     {
         if (!ai.TryGetPlan(in before, in accepted, out var planned) ||
             !RuntimeNpcReplicationRegistry.TryPrepareGemBunnyHome(in before, in planned, out var homeFrame) ||
             !ai.TryGetPlanRandom(in before, in accepted, out var checkpoint, out var phaseRandom) ||
             !ai.TryGetCapturedWorld(in before, in accepted, out var capturedWorld) ||
-            capturedWorld is not IRuntimeGemBunnyStatusPhase1458 statusPhase ||
-            !VanillaNpcWorldMotionAiStepper.TryApplyGravity(tiles, surface, in planned, out var accelerated, out var gravity) ||
+            capturedWorld is not IRuntimeGemBunnyStatusPhase1458 statusPhase)
+        { ai.Cancel(); return default; }
+        var terrain = planned;
+        // AI007 finishes the first turning update. Only a subsequent AI003
+        // update executes fighter terrain before the shared gravity stage.
+        if (before.Simulation.AiStyleOverride?.Value == 3 &&
+            (fighterMotion is null || !ai.TryGetRawTarget(in before, in accepted, out var rawTarget) ||
+             !capturedWorld.TryPrepareFighterTerrain(in planned, in rawTarget) ||
+             !fighterMotion.TryApplyTerrainMotion(in before, in planned, out terrain, rawTarget)))
+        { ai.Cancel(); return default; }
+        if (terrain.RequiresImmediateSync) ai.ForceSync();
+        if (!VanillaNpcWorldMotionAiStepper.TryApplyGravity(tiles, surface, in terrain, out var accelerated, out var gravity) ||
             gravity is null) { ai.Cancel(); return default; }
         accelerated = accelerated with { Simulation = accelerated.Simulation with {
             HostileContactImmunity = Math.Max(0, accelerated.Simulation.HostileContactImmunity - 1) } };
-        accelerated = RuntimeTownNpcCombat1458.PlanFriendlyRegeneration(in accelerated);
-        // NPCID.Sets.TakesDamageFromHostilesWithoutBeingFriendly explicitly includes all
-        // seven gem bunnies, so their update91 Friendly transition does not skip this phase.
+        // The catch-protection Friendly write is later in UpdateNPC. The source
+        // hostiles-without-friendly set includes this cohort except mice and Rat.
+        bool friendlyTail = before.Simulation.Friendly == true || before.Type is not (300 or 447 or 610);
+        if (friendlyTail) accelerated = RuntimeTownNpcCombat1458.PlanFriendlyRegeneration(in accelerated);
+        bool turned = VanillaNonresidentGroundCritterCatalog1458.IsTurningSquirrel(before.Type) &&
+            accelerated.Simulation.AiStyleOverride?.Value == 3;
         Span<NpcSnapshot> peers = stackalloc NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
-        int count = npcs.CopyActive(peers);
-        if (!RuntimeTownNpcCombat1458.TryPlanCritterContact(in before, in accelerated, peers[..count],
-                new SystemVanillaNpcRandom(phaseRandom), expertMode, out var contacted, out var strike))
-        { ai.Cancel(); return default; }
+        var contacted = accelerated;
+        RuntimeTownNpcCombat1458.ContactStrike? strike = null;
+        // GetHurtByOtherNPCs refuses a turned squirrel, including the first turn;
+        // its preceding CheckLifeRegen still uses the ordinary friendly gate.
+        if (friendlyTail && !turned)
+        {
+            var contactRandom = new SystemVanillaNpcRandom(phaseRandom);
+            if (!RuntimeTownNpcCombat1458.TryPlanCritterContact(in before, in accelerated, peers[..npcs.CopyActive(peers)],
+                    contactRandom, expertMode, out contacted, out strike))
+            { ai.Cancel(); return default; }
+            if (strike.HasValue && contacted.Simulation.Life > 0)
+            {
+                var hitNpc = new NpcSnapshot(before.Handle, accepted.Revision, contacted.Type, contacted.NetId,
+                    contacted.PositionX, contacted.PositionY, contacted.VelocityX, contacted.VelocityY,
+                    contacted.Target, contacted.Ai, contacted.Simulation);
+                RuntimeNpcNetworkCombatPipeline.ExecuteNpcNonlethalHitEffectsOnRandom1458(in hitNpc,
+                    accelerated.Simulation.Life - contacted.Simulation.Life, contactRandom);
+            }
+        }
         if (!capturedWorld.SupportsCollision(in contacted)) { ai.Cancel(); return default; }
         var home = new VanillaNpcTownCollisionContext1458(contacted.Simulation.HomeTileY ?? -1,
             dayTime, eclipse, invasionActive);
@@ -39,7 +68,8 @@ internal sealed class RuntimeGemBunnyLifecycle1458(
             if (!VanillaNpcWorldMotionAiStepper.TryFinishCollision(tiles, in contacted, gravity.Value.Parameters.Gravity,
                     out var collidedDead, townContext: home) || !capturedWorld.SupportsCollision(in collidedDead))
             { ai.Cancel(); return default; }
-            var deadFinal = VanillaGemBunnyAccepted1458.FinishPresentation(in collidedDead);
+            if (!capturedWorld.TryFinishPresentation(in collidedDead, out var deadFinal))
+            { ai.Cancel(); return default; }
             if (!statusPhase.TryStageWetRemoval(in collidedDead)) { ai.Cancel(); return default; }
             var source = before; var staged = accepted;
             bool Current() => ai.IsAcceptedCurrent(in source, in staged);
@@ -65,7 +95,8 @@ internal sealed class RuntimeGemBunnyLifecycle1458(
             if (!VanillaNpcWorldMotionAiStepper.TryFinishCollision(tiles, in burned, gravity.Value.Parameters.Gravity,
                     out var collidedDead, townContext: home) || !capturedWorld.SupportsCollision(in collidedDead))
             { ai.Cancel(); return default; }
-            var deadFinal = VanillaGemBunnyAccepted1458.FinishPresentation(in collidedDead);
+            if (!capturedWorld.TryFinishPresentation(in collidedDead, out var deadFinal))
+            { ai.Cancel(); return default; }
             if (!statusPhase.TryStageWetRemoval(in collidedDead, addition)) { ai.Cancel(); return default; }
             combat.TryCommitGemBunnyDeath(in accepted, in burned, checkpoint, phaseRandom, Current, 50, 0f, 0,
                 homeFrame, deadFinal, statusPhase, addition, additionFrame);
@@ -93,9 +124,10 @@ internal sealed class RuntimeGemBunnyLifecycle1458(
         Func<bool>? admissionCurrent = null)
     {
         if (admissionCurrent?.Invoke() == false) return false;
-        if (!VanillaGemBunnyAi1458.IsSupported(before.Type) ||
+        if (!VanillaGroundCritterAi1458.IsSupported(before.Type) ||
             before.Simulation.Immortal != false || before.Simulation.DontTakeDamage ||
             !TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out var definition) ||
+            (before.Simulation.AiStyleOverride?.Value ?? definition.AiStyle.Value) != 7 ||
             !definition.TryResolveHitbox(before.Simulation, out var body) ||
             before.PositionY <= tiles.Dimensions.HeightTiles * 16f - 640f + body.Height) return false;
         var damage = new NpcDamageRequest(before.Handle, DamageSource.Environment, 9999);

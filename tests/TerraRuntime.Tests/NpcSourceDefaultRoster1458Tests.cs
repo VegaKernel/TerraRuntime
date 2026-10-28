@@ -94,8 +94,9 @@ public sealed class NpcSourceDefaultRoster1458Tests
         Assert.Equal(1, definitionOnly);
         // The verified undead/gem cohort and four bunny siblings303/337/443/540
         // own lifecycle execution; Bunny46 already had a registered definition. The seventeen
-        // ordinary melee identities now use their composed generation/RNG phase owner as well.
-        Assert.Equal(266, creationOnly);
+        // ordinary melee identities and twenty-two further ground critters now use
+        // their composed generation/RNG phase owners as well.
+        Assert.Equal(244, creationOnly);
     }
 
     [Fact]

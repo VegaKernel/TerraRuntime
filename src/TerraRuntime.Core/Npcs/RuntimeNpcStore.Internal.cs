@@ -17,6 +17,8 @@ public sealed partial class RuntimeNpcStore
         float.IsFinite(update.VelocityX) &&
         float.IsFinite(update.VelocityY) &&
         update.Ai.IsValidFor(new NpcTypeId(update.Type)) &&
+        TerraRuntime.Gameplay.Npcs.VanillaNonresidentGroundCritterCatalog1458.SupportsAiStyleOverride(
+            update.Type, update.Simulation.AiStyleOverride) &&
         update.Simulation.IsValid;
 
     private void DespawnSlot(byte slot, ref SlotState state)

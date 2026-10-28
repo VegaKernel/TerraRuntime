@@ -29,7 +29,7 @@ internal sealed class VanillaOrdinaryMeleeEnvironment1458(WorldTileStore tiles, 
             !status.TryPlan(in source, out var phase) || phase.LifeAfter != source.Simulation.Life ||
             phase.Flags.Poisoned || phase.Flags.OnFire || phase.LoveStruck)
             return false;
-        var terrain = new VanillaGemBunnyTerrain1458(tiles);
+        var terrain = new VanillaGroundCritterTerrain1458(tiles);
         terrain.FenceBody(source.PositionX, source.PositionY, source.VelocityX, source.VelocityY,
             body.Width, body.Height);
         var capture = new Capture(tiles, npcs, status, motion, factsOwner, replication, source,
@@ -42,7 +42,7 @@ internal sealed class VanillaOrdinaryMeleeEnvironment1458(WorldTileStore tiles, 
     private sealed class Capture(WorldTileStore tiles, RuntimeNpcStore npcs, RuntimeNpcBuffStatus1458 status,
         VanillaNpcWorldMotionAiStepper motion, Func<OrdinaryMeleeWorldFacts1458> factsOwner,
         RuntimeNpcReplicationRegistry? replication, NpcSnapshot source, RuntimeNpcBuffPlan1458 phase,
-        OrdinaryMeleeWorldFacts1458 facts, VanillaGemBunnyTerrain1458 terrain, NpcSnapshot[] peerScratch)
+        OrdinaryMeleeWorldFacts1458 facts, VanillaGroundCritterTerrain1458 terrain, NpcSnapshot[] peerScratch)
         : IVanillaOrdinaryMeleeWorld1458
     {
         private readonly RuntimeNpcBuffPlan1458 phase = phase;

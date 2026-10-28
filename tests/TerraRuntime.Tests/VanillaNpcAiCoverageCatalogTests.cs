@@ -22,13 +22,13 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
             VanillaMimicNpcCatalog1458.DefinitionCount - 1;
         expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14 + VanillaMothronNpcCatalog1458.DefinitionCount + VanillaBigMimicNpcCatalog1458.DefinitionCount;
-        expected += VanillaNonresidentBunnyCatalog1458.Types.Length; // The exact accepted nonresident bunny dispatcher.
+        expected += 34; // Exact independent12-bunny +22-ground-critter source roster, checked separately.
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition));
-            if (VanillaNonresidentBunnyCatalog1458.IsSupported(coverage.Type.Value))
+            if (VanillaNonresidentGroundCritterCatalog1458.IsSupported(coverage.Type.Value))
             {
                 // None is explicit here: AI7 is dispatched by the accepted nonresident owner,
                 // not a town behavior family. No other AI7 identity inherits this exception.
