@@ -6,6 +6,8 @@ The original `TerrariaServer.exe` `1.4.5.8` and its decompiled source remain loc
 
 A separate experimental `source adapt-scalar` operation now **automatically generates** a bounded candidate from the bound source method. Unlike `analyze`, it compiles the generated candidate and a proper original-method carrier, and explicitly executes the untouched official assembly for differential checks. It writes original-derived bodies only below this worktree's `.cache`; nothing is included in shipping projects automatically. The two operations have separate acceptance scopes.
 
+The [main requalification](../verification/semantic-scalar-candidate-main-20261028.json) repeats the actual-original checks on the main checkout. The [combined integration record](../verification/ground-critter-semantic-main-union-20261029.json) keeps this development-tool proof separate from the NPC runtime acceptance while verifying both source sets after merge.
+
 ```mermaid
 flowchart LR
     A[Explicit source files and pinned references] --> B[Roslyn semantic model]

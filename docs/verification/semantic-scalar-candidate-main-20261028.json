@@ -1,0 +1,501 @@
+{
+  "schemaVersion": 1,
+  "kind": "semantic-scalar-candidate-clean-main-successor",
+  "acceptedBounded": true,
+  "productionAdmission": false,
+  "scope": "Fresh actual primary-main requalification of the two bounded automaticNPC scalar helpers after merging the tool-only implementation. No NPC22 acceptance, new production full/Native gate, caller/lifecycle integration or general automaticAI translation claim.",
+  "predecessor": {
+    "path": "docs/verification/semantic-scalar-candidate-20261028.json",
+    "sha256": "bdff98e41780e83fe3aff71056c7bf19b6ab38fd9a9bce4bff0586b6f380baad"
+  },
+  "implementationCommit": "7ae9d32a1a161b769f7817cc14e57ca42d91da59",
+  "qualifiedPrimaryMergeHead": "b8e73e1e058be8a24510c24953102e9c9190d8ba",
+  "primaryHeadAtReceipt": "b8e73e1e058be8a24510c24953102e9c9190d8ba",
+  "exactToolCodeAndIndex": {
+    "files": 19,
+    "receipt": {
+      "path": ".cache/semantic-scalar-main-20261028/tool-index-guard.json",
+      "sha256": "84d48bef03e1410ef4a15b551cf1d0e74dc176b6285ad7b27d4650f23f5a737f"
+    },
+    "workingBytesEqualRawIndexAndQualifiedMergeBlobs": true,
+    "guardedFiles": {
+      "Directory.Build.props": {
+        "workingSha256": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+        "indexRawSha256": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+        "mergeCommitRawSha256": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd"
+      },
+      "global.json": {
+        "workingSha256": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+        "indexRawSha256": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+        "mergeCommitRawSha256": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2"
+      },
+      "tools/ci/test_vanilla_scalar_candidate.py": {
+        "workingSha256": "d06d9fe0259c3e6f4191ff14882dd031e619fdb0737bf920d805c65cd671c2d0",
+        "indexRawSha256": "d06d9fe0259c3e6f4191ff14882dd031e619fdb0737bf920d805c65cd671c2d0",
+        "mergeCommitRawSha256": "d06d9fe0259c3e6f4191ff14882dd031e619fdb0737bf920d805c65cd671c2d0"
+      },
+      "tools/ci/test_vanilla_source_analysis.py": {
+        "workingSha256": "b736a7f47482c59bc1d22392b39c68e2ebdda45f8766edfa4666b289e1bf2ad5",
+        "indexRawSha256": "b736a7f47482c59bc1d22392b39c68e2ebdda45f8766edfa4666b289e1bf2ad5",
+        "mergeCommitRawSha256": "b736a7f47482c59bc1d22392b39c68e2ebdda45f8766edfa4666b289e1bf2ad5"
+      },
+      "tools/vanilla.py": {
+        "workingSha256": "486e5cb697cc4789f1d671b57831eabb0f815ad2498a8d3e461995263ac4061b",
+        "indexRawSha256": "486e5cb697cc4789f1d671b57831eabb0f815ad2498a8d3e461995263ac4061b",
+        "mergeCommitRawSha256": "486e5cb697cc4789f1d671b57831eabb0f815ad2498a8d3e461995263ac4061b"
+      },
+      "tools/vanilla_data/SourceProbe/CompilationLoader.cs": {
+        "workingSha256": "0c112206981c94b9f8d8aa0d0d6c3c55afeabbe493ed467b485479755a55be70",
+        "indexRawSha256": "0c112206981c94b9f8d8aa0d0d6c3c55afeabbe493ed467b485479755a55be70",
+        "mergeCommitRawSha256": "0c112206981c94b9f8d8aa0d0d6c3c55afeabbe493ed467b485479755a55be70"
+      },
+      "tools/vanilla_data/SourceProbe/InventoryChecks.cs": {
+        "workingSha256": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8",
+        "indexRawSha256": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8",
+        "mergeCommitRawSha256": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8"
+      },
+      "tools/vanilla_data/SourceProbe/Program.cs": {
+        "workingSha256": "3329b8cc1491031520f3b1b0dae351592a709b1b57e03a82330143a72727c315",
+        "indexRawSha256": "3329b8cc1491031520f3b1b0dae351592a709b1b57e03a82330143a72727c315",
+        "mergeCommitRawSha256": "3329b8cc1491031520f3b1b0dae351592a709b1b57e03a82330143a72727c315"
+      },
+      "tools/vanilla_data/SourceProbe/ScalarCandidate.cs": {
+        "workingSha256": "96d71f6daea0b552da07c26f03292250ad8f3abc3b1bb47903e742e204ac1805",
+        "indexRawSha256": "96d71f6daea0b552da07c26f03292250ad8f3abc3b1bb47903e742e204ac1805",
+        "mergeCommitRawSha256": "96d71f6daea0b552da07c26f03292250ad8f3abc3b1bb47903e742e204ac1805"
+      },
+      "tools/vanilla_data/SourceProbe/ScalarChecks.cs": {
+        "workingSha256": "9f46ebe4e70727d3e5c269f4ce8dcfd68fce2c229961b030465c25d04ecb6f64",
+        "indexRawSha256": "9f46ebe4e70727d3e5c269f4ce8dcfd68fce2c229961b030465c25d04ecb6f64",
+        "mergeCommitRawSha256": "9f46ebe4e70727d3e5c269f4ce8dcfd68fce2c229961b030465c25d04ecb6f64"
+      },
+      "tools/vanilla_data/SourceProbe/ScalarVerification.cs": {
+        "workingSha256": "4191a017a143a2025e0ad4367b61bab7ca6b0f7db2bcf69fce589bb888089434",
+        "indexRawSha256": "4191a017a143a2025e0ad4367b61bab7ca6b0f7db2bcf69fce589bb888089434",
+        "mergeCommitRawSha256": "4191a017a143a2025e0ad4367b61bab7ca6b0f7db2bcf69fce589bb888089434"
+      },
+      "tools/vanilla_data/SourceProbe/SemanticInventory.cs": {
+        "workingSha256": "ee445e1665ac43ca9d665abdf5e6373b9ae7023c99c1eacfab6459fe5fd63f86",
+        "indexRawSha256": "ee445e1665ac43ca9d665abdf5e6373b9ae7023c99c1eacfab6459fe5fd63f86",
+        "mergeCommitRawSha256": "ee445e1665ac43ca9d665abdf5e6373b9ae7023c99c1eacfab6459fe5fd63f86"
+      },
+      "tools/vanilla_data/SourceProbe/SourceProbe.csproj": {
+        "workingSha256": "2ecbd9c81b1d177d6edbd73fbf13756fcaa7ebfde1c177e5c6a0fc3f262ec20c",
+        "indexRawSha256": "2ecbd9c81b1d177d6edbd73fbf13756fcaa7ebfde1c177e5c6a0fc3f262ec20c",
+        "mergeCommitRawSha256": "2ecbd9c81b1d177d6edbd73fbf13756fcaa7ebfde1c177e5c6a0fc3f262ec20c"
+      },
+      "tools/vanilla_data/capture.py": {
+        "workingSha256": "bc02043a24f6f14358f2ca71db6baa9aa784d8e1019ecd235f246d4298f8becf",
+        "indexRawSha256": "bc02043a24f6f14358f2ca71db6baa9aa784d8e1019ecd235f246d4298f8becf",
+        "mergeCommitRawSha256": "bc02043a24f6f14358f2ca71db6baa9aa784d8e1019ecd235f246d4298f8becf"
+      },
+      "tools/vanilla_data/cli.py": {
+        "workingSha256": "b17243a566560bb21c9ab72e9053a696531fdd5d49e877b41ef0f20121a9c0cc",
+        "indexRawSha256": "b17243a566560bb21c9ab72e9053a696531fdd5d49e877b41ef0f20121a9c0cc",
+        "mergeCommitRawSha256": "b17243a566560bb21c9ab72e9053a696531fdd5d49e877b41ef0f20121a9c0cc"
+      },
+      "tools/vanilla_data/pass_probe.py": {
+        "workingSha256": "7e1238d683b7b3e441ea211d1a07352781f3751ccd87ea30abc0b86245542e36",
+        "indexRawSha256": "7e1238d683b7b3e441ea211d1a07352781f3751ccd87ea30abc0b86245542e36",
+        "mergeCommitRawSha256": "7e1238d683b7b3e441ea211d1a07352781f3751ccd87ea30abc0b86245542e36"
+      },
+      "tools/vanilla_data/reference.json": {
+        "workingSha256": "811aac2bf4e8f8e0b541ef5866df4b423f8f3ae48d58f831e4e880f5f265e4b6",
+        "indexRawSha256": "811aac2bf4e8f8e0b541ef5866df4b423f8f3ae48d58f831e4e880f5f265e4b6",
+        "mergeCommitRawSha256": "811aac2bf4e8f8e0b541ef5866df4b423f8f3ae48d58f831e4e880f5f265e4b6"
+      },
+      "tools/vanilla_data/scalar_candidate.py": {
+        "workingSha256": "2a730f48fcacda8306c67fc1eda1da17793c0cc64078efe6e759fcc05e17587b",
+        "indexRawSha256": "2a730f48fcacda8306c67fc1eda1da17793c0cc64078efe6e759fcc05e17587b",
+        "mergeCommitRawSha256": "2a730f48fcacda8306c67fc1eda1da17793c0cc64078efe6e759fcc05e17587b"
+      },
+      "tools/vanilla_data/source_analysis.py": {
+        "workingSha256": "c7aefa1d435d1877ca478eb2f9d315d47fe12a7af4edff75c5700042639707d8",
+        "indexRawSha256": "c7aefa1d435d1877ca478eb2f9d315d47fe12a7af4edff75c5700042639707d8",
+        "mergeCommitRawSha256": "c7aefa1d435d1877ca478eb2f9d315d47fe12a7af4edff75c5700042639707d8"
+      }
+    }
+  },
+  "unchangedProduction": {
+    "protectedInputs": 4045,
+    "manifest": {
+      "path": ".cache/semantic-scalar-main-20261028/shipping-before.json",
+      "sha256": "b4ee52ec1bf5f965b63ae409cd470d204ec54ec50d3264bfaf1aa6062684d80c"
+    },
+    "sourceSnapshotGuardImplementation": {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\analyzer-roadmap-20261028\\run-gates.py",
+      "sha256": "9c1464325b222f30cf2777ee93961ab221d748100c1eb372599df7dfe13b45e1"
+    },
+    "publishedBaseline": "02b769ec7e6605477e54e45d5d2401910cb7a777",
+    "membershipAndBytesUnchanged": true,
+    "scope": "Published ordinary-melee/Check2x1 production source/build/test/resource snapshot remains exact. Tool-only changes do not reuse that snapshot to claim a new production build/full/Native run."
+  },
+  "freshMainChecks": {
+    "receipt": {
+      "path": ".cache/semantic-scalar-main-20261028/checks/accepted.json",
+      "sha256": "738f7378196d5f6a59f8a9eaf8358e383953669ece252f35d79606a7f34ba909"
+    },
+    "standaloneWarningsAsErrors": true,
+    "pythonCiTests": 246,
+    "inventorySemanticChecks": 20,
+    "candidateSemanticChecks": 18,
+    "fullDocumentation": {
+      "passed": true,
+      "mirroredPages": 135,
+      "markdownFiles": 309,
+      "log": {
+        "path": ".cache/semantic-scalar-main-20261028/checks/docs.log",
+        "sha256": "d67fa39a6128d531c7d18828214bf3bffb9683054d32849dd07f029a96e0b82e"
+      }
+    },
+    "commands": [
+      {
+        "name": "build",
+        "command": [
+          "dotnet",
+          "build",
+          "tools/vanilla_data/SourceProbe/SourceProbe.csproj",
+          "-c",
+          "Release",
+          "-warnaserror",
+          "-v",
+          "quiet"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 0.7148786999750882,
+        "logSha256": "9e30e23f59b21ddf70a2a0bd0a5d8d88949e3ec409ad5bb32db3d95f44de10cb"
+      },
+      {
+        "name": "inventory",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+          "--self-test",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\semantic-scalar-main-20261028\\checks\\inventory-result.json"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 0.9200888000195846,
+        "logSha256": "44e8640b842a16fca36d50eb667ef75ed72fed59fe0db0eb74aeda4a11972359"
+      },
+      {
+        "name": "candidate",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\tools\\vanilla_data\\SourceProbe\\bin\\Release\\net11.0\\SourceProbe.dll",
+          "--candidate-self-test",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\semantic-scalar-main-20261028\\checks\\candidate-result.json"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 0.8103692999575287,
+        "logSha256": "3a098aa7e10611c2284f3b821623f83b7ad4251263ffa89166906c3c6ffd291d"
+      },
+      {
+        "name": "python",
+        "command": [
+          "py",
+          "-X",
+          "utf8",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/ci",
+          "-p",
+          "test_*.py"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 11.330310099991038,
+        "logSha256": "9f9c7f934f5fe54f071a1fa42482a4d5dae44ad2cff0175641bf745d820ac3db"
+      },
+      {
+        "name": "docs",
+        "command": [
+          "py",
+          "-X",
+          "utf8",
+          "tools/ci/check_documentation.py",
+          "--changed-base",
+          "02b769ec7e6605477e54e45d5d2401910cb7a777"
+        ],
+        "exitCode": 0,
+        "wallSeconds": 0.8257261000107974,
+        "logSha256": "d67fa39a6128d531c7d18828214bf3bffb9683054d32849dd07f029a96e0b82e"
+      }
+    ]
+  },
+  "freshActualDifferential": {
+    "qualification": {
+      "path": ".cache/scalar-release-final/qualification.json",
+      "sha256": "271d88c2e83fde6de66cbf9f4a5b6ee17c606af68f3e64a5b90fed5cb8fedf5c"
+    },
+    "portableRunner": {
+      "path": ".cache/scalar-release-final/run-qualified.py",
+      "sha256": "7afb633dbb9cb4cdbf621173f85910b23e1274b674aa53bbbf9b1fe3c2da15d1"
+    },
+    "actualUntouchedOfficialCalls": 4056,
+    "compiledOriginalCarrierCalls": 4056,
+    "generatedCandidateCalls": 4056,
+    "mutantCalls": 8112,
+    "casesPerMethodPerRepeat": 1014,
+    "methods": 2,
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "identicalRepeats": 2,
+    "allBothFieldStateProjectionsEqual": true,
+    "fullOriginalRngCursorAndAll56SlotsUnchanged": true,
+    "omittedTimeWriteDifferencesPerMethodRepeat": 468,
+    "omittedFlagWriteDifferencesPerMethodRepeat": 507,
+    "wholeOriginalTypeCompiled": false,
+    "qualifiedMethodSpans": true,
+    "globalOriginalNpcCompilationDiagnostics": 162,
+    "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "officialFnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "originalNpcSourceSha256": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "backendAndRoslynClosure": {
+      "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+      "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+      "SourceProbe.dll": "cecb2013766d675825e896ac48f1b3e0637ba03b109036de7d6fffea6a4a0188",
+      "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+      "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+      "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+      "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+      "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+      "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+      "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+      "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+      "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+      "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+      "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+      "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+      "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+      "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+      "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+      "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+      "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+      "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+      "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+      "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+      "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+      "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+      "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+      "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+      "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+      "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+    },
+    "runtimeCompilationReference": {
+      "path": "C:\\Program Files\\dotnet\\shared\\Microsoft.NETCore.App\\11.0.0-preview.7.26381.103\\System.Private.CoreLib.dll",
+      "sha256": "be9ffec0164d319398d6d521df547b7e737f330a0c144a9e5d172c5cf6b9d22e"
+    },
+    "runs": [
+      {
+        "method": "Terraria.NPC.EncourageDespawn(int)",
+        "repeat": "a",
+        "cases": 1014,
+        "request": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-a/request.json",
+          "sha256": "59550ee91611cb263ab745f2efb91eefee59773b65726b5415578e4812e299c5"
+        },
+        "inputManifest": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-a/input-before.json",
+          "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+        },
+        "result": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-a/result.json",
+          "sha256": "11f7d0d8d1d9f658b4bc8099ab6a5b3824e2bade066802cba30e3cf440115359"
+        },
+        "observation": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-a/observation.json",
+          "sha256": "5ce9f1180248fa3d75f6f0bda387b9dd60f4605e070b494261d23f95cd52ccba"
+        },
+        "candidateSource": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-a/candidate.cs",
+          "sha256": "c0c6f8cb36a41ae0119cf0c06769dd7f03cba5d8492955c495bb34c20ce179e1"
+        },
+        "candidateAssembly": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-a/candidate.dll",
+          "sha256": "03a22f4d5d26474b72e8a98e46fcc7b05e8e8327bd130041192d813aed86d7fb"
+        },
+        "carrierSource": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-a/original-carrier.cs",
+          "sha256": "01986311eb8487a702c3d723607a7a297ff2e4f6b27dc1a123d4dc468e8d4eb1"
+        },
+        "mutants": [
+          {
+            "mutation": "omit-field-write:RemainingTicks",
+            "cases": 1014,
+            "differences": 468,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "0aeec824e7323442d122c3516bd8acc37234cceb83595a17ce7fc7e649d5526b"
+          },
+          {
+            "mutation": "omit-field-write:ExpiryRequested",
+            "cases": 1014,
+            "differences": 507,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "9702c9a1d3a26eee9e9a771d28bf5746c03b34daf4d70b38ae221762411d0425"
+          }
+        ],
+        "repeatAndPredecessorCodeAssemblyObservationIdentical": true,
+        "inputAndExecutedBackendGuardsUnchanged": true
+      },
+      {
+        "method": "Terraria.NPC.EncourageDespawn(int)",
+        "repeat": "b",
+        "cases": 1014,
+        "request": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-b/request.json",
+          "sha256": "59550ee91611cb263ab745f2efb91eefee59773b65726b5415578e4812e299c5"
+        },
+        "inputManifest": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-b/input-before.json",
+          "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+        },
+        "result": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-b/result.json",
+          "sha256": "3f0b15283fd3ae481a52ce724a61a501f07c237d40f742168e7d118acba38319"
+        },
+        "observation": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-b/observation.json",
+          "sha256": "5ce9f1180248fa3d75f6f0bda387b9dd60f4605e070b494261d23f95cd52ccba"
+        },
+        "candidateSource": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-b/candidate.cs",
+          "sha256": "c0c6f8cb36a41ae0119cf0c06769dd7f03cba5d8492955c495bb34c20ce179e1"
+        },
+        "candidateAssembly": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-b/candidate.dll",
+          "sha256": "03a22f4d5d26474b72e8a98e46fcc7b05e8e8327bd130041192d813aed86d7fb"
+        },
+        "carrierSource": {
+          "path": ".cache/scalar-release-final/EncourageDespawn-b/original-carrier.cs",
+          "sha256": "01986311eb8487a702c3d723607a7a297ff2e4f6b27dc1a123d4dc468e8d4eb1"
+        },
+        "mutants": [
+          {
+            "mutation": "omit-field-write:RemainingTicks",
+            "cases": 1014,
+            "differences": 468,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "0aeec824e7323442d122c3516bd8acc37234cceb83595a17ce7fc7e649d5526b"
+          },
+          {
+            "mutation": "omit-field-write:ExpiryRequested",
+            "cases": 1014,
+            "differences": 507,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "9702c9a1d3a26eee9e9a771d28bf5746c03b34daf4d70b38ae221762411d0425"
+          }
+        ],
+        "repeatAndPredecessorCodeAssemblyObservationIdentical": true,
+        "inputAndExecutedBackendGuardsUnchanged": true
+      },
+      {
+        "method": "Terraria.NPC.DiscourageDespawn(int)",
+        "repeat": "a",
+        "cases": 1014,
+        "request": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-a/request.json",
+          "sha256": "dd755fdf75681bab46d8d92c7c6a343762ece294409f464dd25ba46576413303"
+        },
+        "inputManifest": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-a/input-before.json",
+          "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+        },
+        "result": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-a/result.json",
+          "sha256": "cc3ae0c06ea99697784f0b50788affc535cfe7a90dcf0e5c74e4d263b8b19f2c"
+        },
+        "observation": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-a/observation.json",
+          "sha256": "5e69cea13554655e342421306abe7fa176771c3cd377c25ccb594ef9e0d5f79b"
+        },
+        "candidateSource": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-a/candidate.cs",
+          "sha256": "eaee9bccc4559f78c87c3f9867cd00b7f6546daeb270bb89996fbf691daded58"
+        },
+        "candidateAssembly": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-a/candidate.dll",
+          "sha256": "b9058d93e50e986a7aee33ec6073523680ff5fddf3637cdba9fb20a092913838"
+        },
+        "carrierSource": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-a/original-carrier.cs",
+          "sha256": "990928427369263c3963222124b0d430d765a475f195dc2abff8f3ee19e07c7c"
+        },
+        "mutants": [
+          {
+            "mutation": "omit-field-write:RemainingTicks",
+            "cases": 1014,
+            "differences": 468,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "47a81413819a94b716bfaa6752174292e61d99561c0ba2f611563bf6adb5ffd3"
+          },
+          {
+            "mutation": "omit-field-write:ExpiryRequested",
+            "cases": 1014,
+            "differences": 507,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "8592ae6dd1d69b4d6ec6b0e4207bb7e6a53cc3dc541cd1d3e3c7852e3155eaed"
+          }
+        ],
+        "repeatAndPredecessorCodeAssemblyObservationIdentical": true,
+        "inputAndExecutedBackendGuardsUnchanged": true
+      },
+      {
+        "method": "Terraria.NPC.DiscourageDespawn(int)",
+        "repeat": "b",
+        "cases": 1014,
+        "request": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-b/request.json",
+          "sha256": "dd755fdf75681bab46d8d92c7c6a343762ece294409f464dd25ba46576413303"
+        },
+        "inputManifest": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-b/input-before.json",
+          "sha256": "cb24ab937b77e2f7ebdffe4c71dc5f68852493a97613d0e50976a3416391327d"
+        },
+        "result": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-b/result.json",
+          "sha256": "3defa15754496033ab5dd22d9daf02cc741b360ff59093fdd217e5bf1421bc3b"
+        },
+        "observation": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-b/observation.json",
+          "sha256": "5e69cea13554655e342421306abe7fa176771c3cd377c25ccb594ef9e0d5f79b"
+        },
+        "candidateSource": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-b/candidate.cs",
+          "sha256": "eaee9bccc4559f78c87c3f9867cd00b7f6546daeb270bb89996fbf691daded58"
+        },
+        "candidateAssembly": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-b/candidate.dll",
+          "sha256": "b9058d93e50e986a7aee33ec6073523680ff5fddf3637cdba9fb20a092913838"
+        },
+        "carrierSource": {
+          "path": ".cache/scalar-release-final/DiscourageDespawn-b/original-carrier.cs",
+          "sha256": "990928427369263c3963222124b0d430d765a475f195dc2abff8f3ee19e07c7c"
+        },
+        "mutants": [
+          {
+            "mutation": "omit-field-write:RemainingTicks",
+            "cases": 1014,
+            "differences": 468,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "47a81413819a94b716bfaa6752174292e61d99561c0ba2f611563bf6adb5ffd3"
+          },
+          {
+            "mutation": "omit-field-write:ExpiryRequested",
+            "cases": 1014,
+            "differences": 507,
+            "assertion": "Complete two-state projection differs from untouched official reference",
+            "assemblySha256": "8592ae6dd1d69b4d6ec6b0e4207bb7e6a53cc3dc541cd1d3e3c7852e3155eaed"
+          }
+        ],
+        "repeatAndPredecessorCodeAssemblyObservationIdentical": true,
+        "inputAndExecutedBackendGuardsUnchanged": true
+      }
+    ]
+  },
+  "artifactBoundary": "All original-derived candidate/carrier method bodies, compiled artifacts and raw observations remain under primary.cache. Only tool implementation/docs and identity/effect/provenance facts are tracked. No source game bodies or assets are committed.",
+  "limitations": "Two int/bool instancevoid helpers with exact explicit field mappings only. No automatic fullAI/worldgen, numeric/API/RNG translation, unknown alias/property/call ownership, runtime capability increase or measured speedup is established."
+}

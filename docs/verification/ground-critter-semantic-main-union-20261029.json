@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-critter-and-semantic-tool-main-union",
+  "date": "2026-10-29",
+  "accepted": true,
+  "qualifiedMergeHead": "4beb67c65357ed17946ab0e42f7cdc248aff9247",
+  "npcCheckpoint": "a498d8fa",
+  "toolCheckpoint": "7ae9d32a",
+  "runtime": {
+    "acceptance": {
+      "path": "docs/verification/ground-critter-acceptance-20261028.json",
+      "sha256": "762176a9be21ab3a1416dbdfa882e786490a79529ff56bb47668b9687dd5cdf6"
+    },
+    "protectedSourceMembershipAndBytesExact": 4067,
+    "rawIndexSourceBridgeExact": true,
+    "immutableExecutedDllClosureExact": 158,
+    "freshFull": 1575840,
+    "discoveredMethods": 5485,
+    "mandatoryFastFromSameFull": 34426,
+    "nativeSha256": "fa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae",
+    "nativeFiveSmokesPassed": true,
+    "actualReleaseAndNativeTcp": {
+      "path": "docs/verification/ground-critter-live-join-20261028.json",
+      "sha256": "d71e2cb65fa98e3136cde29407dcd4ebf14ea6eb98015da46657e6225c42a10f"
+    },
+    "scope": "Exact main shipping/build/test/resource inputs equal the accepted NEXT final03 inputs; immutable executed DLL/Native/TCP closures remain unchanged. No duplicate main production build/full/Native execution is claimed."
+  },
+  "tool": {
+    "freshMainAcceptance": {
+      "path": "docs/verification/semantic-scalar-candidate-main-20261028.json",
+      "sha256": "36e3414fc5512dd851c7753a4b05aba57fdc691fe53c080979364b1264dff86a"
+    },
+    "exactQualifiedToolInputs": 19,
+    "actualOfficialCalls": 4056,
+    "scope": "Fresh main standalone WAE,246 Python CI-tool tests,20 inventory/18 candidate semantic checks,4 actual-original differential runs and paired docs before the disjoint NPC merge. All nineteen tool inputs and raw index bytes remain exact after merge."
+  },
+  "graph": {
+    "shippingProjects": 15,
+    "projectReferences": 29,
+    "newProductionDependencies": 0
+  },
+  "limits": [
+    "FullVanillaAiParity remains false. Active phase vs retired/status bounds remain those of the immutable NPC acceptance record.",
+    "Automatic adaptation supports the explicit int/bool helper subset only; generated original-derived code stays in cache and is not admitted into production.",
+    "Linux NativeAOT, official GUI and graceful-save shutdown remain unverified."
+  ]
+}
