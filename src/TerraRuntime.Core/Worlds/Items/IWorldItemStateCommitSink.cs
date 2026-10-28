@@ -14,6 +14,9 @@ public enum WorldItemStateCommitKind : byte
 /// <summary>
 /// Observes successfully committed authoritative world-item state. Implementations must not mutate the store;
 /// callbacks are invoked after the store releases its internal lock.
+/// A source creation Drop carries its one-time NewItem ownership argument;
+/// the same handle's active snapshot has Ownership.None. Such a notification
+/// is a publication projection, not an exact current-state preimage.
 /// </summary>
 public interface IWorldItemStateCommitSink
 {

@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-bunny-family-candidate02-executable-bridge",
+  "accepted": true,
+  "aggregateAcceptance": false,
+  "candidate": "analyzer-roadmap-20261028/candidate-02",
+  "sourceInputCount": 4024,
+  "canonicalDllCount": 158,
+  "unchangedRuntimeDllCount": 157,
+  "candidate01To02SourceDifferences": [
+    "tests/TerraRuntime.Tests/NpcRemainingDefinitions1458Tests.cs",
+    "tests/TerraRuntime.Tests/NpcSourceDefaultRoster1458Tests.cs"
+  ],
+  "candidate01To02DllDifferences": [
+    "tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll"
+  ],
+  "sourceGuardAccepted": true,
+  "canonicalDllGuardAccepted": true,
+  "privateRuntimeClosureExact": true,
+  "adapterUnchanged": true,
+  "adapterAssemblyName": "BunnyFamilyProbe",
+  "adapterAssemblyReferences": [
+    "System.Runtime",
+    "System.Collections",
+    "TerraRuntime.World",
+    "TerraRuntime.Core",
+    "TerraRuntime.Contracts",
+    "System.Runtime.Loader",
+    "System.Linq",
+    "System.Text.Json",
+    "System.Console",
+    "System.Security.Cryptography"
+  ],
+  "adapterAssemblyReferencesSha256": "48853833c6c656c5b761dcdbed42c189fb97db89240c3b9ea4b07f7397ef025e",
+  "testDllExclusionReason": "The authored BunnyFamilyProbe adapter has no TerraRuntime.Tests assembly reference and explicitly loads shipping Application. The unused TestDLL was present in the physical copy, but is not the adapter executable or a dependency of its authored call path.",
+  "componentManifestSha256": "6373045a08521f5d57d59cca5cd84562516678a08541459da347901710d5fbdb",
+  "candidate01QualifierSha256": "44066be7113692ef862384d49ab4c192b13eabdf6b7ac5f232d21220d6a5d20d",
+  "candidate01ActualProofSha256": "8772c1ce7fd6340192bb6ca911a78c266aea31ffedc303f06f7b73a2d566557f",
+  "candidate02BuildSha256": "d5fa2ec63e2692744706cee3a51d6f3df577f2cd3a5060e4cc53dad9d79dca84",
+  "candidate02SourceBeforeSha256": "fbc0b7f19ddb51c77e07a8b5dcf8cbe422ecdffe608f3cabc0688d5f03a85587",
+  "candidate02DllBeforeSha256": "47983b1554d8a963e38ffa3bd7118bbead62cfd1f524e64234594a786648c0e7",
+  "finalAssembliesSha256": {
+    "TerraRuntime.Application.dll": "b7095c7b6676394a99be1e91473ccfeead54b99988c65019ccbf4a085dfb27c6",
+    "TerraRuntime.Core.dll": "2ab9b6a4fb5f00fb799f40e40f30aafcad624d5b2bbc189a801efcc228250480",
+    "TerraRuntime.Gameplay.dll": "4146ee2ec10dfcc798edda14133e3c45ef862ad31b20e43f75f7a05d12127f64"
+  },
+  "reusedActualGreenPhases": 6048,
+  "reusedControls": [
+    {
+      "name": "gate-01-omit",
+      "accepted": false,
+      "stateMismatchPhases": 2016,
+      "rngMismatchPhases": 570
+    },
+    {
+      "name": "gate-01-rng",
+      "accepted": false,
+      "stateMismatchPhases": 1584,
+      "rngMismatchPhases": 2016
+    }
+  ],
+  "recaptureRequired": false,
+  "limits": [
+    "No additional updates are counted: the actual6048 phase proof and actual negative controls reuse byte-identical shipping executables and unchanged adapter.",
+    "Only two census tests changed; original numeric fixtures and all NPC shipping source pins remain unchanged.",
+    "Root fast/full/NativeAOT aggregate acceptance remains separate."
+  ],
+  "cacheBridgeSha256": "86c051db286195598048d1bd654a17a99d4085788b391de7d2acb14330152ac8"
+}

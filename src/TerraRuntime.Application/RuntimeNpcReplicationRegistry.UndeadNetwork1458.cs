@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Npcs;
 
@@ -89,7 +90,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
     private static bool UsesUndeadNetworkPhase1458(in NpcSnapshot snapshot) =>
         snapshot.IsActive &&
         (TerraRuntime.Gameplay.Npcs.VanillaNpcGroundRoster1458.IsUndeadRuntimeIdentity(snapshot.TypeIdentity, snapshot.NetIdentity) ||
-         snapshot.Type is >= 646 and <= 652 && snapshot.Type == snapshot.NetId);
+         VanillaNonresidentBunnyCatalog1458.IsSupported(snapshot.Type) && snapshot.Type == snapshot.NetId);
 
     private struct UndeadNetworkState1458
     {

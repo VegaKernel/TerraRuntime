@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-bunny-family-applied-original-differential",
+  "componentEvidenceAccepted": true,
+  "aggregateAcceptance": false,
+  "gameVersion": "1.4.5.8",
+  "originalFlavor": "Linux dedicated assembly executed on Windows CoreCLR",
+  "newRuntimeTypes": [
+    46,
+    303,
+    337,
+    443,
+    540
+  ],
+  "creationOnlyPromotions": [
+    303,
+    337,
+    443,
+    540
+  ],
+  "existingControlType": 646,
+  "creationOnlyBefore": 96,
+  "creationOnlyAfter": 92,
+  "positiveAi3Remaining": 59,
+  "signedAi3Remaining": [
+    -15
+  ],
+  "ai7Remaining": 32,
+  "entryPoints": {
+    "original": "Terraria.NPC.UpdateNPC(0)",
+    "runtime": "TerraRuntime.Application.ServerRuntimeState.Tick"
+  },
+  "context": {
+    "widthTiles": 100,
+    "heightTiles": 200,
+    "surface": 80,
+    "rockLayer": 120,
+    "floorY": 100,
+    "floorTile": 1,
+    "mode": 0,
+    "dayTime": true,
+    "dedServ": true,
+    "netMode": 2,
+    "players": "slot0 active20x42 at660,1558; other255 inactive constructor defaults",
+    "phases": 112,
+    "bootstrap": "all tiles allocated; tileSolid1=true; source npcCatchable[type]=true",
+    "projection": "complete named NPC numeric/boolean pose, AI, localAI, home, combat, frame, lifetime, protection and full physical Main.rand state",
+    "entry": "actual NPC.UpdateNPC(0) vs actual ServerRuntimeState.Tick; no game-body translation"
+  },
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "analysis": {
+    "requestSha256": "9513de05498c9bba2f18e4b4e2bcf1ead7e0c4cac6eb9ef20271e596e1c9b7e1",
+    "resultSha256": "bbb9bf1d328e84b65ce5a3365afbffc75edb253f07e0d691276257118ef9f8ae",
+    "observationSha256": "3f13bd6d2ec494a9e2304bfb615992d9e4c0ff557010bff1c2ff265206f228e3",
+    "accepted": false,
+    "entryQualified": true,
+    "entryDiagnostics": [],
+    "methods": 27,
+    "opaqueFrontiers": 149,
+    "sourceClosureComplete": false,
+    "compilationErrorCount": 121,
+    "limits": [
+      "Depth limit reached; GetTargetData and UpdateHomeTileState not qualified.",
+      "Entry-level inventory guides inspection only; not effect or translation acceptance."
+    ]
+  },
+  "comparisonSha256": "dee1781f9a5118a61bce6af7470389de0d07939a3d57b0ed9940e3276b7e50bb",
+  "green": {
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "casesPerSeed": 18,
+    "phasesPerCase": 112,
+    "totalOriginalPhases": 6048,
+    "totalRuntimePhases": 6048,
+    "stateOrRngDifferences": 0,
+    "completeInputsEqual": true
+  },
+  "old": {
+    "sourceBaselineXmlSha256": "8c4ed451f624b486e1e6cb0b75196b954dfcc56ac70dedb7f60dfede9cc4fe49",
+    "newSiblingPhases": 1680,
+    "newSiblingStateMismatches": 1680,
+    "gemControlPhases": 336,
+    "gemControlDifferences": 0,
+    "normalSameTestDll": true,
+    "normalOldCoreFailure": "catch protection: expected90, actualnull",
+    "normalOldXmlSha256": "dc8456dd38b8de6220f5e6a0c413662f92e3b1c80443394347cd7209cb73cf08",
+    "normalFixedXmlSha256": "5c5953a244b64c43ce2ed5864b6bf19989b668d60b9177dc3a32046f27917c87",
+    "newFactFixedPassed": true,
+    "normalGroupedCensusCorrection": "One stale lifecycle total204 corrected to208 after real four-definition promotion; aggregate rerun pending.",
+    "sameNormalTestDllSha256": "a1fb7c3b91c3801a1e95ad83757ef34cc7a25708bc39f750a6a113c51ceaf278",
+    "testIdentityProof": "Private old replay copied current TestDLL and asserted identical SHA before substituting Core; both XML runs used that same pre-census-correction build. Later root rebuilds are separate aggregate evidence.",
+    "oldCoreSha256": "12dde4388b838d02db437f4b55d2a235d6fc8e8b3745491920b3cd17f4721e3d",
+    "fixedCoreSha256": "939a992ce7d76535386d452454ce249cda6da4aaff843eaf08f692b75c6ca9af",
+    "fixedApplicationSha256": "fbcf17a20bc6f64b1bc28f20ee006e43f432b72b8a3e57e8da8ab08c13ce3ca5"
+  },
+  "controls": [
+    {
+      "name": "control-omit",
+      "stateMismatchPhases": 2016,
+      "rngMismatchPhases": 570,
+      "actuallyExecuted": true
+    },
+    {
+      "name": "control-rng",
+      "stateMismatchPhases": 1584,
+      "rngMismatchPhases": 2016,
+      "actuallyExecuted": true
+    }
+  ],
+  "captureReceipts": [
+    {
+      "name": "final-official-1458",
+      "dataSha256": "ac2b43df212636469b22006832649f27e01f194d86edc321a619ba72176e04a9",
+      "receiptSha256": "4d49d8a7d8b179d496aff63eec9615e41b32c6329ea10d95b24b224632b9bd83",
+      "closureSha256": "b4b9cadab89a2198c0c3d4c0b47875dd9d4a7cfc003890460ee08b25586c3739"
+    },
+    {
+      "name": "final-official-42",
+      "dataSha256": "c1f7be3be889b1dcc068ce49681d8f14b1ad66e2a415123f6055588d40ae2ea2",
+      "receiptSha256": "881e5a9635387d4cfbbb132df143663651a0d8a60b69ce52649c9d166bf3e7b8",
+      "closureSha256": "b4b9cadab89a2198c0c3d4c0b47875dd9d4a7cfc003890460ee08b25586c3739"
+    },
+    {
+      "name": "final-official-8675309",
+      "dataSha256": "cd73e6e57f62471f91fe5375f20d649fc31eb1c2b4a62cf47e745343f0df93e7",
+      "receiptSha256": "36d87c444696375064b32327eaed6ce2191db7b01e2db36b599ae58214a56afc",
+      "closureSha256": "b4b9cadab89a2198c0c3d4c0b47875dd9d4a7cfc003890460ee08b25586c3739"
+    },
+    {
+      "name": "final-old-1458",
+      "dataSha256": "050bb8d62606bcbe79d491b4a8b5b4f698a9198ee7ee96b38782df2a1a26f134",
+      "receiptSha256": "e8e33b541d465fa1967ca5bf461f69a9aa003d08eb3f0178602bc95cbba7068e",
+      "closureSha256": "b4b9cadab89a2198c0c3d4c0b47875dd9d4a7cfc003890460ee08b25586c3739"
+    },
+    {
+      "name": "final-fixed3-1458",
+      "dataSha256": "91ebc685a8ddcdd5fffa9504b932ed3aa8388f34b3ae542a451b6d4e18db2017",
+      "receiptSha256": "f4941ef41578e012af8a9649f197212200b4cc806fa21496db4a0b3840505997",
+      "closureSha256": "5644a8f5b8f92d97c700f8fe87cd4db84b12d648e6fe83be232d0e58360c1d79"
+    },
+    {
+      "name": "final-fixed-42",
+      "dataSha256": "72ebe7c352517b1937050776d0e5f7b19ecd71036ff673f444c3d5b2e40c40bf",
+      "receiptSha256": "c31f95d327ed20ab7ff39bab39d04aba93cef1070a01d7ab738ee26f9117a51f",
+      "closureSha256": "5644a8f5b8f92d97c700f8fe87cd4db84b12d648e6fe83be232d0e58360c1d79"
+    },
+    {
+      "name": "final-fixed-8675309",
+      "dataSha256": "65e443a3c0ad568ab545e2de03afe1983be9c9422899a60cf9da07b5f85cf5a6",
+      "receiptSha256": "aa99555e7f0cd4da1fcd39bbbbfaa45a6dc5f3956b752d3914f2226c58bfc08e",
+      "closureSha256": "5644a8f5b8f92d97c700f8fe87cd4db84b12d648e6fe83be232d0e58360c1d79"
+    },
+    {
+      "name": "control-omit",
+      "dataSha256": "e522ecfc88461d811eecf78b5cf4b69e7486de32e973d4a6488e71ebbc5ef037",
+      "receiptSha256": "849baecd7129f07378086bd0d14b7e6c6b708578ed4ad3e1df1aefb7ef846de6",
+      "closureSha256": "5644a8f5b8f92d97c700f8fe87cd4db84b12d648e6fe83be232d0e58360c1d79"
+    },
+    {
+      "name": "control-rng",
+      "dataSha256": "8cfab1c7d9de3e40759730d18b60bc56ea339a3baf87c9e2bb13c2f10c93d4bd",
+      "receiptSha256": "65219123ffcc932ae45038d8e92188189767548f040fde0794764f37465d6269",
+      "closureSha256": "5644a8f5b8f92d97c700f8fe87cd4db84b12d648e6fe83be232d0e58360c1d79"
+    }
+  ],
+  "shippingSourceSha256": {
+    "src/TerraRuntime.Application/RuntimeNpcReplicationRegistry.Catch.cs": "2815127982535dad2293ef4be671d04a8a81e6604f85680fcfc1c1f072984069",
+    "src/TerraRuntime.Application/RuntimeNpcReplicationRegistry.UndeadNetwork1458.cs": "0096ea66ea5b9813fffa8f57bdd89f3b03535788fc2627cd55ec9f2dec767c39",
+    "src/TerraRuntime.Core/Npcs/RuntimeNpcStateOwnershipPolicy.cs": "aca4b0dad5011b83a8b1dde39396d46dd042033e5746112e355228323ec67f53",
+    "src/TerraRuntime.Core/Npcs/VanillaGemBunnyAi1458.cs": "18f5ce90f317453eb767deb576f59c366b69ec5e93168314c3ffb43676cb68e7",
+    "src/TerraRuntime.Gameplay/Npcs/Simulation/VanillaNpcAiCoverageCatalog.cs": "a89665faf822691339942604a59404d56f1484c9604171d2a904b6c3e48d0ed2",
+    "src/TerraRuntime.Gameplay/Npcs/VanillaNpcDefinitionCatalog.cs": "52192367a6d01316832bc434688e73e09c146846dd87895525e126ca944f1879",
+    "src/TerraRuntime.Gameplay/Npcs/VanillaNonresidentBunnyCatalog1458.cs": "60e2dd6f0b4f91ab8cfe5d11d4395f7480dc1c2a254fec84f9ae926866cca88d"
+  },
+  "normalTestSha256": "4b978c07d71e20d72add8bcb3c67985707099fe0fafb3094ddf2d4ffb118cba1",
+  "rejectedAttempts": [
+    "All-players-inactive initial bootstrap: source correctly despawned; not movement acceptance.",
+    "Initial fixed capture loaded old CopyLocal runtime; retained rejected receipt, never counted."
+  ],
+  "limits": [
+    "Original Linux assembly executing on Windows CoreCLR, not Linux NativeAOT.",
+    "Named NPC numeric and boolean state projection, no wire/death/environmental extension acceptance.",
+    "Only walk/idle/timer-expiry sequences on explicit empty-over-stone bounded terrain and one neutral active player.",
+    "No natural spawn admission or broad AI7, resident, wiring, death/wire/environmental or FullVanillaAiParity claim.",
+    "Turning squirrels and Explosive Bunny remain excluded.",
+    "No shipping AOT or aggregate acceptance in this component manifest."
+  ]
+}

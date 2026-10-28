@@ -115,7 +115,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             return false;
         }
 
-        WorldItemStateUpdate initial = CreateInitial(in drop);
+        WorldItemStateUpdate initial = CreateInitial(in drop) with { Ownership = WorldItemOwnershipMode.None };
         bool committed;
         BeginWrite();
         try
@@ -128,7 +128,10 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         if (committed)
-            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        {
+            var creation = snapshot with { Ownership = drop.Ownership };
+            Publish(WorldItemStateCommitKind.Drop, in creation);
+        }
         return committed;
     }
 
@@ -317,6 +320,9 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             WorldItemStateUpdate merged = state.Active
                 ? MergeDrop(in state.Update, in drop)
                 : CreateInitial(in drop);
+            // MessageBuffer21 applies spawn ownership only to sentinel400.
+            // An existing-item update is relayed through index-only SyncItem.
+            merged = merged with { Ownership = WorldItemOwnershipMode.None };
             int funded = state.Active && state.Update.ItemNetId == merged.ItemNetId && state.Update.Prefix == merged.Prefix
                 ? Math.Min(state.FundedQuantity, merged.Stack) : 0;
             long fundedCoinValue = state.Active && state.Update.ItemNetId == merged.ItemNetId && state.Update.Prefix == merged.Prefix
@@ -663,6 +669,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         bool committed = false;
+        WorldItemOwnershipMode creationOwnership = WorldItemOwnershipMode.None;
         BeginWrite();
         try
         {
@@ -684,6 +691,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
                 return false;
             }
 
+            creationOwnership = state.Update.Ownership;
+            state.Update = state.Update with { Ownership = WorldItemOwnershipMode.None };
             state.FundedCoinValue = CoinPhysicalValue(state.Update.ItemNetId, state.Update.Stack);
             state.OwnedCoinPhysical = false;
             state.FundedQuantity = state.FundedCoinValue > 0 ? 0 : state.Update.Stack; // Existing trusted server-drop producer.
@@ -701,7 +710,10 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         if (committed)
-            Publish(WorldItemStateCommitKind.Drop, in snapshot);
+        {
+            var creation = snapshot with { Ownership = creationOwnership };
+            Publish(WorldItemStateCommitKind.Drop, in creation);
+        }
         return committed;
     }
 

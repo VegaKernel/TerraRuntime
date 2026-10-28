@@ -8,12 +8,17 @@ internal sealed class VanillaGemBunnyEnvironment1458(
     WorldTileStore tiles, RuntimeNpcStore npcs, RuntimeNpcBuffStatus1458 status,
     Func<NpcSnapshot, RuntimeTownNpcScheduleConditions1458> conditions,
     Func<RuntimeTownPlayerDanger1458[]> playerDanger,
-    RuntimeNpcReplicationRegistry? replication = null) : IVanillaGemBunnyEnvironment1458
+    RuntimeNpcReplicationRegistry? replication = null,
+    Func<bool?>? bloodMoonOwner = null) : IVanillaGemBunnyEnvironment1458
 {
     public bool TryCapture(in NpcSnapshot source, VanillaNpcBehaviorContext context,
         out IVanillaGemBunnyCapturedWorld1458 capture)
     {
         capture = default!;
+        // Unlike gem bunnies, these five transform before AI007 during Blood Moon.
+        // Its transformation owner is not admitted here. Missing context cannot mean neutral.
+        if (TerraRuntime.Gameplay.Npcs.VanillaNonresidentBunnyCatalog1458.IsEvilConvertible(source.Type) &&
+            bloodMoonOwner?.Invoke() is not false) return false;
         var peers = new NpcSnapshot[npcs.Capacity];
         int count = npcs.CopyActive(peers);
         var players = playerDanger();
@@ -35,7 +40,7 @@ internal sealed class VanillaGemBunnyEnvironment1458(
         capture = new Capture(terrain, source, peers[..count], players, weather, danger, stinky,
             status, conditions, playerDanger, tiles, phase, replication,
             terrain.TileType((int)(source.PositionX + body.Width / 2) / 16,
-                (int)(source.PositionY + body.Height + 1f) / 16) == 666);
+                (int)(source.PositionY + body.Height + 1f) / 16) == 666, bloodMoonOwner);
         return capture.IsCurrent;
     }
 
@@ -44,7 +49,7 @@ internal sealed class VanillaGemBunnyEnvironment1458(
         RuntimeTownNpcDanger1458 danger, bool selfStinky, RuntimeNpcBuffStatus1458 status,
         Func<NpcSnapshot, RuntimeTownNpcScheduleConditions1458> weatherOwner,
         Func<RuntimeTownPlayerDanger1458[]> playerOwner, WorldTileStore tiles, RuntimeNpcBuffPlan1458 phase,
-        RuntimeNpcReplicationRegistry? replication, bool repeatedStinky)
+        RuntimeNpcReplicationRegistry? replication, bool repeatedStinky, Func<bool?>? bloodMoonOwner)
         : IVanillaGemBunnyCapturedWorld1458, IRuntimeGemBunnyStatusPhase1458
     {
         private readonly RuntimeNpcBuffPlan1458 afterAi = repeatedStinky
@@ -54,7 +59,10 @@ internal sealed class VanillaGemBunnyEnvironment1458(
         private byte[]? collisionFrame;
         public bool ShelterWeather => weather.ReturnHomeRequested;
         public GemBunnyDanger1458 Danger => new(danger.WithinRange, danger.ThreatDirection, selfStinky);
-        public bool IsCurrent => terrain.IsCurrent && status.IsCurrentGemBunnyPhase(in phase) && weatherOwner(source) == weather &&
+        public bool IsCurrent =>
+            (!TerraRuntime.Gameplay.Npcs.VanillaNonresidentBunnyCatalog1458.IsEvilConvertible(source.Type) ||
+                bloodMoonOwner?.Invoke() is false) &&
+            terrain.IsCurrent && status.IsCurrentGemBunnyPhase(in phase) && weatherOwner(source) == weather &&
             playerOwner().AsSpan().SequenceEqual(players) && status.TryGetStinky(source.Handle, out bool stinky) &&
             stinky == selfStinky && RuntimeTownNpcDangerScanner1458.TryScan(tiles, in source, peers, players,
                 status, false, false, out var current) && current == danger && terrain.IsCurrent;

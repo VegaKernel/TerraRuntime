@@ -22,13 +22,13 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
             VanillaMimicNpcCatalog1458.DefinitionCount - 1;
         expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14 + VanillaMothronNpcCatalog1458.DefinitionCount + VanillaBigMimicNpcCatalog1458.DefinitionCount;
-        expected += 7; // The exact nonresident Gem Bunny dispatcher, independently exercised end to end.
+        expected += VanillaNonresidentBunnyCatalog1458.Types.Length; // The exact accepted nonresident bunny dispatcher.
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition));
-            if (coverage.Type.Value is >= 646 and <= 652)
+            if (VanillaNonresidentBunnyCatalog1458.IsSupported(coverage.Type.Value))
             {
                 // None is explicit here: AI7 is dispatched by the accepted nonresident owner,
                 // not a town behavior family. No other AI7 identity inherits this exception.

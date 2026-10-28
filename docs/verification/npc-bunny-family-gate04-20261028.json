@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-bunny-post-fence-final-union-qualification",
+  "accepted": true,
+  "aggregateAcceptance": false,
+  "candidate": "analyzer-roadmap-20261028/candidate-04",
+  "sourceGuardAccepted": true,
+  "canonicalDllGuardAccepted": true,
+  "privateRuntimeClosureExact": true,
+  "runtimeClosureExact": true,
+  "sourceInputCount": 4026,
+  "canonicalDllCount": 158,
+  "copiedDllCount": 158,
+  "gateBuildSha256": "7121126519669e639ad4bb822312344f8e2d09009269a8edc59085cc73586e32",
+  "gateSourceBeforeSha256": "82dba21a9fcf277646aa301ba1ca26846c2cf05b6c5f768d7e0d57ea3c977fe1",
+  "gateDllBeforeSha256": "8d4089e218e0fdb0a3e2d1fbc425e20a9e4959b4b5b8a150fc5428fc5aebcece",
+  "ownedSourceSha256": {
+    "src/TerraRuntime.Application/NpcAuthority.cs": "8cb7cc054561629d6a480b3902d4e76dd767c73f859b54c4cd44a225f9bed79e",
+    "src/TerraRuntime.Application/VanillaGemBunnyEnvironment1458.cs": "5933f1405c0cd353df094f7808066eb032e3bef80b55bd41733f5b385ad497c1",
+    "src/TerraRuntime.Application/RuntimeGemBunnyOuterAiStepper1458.cs": "2e17fd4218507b7d35a5a9653311b23ef4de80e0cc12b1db19d5135a128b316d",
+    "src/TerraRuntime.Application/RuntimeGemBunnyLifecycle1458.cs": "97b2471e8b8d56c2f793fc7feed236330d758b8ed8a0b0f6b2ea99a5d7131a3c",
+    "src/TerraRuntime.Gameplay/Npcs/VanillaNonresidentBunnyCatalog1458.cs": "e87d8e4a9649fa3775ac94f2b015c9daf01d76dafd658a2586be6cbfe8e97c2a",
+    "tests/TerraRuntime.Tests/NonresidentBunnyBloodMoon1458Tests.cs": "37bb91c5642d181499bd23f45f0254d19bd128b4f82fecfe7129663af6d3d98e",
+    "tests/TerraRuntime.Tests/NonresidentBunnyFamily1458Tests.cs": "5cf02929d4bfa8efda0c63990d21000953ac41e1dee4111ee74f4d31c6d685e8"
+  },
+  "adapterAssemblyName": "BunnyFamilyProbe",
+  "adapterAssemblyReferences": [
+    "System.Runtime",
+    "System.Collections",
+    "TerraRuntime.World",
+    "TerraRuntime.Core",
+    "TerraRuntime.Contracts",
+    "System.Runtime.Loader",
+    "System.Linq",
+    "System.Text.Json",
+    "System.Console",
+    "System.Security.Cryptography"
+  ],
+  "adapterReferencesTests": false,
+  "unusedTestDllPresentInPhysicalCopy": true,
+  "freshRecaptureAfterMerge": true,
+  "recapturedRuntimePhases": 6048,
+  "entryProfiles": {
+    "original": "Actual Terraria.NPC.UpdateNPC(0), Main.bloodMoon=false and NPC.noSpawnCycle=true before every invocation.",
+    "runtime": "Actual composed NpcAuthority.AdvanceWorldTick+TickSimulation; existing sourceSpawnCycle.SuppressNext before invocation; real authoritative WorldClock with knownfalse BloodMoon.",
+    "excludedCallers": "Natural-spawn rate/selection and world-time phases. No copied caller prefix or RNG restoration."
+  },
+  "greenPhases": 6048,
+  "originalPhaseCount": 6048,
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "casesPerSeed": 18,
+  "phasesPerCase": 112,
+  "inputProjectionAndAllPhysicalRngEqual": true,
+  "captureReceipts": [
+    {
+      "name": "neutral-source-1458",
+      "outputSha256": "ee4089c7d671e7950a7c9a1da5994ca226409946891f0e8c41179cd4a1501dd3",
+      "receiptSha256": "bfb0d1190bf9182692a29e0fb8fda24ec646e7004cdde0e5cefbb0d4eb21c0ac"
+    },
+    {
+      "name": "neutral-source-42",
+      "outputSha256": "7deff20f6b96b75bbe110e679fee08300bfeecb88772908fe66cdf736463eaa9",
+      "receiptSha256": "5c3fac432608ab9364da0f0dc891d6308b7d493508254377623931005c2bf2c5"
+    },
+    {
+      "name": "neutral-source-8675309",
+      "outputSha256": "a9d296ba919d0167e4037987daf51c48bce2032a06117075e48fe1072a2e4cdb",
+      "receiptSha256": "f7db960df2eca40f34936790b1b7cc82a3c9f15fae68970f3c40a75ce3b129c8"
+    },
+    {
+      "name": "union04-fixed-1458",
+      "outputSha256": "14070ca88dba05dcc2370854ddd088a99d7cb60816483b64344741d12fc74fd2",
+      "receiptSha256": "0bf110f0c5dd680384d1219522e04c49a8b616efd1cc0c855b0cc6893ece4854"
+    },
+    {
+      "name": "union04-fixed-42",
+      "outputSha256": "89af2c583390d969c49768a02ccc7c3314fc30a02e6ac8d82000f923b6383862",
+      "receiptSha256": "83ea0ce8409a093033278191516208b95a282ba93317f92210825b50b1e6d750"
+    },
+    {
+      "name": "union04-fixed-8675309",
+      "outputSha256": "dc615c2a2418741eef203604d5d572a844805648dea69cb2b92b8b7de93cc741",
+      "receiptSha256": "00de64b2ae6ed4eced3d7131135f0b10d43c4a8565a25d2e5a26e1161b6cfe90"
+    },
+    {
+      "name": "union04-omit",
+      "outputSha256": "f0da7710a7428d3ff52b706c45f16596a7504419867583af8d00eef318adff94",
+      "receiptSha256": "9acbd7492f875c6c2fd0f3a57a830682f4fec65d9607c8a0454b66debd37cc0b"
+    },
+    {
+      "name": "union04-rng",
+      "outputSha256": "bd726e72a25a949a281099b23de9762e21f15c70354faf2f3e755908997960b1",
+      "receiptSha256": "c45c8a1d67c75e1e21d10e54b7f0c1d2968822e7c8154f8e9a81f2889cbb5c01"
+    }
+  ],
+  "bloodMoon": {
+    "originalProofSha256": "0ffd49d34dcc816cc00470118eba323544ac73cbbd4d303fdc05be4cf27a2207",
+    "actualOriginalUpdateNpcCalls": 36,
+    "convertedCalls": 30,
+    "gemControlCalls": 6,
+    "convertibleTypes": [
+      46,
+      303,
+      337,
+      443,
+      540
+    ],
+    "corruptTarget": 47,
+    "crimsonTarget": 464,
+    "newFamilyPolicy": "Unknown or active raw authoritative BloodMoon refuses the whole NPC phase. Explicitfalse is captured and rechecked before adoption, including lower-world death reentry. Existing gemseven remains unchanged.",
+    "sourceReferences": [
+      "NPC.cs91489 before gravity/AI",
+      "NPC.cs93035 nonclient+bloodMoon without separate daytimepredicate",
+      "NPC.cs93052 exactfive conversion identities"
+    ],
+    "records": [
+      {
+        "scenario": "blood-corrupt",
+        "target": 47,
+        "actualUpdateNpcCalls": 18,
+        "outputSha256": "fd9cfaeddb8e8f62710da3fa7126b46dc7d7dfc134c8fb30ce5fd376d4cb13b6",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\npc-bunny-review\\blood-probe\\bin\\Release\\net11.0\\BunnyFamilyProbe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\npc-bunny-applied\\gate-01-bin",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\npc-bunny-review\\qualified-blood-corrupt.json",
+          "1458",
+          "blood-corrupt"
+        ],
+        "exitCode": 0
+      },
+      {
+        "scenario": "blood-crimson",
+        "target": 464,
+        "actualUpdateNpcCalls": 18,
+        "outputSha256": "f7efca76d163debe802d518856ab8d059abf945c2ac44925eaf2471a9a1ba7ca",
+        "command": [
+          "dotnet",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\npc-bunny-review\\blood-probe\\bin\\Release\\net11.0\\BunnyFamilyProbe.dll",
+          "official",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\npc-bunny-applied\\gate-01-bin",
+          "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\npc-bunny-review\\qualified-blood-crimson.json",
+          "1458",
+          "blood-crimson"
+        ],
+        "exitCode": 0
+      }
+    ],
+    "sourceAndOriginalBinaryGuards": {
+      "original": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+      "FNA": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+      "source": {
+        "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+        "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c"
+      },
+      "harness": {
+        "Program.cs": "51c3def6c41d9b0b863fe7e660a20c023084bf1f9d60427e8efafa3fdcbe2951",
+        "Probe.csproj": "a87028cc2833f5a81d1d9a98c2415da7a83d63e93a15617f7b4ebe53efb0b082"
+      },
+      "probe": "655d0a8048b5f813268cca1902d465ea1c0a50eef71f8a60416b1aa75b83e19d"
+    }
+  },
+  "causalNormalProof": {
+    "sameTestDllSha256": "875b354c02428b8161ca915407ed40b8c1c7e5520297e1e345ec5c9e7d55c959",
+    "recordedBuild": "audit-fixes-final, before unrelated WG framing merge; NPC test source remains unchanged in04.",
+    "counts": {
+      "fixed": {
+        "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+        "id": "485710ed-3133-43f9-8693-d5235a1bba79",
+        "name": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\tests\\TerraRuntime.Tests\\bin\\Release\\net11.0\\TerraRuntime.Tests.dll",
+        "run-date": "2026-10-28",
+        "run-time": "19:01:51",
+        "start-rtf": "2026-10-28T19:01:51.2736981+03:00",
+        "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+        "target-framework": ".NETCoreApp,Version=v11.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-28T19:01:52.2529758+03:00",
+        "not-run": "0",
+        "passed": "19",
+        "skipped": "0",
+        "time": "0.980",
+        "time-rtf": "00:00:00.9801824",
+        "total": "19"
+      },
+      "old-blood": {
+        "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+        "id": "3948d988-a2b5-485b-9246-48cdb62669a8",
+        "name": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\analyzer-roadmap-20261028\\audit-fixes-final\\old-runtime-bin\\TerraRuntime.Tests.dll",
+        "run-date": "2026-10-28",
+        "run-time": "19:01:56",
+        "start-rtf": "2026-10-28T19:01:56.4571317+03:00",
+        "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+        "target-framework": ".NETCoreApp,Version=v11.0",
+        "errors": "0",
+        "failed": "1",
+        "finish-rtf": "2026-10-28T19:01:56.9263422+03:00",
+        "not-run": "0",
+        "passed": "0",
+        "skipped": "0",
+        "time": "0.470",
+        "time-rtf": "00:00:00.4704667",
+        "total": "1"
+      },
+      "old-gold": {
+        "environment": "64-bit (x64) .NET 11.0.0-preview.7.26381.103 [collection-per-class, parallel (4 threads)]",
+        "id": "a0aec06e-29ce-45e0-8f43-8c5e3727c1bf",
+        "name": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime-source-tools\\.cache\\analyzer-roadmap-20261028\\audit-fixes-final\\old-runtime-bin\\TerraRuntime.Tests.dll",
+        "run-date": "2026-10-28",
+        "run-time": "19:01:54",
+        "start-rtf": "2026-10-28T19:01:54.6353249+03:00",
+        "test-framework": "xUnit.net v3 3.0.1+9214bef154",
+        "target-framework": ".NETCoreApp,Version=v11.0",
+        "errors": "0",
+        "failed": "5",
+        "finish-rtf": "2026-10-28T19:01:55.1451942+03:00",
+        "not-run": "0",
+        "passed": "12",
+        "skipped": "0",
+        "time": "0.511",
+        "time-rtf": "00:00:00.5110274",
+        "total": "17"
+      }
+    },
+    "xmlSha256": {
+      "fixed": "135da309db70c8c97dc24fa0baaecd8275db574a9ccfa6746af97df72993e0bd",
+      "old-blood": "6b24841d2a45d6bb3a2f5bb53f32aef1d1e1062a9b2718b335d5061a8e934958",
+      "old-gold": "7a6d9156951b5bb940ccf328c2adb1e69cf781879ee44461715a4b023e8d990b"
+    },
+    "resultSha256": {
+      "fixed": "02002f67105cf2914974d93ed6acb97c46d4a58d401ad24a50cae5f942fb72e4",
+      "old-blood": "a2242770782d986a71cc256961a791eac02a0f16d645362d423fe5cc718f95d3",
+      "old-gold": "e72f5a6656b8c87a7508e69b7b0c8a9936cdd5ad3f99f1e6c68b8f1c9735b829"
+    }
+  },
+  "historicalProofsPreserved": [
+    "npc-bunny-family-20261028.json",
+    "npc-bunny-family-gate-20261028.json",
+    "npc-bunny-family-gate02-20261028.json"
+  ],
+  "limits": [
+    "This qualifies this NPC phase on the exact candidate04 closure; root fast/full/NativeAOT aggregate acceptance remains separate.",
+    "Original Linux dedicated assembly executes on Windows CoreCLR; no Linux NativeAOT claim.",
+    "NPC state equality is the complete named projection and all56 RNG slots pluscursor, not all unobserved NPCfields or wire/loot effects.",
+    "BloodMoon conversion remains unimplemented and is explicitly fenced. No FullVanillaAiParity/natural-spawn/resident/wiring/Shimmer claim.",
+    "Gold HitEffect caller-RNG fix and whole-death evidence have their own sibling manifest.",
+    "Earlier fullServerTick/unconfiguredclock captures remain historical; the current carrier intentionally observes the actual NPCphase only."
+  ],
+  "cacheSuccessorResultSha256": "fec044e4a5587bd8b6e962aba90c0c3769c1946644689764a35b9971a8c37b44",
+  "runtimeClosureSha256": "95a3f6a2bbdd12f62efd3d91fe2304e15acfb336d3a95f7d7afa14dff3fecfcb",
+  "finalAssembliesSha256": {
+    "TerraRuntime.Application.dll": "2c7f8f822d939edc7dd030983e84755f5acc98412d8bef3b4a01cbd8e4e1c48a",
+    "TerraRuntime.Core.dll": "7216cb626d866c3b3b496147cb2ae82a40dc280d0866c3d180536b116df38dd2",
+    "TerraRuntime.Gameplay.dll": "5740a480a887bc98c76a8b7a94f416d2d8857be819827e9729e150b9157e8fe2",
+    "TerraRuntime.Contracts.dll": "014f813a5aba5699e54db57a0bee343e27f02748d90f01dfc80cf7fca9507540",
+    "TerraRuntime.World.dll": "50f13d3fb35236c53131cf5f24d506781d624dc27c080bf3c5f3407f873c5335",
+    "TerraRuntime.WorldGeneration.dll": "f44bc147d8f65ca8c7ce791adeeb3f04fe5e8a7079883b5485e264982e405c99"
+  },
+  "controls": [
+    {
+      "name": "union04-omit",
+      "accepted": false,
+      "stateMismatchPhases": 2016,
+      "rngMismatchPhases": 570
+    },
+    {
+      "name": "union04-rng",
+      "accepted": false,
+      "stateMismatchPhases": 1584,
+      "rngMismatchPhases": 2016
+    }
+  ]
+}

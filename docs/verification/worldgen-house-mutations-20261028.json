@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "kind": "applied-house-tile-mutation-evidence",
+  "scope": "Canonical mutations used by current cave-house shells, room interiors and support beams. Not complete house placement, interior framing, furniture, aging, registered-pass or natural-prefix parity. Row63 remains partial.",
+  "originalEdition": "Official Linux-distributed TerrariaServer1458 assembly executed on Windows CoreCLR; no Linux OS or Windows-original edition qualification claimed.",
+  "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "officialEntrypoints": [
+    "Terraria.WorldBuilding.Actions.SetTileKeepWall.Apply (setSelfFrames=false)",
+    "Terraria.WorldBuilding.WorldUtils.ClearTile (frameNeighbors=false)",
+    "Terraria.GameContent.Biomes.CaveHouse.HouseBuilder.PlaceSupportBeams"
+  ],
+  "officialSourceSha256": {
+    "Terraria.GameContent.Biomes.CaveHouse/HouseBuilder.cs": "4dd5acba391c40ea5ce3e07aa31274d27bfda3d04cce3e464a1657fd7d914231",
+    "Terraria.WorldBuilding/Actions.cs": "2deb96937a979d8ad5a5b480c22bdb066f5df4150aa817233df83d61d3c397fe",
+    "Terraria.WorldBuilding/WorldUtils.cs": "c9eb8626fa0fa2ba2b3ffd5643f4279e488da155085320bcb17ad39f24215c6c",
+    "Terraria/Tile.cs": "edcbd18ef97c7828002c56f968f73fe982cb20476a48e80f57451c6479b13755"
+  },
+  "projection": "All named fields of canonical WorldTile16; raw Tile wall-frame fields are not represented.",
+  "beamFixture": "Explicit64x64 private-stage fixture, rooms (4,10,1,2)/(4,20,1,2), landing (4,20), support (4,22). x4 keeps source TileFrame calls behind the five-cell border guard. Tiny rooms are not claimed to be admitted by CaveHousePlacement.TryPlace.",
+  "old": {
+    "path": ".cache/cavehouse-applied-next/old-final-1458.json",
+    "sha256": "75f6100c64276e48477ea87212aacc37cb01bd0842b1823be56bf0b151cedd4b",
+    "runtimeAssemblySha256": "844feb3b6c4e446989b48447156a56000e04cf8d1e75b0525924cdf233d3bc06",
+    "mutationDifferences": 160,
+    "beamDifferences": 9
+  },
+  "fixed": [
+    {
+      "seed": 1458,
+      "path": ".cache/cavehouse-applied-next/fixed-1458.json",
+      "sha256": "d2abb3568ddf07a5b17128db8946082a27ee5c876e93e5d94533e8d7c40d9469",
+      "mutationTransitions": 160,
+      "beamCells": 4096,
+      "mutationDifferences": 0,
+      "beamDifferences": 0,
+      "completeRngUnchanged": true,
+      "officialMutationOutputSha256": "9a29d82812d145d7c4b0ef1e33c8449083d703183e1ef14beaad25e8222ba8be",
+      "officialBeamInputSha256": "2057a5b4abaabb2103a1930cfdf23d538bc9efdef6b4b97104e0e4cc06666792",
+      "officialBeamOutputSha256": "19f626dc9dc6995409ee7a160a282f8c1a0e6f73d4168cb4e6acb8836c1c9ace"
+    },
+    {
+      "seed": 42,
+      "path": ".cache/cavehouse-applied-next/fixed-42.json",
+      "sha256": "0ba2fe2e3cb20cccd9743a1f5d2af79b51dbcea5d9c78427d94096d4e01aff16",
+      "mutationTransitions": 160,
+      "beamCells": 4096,
+      "mutationDifferences": 0,
+      "beamDifferences": 0,
+      "completeRngUnchanged": true,
+      "officialMutationOutputSha256": "9a29d82812d145d7c4b0ef1e33c8449083d703183e1ef14beaad25e8222ba8be",
+      "officialBeamInputSha256": "2057a5b4abaabb2103a1930cfdf23d538bc9efdef6b4b97104e0e4cc06666792",
+      "officialBeamOutputSha256": "19f626dc9dc6995409ee7a160a282f8c1a0e6f73d4168cb4e6acb8836c1c9ace"
+    },
+    {
+      "seed": 8675309,
+      "path": ".cache/cavehouse-applied-next/fixed-8675309.json",
+      "sha256": "11d675c84c4a5e55b05f0bcb4322ed6c236cb2a1a81d5c2291478d834ea65f23",
+      "mutationTransitions": 160,
+      "beamCells": 4096,
+      "mutationDifferences": 0,
+      "beamDifferences": 0,
+      "completeRngUnchanged": true,
+      "officialMutationOutputSha256": "9a29d82812d145d7c4b0ef1e33c8449083d703183e1ef14beaad25e8222ba8be",
+      "officialBeamInputSha256": "2057a5b4abaabb2103a1930cfdf23d538bc9efdef6b4b97104e0e4cc06666792",
+      "officialBeamOutputSha256": "19f626dc9dc6995409ee7a160a282f8c1a0e6f73d4168cb4e6acb8836c1c9ace"
+    }
+  ],
+  "seed1458OfficialInputOutputRngIdenticalBetweenOldAndFixed": true,
+  "probe": {
+    "sourcePath": ".cache/cavehouse-applied-next/MutationProbe/Program.cs",
+    "sourceSha256": "d1e01923996726305ec398e5648b793424f80242308ac41f2f4ff32ca9fcd472",
+    "assemblySha256": "1a7cf730b3ddeb6bf14938c3e0fca6644d9e1f93b6b78d166a691061a81f46ba",
+    "runtimeOldClosure": {
+      "TerraRuntime.Contracts.dll": "976aafb35ce6d5b0d8c675a72974921a59f4946a1640fcf23369e6b6fffe0c2c",
+      "TerraRuntime.Gameplay.dll": "0a462ae19f83ac3d6c793c04a8f75bd4715f0717c509b277d68751a9d6549d0f",
+      "TerraRuntime.World.dll": "af48cf5cec9b4d6546e142c7e1dce2f86072d9b219695e3715cd41839d2c9280",
+      "TerraRuntime.WorldGeneration.dll": "844feb3b6c4e446989b48447156a56000e04cf8d1e75b0525924cdf233d3bc06"
+    },
+    "runtimeFixedClosure": {
+      "TerraRuntime.Contracts.dll": "976aafb35ce6d5b0d8c675a72974921a59f4946a1640fcf23369e6b6fffe0c2c",
+      "TerraRuntime.Gameplay.dll": "0a462ae19f83ac3d6c793c04a8f75bd4715f0717c509b277d68751a9d6549d0f",
+      "TerraRuntime.World.dll": "af48cf5cec9b4d6546e142c7e1dce2f86072d9b219695e3715cd41839d2c9280",
+      "TerraRuntime.WorldGeneration.dll": "f00cad907dca4e04f7b1b79d3ce1f086b923bf2e27a226fea0fed8dd680b3361"
+    },
+    "scope": "Private compiled fixture invokes original and runtime methods; no copied method bodies, runtime algorithm rewrite or claimed common-runner across-build guard."
+  },
+  "normalRegression": {
+    "path": "tests/TerraRuntime.Tests/CaveHouseTileMutation1458Tests.cs",
+    "unchangedSourceSha256": "3169a447c21cadbf2c2643e1b6a459aedff0ebf060e42955b7b72a274d476cc8",
+    "old": {
+      "path": ".cache/analyzer-roadmap-20261028/old-01/tests.xml",
+      "sha256": "003dd717fce03904574a7e5f1d301aa838d77d9f65f9a77e7c00b155e88bce36",
+      "result": "Fail",
+      "test": "TerraRuntime.Tests.CaveHouseTileMutation1458Tests.House_unframed_mutations_and_beam_endpoints_preserve_the_official_tile_state"
+    },
+    "fixed": {
+      "path": ".cache/analyzer-roadmap-20261028/focused02.xml",
+      "sha256": "8c4ed451f624b486e1e6cb0b75196b954dfcc56ac70dedb7f60dfede9cc4fe49",
+      "result": "Pass",
+      "test": "TerraRuntime.Tests.CaveHouseTileMutation1458Tests.House_unframed_mutations_and_beam_endpoints_preserve_the_official_tile_state"
+    }
+  },
+  "production": {
+    "path": "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.cs",
+    "oldSourceSha256": "cbc2e2b4f700fb268f0d0f276ef954459d9d8e5a8d62536dd83dac1ca31db925",
+    "fixedSourceSha256": "b1e33b10e5c6b2af8c58cf5236a3a9e2b623ce94f17576b9a5293d52d9720a9e"
+  },
+  "appliedAnalyzerInventories": [
+    {
+      "path": ".cache/cavehouse-applied-next/house-mutations-analysis/result.json",
+      "sha256": "f8d85637ff0176b74a9cccf1eec987e969cfdd969bce9e4dce3823c4b0da04b9",
+      "accepted": true,
+      "methods": 3,
+      "sourceClosureComplete": false,
+      "compilationErrorCount": 0,
+      "inputSha256": "96572c29e30add8bb413bbf98ac32cc39a1aacc0516471e6202c0fda9a2f4f70",
+      "observationSha256": "3871b96ef8cbcd97209604c357f72129abc9fe9ff656cfe3c7ea602e4d29d283"
+    },
+    {
+      "path": ".cache/cavehouse-applied-next/wood-aging-analysis/result.json",
+      "sha256": "b063d90b1136b1d9dfad7db71338d141815cbc889de0fb6742f8b71e8bb05902",
+      "accepted": true,
+      "methods": 1,
+      "sourceClosureComplete": false,
+      "compilationErrorCount": 0,
+      "inputSha256": "3916dbad9c12b54b8adbeb44acf0390d40c26e73df723c96e4b42490be18dd44",
+      "observationSha256": "3511cd250d608313ea8f40fd06302a595186c2cd07b47f8d6eebc086aa94f13b"
+    }
+  ],
+  "acceptance": "Focused normal regression and private original/current comparisons only. Aggregate mandatoryfast/affected/full/Native gates are owned by root and recorded separately."
+}

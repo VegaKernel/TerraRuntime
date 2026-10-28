@@ -18,7 +18,7 @@ internal interface IVanillaGemBunnyTerrain1458
 }
 
 /// <summary>
-/// Clean implementation of the reachable AI007 body for the seven gem bunnies. This type is transient
+/// Clean implementation of the reachable AI007 body for the explicitly admitted nonresident bunnies. This type is transient
 /// planning data; committed NPC state, random state and collision ownership stay with their existing owners.
 /// </summary>
 internal sealed class VanillaGemBunnyAi1458
@@ -31,7 +31,7 @@ internal sealed class VanillaGemBunnyAi1458
     internal float OldX, OldY, OldVx, OldVy;
     internal NpcAiState Ai, Local;
 
-    internal static bool IsSupported(int type) => type is >= 646 and <= 652;
+    internal static bool IsSupported(int type) => VanillaNonresidentBunnyCatalog1458.IsSupported(type);
 
     internal bool TryStep(IVanillaGemBunnyTerrain1458 terrain, GemBunnyDanger1458 danger,
         IVanillaNpcRandom random)

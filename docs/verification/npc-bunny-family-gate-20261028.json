@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-bunny-family-final-union-qualifier",
+  "accepted": true,
+  "aggregateAcceptance": false,
+  "candidate": "analyzer-roadmap-20261028/candidate-01",
+  "componentManifestSha256": "6373045a08521f5d57d59cca5cd84562516678a08541459da347901710d5fbdb",
+  "gateBuildSha256": "db63c9383467e6219fd32fef5dd14c7f2e5cf00b05ee4a1b3b746a2d4b46b56c",
+  "gateSourceBeforeSha256": "eebd0bf0551edacb1099f9c957039eb0709019c109c436561657b7a7a36bec0d",
+  "gateDllBeforeSha256": "617e621334bfa3abdbd8d8740b1612291ad3412d4600e61d4f164a8834fb1b4e",
+  "sourceInputCount": 4024,
+  "dllCount": 158,
+  "sourceDifferences": [],
+  "dllDifferences": [],
+  "npcComponentSourcePinsEqual": true,
+  "finalAssembliesSha256": {
+    "TerraRuntime.Application.dll": "b7095c7b6676394a99be1e91473ccfeead54b99988c65019ccbf4a085dfb27c6",
+    "TerraRuntime.Core.dll": "2ab9b6a4fb5f00fb799f40e40f30aafcad624d5b2bbc189a801efcc228250480",
+    "TerraRuntime.Gameplay.dll": "4146ee2ec10dfcc798edda14133e3c45ef862ad31b20e43f75f7a05d12127f64"
+  },
+  "privateAdapterOnlyBuild": "Rebuilt cache-only adapter against exact copied gate DLLs; no shipping project references or shared build.",
+  "greenPhases": 6048,
+  "captureReceipts": [
+    {
+      "name": "gate-01-fixed-1458",
+      "outputSha256": "26715e02decf928170929962545d6ccfa96ff5cfa8b9b254b20f3feebc1c6610",
+      "captureSha256": "030b87e12ec7be8aa1f067fde287f69304e81ee99ea2a3fd8525e40b06d43894"
+    },
+    {
+      "name": "gate-01-fixed-42",
+      "outputSha256": "665f50454f350ddf80c6d0a02afa5e59c26bcab103b6a864064b9a656e26ec5a",
+      "captureSha256": "cc6a99d8bdbb6d4becaefa82fb497c2d860db79631e0d626baa72c3895c44686"
+    },
+    {
+      "name": "gate-01-fixed-8675309",
+      "outputSha256": "e67bd42b3be1f4c133b13dd9021c974cd02438aa175dbb38025625f8c5085b4b",
+      "captureSha256": "f33fa37b6f3dacb51e6b67eed51b9471886707222fcdf67a9240a6df98eccc39"
+    },
+    {
+      "name": "gate-01-omit",
+      "outputSha256": "8e642d0685c5d7bac7f3620715f1e9d78ba5ac6332a9617fe6ef152f94584a81",
+      "captureSha256": "dd54e595006f545cec06722bd571081b5c12d122d3e982113ba131e4f2dbb838"
+    },
+    {
+      "name": "gate-01-rng",
+      "outputSha256": "bc60c71314aa093f63cb0f707cadc75f99f3e3de650e7a212c4865770cd40b7e",
+      "captureSha256": "454001ac81f5c0e82b44bfec212c1ebfc954a9828f6823507388c8c49486276f"
+    }
+  ],
+  "limits": [
+    "Original Linux assembly executing on Windows CoreCLR, not Linux NativeAOT.",
+    "Named NPC numeric and boolean state projection, no wire/death/environmental extension acceptance.",
+    "Only walk/idle/timer-expiry sequences on explicit empty-over-stone bounded terrain and one neutral active player.",
+    "No natural spawn admission or broad AI7, resident, wiring, death/wire/environmental or FullVanillaAiParity claim.",
+    "Turning squirrels and Explosive Bunny remain excluded.",
+    "No shipping AOT or aggregate acceptance in this component manifest.",
+    "This qualifies the NPC component on the final union DLL closure; root aggregate fast/full/AOT acceptance remains separate."
+  ],
+  "cacheSuccessorResultSha256": "8772c1ce7fd6340192bb6ca911a78c266aea31ffedc303f06f7b73a2d566557f",
+  "greenSeeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "casesPerSeed": 18,
+  "phasesPerCase": 112,
+  "originalSourceSha256": {
+    "Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+    "Terraria/NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4"
+  },
+  "controls": [
+    {
+      "name": "gate-01-omit",
+      "stateMismatchPhases": 2016,
+      "rngMismatchPhases": 570,
+      "accepted": false
+    },
+    {
+      "name": "gate-01-rng",
+      "stateMismatchPhases": 1584,
+      "rngMismatchPhases": 2016,
+      "accepted": false
+    }
+  ]
+}

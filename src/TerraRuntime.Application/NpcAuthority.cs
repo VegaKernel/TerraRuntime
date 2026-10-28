@@ -340,7 +340,8 @@ internal sealed partial class NpcAuthority
                 gemBunnyLifecycle = new RuntimeGemBunnyLifecycle1458(worldTiles, worldSurfaceTiles, npcs,
                     combat, expertMode, npcReplication, npcBuffStatus);
                 vanillaTargeting.SetGemBunnyOwner(npcs, new VanillaGemBunnyEnvironment1458(worldTiles, npcs,
-                    npcBuffStatus, _ => CaptureGemBunnyConditions(), CaptureGemBunnyPlayerDanger, npcReplication),
+                    npcBuffStatus, _ => CaptureGemBunnyConditions(), CaptureGemBunnyPlayerDanger, npcReplication,
+                    CaptureBunnyBloodMoon),
                     worldTiles.Dimensions.WidthTiles, worldSurfaceTiles);
                 worldMotion.SetGemBunnyLifecycle(gemBunnyLifecycle);
                 vanillaCheckActive = new VanillaNpcCheckActiveAiStepper(worldMotion);
@@ -366,7 +367,7 @@ internal sealed partial class NpcAuthority
         if (gemBunnyLifecycle is not null && worldTiles is not null &&
             this.naturalSpawnRandom is SystemVanillaNpcRandom sharedRandom)
             aiStepper = new RuntimeGemBunnyOuterAiStepper1458(aiStepper, gemBunnyLifecycle,
-                worldTiles.Dimensions.HeightTiles, sharedRandom.SourceRandom);
+                worldTiles.Dimensions.HeightTiles, sharedRandom.SourceRandom, CaptureBunnyBloodMoon);
     }
 
     public RuntimeNpcShopCatalogRegistry Shops => shops;
@@ -2092,6 +2093,8 @@ internal sealed partial class NpcAuthority
         int count = CopyTargetCandidates(captured);
         return captured.AsSpan(0, count).ToArray();
     }
+
+    private bool? CaptureBunnyBloodMoon() => worldClock?.BloodMoonActive;
 
     private RuntimeTownNpcScheduleConditions1458 CaptureGemBunnyConditions() => new(
         worldClock?.DayTime ?? true, worldClock?.Raining ?? false,
