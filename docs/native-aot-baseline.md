@@ -1,5 +1,7 @@
 # NativeAOT and CoreCLR hosting baseline
 
+2026-10-28 merged complete Check2x1 checkpoint: fresh Windows NativeAOT executable SHA256 `e36cab4ae5ac6fd3d7cc3329f9757b08cff2095779fe194376b77c0c78f86ccc` passes exercised loop/protocol/network/world/TUI smokes on merge `39a617d3`. Release warnings-as-errors, fast `25,587/25,587` and unfiltered full `1,567,001/1,567,001` pass with zero skips; all5,428 methods are selected. No new production dependency or project edge from this worldgen slice. Linux NativeAOT and full Final Cleanup parity remain unverified.
+
 2026-10-28 complete Check2x1 checkpoint: fresh Windows NativeAOT executable SHA256 `703891a56c799618a35e591c2856fecfd20a0cd3f36fd0aca2d9a45c0cd075cd` passes exercised loop/protocol/network/world/TUI smokes. Release solution warnings-as-errors, fast `25,553/25,553` and unfiltered full `1,566,967/1,566,967` pass with zero skips. No new production dependency/project edge; Linux NativeAOT and full Final Cleanup parity remain unverified.
 ## Analyzer-applied final union, 2026-10-28
 

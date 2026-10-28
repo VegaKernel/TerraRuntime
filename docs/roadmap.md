@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+Merged complete Check2x1 checkpoint (2026-10-28): the seven-identity row109 slice below passes Release WAE0/0, fast `25,587/25,587`, unfiltered full `1,567,001/1,567,001` without skips, and fresh Windows NativeAOT with five smokes on the tree also containing concurrent CaveHouse/NPC/world-item work. Row109 remains `P`; earlier parent-tree numbers below are historical, not this merge's acceptance.
+
 Final Cleanup complete Check2x1 checkpoint (2026-10-28): all seven `Check2x1` identities below pass Release warnings-as-errors, fast `25,553/25,553`, one unfiltered full `1,566,967/1,566,967` without skips, and fresh Windows NativeAOT with five smokes. Row109 remains `P`; the earlier pending-gate wording below is historical and does not imply complete Final Cleanup parity.
 
 ## Final Cleanup complete Check2x1 dispatch, 2026-10-28
