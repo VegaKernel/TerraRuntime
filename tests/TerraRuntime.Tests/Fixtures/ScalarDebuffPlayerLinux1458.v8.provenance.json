@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "fa227217f46abd8878e936c06f20c017a520852aaecf61664273b200bc1aeccb",
+  "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "probeSha256": "d1ffd665e714d2f529e41f5274adabf36e0d95c07deef170cee5a1bd28b2a39e",
+  "probeSourceSha256": "0c059efb6549eb1c603971b4c7ebad85962b1c4a93b13ba9b72cdf01c7dbda68",
+  "captures": [
+    {
+      "seed": 1458,
+      "a": ".cache/ankh/six/original-v8-1458-a.json",
+      "b": ".cache/ankh/six/original-v8-1458-b.json",
+      "sha256": "940fa1da28718495439cef277ff6e95ba4c048d4ca44fb3edbc90afc5e195471"
+    },
+    {
+      "seed": 42,
+      "a": ".cache/ankh/six/original-v8-42-a.json",
+      "b": ".cache/ankh/six/original-v8-42-b.json",
+      "sha256": "04405cee2e5ea62f50082664849583ffb5d5204583dec1a3c3cbbc8778b28639"
+    },
+    {
+      "seed": 8675309,
+      "a": ".cache/ankh/six/original-v8-8675309-a.json",
+      "b": ".cache/ankh/six/original-v8-8675309-b.json",
+      "sha256": "68d590110c5fafcb0bdaecd473bcaddd7d92e0ffca49bd21669823b0fcc3b9f1"
+    }
+  ],
+  "contexts": 3240,
+  "actualUpdates": 12960,
+  "includingIdenticalRepeats": 25920,
+  "scope": "Actual unmodified Player.Update(0), initialized original Main1/2/Lang plus actual AchievementManager/Initializer startup. Authored grounded400x400 floor103, player1600/1606, roles0/255 read back, weapons24/39/739, helmet89, optional Ward65, six afflictions1/120, solo or Poison/Food26 both indexed orders. Initial manaHeat explicitly0 and observed0 matching fresh original/runtime constructor; no postexecution field/RNG normalization. Named player, inventory, clocks, effects, motion and full physical RNG observed. Selected projection only, not whole Main/GUI/Native parity.",
+  "historical": {
+    "v6": "Immutable raw and prototype fixtures preserved in .cache/ankh/six; manaHeat ctor0 not separately observed. Actual first-phase extra draws are already-owned mana heat VFX, not missing RNG.",
+    "v7": "Immutable raw/prototype preserved; explicit manaHeat1 is a valid authored source preimage but mismatches fresh runtime ctor0. old.xml108 preimage assertion failures are NOT behavior/causal evidence.",
+    "earlier": "V3/V4 missing achievement setup failed before final output; no acceptance."
+  }
+}

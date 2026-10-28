@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Isolated equipment and current debuffs candidate, 2026-10-29
+
+Sixteen Ankh-line accessories and six ordinary current-debuff continuations (22/30/32/33/35/36) are implemented on the isolated equipment branches through existing owners. Release WAE and combined953focused/neighbor cases pass; actual unmodified original Player.Update projected observations1434 include four-frame expiry/food order, three weapons, complete physical RNG and reduced-cap simultaneous controls. Same finalTestDLL prior-six behavior has389 assertion failures/9 controls; effect omission339/59 and fixed-cap omission9/33, with zero runner errors/skips. Confused31,Stoned156, AnkhShield1613fireWalk, unrepresented environments and six-affliction outside-world continuation remain fenced. Component only; merge currentmain NPC22/automatic-tool changes, then one aggregate gate before publication. See docs/en/scalar-debuff-player-1458.md and docs/verification/scalar-debuff-player-20261029.json. No new timer/inventory/RNG owner or production dependency.
+
 ## Ordinary melee and Check2x1 merge integration, 2026-10-28
 
 Merge5415e106 preserves NPC checkpoint08152d8f and concurrentmain3c4c2c75. Merged Release warnings-as-errors, focused8311/8311, mandatoryfast33662/33662, complete worldgen/infrastructure84161/84161 pass without failures/errors/skips. Fresh WindowsNative074283e1/allfive smokes, actualRelease+NativeTCPtwojoins/82→49→129/movement-chat/replacementHello and re-captured55872NPCphases are green. Shipping NPC code/resources remain exact; the source delta from the NPC checkpoint is only WorldGeneration/GenerationTileFraming1458 plus its existing test expansion.

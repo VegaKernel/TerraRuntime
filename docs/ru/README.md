@@ -8,6 +8,9 @@
 
 [Сравнение геймплея с оригиналом](gameplay-source-tools.md).
 
+- [Иммунитет аксессуаров Ankh](ankh-immunity-equipment-1458.md)
+- [Текущие дебаффы игрока](scalar-debuff-player-1458.md)
+
 [Анализ зависимостей и обращений к состоянию через Roslyn](source-analysis-tools.md).
 
 Связанная рыбалка: [удочка, наживка и улов](fishing-authority-1458.md), [задания Рыбака](angler-quest-authority-1458.md), [открытие ящиков](fishing-crates-authority-1458.md).

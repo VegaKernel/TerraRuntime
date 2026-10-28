@@ -41,7 +41,7 @@ internal sealed partial class PlayerAuthority
             else if (buff != VanillaBuffIds.Poisoned && buff != VanillaBuffIds.OnFire &&
                 buff != VanillaBuffIds.CursedInferno && buff != VanillaBuffIds.Lifeforce &&
                 buff.Value is not (26 or 206 or 207) &&
-                !(selectedItemPhase && buff.Value is 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)) supported = false;
+                !(selectedItemPhase && buff.Value is 5 or 16 or 21 or 22 or 23 or 30 or 32 or 33 or 35 or 36 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)) supported = false;
         }
 
         // Source remote UpdateLifeRegen precedes movement. Liquid, solid overlap and special furniture
@@ -105,7 +105,8 @@ internal sealed partial class PlayerAuthority
             buffs?.Any(static b => b == VanillaBuffIds.OnFire) == true,
             buffs?.Any(static b => b == VanillaBuffIds.CursedInferno) == true,
             ((appearance?.ConsumableUnlockFlags ?? 0) & 1) != 0,
-            foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true);
+            foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true,
+            selectedItemPhase && foodBefore?.HasBleedingEffect == true);
         return true;
     }
 

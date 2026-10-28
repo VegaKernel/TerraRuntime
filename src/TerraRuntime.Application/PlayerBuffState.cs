@@ -38,15 +38,13 @@ internal sealed partial class PlayerBuffState
     }
     internal bool HasOwnedFoodSlots => ownedFood.Contains(true);
     internal bool HadOwnedFoodEffect(long tick) => lastOwnedFoodTick == tick ? ownedFoodEffectAtTick : HasOwnedFood;
-    internal void ResetOwnedFoodClockForTransfer() { InvalidateFoodClockLineage(); lastOwnedFoodTick = long.MinValue; ownedFoodEffectAtTick = false; }
+    internal void ResetOwnedFoodClockForTransfer() { InvalidateFoodClockLineage(); lastOwnedFoodTick = long.MinValue; ownedFoodEffectAtTick = false; contactEffectTypesForUpdate = null; }
 
 
     internal bool HasOwnedFood => Enumerable.Range(0, count).Any(i => ownedFood[i] && types[i].Value is 26 or 206 or 207 && durations[i] > 0);
 
-    internal BuffTypeId[] CaptureEffectTypes() => Enumerable.Range(0, count)
-        .Where(i => types[i] != VanillaBuffIds.None && durations[i] > 0 &&
-            (!IsOwnedConsumableClockType(types[i].Value) || ownedFood[i]))
-        .Select(i => types[i]).ToArray();
+    internal BuffTypeId[] CaptureEffectTypes() => contactEffectTypesForUpdate is { } effects
+        ? (BuffTypeId[])effects.Clone() : CaptureLiveEffectTypes();
 
     public BuffTypeId[] CaptureTypes()
     {
@@ -87,6 +85,7 @@ internal sealed partial class PlayerBuffState
 
     public bool ClearNonPersistentOnDeath()
     {
+        contactEffectTypesForUpdate = null;
         contactDebuffsForUpdate = default;
         contactFrozenForUpdate = false;
         contactNoItemsForUpdate = false;
@@ -111,6 +110,7 @@ internal sealed partial class PlayerBuffState
         ownedFood.AsSpan().Clear();
         ownedFishingEffectsAtTick = 0;
         ownedNpcContact.AsSpan().Clear();
+        contactEffectTypesForUpdate = null;
         snapshot.CopyTo(types);
         types.AsSpan(snapshot.Length).Clear();
         durations.AsSpan(0, snapshot.Length).Fill(60);

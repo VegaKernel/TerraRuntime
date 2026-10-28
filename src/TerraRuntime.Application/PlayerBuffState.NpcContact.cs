@@ -13,7 +13,7 @@ internal sealed partial class PlayerBuffState
     private bool contactFrozenForUpdate;
     private bool contactNoItemsForUpdate;
     private bool contactCrowdControlForUpdate;
-    internal bool HasOwnedNpcContactBuffs => ownedNpcContact.Contains(true) || contactDebuffsForUpdate != default ||
+    internal bool HasOwnedNpcContactBuffs => contactEffectTypesForUpdate is not null || ownedNpcContact.Contains(true) || contactDebuffsForUpdate != default ||
         contactFrozenForUpdate || contactNoItemsForUpdate || contactCrowdControlForUpdate;
     internal bool IsNpcContactFrozen => contactFrozenForUpdate || ContainsOwnedNpcContact(VanillaBuffIds.Frozen);
     internal PlayerDebuffSnapshot1458 CaptureOwnedNpcContactDebuffs() =>
@@ -46,6 +46,7 @@ internal sealed partial class PlayerBuffState
     {
         bool hadEffects = HasOwnedNpcContactBuffs;
         bool changed = false;
+        CaptureContactEffectsBeforeCountdown();
         contactDebuffsForUpdate = CaptureOwnedNpcContactDebuffs();
         contactFrozenForUpdate = ContainsOwnedNpcContact(VanillaBuffIds.Frozen);
         // The final positive UpdateBuffs iteration still supplies its effects
