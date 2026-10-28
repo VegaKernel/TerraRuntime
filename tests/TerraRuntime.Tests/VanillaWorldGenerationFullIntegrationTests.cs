@@ -313,6 +313,8 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
             result.Candidate.VanillaCaveHouseCounts);
         Assert.InRange(caveHouses.Ordinary, 35, 40);
         Assert.Equal(2, caveHouses.AdditionalDesert);
+        Assert.True(result.Candidate.VanillaHiveProtectedAreas.Length > 0,
+            "Accepted hive structures must reach the later cave-house StructureMap boundary.");
         WorldChest[] generatedChests = result.Candidate.CaptureGeneratedChests();
         Assert.True(generatedChests.Length >= caveHouses.Total);
         Assert.Contains(generatedChests, chest => IsCaveHouseChest(result.Candidate, chest));

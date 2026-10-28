@@ -1,5 +1,9 @@
 # Complete vanilla worldgen pass audit — 2026-09-08
 
+Hive/JungleShrines house-protection acceptance (2026-10-28): the scoped row63 handoff below passes Release fast `25,548/25,548`, unfiltered full `1,566,962/1,566,962` without skips, and fresh Windows NativeAOT with five smokes. Row63 remains `P`; full house builder, other protected producers and a registered-pass differential are still required. Linux NativeAOT is locally unverified.
+
+Prior Hive/JungleShrines house protection (2026-10-28): row 63 stays `P`. Both earlier producers now retain their actual protected rectangles through the workspace, and the cave-house `CanPlace(room, blacklist, 5)` slice rejects strict overlap while allowing touching. Publication/consumer omission controls fail; the two official canonical JungleShrines full-pass cell/anchor/RNG fixtures and canonical generated-world publication check pass. Furniture, aging, remaining prior structures and a complete Buried Chests pass differential remain open.
+
 Cave-house prior Shimmer protection (2026-10-28): row 63 remains `P`. Room validation now checks the retained Shimmer protected rectangle against each room expanded by $5\,\text{tiles}$ before construction; strict overlap refuses the offer, while touching remains allowed. Ordinary Marble/Granite `AddStructure` regions remain eligible. Direct original helper calls and a grouped cell/chest/RNG regression cover this boundary; other protected contexts, furniture, aging and the full registered-pass differential remain open. See [chest placement](vanilla-worldgen-chest-placement.md).
 
 Merged cave-house boundary gate (2026-10-27): row63's scoped source corrections pass fast `25,432/25,432`, unfiltered full `1,566,846/1,566,846` without skips, and fresh Windows NativeAOT with five smokes on the merged fishing/paid-ammo tree. Row63 remains `P` until the full registered-pass and house-builder evidence exists; Linux NativeAOT is locally unverified.
@@ -652,7 +656,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 60 | Wall Variety | PostSettle | C | `CaveWallVariety`: the pocket flood, its closure and size rules, the depth-keyed families and the wall framing every placement spends: 8 official complete-delegate fixtures |
 | 61 | Life Crystals | PostSettle | C | placement attempts / framing / RNG |
 | 62 | Statues | PostSettle | C | styles / placement attempts / RNG |
-| 63 | Buried Chests | Chest | P | `AddBuriedChest` and both chest loops ported (64 + 10 official comparisons); house offer ocean/desert bounds, short-gap support beams and prior Shimmer protection now source-backed / furniture, aging, other prior protected contexts and full-pass differential remain |
+| 63 | Buried Chests | Chest | P | `AddBuriedChest` and both chest loops ported (64 + 10 official comparisons); house offer ocean/desert bounds, short-gap beams and prior Shimmer/Hive/JungleShrines protected regions now source-backed / furniture, aging, other protected producers and full-pass differential remain |
 | 64 | Surface Chests | Chest | C | `SurfaceChests`: the wall test, the living-wood reservoir sweep and the retry counter: 14 official complete-delegate fixtures |
 | 65 | Jungle Chests Placement | Chest | C | ordered JungleShrines anchors published; source first offer, 3x3 kill/3x4 flatten fallback and retry; eight official registered full-pass cell/chest-inventory/RNG differentials / real-prefix shrine terrain remains open |
 | 66 | Water Chests | Chest | C | `UnderwaterChests`: the treasure spiral, the asymmetric scatter pair and the item cycle: 12 official complete-delegate fixtures |

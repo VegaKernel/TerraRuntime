@@ -172,13 +172,25 @@ internal static class CaveHousePlacement1458
         {
             CaveHouseRoom1458 padded = room.Inflate(5);
             // HouseUtils.AreRoomsValid -> StructureMap.CanPlace checks protected
-            // overlap before construction. Shimmer retains its protected 200x200
-            // rectangle here; Marble/Granite use AddStructure, not protection.
+            // overlap before construction. Shimmer, Hive and JungleShrines retain
+            // their source rectangles here; Marble/Granite use AddStructure, not protection.
             if (workspace.VanillaShimmerStructure is WorldTileRegion shimmer &&
                 padded.Left < shimmer.ExclusiveRight && shimmer.X < padded.Right &&
                 padded.Top < shimmer.ExclusiveBottom && shimmer.Y < padded.Bottom)
             {
                 return false;
+            }
+            foreach (WorldTileRegion hive in workspace.VanillaHiveProtectedAreas)
+            {
+                if (padded.Left < hive.ExclusiveRight && hive.X < padded.Right &&
+                    padded.Top < hive.ExclusiveBottom && hive.Y < padded.Bottom)
+                    return false;
+            }
+            foreach (WorldTileRegion shrine in workspace.VanillaJungleShrineProtectedAreas)
+            {
+                if (padded.Left < shrine.ExclusiveRight && shrine.X < padded.Right &&
+                    padded.Top < shrine.ExclusiveBottom && shrine.Y < padded.Bottom)
+                    return false;
             }
             foreach (CaveHouseRoom1458 reserved in state.ProtectedHouseRooms)
             {

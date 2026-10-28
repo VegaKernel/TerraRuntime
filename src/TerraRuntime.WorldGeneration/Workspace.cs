@@ -82,6 +82,8 @@ public sealed class Workspace :
     // Source Ice pass publishes temporary Main.tileSolid[162/226]=false for later generation passes.
     internal bool VanillaPostIceNonSolidTiles { get; private set; }
     private WorldTileRegion? vanillaShimmerStructure;
+    private WorldTileRegion[] vanillaHiveProtectedAreas = [];
+    private WorldTileRegion[] vanillaJungleShrineProtectedAreas = [];
     private WorldGenerationPoint[] vanillaPyramidAnchors = [];
     private Vanilla.VanillaOasisAnchor1458[] vanillaOasisAnchors = [];
     private int[]? vanillaTunnelColumns;
@@ -138,6 +140,10 @@ public sealed class Workspace :
         throw new InvalidOperationException("Jungle shrine chest anchors have not been published.");
     /// <summary>The 200x200 GenVars.structures rectangle the Shimmer pass protects around its pool.</summary>
     internal WorldTileRegion? VanillaShimmerStructure => vanillaShimmerStructure;
+    /// <summary>HiveBiome AddProtectedStructure rectangles, already expanded by their source five-cell padding.</summary>
+    internal ReadOnlySpan<WorldTileRegion> VanillaHiveProtectedAreas => vanillaHiveProtectedAreas;
+    /// <summary>JungleShrines AddProtectedStructure rectangles in accepted hut order.</summary>
+    internal ReadOnlySpan<WorldTileRegion> VanillaJungleShrineProtectedAreas => vanillaJungleShrineProtectedAreas;
     /// <summary>Anchors the Pyramids pass accepted, in retained candidate order.</summary>
     internal ReadOnlySpan<WorldGenerationPoint> VanillaPyramidAnchors => vanillaPyramidAnchors;
 
@@ -236,6 +242,26 @@ public sealed class Workspace :
         if (region.Width <= 0 || region.Height <= 0)
             throw new ArgumentOutOfRangeException(nameof(region));
         vanillaShimmerStructure = region;
+    }
+    internal void SetVanillaHiveProtectedAreas(ReadOnlySpan<WorldTileRegion> regions)
+    {
+        if (regions.Length > 64)
+            throw new ArgumentOutOfRangeException(nameof(regions));
+        var copy = regions.ToArray();
+        foreach (WorldTileRegion region in copy)
+            if (region.Width <= 0 || region.Height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(regions));
+        vanillaHiveProtectedAreas = copy;
+    }
+    internal void SetVanillaJungleShrineProtectedAreas(ReadOnlySpan<WorldTileRegion> regions)
+    {
+        if (regions.Length > 100)
+            throw new ArgumentOutOfRangeException(nameof(regions));
+        var copy = regions.ToArray();
+        foreach (WorldTileRegion region in copy)
+            if (region.Width <= 0 || region.Height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(regions));
+        vanillaJungleShrineProtectedAreas = copy;
     }
     internal void SetVanillaOceanCaveTreasure(IReadOnlyList<WorldGenerationPoint> anchors)
     {
