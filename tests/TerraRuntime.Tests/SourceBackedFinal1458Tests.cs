@@ -1005,6 +1005,76 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_one_by_one_golf_and_logic_families_match_official_passlegacy()
+    {
+        // Registered TerrariaServer 1.4.5.8 FinalCleanup, seed1458, all 20 identities
+        // dispatched by Check1x1/CheckGolf1x1/CheckLogicTiles. The oracle covers every
+        // cell and the next shared RNG state, including Abigail's special grass gate.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        ushort[] ordinary = [36, 135, 141, 210, 239, 428, 593, 624, 650, 656, 700, 701];
+        for (int n = 0; n < ordinary.Length; n++)
+        {
+            int x = 100 + n * 25;
+            var objectTile = new WorldTile { Type = ordinary[n], Flags = WorldTileFlags.Active };
+            var floor = new WorldTile { Type = ordinary[n] == 624 ? (ushort)2 : (ushort)1,
+                Flags = WorldTileFlags.Active };
+            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 100, in objectTile);
+            workspace.TileStore.Set(x, 101, in floor);
+            workspace.TileStore.Set(x, 130, in objectTile);
+            workspace.TileStore.Set(x, 160, in objectTile);
+            workspace.TileStore.Set(x, 161, in stone);
+        }
+        foreach ((int x, ushort type) in new[] { (450, (ushort)476), (500, (ushort)494) })
+        {
+            var valid = new WorldTile { Type = type, Flags = WorldTileFlags.Active };
+            var badX = valid with { FrameX = 1 };
+            var badY = valid with { FrameY = 1 };
+            var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 100, in valid);
+            workspace.TileStore.Set(x, 101, in floor);
+            workspace.TileStore.Set(x + 1, 100, in badX);
+            workspace.TileStore.Set(x + 1, 101, in floor);
+            workspace.TileStore.Set(x + 2, 100, in badY);
+            workspace.TileStore.Set(x + 2, 101, in floor);
+            workspace.TileStore.Set(x + 3, 100, in valid);
+        }
+        foreach ((int x, ushort type) in new[]
+            { (600, (ushort)419), (650, (ushort)420), (700, (ushort)423),
+              (750, (ushort)424), (800, (ushort)429), (850, (ushort)445) })
+        {
+            var valid = new WorldTile { Type = type, Flags = WorldTileFlags.Active };
+            var badX = valid with { FrameX = 1 };
+            var badY = valid with { FrameY = 1 };
+            workspace.TileStore.Set(x, 100, in valid);
+            workspace.TileStore.Set(x + 1, 100, in badX);
+            workspace.TileStore.Set(x + 2, 100, in badY);
+            if (type == 419)
+            {
+                var chain = new WorldTile { Type = 420, Flags = WorldTileFlags.Active };
+                for (int dx = 0; dx < 3; dx++)
+                    workspace.TileStore.Set(x + dx, 101, in chain);
+            }
+        }
+        var unsupportedChain = new WorldTile { Type = 419, Flags = WorldTileFlags.Active };
+        var stoneSupport = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(625, 100, in unsupportedChain);
+        workspace.TileStore.Set(625, 101, in stoneSupport);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("B8119A7EA9BA6C43D5A10C2CC1C3F55D916B1035D5CB3E77DB92329E255552E0", HashFixture(workspace));
+        Assert.Equal(1056314798, random.Next());
+        Assert.True(workspace.TileStore.Get(275, 100).IsActive); // Abigail's flower on grass.
+        Assert.False(workspace.TileStore.Get(275, 160).IsActive); // Stone is invalid for this identity.
+        Assert.False(workspace.TileStore.Get(625, 100).IsActive); // Chain cannot hang from stone.
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);

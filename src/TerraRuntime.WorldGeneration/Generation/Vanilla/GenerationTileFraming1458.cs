@@ -31,7 +31,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one- and two-cell type-<c>185</c>
 /// piles, the ordinary/table-supported <c>Check2x1</c> identities <c>16</c>/<c>18</c>/<c>29</c>/
 /// <c>103</c>/<c>134</c>/<c>462</c>/<c>649</c>, basic chests <c>21</c>/<c>467</c> (with an optional
-/// workspace chest side table), dye <c>227</c>,
+/// workspace chest side table), the twelve ordinary one-cell <c>Check1x1</c> objects, both
+/// <c>CheckGolf1x1</c> identities, all six <c>CheckLogicTiles</c> identities, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -131,6 +132,24 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 21 or 467)
         {
             CheckChest(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 36 or 135 or 141 or 210 or 239 or 428 or 593 or 624 or 650 or 656 or 700 or 701)
+        {
+            CheckOneByOne(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 476 or 494)
+        {
+            CheckGolfOneByOne(i, j);
+            return;
+        }
+
+        if (tile.Type is 419 or 420 or 423 or 424 or 429 or 445)
+        {
+            CheckLogicTile(i, j, tile.Type);
             return;
         }
 
@@ -627,6 +646,35 @@ internal sealed class GenerationTileFraming1458(
             if (At(x, y).IsActive && At(x, y).Type == type)
                 KillTile(x, y);
         destroyingObject = false;
+    }
+
+    /// <summary>WorldGen.Check1x1; type624 additionally uses Conversion.Grass ground membership.</summary>
+    private void CheckOneByOne(int x, int y, ushort type)
+    {
+        WorldTile floor = At(x, y + 1);
+        if (!SolidTileAllowBottomSlope(x, y + 1) ||
+            type == 624 && floor.Type is not (2 or 23 or 70 or 109 or 199 or 477 or 492 or 633) ||
+            GenerationObjectSupport1458.IsBoulder(floor.Type))
+            KillTile(x, y);
+    }
+
+    /// <summary>WorldGen.CheckGolf1x1 validates both frame axes and a bottom-slope-capable floor.</summary>
+    private void CheckGolfOneByOne(int x, int y)
+    {
+        WorldTile tile = At(x, y);
+        if (tile.FrameX % 18 != 0 || tile.FrameY % 18 != 0 ||
+            !SolidTileAllowBottomSlope(x, y + 1))
+            KillTile(x, y);
+    }
+
+    /// <summary>WorldGen.CheckLogicTiles: the type419 chain hangs only from 419/420.</summary>
+    private void CheckLogicTile(int x, int y, ushort type)
+    {
+        WorldTile tile = At(x, y);
+        WorldTile below = At(x, y + 1);
+        if (type == 419 && (!below.IsActive || below.Type is not (419 or 420)) ||
+            tile.FrameX % 18 != 0 || tile.FrameY % 18 != 0)
+            KillTile(x, y);
     }
 
     private bool IsTwoByOneTableSupport(int x, int y)
