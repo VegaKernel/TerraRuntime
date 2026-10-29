@@ -33,7 +33,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <c>103</c>/<c>134</c>/<c>462</c>/<c>649</c>, basic chests <c>21</c>/<c>467</c> (with an optional
 /// workspace chest side table), the twelve ordinary one-cell <c>Check1x1</c> objects, both
 /// <c>CheckGolf1x1</c> identities, all six <c>CheckLogicTiles</c> identities, all ten
-/// <c>Check1x2</c> identities and six non-tile-entity <c>Check1x2Top</c> identities, dye <c>227</c>,
+/// <c>Check1x2</c> identities and six non-tile-entity <c>Check1x2Top</c> identities,
+/// the ordinary-support <c>Check2x2</c> family, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -163,6 +164,15 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 42 or 270 or 271 or 572 or 581 or 660)
         {
             CheckOneByTwoTop(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 94 or 97 or 98 or 99 or 100 or 125 or 173 or 282 or 287 or 319 or
+            335 or 360 or 411 or 490 or 505 or 521 or 522 or 523 or 524 or 525 or 526 or 527 or
+            543 or 564 or 565 or 568 or 569 or 570 or 580 or 594 or 598 or 620 or 621 or 622 or
+            654 or 751 or 752)
+        {
+            CheckOrdinaryTwoByTwo(i, j, tile.Type);
             return;
         }
 
@@ -795,6 +805,70 @@ internal sealed class GenerationTileFraming1458(
         if (At(x, top + 1).Type == type)
             KillTile(x, top + 1);
         destroyingObject = false;
+    }
+
+    /// <summary>
+    /// The common-support arm of WorldGen.Check2x2 (TerrariaServer 1.4.5.8). Boulders, top-hung
+    /// 95/126, wall-supported 132, stride-38 172 and style-atlas 652 have different source arms.
+    /// </summary>
+    private void CheckOrdinaryTwoByTwo(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        WorldTile observed = At(i, j);
+        int offsetX = -(observed.FrameX / 18);
+        int styleX = 0;
+        if (offsetX < -1)
+        {
+            offsetX += 2;
+            styleX = 36;
+        }
+        int left = i + offsetX;
+        int remainderY = observed.FrameY;
+        int styleY = 0;
+        while (remainderY >= 36)
+        {
+            remainderY -= 36;
+            styleY++;
+        }
+        int top = j - remainderY / 18;
+        if (!Contains(left - 1, top - 1) || !Contains(left + 2, top + 2))
+            return;
+
+        bool broken = false;
+        for (int x = left; x < left + 2; x++)
+        {
+            for (int y = top; y < top + 2; y++)
+            {
+                WorldTile part = At(x, y);
+                if (!part.IsActive || part.Type != type ||
+                    part.FrameX != (x - left) * 18 + styleX ||
+                    part.FrameY != (y - top) * 18 + styleY * 36)
+                    broken = true;
+            }
+
+            WorldTile floor = At(x, top + 2);
+            if (!floor.IsActive ||
+                !VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                !GenerationFurnitureTiles1458.IsTable(floor.Type) || floor.Shape == 1)
+                broken = true;
+        }
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 2; y++)
+            if (At(x, y).IsActive && At(x, y).Type == type)
+                KillTile(x, y);
+        destroyingObject = false;
+
+        // Check2x2 re-frames its four-by-four halo after leaving destroyObject. This matters when
+        // the deleted fragments were supporting another important object in the same FinalCleanup scan.
+        for (int x = left - 1; x < left + 3; x++)
+        for (int y = top - 1; y < top + 3; y++)
+            TileFrame(x, y);
     }
 
     private bool IsTwoByOneTableSupport(int x, int y)
