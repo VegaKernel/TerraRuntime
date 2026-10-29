@@ -23,6 +23,8 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [World generation source catalog, pass oracle and Reset replay tools](worldgen-source-tools.md)
 - [NPC behavior source comparison tools](npc-source-tools.md)
 - [Gameplay behavior source comparison tools](gameplay-source-tools.md)
+- [Ankh-line equipment immunity](ankh-immunity-equipment-1458.md)
+- [Current player debuffs](scalar-debuff-player-1458.md)
 - [Roslyn source dependency and state-access analysis](source-analysis-tools.md)
 
 - [Frost Legion state and completion](frost-legion-state-1458.md)

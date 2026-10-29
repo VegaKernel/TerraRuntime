@@ -15,7 +15,7 @@ internal sealed record RuntimePlayerMagicManaStage1458(PlayerHandle Player,
 internal sealed partial class PlayerAuthority
 {
     private bool CanBeginLocalMagicUse(ConnectionHandle connection) =>
-        transferProfiles.CaptureBuffState(connection) is {PreventsFreshItemUse:false};
+        transferProfiles.CaptureBuffState(connection) is {PreventsFreshItemUse:false, HasSilenceEffect:false};
 
     private bool TryPrepareLocalMagicManaStage(RuntimePlayerMember member,
         in RuntimePlayerItemPhase1458 phase, out RuntimePlayerMagicManaStage1458? stage)

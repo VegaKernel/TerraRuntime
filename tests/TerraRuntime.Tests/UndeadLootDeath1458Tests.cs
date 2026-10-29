@@ -27,11 +27,12 @@ public sealed class UndeadLootDeath1458Tests
     }
 
     [Fact]
-    public void Admitted_death_inventory_includes_the_verified_skeleton_runtime_cohort()
+    public void Admitted_death_inventory_includes_verified_undead_and_ground_combat_runtime_cohorts()
     {
-        // Independent accepted14 catalog selection over the unchanged original source corpus.
+        // The unchanged original corpus now also admits BoneThrowingSkeleton449..452 and TorchZombie590:
+        // five additional types with 780 source profiles each, including the existing Void Bag exclusion.
         var rows = OriginalAdmittedDeaths().ToArray();
-        Assert.Equal(33_426, rows.Length);
+        Assert.Equal(37_326, rows.Length);
         int[] types = rows.Select(data =>
         {
             using var document = JsonDocument.Parse((string)data[0]);
@@ -39,7 +40,7 @@ public sealed class UndeadLootDeath1458Tests
         }).Distinct().Order().ToArray();
         Assert.Equal(new[] { 3, 21, 31, 32, 110, 132, 161, 186, 187, 188, 189, 200, 201, 202, 203, 223,
             294, 295, 296, 319, 320, 321, 322, 323, 324, 331, 332, 430, 431, 432, 433,
-            434, 435, 436, 591, 635 }, types);
+            434, 435, 436, 449, 450, 451, 452, 590, 591, 635 }, types);
     }
 
     [Theory, MemberData(nameof(OriginalAdmittedDeaths))]

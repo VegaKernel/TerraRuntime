@@ -83,6 +83,7 @@ internal sealed partial class PlayerBuffState
         copy.contactFrozenForUpdate = contactFrozenForUpdate;
         copy.contactNoItemsForUpdate = contactNoItemsForUpdate;
         copy.contactCrowdControlForUpdate = contactCrowdControlForUpdate;
+        copy.contactEffectTypesForUpdate = contactEffectTypesForUpdate;
         foodClockOrigins.CopyTo(copy.foodClockOrigins, 0);
         return copy;
     }
@@ -95,6 +96,9 @@ internal sealed partial class PlayerBuffState
         contactFrozenForUpdate == other.contactFrozenForUpdate &&
         contactNoItemsForUpdate == other.contactNoItemsForUpdate &&
         contactCrowdControlForUpdate == other.contactCrowdControlForUpdate &&
+        ((contactEffectTypesForUpdate is null && other.contactEffectTypesForUpdate is null) ||
+            (contactEffectTypesForUpdate is not null && other.contactEffectTypesForUpdate is not null &&
+                contactEffectTypesForUpdate.AsSpan().SequenceEqual(other.contactEffectTypesForUpdate))) &&
         (!(HasOwnedFoodSlots || other.HasOwnedFoodSlots) || ReferenceEquals(foodClockLineage, other.foodClockLineage)) &&
         foodClockOrigins.AsSpan().SequenceEqual(other.foodClockOrigins) &&
         lastOwnedFoodTick == other.lastOwnedFoodTick && ownedFoodEffectAtTick == other.ownedFoodEffectAtTick &&

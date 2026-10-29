@@ -17,6 +17,12 @@ internal sealed partial class PlayerAuthority
     internal void SetNpcHealthGrapplingFacts(Func<PlayerHandle, bool?> capture) =>
         npcHealthGrapplingFacts = capture ?? throw new ArgumentNullException(nameof(capture));
 
+    private static bool IsRepresentedNpcHealthBuff1458(BuffTypeId buff, bool selectedItemPhase) =>
+        buff == VanillaBuffIds.Regeneration || buff == VanillaBuffIds.Poisoned || buff == VanillaBuffIds.OnFire ||
+        buff == VanillaBuffIds.CursedInferno || buff == VanillaBuffIds.Lifeforce || buff.Value is 26 or 206 or 207 ||
+        selectedItemPhase && buff.Value is 5 or 16 or 21 or 22 or 23 or 30 or 32 or 33 or 35 or 36 or 93 or 94 or
+            112 or 114 or 115 or 117 or 321 or 121 or 122 or 123;
+
     private bool TryPlanNpcHealth(RuntimePlayerMember member, int? maximum,
         bool outside, bool ghost, out PlayerNpcHealthState1458? next, bool selectedItemPhase = false,
         (PlayerNpcHealthWorld1458 World, bool? Grappling)? selectedHealthInputs = null, bool selectedVoidStorageOpen = true)
@@ -34,14 +40,17 @@ internal sealed partial class PlayerAuthority
             (selectedItemPhase ? TryCaptureProvenRemoteEquipment(equipment, appearance, out _, out _, selectedVoidStorageOpen, member.ItemPhase?.AmmoCycling is not null) :
                 !equipment.Any(static item => item.Stack > 0 && VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(item.SlotId)));
         var foodBefore = transferProfiles.CaptureBuffState(member.Connection);
+        var effects = foodBefore?.CaptureEffectTypes() ?? [];
+        supported &= foodBefore is not null;
         int regeneration = 0;
         foreach (var buff in buffs ?? [])
+            if (!IsRepresentedNpcHealthBuff1458(buff, selectedItemPhase)) supported = false;
+        // UpdateBuffs has already derived this frame's effects even when its
+        // countdown removed a slot. Live timers alone cannot gate or supply regen.
+        foreach (var buff in effects)
         {
             if (buff == VanillaBuffIds.Regeneration) regeneration++;
-            else if (buff != VanillaBuffIds.Poisoned && buff != VanillaBuffIds.OnFire &&
-                buff != VanillaBuffIds.CursedInferno && buff != VanillaBuffIds.Lifeforce &&
-                buff.Value is not (26 or 206 or 207) &&
-                !(selectedItemPhase && buff.Value is 5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321 or 26 or 206 or 207 or 121 or 122 or 123)) supported = false;
+            if (!IsRepresentedNpcHealthBuff1458(buff, selectedItemPhase)) supported = false;
         }
 
         // Source remote UpdateLifeRegen precedes movement. Liquid, solid overlap and special furniture
@@ -79,8 +88,8 @@ internal sealed partial class PlayerAuthority
             ? selected.Grappling : npcHealthGrapplingFacts?.Invoke(member.Connection.Player);
         bool moving = member.VelocityX != 0f;
         if (moving && grappling is null && member.NpcHealth?.RegenTime >= 299f &&
-            buffs?.Any(static b => b == VanillaBuffIds.Poisoned || b == VanillaBuffIds.OnFire ||
-                b == VanillaBuffIds.CursedInferno) != true)
+            !effects.Any(static b => b == VanillaBuffIds.Poisoned || b == VanillaBuffIds.OnFire ||
+                b == VanillaBuffIds.CursedInferno))
             supported = false;
         if (world is { VampireSeed: true }) supported = false;
         if (serial == ulong.MaxValue || inventorySerial == ulong.MaxValue || serial != membership.Serial ||
@@ -93,19 +102,18 @@ internal sealed partial class PlayerAuthority
             (buffs is null) != (currentBuffs is null) ||
             (buffs is not null && !buffs.AsSpan().SequenceEqual(currentBuffs)))
             return false;
-        if ((foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true ||
-            buffs?.Any(static b => b.Value is 26 or 206 or 207) == true) &&
-            (foodBefore is null || !transferProfiles.IsCurrentBuffState(member.Connection, foodBefore))) return false;
+        if (foodBefore is not null && !transferProfiles.IsCurrentBuffState(member.Connection, foodBefore)) return false;
         for (int i = 0; i < sectionCount; i++)
             if (worldTiles!.GetSectionVersion(sections[i]) != versions[i]) return false;
 
         next = VanillaRemotePlayerHealth1458.Step(member.NpcHealth, maximum ?? -1, outside, ghost,
             member.IsDead, supported, world?.ExpertMode ?? false, moving && grappling != true, regeneration,
-            buffs?.Any(static b => b == VanillaBuffIds.Poisoned) == true,
-            buffs?.Any(static b => b == VanillaBuffIds.OnFire) == true,
-            buffs?.Any(static b => b == VanillaBuffIds.CursedInferno) == true,
+            effects.Any(static b => b == VanillaBuffIds.Poisoned),
+            effects.Any(static b => b == VanillaBuffIds.OnFire),
+            effects.Any(static b => b == VanillaBuffIds.CursedInferno),
             ((appearance?.ConsumableUnlockFlags ?? 0) & 1) != 0,
-            foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true);
+            foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true,
+            selectedItemPhase && foodBefore?.HasBleedingEffect == true);
         return true;
     }
 

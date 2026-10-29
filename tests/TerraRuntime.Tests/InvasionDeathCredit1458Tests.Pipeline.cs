@@ -17,25 +17,20 @@ namespace TerraRuntime.Tests;
 public sealed partial class InvasionDeathCredit1458Tests
 {
     [Fact]
-    public void Original_deaths_match_owned_loot_credit_and_rng_or_preserve_creation_lifecycle_fences()
+    public void Original_deaths_match_owned_loot_credit_and_rng_including_admitted_martians()
     {
         using var stream = typeof(InvasionDeathCredit1458Tests).Assembly.GetManifestResourceStream("InvasionDeathOrder1458")!;
         using var gzip = new GZipStream(stream, CompressionMode.Decompress);
         using var document = JsonDocument.Parse(gzip);
         int count = 0;
         int matched = 0;
-        int fenced = 0;
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(381), new NpcNetId(381), out var martian));
+        Assert.False(martian.DefinitionOnly);
+        Assert.False(martian.CreationDefaultsOnly);
+        Assert.True(martian.SupportsRuntimeLifecycle);
         foreach (var row in document.RootElement.EnumerateArray())
         {
             count++;
-            if (row.GetProperty("type").GetInt32() == 381)
-            {
-                AssertCreationWithoutInvasionLifecycle(row.GetProperty("seed").GetInt32());
-                Assert.Equal(4, row.GetProperty("group").GetInt32());
-                Assert.Equal(11, row.GetProperty("after").GetProperty("size").GetInt32());
-                fenced++;
-                continue;
-            }
             var fixture = new PipelineFixture(row.GetProperty("type").GetInt32(), row.GetProperty("group").GetInt32(),
                 row.GetProperty("seed").GetInt32(), row.GetProperty("injured").GetBoolean());
             Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Killed,
@@ -62,30 +57,7 @@ public sealed partial class InvasionDeathCredit1458Tests
             matched++;
         }
         Assert.Equal(24, count);
-        Assert.Equal(16, matched);
-        Assert.Equal(8, fenced);
-    }
-
-    private static void AssertCreationWithoutInvasionLifecycle(int seed)
-    {
-        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(381), new NpcNetId(381), out var definition));
-        Assert.False(definition.DefinitionOnly);
-        Assert.True(definition.CreationDefaultsOnly);
-        Assert.False(definition.SupportsRuntimeLifecycle);
-        // SetDefaults support now permits the real birth. It does not admit the separate
-        // Martian actor/death phase or permit its pure source table to mutate invasion progress.
-        var fixture = new PipelineFixture(381, 4, seed, false);
-        var beforeRandom = fixture.Random.Clone();
-        Assert.True(fixture.Owner.TryCapture(out var beforeInvasion));
-        Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Rejected,
-            fixture.Pipeline.TryStrikeEnvironment(fixture.Npc.Handle, 100000));
-        Assert.Equal(1, fixture.Npcs.ActiveCount);
-        Assert.True(fixture.Npcs.TryGet(fixture.Npc.Handle, out var retained));
-        Assert.Equal(fixture.Npc, retained);
-        Assert.Empty(fixture.Drops);
-        Assert.True(fixture.Random.HasSameState(beforeRandom));
-        Assert.True(fixture.Owner.IsCurrent(in beforeInvasion));
-        Assert.Empty(fixture.Events);
+        Assert.Equal(24, matched);
     }
 
     [Fact]

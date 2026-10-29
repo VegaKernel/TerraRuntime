@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "c4626b3b2cd8b93361466138508af00dd9b60121d7c48bccf15c6314f3e0d406",
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "probeSha256": "4b437dc1fabf49da948a2d955964532ab45b1f09a32fcc6d9027c5b60f3843f7",
+  "probeSourceSha256": "cb7619251b6b43063ccf11eead553d9d590afb2a3c215b02a3989bc1e36f7394",
+  "rawCaptureSha256": "72c8811e9f98bcb47a6f36f2c69fce4bc174a7200cbfc4195ad9f965e4b99500",
+  "repeatByteIdentical": true,
+  "scope": "Actual properMain1/2 Item.SetDefaults, GetEffectiveArmor(3) andUpdateEquips0 withsourceLocal255constructor-empty armor, loadout0favorite accessory3 andemptycurrent3. All16actualmetadata accessorytrue/wing-1/armorparts-1/expertOnlyfalse/incompatibility-1; fullphysicalRNG unchanged. OriginalLinuxmanagedonWindowsCoreCLR, notfullPlayer.Update/GUI/Native."
+}

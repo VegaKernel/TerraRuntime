@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "kind": "ordinary-scalar-debuff-player-component",
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "date": "2026-10-29",
+  "baseComponent": "0aaab63c3fb148777e5fe80af987d4369287992e",
+  "branch": "gameplay/ankh-scalar-debuffs-20261028",
+  "supportedActiveBuffIds": [
+    22,
+    30,
+    32,
+    33,
+    35,
+    36
+  ],
+  "stillFencedActiveBuffIds": [
+    31,
+    156
+  ],
+  "owners": "Existing PlayerBuffState44slots/current projection, equipment selection and retained combat, player health/item/magic/movement, shared source RNG; no new timer/inventory/RNG owner or production dependency.",
+  "source": {
+    "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "entry": "Actual unmodified initialized Terraria.Player.Update(0)",
+    "platform": "Linux managed original executed on Windows CoreCLR; not LinuxNative/GUI/wholeMain",
+    "v8RawContexts": 3240,
+    "v8ActualUpdatesPerRepeat": 12960,
+    "v8Repeats": 2,
+    "byteIdenticalRepeats": true,
+    "acceptedRuntimeContexts": {
+      "remote": 324,
+      "localFinalContactWithFood": 24,
+      "simultaneousControls": 42
+    },
+    "acceptedRuntimeObservations": 1434,
+    "physicalRng": "All56slots+cursor, no offset/reset/postexecution normalization",
+    "initialInputs": "Actual source/runtime manaHeat0, role/netMode, health+regen clocks, mana+selected clocks, pose/velocity,44buffslots,58inventory checked before each source profile. Source role0 contact tests join after actual empty server tick; source numeric preimages/RNG unchanged.",
+    "fixtures": [
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/ScalarDebuffPlayerLinux1458.v8.json.gz",
+        "sha256": "fa227217f46abd8878e936c06f20c017a520852aaecf61664273b200bc1aeccb"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/ScalarDebuffPlayerLinux1458.v8.provenance.json",
+        "sha256": "7c858276cfd80936b7ee558c6bf3e5d9dc85ba58c6fd56ef24b7676e3c82c6c6"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/ScalarDebuffControlsLinux1458.json.gz",
+        "sha256": "efc9e467ec317e152db20c20519d72b35415dcc18490417d6b2c8945bada7d2f"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/ScalarDebuffControlsLinux1458.provenance.json",
+        "sha256": "a002d51791a59ed6dde67ea4d8a14b6a957d3dd87e75f362aedc08460fc85793"
+      }
+    ]
+  },
+  "checks": {
+    "releaseBuild": {
+      "path": ".cache/ankh/six/build12.log",
+      "sha256": "9bec6e34e20b41587ecaae9d48b99a94b940a64f93451fd931b9f715b9881b9d"
+    },
+    "warnings": 0,
+    "errors": 0,
+    "focusedAndNeighbors": {
+      "xml": {
+        "path": ".cache/ankh/six/focus12.xml",
+        "sha256": "4e14972cb1d03cac8c4b191e2192aa9ae556a1d59eb1c030d08660617a5e8509"
+      },
+      "total": 953,
+      "passed": 953,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testDllSha256": "72008c55e884a566f4c547303be6a213609476e39c818521684f66c281e57f2a"
+    },
+    "causal": {
+      "path": ".cache/ankh/six/causal/result.json",
+      "sha256": "50df78ae33b023f8b579964e561bc4ece5783967efa4ab559ef095aff86a2b3b"
+    },
+    "sameFinalTestDll": true,
+    "priorSixBehavior": {
+      "total": 398,
+      "passed": 9,
+      "assertionFailures": 389,
+      "errors": 0,
+      "skipped": 0,
+      "xml": ".cache/ankh/six/causal/old.xml",
+      "xmlSha256": "f67f3501d16e3bae22e52e5f86d89b155860a93956d89c9b1920bec2797ead58",
+      "sameTestDll": true,
+      "changedDlls": {
+        "TerraRuntime.Application.dll": "4cca865054e7c42529f5e64a8abda33fd1a1588af19af9404ad655b574b44a0e",
+        "TerraRuntime.Gameplay.dll": "4c36a275bd8049dc580c15e78ac517b2e6ead85849a2b254dac1419190a908f0"
+      },
+      "allOtherDllsIdentical": true
+    },
+    "sixEffectOmission": {
+      "total": 398,
+      "passed": 59,
+      "assertionFailures": 339,
+      "errors": 0,
+      "skipped": 0,
+      "xml": ".cache/ankh/six/causal/effects.xml",
+      "xmlSha256": "10611e59ecb0f561e7947147865e7b6cb0c66451fc0f8e390b7e2573075f0de9",
+      "sameTestDll": true,
+      "changedDlls": {
+        "TerraRuntime.Application.dll": "2332d2ac4ced68b0ea7b78d34076921fc5ac6c0d2fa63103c4cecdd51c5bcd4d",
+        "TerraRuntime.Gameplay.dll": "5967592602a073d95da5ac3ac4f04540db2473611b7866f965d16a1bd62e0d40"
+      },
+      "allOtherDllsIdentical": true
+    },
+    "previousFixedCapOmission": {
+      "total": 42,
+      "passed": 33,
+      "assertionFailures": 9,
+      "errors": 0,
+      "skipped": 0,
+      "xml": ".cache/ankh/six/causal/caps.xml",
+      "xmlSha256": "e4b5b7bd8ecec6e86a699d45e0d0574cec709c4c327b2ecdf14cbd6b53b242bc",
+      "sameTestDll": true,
+      "changedDlls": {
+        "TerraRuntime.Application.dll": "d14ad709d3c9b25d09a568d785297b21fc4437406bc9a6d72592faf0c3754065"
+      },
+      "allOtherDllsIdentical": true
+    },
+    "canonicalGuards": {
+      "sourceInputs": 1047,
+      "sourceUnchanged": true,
+      "dlls": 158,
+      "dllBytesAndMembershipUnchanged": true
+    }
+  },
+  "analyzer": {
+    "observation": {
+      "path": ".cache/ankh/six/analyzer/observation.json",
+      "sha256": "74f57e1dd5653cfea5dbc4bdea5bef18c596ec12198dd50a382ccf50036b4735"
+    },
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "globalErrors": 332,
+    "scope": "UpdateLifeRegen and ApplyAttackCooldown spans qualified; UpdateBuffs has one mixed source/metadata Mount call span error. Inventory aids inspection, no automatic adaptation/completeness claim."
+  },
+  "historicalRejected": [
+    "V6 manaHeat ctor0 was correct but lacked raw observation; previous runtimeheat1 assumption was false and is superseded by actualreadback.",
+    "V7 explicitly authoredheat1 doesnot match fresh runtime0;108preimage assertion failures inold.xml areexcluded behavior/causal evidence. V6/V7 rawfiles/prototypes preservedimmutable cache.",
+    "Temporary diagnostic throw build located oldmelee reciprocal>1 fence; no diagnostic exception countsasbehaviorfailure.",
+    "Early local final-contact fixture used tick0 or transfer-restore, which didnot represent an advancing owned contact epoch/provenance. Qualified successor uses realemptyserverprelude+existingtypedAddBuff/Adopt, actualinitialnumericstate/RNG unchanged.",
+    "Neighbor assertion treating1.01 reciprocalasinvalid changed tofloat.MaxValue only after actualWeak reciprocallengthening proof; originalnumeric fixtures untouched.",
+    "Prior16 Russian documentation had literalquestionmarks dueencoding; thiscommit repairsactualUTF8text and English/Russian supportedscope together."
+  ],
+  "limitations": [
+    "Confused31/Stoned156 currentaffliction,1613fireWalk,1921,5355, unrepresented equipment/world/caller effects remainfenced.",
+    "Sixnewoutsideworld UpdateBuffs retainedfieldcontinuation explicitly refuses.",
+    "Darkness currentblindflag only; no clientlighting/drawing owner.",
+    "Aggregate mandatoryfast/full/Native/TCP and currentmainNPC22/tool merge notperformedbythiscomponent. Root owns finalunionqualification/publication."
+  ]
+}

@@ -10,13 +10,16 @@ namespace TerraRuntime.Tests;
 
 public sealed class DefinitionOnlyProjectileTarget1458Tests
 {
+    // Rock Golem still requires its source attack/projectile lifecycle; Snow Flinx185 is now admitted.
+    private const int UnadmittedGroundActor = 631;
+
     private static NpcStateUpdate Create(int type, float x) => new(type, (short)type,
         x, 320, 0, 0, 255, default, NpcSimulationState.Initial with
         { Life = 70, LifeMax = 70, Friendly = false, Chaseable = true, Immortal = false });
 
     [Theory]
     [InlineData(74)]
-    [InlineData(185)]
+    [InlineData(UnadmittedGroundActor)]
     [InlineData(664)]
     public void Retained_unowned_actor_is_not_a_controlled_magic_or_rocket_target(int type)
     {
@@ -56,12 +59,31 @@ public sealed class DefinitionOnlyProjectileTarget1458Tests
     public void Closest_scan_skips_unadmitted_nearer_actor_and_selects_verified_actor()
     {
         var store = new RuntimeNpcStore(2);
-        Assert.True(store.TrySpawn(0, Create(185, 320), out _));
-        Assert.True(store.TrySpawn(1, Create(3, 400), out _));
-        var resolver = new VanillaProjectileNpcTargetResolver(store, new(new WorldDimensions(100, 100)));
+        Assert.True(store.TrySpawn(0, Create(UnadmittedGroundActor, 320), out var nearer));
+        Assert.True(store.TrySpawn(1, Create(3, 400), out var verified));
+        Assert.True(VanillaNpcChaseability1458.CanBeChasedBy(in nearer));
+        Assert.False(VanillaNpcCatchCatalog1458.CountsAsCritter(nearer.TypeIdentity));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(nearer.TypeIdentity, nearer.NetIdentity, out var unadmitted));
+        Assert.True(unadmitted.CreationDefaultsOnly);
+        Assert.False(unadmitted.SupportsRuntimeLifecycle);
+        Assert.True(unadmitted.TryResolveHitbox(nearer.Simulation, out var nearerBody));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(verified.TypeIdentity, verified.NetIdentity, out var owned));
+        Assert.True(owned.TryResolveHitbox(verified.Simulation, out var verifiedBody));
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var resolver = new VanillaProjectileNpcTargetResolver(store, tiles);
         Assert.True(TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(new(16), out var definition));
         var projectile = new ProjectileSnapshot(new(0, new(1)), new(1), new(16), 0,
             300, 320, 1, 0, default, 0, 10, 0, 0);
+        float projectileX = projectile.PositionX + definition.Width * .5f;
+        float projectileY = projectile.PositionY + definition.Height * .5f;
+        float nearerX = nearer.PositionX + nearerBody.Width * .5f - projectileX;
+        float nearerY = nearer.PositionY + nearerBody.Height * .5f - projectileY;
+        float verifiedX = verified.PositionX + verifiedBody.Width * .5f - projectileX;
+        float verifiedY = verified.PositionY + verifiedBody.Height * .5f - projectileY;
+        Assert.True(nearerX * nearerX + nearerY * nearerY < verifiedX * verifiedX + verifiedY * verifiedY);
+        Assert.True(MathF.Abs(nearerX) + MathF.Abs(nearerY) < MathF.Abs(verifiedX) + MathF.Abs(verifiedY));
+        Assert.True(VanillaWorldCanHit.HasLineOfSight(tiles, projectile.PositionX, projectile.PositionY,
+            definition.Width, definition.Height, nearer.PositionX, nearer.PositionY, nearerBody.Width, nearerBody.Height));
         Assert.True(resolver.TryFindClosestTargetWithLineOfSight(in projectile, in definition, 800,
             out int slot, out _, out _));
         Assert.Equal(1, slot);

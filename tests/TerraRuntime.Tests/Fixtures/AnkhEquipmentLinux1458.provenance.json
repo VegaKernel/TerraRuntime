@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "d0b0e34ab5e8744b01da52a38c1e7db2a50ed5b7aaa442e2e35acbb2df3b1f18",
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "probeSha256": "729bf7d69e9c7ccaabc65708d80d18d2c608b6cb4ab625d7ae84ad5c3e646e83",
+  "probeSourceSha256": "4852faf18ff88cc01f46ae91fed1203e7a0bab7e903dc683280afbfb18148754",
+  "captures": [
+    {
+      "seed": 1458,
+      "a": ".cache/ankh/original-v2-1458-a.json",
+      "b": ".cache/ankh/original-v2-1458-b.json",
+      "sha256": "243c0b2c83a7576639e8d818c22b298d462b86e921d1c8c2f11cf92f47737ab6"
+    },
+    {
+      "seed": 42,
+      "a": ".cache/ankh/original-v2-42-a.json",
+      "b": ".cache/ankh/original-v2-42-b.json",
+      "sha256": "d439e6d35c6910337e96c2b23111ae11f5b572f2da698447692b628e0f258c0f"
+    },
+    {
+      "seed": 8675309,
+      "a": ".cache/ankh/original-v2-8675309-a.json",
+      "b": ".cache/ankh/original-v2-8675309-b.json",
+      "sha256": "9a143308787c2fc0c8d1d5c2910d8bb28a8504f387cf76c798bbeaf8eecbeb23"
+    }
+  ],
+  "observationRows": 435,
+  "repeatedRows": 870,
+  "wholeUpdatePhases": 144,
+  "wholeUpdatePhasesIncludingRepeat": 288,
+  "scope": "Actual original Linux managed binary on WindowsCoreCLR. Proper initializedMain1/2; actual Item.SetDefaults/Prefix. Equipment/AddBuff andStatusFromNPC components source myPlayer0. Whole cleanup executes unmodified Player.Update0 with myPlayer255, gameMenutrue, sourceLocal255 constructor-empty armor; remote timers remain positive. Source all named buff/immunity/derived states and full physicalRNG captured; no wholeMain, GUI, Native or WindowsCLR4 claim. V1 local-role exploratory rawcaptures retainedunmodified outside fixture. No source bodies included."
+}

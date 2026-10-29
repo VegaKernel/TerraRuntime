@@ -31,9 +31,11 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     public int LavaProtectionTicks { get; init; }
     public bool LavaRose { get; init; }
     public bool AnkhShield { get; init; }
+    public VanillaPlayerBuffImmunity1458 BuffImmunity { get; init; }
     // Player.ApplyEquipFunctional 1.4.5.8: Ankh Shield includes Chilled, but not Frozen.
     public bool IsImmuneToNpcContactBuff(BuffTypeId type) =>
-        AnkhShield && type.Value is 46 or 33 or 36 or 30 or 20 or 32 or 31 or 35 or 23 or 22 or 156;
+        (AnkhShield && type.Value is 46 or 33 or 36 or 30 or 20 or 32 or 31 or 35 or 23 or 22 or 156) ||
+        (BuffImmunity & VanillaPlayerCombatEquipmentCatalog.ImmunityForBuff(type)) != 0;
     public bool WaterWalk { get; init; }
 
     public bool DiscountEquipped { get; init; }
@@ -108,6 +110,8 @@ public readonly record struct VanillaPlayerCombatEquipmentContext(bool? ExtraAcc
     // Pure projection capability. Only callers retaining the source selector
     // state opt in; generic/bot component callers keep their existing fence.
     public bool EnableAmmoCyclingAccessories { get; init; }
+    /// <summary>Caller retains UpdateBuffs before gear and owns the later defense clamp.</summary>
+    public bool SourceBuffDefenseBeforeEquipment { get; init; }
     public bool GameMenu { get; init; }
 
     public bool TryIsSlotUsable(int armorIndex, out bool usable)
@@ -151,7 +155,10 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
     {
         manaMaximumBonus = 0;
         snapshot = initial with { AmmoCyclingMode = AmmoCyclingMode1458.None, AmmoCyclerDamage = false };
-        if (!VanillaPlayerCombatBuffs1458.TryApply(in initial, ReadOnlySpan<BuffTypeId>.Empty, out _)) return false;
+        bool validInitial = context.SourceBuffDefenseBeforeEquipment
+            ? VanillaPlayerCombatBuffs1458.TryApplyBeforeEquipment(in initial, ReadOnlySpan<BuffTypeId>.Empty, out _)
+            : VanillaPlayerCombatBuffs1458.TryApply(in initial, ReadOnlySpan<BuffTypeId>.Empty, out _);
+        if (!validInitial) return false;
         if (context.MasterMode && !context.ExpertMode) return false;
         Span<PlayerEquipmentCommitRequest> effective = stackalloc PlayerEquipmentCommitRequest[VanillaPlayerItemSlotCatalog.FunctionalArmorCount];
         for (int index = 0; index < effective.Length; index++)
@@ -331,6 +338,11 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
         PrefixId prefix,
         ref VanillaPlayerCombatSnapshot snapshot, ref bool skyStoneEffects)
     {
+        if (TryGetAccessoryImmunity(type, out var immunity))
+        {
+            snapshot = snapshot with { BuffImmunity = snapshot.BuffImmunity | immunity };
+            return TryApplyAccessoryPrefix(prefix, ref snapshot);
+        }
         switch (type.Value)
         {
             case 854: // Player.ApplyEquipFunctional: Discount Card.

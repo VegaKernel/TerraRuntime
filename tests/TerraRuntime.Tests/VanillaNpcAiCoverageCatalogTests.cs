@@ -129,7 +129,13 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             Assert.True(VanillaNpcAiCoverageCatalog.TryGet(type, out VanillaNpcAiCoverage fighter));
             Assert.True(fighter.Has(VanillaNpcAiCapability.CheckActiveSlice));
             Assert.True(fighter.Has(VanillaNpcAiCapability.GroundFighterTraversalSlice));
-            Assert.Equal(!VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(type),
+            // These exact retained phase admissions refuse closed-door/tall-gate
+            // contexts. Traversal support does not claim an owned door transaction.
+            bool retainedDoorContext = type.Value is
+                44 or 77 or 104 or 140 or 181 or 185 or 196 or 197 or 381 or 382 or 385 or
+                449 or 450 or 451 or 452 or 464 or 470 or 481 or 482 or 489 or 508 or 520 or
+                524 or 525 or 526 or 527 or 528 or 529 or 536 or 580 or 582 or 590 or 691;
+            Assert.Equal(!retainedDoorContext,
                 fighter.Has(VanillaNpcAiCapability.GroundFighterDoorPressureSlice));
             Assert.Equal(
                 type == VanillaNpcIds.AngryBones || type == VanillaNpcIds.ArmoredSkeleton,

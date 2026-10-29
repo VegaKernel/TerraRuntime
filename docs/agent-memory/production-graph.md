@@ -1,6 +1,20 @@
 # Production graph
 
+2026-10-29 combined NPC/Ankh candidate retains15 shipping projects/29 references, existing HP/buff/entity/shared-RNG owners and no new production package. NPC callback and ordered player subupdate blockers are fixed and component-tested in diagnostic11; frozen Ankh65b is now merged. One final combined full/Native/TCP gate remains pending. Historical component paragraphs below retain their earlier snapshot scope.
+
 2026-10-29 ground-combat candidate remains15 shipping projects/29 references with no new dependency, RNG owner or entity store. Existing NPC preview/status/projectile-batch and player HP owners are extended. Optional Core inactive-lifetime motion and bounded wet-count/Shimmer offers belong to source-qualified438/592/new5 update paths. Diagnostic07 WAE0/0/focus14109 qualifies4114 source inputs and158 copied DLLs only as a component; shared NPC callback ordering and authoritative subupdate player-hit integration still block final union/full/Native acceptance. Published main remainsf4a05e19; frozen Ankh component65b95a67 awaits merge before one grouped full.
+
+## Corrected current-effect admission and health, 2026-10-29
+
+Whole-phase and fallback-health admission both inspect existing live slots plus the immutable current-effect projection. Health derives supported final-frame DOT/regen from that projection and revalidates its complete BuffState after providers, including effect-only changes. This closes expired unsupported statuses and known final DOT without a new owner, ledger, RNG stream, dependency or project. Corrected union1196 focused cases and same-DLL boundary/numerical controls are green; aggregate full/Native/TCP waits for the parallel NPC16 merge. Candidate01 full was interrupted and never accepted.
+
+## Isolated scalar-debuff continuation, 2026-10-29
+
+Six current effects22/30/32/33/35/36 reuse existing PlayerBuffState44slots and an immutable ordered pre-countdown projection, shared effectiveequipment/retainedcombat, healthregen, magicpayment and drymovement owners. No new timerledger/RNG/inventory owner, project/dependency or reflection in shipping. Detached phase validates current stores/providers before adopting health, buffslots, motion, clocks and sourceRNG. Explicit before-equipment defense capability retains Weak negativeintermediate; lateclamp/halving produces validated finalcombat. Silence gates fresh represented mana-positive attempts only; paidreceipts continue. Component953green and independent/sourcecausalproof accepted; rootaggregate integration with mainNPC22/tool remains pending.
+
+## Isolated Ankh equipment component, 2026-10-28
+
+Sixteen immunity accessories add bounded immutable flags to the existing combat snapshot; the existing equipment selector and whole-player admission own grants. NPC contact still spends proc RNG before immunity. Late cure uses existing44slots/provenance/DelBuff compaction and per-update poison/noItems carriers; existing player phase adopts buff/HP/items/RNG before observers. No new inventory/timer/RNG owner, production package or project edge. Component evidence only; main/aggregate integration pending.
 
 ## Ground-critter retained owner, 2026-10-28
 
