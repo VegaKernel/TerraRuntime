@@ -29,6 +29,7 @@ internal sealed class VanillaGroundCritterAi1458
     internal int Width, Height, Direction, HomeX, HomeY, RestingX, RestingY, Life, LifeMax, WorldWidthTiles;
     internal float Gravity;
     internal bool Wet, Homeless, ShelterWeather, Force, CollideX;
+    internal bool PreservePassiveAi3History;
     internal bool Friendly = true;
     internal float OldX, OldY, OldVx, OldVy;
     internal NpcAiState Ai, Local;
@@ -45,7 +46,8 @@ internal sealed class VanillaGroundCritterAi1458
     {
         if (Turtle) danger = danger with { Present = false, TowardDirection = 0 };
         if (Ai.Ai0 is not (0f or 1f or 8f) ||
-            (Family == VanillaGroundCritterFamily1458.Squirrel ? Ai.Ai3 is not (0f or 2f) : Ai.Ai3 != 0f) || LifeMax <= 0 ||
+            (PreservePassiveAi3History ? Ai.Ai3 == 1f :
+                Family == VanillaGroundCritterFamily1458.Squirrel ? Ai.Ai3 is not (0f or 2f) : Ai.Ai3 != 0f) || LifeMax <= 0 ||
             HomeX < -1 || HomeY < -1 || Direction is < -1 or > 1 ||
             danger.Present && danger.TowardDirection is not (-1 or 1))
             return false;

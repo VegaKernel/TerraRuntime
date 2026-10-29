@@ -54,6 +54,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             for (int particle = 0; particle < 40; particle++) random.NextInt32(0, 8);
         }
         VanillaTownNpcDeathHitEffect1458.ConsumeLethalChoices(npc.TypeIdentity, random);
+        if (npc.Type == 687) VanillaPoofOfSmoke1458.ConsumeDedicatedSourceOffers(random);
         // Both Eskimo identities choose a death gore variant on the dedicated server.
         if (npc.TypeIdentity.Value is 186 or 432) random.NextInt32(0, 2);
         if (VanillaNonresidentGroundCritterCatalog1458.IsGoldCritter(npc.Type))

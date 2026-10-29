@@ -19,6 +19,11 @@ public interface INpcStateCommitSink
 {
     void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot);
 
+    /// <summary>Historical source wire checkpoint after the entire transition was adopted.
+    /// Ordinary domain observers receive the committed state; replication may encode the checkpoint.</summary>
+    void NpcHistoricalStateCommitted(NpcStateCommitKind kind, in NpcSnapshot checkpoint, in NpcSnapshot committed) =>
+        NpcStateCommitted(kind, in committed);
+
     /// <summary>One accepted vanilla UpdateNetworkCode phase, distinct from immediate combat publications.</summary>
     void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false) =>
         NpcStateCommitted(kind, in snapshot);

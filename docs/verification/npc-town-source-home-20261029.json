@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "town-transform-source-home-history",
+  "boundedComponentAccepted": true,
+  "aggregateAccepted": false,
+  "strictFullNamedNpcParity": false,
+  "source": {
+    "powderQualification": ".cache/transform-npc-phase/original-oldhome-v1/qualification.json",
+    "powderQualificationSha256": "daeb51601c925e27a7ff09e78ec20a1e3d466f4bbb33ba0fa8d41d777110d7b4",
+    "powderActualUpdateCalls": 768,
+    "loadedNpcSectionQualification": ".cache/transform-npc-phase/original-loaded-oldhome-v1/qualification.json",
+    "loadedQualificationSha256": "6657c52d353732bdcb6741a380c23e776f97280293b5ba2d5816052b0dc31756",
+    "loadedActualUpdateCalls": 768,
+    "loadedActualLoadNPCsCalls": 24,
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "repeats": 2
+  },
+  "normal07": {
+    "gate": ".cache/transform-app/diagnostic07",
+    "fullFocusedRows": 7138,
+    "homeLiteralCases": 12,
+    "framesPerCase": 3,
+    "sourceHomeOwnershipFacts": 4,
+    "actualClientHomeCommandCases": 2,
+    "clientHomePreparationFacts": 8,
+    "runtimeManifestSha256": "6587a210f55a89529edf12934961b249aecaf065c2d6345d30fa96062c08ea97",
+    "scope": "Literal first3phase home/NPC packets and full RNG after real powder. Focused fixture excludes only its own world7 identity; actual productionWorld7 is separately compared in full phase carrier. Real housing room/kick commands share NPC/Town ledger and existing timeout owner, leave oldHome untouched, and publish from source phase."
+  },
+  "causal": {
+    "qualification": ".cache/transform-home-causal/old06/qualification.json",
+    "qualificationSha256": "23a55e3e1ed6d07485349fa24d9565f5fc8a2b336439ea13da1308f29360fdc1",
+    "actualCompleteOldRuntime": "diagnostic06",
+    "sameAsCanonical07TestDll": true,
+    "oldGenuineAssertionFailures": 3,
+    "oldPassingControls": 9,
+    "fixed07Passed": 12,
+    "loaderErrors": 0,
+    "allOtherOldRuntimeDllsExact": true
+  },
+  "ownership": "Source oldHomeX/Y/Homeless extend existing generation/revision-owned home stamp; current join bytes remain independent. Actual home API call acknowledges even equal arguments. Town home metadata adopts with NPC/status/RNG before callbacks; early60 precedes23, network-tail60 follows23. No new store/RNG/clock. Narrow441/683 and precursor534/687 lineage; no fullTown or NPC parity claim."
+}

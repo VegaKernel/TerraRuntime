@@ -8,6 +8,14 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeTownNpcCombat1458
 {
+    internal void ObserveAcceptedTaxCollector(in NpcSnapshot accepted)
+    {
+        // AI_007_TownEntities_UpdateSavedStates1458 runs during the resident AI, not NPC.Transform.
+        // The caller has adopted NPC/status/home/RNG together, before any publication callbacks.
+        if (accepted.TypeIdentity == VanillaNpcIds.TaxCollector)
+            progression.MarkTownNpcRescued(RuntimeTownRescueFacts1458.TaxCollector);
+    }
+
     // AI007 derives live combat values anew from creation baselines and owned world progression.
     internal NpcSnapshot PlanVitals(in NpcSnapshot source)
     {

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-transform-network-component",
+  "sourceComponentAccepted": true,
+  "canonicalFocusedRowsPassed": 5,
+  "aggregateAccepted": false,
+  "strictFullVanillaParity": false,
+  "original": {
+    "qualificationPath": ".cache/transform-network/original02/qualification.json",
+    "qualificationSha256": "71d3adab4ef00576cec104fde75489bb2a7da921914e3a85c76f19055d1b33a8",
+    "networkPhases": 3600,
+    "transforms": 18,
+    "profiles": 5,
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "repeats": 2
+  },
+  "runtime": {
+    "diagnostic": ".cache/transform-app/diagnostic03",
+    "testAssemblySha256": "d6aa9322297e38827d55785fa9b8cd37d13913ba88db3554b54dcf359262cc07",
+    "xmlSha256": "fc04513bf315b887eaaaeef6f68a671b787b43ac6f7bb73101c86095ad62146a",
+    "method": "TerraRuntime.Tests.UndeadNetworkCadence1458Tests.Materialized_transform_clears_requests_without_resetting_or_spending_the_existing_throttle",
+    "rows": 5,
+    "completeDiagnosticAccepted": false,
+    "completeDiagnosticCounts": {
+      "errors": 0,
+      "failed": 27,
+      "not-run": 0,
+      "passed": 6660,
+      "skipped": 0,
+      "total": 6687
+    },
+    "scope": "All five named network assertions passed within a mixed diagnostic that still has27 independently classified failures. Not a complete cohort/full/Native acceptance."
+  },
+  "semantics": [
+    "Same-generation materialized Transform clears both pending network request flags.",
+    "It preserves netSpam and existing phase-revision guards; it neither spends nor decrements the throttle.",
+    "A new forced request at phase7 remains delayed until31; unchanged source controls emit31/61/91.",
+    "Teleport does not invoke the Transform reset."
+  ],
+  "limits": "Dedicated-server actual NewNPC201, six controlled network phases with velocity0, actual Transform199 and114 following network phases. No AI/physics/world tick claim. Earlier exploratory original01 used velocity0.9 and contains valid proximity-stream packets every30; it is preserved outside this isolated cadence qualification."
+}

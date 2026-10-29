@@ -278,7 +278,10 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                     if (completed.Handle != committed.Handle || !_npcs.TryGet(completed.Handle, out var finalized) ||
                         finalized.Revision != completed.Revision || !_npcs.TryPublishUpdate(in finalized,
                             forceSync: forceUpdate || (forcedUpdatePlanner?.RequiresForcedUpdateAfterCompletion(in npc, in finalized) ?? false),
-                            vanillaNetworkPhase: next.VanillaNetworkPhase, lowPriority: next.RequiresLowPrioritySync))
+                            vanillaNetworkPhase: next.VanillaNetworkPhase,
+                            // Materializing another identity runs SetDefaults, which clears
+                            // the old JustHit/pending request before the final network phase.
+                            lowPriority: next.RequiresLowPrioritySync && finalized.Type == npc.Type && finalized.NetId == npc.NetId))
                         continue;
                     committed = finalized;
                     if (!_npcs.TryGet(committed.Handle, out var published) || published.Revision != committed.Revision)

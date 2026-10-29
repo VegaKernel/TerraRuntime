@@ -20,6 +20,11 @@ internal sealed partial class RuntimeNpcReplicationRegistry
 
     public void NpcCatchCommitted(in NpcSnapshot caught, bool spawnNeedsSyncing)
     {
+        if (activeHistoricalPublication is { } prepared && prepared.MatchesCatch(in caught, spawnNeedsSyncing))
+        {
+            prepared.TryPublishHead();
+            return;
+        }
         var current = observedCatchSlotOwners[caught.Handle.Slot];
         if (current.IsAssigned && current.Generation.Value > caught.Handle.Generation.Value) return;
         if (!RuntimeNpcPacketProjection.TryCreate(in caught, RuntimeNpcSyncKind.Despawn, out var inactive) ||

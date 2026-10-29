@@ -72,7 +72,11 @@ internal static class RuntimeNpcPacketProjection
             SpawnDifficulty: simulation.SpawnDifficulty ?? 1f,
             ReleaseOwner: simulation.ReleaseOwner is short releaseOwner && releaseOwner is >= 0 and <= byte.MaxValue
                 ? (byte)releaseOwner : byte.MaxValue,
-            SpawnedFromStatue: simulation.SpawnedFromStatue);
+            SpawnedFromStatue: simulation.SpawnedFromStatue,
+            // Retain the positive source fact even when a catch journal supplies its pending-birth
+            // flag after this projection. The codec gates bit4 on the FINAL SpawnNeedsSyncing.
+            // Unknown legacy transparency retains its previous unqualified false projection.
+            SpawnShimmered: simulation.ShimmerTransparency is > 0f);
         return state.IsValid;
     }
 

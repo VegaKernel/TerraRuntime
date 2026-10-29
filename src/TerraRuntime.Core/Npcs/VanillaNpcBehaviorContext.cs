@@ -579,6 +579,40 @@ internal sealed class VanillaNpcBehaviorContext
     internal bool TrySelectSlimeClosestTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
         out VanillaBlueSlimeTargetRefresh target) => TrySelectRawClosestTarget(in npc, in definition, out target);
 
+    internal bool TrySelectTransformClosestTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        out VanillaBlueSlimeTargetRefresh target)
+    {
+        if (!TrySelectRawClosestTarget(in npc, in definition, out target) ||
+            !TryCaptureRawPlayer(checked((byte)target.Target), out var raw) ||
+            !raw.Facts.IsValid || raw.Facts.Slot != target.Target ||
+            raw.Facts.Aggro < 0 || raw.Facts.NoAggro || raw.Facts.Ghost ||
+            !definition.TryResolveHitbox(npc.Simulation, out var body)) return false;
+        var facts = raw.Facts;
+        if (TryFindCandidate(facts.Slot, out var candidate) &&
+            (candidate.Active != facts.Active || candidate.Dead != facts.Dead || candidate.Ghost != facts.Ghost ||
+             candidate.CenterX != facts.Candidate.CenterX || candidate.CenterY != facts.Candidate.CenterY ||
+             candidate.Width != facts.Width || candidate.Height != facts.Height ||
+             candidate.Aggro != facts.Aggro || candidate.NoAggro != facts.NoAggro)) return false;
+        if (facts.Dead)
+        {
+            target = target with { DirectionX = npc.Simulation.DirectionX,
+                DirectionY = npc.Simulation.DirectionY, PreserveFacing = true };
+            return true;
+        }
+        // NPC.Transform calls TargetClosest after SetDefaults. Scoring uses float
+        // centers; SetTargetTrackingValues faces the integer target rectangle,
+        // including its separate AI003 bottom-edge test.
+        int directionY = definition.AiStyle == VanillaNpcAiStyles.Fighter
+            ? (int)facts.PositionY + facts.Height <= npc.PositionY + body.Height ? -1 : 1
+            : (int)facts.PositionY + facts.Height / 2 < npc.PositionY + body.Height / 2 ? -1 : 1;
+        target = target with
+        {
+            DirectionX = (int)facts.PositionX + facts.Width / 2 < npc.PositionX + body.Width / 2 ? -1 : 1,
+            DirectionY = directionY
+        };
+        return true;
+    }
+
     internal bool TrySelectRawClosestTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
         out VanillaBlueSlimeTargetRefresh target)
     {
@@ -587,6 +621,8 @@ internal sealed class VanillaNpcBehaviorContext
         if (rawPlayerSlots is null ||
             (definition.Type != VanillaNpcIds.BlueSlime && definition.Type != VanillaNpcIds.LavaSlime &&
              definition.AiStyle != VanillaNpcAiStyles.DemonEye &&
+             !VanillaNpcTransformation1458.IsDestination(definition.Type) &&
+             !VanillaNpcTransformation1458.TryGetGroundCritterFamily(definition.Type, out _) &&
              !VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
              !VanillaGroundCritterAi1458.IsSupported(definition.Type.Value)))
             return false;

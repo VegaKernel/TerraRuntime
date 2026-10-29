@@ -261,6 +261,12 @@ public static class VanillaGroundFighterNpcCatalog
             motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
         ,Fighter(new(520), 34, 110, 60, 40, 2000, 0f, 1f, 4f,
             motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        // The captured outer phase owns these coupled transformations/swimming branches.
+        ,Fighter(new(198), 18, 40, 38, 20, 400, .4f, 1f, 1.5f, daySurfaceEncouragesDespawn: false),
+        Fighter(new(532), 32, 31, 65, 34, 270, .3f, 1f, 5f, acceleration: .15f, overspeedGroundDamping: .98f),
+        Fighter(new(534), 18, 40, 14, 20, 400, .3f, 1f, 1f),
+        Fighter(new(586), 18, 40, 40, 20, 400, 0f, 1f, 1.5f,
+            motionProfile: VanillaGroundFighterMotionProfile.ZombieMerman, missingHealthSpeedBonus: 3.5f)
     ];
 
     private static readonly NpcTypeId[] AdditionalTypes =
@@ -348,7 +354,8 @@ public static class VanillaGroundFighterNpcCatalog
         new(44), new(104), new(140), new(181), new(196), new(197), new(464), new(470), new(489),
         new(524), new(525), new(526), new(527), new(528), new(529), new(536), new(691),
         new(185), new(385), new(482), new(508), new(580), new(582), new(590),
-        new(381), new(382), new(449), new(450), new(451), new(452), new(481), new(520)
+        new(381), new(382), new(449), new(450), new(451), new(452), new(481), new(520),
+        new(198), new(532), new(534), new(586)
     ];
 
     public static int DefinitionCount => Entries.Length;
@@ -366,6 +373,7 @@ public static class VanillaGroundFighterNpcCatalog
     /// <summary>Exact cohorts whose shared source target/network phases are represented.</summary>
     public static bool UsesVerifiedGroundFighterTargeting1458(NpcTypeId type) =>
         IsUndeadVariantParent(type) || VanillaGroundCombatCohort1458.IsSupported(type, new(type.Value)) ||
+        VanillaNpcTransformation1458.IsNewFighter(type) ||
         VanillaNonresidentGroundCritterCatalog1458.IsTurningSquirrel(type.Value);
 
     public static bool IsOrdinaryMeleeDayDespawnCandidate1458(NpcTypeId type) => type.Value is

@@ -26,6 +26,17 @@ public sealed class NpcStateCommitSinkFanout : INpcStateCommitSink, INpcBirthRet
             sink.NpcStateCommitted(kind, in snapshot);
     }
 
+    public void NpcHistoricalStateCommitted(NpcStateCommitKind kind, in NpcSnapshot checkpoint, in NpcSnapshot committed)
+    {
+        Exception? failure = null;
+        foreach (INpcStateCommitSink sink in sinks)
+        {
+            try { sink.NpcHistoricalStateCommitted(kind, in checkpoint, in committed); }
+            catch (Exception exception) { failure ??= exception; }
+        }
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
     public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false)
     {
         foreach (INpcStateCommitSink sink in sinks)

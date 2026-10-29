@@ -21,7 +21,15 @@ internal sealed class VanillaFishNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         in VanillaNpcDefinition definition,
         VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner,
-        out NpcStateUpdate next)
+        out NpcStateUpdate next) => TryStepCore(in npc, in definition, context, random, environment, out next);
+
+    internal bool TryStepPreview(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, IVanillaNpcRandom preview, IVanillaNpcPhaseWorld1458 captured,
+        out NpcStateUpdate next) => TryStepCore(in npc, in definition, context, preview, captured, out next, captured);
+
+    private static bool TryStepCore(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, IVanillaNpcRandom random, IVanillaFishEnvironment1458? environment,
+        out NpcStateUpdate next, IVanillaNpcPhaseWorld1458? phase = null)
     {
         if (definition.AiStyle != VanillaNpcAiStyles.Fish ||
             !VanillaFishNpcCatalog1458.TryGetDefinition(definition.Type, out _) ||
@@ -33,7 +41,9 @@ internal sealed class VanillaFishNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         }
 
         VanillaBlueSlimeTargetRefresh closest =
-            context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
+            (VanillaNpcTransformation1458.IsRetainedFish(definition.Type)
+                ? context.TrySelectRawClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
+                : context.TrySelectClosestTarget(in npc, in definition, out selected))
                 ? selected
                 : default;
         bool pursuingWetTarget = false;
@@ -58,6 +68,26 @@ internal sealed class VanillaFishNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         }
 
         NpcSimulationState simulation = npc.Simulation;
+        bool retained = phase is not null && VanillaNpcTransformation1458.IsRetainedFish(definition.Type);
+        bool targetSync = retained && simulation.DirectionX == 0 && closest.HasTarget &&
+            !simulation.CollideX && !simulation.CollideY &&
+            (closest.Target != npc.Target || closest.DirectionX != simulation.DirectionX || closest.DirectionY != simulation.DirectionY);
+        if (retained && simulation.Wet && !VanillaFishNpcCatalog1458.IsPassiveFish(definition.Type))
+        {
+            // The wet body first tracks without facing. Pursuit then faces the
+            // player and clears its swim clock, each retaining its source request.
+            targetSync |= closest.HasTarget && !simulation.CollideX && !simulation.CollideY &&
+                closest.Target != npc.Target;
+            if (pursuingWetTarget)
+                targetSync |= npc.Ai.Ai0 != 0f || closest.HasTarget &&
+                    !simulation.CollideX && !simulation.CollideY &&
+                    (closest.Target != npc.Target || closest.DirectionX != simulation.DirectionX ||
+                     closest.DirectionY != simulation.DirectionY);
+        }
+        // Passive goldfish do not refresh a target in their wet body. Wet collisions
+        // still request a packet even when their final velocity happens to stay zero.
+        bool collisionSync = retained && simulation.Wet && !pursuingWetTarget &&
+            (simulation.CollideX || simulation.CollideY);
         int dolphinWaitThreshold = 300;
         int dolphinNextState = 1;
         bool dolphinCanHitLineAbove = true;
@@ -103,6 +133,8 @@ internal sealed class VanillaFishNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             launchVelocityY = random.NextInt32(-50, -20) * 0.1f;
             launchVelocityX = random.NextInt32(-20, 20) * 0.1f;
             launchDirection = random.NextInt32(0, 2) == 0 ? 1 : -1;
+            if (retained && !phase!.TryStageIgnoreSpamLimitUpdate(targetSync))
+            { next = default; return false; }
         }
 
         bool hasWaterLine = environment.TryGetWaterLineAtTop(
@@ -164,8 +196,12 @@ internal sealed class VanillaFishNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
                 DirectionY = result.DirectionY,
                 NoGravity = true,
                 NoTileCollide = false,
+                // The retained phase owns the full AI016 endpoint, including
+                // its scalar rotation before collision and FindFrame.
+                Rotation = VanillaNpcTransformation1458.IsRetainedFish(definition.Type)
+                    ? Math.Clamp(result.VelocityY * result.DirectionX * .1f, -.2f, .2f) : simulation.Rotation,
                 LocalAi = result.LocalAi
-            });
+            }) { RequiresImmediateSync = targetSync || collisionSync };
         return true;
     }
 }

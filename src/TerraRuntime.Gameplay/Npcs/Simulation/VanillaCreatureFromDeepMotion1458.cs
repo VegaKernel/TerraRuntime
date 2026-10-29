@@ -14,10 +14,21 @@ public static class VanillaCreatureFromDeepMotion1458
                 (velocityY * weight + desired.Y) / (weight + 1f));
     }
 
-    public static (float X, float Y) ExitVelocity(float velocityX, float velocityY)
+    public static (float X, float Y) SteerMerman(float velocityX, float velocityY, float targetDx,
+        float targetDy, int direction, bool visible)
+    {
+        if (!visible) return Steer(velocityX, velocityY, targetDx, targetDy, direction, visible: false);
+        float speed = Math.Clamp(1f + MathF.Abs(targetDy) / 40f, 5f, 20f);
+        var desired = Normalize(targetDx, targetDy, speed);
+        float weight = velocityY > 0f ? 29f : 4f;
+        return ((velocityX * weight + desired.X) / (weight + 1f),
+                (velocityY * weight + desired.Y) / (weight + 1f));
+    }
+
+    public static (float X, float Y) ExitVelocity(float velocityX, float velocityY, float maximumSpeed = 10f)
     {
         float speed = (float)Math.Sqrt(velocityX * velocityX + velocityY * velocityY);
-        return Normalize(velocityX, velocityY, MathF.Min(speed * 2f, 10f));
+        return Normalize(velocityX, velocityY, MathF.Min(speed * 2f, maximumSpeed));
     }
 
     public static float DryKnockback(float difficulty)

@@ -24,13 +24,15 @@ public sealed class VanillaNpcLootOptions1458
     private readonly ItemTypeId[] items;
     public VanillaNpcLootOptions1458(ReadOnlySpan<ItemTypeId> options)
     {
-        if (options.Length is < 2 or > 10) throw new ArgumentOutOfRangeException(nameof(options));
+        // Original1458 also registers singleton OneFromOptions rules. Their selection
+        // still consumes Next(1) after a successful roll, unlike a Common rule.
+        if (options.Length is < 1 or > 10) throw new ArgumentOutOfRangeException(nameof(options));
         items = options.ToArray();
         foreach (var item in items)
             if (item.IsNone) throw new ArgumentException("Options must have verified identities.", nameof(options));
     }
     public ReadOnlySpan<ItemTypeId> Items => items;
-    public bool IsValid => items.Length is >= 2 and <= 10;
+    public bool IsValid => items.Length is >= 1 and <= 10;
 }
 
 /// <summary>1.4.5.8 ItemDropDatabase undead registrations; table support does not grant actor/AI support.</summary>

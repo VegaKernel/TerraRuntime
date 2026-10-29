@@ -31,14 +31,18 @@ public sealed class GroundCombatProjectileBirthLiquid1458Tests
         {
             var random = new VanillaUnifiedRandom1458(row.GetProperty("seed").GetInt32());
             var beforeRandom = random.Clone();
-            Assert.True(world.TryStageStatus(new SystemVanillaNpcRandom(random), out var staged));
+            f.Npcs.SetVanillaSpawnRandomSource(new SystemVanillaNpcRandom(random));
+            Assert.True(f.Npcs.TryCreateAiSpawnPreview(in f.Before, random, out var preview));
+            Assert.NotNull(preview);
+            Assert.True(world.TryStageStatus(preview, new SystemVanillaNpcRandom(preview.Random), out var staged));
             var intent = Intent(expected);
             Assert.True(world.TryStageProjectiles([intent]));
             Assert.Equal(0, f.Projectiles.ActiveCount);
             Assert.Equal(0, f.Sink.Births);
             var state = State(in staged);
             var raw = VanillaNpcRawPlayer1458.Constructor(0);
-            Assert.True(world.TryFinishMotion(in f.Before, in state, in raw, out var final));
+            Assert.True(world.TryFinishMotion(preview, in f.Before, in state, in raw, out var final));
+            Assert.True(world.TryPrepareAdoption(in final));
             Assert.True(f.Npcs.TryUpdateUnpublished(f.Before.Handle, in final, out var adopted));
             Assert.True(world.TryAdoptStatus(in adopted));
             Assert.Equal(1, f.Projectiles.ActiveCount);
@@ -75,12 +79,17 @@ public sealed class GroundCombatProjectileBirthLiquid1458Tests
             Assert.True(f.Environment.TryCapture(in f.Before, new(), out var world));
             using (world)
             {
-                Assert.True(world.TryStageStatus(new SystemVanillaNpcRandom(new VanillaUnifiedRandom1458(1458)), out var staged));
+                var random = new VanillaUnifiedRandom1458(1458);
+                f.Npcs.SetVanillaSpawnRandomSource(new SystemVanillaNpcRandom(random));
+                Assert.True(f.Npcs.TryCreateAiSpawnPreview(in f.Before, random, out var preview));
+                Assert.NotNull(preview);
+                Assert.True(world.TryStageStatus(preview, new SystemVanillaNpcRandom(preview.Random), out var staged));
                 var intent = new NpcAiProjectileIntent(new(471), 640f, 1150f, 3.25f, -2.5f, 12, 0f);
                 Assert.True(world.TryStageProjectiles([intent]));
                 var state = State(in staged);
                 var raw = VanillaNpcRawPlayer1458.Constructor(0);
-                Assert.True(world.TryFinishMotion(in f.Before, in state, in raw, out var final));
+                Assert.True(world.TryFinishMotion(preview, in f.Before, in state, in raw, out var final));
+                Assert.True(world.TryPrepareAdoption(in final));
                 var actorSection = TerrariaSectionGeometry.FromTile(f.Tiles.Dimensions, 218, 98);
                 var birthSection = TerrariaSectionGeometry.FromTile(f.Tiles.Dimensions, 40, 72);
                 Assert.NotEqual(actorSection, birthSection);
@@ -112,7 +121,7 @@ public sealed class GroundCombatProjectileBirthLiquid1458Tests
         internal readonly RuntimeNpcStore Npcs = new(2);
         internal readonly Sink Sink = new();
         internal readonly RuntimeProjectileStore Projectiles;
-        internal readonly VanillaGroundCombatEnvironment1458 Environment;
+        internal readonly VanillaNpcPhaseEnvironment1458 Environment;
         internal readonly NpcSnapshot Before;
         internal Fixture(int type, string scene)
         {

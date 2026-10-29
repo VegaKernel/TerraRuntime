@@ -1,0 +1,12 @@
+{
+  "scope": "actual independent original selected CatchNPC or Damage_TryUsingPowders component; no whole Main or Projectile.Update claim",
+  "fixture": "PowderTransformBatchLinux1458.v2.json.gz",
+  "sha256": "703ddc65adc767fdaefb0fc977be5cc0c731e75e41f814e90f284b3d1a72f8b9",
+  "sources": {
+    ".cache\\transform-interactions\\source-powder-batch-v2\\qualified-v2-1458-a.json.gz": "80fac609e8f983e8cfb04875b0da8d7716a727f549b7190c8b5d051c2b749009",
+    ".cache\\transform-interactions\\source-powder-batch-v2\\qualified-v2-42-a.json.gz": "ffea9b349453060d073aff9843aa3fda6556e7efbe408f95ae6ec5d9a7e307b9",
+    ".cache\\transform-interactions\\source-powder-batch-v2\\qualified-v2-8675309-a.json.gz": "42046484b752f110058cae45be7a40a14c6882fc940bb5cd7625cf72846100e4"
+  },
+  "qualification": ".cache\\transform-interactions\\source-powder-batch-v2\\qualification-v2.json",
+  "qualificationSha256": "f11ac6582152a40847a5eb54327082564e9ced51f8545d46e1599cc8ee620d2a"
+}

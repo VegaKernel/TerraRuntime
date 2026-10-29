@@ -259,6 +259,8 @@ public sealed partial class WorldRuntime : IDisposable
             sourcePlayerWorld: RuntimePlayerUpdateWorld1458.FromMetadata(world.Tiles.Dimensions, world.RuntimeMetadata),
             worldStateAdopted: RefreshWorldBootstrap);
         State.BindAnglerWorld(world.RuntimeMetadata, RuntimeConnections.PublishAnglerState, RuntimeConnections.PublishCharacterProgress);
+        State.BindNpcInteractionWorldInfoSource(
+            progression => PrepareNpcInteractionWorldInfo(in progression), RefreshWorldBootstrap);
         State.BindFishingWorldInfoPublisher(() =>
         {
             RefreshWorldBootstrap();

@@ -131,8 +131,9 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
         // The ground-combat block adds fifteen positive definitions; signed -15
         // uses the existing positive type77 parent and adds no positive catalog row.
-        Assert.Equal(146, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(144, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        // The transformation cohort adds four further positive fighters.
+        Assert.Equal(150, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(148, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);

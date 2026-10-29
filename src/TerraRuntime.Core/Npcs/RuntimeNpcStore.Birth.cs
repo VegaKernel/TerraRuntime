@@ -64,6 +64,25 @@ public sealed partial class RuntimeNpcStore
         return true;
     }
 
+    // A source interaction can announce a historical position or SetDefaults checkpoint
+    // after its complete owned transition has been adopted. Consume the same pending birth
+    // before observers so the next outer update cannot replay an earlier state.
+    internal bool TryPublishHistoricalCheckpoint(in NpcSnapshot checkpoint, in NpcSnapshot committed)
+    {
+        if (checkpoint.Handle != committed.Handle || checkpoint.Revision.Value > committed.Revision.Value ||
+            !MatchesSource(in committed))
+            return false;
+        ref SlotState state = ref _slots[committed.Handle.Slot];
+        var kind = state.BirthPending ? NpcStateCommitKind.Spawn : NpcStateCommitKind.ForcedUpdate;
+        if (state.BirthPending)
+        {
+            state.BirthPending = false;
+            MarkSlotMutation();
+        }
+        _commitSink?.NpcHistoricalStateCommitted(kind, in checkpoint, in committed);
+        return true;
+    }
+
     internal void PublishPendingBirths()
     {
         // NPC.Spawner.SyncNewlySpawnedNPCs walks physical slots in ascending order.

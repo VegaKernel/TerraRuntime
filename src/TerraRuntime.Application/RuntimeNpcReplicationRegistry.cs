@@ -299,7 +299,11 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         if (kind == NpcStateCommitKind.Despawn)
         {
             if (!suppressBroadcast)
+            {
+                if (UsesUndeadNetworkPhase1458(in snapshot))
+                    ResetSourcePacket23Streams(in snapshot, spawnNeedsSyncing: false, retired: true);
                 Broadcast(encoded, UsesUndeadNetworkPhase1458(in snapshot) ? snapshot.Handle : null);
+            }
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
             Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], null);
             ClearLiveFrame(snapshot.Handle);
@@ -351,11 +355,12 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
             return;
         }
 
+        if (UsesUndeadNetworkPhase1458(in snapshot))
+            ResetSourcePacket23Streams(in snapshot, kind == NpcStateCommitKind.Spawn, retired: false);
         Broadcast(encoded, UsesUndeadNetworkPhase1458(in snapshot) ? snapshot.Handle : null);
         RecordLiveFrame(in snapshot, encoded);
         if (sourcePhase)
         {
-            if (kind == NpcStateCommitKind.Spawn) ResetSourceProximity(in snapshot);
             // UpdateNetworkCode sends its own offer first; StreamUpdatesToNearbyPlayers can
             // then legitimately send an identical second packet during this same NPC phase.
             StreamNpcUpdateToNearbyPlayers(in snapshot, encoded, sourcePhase: true);
@@ -518,6 +523,8 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     {
         lock (proximityStreamGate)
         {
+            var current = proximityStreamOwners[snapshot.Handle.Slot];
+            if (current.IsAssigned && current.Generation.Value > snapshot.Handle.Generation.Value) return;
             proximityStreamOwners[snapshot.Handle.Slot] = snapshot.Handle;
             proximityStreamTicks[snapshot.Handle.Slot] = 0;
         }

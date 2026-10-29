@@ -140,6 +140,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 
     internal int FindHomeFloor(int x, int y)
     {
+        // AI_007_FindGoodRestingSpot preserves an unassigned Transform home while airborne.
+        if (x == -1 || y == -1) return y;
         int floorY = Math.Clamp(y, 1, tiles.Dimensions.HeightTiles - 2);
         while (floorY < tiles.Dimensions.HeightTiles - 20)
         {
@@ -160,7 +162,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         ref int floorX,
         ref int floorY)
     {
-        if (dayTime ||
+        if (floorX == -1 || floorY == -1 || IsYellowTownSlime(type) || dayTime ||
             snapshot.Ai.Ai0 == 5f ||
             IsSittingExcluded(type) ||
             (!dayTime && snapshot.Ai.Ai0 == 5f &&

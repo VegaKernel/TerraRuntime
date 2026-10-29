@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "2a28c7d3a28305bd0fab20d7c7cb53b36936abdd0db133e3ab8e4dd4e66bc000",
+  "sourceQualification": ".cache/transform-npc-phase/original-wet-resident-v1/qualification.json",
+  "sourceQualificationSha256": "0ea3ae27799709a7947eae2389229b46630854b6f48787e479a99eb28f0381f8",
+  "actualOriginalRuns": 6,
+  "originalPhasesPerCase": 32,
+  "fixturePhasesPerCase": 14,
+  "contexts": 6,
+  "types": [
+    683,
+    441
+  ],
+  "initialSourceTypes": [
+    687,
+    534
+  ],
+  "scope": "ActualoriginalNewNPC+Powder10+NPC.UpdateNPC; six contexts each first14sourcephases. Normalruntimefixture executesactualproductionPowder ratherthan importing/offsetting RNG. All14RNGcheckpoints andfour selected pose/breathcounter endpoints. Sourcefull32phases retained inoriginalcache. No wholeTown/Main/fullpacket7literalclaim."
+}

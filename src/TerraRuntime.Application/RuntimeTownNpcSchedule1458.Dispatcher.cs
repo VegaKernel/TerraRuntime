@@ -43,11 +43,19 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if ((uint)home.NpcSlot > byte.MaxValue || !npcs.TryGetActive((byte)home.NpcSlot, out var before) ||
                 before.Type != home.NpcType.Value) continue;
             visited++;
+            bool sourceResident = OwnsTransformResidentContinuation(in before);
+            bool sourceHomeResident = before.TypeIdentity == VanillaNpcIds.TaxCollector || IsYellowTownSlime(before.TypeIdentity);
+            if (sourceResident && (!HasTransformResidentContext(in before) ||
+                townNpcs.CaptureResidentName(before.Handle) is null || !HasTransactionalResidentTerrain(in before)))
+            { rejected++; continue; }
+            if (!townNpcs.TryGet(home.NpcSlot, out var expectedResident)) { rejected++; continue; }
             int peerCount = npcs.CopyActive(peers);
             if (!status.TryPlan(in before, out var buffPlan)) { rejected++; continue; }
             int originX = BottomTileX(in before, home.NpcType), originY = BottomTileY(in before, home.NpcType, 1f);
             if (Interior(originX, originY) && Cell(originX, originY).TileType == VanillaTileIds.PoopBlock)
             {
+                // This selected continuation has no unpublished repeated-buff producer yet.
+                if (sourceResident) { rejected++; continue; }
                 // Tile666 refresh is a separate source effect. Combined DoT admission remains closed
                 // until that refresh can share this actor's unpublished status transaction.
                 if (buffPlan.Flags.OnFire || buffPlan.Flags.Poisoned) { rejected++; continue; }
@@ -59,35 +67,73 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             RuntimeNpcStinkyVisualOffer1458 visualOffer = combat.PlanBuffVisualOffers(in buffPlan);
             var statusInput = before with { Simulation = before.Simulation with {
                 Life = buffPlan.LifeAfter, LifeRegenCounter = buffPlan.CounterAfter } };
+            bool localHomeChanged = false;
+            bool homeUpdatedByAi = false;
+            if (sourceHomeResident)
+            {
+                statusInput = PlanSourceLocalHome(in statusInput, out homeUpdatedByAi);
+                localHomeChanged = statusInput.Simulation.HomeTileX != before.Simulation.HomeTileX ||
+                    statusInput.Simulation.HomeTileY != before.Simulation.HomeTileY;
+                if (statusInput.Simulation.HomeTileX is not int hx || statusInput.Simulation.HomeTileY is not int hy ||
+                    statusInput.Simulation.Homeless is not bool homeless) { rejected++; continue; }
+                if (!((uint)hx < (uint)tiles.Dimensions.WidthTiles && (uint)hy < (uint)tiles.Dimensions.HeightTiles ||
+                    homeless && hx == -1 && hy == -1)) { rejected++; continue; }
+                home = home with { HomeTileX = hx, HomeTileY = hy,
+                    Status = homeless ? TerrariaNpcHomeStatus.Homeless : home.Status };
+                if ((sourceResident || localHomeChanged) && townNpcs.CaptureResidentName(before.Handle) is null)
+                { rejected++; continue; }
+                if (sourceResident && statusInput.Simulation.TeleportTime == 1f)
+                    statusInput = statusInput with { Simulation = statusInput.Simulation with { TeleportTime = 0f } };
+            }
             socialNpcBuffFlags = buffPlan.Flags;
             socialNpcBuffOwner = status;
             socialViewingNpc = before.Handle;
             if (!TryPlanUnifiedResident(in statusInput, in home, in conditions, players, conversations,
                     seatedPlayers, playerDanger, peers[..peerCount], status, combat, melee,
                     out NpcStateUpdate aiState, out bool force, out NpcAiProjectileIntent? projectile,
-                    out int meleeCount, out SocialPeerPlan? socialPeer)) { rejected++; continue; }
+                    out int meleeCount, out SocialPeerPlan? socialPeer, selfStinky)) { rejected++; continue; }
             double surface = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);
             aiState = aiState with { Simulation = aiState.Simulation with {
                 HostileContactImmunity = Math.Max(0, aiState.Simulation.HostileContactImmunity - 1) } };
-            if (!VanillaNpcWorldMotionAiStepper.TryApplyGravity(tiles, surface, in aiState, out var accelerated, out var gravity) ||
+            NpcLiquidContactKind? effectiveLiquid = sourceResident && aiState.Simulation.Wet && aiState.Simulation.HoneyWet == true
+                ? NpcLiquidContactKind.Honey : null;
+            if (!VanillaNpcWorldMotionAiStepper.TryApplyGravity(tiles, surface, in aiState, out var accelerated, out var gravity, effectiveLiquid) ||
+                sourceResident && !TryPlanSourceDrowning(in accelerated, out accelerated) ||
                 !combat.TryPlanContact(in before, RuntimeTownNpcCombat1458.PlanFriendlyRegeneration(in accelerated), peers[..peerCount], randomScope is not null,
                     out var contacted, out var strike))
             { rejected++; continue; }
             NpcStateUpdate moved;
+            bool curedWetStatus = false;
+            bool ContinueResidentCollision(in NpcStateUpdate collision, out NpcStateUpdate continued)
+            {
+                continued = collision;
+                var originalSlots = buffPlan.Slots;
+                var removed = RuntimeNpcBuffStatus1458.PlanGemBunnyWetRemoval(in originalSlots, buffPlan.Stinky, collision.Simulation.Wet);
+                curedWetStatus = !RuntimeNpcBuffStatus1458.SlotsMatch(in removed, in originalSlots);
+                buffPlan = buffPlan with { Slots = removed };
+                return true;
+            }
             if (gravity.HasValue)
             {
                 if (!VanillaNpcWorldMotionAiStepper.TryFinishCollision(tiles, in contacted,
                         gravity.Value.Parameters.Gravity, out moved, townContext: new(
-                            home.HomeTileY, conditions.DayTime, conditions.Eclipse, conditions.InvasionActive))) { rejected++; continue; }
+                            home.HomeTileY, conditions.DayTime, conditions.Eclipse, conditions.InvasionActive),
+                        continuation: sourceResident ? ContinueResidentCollision : null)) { rejected++; continue; }
             }
             else moved = contacted;
             if (!TryPlanPresentation(in moved, peers[..peerCount], ref socialPeer, emotes, randomScope is not null,
-                    out int emoteCount, out moved)) { rejected++; continue; }
+                    out int emoteCount, out var presented)) { rejected++; continue; }
+            moved = presented;
             moved = moved with { Simulation = moved.Simulation with { JustHit = false } };
-            if (!moved.Simulation.Wet && moved.Simulation.Breath is { } breath)
+            if (!sourceResident && !moved.Simulation.Wet && moved.Simulation.Breath is { } breath)
                 moved = moved with { Simulation = moved.Simulation with { Breath = Math.Min(200, breath + 3) } };
+            RuntimeNpcReplicationRegistry.SourceTownHomePhase1458? homePhase = null;
+            if (sourceHomeResident && !combat.TryPrepareSourceHome(in before, in moved, in home,
+                homeUpdatedByAi, out homePhase)) { rejected++; continue; }
             if (!npcs.TryGet(before.Handle, out var current) || current.Revision != before.Revision ||
                 !status.IsCurrent(in buffPlan) ||
+                !combat.IsSourceHomeCurrent(homePhase) ||
+                !townNpcs.TryGet(home.NpcSlot, out var currentResident) || currentResident != expectedResident ||
                 emoteCount > 0 && !SocialContextIsCurrent(peers[..peerCount]) ||
                 randomScope is not null && !randomScope.IsCurrent) { rejected++; continue; }
             NpcSnapshot committed;
@@ -104,15 +150,32 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             randomScope?.Accept();
             if (!status.Commit(in buffPlan, in committed))
                 throw new InvalidOperationException("Unpublished NPC/status commit lost its owned revision.");
+            if ((sourceResident || localHomeChanged) && !townNpcs.TryAdoptSourceLocalHome(in committed))
+                throw new InvalidOperationException("Unpublished resident home commit lost its owned identity.");
+            if (!sourceResident && !localHomeChanged && homePhase.HasValue && !townNpcs.TryUpdatePosition(home.NpcSlot, in committed))
+                throw new InvalidOperationException("Unpublished resident position lost its owned home record.");
+            if (!combat.TryAdoptSourceHome(homePhase, in committed))
+                throw new InvalidOperationException("Unpublished resident home phase lost its owned history.");
+            combat.ObserveAcceptedTaxCollector(in committed);
+            bool guardedPublication = sourceResident || homePhase.HasValue;
             status.PublishExpired(in buffPlan);
+            if (guardedPublication && !status.IsCurrentCommittedPhase(in buffPlan, in committed)) continue;
+            if (localHomeChanged) combat.PublishSourceLocalHome(in home);
+            if (guardedPublication && !status.IsCurrentCommittedPhase(in buffPlan, in committed)) continue;
+            if (curedWetStatus) status.PublishSourceWetRemoval(in committed);
+            if (guardedPublication && !status.IsCurrentCommittedPhase(in buffPlan, in committed)) continue;
             if (selfStinky) status.ObserveVisualOffer(before.Handle, in visualOffer);
             if (strike.HasValue) combat.PublishContact(in committed, strike.Value);
             combat.PublishEmotes(in committed, emotes[..emoteCount]);
+            if (guardedPublication && !status.IsCurrentCommittedPhase(in buffPlan, in committed)) continue;
             bool peerForce = socialForcedUpdates.Remove(committed.Handle.Slot, out NpcHandle pendingPeer) &&
                 pendingPeer == committed.Handle;
             if (!force && !peerForce && !strike.HasValue) combat.RetainAcceptedBuffLife(in buffPlan, in committed);
             npcs.TryPublishUpdate(in committed, forceSync: force || peerForce || strike.HasValue);
-            townNpcs.TryUpdatePosition(home.NpcSlot, in committed);
+            if (sourceResident || homePhase.HasValue)
+            { if (!status.IsCurrentCommittedPhase(in buffPlan, in committed)) continue; }
+            else townNpcs.TryUpdatePosition(home.NpcSlot, in committed);
+            combat.PublishLateSourceHome(homePhase);
             states[home.NpcSlot] = committed.Ai.Ai0 == 5f || conditions.ReturnHomeRequested && committed.Ai.Ai0 == 0f &&
                 Math.Abs(BottomTileX(in committed, home.NpcType) - home.HomeTileX) <= 1
                 ? RuntimeTownNpcScheduleState1458.RestingAtHome :
@@ -141,7 +204,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         ReadOnlySpan<RuntimeTownPlayerDanger1458> playerDanger, ReadOnlySpan<NpcSnapshot> peers,
         RuntimeNpcBuffStatus1458 status, RuntimeTownNpcCombat1458 combat,
         Span<RuntimeTownNpcMeleeIntent1458> melee, out NpcStateUpdate update, out bool force,
-        out NpcAiProjectileIntent? projectile, out int meleeCount, out SocialPeerPlan? socialPeer)
+        out NpcAiProjectileIntent? projectile, out int meleeCount, out SocialPeerPlan? socialPeer,
+        bool? stinkyOverride = null)
     {
         NpcSnapshot combatInput = combat.PlanVitals(in before);
         update = default;
@@ -149,10 +213,11 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         projectile = null;
         meleeCount = 0;
         socialPeer = null;
-        if (!VanillaTownNpcFacts1458.TryGetHousingCategory(home.NpcType, out int category) || category != VanillaTownNpcFacts1458.OrdinaryHousingCategory ||
-            before.Simulation.Wet || before.Ai.Ai0 == 14f ||
+        bool sourceResident = OwnsTransformResidentContinuation(in before);
+        if (!VanillaTownNpcFacts1458.TryGetHousingCategory(home.NpcType, out int category) || category != VanillaTownNpcFacts1458.OrdinaryHousingCategory && !IsYellowTownSlime(home.NpcType) ||
+            before.Simulation.Wet && !sourceResident || before.Ai.Ai0 == 14f ||
             before.Ai.Ai0 == 24f && before.TypeIdentity != VanillaNpcIds.Dryad ||
-            VanillaWorldCollision.TryGetWetContact(tiles, before.PositionX, before.PositionY,
+            !sourceResident && VanillaWorldCollision.TryGetWetContact(tiles, before.PositionX, before.PositionY,
                 GetWidth(home.NpcType), GetHeight(home.NpcType), out _)) return false;
         if (before.Handle.Slot >= TerrariaNpcTalkCodec.MaximumNpcSlots ||
             !TryPlanHomePrelude(in combatInput, in home, in conditions, players, out var homeInput,
@@ -160,6 +225,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             !status.TryGetStinky(before.Handle, out bool selfStinky)) return false;
         if (!combat.AdmitsContactBeforeWorldEffects(in homeInput, peers)) return false;
         force |= homeForce;
+        if (stinkyOverride.HasValue) selfStinky = stinkyOverride.Value;
         bool attackExempt = homeInput.Ai.Ai0 is 10f or 12f or 14f or 15f or 24f;
         RuntimeTownPlayerConversation1458? talker = null;
         if (!attackExempt)
@@ -216,6 +282,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         }
         else if (!TryPlanResidentPose(in staged, home.NpcType, conversations, out update, out bodyForce)) return false;
         force |= bodyForce;
+        if (staged.Ai.Ai0 is not (0f or 1f)) update = FinishSlimeSwimming(in update, ref force);
         if (!activeTalk || danger.WithinRange)
         {
             bool attackEligibleState = update.Ai.Ai0 is 0f or 1f or 8f;
@@ -223,6 +290,16 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     conditions.PartyIsUp, ref socialPeer,
                     out update, out bool offerForce)) return false;
             force |= offerForce;
+            if (IsYellowTownSlime(home.NpcType) && !danger.WithinRange)
+            {
+                float x = update.PositionX, y = update.PositionY, vx = update.VelocityX, vy = update.VelocityY;
+                int direction = update.Simulation.DirectionX;
+                var ai = update.Ai; var local = update.Simulation.LocalAi;
+                TryOfferWalkingFurniture(in staged, home.NpcType, seatedPlayers,
+                    ref x, ref y, ref vx, ref vy, ref direction, ref ai, ref local, ref force);
+                update = update with { PositionX = x, PositionY = y, VelocityX = vx, VelocityY = vy, Ai = ai,
+                    Simulation = update.Simulation with { DirectionX = direction, LocalAi = local } };
+            }
             if (!TryPlanNurseAdmission(before.Handle, in update, peers, out update, out bool nurseForce)) return false;
             force |= nurseForce;
             if (!combat.TryPlanAttackInitialization(in before, in update, in danger, activeTalk,
@@ -271,7 +348,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 force = true;
             }
         }
-        else if (ai.Ai0 is 5f or 9f)
+        else if (ai.Ai0 is 5f or 9f || ai.Ai0 == 20f && IsYellowTownSlime(type))
         {
             ai = ai with { Ai1 = ai.Ai1 - 1f };
             if (ai.Ai0 == 5f)

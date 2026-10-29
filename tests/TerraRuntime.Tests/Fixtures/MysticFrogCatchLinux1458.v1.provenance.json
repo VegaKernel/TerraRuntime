@@ -1,0 +1,12 @@
+{
+  "scope": "actual independent original selected CatchNPC or Damage_TryUsingPowders component; no whole Main or Projectile.Update claim",
+  "fixture": "MysticFrogCatchLinux1458.v1.json.gz",
+  "sha256": "9ca85ee4829c86ce110f10b72efe7ab32533298eea5143481177228e0e9dd877",
+  "sources": {
+    ".cache\\transform-interactions\\source-catch-teleport-v1\\qualified-v1-1458-a.json.gz": "34fb78f439a7a29d414093e3b32bb10d2048a2e70b6ad7011bd8522a4053b0f7",
+    ".cache\\transform-interactions\\source-catch-teleport-v1\\qualified-v1-42-a.json.gz": "f03cdb32eb1ff4752f828aca96ee1532bfaf45ba8d9aee8e87a495bb8d7ad67d",
+    ".cache\\transform-interactions\\source-catch-teleport-v1\\qualified-v1-8675309-a.json.gz": "41031fe3a58294ce8bbbd916adf0bd7c44b2f5c3857f08057de9b5f4b775d18e"
+  },
+  "qualification": ".cache\\transform-interactions\\source-catch-teleport-v1\\qualification-v1.json",
+  "qualificationSha256": "cd2b53c58fe6e8701038dbba04916d5c8e2b3b3d46ce42eeb3829856c22e4657"
+}

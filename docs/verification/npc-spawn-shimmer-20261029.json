@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "status": "Bounded packet23 component qualified on diagnostic07; aggregate not accepted.",
+  "source": "Official1458 NetMessage.SendData23 bitsByte29[4]=spawnNeedsSyncing && shimmerTransparency>0. SourceSetDefaults/Transform retain existingShimmerTransparency.",
+  "sourceCaptureProvenance": {
+    "path": "tests/TerraRuntime.Tests/Fixtures/NpcSpawnShimmerFlagsLinux1458.v1.provenance.json",
+    "sha256": "0926dc8c8ffff0442079c55dbf426bc8ab5e697017ff0d17f70c81def010d6c8"
+  },
+  "fixtureCases": {
+    "total": 24,
+    "zero": 6,
+    "positive": 18
+  },
+  "normalClass": "NpcSpawnShimmer1458Tests",
+  "normalCaseCount": 31,
+  "changedSourceFiles": {
+    "src/TerraRuntime.Protocol/TerrariaNpcUpdateState.cs": "3a76af32a95695aa3c4f062c9671da558b201ca56524ff64888ac601d05ca036",
+    "src/TerraRuntime.Application/RuntimeNpcPacketProjection.cs": "bb4b9cb89d560e4dbd20272916c2fd2c32eb06bec4d22f8dfd715559a33885fd",
+    "src/TerraRuntime.Protocol.Multiplicity/TerrariaNpcUpdateEncoder.cs": "ba7b3492fd8c52018f0bdc4726ffba76cf7f0147846c1e6403d3ca6678bcbedd"
+  },
+  "representation": "TypedSpawnShimmered positivefact retained independently ofpendingbirth, becauseexistingcatchjournal suppliespendingflagafterprojection. CodecgateusesFINALSpawnNeedsSyncing andexistingMultiplicity.HasShimmerTransparency16, noextraFloatpayload/newSimulationfield/RNGowner.",
+  "controls": "Pendingfalse/positivezero/strictlypositiveincludingepsilon;combinedstatue+difficulty+birth flags;noextra payload length. Unknownlegacyfalse kept explicitlyunqualified.",
+  "scopeLimit": "Packet23 only; no positiveShimmer AI/fullparity claim. Unknown nullable transparency remains legacy false and is unqualified. No old02App into changed07 Protocol constructor replay.",
+  "qualifiedRuntimeClosure": {
+    "gate": ".cache/transform-app/diagnostic07",
+    "testDllSha256": "31622e0e72d74a90a1b4a592a0e8ce674564f2d38fc7ee2f5a4bd02b22ec2a75",
+    "encoderDllSha256": "1bd4fa68a698a893ff272fd04c26f5b00694ff51303c5ace287a9984586480b2",
+    "sourceInputCount": 4204,
+    "closureFileCount": 198,
+    "dllCount": 158,
+    "sourceManifest": {
+      "path": ".cache/transform-app/diagnostic07/source-before.json",
+      "sha256": "593005b33429112c092a8c94a14dc6e2244abfe1c5727a336dd4d93fb60f64af"
+    },
+    "dllManifest": {
+      "path": ".cache/transform-app/diagnostic07/bin-pins.json",
+      "sha256": "6587a210f55a89529edf12934961b249aecaf065c2d6345d30fa96062c08ea97"
+    },
+    "focusedXml": {
+      "path": ".cache/transform-app/diagnostic07/focused.xml",
+      "sha256": "c323ac5f3f8593560371f905ebceb165907bb671c71285e51ac7d9cba8ead06b"
+    },
+    "selectedCases": 31,
+    "passed": 31,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "causal": {
+    "componentAccepted": true,
+    "record": {
+      "path": ".cache/transform-interactions/causal-shimmer07-old06-multiplicity/result.json",
+      "sha256": "bf07e77a966b18a035d91f51bb608f4920349454f19633b8b32ca414a1b925b3"
+    },
+    "testDllUnchanged": true,
+    "runtimeHybrid": "Current07 complete closure except ONLY actual06 Protocol.Multiplicity encoder DLL. Current07 App and Protocol retained; no incompatible old constructor replay. This is not the whole06 runtime.",
+    "currentBaseline": {
+      "passed": 31,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "oldEncoder": {
+      "passed": 10,
+      "assertionFailed": 21,
+      "errors": 0,
+      "skipped": 0
+    },
+    "detected": "18 positive source literal packets +2 positive condition rows +1 combined-flags assertion. Other10 controls pass.",
+    "actual06EncoderSha256": "5003d2d81e229306f33be0290b67b09fbc51eaebd10566069cfe99fdb16cfd43",
+    "all4204SourceAnd198CanonicalPinsUnchanged": true,
+    "loaderErrorsNeverCausal": true
+  }
+}

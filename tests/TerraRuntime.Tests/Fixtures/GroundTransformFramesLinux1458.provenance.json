@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "acceptedOriginalComponent": true,
+  "runtimeAdapted": false,
+  "aggregateAccepted": false,
+  "originalCallsPerRepeat": 2874,
+  "repeats": 2,
+  "promotedCases": 2442,
+  "ownedTypes": [
+    198,
+    199,
+    230,
+    532,
+    534,
+    586,
+    593,
+    687
+  ],
+  "sourceOnlyEndpointTypes": [
+    55,
+    57,
+    441,
+    465,
+    592,
+    683
+  ],
+  "sourceOnlyEndpointCases": 432,
+  "pins": {
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\Program.cs": "7d01f3a30ee4331616ea75f81926b86328c5f2a9222dfb8d5363055507abc47e",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\Probe.csproj": "93d3e23257d6c97bc477d3ca28eb0624f6aa9d50f555f84fb4f88985570c69bc",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\bin-isolated\\Probe.deps.json": "d3bff1588b5941235f3fc134ac50f65f65044a7176bd8217e99738189ad15fa2",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\bin-isolated\\Probe.dll": "163f7ec5d1bf651985e59966c21afb853a2d57ea3eccd9a46ef443bd3893b424",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\bin-isolated\\Probe.exe": "db01660973afb5c33b1c55c8064706f0756b2dadb9ae9302f59758977a1d74bf",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\bin-isolated\\Probe.pdb": "68f9d352b6e11fd5a881daffa6bc8e478be660c1bff8c697f9d2780aeeb7bb14",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\bin-isolated\\Probe.runtimeconfig.json": "15fdc36c28c34c76535739b94db191d10bd206106cd96a471d4ae5e259642419",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\NPC.cs": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+    "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\decompiled\\1458\\Terraria\\Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c"
+  },
+  "runs": [
+    {
+      "repeat": "a",
+      "command": [
+        "dotnet",
+        "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\bin-isolated\\Probe.dll",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+        "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\qualified-v1\\original-a.json"
+      ],
+      "exitCode": 0,
+      "path": ".cache/transform-npc-frames/qualified-v1/original-a.json",
+      "sha256": "a30e70d95f78729d60a62b0654ecadd01a567a70a9c10daaa867774c77f5dee7"
+    },
+    {
+      "repeat": "b",
+      "command": [
+        "dotnet",
+        "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\source-v1\\bin-isolated\\Probe.dll",
+        "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\official1458\\server\\1458\\Linux\\TerrariaServer.exe",
+        "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\qualified-v1\\original-b.json"
+      ],
+      "exitCode": 0,
+      "path": ".cache/transform-npc-frames/qualified-v1/original-b.json",
+      "sha256": "a30e70d95f78729d60a62b0654ecadd01a567a70a9c10daaa867774c77f5dee7"
+    }
+  ],
+  "inputsUnchanged": true,
+  "repeatBytesEqual": true,
+  "fixture": {
+    "path": "tests/TerraRuntime.Tests/Fixtures/GroundTransformFramesLinux1458.json.gz",
+    "sha256": "af1e52910a6b7dda325bf1c238d795f7bca3557ea32157c2c294838c4135d3d2"
+  },
+  "scope": "Official1458LinuxassemblyactualinitializedNPC.FindFrameonWindowsCoreCLR, realMain1/2, registeredslot0freshSetDefaultsinputs, allnamednonposefieldsandfullRNGunchanged. NofullAI/physics/parityclaim. Existingfixturesimmutable."
+}

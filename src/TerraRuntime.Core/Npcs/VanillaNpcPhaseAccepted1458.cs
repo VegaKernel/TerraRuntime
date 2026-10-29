@@ -1,44 +1,57 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core.Npcs;
 
-internal interface IVanillaGroundCombatWorld1458 : IVanillaNpcProjectileEnvironment,
-    IVanillaNpcProjectileLineEnvironment, IDisposable
+internal interface IVanillaNpcPhaseWorld1458 : IVanillaNpcProjectileEnvironment,
+    IVanillaNpcProjectileLineEnvironment, IVanillaGroundCritterTerrain1458, IVanillaFishEnvironment1458, IDisposable
 {
     bool IsCurrent { get; }
-    bool TryStageStatus(IVanillaNpcRandom random, out NpcSnapshot staged);
+    GroundCritterDanger1458 Danger { get; }
+    bool ShelterWeather { get; }
+    bool TryStageIgnoreSpamLimitUpdate(bool aiAlreadyRequested);
+    void FindRestingSpot(int homeX, int homeY, bool dayTime, out int x, out int y);
+    bool TryStageStatus(RuntimeNpcStore.AiSpawnPreview preview, IVanillaNpcRandom random, out NpcSnapshot staged);
+    bool TryStageTransform(RuntimeNpcStore.AiSpawnPreview preview, in NpcSnapshot working,
+        NpcTypeId target, in NpcAiState suppliedTransformAi, out NpcSnapshot transformed);
     bool TryStageProjectiles(ReadOnlySpan<NpcAiProjectileIntent> shots);
-    bool TryFinishMotion(in NpcSnapshot before, in NpcStateUpdate ai,
+    bool TryFinishMotion(RuntimeNpcStore.AiSpawnPreview preview, in NpcSnapshot before, in NpcStateUpdate ai,
         in VanillaNpcRawPlayer1458 rawTarget, out NpcStateUpdate final);
+    bool TryPrepareAdoption(in NpcStateUpdate final);
     bool TryAdoptStatus(in NpcSnapshot accepted);
     void PublishStatus();
 }
 
-internal interface IVanillaGroundCombatEnvironment1458
+internal interface IVanillaNpcPhaseEnvironment1458
 {
     bool TryCapture(in NpcSnapshot source, VanillaNpcBehaviorContext context,
-        out IVanillaGroundCombatWorld1458 world);
+        out IVanillaNpcPhaseWorld1458 world);
 }
 
 // Reuses the NPC store's generation/RNG transaction. The ordinary fighter strategy and
 // application collision owner run once on this preview, before any live entropy is adopted.
-internal sealed class VanillaGroundCombatAccepted1458
+internal sealed partial class VanillaNpcPhaseAccepted1458
 {
+    internal static bool SupportsIdentity(NpcTypeId type, NpcNetId net) =>
+        VanillaGroundCombatCohort1458.IsSupported(type, net) || net.Value == type.Value &&
+            (VanillaNpcTransformation1458.IsNewDefinition(type) ||
+             type == VanillaNpcIds.Lihzahrd || VanillaNpcTransformation1458.IsRetainedFish(type));
+
     private RuntimeNpcStore? store;
     private SystemVanillaNpcRandom? random;
-    private IVanillaGroundCombatEnvironment1458? environment;
+    private IVanillaNpcPhaseEnvironment1458? environment;
     private Plan? pending;
     private NpcSnapshot completedBefore, completedAfter;
     private bool completedForce, completedInactive;
     private bool completing;
 
     private sealed record Plan(NpcSnapshot Before, NpcStateUpdate Ai, RuntimeNpcStore.AiSpawnPreview Preview,
-        IVanillaGroundCombatWorld1458 World, VanillaNpcBehaviorContext Context,
+        IVanillaNpcPhaseWorld1458 World, VanillaNpcBehaviorContext Context,
         VanillaNpcTargetCandidate[] Candidates, NpcRawPlayerSlotSnapshot1458[] Players,
         bool Day, bool Eclipse, bool Expert, bool Good, bool Remix, int? Invasion, double Surface, double Width);
 
-    internal void Configure(RuntimeNpcStore owner, IVanillaGroundCombatEnvironment1458 world, IVanillaNpcRandom source)
+    internal void Configure(RuntimeNpcStore owner, IVanillaNpcPhaseEnvironment1458 world, IVanillaNpcRandom source)
     { Cancel(); store = owner; environment = world; random = source as SystemVanillaNpcRandom; }
 
     internal bool HasPlan(in NpcSnapshot before) => pending?.Before == before;
@@ -51,7 +64,7 @@ internal sealed class VanillaGroundCombatAccepted1458
     }
 
     internal bool TryStep(in NpcSnapshot before, in VanillaNpcDefinition definition,
-        VanillaNpcBehaviorContext context, VanillaGroundFighterNpcBehaviorStrategy strategy,
+        VanillaNpcBehaviorContext context, VanillaGroundFighterNpcBehaviorStrategy strategy, VanillaFishNpcBehaviorStrategy fish,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
         // Publication observers may mutate stores, but cannot begin another
@@ -61,7 +74,7 @@ internal sealed class VanillaGroundCombatAccepted1458
         completedForce = completedInactive = false;
         next = default;
         if (store is null || random is null || environment is null ||
-            !VanillaGroundCombatCohort1458.IsSupported(before.TypeIdentity, before.NetIdentity) ||
+            !SupportsIdentity(before.TypeIdentity, before.NetIdentity) ||
             before.Simulation.Life <= 0 || before.Simulation.LifeMax <= 0 ||
             before.Simulation.ShimmerTransparency != 0f || before.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer ||
             !context.HasRawPlayerSlots ||
@@ -89,9 +102,21 @@ internal sealed class VanillaGroundCombatAccepted1458
 
             var detached = new SystemVanillaNpcRandom(preview!.Random);
             Span<NpcAiProjectileIntent> shots = stackalloc NpcAiProjectileIntent[1];
-            if (!world.TryStageStatus(detached, out var staged) ||
-                !strategy.TryStepGroundCombatPreview(in staged, in definition, context, inner, detached, world,
-                    shots, out int count, out var ai) ||
+            if (!world.TryStageStatus(preview, detached, out var staged) ||
+                !VanillaNpcDefinitionCatalog.TryGet(staged.TypeIdentity, staged.NetIdentity, out var workingDefinition))
+                return false;
+            NpcStateUpdate ai;
+            int count = 0;
+            int style = staged.Simulation.AiStyleOverride?.Value ?? workingDefinition.AiStyle.Value;
+            bool stepped = style switch
+            {
+                3 => strategy.TryStepGroundCombatPreview(in staged, in workingDefinition, context, inner, detached,
+                    world, preview, shots, out count, out ai),
+                7 => TryStepGroundCritter(in staged, in workingDefinition, context, world, detached, out ai),
+                16 => fish.TryStepPreview(in staged, in workingDefinition, context, detached, world, out ai),
+                _ => Refuse(out ai)
+            };
+            if (!stepped || !TryFinishCatchProtection(in ai, out ai) ||
                 !RuntimeNpcStore.IsValid(in ai) || !world.TryStageProjectiles(shots[..count])) return false;
             var plan = new Plan(before, ai, preview, world, context, context.Candidates.ToArray(), players.ToArray(),
                 context.DayTime, context.EclipseActive, context.ExpertMode, context.GoodWorld, context.RemixWorld,
@@ -125,8 +150,8 @@ internal sealed class VanillaGroundCombatAccepted1458
             foreach (var player in plan.Players)
                 if (player.Facts.Slot == plan.Ai.Target) { target = player.Facts; break; }
             if (!InputsCurrent(plan) || !target.IsValid || !plan.Preview.IsCurrent(in accepted) ||
-                !plan.World.TryFinishMotion(in before, plan.Ai, in target, out var motion) ||
-                !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out var definition) ||
+                !plan.World.TryFinishMotion(plan.Preview, in before, plan.Ai, in target, out var motion) ||
+                !VanillaNpcDefinitionCatalog.TryGet(new(motion.Type), new(motion.NetId), out var definition) ||
                 !definition.TryResolveHitbox(motion.Simulation, out var body)) return default;
             Span<VanillaNpcRawPlayer1458> players = stackalloc VanillaNpcRawPlayer1458[plan.Players.Length];
             int count = 0;
@@ -134,12 +159,14 @@ internal sealed class VanillaGroundCombatAccepted1458
             if (!VanillaOrdinarySlimeCheckActive1458.TryStep(motion.PositionX, motion.PositionY, body.Width, body.Height,
                     motion.Simulation.TimeLeft, players[..count], out int timeLeft, out bool inactive)) return default;
             var final = motion with { Simulation = motion.Simulation with { TimeLeft = timeLeft } };
-            if (!InputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in final,
+            if (!plan.World.TryPrepareAdoption(in final) || !InputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in final,
                     () => InputsCurrent(plan), out var completed)) return default;
             if (!plan.World.TryAdoptStatus(in completed))
                 throw new InvalidOperationException("An accepted ground combat phase lost a prepared owner without a callback.");
             completedBefore = before; completedAfter = completed;
-            completedForce = plan.Ai.RequiresImmediateSync || motion.RequiresImmediateSync;
+            // Motion includes the collision-time Transform boundary, whose immediate23
+            // can consume requests made earlier in AI. Its resulting offer is authoritative.
+            completedForce = motion.RequiresImmediateSync;
             completedInactive = inactive;
             plan.World.PublishStatus();
             return completed;
@@ -171,4 +198,21 @@ internal sealed class VanillaGroundCombatAccepted1458
 
     private static NpcStateUpdate State(in NpcSnapshot source) => new(source.Type, source.NetId,
         source.PositionX, source.PositionY, source.VelocityX, source.VelocityY, source.Target, source.Ai, source.Simulation);
+
+    private static bool Refuse(out NpcStateUpdate state) { state = default; return false; }
+
+    private static bool TryFinishCatchProtection(in NpcStateUpdate ai, out NpcStateUpdate next)
+    {
+        next = ai;
+        if (!VanillaNpcTransformation1458.HasPhaseCatchProtection(new(ai.Type))) return true;
+        if (ai.Simulation.CatchableNpcTempImmunityCounter is not (>= 0 and <= 90) ||
+            ai.Simulation.ReleaseOwner is not (>= 0 and <= 255)) return false;
+        int counter = ai.Simulation.CatchableNpcTempImmunityCounter.Value;
+        if (ai.Simulation.ReleaseOwner != 255 || ai.Simulation.SpawnedFromStatue) counter = 0;
+        bool friendly = counter > 0;
+        if (counter > 0) counter--;
+        next = ai with { Simulation = ai.Simulation with { Friendly = friendly, CatchableNpcTempImmunityCounter = counter },
+            RequiresImmediateSync = ai.RequiresImmediateSync || friendly != ai.Simulation.Friendly };
+        return true;
+    }
 }

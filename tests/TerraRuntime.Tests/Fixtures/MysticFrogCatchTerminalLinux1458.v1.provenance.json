@@ -1,0 +1,12 @@
+{
+  "fixture": "MysticFrogCatchTerminalLinux1458.v1.json.gz",
+  "sha256": "27311174654cd397c6a412da1a4c6fcb8182a92a19156c48cd6f90ff188bc56c",
+  "qualification": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-interactions\\source-catch-terminal-v1\\qualification-v1-guarded.json",
+  "qualificationSha256": "2f8820dad45f2e988e38d5ec9c653e7a887675d4b35822c03347a72a38eaa343",
+  "sources": {
+    ".cache\\transform-interactions\\source-catch-terminal-v1\\qualified-v1-1458-a.json.gz": "79fc37de77ef2029d7a61c963419ca3c6301d4449b968cecb9c115d265210927",
+    ".cache\\transform-interactions\\source-catch-terminal-v1\\qualified-v1-42-a.json.gz": "d690d1e7049c4fa19c0d9a29ca1815a73585797ba9844426cdb7f79e212ae672",
+    ".cache\\transform-interactions\\source-catch-terminal-v1\\qualified-v1-8675309-a.json.gz": "424e971b3482a099293bbc3081a2c29dadad5889743776e721cb409858635dd7"
+  },
+  "scope": "Actual original unchanged CatchNPC, initialized dedicated all-solid interior, statuefalse/true; six cases/two byte-identical repeats;100 failed search attempts plus semanticPoof offers, fullphysicalRNG+literal23/106. No actualNPC.Update/Main/runtime/Native claim."
+}

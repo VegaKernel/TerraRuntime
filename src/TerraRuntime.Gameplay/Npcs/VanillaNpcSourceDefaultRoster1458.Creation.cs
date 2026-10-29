@@ -11,6 +11,13 @@ public static partial class VanillaNpcSourceDefaultRoster1458
 
     private static readonly CreationRow[] CreationRows =
     [
+        // Existing AI016 identities also need exact SetDefaults when a retained
+        // rain/Blood Moon transform reaches them. This adds scaling metadata,
+        // independently of their already registered lifecycle capabilities.
+        new(55, 20, 18, 16, 5, 0, 0, 1f, .5f, 0f, 0, true, false, false, false, true, false, false, false, false, false, 0),
+        new(57, 18, 20, 16, 100, 30, 6, 1f, 1f, 500f, 0, true, false, false, false, false, false, false, false, false, false, 0),
+        new(465, 18, 20, 16, 110, 31, 7, 1f, 1f, 500f, 0, true, false, false, false, false, false, false, false, false, false, 0),
+        new(592, 20, 18, 16, 5, 0, 0, 1f, .5f, 0f, 0, true, false, false, false, true, false, false, false, false, false, 0),
         new(183, 40, 30, 1, 200, 60, 26, 1.1f, 1f, 400f, 55, false, false, false, false, false, false, false, false, false, false, 0),
         new(34, 26, 28, 10, 40, 35, 6, 1f, 0.2f, 150f, 0, true, true, false, false, false, false, false, false, false, false, 0),
         new(43, 30, 30, 13, 110, 34, 10, 1f, 0f, 350f, 0, true, true, false, false, false, false, false, false, false, false, 0),

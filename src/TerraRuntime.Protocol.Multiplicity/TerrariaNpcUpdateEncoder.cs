@@ -35,6 +35,9 @@ public static class TerrariaNpcUpdateEncoder
             extraFlags |= NpcUpdateExtraFlags.HasDifficultyOverride;
         if (state.SpawnedFromStatue)
             extraFlags |= NpcUpdateExtraFlags.SpawnedFromStatue;
+        // NetMessage.SendData23 bit4 is a spawn marker, not a new transparency payload.
+        if (state.SpawnNeedsSyncing && state.SpawnShimmered)
+            extraFlags |= NpcUpdateExtraFlags.HasShimmerTransparency;
 
         var packet = new NpcUpdate
         {

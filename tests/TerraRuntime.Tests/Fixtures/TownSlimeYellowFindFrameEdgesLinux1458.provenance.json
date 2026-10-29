@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "450682051355751a4c45d2ef6bb3a70d0c360e28179e88ccb3ce4d5bb833599b",
+  "cases": 252,
+  "type": 683,
+  "sourceQualificationPath": ".cache/transform-npc-frames/yellow-edges-qualified-v1/qualification.json",
+  "sourceQualificationSha256": "eda6cc9149e758ed4998dde6e9973a6369af90131b9550d04ee55ac5441d18da",
+  "scope": "ActualFindFrame683 edges only; twoidenticaloriginalrepeats. No runtimeTownAI/admission/wholeNPC claim; existing72baseline immutable."
+}

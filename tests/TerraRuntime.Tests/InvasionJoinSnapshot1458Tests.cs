@@ -12,6 +12,38 @@ namespace TerraRuntime.Tests;
 public sealed class InvasionJoinSnapshot1458Tests
 {
     [Fact]
+    public void Prospective_npc_world_info_uses_live_clock_without_publishing_unadopted_progression()
+    {
+        using var world = CreateWorld();
+        var published = world.CaptureWorldBootstrap();
+        var before = world.WorldProgression.CaptureSnapshot();
+        var prospective = before with { UnlockSlimeYellowSpawn = true };
+        world.WorldClock.Tick();
+        var prepared = world.PrepareNpcInteractionWorldInfo(in prospective);
+        Assert.Equal(7, prepared[2]);
+        Assert.Same(published, world.CaptureWorldBootstrap());
+        Assert.Equal(before, world.WorldProgression.CaptureSnapshot());
+
+        var outbound = Outbound();
+        using var sink = new PlayerBootstrapFrameSink(new PlayerSlotPool(1), outbound, world.BootstrapPackets);
+        sink.SetWorldResponseSource(world.CaptureWorldBootstrap);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
+        Drain(Queue(outbound));
+        Assert.Equal(TerrariaFrameSinkResult.Continue,
+            sink.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
+        Assert.Equal(published.WorldInfoFrame.ToArray(), Drain(Queue(outbound))[0]);
+
+        Assert.True(world.WorldProgression.MarkSlimeYellowSpawnUnlocked());
+        world.RefreshWorldBootstrap();
+        var accepted = world.CaptureWorldBootstrap();
+        Assert.NotSame(published, accepted);
+        Assert.Equal((int)world.WorldClock.Time, accepted.Runtime.Time);
+        Assert.True(accepted.Runtime.ProgressionMutations!.Value.UnlockSlimeYellowSpawn);
+        Assert.Equal(prepared, accepted.WorldInfoFrame.ToArray());
+        Assert.Equal(published.ProgressFrame.ToArray(), accepted.ProgressFrame.ToArray());
+    }
+
+    [Fact]
     public void Actual_connection_world_and_section_requests_send_one_live_7_78_pair_before_sections_and_49()
     {
         using var world = CreateWorld();

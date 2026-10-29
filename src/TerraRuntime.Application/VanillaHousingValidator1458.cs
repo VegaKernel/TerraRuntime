@@ -61,6 +61,8 @@ internal sealed class VanillaHousingValidator1458
     private readonly WorldTileStore tiles;
     private bool truffleUnlocked;
 
+    internal WorldTileStore Tiles => tiles;
+
     public VanillaHousingValidator1458(WorldTileStore tiles) =>
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
 

@@ -14,8 +14,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         ref SocialPeerPlan? partner, Span<SocialEmotePlan> emotes, bool ownsRandomPreview,
         out int emoteCount, out NpcStateUpdate next)
     {
-        next = FinishResidentPresentation(in state);
         emoteCount = 0;
+        if (state.Type == 683) return TryFinishSlimeYellowPresentation(in state, out next);
+        next = FinishResidentPresentation(in state);
         if (!VanillaTownNpcFrameCatalog1458.TryGet(new(state.Type), out int frames, out int extra, out int attack))
         { next = next with { Simulation = next.Simulation with { FrameIndex = null } }; return true; }
         NpcSimulationState simulation = next.Simulation;

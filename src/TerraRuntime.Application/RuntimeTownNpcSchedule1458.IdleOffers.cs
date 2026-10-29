@@ -19,11 +19,12 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         if (body.Ai.Ai0 != 0f || danger.WithinRange || body.Simulation.Wet || body.VelocityY != 0f) return true;
         // Both branches are genuine social offers. A selected offer searches its source context and
         // suppresses later else-if offers even when that search finds no eligible actor.
-        if (random.Next(300) == 0)
+        bool pet = IsYellowTownSlime(source.TypeIdentity);
+        if (!pet && random.Next(300) == 0)
             return TryPlanSocialAdmission(in source, in body, peers, excludePets: false, out next, out force, ref socialPeer);
-        if (random.Next(1800) == 0)
+        if (!pet && random.Next(1800) == 0)
             return TryPlanSocialAdmission(in source, in body, peers, excludePets: true, out next, out force, ref socialPeer);
-        if (random.Next(1200) == 0 && (source.TypeIdentity == VanillaNpcIds.PartyGirl || partyIsUp && VanillaTownNpcDangerCatalog1458.IsPartyAttackType(source.Type)))
+        if (!pet && random.Next(1200) == 0 && (source.TypeIdentity == VanillaNpcIds.PartyGirl || partyIsUp && VanillaTownNpcDangerCatalog1458.IsPartyAttackType(source.Type)))
         {
             TryPlanPlayerOffer(in body, players, conversations, state: 6f, timer: 300f,
                 requireTalkVisibility: false, out next, out force);
@@ -35,7 +36,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 requireTalkVisibility: false, out next, out force);
             return true;
         }
-        if (random.Next(1800) == 0)
+        if (!pet && random.Next(1800) == 0)
         {
             next = body with { Ai = body.Ai with { Ai0 = 2f, Ai1 = 45 * (1 + random.Next(1)) } };
             force = true;

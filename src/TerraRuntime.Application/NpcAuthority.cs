@@ -16,6 +16,10 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal sealed partial class NpcAuthority
 {
+    internal void BindNpcInteractionWorldInfoSource(
+        Func<RuntimeWorldProgressionMutationSnapshot, byte[]?> prepareWorldInfo, Action worldStateAdopted) =>
+        townNpcAuthority.BindNpcInteractionWorldInfoSource(prepareWorldInfo, worldStateAdopted);
+
     internal void BindSpecificLootWorldSource(Func<bool?> source) => combat.BindSpecificLootWorldSource(source);
     private readonly PlayerAuthority players;
     private readonly RuntimePlayerSnapshotLookup playerSnapshots;
@@ -168,6 +172,7 @@ internal sealed partial class NpcAuthority
         npcBuffListChanged = PublishNpcBuffList;
         npcBuffStatus = new RuntimeNpcBuffStatus1458(npcs, npcBuffListChanged);
         npcReplication?.BindNpcBuffStatus(npcBuffStatus);
+        npcReplication?.BindHistoricalStateSource(npcs);
 
         aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles, npcReplication, npcReplication,
             sourceSpawnCycle: sourceSpawnCycle);
@@ -206,9 +211,11 @@ internal sealed partial class NpcAuthority
             expertMode,
             masterMode,
             this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers, npcBuffStatus,
-            townSocialWorldFacts: townSocialWorldFacts);
+            townSocialWorldFacts: townSocialWorldFacts, interactionRawPlayers: rawPlayerSlots,
+            interactionPlayerSnapshots: playerSnapshots);
         mysticFrogCatch = worldTiles is not null
-            ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, playerSnapshots)
+            ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, rawPlayerSlots,
+                this.naturalSpawnRandom as SystemVanillaNpcRandom, npcBuffStatus, npcReplication)
             : null;
         combat = new RuntimeNpcNetworkCombatPipeline(
             npcs,
@@ -338,8 +345,9 @@ internal sealed partial class NpcAuthority
                         playerSnapshots: playerSnapshots),
                     progressionMutations: progression);
                 pirateGhostMotion = worldMotion;
-                vanillaTargeting.SetGroundCombatOwner(npcs, new VanillaGroundCombatEnvironment1458(
-                    worldTiles, npcs, projectiles, npcBuffStatus, worldMotion, CaptureGroundCombatWorldFacts1458, npcReplication));
+                vanillaTargeting.SetNpcPhaseOwner(npcs, new VanillaNpcPhaseEnvironment1458(
+                    worldTiles, npcs, projectiles, npcBuffStatus, worldMotion, CaptureNpcPhaseWorldFacts1458, npcReplication,
+                    _ => CaptureGroundCritterConditions(), CaptureGroundCritterPlayerDanger));
                 gemBunnyLifecycle = new RuntimeGroundCritterLifecycle1458(worldTiles, worldSurfaceTiles, npcs,
                     combat, expertMode, npcReplication, npcBuffStatus, worldMotion);
                 vanillaTargeting.SetGroundCritterOwner(npcs, new VanillaGroundCritterEnvironment1458(worldTiles, npcs,
@@ -1962,7 +1970,8 @@ internal sealed partial class NpcAuthority
 
         if (VanillaNpcCatchCatalog1458.IsMysticFrog(npcType))
         {
-            mysticFrogCatch?.TryApply(npc.Handle, out _);
+            mysticFrogCatch?.TryApply(npc.Handle, out _, () => players.IsCurrent(command.Connection) &&
+                players.TryGet(command.Connection, out var current) && ReferenceEquals(player, current));
             return;
         }
 
@@ -1982,29 +1991,28 @@ internal sealed partial class NpcAuthority
                 !TerraRuntime.Protocol.Multiplicity.TerrariaPoofOfSmokeCodec1458.TryEncode((int)smokeX, smokeY, out var smokeFrame) ||
                 !npcs.TryPrepareCatchRemoval(in npc, out var statueRemoval))
                 return;
+            RuntimeNpcReplicationRegistry.RetainedHistoricalPublication? statuePublication = null;
+            if (npcReplication is not null &&
+                (!npcReplication.TryPrepareCatchPublication(statueRemoval!, [smokeFrame], out statuePublication) ||
+                 !statuePublication!.TrySealRecipients())) return;
             var liveStatueRandom = statueRandom.SourceRandom;
             var statueCheckpoint = liveStatueRandom.Clone();
             var preparedStatueRandom = liveStatueRandom.Clone();
             // Utils.PoofOfSmoke still evaluates these argument expressions on dedicated servers;
             // Gore.NewGore and Dust.NewDust add no server-side draws of their own.
-            int smokeGoreCount = preparedStatueRandom.Next(3, 7);
-            for (int index = 0; index < smokeGoreCount; index++)
-            {
-                _ = preparedStatueRandom.NextDouble();
-                _ = preparedStatueRandom.Next(11, 14);
-            }
-            for (int index = 0; index < 10; index++)
-            {
-                _ = preparedStatueRandom.NextDouble();
-                _ = preparedStatueRandom.NextDouble();
-            }
+            VanillaPoofOfSmoke1458.ConsumeDedicatedSourceOffers(new SystemVanillaNpcRandom(preparedStatueRandom));
             if (!players.IsCurrent(command.Connection) ||
                 !players.TryGet(command.Connection, out var currentStatuePlayer) || !ReferenceEquals(player, currentStatuePlayer) ||
                 !liveStatueRandom.HasSameState(statueCheckpoint) || !statueRemoval!.TryAdoptUnpublished())
                 return;
             liveStatueRandom.CopyStateFrom(preparedStatueRandom);
-            if (statueRemoval.TryPublish())
-                npcReplication?.PublishStatueCatchSmoke(in npc, smokeFrame);
+            if (statuePublication is not null)
+            {
+                if (!statuePublication.TryAdoptRetiredBaseline(npcs, statueRemoval))
+                    throw new InvalidOperationException("A sealed statue catch lost callback-free baseline adoption.");
+                statuePublication.Publish(statueRemoval.TryPublish);
+            }
+            else statueRemoval.TryPublish();
             return;
         }
 
@@ -2098,14 +2106,19 @@ internal sealed partial class NpcAuthority
 
     private bool? CaptureBunnyBloodMoon() => worldClock?.BloodMoonActive;
 
-    private GroundCombatWorldFacts1458 CaptureGroundCombatWorldFacts1458() => new(
+    private NpcPhaseWorldFacts1458 CaptureNpcPhaseWorldFacts1458() => new(
         worldClock is not null, worldClock?.DayTime ?? true, worldClock?.EclipseActive ?? false,
         CaptureDifficulty() >= 2f, worldClock?.GetGoodWorld ?? false, naturalSpawnWorldFacts?.RemixWorld ?? false,
-        invasion is null ? 0 : invasion.TryCapture(out var active) ? active.State.Type : null);
+        invasion is null ? 0 : invasion.TryCapture(out var active) ? active.State.Type : null)
+    {
+        BloodMoon = worldClock?.BloodMoonActive,
+        Raining = worldClock?.Raining,
+        Crimson = naturalSpawnWorldFacts?.Crimson
+    };
 
     private RuntimeTownNpcScheduleConditions1458 CaptureGroundCritterConditions() => new(
         worldClock?.DayTime ?? true, worldClock?.Raining ?? false,
-        naturalSpawnWorldFacts?.Eclipse ?? false, worldClock?.SlimeRainActive ?? false,
+        worldClock?.EclipseActive ?? naturalSpawnWorldFacts?.Eclipse ?? false, worldClock?.SlimeRainActive ?? false,
         // Main.IsItStorming is never refreshed by the dedicated-server audio update.
         StormingAboveSurface: false)
     {

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "kind": "town-slime-yellow-presentation-alias-call-successor",
+  "acceptedPrivateNormalComponent": true,
+  "canonicalXunitAccepted": false,
+  "aggregateAccepted": false,
+  "predecessor": {
+    "path": "docs/verification/town-slime-yellow-presentation-20261029.json",
+    "sha256": "1eeee26c0aca0e6aeadfd0265e8eac30b58fddb33af2e7eeddc792dd6f53e4c4",
+    "unchanged": true,
+    "limitation": "Separate-output324cases didnotqualify actual aliased production call shape."
+  },
+  "sourceCases": 324,
+  "newNormalAssertions": "Eachsameoriginalrow callsbothseparateoutput andin/out samevariable; both mustmatchsourceexpectedposeandallnonposefields. No expectedvalue/fixture changes.",
+  "causalReplay": {
+    "qualification": ".cache/transform-npc-frames/yellow-alias-runtime-v1/qualification.json",
+    "sha256": "73fd0883403808339f86cb912229e4e8a4ef4eb618977eaae40deb99ca7b3d7a",
+    "oldFullCanonical05Application": {
+      "actualXunitAssertionFailures": 324,
+      "errors": 0
+    },
+    "fixedCurrentRootMethodPrivateApplication": {
+      "passed": 324,
+      "errors": 0
+    },
+    "sameTestDll": true,
+    "records": [
+      {
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\yellow-alias-runtime-v1\\old-full05-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\yellow-alias-runtime-v1\\old-full05.json"
+        ],
+        "exitCode": 1,
+        "counts": {
+          "total": 324,
+          "passed": 0,
+          "failed": 324,
+          "errors": 0
+        },
+        "resultSha256": "33758fd0504518c8cc550302a6122afc62142c481360e1e3a046fbe686611570",
+        "appSha256": "44c634fc8dad7735e15c3eef828af4ac928eb8c07d1e158d0633dce77a42dc0d",
+        "testSha256": "e0816ab2d56abb800679e96afb8fe0ba3c37b47beac86ebceb8b49c16cd1e8a3"
+      },
+      {
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\yellow-alias-runtime-v1\\fixed-alias-safe-private-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\yellow-alias-runtime-v1\\fixed-alias-safe-private.json"
+        ],
+        "exitCode": 0,
+        "counts": {
+          "total": 324,
+          "passed": 324,
+          "failed": 0,
+          "errors": 0
+        },
+        "resultSha256": "1c32e3852dbecd9a11c4df045726be3f2052809c3d7da9a557c543ec376853e2",
+        "appSha256": "8dcb80a2fbd028cfe171db23f25d07891a4594b0688c84eaf3b0f347dc08f4cc",
+        "testSha256": "e0816ab2d56abb800679e96afb8fe0ba3c37b47beac86ebceb8b49c16cd1e8a3"
+      }
+    ],
+    "sourcePins": {
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\src\\TerraRuntime.Application\\RuntimeTownNpcSchedule1458.TransformEndpoints.cs": "023cc04b057ca252be83a5c63d146ff01558c17536e85170707ae0275ec6384b",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\src\\TerraRuntime.Application\\GlobalUsings.CoreDomains.cs": "a6c42fe61459128a2259940c124547f77ed5ba2fcfdb4173136a0d98d3eaf2b2",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\TownSlimeYellowPresentation1458Tests.cs": "fe0901439549b22b00714ce14fc5ad5ddb20d54c705036215b7316f283352a2a",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\yellow-edges-qualified-v1\\original-a.json": "9946e60297aa58217adee0b293c9e0bdb6a5f01d67f8a4832e9c4aac85faedb7",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\TownSlimeYellowFindFrameLinux1458.json.gz": "55a3a15cd4a3d522e15792a4d20bc6f1595d3f5a32c645767caaac17174f6e1c"
+    }
+  },
+  "scope": [
+    "ActualAPIaliasboundary onRootstaticmethod; oldcomplete05shippingApp failsonnormalassert, notloadererror. FixedminimalApp retainsactualRootmethod+actualCoreglobalusing. Fullcanonicalfuturebridgepending.",
+    "PureposehelperpreservesJustHit/nonpose. Existingresidentdispatcher also now usesseparateoutlocal; thisrecord alone doesnotqualifydispatcher/wholeNPC/AI/maincohort.",
+    "Original72baseline+252boundaryrows immutable; no sourceoriginalmethodbodies tracked."
+  ]
+}

@@ -23,14 +23,16 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     {
         update = default;
         force = false;
-        if (before.Ai.Ai0 is not (0f or 1f) || before.Simulation.Wet ||
+        bool sourceResident = OwnsTransformResidentContinuation(in before);
+        bool slime = IsYellowTownSlime(home.NpcType);
+        if (before.Ai.Ai0 is not (0f or 1f) || before.Simulation.Wet && !sourceResident ||
             !VanillaTownNpcFacts1458.TryGetHousingCategory(home.NpcType, out int category) ||
-            category != VanillaTownNpcFacts1458.OrdinaryHousingCategory)
+            category != VanillaTownNpcFacts1458.OrdinaryHousingCategory && !slime)
             return false;
 
         int width = GetWidth(home.NpcType), height = GetHeight(home.NpcType);
         // Liquid/drowning navigation and pre-integration lava damage retain their separate admission boundary.
-        if (VanillaWorldCollision.TryGetWetContact(tiles, before.PositionX, before.PositionY,
+        if (!sourceResident && VanillaWorldCollision.TryGetWetContact(tiles, before.PositionX, before.PositionY,
                 width, height, out _))
             return false;
         float x = before.PositionX, y = before.PositionY;
@@ -47,7 +49,13 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         {
             if (selfStinky) ai = ai with { Ai0 = 1f };
             if (local.Ai3 > 0f) local = local with { Ai3 = local.Ai3 - 1f };
-            if (seekShelter)
+            if (slime && before.Simulation.Wet)
+            {
+                ai = ai with { Ai0 = 1f, Ai1 = 700 + random.Next(200), Ai2 = 0f };
+                local = local with { Ai3 = 0f };
+                force = true;
+            }
+            else if (seekShelter)
             {
                 if (myTileX == floorX && myTileY == floorY)
                 {
@@ -60,6 +68,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                         TryPlanForcedSitting(in before, floorX, floorY, home.NpcType,
                             ref x, ref y, ref vx, ref vy, ref direction, ref ai, ref local, ref force);
                     }
+                    if (slime) TryOfferSlimeIdle(vx, 480, ref ai, ref local, ref force);
                 }
                 else
                 {
@@ -72,12 +81,22 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             else
             {
                 vx = vx > .1f ? vx - .1f : vx < -.1f ? vx + .1f : 0f;
+            if (slime && !danger.WithinRange && ai.Ai1 is >= 100f and <= 150f)
+                TryOfferSlimeIdle(vx, 120, ref ai, ref local, ref force);
             if (ai.Ai1 > 0f) ai = ai with { Ai1 = ai.Ai1 - 1f };
             int aheadX = (int)((x + width / 2 + 15 * direction) / 16f);
             int feetY = (int)((y + height - 16f) / 16f);
+            if (sourceResident && before.Simulation.Wet &&
+                new VanillaGroundCritterTerrain1458(tiles).Drowning(x, y, width, height))
+            {
+                ai = ai with { Ai0 = 1f, Ai1 = 200 + random.Next(300), Ai2 = 0f };
+                local = local with { Ai3 = 0f };
+                force = true;
+            }
             if (ai.Ai1 <= 0f)
             {
-                if (!AvoidDryFall(myTileX, floorX, direction, aheadX, feetY))
+                if (!(sourceResident ? AvoidSourceResidentFall(myTileX, floorX, direction, aheadX, feetY, width, height) :
+                    AvoidDryFall(myTileX, floorX, direction, aheadX, feetY)))
                 {
                     ai = ai with { Ai0 = 1f, Ai1 = 200 + random.Next(300), Ai2 = 0f };
                     local = local with { Ai3 = 0f };
@@ -119,8 +138,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             WorldTile bottom = Cell(myTileX, (int)((y + height + 1f) / 16f));
             bool dungeon = bottom.TileType == VanillaTileIds.BlueDungeonBrick ||
                 bottom.TileType == VanillaTileIds.GreenDungeonBrick || bottom.TileType == VanillaTileIds.PinkDungeonBrick;
-            float timer = ai.Ai1 - 1f;
-            if (!dungeon && Math.Abs(myTileX - floorX) > HomeWalkBand &&
+            bool drowning = sourceResident && new VanillaGroundCritterTerrain1458(tiles).Drowning(x, y, width, height);
+            float timer = ai.Ai1 - (drowning ? 0f : 1f);
+            if (!drowning && !dungeon && (!sourceResident || before.Simulation.Homeless == false) && Math.Abs(myTileX - floorX) > HomeWalkBand &&
                 ((x < floorX * 16f && direction == -1) ||
                  (x > floorX * 16f && direction == 1)))
                 timer -= 5f;
@@ -132,9 +152,10 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 force = true;
             }
             TryCloseRememberedDoor(in before, x, y, width, height, direction);
-            float walkSpeed = danger.WithinRange ?
+            float walkSpeed = danger.WithinRange || drowning ?
                 1.5f + (1f - (float)before.Simulation.Life / before.Simulation.LifeMax) * .9f : TownWalkSpeed;
-            float walkAcceleration = danger.WithinRange ? .1f : TownWalkAcceleration;
+            float walkAcceleration = danger.WithinRange || drowning ? .1f : TownWalkAcceleration;
+            if (slime && before.Simulation.Wet) { walkSpeed = 2f; walkAcceleration = .2f; }
             if (vx < -walkSpeed || vx > walkSpeed)
             {
                 if (vy == 0f) { vx *= .8f; vy *= .8f; }
@@ -158,12 +179,24 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             {
                 int aheadX = (int)((x + width / 2 + 15 * direction) / 16f);
                 int feetY = (int)((y + height - 16f) / 16f);
-                bool keepWalking = ShouldKeepWalking(in before, ai.Ai1, x, y, width, height);
-                bool avoidFall = AvoidDryFall(myTileX, floorX, direction, aheadX, feetY);
+                bool keepWalking = ShouldKeepWalking(in before, ai.Ai1, x, y, width, height) || drowning;
+                bool avoidFall = sourceResident ? AvoidSourceResidentFall(myTileX, floorX, direction, aheadX, feetY, width, height) :
+                    AvoidDryFall(myTileX, floorX, direction, aheadX, feetY);
+                bool escapedWater = false;
+                if (sourceResident && before.Simulation.Wet && drowning && local.Ai3 <= 0f)
+                {
+                    int depth = 0;
+                    for (int up = 0; up <= 10 && Cell(aheadX - direction, feetY - up).LiquidAmount != 0; up++) depth++;
+                    float rise = (depth * 16 + 16) * 2f * .3f;
+                    vy = -Math.Min(26f, (float)Math.Sqrt(rise));
+                    local = local with { Ai3 = x };
+                    avoidFall = true;
+                    escapedWater = true;
+                }
                 int supports = 0;
                 for (int offset = -1; offset <= 1; offset++)
                     if (Solid(Cell((int)((x + width / 2) / 16f) + offset, feetY + 1))) supports++;
-                if (avoidFall && supports <= 2)
+                if (avoidFall && supports <= 2 && !escapedWater)
                 {
                     force |= vx != 0f;
                     avoidFall = false;
@@ -171,8 +204,15 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     ai = ai with { Ai0 = 0f, Ai1 = 50 + random.Next(50), Ai2 = 0f };
                     local = local with { Ai3 = 40f };
                 }
-                if (x == local.Ai3) { direction *= -1; force = true; }
-                local = local with { Ai3 = -1f };
+                if (x == local.Ai3 && !escapedWater)
+                { direction *= -1; force = true; if (sourceResident) local = local with { Ai3 = 180f }; }
+                if (drowning && !escapedWater)
+                {
+                    float cooldown = Math.Min(180f, local.Ai3);
+                    if (cooldown > 0f) cooldown--;
+                    local = local with { Ai3 = cooldown };
+                }
+                else local = local with { Ai3 = -1f };
                 WorldTile ahead = Cell(aheadX, feetY), above = Cell(aheadX, feetY - 1), high = Cell(aheadX, feetY - 2);
                 bool doorOffer = high.IsActive && !high.IsActuated && VanillaTileIds.IsClosedDoor(high.TileType);
                 if (doorOffer && ((random.Next(10) == 0) | seekShelter))
@@ -202,7 +242,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                         if (!HasNavigationObstacle(aheadX - direction * 2, aheadX, feetY - 3, feetY - 1)) { vy = -4.4f; force = true; }
                         else turn = true;
                     }
-                    else if (avoidFall) turn = true;
+                    else if (avoidFall) turn = !escapedWater;
+                    else if (slime && !HasNavigationObstacle(aheadX - direction * 2, aheadX - direction, feetY - 2, feetY - 1))
+                    { vy = -5f; force = true; }
                     if (turn)
                     {
                         if (danger.WithinRange) { vx = 0f; keepWalking = false; ai = ai with { Ai0 = 8f, Ai1 = 240f }; }
@@ -210,6 +252,25 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     }
                     if (keepWalking) { ai = ai with { Ai1 = 90f }; force = true; }
                     if (vy < 0f) local = local with { Ai3 = x };
+                }
+                if (sourceResident && before.Simulation.Wet && vy < 0f) vy *= 1.2f;
+            }
+            else if (slime && !before.Simulation.Wet)
+            {
+                int supports = 0;
+                int centerX = (int)((x + width / 2f) / 16f), feetY = (int)((y + height - 16f) / 16f);
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = 1; dy <= 6; dy++)
+                    {
+                        WorldTile tile = Cell(centerX + dx, feetY + dy);
+                        if (tile.LiquidAmount > 0 || Solid(in tile)) supports++;
+                    }
+                if (supports <= 2)
+                {
+                    force |= vx != 0f;
+                    vx *= .2f;
+                    ai = ai with { Ai0 = 0f, Ai1 = 50 + random.Next(50), Ai2 = 0f };
+                    local = local with { Ai3 = 40f };
                 }
             }
         }
@@ -232,11 +293,12 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 force = true;
             }
         }
-        if (!danger.WithinRange)
+        if (!danger.WithinRange && !slime)
             TryOfferWalkingFurniture(in before, home.NpcType, seatedPlayers,
                 ref x, ref y, ref vx, ref vy, ref direction, ref ai, ref local, ref force);
         update = new NpcStateUpdate(before.Type, before.NetId, x, y, vx, vy, before.Target, ai,
             before.Simulation with { DirectionX = direction, DirectionY = -1, LocalAi = local });
+        update = FinishSlimeSwimming(in update, ref force);
         return true;
     }
 

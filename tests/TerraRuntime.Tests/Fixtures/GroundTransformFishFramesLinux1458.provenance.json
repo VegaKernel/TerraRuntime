@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "originalCallsPerRepeat": 2874,
+  "repeats": 2,
+  "promotedCases": 288,
+  "types": [
+    55,
+    57,
+    465,
+    592
+  ],
+  "sourceQualificationSha256": "b37c4b54eef7efb745bf6feae538b4b23c8baa96aa376f41b619ae714ce13074",
+  "fixtureSha256": "6227805eb36a894ef709733f9af1e311474f75d484c4bec8c7d69a1eb96d9fcb",
+  "scope": "Actual NPC.FindFrame component for four already supported fish endpoints; source-only endpoint subset promoted without modifying earlier2442 fixture. Dedicated rowheight1; no wholeNPC/AI admission claim. Full RNG before/after unchanged percall."
+}

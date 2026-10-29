@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-transform-phase-diagnostic06-explicit-wire-failures",
+  "boundedOwnedProjectionAccepted": false,
+  "representedPhysicalNpcStatusPlayersRngWorldAccepted": true,
+  "completeWireAccepted": false,
+  "strictFullNamedNpcParity": false,
+  "aggregateAccepted": false,
+  "sourceQualifications": [
+    {
+      "path": ".cache/transform-npc-phase/original-v3/qualification.json",
+      "sha256": "08dc20dc0a971270813de82b9d0e6c1a07f15ad223fcc23430dd9f9377844797"
+    },
+    {
+      "path": ".cache/transform-npc-phase/original-history-v3/qualification.json",
+      "sha256": "385e81f79fe6c02150a38b380f686ad501167baf28d8aa1c0936b7d3c88b190e"
+    },
+    {
+      "path": ".cache/transform-npc-phase/original-wet-resident-v1/qualification.json",
+      "sha256": "0ea3ae27799709a7947eae2389229b46630854b6f48787e479a99eb28f0381f8"
+    }
+  ],
+  "runtime": {
+    "capture": {
+      "path": ".cache/transform-npc-phase/runtime-on06-attempt01/capture-result.json",
+      "sha256": "45fde74fb446b29e4eec624eecdf08e440b07cd79628b6ee2021616314f28055"
+    },
+    "comparison": {
+      "path": ".cache/transform-npc-phase/runtime-on06-attempt01/comparison.json",
+      "sha256": "c05e820a883ee513b9f1a18db57803467579d137fc08d77e273e7ea5d1793f7d"
+    },
+    "rawDifferences": {
+      "path": ".cache/transform-npc-phase/runtime-on06-attempt01/comparison-differences.json",
+      "sha256": "cc908018860282447336456a5d9b5a251386b8e3d6e7c1b08cd22e40bf059af5"
+    },
+    "classification": {
+      "path": ".cache/transform-npc-phase/runtime-on06-attempt01/classification-first-v1.json",
+      "sha256": "4fe3d6e6007718af69aca74e1c2cc3aea4559b5b5139777dc8d137fbcf93083c"
+    },
+    "canonicalSourceSnapshot": {
+      "path": ".cache/transform-app/diagnostic06/source-before.json",
+      "sha256": "5f296deeec7f5d6d7e69142444c0d7d74e5cb28734ecaae6d2469e0ad905683a"
+    },
+    "canonicalSourceCount": 4194,
+    "canonicalFileCount": 198,
+    "canonicalDllCount": 158,
+    "counts": {
+      "cases": 399,
+      "setupFailures": 0,
+      "casesWithDifferences": 27,
+      "differences": 585,
+      "comparedPhases": 10752,
+      "unsupportedRefusals": 2016
+    },
+    "guardsUnchanged": true
+  },
+  "remainingWireFailures": [
+    {
+      "contexts": 18,
+      "scope": "Nonzero-shimmer534/687 powder-history1/2/90 across3seeds; immediate component afterNPC.Transform",
+      "fact": "Original packet23 extra bit0x10 is spawnNeedsSyncing && shimmerTransparency>0; owned transparency is .375. Runtime0A lacks this source1A bit. These phases remain unsupported aftercomponent and mustrefuse withoutadoption."
+    },
+    {
+      "contexts": 9,
+      "scope": "Positive-zero-shimmer534?441 powder-history1/2/90 across3seeds",
+      "fact": "All represented NPC,status,players,RNG,world match. Firsttownphase source additionallypublishes exactpacket60 0a003c0000ffffffff01 (home-1,-1/homelesstrue); runtimeomits. Rawcumulativewire differencesremain585total."
+    }
+  ],
+  "separateGreenComponents": {
+    "runtime-hit-on06-attempt01": {
+      "capture": {
+        "path": ".cache/transform-npc-phase/runtime-hit-on06-attempt01/capture-result.json",
+        "sha256": "5f4d2431fadc1ef28d5d645ff69baf67505992feb05fec78fbe427a5e95d7303"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/runtime-hit-on06-attempt01/comparison.json",
+        "sha256": "87de0f70008da8088b00be5237166951f3773a441f8bd8b05011f3e153d3a788"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      }
+    },
+    "runtime-fish-pursuit06": {
+      "capture": {
+        "path": ".cache/transform-npc-phase/runtime-fish-pursuit06/capture-result.json",
+        "sha256": "2a8fc242bc7bebfff4939df10acd9d81f4eaa64539109ed09053a0b4d46c0969"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/runtime-fish-pursuit06/comparison.json",
+        "sha256": "5026601083412cf816fb512a92e0eb21b0a49f4827519e0010c2e4190dd46843"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      }
+    }
+  },
+  "fishPursuitSource": {
+    "path": ".cache/transform-npc-phase/original-fish-pursuit-v2/qualification.json",
+    "sha256": "fba63ac2559c2fb8fdd081ad6d06c09d089520bb49bd5fd17d1638815a0f75ec"
+  },
+  "sourceOnlyDiagnosticFields": {
+    "targetSetFrame": "No retained source ticker field; raw original diagnostic preserved.",
+    "shimmering": "No source visual flag; nonzero transparency contexts must refuse whole phase.",
+    "dontTakeDamageFromHostiles": "No interNPC combat in bounded component; source flag diagnostic retained.",
+    "npcSlots": "No naturalspawn census/time caller in this component; original diagnostic retained.",
+    "takenDamageMultiplier": "No incoming damage in this phase component; diagnostic retained.",
+    "sourceCatchable": "Original static Main table, not runtime snapshot field; constructor policy separately sourcequalified.",
+    "sourceFrameCount": "Original static Main table; independent presentation fixture qualifies row semantics.",
+    "statsScaledPlayers": "Original metadata diagnostic; exact owned resulting life/damage/defense and base values compared."
+  },
+  "scope": [
+    "Actual official initialized NPC.NewNPC?authored bounded preimage?NPC.UpdateNPC compared to realcomposed NpcAuthority.AdvanceWorldTick+TickSimulation. Source spawncycle suppressed; noMain/worldclock/PlayerUpdate/fullProjectileUpdate claim.",
+    "Source allnamed rawfacts preserved. Eight explicit source-only diagnostics remain unrepresented; strictFullfalse. Before-registry Spam is explicitnull, never guessedzero.",
+    "SourceWorldInfo inputs are realcaptured worldfacts; literal7 produced byactualWorldRuntime now matches167bytes exactly. Difficulty comes fromactual originalbirthwitness, not a mode-onlyguess. Actualendpointconnection/camera andpowder-waterpreimagecorrected inprivatecarrier.",
+    "Canonical06 WAE and7059normalcases passed independently; thisrecord honestlypreserves27differentialwirefailures anddoesnotpromote7candidateidentities. Laterfixedclosure mustsupersede withoutrewritingtheseartifacts.",
+    "Fishpursuit companion comparesactualconsumed terrain-derivedtarget.Wet againstexplicitlyauthoredoriginalPlayer.wettrue withmatchingwaterbody. No originalPlayer.Update or rawwet-history ownership claimed."
+  ]
+}

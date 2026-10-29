@@ -20,6 +20,16 @@ internal sealed class RuntimeNpcStateCommitFanout(
         second.NpcStateCommitted(kind, in snapshot);
     }
 
+    public void NpcHistoricalStateCommitted(NpcStateCommitKind kind, in NpcSnapshot checkpoint, in NpcSnapshot committed)
+    {
+        Exception? failure = null;
+        try { first.NpcHistoricalStateCommitted(kind, in checkpoint, in committed); }
+        catch (Exception exception) { failure = exception; }
+        try { second.NpcHistoricalStateCommitted(kind, in checkpoint, in committed); }
+        catch (Exception exception) { failure ??= exception; }
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
     public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false)
     {
         first.NpcVanillaAiStateCommitted(kind, in snapshot, lowPriority);

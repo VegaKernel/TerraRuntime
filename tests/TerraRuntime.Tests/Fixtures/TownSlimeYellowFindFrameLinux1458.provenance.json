@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "55a3a15cd4a3d522e15792a4d20bc6f1595d3f5a32c645767caaac17174f6e1c",
+  "cases": 72,
+  "type": 683,
+  "originalCallsPerRepeat": 2874,
+  "identicalRepeats": 2,
+  "sourceQualificationPath": ".cache/transform-npc-frames/qualified-v1/qualification.json",
+  "sourceQualificationSha256": "b37c4b54eef7efb745bf6feae538b4b23c8baa96aa376f41b619ae714ce13074",
+  "scope": "Actual NPC.FindFrame only for accepted materialized683 endpoint.72 independently repeated pose rows with AI0=0 and originalbody/RNG; no wholeTownAI/lifecycle/defaultadmission claim. Existing2874source capture unchanged; olderfixtures untouched."
+}

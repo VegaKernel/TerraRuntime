@@ -97,7 +97,8 @@ public sealed class NpcSourceDefaultRoster1458Tests
         // ordinary melee identities and twenty-two further ground critters now use
         // their composed generation/RNG phase owners as well. The ground-combat block
         // adds fifteen positive identities and the signed Armored Skeleton variant.
-        Assert.Equal(228, creationOnly);
+        // Four transform fighters and three amphibious critters add seven exact identities.
+        Assert.Equal(221, creationOnly);
     }
 
     [Fact]

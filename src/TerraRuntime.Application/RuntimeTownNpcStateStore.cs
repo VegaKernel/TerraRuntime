@@ -162,13 +162,91 @@ internal sealed class RuntimeTownNpcStateStore
                 // Generic store imports still retain explicitly unknown town metadata.
                 Simulation: NpcSimulationState.Initial with
                 {
-                    TownNpc = VanillaNpcTownFlags1458.TryGet(type, out bool townFlag) ? townFlag : null
+                    TownNpc = VanillaNpcTownFlags1458.TryGet(type, out bool townFlag) ? townFlag : null,
+                    // WorldFile.LoadNPCs restores these source NPC-local fields after SetDefaults.
+                    HomeTileX = npc.HomeTileX,
+                    HomeTileY = npc.HomeTileY,
+                    Homeless = npc.Homeless
                 });
             if ((uint)slot > byte.MaxValue || !npcStore.TrySpawn(checked((byte)slot), in update, out _))
                 return false;
         }
 
         return true;
+    }
+
+    // The selected resident phase owns the same NPC-local home as this persistence owner.
+    // Validate first; the short callback-free adoption updates both owners before any observer runs.
+    internal bool TryPrepareClientHomeChange(in NpcSnapshot before, TerrariaNpcHomeStatus status,
+        int requestedX, int requestedY, VanillaHousingValidator1458 validator,
+        out ClientHomeChange? preparation)
+    {
+        preparation = null;
+        if (before.Type is not (441 or 683) || residentNameOwner is null ||
+            !residentNameOwner.TryGet(before.Handle, out var current) || current != before ||
+            !residentNameHandles.TryGetValue(before.Handle.Slot, out var retained) || retained != before.Handle ||
+            !TryGetEligible(before.Handle.Slot, out var resident, out var type) || resident.NetId != before.NetId ||
+            status is not (TerrariaNpcHomeStatus.None or TerrariaNpcHomeStatus.Homeless)) return false;
+        var roster = townNpcsBySlot.ToArray();
+        var rooms = CaptureTownRooms();
+        var tiles = validator.Tiles;
+        var versions = new long[tiles.Dimensions.SectionCount];
+        for (int i = 0; i < versions.Length; i++)
+        {
+            versions[i] = tiles.GetSectionVersion(TerrariaSectionGeometry.FromLinearIndex(tiles.Dimensions, i));
+            if ((versions[i] & 1L) != 0) return false;
+        }
+        bool kicked = status == TerrariaNpcHomeStatus.Homeless;
+        int x = resident.HomeTileX, y = resident.HomeTileY;
+        if (!kicked)
+        {
+            if (!IsInWorld(requestedX, requestedY)) return false;
+            var placement = validator.Validate(requestedX, requestedY, type, CaptureOccupantsExcept(before.Handle.Slot));
+            if (!placement.IsValid || placement.HomeTileX > short.MaxValue || placement.HomeTileY > short.MaxValue) return false;
+            x = placement.HomeTileX; y = placement.HomeTileY;
+        }
+        var next = resident with { Homeless = kicked, HomeTileX = x, HomeTileY = y,
+            HomelessDespawn = kicked ? resident.HomelessDespawn : false };
+        var commit = new RuntimeTownNpcHomeCommit(before.Handle.Slot, type, x, y,
+            kicked ? TerrariaNpcHomeStatus.Homeless : TerrariaNpcHomeStatus.HasRoom);
+        preparation = new(this, before, roster, rooms, tiles, versions, next, commit);
+        return preparation.IsCurrent;
+    }
+
+    internal sealed class ClientHomeChange(RuntimeTownNpcStateStore owner, NpcSnapshot before,
+        KeyValuePair<short, WorldTownNpc>[] roster, WorldTownRoom[] rooms,
+        WorldTileStore tiles, long[] versions, WorldTownNpc next, RuntimeTownNpcHomeCommit commit)
+    {
+        private bool adopted;
+        public RuntimeTownNpcHomeCommit Commit => commit;
+        public bool IsCurrent => !adopted && owner.residentNameOwner is { } npcs &&
+            npcs.TryGet(before.Handle, out var current) && current == before && IsTownAndTerrainCurrent();
+
+        private bool IsTownAndTerrainCurrent()
+        {
+            if (!owner.townNpcsBySlot.SequenceEqual(roster) || !owner.CaptureTownRooms().SequenceEqual(rooms) ||
+                !owner.residentNameHandles.TryGetValue(before.Handle.Slot, out var retained) || retained != before.Handle)
+                return false;
+            for (int i = 0; i < versions.Length; i++)
+                if (tiles.GetSectionVersion(TerrariaSectionGeometry.FromLinearIndex(tiles.Dimensions, i)) != versions[i]) return false;
+            return true;
+        }
+
+        public bool TryAdopt(in NpcSnapshot accepted)
+        {
+            var expected = before with { Revision = accepted.Revision, Simulation = before.Simulation with
+                { HomeTileX = next.HomeTileX, HomeTileY = next.HomeTileY, Homeless = next.Homeless } };
+            if (adopted || accepted != expected || !IsTownAndTerrainCurrent() || accepted.Handle != before.Handle || accepted.Type != before.Type ||
+                accepted.Revision.Value != before.Revision.Value + 1 || owner.residentNameOwner is not { } npcs ||
+                !npcs.TryGet(accepted.Handle, out var current) || current != accepted ||
+                accepted.Simulation.HomeTileX != next.HomeTileX || accepted.Simulation.HomeTileY != next.HomeTileY ||
+                accepted.Simulation.Homeless != next.Homeless) return false;
+            if (next.Homeless) owner.RemoveRoom(commit.NpcType.Value);
+            else owner.SetRoom(new WorldTownRoom(commit.NpcType.Value, next.HomeTileX, next.HomeTileY));
+            owner.townNpcsBySlot[before.Handle.Slot] = next;
+            adopted = true;
+            return true;
+        }
     }
 
     public bool TryKickOut(short slot, out RuntimeTownNpcHomeCommit commit)
@@ -408,11 +486,50 @@ internal sealed class RuntimeTownNpcStateStore
         return true;
     }
 
+    // NPC.Transform can create multiple residents of the same type in one powder scan.
+    // Their physical slots and actual NPC-local homes remain distinct; existing room-manager
+    // preferences are not cleared by Transform or UpdateHomeTileState.
+    internal bool CanAdoptTransformedResident(in NpcSnapshot snapshot)
+    {
+        if (townNpcsBySlot.Count >= MaximumTownNpcs || townNpcsBySlot.ContainsKey(snapshot.Handle.Slot) ||
+            snapshot.Simulation.TownNpc != true || snapshot.Simulation.Homeless is not bool homeless ||
+            snapshot.Simulation.HomeTileX is not int homeX || snapshot.Simulation.HomeTileY is not int homeY ||
+            !VanillaTownNpcFacts1458.IsHousingEligible(snapshot.TypeIdentity)) return false;
+        return IsInWorld(homeX, homeY) || homeless && homeX == -1 && homeY == -1;
+    }
+
+    internal bool TryAdoptTransformedResident(in NpcSnapshot snapshot, in VanillaTownNpcSpawnIdentity1458 identity)
+    {
+        if (!CanAdoptTransformedResident(in snapshot) || identity.GivenName is null || identity.VariationIndex < 0 ||
+            residentNameOwner is null || !residentNameOwner.TryGet(snapshot.Handle, out var current) || current != snapshot)
+            return false;
+        townNpcsBySlot.Add(snapshot.Handle.Slot, new WorldTownNpc(snapshot.Type, identity.GivenName,
+            snapshot.PositionX, snapshot.PositionY, snapshot.Simulation.Homeless!.Value,
+            snapshot.Simulation.HomeTileX!.Value, snapshot.Simulation.HomeTileY!.Value,
+            identity.VariationIndex, HomelessDespawn: false));
+        residentNameHandles[snapshot.Handle.Slot] = snapshot.Handle;
+        return true;
+    }
+
     public bool TryUpdatePosition(short slot, in NpcSnapshot snapshot)
     {
         if (!townNpcsBySlot.TryGetValue(slot, out WorldTownNpc? npc))
             return false;
         townNpcsBySlot[slot] = npc with { X = snapshot.PositionX, Y = snapshot.PositionY };
+        return true;
+    }
+
+    // UpdateHomeTileState changes the resident's local home, not its room preference or identity.
+    internal bool TryAdoptSourceLocalHome(in NpcSnapshot committed)
+    {
+        if (residentNameOwner is null || !residentNameOwner.TryGet(committed.Handle, out var current) ||
+            current != committed || !residentNameHandles.TryGetValue(committed.Handle.Slot, out var owner) ||
+            owner != committed.Handle || !townNpcsBySlot.TryGetValue(committed.Handle.Slot, out var resident) ||
+            resident.NetId != committed.NetId || committed.Simulation.Homeless is not bool homeless ||
+            committed.Simulation.HomeTileX is not int x || committed.Simulation.HomeTileY is not int y ||
+            !(IsInWorld(x, y) || homeless && x == -1 && y == -1)) return false;
+        townNpcsBySlot[committed.Handle.Slot] = resident with { X = committed.PositionX, Y = committed.PositionY,
+            Homeless = homeless, HomeTileX = x, HomeTileY = y };
         return true;
     }
 

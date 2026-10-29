@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-transform-original-presentation-component",
+  "acceptedOriginalComponent": true,
+  "acceptedPrivateRuntimeComponent": true,
+  "canonicalXunitAccepted": false,
+  "aggregateAccepted": false,
+  "identities": [
+    198,
+    230,
+    532,
+    534,
+    586,
+    593,
+    687
+  ],
+  "materializedEndpoint199": true,
+  "scope": "NPC.FindFrame posecomponent only. No next7runtimeadmission/wholeNPC/Main/GUI/nativeparity claim. ExistingbaselineNPCcode/fixturesremainunchangedoutside2ownedpresentationhelpers.",
+  "original": {
+    "qualificationPath": ".cache/transform-npc-frames/qualified-v1/qualification.json",
+    "qualificationSha256": "b37c4b54eef7efb745bf6feae538b4b23c8baa96aa376f41b619ae714ce13074",
+    "callsPerRepeat": 2874,
+    "identicalRepeats": 2,
+    "fixtureCases": 2442,
+    "fixtureTypes": [
+      198,
+      199,
+      230,
+      532,
+      534,
+      586,
+      593,
+      687
+    ],
+    "endpointSourceOnlyCases": 432,
+    "endpointSourceOnlyTypes": [
+      55,
+      57,
+      441,
+      465,
+      592,
+      683
+    ],
+    "assemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "scope": "Initializedofficial1458LinuxassemblyonWindowsCoreCLR, actualNPC.FindFrame withrealMain1/2; physical56slots/cursorunchanged everycall, allnamednonposefieldsunchanged. Sourcefields retainedraw; no sourcebody/assetsdistributed."
+  },
+  "fixture": {
+    "path": "tests/TerraRuntime.Tests/Fixtures/GroundTransformFramesLinux1458.json.gz",
+    "sha256": "af1e52910a6b7dda325bf1c238d795f7bca3557ea32157c2c294838c4135d3d2"
+  },
+  "privateRuntime": {
+    "qualificationPath": ".cache/transform-npc-frames/runtime-v2/qualification.json",
+    "qualificationSha256": "696a61ed3ab8f25e337336b9c5a463f0937cd55c97ef4431022c55df803b1154",
+    "scope": "Exactnormaltestbodies through minimal privateApp2-source presentation assembly; source2442new +2664oldcombat+542oldcritter rows. Fresh grouped canonicalXunit/wholeNPCphases pending. No hiddennumerics/fixturemutation.",
+    "fixed": {
+      "name": "fixed",
+      "total": 5648,
+      "passed": 5648,
+      "failed": 0,
+      "errors": 0,
+      "failuresByGroup": {},
+      "command": [
+        "dotnet",
+        "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\fixed-bin\\TerraRuntime.Tests.dll",
+        "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\fixed.json"
+      ],
+      "exitCode": 0,
+      "resultSha256": "fd9d72d1d066f72304b04c1dd51685548cafde48fe980cccad4c7023095e7f98",
+      "appSha256": "c965f726a31919da4e785b22d10cba3ee8444203e2e7f00be08688d87c276eb5",
+      "testSha256": "330ca63698925fcb74aecd8187e3e645d7d2aaae122ea3d609741eb05116fb83"
+    },
+    "controls": [
+      {
+        "name": "omit-new-renderers",
+        "total": 5648,
+        "passed": 3206,
+        "failed": 2442,
+        "errors": 0,
+        "failuresByGroup": {
+          "new": 2442
+        },
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\omit-new-renderers-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\omit-new-renderers.json"
+        ],
+        "exitCode": 1,
+        "resultSha256": "09c1d817cc411f254938afa9f085ca2075db5ee246c9859f29b2d291b117d501",
+        "appSha256": "803a9f86e9371fd729511fec2494e31884c798137320dd39bf3e7e5b4b33e60b",
+        "testSha256": "330ca63698925fcb74aecd8187e3e645d7d2aaae122ea3d609741eb05116fb83"
+      },
+      {
+        "name": "omit-swimmer-direction",
+        "total": 5648,
+        "passed": 5558,
+        "failed": 90,
+        "errors": 0,
+        "failuresByGroup": {
+          "new": 90
+        },
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\omit-swimmer-direction-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\omit-swimmer-direction.json"
+        ],
+        "exitCode": 1,
+        "resultSha256": "9a295962a44a4c8ec224b4ec749c8402e76cb296aea27654136dd990fac872fc",
+        "appSha256": "9afe2ff3a778a46f38e39dc74eacfa54df945d8cd6fb66b8c26bc78507385cbf",
+        "testSha256": "330ca63698925fcb74aecd8187e3e645d7d2aaae122ea3d609741eb05116fb83"
+      },
+      {
+        "name": "omit-falling-rotation",
+        "total": 5648,
+        "passed": 5600,
+        "failed": 48,
+        "errors": 0,
+        "failuresByGroup": {
+          "new": 48
+        },
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\omit-falling-rotation-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v2\\omit-falling-rotation.json"
+        ],
+        "exitCode": 1,
+        "resultSha256": "10b8a2ee94afa9fc4f95f99647cfd6cd828c9dd4b91504bd362d57172d8434fb",
+        "appSha256": "9c0cac42f50fcfd16f974586f08e9bd370323ba09e559ad5c5fbbb009e054b29",
+        "testSha256": "330ca63698925fcb74aecd8187e3e645d7d2aaae122ea3d609741eb05116fb83"
+      }
+    ],
+    "references": "Immutableoldfinal02Core/Contracts plusremainingpinnedDLLs; minimalprivateApp2sourcefiles, exactsameprivatenormalTestDLL forallcontrols. ThisdoesnotqualifyfullnewApplicationcomposition.",
+    "originalReferenceClosureStillExact": true,
+    "sourcePins": {
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\src\\TerraRuntime.Application\\VanillaGroundCombatPresentation1458.cs": "7a48fd9fd22e70a1307659bdd88ebae931f63dbd3060d114edf9200418028a3d",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\src\\TerraRuntime.Application\\VanillaGroundCritterPresentation1458.cs": "e43755dfa47f87a07e42527fed068ca468a93ce6c85147de9630f8c3690371b6",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\GroundTransformPresentation1458Tests.cs": "e67cb8f7dad7ffd2f8f5e74061ab04c41d1fe4f2b1912e339c928c7dd35484bf",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\GroundCombatPresentation1458Tests.cs": "16c1a6435c59ace68ebf2ed532cc93a56f1fd718b75303f83c6158ee80ab7930",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\GroundCritterPresentation1458Tests.cs": "ff2dfa60d1bf26fbc6eeb072e1bbf2aa1cb051805cb2c37c908c4864f32c9d92",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\GroundTransformFramesLinux1458.json.gz": "af1e52910a6b7dda325bf1c238d795f7bca3557ea32157c2c294838c4135d3d2",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\GroundCombatFramesLinux1458.json.gz": "fda483b946359f58645b8d0d96e991ca4b978b3374f2b2b45c20026ceb048b03",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\GroundCritterFindFrameLinux1458.json.gz": "668a5c402a352c6faf848d923b0162b8a69b5b1deb64dc46ac342bcd1127bc6a",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd"
+    }
+  },
+  "semantics": [
+    "198generic16rowhumanoid,5348rowhumanoid12counterthreshold;5328rowantlion-familyfacingrules;1998rowtransformationlead-in progresses0..2evenair,then3..7groundcycle.",
+    "586wetposeownsDirectionXfromvelocitysign andfullvelocitylengthcounter;drymotionusesitsown8counterclock.",
+    "230/593groundpose resetsrotation,airframe0accumulatesrotationonlyvy>4; unknownrotationisrefusedwhenconsumed.687reusesactualfrog361/445pose.",
+    "HelpersclearJustHit asretainedouterNPCphasecontract. DirectsourceFindFrameitselfdoesnotclearit; testsqualifyposefieldsandbodypreservation, notwholemethodequality.",
+    "Knownunsupportedhistory/status/worldcasesremainfencedbyownphase; thispresentationcomponentdoesnotgrantnewAI/combat/loot/rescue/transformcapabilities."
+  ],
+  "pending": [
+    "ActualnewcohortNPC/status/motion/rain/Transformmaterializationandjournalintegration",
+    "FreshcanonicalsharedWAE/focusedtestDLLandfullphasecomparison",
+    "Finalclosurecausalrequalification/aggregategates"
+  ]
+}

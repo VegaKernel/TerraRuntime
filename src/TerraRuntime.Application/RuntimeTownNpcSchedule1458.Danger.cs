@@ -40,7 +40,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 int myX = (int)((before.PositionX + width / 2) / 16f);
                 int aheadX = (int)((before.PositionX + width / 2 + 15 * direction) / 16f);
                 int feetY = (int)((before.PositionY + height - 16f) / 16f);
-                if (!AvoidDryFall(myX, home.HomeTileX, direction, aheadX, feetY))
+                if (!(OwnsTransformResidentContinuation(in before) ?
+                    AvoidSourceResidentFall(myX, home.HomeTileX, direction, aheadX, feetY, width, height) :
+                    AvoidDryFall(myX, home.HomeTileX, direction, aheadX, feetY)))
                 {
                     if (ai.Ai0 is 3f or 4f or 16f or 17f)
                         foreach (NpcSnapshot peer in peers)

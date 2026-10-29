@@ -42,7 +42,7 @@ internal sealed class VanillaNpcCheckActiveAiStepper : INpcAiStateStepper, INpcA
         // The retained combat phase runs CheckActive after its final collision/presentation,
         // rather than aging the unchanged speculative placeholder here.
         if (NpcAiStateStepperComposition.FindCapability<VanillaNpcTargetingAiStepper>(inner)?
-                .GroundCombat.HasPlan(in npc) == true) return true;
+                .NpcPhase.HasPlan(in npc) == true) return true;
 
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||

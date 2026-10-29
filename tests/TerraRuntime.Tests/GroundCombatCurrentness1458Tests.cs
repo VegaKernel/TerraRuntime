@@ -91,13 +91,13 @@ public sealed class GroundCombatCurrentness1458Tests
         Assert.True(completed.Handle.IsAssigned);
         Assert.Equal(1, sink.Births);
         Assert.False(nestedAccepted);
-        Assert.False(f.Targeting.GroundCombat.HasPlan(in other));
+        Assert.False(f.Targeting.NpcPhase.HasPlan(in other));
         Assert.True(f.Targeting.RequiresForcedUpdateAfterCompletion(in before, in completed));
         // Refusal is limited to the notification boundary, with no stranded lease.
         Assert.True(f.Targeting.TryStepState(in other, out _));
-        Assert.True(f.Targeting.GroundCombat.HasPlan(in other));
-        f.Targeting.GroundCombat.Cancel();
-        Assert.False(f.Targeting.GroundCombat.HasPlan(in other));
+        Assert.True(f.Targeting.NpcPhase.HasPlan(in other));
+        f.Targeting.NpcPhase.Cancel();
+        Assert.False(f.Targeting.NpcPhase.HasPlan(in other));
     }
 
     [Theory]

@@ -56,8 +56,8 @@ public sealed class GroundRosterDefaults1458Tests
         Assert.Equal(191, fighters);
         Assert.Equal(27, variants);
         Assert.Equal(82, town);
-        Assert.Equal(263, lifecycle);
-        Assert.Equal(37, creationOnly);
+        Assert.Equal(270, lifecycle);
+        Assert.Equal(30, creationOnly);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(624), out var legacyGnome) &&
             legacyGnome.SupportsRuntimeLifecycle);
         Assert.False(VanillaNpcGroundRoster1458.TryGet(new(3), new(-13), out _));
@@ -66,10 +66,31 @@ public sealed class GroundRosterDefaults1458Tests
     }
 
     [Fact]
+    public void Transformation_admission_is_exactly_seven_identities_and_does_not_count_existing_endpoints()
+    {
+        int[] expected = [198, 230, 532, 534, 586, 593, 687];
+        Assert.Equal(expected, Enumerable.Range(1, 755)
+            .Where(type => VanillaNpcTransformation1458.IsNewDefinition(new(type))).ToArray());
+        Assert.Equal(new[] { 230, 593, 687 }, VanillaNpcTransformation1458.GroundCritterTypes
+            .ToArray().Select(type => type.Value).ToArray());
+        foreach (int type in expected)
+        {
+            Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), out var definition));
+            Assert.True(definition.SupportsRuntimeLifecycle);
+            Assert.False(definition.CreationDefaultsOnly);
+            Assert.Equal(type is 198 or 532 or 534 or 586 ? 3 : 7, definition.AiStyle.Value);
+            Assert.True(VanillaNpcAiCoverageCatalog.TryGet(new(type), out var coverage));
+            Assert.False(coverage.FullVanillaAiParity);
+        }
+        foreach (int type in new[] { 55, 57, 199, 441, 465, 592, 683 })
+            Assert.False(VanillaNpcTransformation1458.IsNewDefinition(new(type)));
+    }
+
+    [Fact]
     public void All_original_linux_and_windows_default_contexts_match_independent_numeric_expectations()
     {
         // Original unmodified Linux executable on CoreCLR and Windows x86 executable on Framework4.8:
-        // each captures 300 identities × 32 world-flag profiles × 2 player counts × 8 strengths,
+        // each captures 300 identities Г— 32 world-flag profiles Г— 2 player counts Г— 8 strengths,
         // after invoking original Main.Initialize_TileAndNPCData1 (including its npcCatchable table).
         // No runtime encoder/catalog was used to produce expected after-states.
         foreach (bool windows in new[] { false, true })

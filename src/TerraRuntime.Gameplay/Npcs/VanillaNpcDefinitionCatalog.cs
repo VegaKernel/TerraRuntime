@@ -243,14 +243,15 @@ public static class VanillaNpcDefinitionCatalog
         bool found = TryGetRegistered(type, out definition);
         if (VanillaNpcGroundRoster1458.TryGet(type, new((short)type.Value), out var source))
         {
-            bool nonresidentBunny = VanillaNonresidentGroundCritterCatalog1458.IsSupported(type.Value);
+            bool groundCritter = VanillaNonresidentGroundCritterCatalog1458.IsSupported(type.Value) ||
+                VanillaNpcTransformation1458.TryGetGroundCritterFamily(type, out _);
             definition = source with
             {
                 BehaviorFamily = definition.DefinitionOnly ? VanillaNpcBehaviorFamily.None : definition.BehaviorFamily,
-                PhysicsFamily = nonresidentBunny ? VanillaNpcPhysicsFamily.GenericGround :
+                PhysicsFamily = groundCritter ? VanillaNpcPhysicsFamily.GenericGround :
                     definition.DefinitionOnly ? VanillaNpcPhysicsFamily.None : definition.PhysicsFamily,
                 Role = definition.DefinitionOnly ? source.Role : definition.Role,
-                CreationDefaultsOnly = definition.DefinitionOnly && !nonresidentBunny
+                CreationDefaultsOnly = definition.DefinitionOnly && !groundCritter
             };
             return true;
         }

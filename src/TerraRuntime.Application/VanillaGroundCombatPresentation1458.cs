@@ -21,6 +21,8 @@ internal static class VanillaGroundCombatPresentation1458
         int count = FrameCount(motion.Type);
         if (count == 0 || motion.Simulation.FrameIndex is not { } row ||
             !double.IsFinite(motion.Simulation.FrameCounter)) return false;
+        if (motion.Type is 55 or 57 or 465 or 592)
+            return VanillaGroundCritterPresentation1458.TryFinish(in motion, out final);
         if (motion.Type == 464)
         { final = VanillaGroundCritterAccepted1458.FinishPresentation(in motion); return true; }
 
@@ -29,7 +31,7 @@ internal static class VanillaGroundCombatPresentation1458
         int direction = motion.Simulation.DirectionX;
         float speed = MathF.Abs(motion.VelocityX);
         bool grounded = motion.VelocityY == 0f;
-        if (grounded && direction is -1 or 1 && motion.Type is not (508 or 580 or 582)) sprite = direction;
+        if (grounded && direction is -1 or 1 && motion.Type is not (508 or 532 or 580 or 582)) sprite = direction;
 
         if (IsHumanoid(motion.Type))
         {
@@ -43,8 +45,43 @@ internal static class VanillaGroundCombatPresentation1458
                 timer += motion.Type == 489 ? speed : speed * 2f;
                 timer += motion.Type == 489 ? .5d : 1d;
                 if (row < 2) row = 2;
-                if (timer > (motion.Type == 489 ? 8d : 6d)) { row++; timer = 0d; }
+                if (timer > (motion.Type == 489 ? 8d : motion.Type == 534 ? 12d : 6d)) { row++; timer = 0d; }
                 if (row >= count) row = 2;
+            }
+        }
+        else if (motion.Type == 199)
+        {
+            // The crawler's first three rows finish the transformation even in the air.
+            if (row < 3)
+            {
+                timer++;
+                if (timer > 6d) { timer = 0d; row++; }
+            }
+            else if (grounded)
+            {
+                timer += speed;
+                if (timer > 12d) { timer = 0d; if (++row > 7) row = 3; }
+            }
+        }
+        else if (motion.Type == 586)
+        {
+            if (motion.Simulation.Wet)
+            {
+                if (motion.VelocityX < 0f) direction = -1;
+                else if (motion.VelocityX > 0f) direction = 1;
+                sprite = direction;
+                timer += MathF.Sqrt(motion.VelocityX * motion.VelocityX + motion.VelocityY * motion.VelocityY);
+                timer++;
+                if (timer > 60d) { row++; timer = 0d; }
+                if (row is < 0 or > 1) row = 0;
+            }
+            else if (motion.VelocityX == 0f) { row = 1; timer = 0d; }
+            else
+            {
+                timer += speed;
+                timer += .5d;
+                if (timer > 8d) { row++; timer = 0d; }
+                if (row >= count) row = 0;
             }
         }
         else if (motion.Type is >= 524 and <= 527 or 528 or 529)
@@ -151,7 +188,7 @@ internal static class VanillaGroundCombatPresentation1458
                 if (row >= count - 10 || row < 2) row = 2;
             }
         }
-        else if (motion.Type is 508 or 580 or 582)
+        else if (motion.Type is 508 or 532 or 580 or 582)
         {
             if (!grounded) row = 1;
             else if (motion.VelocityX == 0f) row = 0;
@@ -166,16 +203,17 @@ internal static class VanillaGroundCombatPresentation1458
         }
         else return false;
         final = motion with { Simulation = motion.Simulation with {
-            FrameIndex = row, FrameCounter = timer, SpriteDirection = sprite, JustHit = false } };
+            FrameIndex = row, FrameCounter = timer, DirectionX = direction, SpriteDirection = sprite, JustHit = false } };
         return true;
     }
 
-    private static bool IsHumanoid(int type) => type is 44 or 77 or 104 or 140 or 181 or 185 or 196 or 197 or 489;
+    private static bool IsHumanoid(int type) => type is 44 or 77 or 104 or 140 or 181 or 185 or 196 or 197 or 198 or 489 or 534;
 
     // Main.npcFrameCount 1.4.5.8, independently read from the initialized official assembly.
     private static int FrameCount(int type) => type switch {
         44 or 140 or 197 => 15, 104 or 181 => 16, 196 => 14, 489 or 528 or 529 => 9,
         >= 524 and <= 527 => 8, 536 or 590 or 691 => 3, 464 => 7, 470 or 185 => 12,
         77 => 15, 381 or 382 or 385 => 9, 520 => 8, >= 449 and <= 451 or 481 => 19,
-        452 or 482 => 20, 508 or 580 or 582 => 6, _ => 0 };
+        452 or 482 => 20, 55 or 57 or 465 or 508 or 580 or 582 or 592 => 6,
+        198 => 16, 199 or 532 or 534 => 8, 586 => 14, _ => 0 };
 }

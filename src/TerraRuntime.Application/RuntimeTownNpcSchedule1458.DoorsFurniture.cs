@@ -51,7 +51,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         if (ai.Ai0 != 1f || vy != 0f) return;
         // Source else-if semantics: a successful chair offer roll skips the furniture roll,
         // even if no usable chair exists. These are actual offers, never placeholder RNG burns.
-        if (random.Next(300) == 0)
+        if (!IsYellowTownSlime(type) && random.Next(300) == 0)
         {
             int tileX = (int)((x + GetWidth(type) / 2f) / 16f);
             int tileY = (int)((y + GetHeight(type) - 2f) / 16f);

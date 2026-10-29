@@ -132,7 +132,9 @@ internal sealed class VanillaGroundCritterTerrain1458(WorldTileStore tiles) : IV
     // Collision.DrownCollision(gravDir:1, includeSlopes:true), TerrariaServer 1.4.5.8.
     // It samples a narrow head rectangle and excludes lava/Shimmer without treating actuated tiles
     // as a different liquid container. This is not ordinary body WetCollision.
-    public bool Drowning(float x, float y, int width, int height)
+    public bool Drowning(float x, float y, int width, int height) => Drowning(x, y, width, height, includeSlopes: true);
+
+    internal bool Drowning(float x, float y, int width, int height, bool includeSlopes)
     {
         int sampleWidth = Math.Min(10, width), sampleHeight = Math.Min(12, height);
         float headX = x + width / 2 - sampleWidth / 2, headY = y - 2f;
@@ -147,7 +149,7 @@ internal sealed class VanillaGroundCritterTerrain1458(WorldTileStore tiles) : IV
                 if (tile.LiquidAmount == 0 || tile.LiquidKind is WorldLiquidKind.Lava or WorldLiquidKind.Shimmer)
                     continue;
                 if (ty == top && tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
-                    !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && tile.Shape == 0)
+                    !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && (!includeSlopes || tile.Shape == 0))
                     continue;
                 float empty = (256 - tile.LiquidAmount) / 32f * 2f;
                 float liquidTop = ty * 16 + empty;

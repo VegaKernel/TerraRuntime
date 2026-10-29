@@ -36,6 +36,22 @@ public sealed partial class WorldRuntime
 
     internal void RefreshWorldBootstrap()
     {
+        var snapshot = CreateWorldBootstrap();
+        var previous = Volatile.Read(ref bootstrapSnapshot);
+        if (previous is not null && previous.Runtime == snapshot.Runtime &&
+            previous.Transient == snapshot.Transient && previous.Progress == snapshot.Progress)
+            return;
+        Volatile.Write(ref bootstrapSnapshot, snapshot);
+    }
+
+    // Powder stages its packet7 before adopting NPC/progression state. Encoding a
+    // prospective snapshot must not expose that state to a concurrent joining client.
+    internal byte[] PrepareNpcInteractionWorldInfo(in RuntimeWorldProgressionMutationSnapshot progression) =>
+        CreateWorldBootstrap(progression).WorldInfoFrame.ToArray();
+
+    private WorldBootstrapSnapshot1458 CreateWorldBootstrap(
+        RuntimeWorldProgressionMutationSnapshot? prospectiveProgression = null)
+    {
         bool invasionKnown = Invasion.TryCapture(out var invasion);
         var runtime = new WorldInfoRuntimeState(
             checked((int)Math.Clamp(WorldClock.Time, 0d, int.MaxValue)),
@@ -48,7 +64,7 @@ public sealed partial class WorldRuntime
             ForceHalloweenForToday = WorldClock.HasOwnedSeasonalState ? WorldClock.ForceHalloweenForToday : null,
             ForceXMasForToday = WorldClock.HasOwnedSeasonalState ? WorldClock.ForceXMasForToday : null,
             InvasionType = invasionKnown ? checked((sbyte)invasion.State.Type) : null,
-            ProgressionMutations = WorldProgression.CaptureSnapshot()
+            ProgressionMutations = prospectiveProgression ?? WorldProgression.CaptureSnapshot()
         };
         var transient = new WorldInfoTransientState(WorldClock.PumpkinMoonActive, WorldClock.SnowMoonActive,
             toolBuildingPermission.KnownEventOngoing == true, false, bootstrapSkyblockLowTiles, 0);
@@ -67,10 +83,6 @@ public sealed partial class WorldRuntime
                 progress = new((int)value, invasion.State.SizeStart == 0 ? 1 : invasion.State.SizeStart,
                     checked((sbyte)(invasion.State.Type + 3)), 0);
         }
-        var previous = Volatile.Read(ref bootstrapSnapshot);
-        if (previous is not null && previous.Runtime == runtime && previous.Transient == transient && previous.Progress == progress)
-            return;
-        var snapshot = new WorldBootstrapSnapshot1458(World, runtime, transient, progress);
-        Volatile.Write(ref bootstrapSnapshot, snapshot);
+        return new WorldBootstrapSnapshot1458(World, runtime, transient, progress);
     }
 }

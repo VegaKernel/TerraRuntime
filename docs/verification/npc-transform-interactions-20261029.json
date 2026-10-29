@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "scope": "Bounded original-backed loot/HitEffect, direct powder/catch, historical packet ownership, selected441/683 home command continuity and source packet23 Shimmer bit on diagnostic07. Not full NPC/AI/Shimmer/main-loop/Native compatibility.",
+  "qualifiedRuntimeClosure": {
+    "gate": ".cache/transform-app/diagnostic07",
+    "testDllSha256": "31622e0e72d74a90a1b4a592a0e8ce674564f2d38fc7ee2f5a4bd02b22ec2a75",
+    "applicationDllSha256": "7a4facada4f70b9c0c6e895b6a9c528c3272e02861a172a0d034de0189638d22",
+    "dllCount": 158,
+    "closureFileCount": 198,
+    "sourceInputCount": 4204,
+    "sourceManifest": {
+      "path": ".cache/transform-app/diagnostic07/source-before.json",
+      "sha256": "593005b33429112c092a8c94a14dc6e2244abfe1c5727a336dd4d93fb60f64af"
+    },
+    "dllManifest": {
+      "path": ".cache/transform-app/diagnostic07/bin-pins.json",
+      "sha256": "6587a210f55a89529edf12934961b249aecaf065c2d6345d30fa96062c08ea97"
+    },
+    "focusedXml": {
+      "path": ".cache/transform-app/diagnostic07/focused.xml",
+      "sha256": "c323ac5f3f8593560371f905ebceb165907bb671c71285e51ac7d9cba8ead06b"
+    },
+    "ownSelectedNormalCases": {
+      "Next7SpecificLoot1458Tests": 352,
+      "Next7HitEffects1458Tests": 48,
+      "NpcTransformInteractions1458Tests": 55,
+      "NpcHistoricalProximity1458Tests": 8,
+      "NpcSpawnShimmer1458Tests": 31,
+      "TownClientHomePreparation1458Tests": 8
+    },
+    "ownTotal": 502,
+    "allFocused": {
+      "passed": 7138,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "sourceBackedInputs": [
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/Next7LootHitEffectsLinux1458.v1.provenance.json",
+      "sha256": "88f3bc8c2aba4042bcad58c26f041d11b8b66b11284de61b47c48c197ffd1318"
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/MysticFrogCatchLinux1458.v1.provenance.json",
+      "sha256": "b74d5b0a19415286de51e3bfce45b46a2adf126691f3ee030e9124aba6c325c2"
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/PowderTransformBatchLinux1458.v2.provenance.json",
+      "sha256": "570f43ec7a3b7107dcd4032daf98ce06cee472c9eb2bb4c9bb5512e0b3e43776"
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/MysticFrogCatchTerminalLinux1458.v1.provenance.json",
+      "sha256": "b116eeae65fe8ca858f198ec4dadf0f12356ef671c748d41d89262269ed52a6a"
+    },
+    {
+      "path": "tests/TerraRuntime.Tests/Fixtures/MysticFrogCatchWarmLinux1458.v1.provenance.json",
+      "sha256": "8cd1a4ca48f195e4515c7d7ff1b5f3c40d470217773e2d769395d65313650693"
+    }
+  ],
+  "sourceScopes": {
+    "loot": "Initialized actual original specific-rule resolver and Item.NewItem materialization:288base+11rarepositive rows, all11 reward identities selected. Normal352cases alsochecktables/bodies/prefixes. Not wholedeath.",
+    "hitEffects": "48 actual original HitEffect component rows,7newIDs+592control,3seeds/alive+zeroHP. Gold592/59310/20 semantic offers;687 zeroHP variablePoof, not a fixedcursoroffset.",
+    "powder": "ProperLanguageManager en-US, original categories19/27/resources pinned.9two-slot sourcecontexts/3seeds:duplicate residents physically distinct, sharedcursor and allNPC/status/town/progression adopted beforeobservers. Sourcehead/tails sealedrecipients; silentfinaltown56baseline, no automaticserver56. Literal7 excluded becauseworldidentity/metadata differ; realWorldRuntime prepared/adopted7 equality asserted.",
+    "catch": "9sourcecoldsuccess+3actualwarm3history rows,6terminalall-solid/statuetruefalse rows. Warm normalexecutes3actualruntimeNPCphases fromsameinitialseed andchecksRNG each, not offset. Successactual126visualoffers; terminal233/231/231totaldraws includes100search attempts+actualPoof. Source23oldposition/65newposition; terminal23/106.",
+    "historicalNetwork": "Existing endpoint credits/global clock/pending requests only. Ordinary historical head after phase35 resets recipient credit, next stream90; pending birth also resets global clock, next95. Normal534 netAlways forced before phase35 yields94. Older generations cannot reset a successor clock. Source14defaults only534 netAlways true. No section API: actual534air source section is active at GameUpdateCount0 despite TileSections=false.",
+    "selectedClientHome": "Actual ClientNpcHome command for441/683 validates housing and adopts NPC-local home and Town room preference before callbacks. Existing coordinator kick timeout3600 is armed immediately then nextworldtick3599; room move clears0. Silent join baseline advances existing generation/revision stamp while retaining old-home fields. No immediate60/sourceOldHome acknowledgment from moveRoom/kickOut; subsequent source phase emits its own dirty60. Status2 remains server-only. Other resident command behavior preserved. This is not full SpawnTownNPC relocation parity.",
+    "spawnShimmer": {
+      "path": "docs/verification/npc-spawn-shimmer-20261029.json",
+      "sha256": "22296525438b9fd1961cc7b34f92488de0958293836037b64ac6615315753a3b"
+    }
+  },
+  "causal": {
+    "accepted": true,
+    "record": {
+      "path": ".cache/transform-interactions/causal-historical06-old02/result.json",
+      "sha256": "c3f79abb9b09c3ed7cf4b3a9124b411ea9477797065d4a8a1203a56a81756b08"
+    },
+    "testDllUnchanged": true,
+    "runtimeHybrid": "Actual immutable diagnostic02 Application DLL substituted into diagnostic06 closure; exactly157 other DLLs remain diagnostic06, including unchangedTestDLL. This is NOT a replay of a complete oldshippingclosure.",
+    "oldApplicationDllSha256": "5352b3e696c3b5bd21f38448536f0e1814b52f1d13cd17f6c8c4f1c6c29d87f3",
+    "currentPrivateBaseline": {
+      "passed": 8,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "oldApplicationReplay": {
+      "passed": 3,
+      "assertionFailed": 5,
+      "errors": 0,
+      "skipped": 0
+    },
+    "detected": [
+      "preparedordinaryhistoricalrecipient credit",
+      "preparedpendingbirthglobalclock",
+      "unpreparedhistoricalrecipient credit",
+      "534netAlwaysnormalclock",
+      "534pendingrequestclear"
+    ],
+    "loaderErrorsNeverCounted": true,
+    "sourceAndCanonicalGuardsAtExecution": true
+  },
+  "additionalOriginalProofs": [
+    {
+      "path": ".cache/transform-interactions/source-catch-warm-v1/qualification-v1.json",
+      "sha256": "ac58b6f4342c1c4de936ae762b772b63e0f820f47d98f2f5b6404f2ae3b10bce"
+    },
+    {
+      "path": ".cache/transform-interactions/source-section534-air-v2/qualification.json",
+      "sha256": "3e8a6d9ec549aec2beb40190daf16b51cfdac54b37b8af500cd8c933ee6a3193"
+    },
+    {
+      "path": ".cache/transform-interactions/source-netalways14-v1/qualification.json",
+      "sha256": "74e61a461fb6f6bb368e2b7b084a17e340789825375325ef8bebf0e40ef57ec2"
+    },
+    {
+      "path": ".cache/town-transform-readonly-review/walk-prediction-v1/qualification.json",
+      "sha256": "a20715359d658350ae17717568c77f238c56ca5605398dd5f4ed307a113052ee"
+    }
+  ],
+  "limitations": [
+    "Diagnostic06 positiveShimmer packet mismatch is historical; diagnostic07 shared codec bit and31 normals plus actual old06 encoder omission detect it. PositiveShimmer AI continuation remains explicitly fenced.",
+    "Positive/unknownShimmer AI, respiratoryexhaustion, unavailabletiletransactions retain explicitphasefences.",
+    "Legacyunknownnullabletransparency fallback is unqualified.",
+    "No LinuxNative/fullMain/GUI/wholedeath claim.",
+    "Fullaggregate/Native/TCP acceptance controlledbyroot; thisrecord is scopedcomponentonly."
+  ],
+  "historicalRejectedSetups": [
+    "diagnostic03 normalfixture omitted originalpendingbirth; fixedviaexistingTryRetainPendingBirth, rawsourcebytesunchanged.",
+    "diagnostic05 twohistoricalnormaltests plannedrawInitial state insteadactualmaterializedacceptedstate; fixedpreimage, assertionsunchanged.",
+    "diagnostic05 wet6newtestfixture omittedsourceWet; fixedimport/readback, no entropyoffset/goldenrestamp."
+  ],
+  "historicalRuntimeClosures": [
+    {
+      "gate": ".cache/transform-app/diagnostic06",
+      "testDllSha256": "357d4b81f52d74e0d8624180ccb8539235f44b25b207e18878bd8cf4823ddeb3",
+      "applicationDllSha256": "bd04cb480b1a4f89cd67ba6500df3d15f420a65223a05caab88d546ef270aa07",
+      "dllCount": 158,
+      "closureFileCount": 198,
+      "sourceInputCount": 4194,
+      "sourceManifest": {
+        "path": ".cache/transform-app/diagnostic06/source-before.json",
+        "sha256": "5f296deeec7f5d6d7e69142444c0d7d74e5cb28734ecaae6d2469e0ad905683a"
+      },
+      "dllManifest": {
+        "path": ".cache/transform-app/diagnostic06/bin-pins.json",
+        "sha256": "476268f1cb688587cd279dc4d42783bffcb0b39204ecf963b4794eeb1d1a3347"
+      },
+      "focusedXml": {
+        "path": ".cache/transform-app/diagnostic06/focused.xml",
+        "sha256": "e7e0b46a35e9cead8be7785a907b3a187f83096bba7fb7e3fc0ac12937617ce9"
+      },
+      "ownSelectedNormalCases": {
+        "Next7SpecificLoot1458Tests": 352,
+        "Next7HitEffects1458Tests": 48,
+        "NpcTransformInteractions1458Tests": 41,
+        "NpcHistoricalProximity1458Tests": 8
+      },
+      "ownTotal": 449,
+      "allFocused": {
+        "passed": 7059,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "homeValidationScope": "Six real NPC/Town/terrain stale plan rows assert early currentness refusal. Their post-adoption false result also has a revision guard and is not claimed as an independent postcommit-currentness causal. Two positive timer rows use actual unpublished NPC adoption then Town adoption, single-use plan and real coordinator ticks. Root-owned composed2 command rows and sourceHome12 rows use the real authority; old-closure Home causal is tracked separately by root.",
+  "clientHomeCausal": {
+    "accepted": true,
+    "aggregateAccepted": false,
+    "record": {
+      "path": ".cache/transform-causals/clienthome07-oldmethod/result.json",
+      "sha256": "aafbc05b45b41ea9a76b91a98bc5969572a04bdec7e5301d5f6a8ed64df2aee4"
+    },
+    "scope": "Current07 sameAPI App private control then exactpublished e747 ApplyHome method restoration; samefresh07TestDLL and allother07runtimeDLLs unchanged. Not a fulloldclosure replay.",
+    "unmodifiedPrivateApplication": {
+      "passed": 2,
+      "assertionFailed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "publishedOldMethod": {
+      "passed": 0,
+      "assertionFailed": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "observed": "Both actualClientNpcHome command histories leave NPC-local Homeless=true with old method, while accepted room requires false; tests fail at snapshot equality, before depending on later wire timing.",
+    "sourceAndCanonicalGuards": true,
+    "loaderErrorsNeverCausal": true
+  }
+}

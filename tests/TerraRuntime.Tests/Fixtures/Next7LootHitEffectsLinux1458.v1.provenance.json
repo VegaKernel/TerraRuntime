@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "componentAccepted": true,
+  "aggregateAccepted": false,
+  "scope": "Immutable initialized original component captures; specific resolver/materialization and separate NPC.HitEffect only, no wholedeath or runtime admission claim.",
+  "fixtures": [
+    {
+      "path": "Next7SpecificLootLinux1458.v1.json.gz",
+      "sha256": "63eeb45b06d24fb1724e9ba41dc2757a4a088b9d9ec2bbaed60b4e4702c7f806",
+      "rawSha256": "cc0e37922c58b4e13d397ddda531ccdafc804ceff80cabab6a619b990654c44d"
+    },
+    {
+      "path": "Next7SpecificLootRareLinux1458.v1.json.gz",
+      "sha256": "5b814feaddf0b896c24a997ec45ee999c71e1221d5529ae58eff00bb4253da6b",
+      "rawSha256": "33a683021d0739f34f200c742324549bc951c86f1c951d86d1a50a69de75c4c7"
+    },
+    {
+      "path": "Next7HitEffectsLinux1458.v1.json.gz",
+      "sha256": "906de87d4ec7d8d8a92d884a0b16f830e16ce5e0ca2ae5e1b7460f1a215b3fc4",
+      "rawSha256": "6053ca5a36c6dd33690f6b63ef81bd58d946d3fd4070d4f8c308f78d0c44ce93"
+    }
+  ],
+  "qualificationRefs": {
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\next7-components\\loot\\qualification-v1.json": "8af931b8b86964ce4589bdb6e1d32882f5a34f1fed41ad2c375b6ebfd4230a5a",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\next7-components\\loot-rare-v1\\qualification-rare-v1.json": "ca887c8dae6d902c87be8bdc35a33ade5e879bf16d40b03059c0eeffe3b3887d",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\next7-components\\qualification-v1.json": "4904c5efccd45a4b86e55d3022938d4b04aefab307ffabbbe25014181d295484"
+  }
+}

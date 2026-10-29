@@ -8,6 +8,56 @@ namespace TerraRuntime.Tests;
 
 public sealed class UndeadNetworkCadence1458Tests
 {
+    // Actual source Transform199 after six network phases, three seeds/two repeats:
+    // pending request(s) clear, netSpam remains114 (or24 for low priority only).
+    [Theory]
+    [InlineData("pending-transform", new int[] { })]
+    [InlineData("pending-control", new[] { 31, 61, 91 })]
+    [InlineData("pending-transform-force7", new[] { 31, 61, 91 })]
+    [InlineData("full-transform", new int[] { })]
+    [InlineData("full-control", new[] { 31, 61, 91 })]
+    public void Materialized_transform_clears_requests_without_resetting_or_spending_the_existing_throttle(
+        string scenario, int[] sends)
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        var outbound = Join(replication, 9840);
+        ulong revision = 0;
+        for (int tick = 1; tick <= 6; tick++)
+        {
+            replication.AdvanceAuthoritativeTick();
+            var npc = Npc(++revision);
+            replication.NpcVanillaAiStateCommitted(tick == 1 ? NpcStateCommitKind.Spawn :
+                scenario.StartsWith("pending", StringComparison.Ordinal) ? NpcStateCommitKind.ForcedUpdate :
+                NpcStateCommitKind.Update, in npc);
+        }
+        if (scenario.StartsWith("full", StringComparison.Ordinal))
+        {
+            var requested = Npc(++revision);
+            Assert.True(replication.MarkUndeadLowPriorityNetworkUpdate(in requested));
+        }
+        bool transformed = scenario.Contains("transform", StringComparison.Ordinal);
+        if (transformed)
+        {
+            var accepted = Npc(++revision) with { Type = 199, NetId = 199 };
+            replication.ObserveMaterializedTransform(in accepted);
+            // Transform's immediate23 is separate from UpdateNetworkCode.
+            int before = outbound.QueuedFrames;
+            replication.NpcStateCommitted(NpcStateCommitKind.ForcedUpdate, in accepted);
+            Assert.Equal(before + 1, outbound.QueuedFrames);
+        }
+        for (int tick = 7; tick <= 120; tick++)
+        {
+            replication.AdvanceAuthoritativeTick();
+            var npc = Npc(++revision) with { Type = transformed ? 199 : 201, NetId = (short)(transformed ? 199 : 201) };
+            int before = outbound.QueuedFrames;
+            bool force = tick == 7 && scenario.EndsWith("force7", StringComparison.Ordinal);
+            replication.NpcVanillaAiStateCommitted(force ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update, in npc);
+            Assert.Equal(sends.Contains(tick) ? 1 : 0, outbound.QueuedFrames - before);
+        }
+        Assert.Equal(0, replication.UnsupportedCommits);
+        Assert.Equal(0, replication.RejectedFrames);
+    }
+
     // Independently executed original NPC.UpdateNetworkCode + NetUpdateLowPriority and
     // NetMessage.SendData(23), 120 phases per scenario, repeated on both original editions.
     [Theory]

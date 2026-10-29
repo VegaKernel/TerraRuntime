@@ -10,6 +10,41 @@ internal sealed partial class RuntimeNpcReplicationRegistry
     // store's explicit accepted vanilla AI publication, never by combat/manual state commits.
     private readonly UndeadNetworkState1458[] undeadNetwork = new UndeadNetworkState1458[MaxNpcSlots];
 
+    internal int CaptureNpcPhaseSpam(NpcHandle owner) =>
+        undeadNetwork[owner.Slot].Owner == owner ? undeadNetwork[owner.Slot].Spam : 0;
+
+    internal bool IsNpcPhaseSpamCurrent(NpcHandle owner, int expected) =>
+        (!undeadNetwork[owner.Slot].Owner.IsAssigned || undeadNetwork[owner.Slot].Owner == owner ||
+         undeadNetwork[owner.Slot].Owner.Generation.Value < owner.Generation.Value) &&
+        CaptureNpcPhaseSpam(owner) == expected;
+
+    internal bool TryAdoptNpcPhaseSpamAdjustment(in NpcSnapshot accepted, int expected, int adjustment)
+    {
+        if (adjustment is not (0 or -30) || !IsNpcPhaseSpamCurrent(accepted.Handle, expected))
+            return false;
+        if (adjustment == 0) return true;
+        if (expected < 0) return false;
+        ref var state = ref undeadNetwork[accepted.Handle.Slot];
+        if (state.Owner != accepted.Handle) state = new() { Owner = accepted.Handle };
+        // NetUpdateIgnoreSpamLimit makes this debit before UpdateNetworkCode;
+        // the following accepted phase still owns its usual send/decrement.
+        state.Spam += adjustment;
+        return true;
+    }
+
+    internal void ObserveMaterializedTransform(in NpcSnapshot accepted) => ClearSourceNetworkRequests(in accepted);
+
+    private void ClearSourceNetworkRequests(in NpcSnapshot accepted)
+    {
+        ref var state = ref undeadNetwork[accepted.Handle.Slot];
+        if (state.Owner != accepted.Handle) return;
+        // NPC.SetDefaults (1.4.5.8) clears both pending requests, while netSpam
+        // survives a same-generation Transform. This is not UpdateNetworkCode:
+        // neither its spam decrement nor its phase revision advances here.
+        state.PendingSpamCooldown = false;
+        state.PendingFullSpamCooldown = false;
+    }
+
     private bool IsUndeadNetworkPhaseCurrent(in NpcSnapshot snapshot)
     {
         if (!UsesUndeadNetworkPhase1458(in snapshot))
@@ -48,13 +83,10 @@ internal sealed partial class RuntimeNpcReplicationRegistry
             {
                 state.Spam += 30;
                 send = true;
-                // NetMessage.SendData(23) clears pending requests for spawnNeedsSyncing,
-                // not for an ordinary active NPC packet. A pending request is sticky.
-                if (kind == NpcStateCommitKind.Spawn || snapshot.Simulation.Life <= 0)
-                {
-                    state.PendingSpamCooldown = false;
-                    state.PendingFullSpamCooldown = false;
-                }
+                // The same SendData23 flag4 clears both pending requests and all stream state.
+                // Ordinary active non-netAlways actors retain a pending request across sends.
+                if (SourcePacket23ResetsAll(in snapshot, kind == NpcStateCommitKind.Spawn))
+                    ClearSourceNetworkRequests(in snapshot);
             }
             else
             {
@@ -91,7 +123,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         snapshot.IsActive &&
         (TerraRuntime.Gameplay.Npcs.VanillaNpcGroundRoster1458.IsUndeadRuntimeIdentity(snapshot.TypeIdentity, snapshot.NetIdentity) ||
          VanillaNonresidentGroundCritterCatalog1458.IsSupported(snapshot.Type) && snapshot.Type == snapshot.NetId ||
-         VanillaGroundCombatCohort1458.IsSupported(snapshot.TypeIdentity, snapshot.NetIdentity));
+         VanillaNpcPhaseAccepted1458.SupportsIdentity(snapshot.TypeIdentity, snapshot.NetIdentity));
 
     private struct UndeadNetworkState1458
     {

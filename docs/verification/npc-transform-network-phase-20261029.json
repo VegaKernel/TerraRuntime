@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "lihzahrd-actual-retained-network-transform-phase",
+  "boundedOwnedProjectionAccepted": true,
+  "strictFullNamedNpcParity": false,
+  "aggregateAccepted": false,
+  "source": {
+    "qualification": ".cache/transform-npc-phase/original-transform-hit-v2/qualification.json",
+    "sha256": "8d51b2902b7b0742ed3e04509bd9aad6759305f636a13638ff1264782dadfbf1",
+    "actualOriginalCalls": 768,
+    "casesPerRun": 4,
+    "frames": 32,
+    "seeds": [
+      1458,
+      42,
+      8675309
+    ],
+    "identicalRepeats": 2
+  },
+  "runtime": {
+    "capture": ".cache/transform-npc-phase/runtime-hit-on05-attempt01/capture-result.json",
+    "captureSha256": "507b40b214b126d2c4acd07eb9cdd24754cc5e7d3ecaff3814ec0836e4b34e13",
+    "comparison": ".cache/transform-npc-phase/runtime-hit-on05-attempt01/comparison.json",
+    "comparisonSha256": "cbb4552b37ca52cea69f5d66aae68580c0e2eb697be67aef35950990bd203fd8",
+    "canonicalClosure": "diagnostic05",
+    "counts": {
+      "cases": 12,
+      "setupFailures": 0,
+      "casesWithDifferences": 0,
+      "differences": 0,
+      "comparedPhases": 384,
+      "unsupportedRefusals": 0
+    },
+    "canonicalSourceSnapshotSha256": "1b0d21a1f8ff40059a19550e05447f7bc83d0edab4630026dbd8bdaedf7e4a86",
+    "canonicalSourceSnapshot": ".cache/transform-app/diagnostic05/source-before.json",
+    "actualExistingRegistryImportedPreimage": "NPC198 life220/400,sourceSpam179,pendingSpamfalse,JustHitfalse/true,pendingFullfalse/true,announcedbirth. Directauthoredsourceinput is symmetrictooriginalprobe; no precedingStrikeNPC/callerhistory isclaimed. Existingstore/registry/sharedRNG only. Setupbirthpublicationiscapturedoutsideboundedentry thenrawframehistorybegins; no fabricatedpackets."
+  },
+  "matched": [
+    "All explicitly represented namedNPC fields,20actualstatusslots,rawplayer0/255,full56slotphysicalRNG,worldflags,completeactual23/54/proximityframes.",
+    "SourceSpam/pendingSpam/pendingFull input andall32steps:afterTransform199/JustHitfalse,Spam178,PendingSpamtrue,PendingFullfalse;after32Spam147,true,false.",
+    "SourceTransform clearsoldJustHit/pendingfull; subsequentnetworkattemptlegitimatelyretainsPendingSpam. Oldrequestmustnotrearmfrompre-transformplaceholder."
+  ],
+  "explicitSourceOnlyDiagnosticFields": {
+    "targetSetFrame": "No retained source ticker field; raw original diagnostic preserved.",
+    "shimmering": "No source visual flag; nonzero transparency contexts must refuse whole phase.",
+    "dontTakeDamageFromHostiles": "No interNPC combat in bounded component; source flag diagnostic retained.",
+    "npcSlots": "No naturalspawn census/time caller in this component; original diagnostic retained.",
+    "takenDamageMultiplier": "No incoming damage in this phase component; diagnostic retained.",
+    "sourceCatchable": "Original static Main table, not runtime snapshot field; constructor policy separately sourcequalified.",
+    "sourceFrameCount": "Original static Main table; independent presentation fixture qualifies row semantics.",
+    "statsScaledPlayers": "Original metadata diagnostic; exact owned resulting life/damage/defense and base values compared."
+  },
+  "scope": [
+    "ActualcomposedNpcAuthority.AdvanceWorldTick+TickSimulation withsource-spawncycleSuppression,noWorldClock/PlayerUpdate/fullProjectileUpdate.",
+    "Sameactualcanonical05closure throughout; all198files/158DLL guardsexactbefore/after. Carrier sources/originalinputs/executedcommands pinnedincapture record. No shippingcode or originalbodies copiedintothisrecord.",
+    "SourceOnlydiagnosticfields remaininraworiginal;strictFullfalse andno wholeMain/GUI/native/fullVanilla/cohort/mainpublication claim. New7combinedphase remainsunderqualification."
+  ]
+}

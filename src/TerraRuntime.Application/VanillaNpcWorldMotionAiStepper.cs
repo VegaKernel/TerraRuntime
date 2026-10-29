@@ -9,6 +9,9 @@ namespace TerraRuntime.Application;
 internal readonly record struct VanillaNpcTownCollisionContext1458(
     int HomeTileY, bool DayTime, bool Eclipse, bool InvasionActive);
 
+internal delegate bool VanillaNpcCollisionContinuation1458(in NpcStateUpdate collision,
+    out NpcStateUpdate continued);
+
 /// <summary>
 /// Post-AI authoritative movement for the verified ordinary NPC physics families. This layer also owns the
 /// source-backed King Slime terminal transition and its committed world effects: Slime Rain termination, first-kill
@@ -126,7 +129,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc) ||
             targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc) || targeting.GroundCritter.HasPlan(in npc) ||
-            targeting.GroundCombat.HasPlan(in npc))) ||
+            targeting.NpcPhase.HasPlan(in npc))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -162,8 +165,37 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         return true;
     }
 
+    internal bool TryApplyNpcPhaseWorldMotion(in NpcSnapshot before, in NpcStateUpdate proposed,
+        in VanillaNpcRawPlayer1458 rawTarget, VanillaNpcCollisionContinuation1458 continuation,
+        in VanillaNpcTownCollisionContext1458 home, out NpcStateUpdate next)
+    {
+        // Mid-AI Transform already materialized its new body. AI003's earlier
+        // flag6 still belongs to the incoming actor, before SetDefaults clears JustHit.
+        var working = before with { Type = proposed.Type, NetId = proposed.NetId,
+            PositionX = proposed.PositionX, PositionY = proposed.PositionY,
+            Simulation = proposed.Simulation };
+        var adjusted = proposed;
+        if (!(before.Type == 482 && before.Ai.Ai2 < 0f) &&
+            !TryApplyTerrainMotion(in working, in proposed, out adjusted, rawTarget,
+                before.VelocityX == 0f && !before.Simulation.JustHit))
+        { next = default; return false; }
+        NpcLiquidContactKind effective = proposed.Simulation.HoneyWet == true
+            ? NpcLiquidContactKind.Honey : proposed.Simulation.LiquidContact;
+        if (!TryApplyGravity(tiles, worldSurfaceTiles, in adjusted, out var accelerated, out var gravity, effective) ||
+            !gravity.HasValue)
+        { next = default; return false; }
+        accelerated = accelerated with { Simulation = accelerated.Simulation with
+            { HostileContactImmunity = Math.Max(0, accelerated.Simulation.HostileContactImmunity - 1) } };
+        // NPCID.Sets.TakesDamageFromHostilesWithoutBeingFriendly includes these
+        // exact passive endpoints, independently of the later catch-protection flag.
+        if (accelerated.Simulation.Friendly == true || accelerated.Type is 55 or 230 or 592 or 593 or 687)
+            accelerated = RuntimeTownNpcCombat1458.PlanFriendlyRegeneration(in accelerated);
+        return TryFinishCollision(tiles, in accelerated, gravity.Value.Parameters.Gravity,
+            out next, townContext: home, continuation: continuation);
+    }
+
     internal bool TryApplyTerrainMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next,
-        VanillaNpcRawPlayer1458? rawTarget = null)
+        VanillaNpcRawPlayer1458? rawTarget = null, bool? sourceStuckHopEligible = null)
     {
         if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var selected) &&
             !selected.SupportsRuntimeLifecycle)
@@ -172,7 +204,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             return false;
         }
         NpcStateUpdate aiState = proposed;
-        bool fighterStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
+        bool fighterStuckHopEligible = sourceStuckHopEligible ?? (npc.VelocityX == 0f && !npc.Simulation.JustHit);
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.PhysicsFamily == VanillaNpcPhysicsFamily.None)
@@ -200,9 +232,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.GroundFighter &&
             !(definition.Type == VanillaNpcIds.Psycho && npc.Ai.Ai2 <= 0f) &&
             !(definition.Type == VanillaNpcIds.CreatureFromTheDeep && npc.Simulation.Wet) &&
+            !(VanillaNpcTransformation1458.IsZombieMerman(definition.Type) && npc.Simulation.Wet) &&
             !(definition.Type == VanillaNpcIds.ThePossessed && simulation.NoGravity))
         {
-            bool verifiedFighter = hostileGroundCritter ||
+            bool verifiedFighter = sourceStuckHopEligible.HasValue || hostileGroundCritter ||
                 VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type);
             bool hasFighterProfile = VanillaGroundFighterBehaviorCatalog.TryGet(
                 definition.Type,
@@ -251,6 +284,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             bool skipsDoorPressure = hostileGroundCritter ||
                 definition.Type.Value is 381 or 382 or 449 or 450 or 451 or 452 or 464 or 470 or 481 or 482 or
                     508 or 580 or 582 or 520 or >= 524 and <= 529;
+            skipsDoorPressure |= sourceStuckHopEligible.HasValue && definition.Type.Value is 199 or 532;
             VanillaZombieDoorContactResult doorContact = skipsDoorPressure
                 ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai,
                     velocityY == 0f && simulation.DirectionX != 0 &&
@@ -336,7 +370,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             else hasElevated = aiState.Target < byte.MaxValue && targeting is not null &&
                 targeting.TryGetCandidate((byte)aiState.Target, out elevated);
             if (verifiedFighter &&
-                doorContact.GroundSupported && velocityY == 0f && targeting?.GroundFighterExpertMode == true &&
+                doorContact.GroundSupported && velocityY == 0f &&
+                (targeting?.GroundFighterExpertMode == true || VanillaNpcTransformation1458.IsZombieMerman(definition.Type)) &&
                 ((velocityX < 0f && simulation.SpriteDirection == -1) ||
                  (velocityX > 0f && simulation.SpriteDirection == 1)) &&
                 hasElevated)
@@ -348,6 +383,13 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                         hitboxWidth, hitboxHeight, elevated.CenterX - elevated.Width * .5f,
                         elevated.CenterY - elevated.Height * .5f, (int)elevated.Width, (int)elevated.Height))
                 {
+                    if (VanillaNpcTransformation1458.IsZombieMerman(definition.Type))
+                    {
+                        float difference = aiState.PositionY - targetBottom;
+                        velocityY = difference < 7 * 16f ? -8.8f : difference < 8 * 16f ? -9.2f :
+                            difference < 9 * 16f ? -9.7f : difference < 10 * 16f ? -10.3f :
+                            difference < 11 * 16f ? -10.6f : difference < 14 * 16f ? -11f : 0f;
+                    }
                     bool launch = targetBottom > aiState.PositionY - 6 * 16f;
                     int column = (int)((aiState.PositionX + hitboxWidth * .5f) / 16f);
                     int bottom = (int)((aiState.PositionY + hitboxHeight) / 16f) - 1;
@@ -356,7 +398,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                             (uint)y < (uint)tiles.Dimensions.HeightTiles &&
                             tiles.Get(column, y) is { IsActive: true, IsActuated: false } tile &&
                             VanillaTileIds.IsPlatform(tile.TileType);
-                    if (launch) velocityY = -7.9f;
+                    if (launch && velocityY == 0f) velocityY = -7.9f;
                 }
             }
 
@@ -435,7 +477,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     // NPC.UpdateNPC: AI -> gravity -> GetHurtByOtherNPCs -> collision. Keeping these stages
     // separate permits contact knockback to reach collision in the same accepted NPC revision.
     internal static bool TryApplyGravity(WorldTileStore tiles, double worldSurfaceTiles,
-        in NpcStateUpdate aiState, out NpcStateUpdate next, out VanillaNpcGravityResult? appliedGravity)
+        in NpcStateUpdate aiState, out NpcStateUpdate next, out VanillaNpcGravityResult? appliedGravity,
+        NpcLiquidContactKind? liquidOverride = null)
     {
         appliedGravity = null;
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
@@ -456,7 +499,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 aiState.PositionY,
                 velocityY,
                 simulation.Wet,
-                simulation.LiquidContact,
+                liquidOverride ?? simulation.LiquidContact,
                 tiles.Dimensions.WidthTiles,
                 worldSurfaceTiles,
                 out VanillaNpcGravityResult gravity))
@@ -477,7 +520,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
     internal static bool TryFinishCollision(WorldTileStore tiles, in NpcStateUpdate aiState,
         float gravityAcceleration, out NpcStateUpdate next, bool? fallThroughOverride = null,
-        VanillaNpcTownCollisionContext1458? townContext = null)
+        VanillaNpcTownCollisionContext1458? townContext = null,
+        VanillaNpcCollisionContinuation1458? continuation = null)
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
             !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
@@ -527,6 +571,23 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             out WorldLiquidKind liquidKind);
         NpcLiquidContactKind liquidContact = wet ? MapLiquid(liquidKind) : NpcLiquidContactKind.None;
 
+        if (continuation is not null)
+        {
+            if (simulation.WetCount is not (>= 0 and <= 10) || simulation.LavaWet is null ||
+                simulation.HoneyWet is null || simulation.ShimmerWet is not false ||
+                VanillaWorldCollision.LavaCollision(tiles, aiState.PositionX, aiState.PositionY, hitboxWidth, hitboxHeight))
+            { next = default; return false; }
+            var contact = VanillaWorldCollision.GetLiquidContacts(tiles, aiState.PositionX, aiState.PositionY,
+                hitboxWidth, hitboxHeight);
+            if (contact.Shimmer || contact.Lava) { next = default; return false; }
+            int cooldown = simulation.WetCount.Value;
+            if (simulation.Wet != wet && cooldown == 0) cooldown = 10;
+            if (cooldown > 0) cooldown--;
+            simulation = simulation with { WetCount = cooldown,
+                LavaWet = wet && simulation.LavaWet == true,
+                HoneyWet = wet && (simulation.HoneyWet == true || contact.Honey), ShimmerWet = false };
+        }
+
         if (simulation.Wet && !wet)
             velocityX *= 0.5f;
 
@@ -544,10 +605,26 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         });
         if (definition.AiStyle.Value == 7 && townContext is { } home)
             fallThroughPlatforms = DecideTownPlatformFall(in aiState, hitboxHeight, in home);
+        var collisionState = aiState;
+        if (continuation is not null)
+        {
+            collisionState = aiState with { VelocityX = velocityX, VelocityY = velocityY,
+                Simulation = simulation with { Wet = wet, LiquidContact = liquidContact,
+                    OldVelocityX = oldVelocityX, OldVelocityY = oldVelocityY, CollideX = false, CollideY = false } };
+            if (!continuation(in collisionState, out var continued) || !RuntimeNpcStore.IsValid(in continued) ||
+                !VanillaNpcDefinitionCatalog.TryGet(new(continued.Type), new(continued.NetId), out definition) ||
+                !definition.TryResolveHitbox(continued.Simulation, out hitbox))
+            { next = default; return false; }
+            collisionState = continued;
+            simulation = continued.Simulation;
+            velocityX = continued.VelocityX; velocityY = continued.VelocityY;
+            hitboxWidth = hitbox.Width; hitboxHeight = hitbox.Height;
+        }
+        float oldDryVelocityX = velocityX, oldDryVelocityY = velocityY;
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
-            aiState.PositionX,
-            aiState.PositionY,
+            collisionState.PositionX,
+            collisionState.PositionY,
             velocityX,
             velocityY,
             hitboxWidth,
@@ -557,14 +634,14 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
         float collidedVelocityX = collision.VelocityX;
         float collidedVelocityY = collision.HitCeiling ? 0.01f : collision.VelocityY;
-        bool collideX = oldVelocityX != collidedVelocityX;
-        bool collideY = oldVelocityY != collidedVelocityY;
+        bool collideX = (wet ? oldDryVelocityX : oldVelocityX) != collidedVelocityX;
+        bool collideY = (wet ? oldDryVelocityY : oldVelocityY) != collidedVelocityY;
 
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
         if (wet)
         {
-            float slowdown = liquidKind switch
+            float slowdown = continuation is not null && simulation.HoneyWet == true ? HoneyMovementSpeed : liquidKind switch
             {
                 WorldLiquidKind.Honey => HoneyMovementSpeed,
                 WorldLiquidKind.Shimmer => ShimmerMovementSpeed,
@@ -576,14 +653,18 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             movementY = collideY ? collidedVelocityY : collidedVelocityY * slowdown;
         }
 
-        float oldPositionX = aiState.PositionX;
-        float oldPositionY = aiState.PositionY;
-        float nextPositionX = aiState.PositionX + movementX;
-        float nextPositionY = aiState.PositionY + movementY;
+        float oldPositionX = collisionState.PositionX;
+        float oldPositionY = collisionState.PositionY;
+        float nextPositionX = collisionState.PositionX + movementX;
+        float nextPositionY = collisionState.PositionY + movementY;
         bool stairFall = simulation.StairFall == true || fallThroughPlatforms;
         if (definition.AiStyle.Value == 7 && townContext is { } slopeHome)
+        {
+            if (continuation is not null && simulation.HomeTileY is { } actualHome)
+                slopeHome = slopeHome with { HomeTileY = actualHome };
             stairFall = DecideTownStairFall(tiles, nextPositionX, nextPositionY, hitboxWidth, hitboxHeight,
                 simulation.TownNpc == true, in slopeHome, stairFall);
+        }
         VanillaSlopeCollisionResult slope = VanillaWorldSlopeCollision.Resolve(
             tiles,
             nextPositionX,
@@ -608,7 +689,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             hitboxWidth,
             hitboxHeight);
 
-        next = aiState with
+        next = collisionState with
         {
             PositionX = nextPositionX,
             PositionY = nextPositionY,
@@ -668,8 +749,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
-        if (targeting is not null && targeting.GroundCombat.HasPlan(in before))
-            return targeting.GroundCombat.Complete(in before, in committed);
+        if (targeting is not null && targeting.NpcPhase.HasPlan(in before))
+            return targeting.NpcPhase.Complete(in before, in committed);
         if (targeting is not null && targeting.GroundCritter.HasPlan(in before))
         {
             if (gemBunnyLifecycle is null ||

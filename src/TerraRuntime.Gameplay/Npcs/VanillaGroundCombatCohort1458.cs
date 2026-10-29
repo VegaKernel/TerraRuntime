@@ -24,9 +24,9 @@ public static class VanillaGroundCombatCohort1458
 
     public static bool IsDayDespawnCandidate(NpcTypeId type) =>
         VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeDayDespawnCandidate1458(type) ||
-        type.Value is 385 or 482 or 590 or 381 or 382 or 449 or 450 or 451 or 452 or 481 or 520;
+        type.Value is 385 or 482 or 590 or 381 or 382 or 449 or 450 or 451 or 452 or 481 or 520 or 532 or 534 or 586;
 
     public static int Ai003AmbientBound(NpcTypeId type) => type.Value is
-        77 or 590 or 449 or 450 or 451 or 452 or 481 ? 1000 :
+        586 ? 800 : type.Value is 77 or 590 or 449 or 450 or 451 or 452 or 481 ? 1000 :
         VanillaGroundFighterNpcCatalog.OrdinaryMeleeAi003AmbientBound1458(type);
 }

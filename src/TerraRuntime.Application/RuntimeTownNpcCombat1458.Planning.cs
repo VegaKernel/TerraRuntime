@@ -32,7 +32,7 @@ internal sealed partial class RuntimeTownNpcCombat1458
             LocalAi = body.Simulation.LocalAi with { Ai1 = cooldown } } };
         if (!(eligibleStateOverride ?? next.Ai.Ai0 is 0f or 1f or 8f) || !danger.WithinRange || danger.Stinky ||
             next.VelocityY != 0f || cooldown > 0f) return true;
-        if (!projectile && !melee) return false;
+        if (!projectile && !melee) return source.TypeIdentity == VanillaNpcIds.TownSlimeYellow;
         int average = projectile ? shot.AttackAverageChance : swing.AttackAverageChance;
         // Source rolls before checking the retained target or its final attack-specific LOS/angle.
         if (random.Next(GetAttackChance(average, activeTalk)) != 0) return true;

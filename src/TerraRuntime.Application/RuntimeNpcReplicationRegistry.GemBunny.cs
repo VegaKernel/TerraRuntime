@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Npcs;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
@@ -7,7 +8,14 @@ namespace TerraRuntime.Application;
 internal sealed partial class RuntimeNpcReplicationRegistry
 {
     private readonly GemBunnyHomeStamp[] gemBunnyHomes = new GemBunnyHomeStamp[RuntimeTownNpcStateStore.MaximumTownNpcs];
-    private struct GemBunnyHomeStamp { internal NpcHandle Owner; internal NpcRevision Revision; internal bool Retired; }
+    private struct GemBunnyHomeStamp
+    {
+        internal NpcHandle Owner;
+        internal NpcRevision Revision;
+        internal bool Retired;
+        internal int SourceOldHomeX, SourceOldHomeY;
+        internal bool SourceOldHomeless;
+    }
 
     internal void ObserveGemBunnyHome(NpcStateCommitKind kind, in NpcSnapshot snapshot)
     {
@@ -15,14 +23,22 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         ref var stamp = ref gemBunnyHomes[snapshot.Handle.Slot];
         if (stamp.Owner.IsAssigned && (stamp.Owner.Generation.Value > snapshot.Handle.Generation.Value ||
             stamp.Owner == snapshot.Handle && (stamp.Retired || stamp.Revision.Value > snapshot.Revision.Value))) return;
-        bool cohort = VanillaGroundCritterAi1458.IsSupported(snapshot.Type);
+        bool cohort = HasGroundCritterHome(snapshot.Type);
+        bool townHome = HasQualifiedTownHome(snapshot.Type);
         bool gem = cohort && snapshot.Simulation.AiStyleOverride?.Value != 3;
-        if (stamp.Owner.IsAssigned && (stamp.Owner != snapshot.Handle || kind == NpcStateCommitKind.Despawn || !gem))
+        if (stamp.Owner.IsAssigned && (stamp.Owner != snapshot.Handle || kind == NpcStateCommitKind.Despawn || !gem && !townHome))
             Volatile.Write(ref townHomeBaselineFrames[snapshot.Handle.Slot], null);
         // Retain the last observed revision when a squirrel changes style, so a
         // delayed older AI7 event cannot restore its retired home baseline.
-        if (!cohort && !stamp.Owner.IsAssigned) return;
-        stamp = new() { Owner = snapshot.Handle, Revision = snapshot.Revision, Retired = kind == NpcStateCommitKind.Despawn };
+        if (!cohort && !HasQualifiedSourceHomeHistory(snapshot.Type) && !stamp.Owner.IsAssigned) return;
+        bool sameOwner = stamp.Owner == snapshot.Handle;
+        var old = stamp;
+        // NPC constructor old-home fields survive SetDefaults/Transform and WorldFile.LoadNPCs.
+        // A silent join baseline must not acknowledge an UpdateHomeTileState source transition.
+        stamp = new() { Owner = snapshot.Handle, Revision = snapshot.Revision, Retired = kind == NpcStateCommitKind.Despawn,
+            SourceOldHomeX = sameOwner ? old.SourceOldHomeX : -1,
+            SourceOldHomeY = sameOwner ? old.SourceOldHomeY : -1,
+            SourceOldHomeless = sameOwner && old.SourceOldHomeless };
         if (stamp.Retired || !gem) return;
         if (snapshot.Simulation.HomeTileX is not { } x || x is < short.MinValue or > short.MaxValue ||
             snapshot.Simulation.HomeTileY is not { } y || y is < short.MinValue or > short.MaxValue ||
@@ -48,7 +64,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
     internal static bool TryPrepareGemBunnyHome(in NpcSnapshot before, in NpcStateUpdate after, out byte[]? frame)
     {
         frame = null;
-        if (!VanillaGroundCritterAi1458.IsSupported(before.Type) || after.Type != before.Type ||
+        if (!HasGroundCritterHome(before.Type) || after.Type != before.Type ||
             after.Simulation.TownNpc != false || before.Handle.Slot >= 200) return false;
         // The turning phase still executes AI7 home updates before changing style.
         // Later AI3 phases do not publish source UpdateHomeTileState transitions.
@@ -68,4 +84,8 @@ internal sealed partial class RuntimeNpcReplicationRegistry
 
     internal void PublishGemBunnyHome(byte[] frame) => Broadcast(frame);
     internal void PublishGemBunnyBuffs(byte[] frame) => Broadcast(frame);
+
+    private static bool HasGroundCritterHome(int type) =>
+        VanillaGroundCritterAi1458.IsSupported(type) ||
+        VanillaNpcTransformation1458.TryGetGroundCritterFamily(new(type), out _);
 }

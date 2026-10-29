@@ -17,8 +17,8 @@ internal static class VanillaGroundCritterPresentation1458
         }
         int frames = type switch {
             148 or 149 or 625 => 12,
-            299 or 300 or 447 or 538 or 539 or 610 or >= 639 and <= 645 => 6,
-            361 or 445 => 13,
+            55 or 57 or 230 or 299 or 300 or 447 or 465 or 538 or 539 or 592 or 593 or 610 or >= 639 and <= 645 => 6,
+            361 or 445 or 687 => 13,
             616 or 617 => 14,
             366 or 367 => 4,
             _ => 0
@@ -29,11 +29,48 @@ internal static class VanillaGroundCritterPresentation1458
             !float.IsFinite(physics.VelocityX) || !float.IsFinite(physics.VelocityY)) return false;
         double counter = state.FrameCounter;
         int sprite = state.SpriteDirection;
+        float? rotation = state.Rotation;
         float vx = physics.VelocityX, vy = physics.VelocityY;
         if (vy == 0f && state.DirectionX is -1 or 1) sprite = state.DirectionX;
 
         switch (type)
         {
+            case 55 or 57 or 465 or 592:
+                sprite = state.DirectionX;
+                counter++;
+                if (state.Wet)
+                {
+                    if (counter < 24d) frame = (int)(counter / 6d);
+                    else counter = 0d;
+                }
+                else
+                {
+                    if (counter < 12d) frame = 4 + (int)(counter / 6d);
+                    else counter = 0d;
+                }
+                break;
+            case 230 or 593:
+                if (vy == 0f)
+                {
+                    rotation = 0f;
+                    if (vx == 0f) { frame = 0; counter = 0d; }
+                    else
+                    {
+                        Walk(ref frame, ref counter, MathF.Abs(vx) * 2f, 10d);
+                        if (frame >= frames) frame = 0;
+                    }
+                }
+                else
+                {
+                    counter = 0d;
+                    frame = 0;
+                    if (vy > 4f)
+                    {
+                        if (rotation is not float previousRotation || !float.IsFinite(previousRotation)) return false;
+                        rotation = previousRotation - vy * .01f;
+                    }
+                }
+                break;
             case 148 or 149:
                 int offset = state.LocalAi.Ai0 switch { 2f => 3, 3f => 6, 4f => 9, _ => 0 };
                 if (vy != 0f) { counter = 0d; frame = offset + 2; }
@@ -69,7 +106,7 @@ internal static class VanillaGroundCritterPresentation1458
                     if (frame >= 6) frame = 2;
                 }
                 break;
-            case 361 or 445:
+            case 361 or 445 or 687:
                 sprite = state.DirectionX;
                 if (state.Wet)
                 {
@@ -138,7 +175,7 @@ internal static class VanillaGroundCritterPresentation1458
                 break;
         }
         presented = physics with { Simulation = state with {
-            FrameIndex = frame, FrameCounter = counter, SpriteDirection = sprite, JustHit = false } };
+            FrameIndex = frame, FrameCounter = counter, SpriteDirection = sprite, Rotation = rotation, JustHit = false } };
         return true;
     }
 

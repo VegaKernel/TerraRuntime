@@ -1,0 +1,12 @@
+{
+  "fixture": "NpcSpawnShimmerFlagsLinux1458.v1.json.gz",
+  "sha256": "7053afdaf9425b1dc7dd1278c6b4d8ae391c13d44f8a39bcfd6685c35a89761c",
+  "scope": "24 actual original immediatePowderTransform packet23 checkpoints,6zero+18positive retainedshimmerTransparency; originalnormalmode typedwire projection only. NoShimmerAI orfullMain claim.",
+  "sources": {
+    ".cache\\transform-npc-phase\\original-v3\\original-1458-a.json.gz": "2e2dfeb3896c89a8d74018ffc9d0097f6e605a57e520d8d00908addeba4a0eef",
+    ".cache\\transform-npc-phase\\original-v3\\original-42-a.json.gz": "d15b81d392bc823964cbd586c6872f7cecff03d4e02028dc356ceb34195acc31",
+    ".cache\\transform-npc-phase\\original-v3\\original-8675309-a.json.gz": "2125bf114fbd356a773c447fa823cd810d29a8a6e83de2f0af518d40777bd9b5"
+  },
+  "originalQualification": ".cache\\transform-npc-phase\\original-v3\\qualification.json",
+  "originalQualificationSha256": "08dc20dc0a971270813de82b9d0e6c1a07f15ad223fcc23430dd9f9377844797"
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "source-town-transform-home-network-history",
+  "originalQualification": ".cache/transform-npc-phase/original-oldhome-v1/qualification.json",
+  "originalQualificationSha256": "daeb51601c925e27a7ff09e78ec20a1e3d466f4bbb33ba0fa8d41d777110d7b4",
+  "originalEngine": "actual official 1458 Linux managed server methods on Windows CoreCLR; no LinuxNative claim",
+  "officialServerSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "repeats": 2,
+  "sourceCasesPerRun": 4,
+  "sourceFramesPerCase": 32,
+  "fixtureCases": 12,
+  "fixtureFramesPerCase": 3,
+  "fixtureSha256": "568766b6f41b0d208a4fa8bef8a26167da23c66930cfa6f84cb47fda970f77a1",
+  "capturePins": {
+    "original-1458-a.json.gz": "f9d09f4328210eb340e29d449f4801b90f09b0217b6ebcd351e5d6b59e4f307d",
+    "original-42-a.json.gz": "df36f176afedb5cb93bec5b589ea719338d5adc560fda825bcc12137a9ca632e",
+    "original-8675309-a.json.gz": "c30d233d63507bdd8d39157967d5a75f1cf8a05070a6e82bac1fb6962f4f00fb"
+  },
+  "scope": "Unchanged original numeric states, physical status, RNG and raw packets. Fixture keeps first three phases per case; source proof executes all32 twice. Only packet7 fixture-specific bootstrap is excluded by this focused home test; productionWorld7 is separately compared in phase399. Source names remain hashes; no method bodies/assets included. OldHome fields are source witnesses, not invented runtime defaults."
+}

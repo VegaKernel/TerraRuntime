@@ -85,6 +85,19 @@ public readonly record struct NpcSimulationState(
     /// Null uses the definition's source style; it does not grant a generic behavior capability.</summary>
     public NpcAiStyleId? AiStyleOverride { get; init; }
 
+    /// <summary>Owned NPC.Teleport carrier; null retains an unrepresented source preimage.</summary>
+    public float? TeleportTime { get; init; }
+    public int? TeleportStyle { get; init; }
+
+    /// <summary>Owned Entity liquid history. Source NPC.wetCount is a byte in the selected0..10 phase;
+    /// null preserves unrepresented lineages instead of inventing dry/cleared history.</summary>
+    public int? WetCount { get; init; }
+    public bool? LavaWet { get; init; }
+    public bool? HoneyWet { get; init; }
+    public bool? ShimmerWet { get; init; }
+
+
+
     /// <summary>Server-owned physical dimensions when AI changes NPC.width/height independently of visual scale.
     /// Null leaves the definition/scale rule in control; an explicit size shares the simulation revision.</summary>
     public NpcHitboxDimensions? HitboxOverride { get; init; }
@@ -130,6 +143,9 @@ public readonly record struct NpcSimulationState(
 
     /// <summary>NPC.breath when owned; null is an unknown imported respiratory history.</summary>
     public int? Breath { get; init; }
+
+    /// <summary>Owned NPC.CheckDrowning sub-breath counter. Null retains unknown imported history.</summary>
+    public int? BreathCounter { get; init; }
 
     /// <summary>Authoritative NPC.confused state consumed by source AI branches that reset hostile attack clocks.</summary>
     public bool Confused { get; init; }
@@ -255,10 +271,14 @@ public readonly record struct NpcSimulationState(
     };
 
     public bool IsValid =>
+        (WetCount is null || WetCount.Value is >= 0 and <= 10) &&
+        (TeleportTime is null || float.IsFinite(TeleportTime.Value) && TeleportTime.Value >= 0f) &&
+        (TeleportStyle is null || TeleportStyle.Value >= 0) &&
         (ShimmerTransparency is null || float.IsFinite(ShimmerTransparency.Value) && ShimmerTransparency.Value is >= 0f and <= 1f) &&
         HostileContactImmunity >= 0 &&
         FriendlyRegenerationCounter is >= 0 and <= 180 &&
         (!Breath.HasValue || Breath.Value is >= 0 and <= 200) &&
+        (BreathCounter is null || BreathCounter.Value is >= 0 and <= 6) &&
         (MoneyValue is null || float.IsFinite(MoneyValue.Value) && MoneyValue.Value >= 0f) &&
         (ExtraMoneyValue is null || ExtraMoneyValue.Value >= 0) &&
         (Rotation is null || float.IsFinite(Rotation.Value)) &&

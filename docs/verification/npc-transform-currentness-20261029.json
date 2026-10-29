@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "kind": "retained-npc-currentness-and-pose-alias-causal",
+  "boundedComponentAccepted": true,
+  "aggregateAccepted": false,
+  "strictFullNamedNpcParity": false,
+  "runtimeGate": ".cache/transform-app/diagnostic06",
+  "normalFocusedRows": 7059,
+  "completeRuntimeManifestSha256": "476268f1cb688587cd279dc4d42783bffcb0b39204ecf963b4794eeb1d1a3347",
+  "samePrivateTestDllBridge": {
+    "path": ".cache/transform-final-bridges/on06/qualification.json",
+    "sha256": "de2620cd870e75abb9fb10784776d78d2480fe031805d4f13abc69e3309f4d3a",
+    "allOtherRuntimeDllsExact": true,
+    "currentness": {
+      "oldRuntime": "actual-complete-diagnostic03",
+      "genuineAssertionFailures": 2,
+      "fixedRuntime": "actual-complete-diagnostic06",
+      "passed": 2,
+      "loaderErrors": 0,
+      "privateTestDllSha256": "c8e98d3841c03e4dc495e64d446bff399a29089714789f21ec9b8c3e77a176ca"
+    },
+    "poseAlias": {
+      "oldRuntime": "actual-complete-diagnostic05",
+      "genuineAssertionFailures": 324,
+      "fixedRuntime": "actual-complete-diagnostic06",
+      "passed": 324,
+      "loaderErrors": 0,
+      "privateTestDllSha256": "e0816ab2d56abb800679e96afb8fe0ba3c37b47beac86ebceb8b49c16cd1e8a3"
+    }
+  },
+  "scope": "Existing callback revision guards run after user-supplied predicates. Pure683 pose method preserves input even when in/out alias. Actual previous runtime failures and identical private test DLLs replayed on complete fixed closure; canonical focus also passes. Diagnostic06 remaining source-wire differences do not qualify whole NPC parity.",
+  "successor07": {
+    "completeRuntimeManifestSha256": "6587a210f55a89529edf12934961b249aecaf065c2d6345d30fa96062c08ea97",
+    "canonicalFocusedRows": 7138,
+    "qualification": ".cache/transform-final-bridges/on07/qualification.json",
+    "qualificationSha256": "8524ab1d635e354eee4bdcb2b7e7e8c76b6c90d624179a180c5075e81a7d4d6a",
+    "samePrivateDllResults": {
+      "old03StatusCallback": {
+        "oldAssertionFailures": 2,
+        "fixed07Pass": 2
+      },
+      "old06WorldFactsCallback": {
+        "oldAssertionFailures": 2,
+        "fixed07Pass": 2,
+        "privateTestDllSha256": "6eddd1842de228fd075c15e569ddea9381a23262bf57d47a22bf643d6fe9f3e2"
+      },
+      "old05PoseAlias": {
+        "oldAssertionFailures": 324,
+        "fixed07Pass": 324
+      }
+    },
+    "loaderErrors": 0,
+    "allOtherRuntimeDllsExact": true,
+    "scope": "Callbacks precede facts comparison and pure status/projectile/spam/terrain guards. Source/store/RNG keep final Core guards. Historical06 proof remains immutable;07 includes additional independently red world-facts cases."
+  }
+}

@@ -16,6 +16,7 @@ internal readonly record struct RuntimeNpcBuffPlan1458(NpcSnapshot Expected, ulo
     int LifeAfter, int? CounterAfter, int DotDamage)
 {
     internal bool LoveStruck { get; init; }
+    internal NpcTypeId? TransformedType { get; init; }
 }
 
 // One generation-owned source NPC.maxBuffs table. Preview never emits54, ages live slots or draws RNG.
@@ -77,9 +78,20 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
             if (!npcs.TryGetActive((byte)slot, out var npc) || !IsSupported(in npc))
             { entries[slot] = default; continue; }
             if (HasUnownedZombieShimmer(in npc)) continue;
+            bool deferredPhase = TerraRuntime.Core.Npcs.VanillaNpcPhaseAccepted1458.SupportsIdentity(npc.TypeIdentity, npc.NetIdentity) ||
+                RuntimeTownNpcSchedule1458.OwnsTransformResidentContinuation(in npc);
+            if (deferredPhase)
+            {
+                if (entries[slot].Handle == npc.Handle)
+                { entries[slot].PreviousFlags = entries[slot].Flags; entries[slot].PreviousStinky = entries[slot].Stinky; }
+                continue;
+            }
             EnsureGeneration(npc.Handle);
             ref Entry entry = ref entries[slot];
-            entry.PreviousFlags = entry.Flags; entry.PreviousStinky = entry.Stinky; entry.VisualOffer = default;
+            entry.PreviousFlags = entry.Flags; entry.PreviousStinky = entry.Stinky;
+            // The captured phase owns its current flag views and visual offer.
+            // A refused proposal must not publish flags from unaged live slots.
+            entry.VisualOffer = default;
             ReadFlags(in entry.Slots, out entry.Flags, out entry.Stinky);
         }
     }
@@ -138,13 +150,22 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
 
     internal bool Commit(in RuntimeNpcBuffPlan1458 plan, in NpcSnapshot committed)
     {
+        int expectedType = plan.TransformedType?.Value ?? plan.Expected.Type;
+        int expectedNetId = plan.TransformedType.HasValue ? expectedType : plan.Expected.NetId;
         if (!npcs.TryGet(committed.Handle, out var current) || current != committed ||
             committed.Handle != plan.Expected.Handle || committed.Revision.Value < plan.Expected.Revision.Value ||
+            committed.Type != expectedType || committed.NetId != expectedNetId ||
             committed.Simulation.LifeRegenCounter != plan.CounterAfter) return false;
         ref Entry entry = ref entries[committed.Handle.Slot];
         if (entry.Handle != committed.Handle || entry.Revision != plan.StatusRevision || entry.Revision == ulong.MaxValue) return false;
-        entry.Slots = plan.Slots; entry.Flags = plan.Flags; entry.Stinky = plan.Stinky;
-        entry.LoveStruck = plan.LoveStruck; entry.Revision++;
+        if (plan.TransformedType.HasValue)
+            AdoptTransformedDefinition(ref entry, in committed, plan.Slots);
+        else
+        {
+            entry.Slots = plan.Slots; entry.Flags = plan.Flags; entry.Stinky = plan.Stinky;
+            entry.LoveStruck = plan.LoveStruck;
+        }
+        entry.Revision++;
         return true;
     }
 
@@ -216,7 +237,9 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
     internal void FinishWorldTick()
     {
         for (int slot = 0; slot < entries.Length; slot++)
-            if (npcs.TryGetActive((byte)slot, out var npc) && !HasUnownedZombieShimmer(in npc))
+            if (npcs.TryGetActive((byte)slot, out var npc) && !HasUnownedZombieShimmer(in npc) &&
+                !TerraRuntime.Core.Npcs.VanillaNpcPhaseAccepted1458.SupportsIdentity(npc.TypeIdentity, npc.NetIdentity) &&
+                !RuntimeTownNpcSchedule1458.OwnsTransformResidentContinuation(in npc))
                 TryRemoveWetStatus(npc.Handle);
     }
 

@@ -1,30 +1,41 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
-internal readonly record struct GroundCombatWorldFacts1458(
-    bool Owned, bool Day, bool Eclipse, bool Expert, bool Good, bool Remix, int? Invasion);
+internal readonly record struct NpcPhaseWorldFacts1458(
+    bool Owned, bool Day, bool Eclipse, bool Expert, bool Good, bool Remix, int? Invasion)
+{
+    internal bool? BloodMoon { get; init; }
+    internal bool? Raining { get; init; }
+    internal bool? Crimson { get; init; }
+}
 
-internal sealed class VanillaGroundCombatEnvironment1458(WorldTileStore tiles, RuntimeNpcStore npcs, RuntimeProjectileStore projectiles,
+internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tiles, RuntimeNpcStore npcs, RuntimeProjectileStore projectiles,
     RuntimeNpcBuffStatus1458 status, VanillaNpcWorldMotionAiStepper motion,
-    Func<GroundCombatWorldFacts1458> factsOwner, RuntimeNpcReplicationRegistry? replication)
-    : IVanillaGroundCombatEnvironment1458
+    Func<NpcPhaseWorldFacts1458> factsOwner, RuntimeNpcReplicationRegistry? replication,
+    Func<NpcSnapshot, RuntimeTownNpcScheduleConditions1458>? conditions = null,
+    Func<RuntimeTownPlayerDanger1458[]>? playerDanger = null)
+    : IVanillaNpcPhaseEnvironment1458
 {
     private readonly NpcSnapshot[] peerScratch = new NpcSnapshot[npcs.Capacity];
 
     public bool TryCapture(in NpcSnapshot source, VanillaNpcBehaviorContext context,
-        out IVanillaGroundCombatWorld1458 world)
+        out IVanillaNpcPhaseWorld1458 world)
     {
         world = default!;
         var facts = factsOwner();
         if (!facts.Owned || facts.Day != context.DayTime || facts.Eclipse != context.EclipseActive ||
             facts.Expert != context.ExpertMode || facts.Good != context.GoodWorld || facts.Remix != context.RemixWorld ||
             facts.Invasion != context.InvasionType ||
-            !VanillaGroundCombatPresentation1458.Supports(in source) || source.Simulation.Confused ||
+            !SupportsPresentation(in source) || source.Simulation.Confused ||
             source.Simulation.LiquidContact is NpcLiquidContactKind.Lava or NpcLiquidContactKind.Shimmer ||
+            source.Simulation.WetCount is not (>= 0 and <= 10) || source.Simulation.LavaWet is null ||
+            source.Simulation.HoneyWet is null || source.Simulation.ShimmerWet is not false ||
+            !SupportsTeleportHistory(in source) ||
             !VanillaNpcDefinitionCatalog.TryGet(source.TypeIdentity, source.NetIdentity, out var definition) ||
             !definition.TryResolveHitbox(source.Simulation, out var body) ||
             !status.TryPlan(in source, out var phase) || phase.LifeAfter != source.Simulation.Life ||
@@ -33,42 +44,102 @@ internal sealed class VanillaGroundCombatEnvironment1458(WorldTileStore tiles, R
         var terrain = new VanillaGroundCritterTerrain1458(tiles);
         terrain.FenceBody(source.PositionX, source.PositionY, source.VelocityX, source.VelocityY,
             body.Width, body.Height);
+        bool fishWeather = source.Type is 55 or 230 or 592 or 593;
+        if (fishWeather && (facts.BloodMoon is null || facts.Raining is null ||
+            facts.BloodMoon == true && facts.Crimson is null)) return false;
+        CritterInputs? critter = null;
+        if (VanillaNpcTransformation1458.TryGetGroundCritterFamily(source.TypeIdentity, out _))
+        {
+            if (conditions is null || playerDanger is null || facts.Raining is null) return false;
+            var weather = conditions(source);
+            if (weather.DayTime != context.DayTime || weather.Eclipse != context.EclipseActive ||
+                weather.SlimeRain != context.SlimeRainActive || weather.Raining != facts.Raining) return false;
+            int count = npcs.CopyActive(peerScratch);
+            var peers = peerScratch.AsSpan(0, count).ToArray();
+            var players = playerDanger();
+            terrain.FenceBody(source.PositionX - 224f, source.PositionY - 224f, 0f, 0f, 480, 480);
+            if (!RuntimeTownNpcDangerScanner1458.TryScan(tiles, in source, peers, players,
+                    status, false, false, out var danger)) return false;
+            critter = new(peers, players, weather, danger, conditions, playerDanger);
+        }
         var capture = new Capture(tiles, npcs, projectiles, status, motion, factsOwner, replication, source,
-            phase, facts, terrain, peerScratch);
+            phase, facts, terrain, peerScratch, context, critter);
         if (!capture.SupportsMotion(in source, body.Width, body.Height)) return false;
         world = capture;
         return capture.IsCurrent;
     }
 
-    private sealed class Capture(WorldTileStore tiles, RuntimeNpcStore npcs, RuntimeProjectileStore projectiles, RuntimeNpcBuffStatus1458 status,
-        VanillaNpcWorldMotionAiStepper motion, Func<GroundCombatWorldFacts1458> factsOwner,
+    private sealed record CritterInputs(NpcSnapshot[] Peers, RuntimeTownPlayerDanger1458[] Players,
+        RuntimeTownNpcScheduleConditions1458 Weather, RuntimeTownNpcDanger1458 Danger,
+        Func<NpcSnapshot, RuntimeTownNpcScheduleConditions1458> Conditions,
+        Func<RuntimeTownPlayerDanger1458[]> PlayerDanger);
+
+    private static bool SupportsPresentation(in NpcSnapshot source) =>
+        VanillaGroundCombatPresentation1458.Supports(in source) ||
+        VanillaNpcTransformation1458.TryGetGroundCritterFamily(source.TypeIdentity, out _) &&
+        VanillaGroundCritterPresentation1458.TryFinish(new(source.Type, source.NetId, source.PositionX, source.PositionY,
+            source.VelocityX, source.VelocityY, source.Target, source.Ai, source.Simulation), out _);
+
+    private static bool SupportsTeleportHistory(in NpcSnapshot source) =>
+        source.Simulation.TeleportTime is null or 0f || source.Simulation.TeleportTime == 1f &&
+        source.Simulation.TeleportStyle == 13;
+
+    private sealed partial class Capture(WorldTileStore tiles, RuntimeNpcStore npcs, RuntimeProjectileStore projectiles, RuntimeNpcBuffStatus1458 status,
+        VanillaNpcWorldMotionAiStepper motion, Func<NpcPhaseWorldFacts1458> factsOwner,
         RuntimeNpcReplicationRegistry? replication, NpcSnapshot source, RuntimeNpcBuffPlan1458 phase,
-        GroundCombatWorldFacts1458 facts, VanillaGroundCritterTerrain1458 terrain, NpcSnapshot[] peerScratch)
-        : IVanillaGroundCombatWorld1458
+        NpcPhaseWorldFacts1458 facts, VanillaGroundCritterTerrain1458 terrain, NpcSnapshot[] peerScratch,
+        VanillaNpcBehaviorContext context, CritterInputs? critter)
+        : IVanillaNpcPhaseWorld1458
     {
-        private readonly RuntimeNpcBuffPlan1458 phase = phase;
+        private readonly RuntimeNpcBuffPlan1458 initialPhase = phase;
+        private RuntimeNpcBuffPlan1458 phase = phase;
         private RuntimeNpcStinkyVisualOffer1458 visual;
         private RuntimeNpcBuffPlan1458 finalPhase;
         private byte[]? wetFrame;
         private RuntimeProjectileStore.SpawnBatchPreparation? projectileBatch;
         private bool adopted;
+        private bool networkSyncRequested = npcs.HasPendingBirth(source.Handle);
+        private readonly int initialNetworkSpam = replication?.CaptureNpcPhaseSpam(source.Handle) ?? 0;
+        private int networkSpamAdjustment;
+        private bool ignoreSpamLimitStaged;
 
         public bool IsCurrent
         {
             get
             {
-                return !adopted && (projectileBatch is null || projectileBatch.IsCurrentOwned) &&
-                    terrain.IsCurrent && factsOwner() == facts &&
-                    status.IsCurrentGroundCombatPhase1458(in phase) && terrain.IsCurrent;
+                return !adopted && terrain.IsCurrent && CritterInputsCurrent() && factsOwner() == facts &&
+                    (projectileBatch is null || projectileBatch.IsCurrentOwned) &&
+                    status.IsCurrentNpcPhase1458(in initialPhase) &&
+                    (replication is null || replication.IsNpcPhaseSpamCurrent(source.Handle, initialNetworkSpam)) && terrain.IsCurrent;
             }
         }
 
-        public bool TryStageStatus(IVanillaNpcRandom random, out NpcSnapshot staged)
+        public bool TryStageIgnoreSpamLimitUpdate(bool aiAlreadyRequested)
+        {
+            if (!IsCurrent || ignoreSpamLimitStaged || initialNetworkSpam < 0) return false;
+            ignoreSpamLimitStaged = true;
+            // NPC.NetUpdateIgnoreSpamLimit: a fresh or excessive request receives
+            // one thirty-tick debit, even when that temporarily makes spam negative.
+            if (!(networkSyncRequested || aiAlreadyRequested) || initialNetworkSpam > 90)
+                networkSpamAdjustment = -30;
+            networkSyncRequested = true;
+            return true;
+        }
+
+        public bool TryStageStatus(RuntimeNpcStore.AiSpawnPreview preview, IVanillaNpcRandom random, out NpcSnapshot staged)
         {
             staged = source with { Simulation = source.Simulation with { LifeRegenCounter = phase.CounterAfter } };
             if (!IsCurrent) return false;
             visual = RuntimeNpcBuffStatus1458.PlanVisualOffers(in phase,
                 new NpcRuntimeTownCombatRandom1458(random), facts.Good);
+            if (staged.Simulation.TeleportTime == 1f)
+                staged = staged with { Simulation = staged.Simulation with { TeleportTime = 0f } };
+            if (facts.BloodMoon == true && source.Type is 55 or 230 or 592 or 593)
+            {
+                var target = facts.Crimson == true ? VanillaNpcIds.CrimsonGoldfish : VanillaNpcIds.CorruptGoldfish;
+                if (!TryStageTransform(preview, in staged, target, default, out var transformed)) return false;
+                staged = transformed;
+            }
             if (source.Type == 590 && VanillaNpcDefinitionCatalog.TryGet(source.TypeIdentity, source.NetIdentity,
                     out var definition) && definition.TryResolveHitbox(source.Simulation, out var body))
             {
@@ -126,14 +197,15 @@ internal sealed class VanillaGroundCombatEnvironment1458(WorldTileStore tiles, R
             VanillaWorldLineOfSight.CanHitLine(tiles, x + width / 2, y + height / 2,
                 targetX + targetWidth / 2, targetY + targetHeight / 2);
 
-        public bool TryFinishMotion(in NpcSnapshot before, in NpcStateUpdate ai,
+        public bool TryFinishMotion(RuntimeNpcStore.AiSpawnPreview preview, in NpcSnapshot before, in NpcStateUpdate ai,
             in VanillaNpcRawPlayer1458 rawTarget, out NpcStateUpdate final)
         {
             final = default;
-            if (!IsCurrent || !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out var definition) ||
+            if (!IsCurrent || !VanillaNpcDefinitionCatalog.TryGet(new(ai.Type), new(ai.NetId), out var definition) ||
                 !definition.TryResolveHitbox(ai.Simulation, out var body)) return false;
             terrain.FenceBody(ai.PositionX, ai.PositionY, ai.VelocityX, ai.VelocityY, body.Width, body.Height);
-            if (facts.Expert && rawTarget.PositionY + rawTarget.Height < ai.PositionY &&
+            if ((facts.Expert || VanillaNpcTransformation1458.IsZombieMerman(definition.Type)) &&
+                rawTarget.PositionY + rawTarget.Height < ai.PositionY &&
                 MathF.Abs(ai.PositionX + body.Width * .5f - (rawTarget.PositionX + rawTarget.Width * .5f)) < rawTarget.Width * 3f)
             {
                 // The elevated-target CanHit reads the corridor to the stored player body,
@@ -144,27 +216,45 @@ internal sealed class VanillaGroundCombatEnvironment1458(WorldTileStore tiles, R
                 float bottom = Math.Clamp(MathF.Max(ai.PositionY + body.Height, rawTarget.PositionY + rawTarget.Height), top, tiles.Dimensions.HeightTiles * 16f);
                 terrain.FenceBody(left, top, 0f, 0f, (int)MathF.Ceiling(right - left), (int)MathF.Ceiling(bottom - top));
             }
-            var proposed = before with { PositionX = ai.PositionX, PositionY = ai.PositionY,
+            networkSyncRequested |= ai.RequiresImmediateSync;
+            var networkAi = ai with { RequiresImmediateSync = networkSyncRequested };
+            var proposed = before with { Type = ai.Type, NetId = ai.NetId, Ai = ai.Ai,
+                PositionX = ai.PositionX, PositionY = ai.PositionY,
                 VelocityX = ai.VelocityX, VelocityY = ai.VelocityY, Simulation = ai.Simulation };
+            if (VanillaNpcTransformation1458.TryGetGroundCritterFamily(before.TypeIdentity, out _) &&
+                ai.Type == before.Type)
+            {
+                if (!RuntimeNpcReplicationRegistry.TryPrepareGemBunnyHome(in before, in ai, out var homeFrame)) return false;
+                if (homeFrame is not null) RecordSourceFrame(homeFrame, home: true);
+            }
+            var home = new VanillaNpcTownCollisionContext1458(ai.Simulation.HomeTileY ?? -1,
+                facts.Day, facts.Eclipse, facts.Invasion is > 0);
             if (!SupportsMotion(in proposed, body.Width, body.Height) ||
-                !motion.TryApplyWorldMotion(in before, in ai, out var physics, rawTarget) ||
-                !VanillaGroundCombatPresentation1458.TryFinish(in physics, out final)) return false;
-            var endpoint = before with { PositionX = final.PositionX, PositionY = final.PositionY,
+                !motion.TryApplyNpcPhaseWorldMotion(in before, in networkAi, in rawTarget, ContinueCollision,
+                    in home, out var physics)) return false;
+            if (VanillaNpcTransformation1458.TryGetGroundCritterFamily(new(physics.Type), out _))
+            {
+                if (!VanillaGroundCritterPresentation1458.TryFinish(in physics, out final)) return false;
+            }
+            else if (!VanillaGroundCombatPresentation1458.TryFinish(in physics, out final)) return false;
+            if (!VanillaNpcDefinitionCatalog.TryGet(new(final.Type), new(final.NetId), out var finalDefinition) ||
+                !finalDefinition.TryResolveHitbox(final.Simulation, out var finalBody)) return false;
+            var endpoint = before with { Type = final.Type, NetId = final.NetId, Ai = final.Ai,
+                PositionX = final.PositionX, PositionY = final.PositionY,
                 VelocityX = final.VelocityX, VelocityY = final.VelocityY, Simulation = final.Simulation };
-            if (!SupportsMotion(in endpoint, body.Width, body.Height)) return false;
-            var removed = RuntimeNpcBuffStatus1458.PlanGemBunnyWetRemoval(phase.Slots, phase.Stinky, final.Simulation.Wet);
-            bool changed = false;
-            for (int i = 0; i < RuntimeNpcBuffStatus1458.Capacity; i++) changed |= removed[i] != phase.Slots[i];
-            finalPhase = phase with { Slots = removed };
-            if (changed && !RuntimeNpcBuffStatus1458.TryPrepareGemBunnyBuffFrame(source.Handle.Slot, in removed, out wetFrame))
-                return false;
+            if (!SupportsMotion(in endpoint, finalBody.Width, finalBody.Height)) return false;
+            finalPhase = phase;
             return IsCurrent;
+
+            bool ContinueCollision(in NpcStateUpdate collision, out NpcStateUpdate continued) =>
+                TryContinueCollision(preview, in collision, out continued);
         }
 
         internal bool SupportsMotion(in NpcSnapshot state, int width, int height)
         {
             terrain.FenceBody(state.PositionX, state.PositionY, state.VelocityX, state.VelocityY, width, height);
             if (!terrain.IsCurrent || terrain.HasConveyorAtBody(state.PositionX, state.PositionY, width, height) ||
+                VanillaWorldCollision.LavaCollision(tiles, state.PositionX, state.PositionY, width, height) ||
                 VanillaWorldCollision.TryGetWetContact(tiles, state.PositionX, state.PositionY, width, height,
                     out var liquid) && liquid is WorldLiquidKind.Lava or WorldLiquidKind.Shimmer) return false;
             int left = Math.Clamp((int)((state.PositionX - MathF.Abs(state.VelocityX)) / 16f) - 2, 0, tiles.Dimensions.WidthTiles - 1);
@@ -182,9 +272,11 @@ internal sealed class VanillaGroundCombatEnvironment1458(WorldTileStore tiles, R
                 }
             // AiSpawnPreview also guards the store-wide mutation serial. This reusable scratch
             // supplies contact admission without retaining a second NPC table for every plan.
+            bool unownedCritterContact = VanillaNpcTransformation1458.TryGetGroundCritterFamily(source.TypeIdentity, out _) ||
+                VanillaNpcTransformation1458.IsRetainedFish(source.TypeIdentity);
             int peerCount = npcs.CopyActive(peerScratch);
             foreach (var peer in peerScratch.AsSpan(0, peerCount))
-                if (peer.Handle != source.Handle && peer.Simulation.Friendly == true &&
+                if (peer.Handle != source.Handle && (peer.Simulation.Friendly == true || unownedCritterContact) &&
                     VanillaNpcDefinitionCatalog.TryGet(peer.TypeIdentity, peer.NetIdentity, out var definition) &&
                     definition.TryResolveHitbox(peer.Simulation, out var other) &&
                     state.PositionX - MathF.Abs(state.VelocityX) < peer.PositionX + other.Width &&
@@ -197,28 +289,65 @@ internal sealed class VanillaGroundCombatEnvironment1458(WorldTileStore tiles, R
 
         public bool TryAdoptStatus(in NpcSnapshot accepted)
         {
-            if (!IsCurrent || !status.Commit(in finalPhase, in accepted)) return false;
+            // Core has already adopted the NPC and RNG without invoking a callback.
+            // Do not sample public context delegates after that point.
+            if (!terrain.IsCurrent || !status.Commit(in finalPhase, in accepted)) return false;
             if (projectileBatch is not null)
             {
                 if (!projectileBatch.TryCommitUnpublished()) return false;
                 foreach (var birth in projectileBatch.FinalBirths)
                     if (!projectiles.TrySetServerNpcSource(birth.Handle, accepted.Handle)) return false;
             }
+            if (transformCheckpoint.HasValue)
+            {
+                if (historicalPublication is not null && !historicalPublication.TryAdoptBaseline(npcs, in accepted))
+                    return false;
+                replication?.ObserveMaterializedTransform(in accepted);
+            }
+            if (replication is not null &&
+                !replication.TryAdoptNpcPhaseSpamAdjustment(in accepted, initialNetworkSpam, networkSpamAdjustment))
+                return false;
+            if (replication is not null && source.TypeIdentity == VanillaNpcIds.MysticFrog)
+            {
+                foreach (var frame in beforeTransformFrames)
+                    if (frame.Home && !replication.TryAdoptSourceHomeUpdate(in accepted, frame.Bytes)) return false;
+                foreach (var frame in afterTransformFrames)
+                    if (frame.Home && !replication.TryAdoptSourceHomeUpdate(in accepted, frame.Bytes)) return false;
+            }
+            committed = accepted;
             adopted = true;
             return status.ObserveVisualOffer(accepted.Handle, in visual);
         }
 
         public void PublishStatus()
         {
-            try { projectileBatch?.TryPublishBirthJournal(); }
+            try
+            {
+                if (transformCheckpoint is { } checkpoint)
+                {
+                    if (historicalPublication is not null)
+                        historicalPublication.Publish(() => npcs.TryPublishHistoricalCheckpoint(in checkpoint, in committed),
+                            CurrentCommittedStatus);
+                    else
+                    {
+                        status.PublishExpired(in initialPhase);
+                        npcs.TryPublishHistoricalCheckpoint(in checkpoint, in committed);
+                    }
+                }
+                projectileBatch?.TryPublishBirthJournal();
+            }
             finally
             {
-                status.PublishExpired(in phase);
+                if (!transformCheckpoint.HasValue) status.PublishExpired(in initialPhase);
                 // Birth/expiration observers may replace the physical NPC or
                 // apply a newer buff list. Never send old slot-only54 bytes to it.
-                var committedStatus = finalPhase with { StatusRevision = phase.StatusRevision + 1 };
-                if (wetFrame is not null && adopted && status.IsCurrentGroundCombatPhase1458(in committedStatus))
-                    replication?.PublishGemBunnyBuffs(wetFrame);
+                if (!transformCheckpoint.HasValue)
+                    foreach (var frame in beforeTransformFrames)
+                    {
+                        if (!CurrentCommittedStatus()) break;
+                        if (frame.Home) replication?.PublishGemBunnyHome(frame.Bytes);
+                        else replication?.PublishGemBunnyBuffs(frame.Bytes);
+                    }
             }
         }
 

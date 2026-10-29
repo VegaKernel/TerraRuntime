@@ -77,17 +77,27 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
     public void Compact_pickup_burst_fits_existing_policy_but_still_hits_aggregate_flood_ceiling()
     {
         var options = TerrariaConnectionPolicyOptions.Default;
-        var state = new TerrariaConnectionPolicyState(options);
-        var accountant = new TerrariaConnectionRateAccountant(options.RateBudget);
-        var sink = new TerrariaConnectionPolicySink(new CountingSink(), state, accountant);
+        // This is one accounting window even when the full suite pauses this thread for a second.
+        var time = new FixedTimeProvider();
+        var state = new TerrariaConnectionPolicyState(options, time);
+        var accountant = new TerrariaConnectionRateAccountant(options.RateBudget, time);
+        var inner = new CountingSink();
+        var sink = new TerrariaConnectionPolicySink(inner, state, accountant);
         Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Decode(CurrentHelloPacket())));
+        Assert.Equal(new ConnectionRateSnapshot(1, 15, 0), accountant.Snapshot);
         // Player.GrabItems can empty the entire 400-item pool in one update. The 240/s packet-21 update
         // ceiling cannot simply be assigned to 151. Keep the existing aggregate bound, not an item bypass.
         TerrariaFrame removal = Decode([5, 0, 151, 0, 0]);
         for (int i = 1; i < 4096; i++)
             Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(removal));
+        Assert.Equal(new ConnectionRateSnapshot(4096, 15L + 4095 * 5, 0), accountant.Snapshot);
+        Assert.Equal(4096, accountant.CurrentWindowFrames);
+        Assert.Equal(4096, inner.Count);
         Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(removal));
         Assert.Equal(TerrariaConnectionStopReason.RateLimited, state.StopReason);
+        Assert.Equal(new ConnectionRateSnapshot(4097, 15L + 4096 * 5, 1), accountant.Snapshot);
+        Assert.Equal(4097, accountant.CurrentWindowFrames);
+        Assert.Equal(4096, inner.Count);
     }
 
     [Fact]
@@ -325,5 +335,11 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
             Count++;
             return TerrariaFrameSinkResult.Continue;
         }
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => 0;
     }
 }

@@ -1,0 +1,422 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-transform-untouched-original-phase-corpus",
+  "acceptedOriginalCaptures": true,
+  "runtimeComparedAccepted": false,
+  "aggregateAccepted": false,
+  "originalEdition": "TerrariaServer1458Linux",
+  "executionHost": "WindowsCoreCLR",
+  "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "fnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "compatibilitySecurityPermissionsSha256": "c871a5ca73df949c25f6af62c1e2a331c7694630443f3b07a462ba451dcb2ccb",
+  "sourceRecipes": "Private pinned ignoredcache probes only; no originalmethodbodies tracked or modifiedIL. ActualMain1/2+realLanguageManager.en-US (19Taxnames/27yellowSlime names,7officialresourcehashes). Existing capture-only ISocket retains untouchedoriginalNetMessage frames.",
+  "observed": "Everycase capturesallnamedNPC fields+actualBreathCounter,20rawbuffslots,rawplayers0/255,physicalRNGcursor+56slots,actualpacketbytes/worldflags; not an inventory of every originalNPC field.",
+  "records": [
+    {
+      "artifact": "original-v3",
+      "qualification": ".cache/transform-npc-phase/original-v3/qualification.json",
+      "qualificationSha256": "08dc20dc0a971270813de82b9d0e6c1a07f15ad223fcc23430dd9f9377844797",
+      "qualified": true,
+      "actualUpdateNPCCalls": 21120,
+      "actualNewNPCCalls": 660,
+      "actualPowderComponents": 48,
+      "actualCatchComponents": 6,
+      "seeds": [
+        1458,
+        42,
+        8675309
+      ],
+      "identicalRepeats": 2,
+      "inputsGuardedUnchanged": true,
+      "observations": [
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-v3\\original-1458-a.json.gz",
+          "sha256": "2e2dfeb3896c89a8d74018ffc9d0097f6e605a57e520d8d00908addeba4a0eef",
+          "rawSha256": "96b881bd34d109f6d757993c834861055db0cf464d52c069ff4516fd6b8e2487",
+          "counts": {
+            "cases": 110,
+            "updateCalls": 3520,
+            "births": 110,
+            "naturalBirths": 7,
+            "powderCalls": 8,
+            "catchCalls": 1
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-v3\\original-1458-b.json.gz",
+          "sha256": "2e2dfeb3896c89a8d74018ffc9d0097f6e605a57e520d8d00908addeba4a0eef",
+          "rawSha256": "96b881bd34d109f6d757993c834861055db0cf464d52c069ff4516fd6b8e2487",
+          "counts": {
+            "cases": 110,
+            "updateCalls": 3520,
+            "births": 110,
+            "naturalBirths": 7,
+            "powderCalls": 8,
+            "catchCalls": 1
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-v3\\original-42-a.json.gz",
+          "sha256": "d15b81d392bc823964cbd586c6872f7cecff03d4e02028dc356ceb34195acc31",
+          "rawSha256": "97e7554fdcb6d4fb3545d2afd24597090776824a56f1aedf5d48c3a452c1e3c6",
+          "counts": {
+            "cases": 110,
+            "updateCalls": 3520,
+            "births": 110,
+            "naturalBirths": 7,
+            "powderCalls": 8,
+            "catchCalls": 1
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-v3\\original-42-b.json.gz",
+          "sha256": "d15b81d392bc823964cbd586c6872f7cecff03d4e02028dc356ceb34195acc31",
+          "rawSha256": "97e7554fdcb6d4fb3545d2afd24597090776824a56f1aedf5d48c3a452c1e3c6",
+          "counts": {
+            "cases": 110,
+            "updateCalls": 3520,
+            "births": 110,
+            "naturalBirths": 7,
+            "powderCalls": 8,
+            "catchCalls": 1
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-v3\\original-8675309-a.json.gz",
+          "sha256": "2125bf114fbd356a773c447fa823cd810d29a8a6e83de2f0af518d40777bd9b5",
+          "rawSha256": "9cb7f69397553df0b1803c34845eb88995a15cd7416cd88b28b3ba3eafa186b1",
+          "counts": {
+            "cases": 110,
+            "updateCalls": 3520,
+            "births": 110,
+            "naturalBirths": 7,
+            "powderCalls": 8,
+            "catchCalls": 1
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-v3\\original-8675309-b.json.gz",
+          "sha256": "2125bf114fbd356a773c447fa823cd810d29a8a6e83de2f0af518d40777bd9b5",
+          "rawSha256": "9cb7f69397553df0b1803c34845eb88995a15cd7416cd88b28b3ba3eafa186b1",
+          "counts": {
+            "cases": 110,
+            "updateCalls": 3520,
+            "births": 110,
+            "naturalBirths": 7,
+            "powderCalls": 8,
+            "catchCalls": 1
+          }
+        }
+      ]
+    },
+    {
+      "artifact": "original-history-v3",
+      "qualification": ".cache/transform-npc-phase/original-history-v3/qualification.json",
+      "qualificationSha256": "385e81f79fe6c02150a38b380f686ad501167baf28d8aa1c0936b7d3c88b190e",
+      "qualified": true,
+      "actualUpdateNPCCalls": 4032,
+      "actualNewNPCCalls": 126,
+      "actualPowderComponents": 36,
+      "actualCatchComponents": 0,
+      "seeds": [
+        1458,
+        42,
+        8675309
+      ],
+      "identicalRepeats": 2,
+      "inputsGuardedUnchanged": true,
+      "observations": [
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-history-v3\\original-1458-a.json.gz",
+          "sha256": "02bb440481b4c8344112627ae0f6ee0f607a7cf8e4390d0365f97af4c184fa8a",
+          "rawSha256": "d11c9c2dc76827f65bffc4cdcc549928eb537a4d7f06c43dc474e8ab58638c25",
+          "counts": {
+            "cases": 21,
+            "updateCalls": 672,
+            "births": 21,
+            "naturalBirths": 0,
+            "powderCalls": 6,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-history-v3\\original-1458-b.json.gz",
+          "sha256": "02bb440481b4c8344112627ae0f6ee0f607a7cf8e4390d0365f97af4c184fa8a",
+          "rawSha256": "d11c9c2dc76827f65bffc4cdcc549928eb537a4d7f06c43dc474e8ab58638c25",
+          "counts": {
+            "cases": 21,
+            "updateCalls": 672,
+            "births": 21,
+            "naturalBirths": 0,
+            "powderCalls": 6,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-history-v3\\original-42-a.json.gz",
+          "sha256": "1f649a9f51e815fec6b23845e5e1d1c0aa1dfb75c247d86e763ce831db218be2",
+          "rawSha256": "42badb340190c07a4cabd496330b97cfd3d623ca73e8817534b3ff131ab78526",
+          "counts": {
+            "cases": 21,
+            "updateCalls": 672,
+            "births": 21,
+            "naturalBirths": 0,
+            "powderCalls": 6,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-history-v3\\original-42-b.json.gz",
+          "sha256": "1f649a9f51e815fec6b23845e5e1d1c0aa1dfb75c247d86e763ce831db218be2",
+          "rawSha256": "42badb340190c07a4cabd496330b97cfd3d623ca73e8817534b3ff131ab78526",
+          "counts": {
+            "cases": 21,
+            "updateCalls": 672,
+            "births": 21,
+            "naturalBirths": 0,
+            "powderCalls": 6,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-history-v3\\original-8675309-a.json.gz",
+          "sha256": "6784af251c2ec8c8c01dc7d4b28a7f3d4b9bb670c1f97401569e4680740bf436",
+          "rawSha256": "aea4e18c17315a8ea857148b4609ecc3acef6a4f393356a65b944b2b333241d8",
+          "counts": {
+            "cases": 21,
+            "updateCalls": 672,
+            "births": 21,
+            "naturalBirths": 0,
+            "powderCalls": 6,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-history-v3\\original-8675309-b.json.gz",
+          "sha256": "6784af251c2ec8c8c01dc7d4b28a7f3d4b9bb670c1f97401569e4680740bf436",
+          "rawSha256": "aea4e18c17315a8ea857148b4609ecc3acef6a4f393356a65b944b2b333241d8",
+          "counts": {
+            "cases": 21,
+            "updateCalls": 672,
+            "births": 21,
+            "naturalBirths": 0,
+            "powderCalls": 6,
+            "catchCalls": 0
+          }
+        }
+      ]
+    },
+    {
+      "artifact": "original-wet-resident-v1",
+      "qualification": ".cache/transform-npc-phase/original-wet-resident-v1/qualification.json",
+      "qualificationSha256": "0ea3ae27799709a7947eae2389229b46630854b6f48787e479a99eb28f0381f8",
+      "qualified": true,
+      "actualUpdateNPCCalls": 384,
+      "actualNewNPCCalls": 12,
+      "actualPowderComponents": 12,
+      "actualCatchComponents": 0,
+      "seeds": [
+        1458,
+        42,
+        8675309
+      ],
+      "identicalRepeats": 2,
+      "inputsGuardedUnchanged": true,
+      "observations": [
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-wet-resident-v1\\original-1458-a.json.gz",
+          "sha256": "1fd63d382683841a03d19f958965689527eb003d27ddca537fe47ac2051972fd",
+          "rawSha256": "b51b85b8b90b73d41a79799366c460359f3c0c45d4046984188605b56774ffa9",
+          "counts": {
+            "cases": 2,
+            "updateCalls": 64,
+            "births": 2,
+            "naturalBirths": 0,
+            "powderCalls": 2,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-wet-resident-v1\\original-1458-b.json.gz",
+          "sha256": "1fd63d382683841a03d19f958965689527eb003d27ddca537fe47ac2051972fd",
+          "rawSha256": "b51b85b8b90b73d41a79799366c460359f3c0c45d4046984188605b56774ffa9",
+          "counts": {
+            "cases": 2,
+            "updateCalls": 64,
+            "births": 2,
+            "naturalBirths": 0,
+            "powderCalls": 2,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-wet-resident-v1\\original-42-a.json.gz",
+          "sha256": "d390bca052cceed0af57ad8a8165921dfef25878b56114663dede49e567170e8",
+          "rawSha256": "b7c28a7e4d246a8ca3b76c72cf03af62caf51c475a1afc8d81538c9550c7401e",
+          "counts": {
+            "cases": 2,
+            "updateCalls": 64,
+            "births": 2,
+            "naturalBirths": 0,
+            "powderCalls": 2,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-wet-resident-v1\\original-42-b.json.gz",
+          "sha256": "d390bca052cceed0af57ad8a8165921dfef25878b56114663dede49e567170e8",
+          "rawSha256": "b7c28a7e4d246a8ca3b76c72cf03af62caf51c475a1afc8d81538c9550c7401e",
+          "counts": {
+            "cases": 2,
+            "updateCalls": 64,
+            "births": 2,
+            "naturalBirths": 0,
+            "powderCalls": 2,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-wet-resident-v1\\original-8675309-a.json.gz",
+          "sha256": "bc190e725c2bc2d8b7fbb8306767b25699eeeb3c313462950c04021af875c85b",
+          "rawSha256": "3bfe48090c628cc2e01ede507c7e4a997eab72e50e46dfcc90a3307c8cf708ce",
+          "counts": {
+            "cases": 2,
+            "updateCalls": 64,
+            "births": 2,
+            "naturalBirths": 0,
+            "powderCalls": 2,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-wet-resident-v1\\original-8675309-b.json.gz",
+          "sha256": "bc190e725c2bc2d8b7fbb8306767b25699eeeb3c313462950c04021af875c85b",
+          "rawSha256": "3bfe48090c628cc2e01ede507c7e4a997eab72e50e46dfcc90a3307c8cf708ce",
+          "counts": {
+            "cases": 2,
+            "updateCalls": 64,
+            "births": 2,
+            "naturalBirths": 0,
+            "powderCalls": 2,
+            "catchCalls": 0
+          }
+        }
+      ]
+    },
+    {
+      "artifact": "original-transform-hit-v2",
+      "qualification": ".cache/transform-npc-phase/original-transform-hit-v2/qualification.json",
+      "qualificationSha256": "8d51b2902b7b0742ed3e04509bd9aad6759305f636a13638ff1264782dadfbf1",
+      "qualified": true,
+      "actualUpdateNPCCalls": 768,
+      "actualNewNPCCalls": 24,
+      "actualPowderComponents": 0,
+      "actualCatchComponents": 0,
+      "seeds": [
+        1458,
+        42,
+        8675309
+      ],
+      "identicalRepeats": 2,
+      "inputsGuardedUnchanged": true,
+      "observations": [
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-transform-hit-v2\\original-1458-a.json.gz",
+          "sha256": "50dfdb6acaf88d5ac0ef2176097d71d3258636949b7d337df08758857257b645",
+          "rawSha256": "e0d7453049616aa01b39c26db0f707027edb1f35d2bfed95e596796decf3742b",
+          "counts": {
+            "cases": 4,
+            "updateCalls": 128,
+            "births": 4,
+            "naturalBirths": 0,
+            "powderCalls": 0,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-transform-hit-v2\\original-1458-b.json.gz",
+          "sha256": "50dfdb6acaf88d5ac0ef2176097d71d3258636949b7d337df08758857257b645",
+          "rawSha256": "e0d7453049616aa01b39c26db0f707027edb1f35d2bfed95e596796decf3742b",
+          "counts": {
+            "cases": 4,
+            "updateCalls": 128,
+            "births": 4,
+            "naturalBirths": 0,
+            "powderCalls": 0,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-transform-hit-v2\\original-42-a.json.gz",
+          "sha256": "d415218c719ed6669c74fd062a51b24e6cb47039f9102b3d2656d5ff0f37b229",
+          "rawSha256": "065ce89b95dd4fcb2649587e283fdba571bfc493cbdde08127a6bffed7a0db9f",
+          "counts": {
+            "cases": 4,
+            "updateCalls": 128,
+            "births": 4,
+            "naturalBirths": 0,
+            "powderCalls": 0,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-transform-hit-v2\\original-42-b.json.gz",
+          "sha256": "d415218c719ed6669c74fd062a51b24e6cb47039f9102b3d2656d5ff0f37b229",
+          "rawSha256": "065ce89b95dd4fcb2649587e283fdba571bfc493cbdde08127a6bffed7a0db9f",
+          "counts": {
+            "cases": 4,
+            "updateCalls": 128,
+            "births": 4,
+            "naturalBirths": 0,
+            "powderCalls": 0,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-transform-hit-v2\\original-8675309-a.json.gz",
+          "sha256": "70a4a3225e419eb6b91b7a3fd10fa34bbd6ea24a95f4d09d1e63decc0cbec767",
+          "rawSha256": "b18f0b69a8a475cd5123397631d9e7bf43e872172d711bac8cd60d30cf2cea96",
+          "counts": {
+            "cases": 4,
+            "updateCalls": 128,
+            "births": 4,
+            "naturalBirths": 0,
+            "powderCalls": 0,
+            "catchCalls": 0
+          }
+        },
+        {
+          "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-phase\\original-transform-hit-v2\\original-8675309-b.json.gz",
+          "sha256": "70a4a3225e419eb6b91b7a3fd10fa34bbd6ea24a95f4d09d1e63decc0cbec767",
+          "rawSha256": "b18f0b69a8a475cd5123397631d9e7bf43e872172d711bac8cd60d30cf2cea96",
+          "counts": {
+            "cases": 4,
+            "updateCalls": 128,
+            "births": 4,
+            "naturalBirths": 0,
+            "powderCalls": 0,
+            "catchCalls": 0
+          }
+        }
+      ]
+    }
+  ],
+  "totalsAcrossIndependentContexts": {
+    "updateNPC": 26304,
+    "newNPC": 822,
+    "powder": 96,
+    "catch": 6
+  },
+  "projectionSuccessorBridge": {
+    "path": ".cache/transform-npc-phase/breath-counter-source-bridge-v1.json",
+    "sha256": "c254392e77a94d6c08c30e94178ad776cd3a9d71471735d62ce7af50293fad3c",
+    "allOldCaseValuesExactAfterOnlyNewBreathCounterRemoval": true,
+    "oldOutputsUnchanged": true
+  },
+  "scope": [
+    "Originalcomponent evidence only. No acceptednewruntimeAI/cohort/mainpublication/fullMain/GUI/nativeparity claim. Fourgroupsareindependentauthoredcontexts, notonecombinedworldtimeline.",
+    "Main110 includes actualNewNPCpreimages, ordinaryAI/threshold/rain/wet/BloodMoon/powder/catch/history. OriginalnonzeroShimmerprofiles retained andmustbeexplicitlyrefused byunqualifiedruntimephase, neverstripped. Separate21historycompanion authorsShimmer0 andpreservesallotherhistory.",
+    "Wetresident component actualPowder687/534 to683/441 followed32NPCupdates capturescounter0..6/drowningrollover/sourceRNG. NPC198fourJustHit/pending profiles useSpam179 and32updates, actualTransformclearsoldpendingfull/JustHit andfinalnetworkretriesSourcependingSpam.",
+    "Olderlegacy-localization-only powder outputs remainlimiteddiagnostics; properlanguage successors retainedseparately. Counterhistoryv2 rejectedassemblyinventorytimingdiff retained; historyv3 eagerlyloadssameofficialembeddedIonic dependency. Allcasebodies/RNG/wire matchpriorqualifiedhistory exactly exceptaddedcounter."
+  ]
+}

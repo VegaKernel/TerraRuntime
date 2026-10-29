@@ -73,6 +73,40 @@ public sealed partial class RuntimeNpcStore
         internal bool ValidateContext() => IsCurrentOwned && owner._spawnContext?.Invoke() == context && IsCurrentOwned;
         internal ReadOnlySpan<NpcSnapshot> Births => CollectionsMarshal.AsSpan(births);
 
+        internal bool TryCaptureActive(byte slot, out NpcSnapshot snapshot)
+        {
+            snapshot = default;
+            return IsCurrentOwned && slot < Math.Min(detached.Capacity, VanillaNpcSpawnRules.PhysicalSlotCount) &&
+                detached.TryGetActive(slot, out snapshot);
+        }
+
+        // Powder scans and transforms existing occupations in physical order.
+        // Reuse the detached table and shared working stream; this is not NewNPC.
+        internal bool TryStageTransform(in NpcSnapshot source, NpcTypeId target,
+            in NpcAiState suppliedTransformAi, VanillaNpcBehaviorContext behaviorContext,
+            out NpcSnapshot checkpoint)
+        {
+            checkpoint = default;
+            if (!IsCurrentOwned || calls == MaximumCalls || source.Revision.Value == ulong.MaxValue ||
+                !detached.TryGet(source.Handle, out var current) || current != source) return Fail();
+            var beforeTarget = working.Clone();
+            if (!RuntimeNpcStateOwnershipPolicy.TryMaterializeTransform(in source, target, in context,
+                    in suppliedTransformAi, behaviorContext, out var transformed) ||
+                !IsCurrentOwned || !working.HasSameState(beforeTarget)) return Fail();
+            var state = new NpcStateUpdate(transformed.Type, transformed.NetId, transformed.PositionX,
+                transformed.PositionY, transformed.VelocityX, transformed.VelocityY,
+                transformed.Target, transformed.Ai, transformed.Simulation);
+            if (!IsValid(in state)) return Fail();
+            ref var retained = ref detached._slots[source.Handle.Slot];
+            retained.Update = state;
+            retained.Revision++;
+            detached.MarkSlotMutation();
+            calls++;
+            changed.Add(source.Handle.Slot);
+            checkpoint = Capture(source.Handle.Slot, in retained);
+            return true;
+        }
+
         internal bool HasSameSourceEffects(PreparedWorldSpawns other)
         {
             if (!ReferenceEquals(owner, other.owner) || failed || adopted || other.failed || other.adopted ||

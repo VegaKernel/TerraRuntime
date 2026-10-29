@@ -110,18 +110,9 @@ internal static class TerrariaPlayerReplicationFrameEncoder
 
     public static byte[] EncodeTeleport(PlayerSlotId player, float positionX, float positionY, byte style, bool failed)
     {
-        const int payloadLength = 12;
-        byte[] payload = new byte[payloadLength];
-        // NetMessage65: bit2 (number6==1) tells the receiver to keep ITS current position on failure.
-        // Sending stale server coordinates with this bit clear can pull a moving client backwards.
-        payload[0] = failed ? (byte)4 : (byte)0;
-        BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(1), player.Value);
-        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(3), BitConverter.SingleToInt32Bits(positionX));
-        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(7), BitConverter.SingleToInt32Bits(positionY));
-        payload[11] = style;
-
-        byte[] frame = new byte[payloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength];
-        if (TerrariaFrameEncoder.TryWrite(frame, (byte)TerrariaMessageId.TeleportEntity, payload) != TerrariaFrameWriteResult.Written)
+        // Packet65 bit2 retains the receiving player's current position after a failed teleport.
+        if (!TerrariaEntityTeleportCodec1458.TryEncode(player.Value, npc: false, positionX, positionY, style,
+                useCurrentPosition: failed, out var frame))
             throw new InvalidOperationException("Could not encode authoritative packet-65 player teleport frame.");
         return frame;
     }

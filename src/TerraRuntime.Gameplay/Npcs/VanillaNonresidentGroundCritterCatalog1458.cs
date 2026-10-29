@@ -7,7 +7,7 @@ namespace TerraRuntime.Gameplay.Npcs;
 public enum VanillaGroundCritterFamily1458 : byte
 {
     Bunny = 1, Penguin = 2, Squirrel = 3, Mouse = 4, Rat = 5,
-    Frog = 6, Scorpion = 7, Turtle = 8, SeaTurtle = 9
+    Frog = 6, Scorpion = 7, Turtle = 8, SeaTurtle = 9, Goldfish = 10
 }
 
 /// <summary>Explicit nonresident ground critter source identities; AI style membership alone grants no capability.</summary>
@@ -32,7 +32,7 @@ public static class VanillaNonresidentGroundCritterCatalog1458
     public static bool IsTurningSquirrel(int type) => type is 299 or 538 or 539 or >= 639 and <= 645;
     // Player.IsThisCenx deliberately uses the current culture's ToLower, not an ordinal-ignore-case lookup.
     public static bool IsSpecialTurningName(string name) => Array.IndexOf(TurningNames, name.ToLower()) >= 0;
-    public static bool IsGoldCritter(int type) => type is 443 or 445 or 447 or 539;
+    public static bool IsGoldCritter(int type) => type is 443 or 445 or 447 or 539 or 592 or 593;
     // Initialized Main.npcCatchable controls SetDefaults/SubAI protection, independently
     // of CatchNPC's positive catchItem test. Seasonal bunnies retain a catchItem but
     // do not enter the temporary-friendly protection branch in the original server.

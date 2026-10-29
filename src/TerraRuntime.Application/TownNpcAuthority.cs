@@ -67,7 +67,9 @@ internal sealed class TownNpcAuthority
         RuntimeTileManipulationReplicationRegistry? tileReplication = null,
         ServerPlayerAuthority? serverPlayers = null,
         RuntimeNpcBuffStatus1458? npcStatus = null,
-        RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
+        RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
+        INpcRawPlayerSlotLookup1458? interactionRawPlayers = null,
+        IRuntimePlayerSlotSnapshotLookup? interactionPlayerSnapshots = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -94,9 +96,13 @@ internal sealed class TownNpcAuthority
                 npcs,
                 projectiles,
                 townNpcs,
-                rescue,
                 progression,
-                townSpawnWorldFacts?.InfectedSeed ?? false)
+                townSpawnWorldFacts?.InfectedSeed ?? false,
+                npcRandom as SystemVanillaNpcRandom,
+                interactionRawPlayers,
+                interactionPlayerSnapshots,
+                this.npcStatus,
+                npcReplication)
             : null;
         commerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
             ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, npcs, in commerceFacts, this.npcStatus, progression)
@@ -156,6 +162,10 @@ internal sealed class TownNpcAuthority
     public void SetMeleeDamageSink(IRuntimeTownNpcMeleeDamageSink1458 sink) => combat?.SetMeleeDamageSink(sink);
 
     public void TickShimmer() => shimmer?.Tick();
+
+    internal void BindNpcInteractionWorldInfoSource(
+        Func<RuntimeWorldProgressionMutationSnapshot, byte[]?> prepareWorldInfo, Action worldStateAdopted) =>
+        purificationPowderInteractions?.BindWorldInfoSource(prepareWorldInfo, worldStateAdopted);
 
     public void TickProjectileInteractions() => purificationPowderInteractions?.Tick();
 
@@ -320,6 +330,30 @@ internal sealed class TownNpcAuthority
             housingValidator is null ||
             !state.TryGetStatus(out TerrariaNpcHomeStatus status))
         {
+            return;
+        }
+
+        if (state.NpcSlot is >= 0 and <= byte.MaxValue &&
+            npcs.TryGetActive((byte)state.NpcSlot, out var before) && before.Type is 441 or 683)
+        {
+            if (moveIn is null || !townNpcs.TryPrepareClientHomeChange(in before, status,
+                    state.HomeTileX, state.HomeTileY, housingValidator, out var preparation) || preparation is null)
+                return;
+            var home = preparation.Commit;
+            var wire = home.ToWireState();
+            if (TerrariaNpcHomeCodec.TryEncode(in wire, out var encoded) != TerrariaNpcHomeEncodeResult.Encoded ||
+                !players.IsCurrent(connection) || !preparation.IsCurrent ||
+                npcReplication is not null && !npcReplication.CanAdoptClientHomeBaseline(in before)) return;
+            var update = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
+                before.VelocityX, before.VelocityY, before.Target, before.Ai, before.Simulation with
+                { HomeTileX = home.HomeTileX, HomeTileY = home.HomeTileY,
+                    Homeless = home.Status == TerrariaNpcHomeStatus.Homeless });
+            if (!npcs.TryUpdateUnpublished(before.Handle, in update, out var accepted)) return;
+            if (!preparation.TryAdopt(in accepted))
+                throw new InvalidOperationException("Prepared client home adoption lost its callback-free preimage.");
+            moveIn.NotifyClientHomeChange(in home);
+            if (npcReplication is not null && !npcReplication.TryAdoptClientHomeBaseline(in accepted, encoded))
+                throw new InvalidOperationException("Committed client home did not install its silent join baseline.");
             return;
         }
 

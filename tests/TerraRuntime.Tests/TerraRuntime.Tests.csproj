@@ -1081,7 +1081,21 @@
     <EmbeddedResource Include="Fixtures/GroundCombatProjectileLiquidHistoryLinux1458.json.gz" LogicalName="GroundCombatProjectileLiquidHistoryLinux1458" />
     <EmbeddedResource Include="Fixtures/GroundCombatPlayerHitLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerHitLinux1458.v1.json.gz" />
     <EmbeddedResource Include="Fixtures/GroundCombatPlayerHitModesLinux1458.v2.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerHitModesLinux1458.v2.json.gz" />
+    <EmbeddedResource Include="Fixtures/GroundTransformFramesLinux1458.json.gz" LogicalName="GroundTransformFramesLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundTransformFishFramesLinux1458.json.gz" LogicalName="GroundTransformFishFramesLinux1458" />
+    <EmbeddedResource Include="Fixtures/Next7SpecificLootLinux1458.v1.json.gz" LogicalName="Next7SpecificLootLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/Next7SpecificLootRareLinux1458.v1.json.gz" LogicalName="Next7SpecificLootRareLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/Next7HitEffectsLinux1458.v1.json.gz" LogicalName="Next7HitEffectsLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/MysticFrogCatchLinux1458.v1.json.gz" LogicalName="MysticFrogCatchLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/MysticFrogCatchTerminalLinux1458.v1.json.gz" LogicalName="MysticFrogCatchTerminalLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/MysticFrogCatchWarmLinux1458.v1.json.gz" LogicalName="MysticFrogCatchWarmLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/PowderTransformBatchLinux1458.v2.json.gz" LogicalName="PowderTransformBatchLinux1458.v2" />
+    <EmbeddedResource Include="Fixtures/TownSlimeYellowFindFrameLinux1458.json.gz" LogicalName="TownSlimeYellowFindFrameLinux1458" />
+    <EmbeddedResource Include="Fixtures/TownSlimeYellowFindFrameEdgesLinux1458.json.gz" LogicalName="TownSlimeYellowFindFrameEdgesLinux1458" />
+    <EmbeddedResource Include="Fixtures/WetResidentPhaseLinux1458.v1.json.gz" LogicalName="WetResidentPhaseLinux1458.v1" />
     <EmbeddedResource Include="Fixtures/GroundCombatPlayerSubupdatesLinux1458.v2.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerSubupdatesLinux1458.v2.json.gz" />
     <EmbeddedResource Include="Fixtures/GroundCombatPlayerBoundariesLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerBoundariesLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/NpcSpawnShimmerFlagsLinux1458.v1.json.gz" LogicalName="NpcSpawnShimmerFlagsLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/TownTransformHomePhaseLinux1458.v1.json.gz" LogicalName="TownTransformHomePhaseLinux1458.v1" />
   </ItemGroup>
 </Project>

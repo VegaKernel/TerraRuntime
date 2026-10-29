@@ -9,7 +9,7 @@ namespace TerraRuntime.Core.Npcs;
 /// The NPC store owns identity/generation/revision and commit ordering; this policy owns which
 /// combat/lifetime/presentation fields are materialized at spawn and preserved across state-only updates.
 /// </summary>
-internal static class RuntimeNpcStateOwnershipPolicy
+internal static partial class RuntimeNpcStateOwnershipPolicy
 {
     private static bool IsOwnedGroundCritter(int type, int netId) => VanillaNonresidentGroundCritterCatalog1458.IsSupported(type) && type == netId;
     private static int? GroundCritterProtectionAtSpawn(int type, int netId) =>
@@ -17,23 +17,35 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
+        bool ownsPhase = VanillaNpcPhaseAccepted1458.SupportsIdentity(new(update.Type), new(update.NetId));
+        bool ownsSlimeContinuation = update.Type == VanillaNpcIds.TownSlimeYellow.Value && update.NetId == update.Type;
+        bool ownsFreshTransform = update.Type == update.NetId &&
+            (VanillaNpcTransformation1458.IsNewDefinition(new(update.Type)) || ownsSlimeContinuation);
         NpcSimulationState simulation = update.Simulation with {
             StairFall = update.Simulation.StairFall ?? false,
+            TeleportTime = update.Simulation.TeleportTime ?? (ownsFreshTransform ? 0f : null),
+            TeleportStyle = update.Simulation.TeleportStyle ?? (ownsFreshTransform ? 0 : null),
+            BreathCounter = update.Simulation.BreathCounter ?? (ownsFreshTransform ? 0 : null),
+            WetCount = update.Simulation.WetCount ?? (ownsPhase || ownsSlimeContinuation ? 0 : null),
+            LavaWet = update.Simulation.LavaWet ?? (ownsPhase || ownsSlimeContinuation ? false : null),
+            HoneyWet = update.Simulation.HoneyWet ?? (ownsPhase || ownsSlimeContinuation ? false : null),
+            ShimmerWet = update.Simulation.ShimmerWet ?? (ownsPhase || ownsSlimeContinuation ? false : null),
             HomeTileX = update.Simulation.HomeTileX ?? -1,
             HomeTileY = update.Simulation.HomeTileY ?? -1,
             Homeless = update.Simulation.Homeless ?? false,
             CatchableNpcTempImmunityCounter = update.Simulation.CatchableNpcTempImmunityCounter ??
                 (GroundCritterProtectionAtSpawn(update.Type, update.NetId) ??
-                    (VanillaGroundCombatCohort1458.IsSupported(new(update.Type), new(update.NetId)) ? 0 : null)),
+                    (ownsPhase
+                        ? VanillaNpcTransformation1458.HasPhaseCatchProtection(new(update.Type)) ? 90 : 0 : null)),
             ReleaseOwner = update.Simulation.ReleaseOwner ??
                 (IsOwnedGroundCritter(update.Type, update.NetId) ||
-                    VanillaGroundCombatCohort1458.IsSupported(new(update.Type), new(update.NetId)) ? (short)255 : null),
+                    ownsPhase ? (short)255 : null),
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {
             // A fresh NPC constructor owns zero. SetDefaults/Transform do not reset this source field.
-            if (definition.Type == VanillaNpcIds.Zombie ||
-                VanillaGroundCombatCohort1458.IsSupported(definition.Type, new(update.NetId)))
+            if (definition.Type == VanillaNpcIds.Zombie || ownsSlimeContinuation ||
+                VanillaNpcPhaseAccepted1458.SupportsIdentity(definition.Type, new(update.NetId)))
                 simulation = simulation with { ShimmerTransparency = simulation.ShimmerTransparency ?? 0f };
             if (simulation.LifeMax == 0)
             {
@@ -118,6 +130,19 @@ internal static class RuntimeNpcStateOwnershipPolicy
             AiStyleOverride = sameDefinition ? simulation.AiStyleOverride ?? previous.Simulation.AiStyleOverride : null,
             // SetDefaults/Transform do not clear source stair-fall history.
             StairFall = simulation.StairFall ?? previous.Simulation.StairFall ?? false,
+            // SetDefaults leaves teleport visual history untouched. The source
+            // NPC-phase prelude retires it, independently of identity changes.
+            TeleportTime = simulation.TeleportTime ?? previous.Simulation.TeleportTime,
+            TeleportStyle = simulation.TeleportStyle ?? previous.Simulation.TeleportStyle,
+            BreathCounter = simulation.BreathCounter ?? (sameDefinition ? previous.Simulation.BreathCounter :
+                previous.Simulation.BreathCounter.HasValue ? 0 : null),
+            // SetDefaults clears the wet cooldown, while leaving the sticky liquid flags alone.
+            // Unknown history stays unknown outside the source-owned creation/transform paths.
+            WetCount = simulation.WetCount ?? (sameDefinition ? previous.Simulation.WetCount :
+                previous.Simulation.WetCount.HasValue ? 0 : null),
+            LavaWet = simulation.LavaWet ?? previous.Simulation.LavaWet,
+            HoneyWet = simulation.HoneyWet ?? previous.Simulation.HoneyWet,
+            ShimmerWet = simulation.ShimmerWet ?? previous.Simulation.ShimmerWet,
             // SetDefaults resets home memory, unlike stairFall. Omitted same-identity updates
             // preserve the committed fields; AI007 critters use them without town housing.
             HomeTileX = simulation.HomeTileX ?? (sameDefinition ? previous.Simulation.HomeTileX : -1),

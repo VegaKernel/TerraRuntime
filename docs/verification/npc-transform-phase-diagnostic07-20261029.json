@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-transform-seven-diagnostic07-bounded-composed-source-comparison",
+  "boundedOwnedProjectionAccepted": true,
+  "strictFullNamedNpcParity": false,
+  "fullVanillaAiParity": false,
+  "aggregateAccepted": false,
+  "publicationAccepted": false,
+  "predecessor": {
+    "path": "docs/verification/npc-transform-phase-diagnostic06-20261029.json",
+    "sha256": "4fe32b9eb2204e0763cf01fdece59809ac22491c2e4a2b3644e42219407faca2"
+  },
+  "actualRuntimeCounts": {
+    "cases": 435,
+    "setupFailures": 0,
+    "casesWithDifferences": 0,
+    "differences": 0,
+    "comparedPhases": 11904,
+    "unsupportedRefusals": 2016
+  },
+  "canonicalClosure": {
+    "gate": "diagnostic07",
+    "sourceSnapshot": {
+      "path": ".cache/transform-app/diagnostic07/source-before.json",
+      "sha256": "593005b33429112c092a8c94a14dc6e2244abfe1c5727a336dd4d93fb60f64af"
+    },
+    "sourceInputs": 4204,
+    "sourceInputsStillExact": true,
+    "completeFileCount": 198,
+    "dllCount": 158,
+    "binPins": {
+      "path": ".cache/transform-app/diagnostic07/bin-pins.json",
+      "sha256": "6587a210f55a89529edf12934961b249aecaf065c2d6345d30fa96062c08ea97"
+    },
+    "build": {
+      "path": ".cache/transform-app/diagnostic07/build.json",
+      "sha256": "81eba014b5dc98dc292d095d679b983a060ce13642202e7ea596f39526d1b6f9"
+    },
+    "focused": {
+      "path": ".cache/transform-app/diagnostic07/focused-result.json",
+      "sha256": "fcf0fefd2f41e30c76970155086da698587eb71708c8f264195a92915c8455ff"
+    },
+    "normalCases": 7138,
+    "testDllSha256": "31622e0e72d74a90a1b4a592a0e8ce674564f2d38fc7ee2f5a4bd02b22ec2a75",
+    "applicationDllSha256": "7a4facada4f70b9c0c6e895b6a9c528c3272e02861a172a0d034de0189638d22",
+    "coreDllSha256": "578869c66de5f9851181f4ab575c0363f6a6ae854cb0e6eda210184d534983e1",
+    "allFourPrivateCanonicalCopiesExactBeforeAfter": true
+  },
+  "runtimeComparisons": {
+    "main": {
+      "capture": {
+        "path": ".cache/transform-npc-phase/runtime-on07-attempt01/capture-result.json",
+        "sha256": "72d2f63f8d8e30859f47559f654155d1d7060a67b6f2cf2f351bb37ca33eb19c"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/runtime-on07-attempt01/comparison.json",
+        "sha256": "f50104a2d8ff236e92bd56cad2b1ac7d94cf0ba543462453cda1777fd42ef402"
+      },
+      "counts": {
+        "cases": 399,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 10752,
+        "unsupportedRefusals": 2016
+      },
+      "unavailableObservationCounts": {
+        "npcSlots": 22005,
+        "shimmering": 22005,
+        "statsScaledPlayers": 22005,
+        "sourceCatchable": 22005,
+        "sourceFrameCount": 22005,
+        "takenDamageMultiplier": 22005,
+        "targetSetFrame": 22005,
+        "dontTakeDamageFromHostiles": 22005,
+        "netSpamBeforeRegistryOwner": 2727
+      }
+    },
+    "hitNetwork": {
+      "capture": {
+        "path": ".cache/transform-npc-phase/runtime-hit-on07-attempt01/capture-result.json",
+        "sha256": "0e4f9d58342b0e75b74b5c85fc630c5530297c60cb25b2befbe9b8836ca4438f"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/runtime-hit-on07-attempt01/comparison.json",
+        "sha256": "23143add7b6517b4e9e554300bc4e5b8be55a36a0d28c74be34fc8a8c93c73cc"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservationCounts": {
+        "npcSlots": 780,
+        "takenDamageMultiplier": 780,
+        "sourceCatchable": 780,
+        "shimmering": 780,
+        "sourceFrameCount": 780,
+        "dontTakeDamageFromHostiles": 780,
+        "targetSetFrame": 780,
+        "statsScaledPlayers": 780
+      }
+    },
+    "wetFishPursuit": {
+      "capture": {
+        "path": ".cache/transform-npc-phase/runtime-fish-pursuit07/capture-result.json",
+        "sha256": "35beeacb26a8c07e0fcdd10f91413a80a847a6686f8f9efc84276a8c31c697f6"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/runtime-fish-pursuit07/comparison.json",
+        "sha256": "8d49b89dc4562530a36de8b70be75d1d86aae8940a4af706bcec0799fe01cf87"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservationCounts": {
+        "takenDamageMultiplier": 780,
+        "dontTakeDamageFromHostiles": 780,
+        "sourceCatchable": 780,
+        "targetSetFrame": 780,
+        "shimmering": 780,
+        "sourceFrameCount": 780,
+        "npcSlots": 780,
+        "statsScaledPlayers": 780,
+        "netSpamBeforeRegistryOwner": 24
+      }
+    },
+    "oldHomeHistory": {
+      "capture": {
+        "path": ".cache/transform-npc-phase/runtime-oldhome07-attempt02/capture-result.json",
+        "sha256": "608289c117da8e531df3948fb87e27985e92fc2a1cc954dcea28bd8ba9af819d"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/runtime-oldhome07-attempt02/comparison.json",
+        "sha256": "173e5fdf1799a20171c41b4dca11a3dc777ede98e9c3066674281bffab84fd39"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservationCounts": {
+        "dontTakeDamageFromHostiles": 804,
+        "sourceCatchable": 804,
+        "targetSetFrame": 804,
+        "npcSlots": 804,
+        "takenDamageMultiplier": 804,
+        "shimmering": 804,
+        "statsScaledPlayers": 804,
+        "sourceFrameCount": 804,
+        "netSpamBeforeRegistryOwner": 804
+      }
+    }
+  },
+  "originalQualifications": [
+    {
+      "path": ".cache/transform-npc-phase/original-v3/qualification.json",
+      "sha256": "08dc20dc0a971270813de82b9d0e6c1a07f15ad223fcc23430dd9f9377844797"
+    },
+    {
+      "path": ".cache/transform-npc-phase/original-history-v3/qualification.json",
+      "sha256": "385e81f79fe6c02150a38b380f686ad501167baf28d8aa1c0936b7d3c88b190e"
+    },
+    {
+      "path": ".cache/transform-npc-phase/original-wet-resident-v1/qualification.json",
+      "sha256": "0ea3ae27799709a7947eae2389229b46630854b6f48787e479a99eb28f0381f8"
+    },
+    {
+      "path": ".cache/transform-npc-phase/original-transform-hit-v2/qualification.json",
+      "sha256": "8d51b2902b7b0742ed3e04509bd9aad6759305f636a13638ff1264782dadfbf1"
+    },
+    {
+      "path": ".cache/transform-npc-phase/original-fish-pursuit-v2/qualification.json",
+      "sha256": "fba63ac2559c2fb8fdd081ad6d06c09d089520bb49bd5fd17d1638815a0f75ec"
+    },
+    {
+      "path": ".cache/transform-npc-phase/original-oldhome-v1/qualification.json",
+      "sha256": "daeb51601c925e27a7ff09e78ec20a1e3d466f4bbb33ba0fa8d41d777110d7b4"
+    }
+  ],
+  "originalLoadedHomeSourceOnly": {
+    "path": ".cache/transform-npc-phase/original-loaded-oldhome-v1/qualification.json",
+    "sha256": "6657c52d353732bdcb6741a380c23e776f97280293b5ba2d5816052b0dc31756"
+  },
+  "oldHomeStateBridge": {
+    "path": ".cache/transform-npc-phase/oldhome-source-bridge-v1.json",
+    "sha256": "ea1bb6a1574a0fff0e06252d54f99136f4bada9fb67616fed5e3d9773eff6181"
+  },
+  "companionTemplateScopeClarification": {
+    "path": ".cache/transform-npc-phase/new-companions-scope-clarification-v1.json",
+    "sha256": "686225fddfcbb9e78fdbb49c1cdd33a7fbdb43067eaf12f3d794bb8cb3fe275e"
+  },
+  "matched": [
+    "Every explicitly represented namedNPCfield (includingliquidcounter/stickyflags/teleport/breathcounter/pose), actualordered20statusslots, rawplayer0/255 projection, complete56slotphysicalRNG, actualworldprogressflags, projectiles andrawsourceNPCwireframes inacceptedcontexts.",
+    "All27previouswire-redcontexts nowexact: spawnNeedsSyncing&&knownpositiveShimmerTransparency extra0x10 andsourcefirstlate60 for534?441airhistory. Oldredrawartifacts unchanged.",
+    "WorldInfo7 comes fromactualcomposedWorldRuntime usingindependentlycapturedmatchingworldfacts; all167bytes exact, no encoderstub, packetmask or arbitraryframeprovider.",
+    "Actualsource198threshold+JustHit/pendingnetwork384phases exact; source57/465wetpursuit384phases exact; sourceoldHome3fields384phases exact viaactualRegistry.TryCaptureSourceTownHomeHistory onactualnpcs.TryGetsnapshot. Everyoldhomefield knownin804stateobservations; no oldhomeunknown skips.",
+    "2016nonzero-ShimmerNPCphaseattempts explicitlyrefuse withunchangedNPC/status/rawplayers/RNG/wire/world/projectiles. Immediatepowder transforms remainrepresented andserializeknownspawnShimmerbit; no ShimmerAIadmission."
+  ],
+  "sourceOnlyDiagnosticFields": {
+    "targetSetFrame": "No retained source ticker field; raw original diagnostic preserved.",
+    "shimmering": "No source visual flag; nonzero transparency contexts must refuse whole phase.",
+    "dontTakeDamageFromHostiles": "No interNPC combat in bounded component; source flag diagnostic retained.",
+    "npcSlots": "No naturalspawn census/time caller in this component; original diagnostic retained.",
+    "takenDamageMultiplier": "No incoming damage in this phase component; diagnostic retained.",
+    "sourceCatchable": "Original static Main table, not runtime snapshot field; constructor policy separately sourcequalified.",
+    "sourceFrameCount": "Original static Main table; independent presentation fixture qualifies row semantics.",
+    "statsScaledPlayers": "Original metadata diagnostic; exact owned resulting life/damage/defense and base values compared."
+  },
+  "sourceSpamQualification": "ActualregistrySpam observedonlywithmatchingundeadNetworkowner; absentowner remainsnull (includingresidentpath), rawsourceSpam alwaysretained. Historiccomparisoncounter netSpamBeforeRegistryOwner means withoutmatchingregistryowner, notonlytemporallybeforefirstphase. No0fallback andno residentSpam/fullTownparityclaim.",
+  "correctedRejectedCarrierSetup": {
+    "path": ".cache/transform-npc-phase/runtime-oldhome07",
+    "reason": "Firstobserver passedNpcStateUpdate toreflectionmethod requiringinNpcSnapshot. Exitfailedbeforecapturequalification. Successorusesactualnpcs.TryGet snapshot; no productionfix/RNGoffset orsourcefixturechange."
+  },
+  "scope": [
+    "SourceofficialinitializedLinux1458EXE executedonWindowsCoreCLR,properMain1/2/en-US7resources/category19/27; cacheoriginalmethods/bodies/assets remainuntracked. ProperactualNewNPC thenexplicitboundsourcepreimages.",
+    "RealcomposedNpcAuthority.AdvanceWorldTick+TickSimulation/sourceSpawnCycleSuppression; onlyselectedNPCphase andspecifiedcatch/powdercomponents. NoMain/worldclock/Player.Update/fullProjectile.Update/GUI/nativewholegame claim.",
+    "Sourcepartialprojectionisexplicit: namedsource-onlydiagnostics preserved, actualclasshasotherfields outsidethisprojection. No unownedfield guessedzero or silentlynormalized.",
+    "NPCspecificloot/effects/poses/interactions haveindependentcomponentrecords. Normal7138 +boundedcomparison doNOTreplaceunfilteredfull/fast/Native/livejoin/Mainpublicationgates. Candidate7remainunacceptedaggregateuntilparentgates.",
+    "Originalcapturerepeats/sourcepins/privatecarrierinputs/backendreferenceclosures/canonical198fileguards/executedcommands are retainedinlinkedignoredcache receipts. No originalbodies intrackedrecord."
+  ],
+  "independentComponentRecords": [
+    {
+      "path": "docs/verification/npc-transform-original-phase-20261029.json",
+      "sha256": "2b50789dbf76803ce398a1805233248339f4b73b24d203d73da8ea4da3eea20f"
+    },
+    {
+      "path": "docs/verification/npc-transform-phase-diagnostic06-20261029.json",
+      "sha256": "4fe32b9eb2204e0763cf01fdece59809ac22491c2e4a2b3644e42219407faca2"
+    },
+    {
+      "path": "docs/verification/npc-transform-network-phase-20261029.json",
+      "sha256": "f0aaa0aaf6c1664e05eaf17bd22f4ec063d43e358f990160e30799bfef3e69b6"
+    },
+    {
+      "path": "docs/verification/ground-transform-presentation-20261029.json",
+      "sha256": "91c2a082fc37076a10d742797abce185d48e7a3c966f9932efb585bb66f0db94"
+    },
+    {
+      "path": "docs/verification/ground-transform-fish-presentation-20261029.json",
+      "sha256": "91c3314eef0f5a01fdf3f5b5b4befefeec67a3b431b7f71eb7f91224236062fd"
+    },
+    {
+      "path": "docs/verification/town-slime-yellow-alias-presentation-20261029.json",
+      "sha256": "509b8f0bc9370a6bdcd4afaf58c09b5ec65c0bbd11dc03706c6c8990f3b45e85"
+    },
+    {
+      "path": "docs/verification/npc-transform-interactions-20261029.json",
+      "sha256": "0a4e31a769a12031e186f9db80d52d6c2312a44f557c0207adbaf071a205730f"
+    },
+    {
+      "path": "docs/verification/npc-spawn-shimmer-20261029.json",
+      "sha256": "22296525438b9fd1961cc7b34f92488de0958293836037b64ac6615315753a3b"
+    }
+  ]
+}

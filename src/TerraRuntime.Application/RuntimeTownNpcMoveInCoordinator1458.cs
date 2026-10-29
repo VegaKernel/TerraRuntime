@@ -186,6 +186,16 @@ internal sealed class RuntimeTownNpcMoveInCoordinator1458
         SuccessfulMoveIns++;
     }
 
+    // WorldGen.kickOut arms the existing timer immediately; observing the same home on
+    // the next world update must decrement it, rather than re-arm it one update late.
+    internal void NotifyClientHomeChange(in RuntimeTownNpcHomeCommit home)
+    {
+        if (home.Status == TerrariaNpcHomeStatus.Homeless)
+            lookForHomeTimeouts[home.NpcSlot] = KickOutLookForHomeTimeout1458;
+        else lookForHomeTimeouts.Remove(home.NpcSlot);
+        previousHomeStatuses[home.NpcSlot] = home.Status;
+    }
+
     internal int GetLookForHomeTimeout(short slot) =>
         lookForHomeTimeouts.TryGetValue(slot, out int timeout) ? timeout : 0;
 

@@ -904,7 +904,7 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
                 typeInfo.Properties.Remove(townFlag);
                 var stairFall = typeInfo.Properties.Single(property => property.Name == "StairFall");
                 typeInfo.Properties.Remove(stairFall);
-                foreach (string name in new[] { "HomeTileX", "HomeTileY", "Homeless", "CatchableNpcTempImmunityCounter", "ReleaseOwner", "AiStyleOverride" })
+                foreach (string name in new[] { "HomeTileX", "HomeTileY", "Homeless", "CatchableNpcTempImmunityCounter", "ReleaseOwner", "AiStyleOverride", "TeleportTime", "TeleportStyle", "WetCount", "LavaWet", "HoneyWet", "ShimmerWet", "BreathCounter" })
                     typeInfo.Properties.Remove(typeInfo.Properties.Single(property => property.Name == name));
             }
         });
@@ -923,6 +923,27 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
         Assert.Null(NpcSimulationState.Initial.AiStyleOverride);
         Assert.Null(default(NpcSimulationState).AiStyleOverride);
         Assert.Null(after.Simulation.AiStyleOverride);
+        Assert.Null(NpcSimulationState.Initial.TeleportTime);
+        Assert.Null(default(NpcSimulationState).TeleportTime);
+        Assert.Null(after.Simulation.TeleportTime);
+        Assert.Null(NpcSimulationState.Initial.TeleportStyle);
+        Assert.Null(default(NpcSimulationState).TeleportStyle);
+        Assert.Null(after.Simulation.TeleportStyle);
+        Assert.Null(NpcSimulationState.Initial.WetCount);
+        Assert.Null(default(NpcSimulationState).WetCount);
+        Assert.Null(after.Simulation.WetCount);
+        Assert.Null(NpcSimulationState.Initial.LavaWet);
+        Assert.Null(default(NpcSimulationState).LavaWet);
+        Assert.Null(after.Simulation.LavaWet);
+        Assert.Null(NpcSimulationState.Initial.HoneyWet);
+        Assert.Null(default(NpcSimulationState).HoneyWet);
+        Assert.Null(after.Simulation.HoneyWet);
+        Assert.Null(NpcSimulationState.Initial.ShimmerWet);
+        Assert.Null(default(NpcSimulationState).ShimmerWet);
+        Assert.Null(after.Simulation.ShimmerWet);
+        Assert.Null(NpcSimulationState.Initial.BreathCounter);
+        Assert.Null(default(NpcSimulationState).BreathCounter);
+        Assert.Null(after.Simulation.BreathCounter);
         string serialized = JsonSerializer.Serialize(new { summary, log, after },
             new JsonSerializerOptions { TypeInfoResolver = oldSchema });
         // The unchanged pre-extension baseline verifies Bird74's historical hash, then captures
@@ -931,6 +952,35 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
         // Added retained fields are asserted separately and excluded from the historical schema.
         Assert.Equal("389180c53e1a6bc178f597bf918edb62bc54fc51dea9d5f1aaaa172f3270f60d",
             Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(serialized))));
+    }
+
+    [Fact]
+    public void Mystic_frog_teleport_and_liquid_history_is_retained_when_a_trusted_sparse_update_omits_it()
+    {
+        var store = new RuntimeNpcStore(2);
+        var initial = new NpcStateUpdate(687, 687, 1000, 1000, 0, 0, 255, default,
+            NpcSimulationState.Initial with { Life = 5, LifeMax = 5 });
+        Assert.True(store.TrySpawn(0, in initial, out var born));
+        Assert.Equal(0f, born.Simulation.TeleportTime);
+        Assert.Equal(0, born.Simulation.TeleportStyle);
+        Assert.Equal(0, born.Simulation.WetCount);
+        Assert.False(born.Simulation.LavaWet);
+        Assert.False(born.Simulation.HoneyWet);
+        Assert.False(born.Simulation.ShimmerWet);
+        var teleported = initial with { Simulation = born.Simulation with
+        {
+            TeleportTime = 1f, TeleportStyle = 13, WetCount = 10,
+            LavaWet = true, HoneyWet = true, ShimmerWet = true
+        } };
+        Assert.True(store.TryUpdate(born.Handle, in teleported, out var accepted));
+        var sparse = initial with { Simulation = NpcSimulationState.Initial };
+        Assert.True(store.TryUpdate(accepted.Handle, in sparse, out var retained));
+        Assert.Equal(1f, retained.Simulation.TeleportTime);
+        Assert.Equal(13, retained.Simulation.TeleportStyle);
+        Assert.Equal(10, retained.Simulation.WetCount);
+        Assert.True(retained.Simulation.LavaWet);
+        Assert.True(retained.Simulation.HoneyWet);
+        Assert.True(retained.Simulation.ShimmerWet);
     }
 
     [Fact]

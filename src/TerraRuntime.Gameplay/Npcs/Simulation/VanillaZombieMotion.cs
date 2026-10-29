@@ -107,7 +107,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     TurningCritter = 23,
     WalkingAntlion = 24,
     LarvaeAntlion = 25,
-    GroundCombatRanged = 26
+    GroundCombatRanged = 26,
+    ZombieMerman = 27
 }
 
 /// <summary>
@@ -374,6 +375,14 @@ public static class VanillaZombieMotion
             {
                 velocityX = (velocityX * 10f + maximumSpeed * directionX) / 11f;
             }
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.ZombieMerman)
+        {
+            maximumSpeed += (1f - input.Life / (float)input.LifeMax) * input.MissingHealthSpeedBonus;
+            if (velocityY == 0f && MathF.Abs(velocityX) <= maximumSpeed &&
+                (directionX > 0 && velocityX < -1f || directionX < 0 && velocityX > 1f))
+                velocityX *= .9f;
+            ApplyStandardMotion(maximumSpeed, input.HorizontalAcceleration, input.OverspeedGroundDamping);
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Psycho)
         {

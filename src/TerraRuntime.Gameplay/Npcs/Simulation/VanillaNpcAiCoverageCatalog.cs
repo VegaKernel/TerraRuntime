@@ -126,7 +126,8 @@ public static class VanillaNpcAiCoverageCatalog
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         const int hardmodeBossBehaviorCount = 35;
-        int nonresidentBunnyBehaviorCount = VanillaNonresidentGroundCritterCatalog1458.Types.Length;
+        int nonresidentBunnyBehaviorCount = VanillaNonresidentGroundCritterCatalog1458.Types.Length +
+            VanillaNpcTransformation1458.GroundCritterTypes.Length;
         var entries = new VanillaNpcAiCoverage[
             16 + hardmodeBossBehaviorCount + nonresidentBunnyBehaviorCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
@@ -289,7 +290,8 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore |
                 VanillaNpcAiCapability.CheckActiveSlice |
                 VanillaNpcAiCapability.GroundFighterTraversalSlice;
-            if (!VanillaGroundCombatCohort1458.IsSupported(type, new(type.Value)))
+            if (!VanillaGroundCombatCohort1458.IsSupported(type, new(type.Value)) &&
+                !VanillaNpcTransformation1458.IsNewFighter(type) && type != VanillaNpcIds.Lihzahrd)
                 capabilities |= VanillaNpcAiCapability.GroundFighterDoorPressureSlice;
             if (type == VanillaNpcIds.AngryBones || type == VanillaNpcIds.ArmoredSkeleton)
                 capabilities |= VanillaNpcAiCapability.GroundFighterCloseRangeLungeSlice;
@@ -491,6 +493,8 @@ public static class VanillaNpcAiCoverageCatalog
         // Shared style7 membership grants no town lifecycle or parity claim to another identity.
         foreach (int type in VanillaNonresidentGroundCritterCatalog1458.Types)
             entries[index++] = Partial(new(type), OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice);
+        foreach (NpcTypeId type in VanillaNpcTransformation1458.GroundCritterTypes)
+            entries[index++] = Partial(type, OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice);
 
         if (index != entries.Length)
             throw new InvalidOperationException("Vanilla NPC coverage catalog count drifted.");

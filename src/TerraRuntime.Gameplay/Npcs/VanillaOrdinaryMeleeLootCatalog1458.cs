@@ -36,6 +36,17 @@ public static class VanillaOrdinaryMeleeLootCatalog1458
             Common(new(886), 100, kind: VanillaNpcLootRuleKind.ExpertGetsOneReroll));
         Add(185, Common(new(951), 25), Common(new(5070), 1, 1, 2) with { ExpertMaximumStack = 3 },
             Common(VanillaOrdinaryMeleeDropItemIds1458.Compass, 50));
+        // Actual populated1458 specific-rule graph, including independently verified empty fish/frog tables.
+        Add(198, Common(new(1172), 1000), Common(new(1293), 50), Common(new(2766), 7, 1, 2));
+        Add(230);
+        Add(532, Common(new(3380), 1, 1, 3), Common(new(3771), 50));
+        Add(534);
+        Add(586, Common(new(4608), 2, 4, 6), Options(8, new ItemTypeId(4273)), Options(8, new ItemTypeId(4381)),
+            Options(8, new ItemTypeId(4325)), Common(new(3213), 15),
+            Common(new(4271), 25, kind: VanillaNpcLootRuleKind.BloodMoonNotFromStatueCommon));
+        Add(592);
+        Add(593);
+        Add(687);
         Add(181, Common(VanillaOrdinaryMeleeDropItemIds1458.Vertebrae, 3),
             Common(VanillaOrdinaryMeleeDropItemIds1458.TentacleSpike, 100, kind: VanillaNpcLootRuleKind.DontStarveCommon),
             Common(VanillaOrdinaryMeleeDropItemIds1458.TentacleSpike, 525, kind: VanillaNpcLootRuleKind.NotDontStarveCommon),

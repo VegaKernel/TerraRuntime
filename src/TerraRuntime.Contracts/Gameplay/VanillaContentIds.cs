@@ -933,6 +933,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId Chlorophyte = new(211);
     public static readonly TileTypeId Palladium = new(221);
     public static readonly TileTypeId Orichalcum = new(222);
+    public static readonly TileTypeId LandMine = new(210);
     public static readonly TileTypeId Titanium = new(223);
     public static readonly TileTypeId DemoniteBrick = new(140);
     public static readonly TileTypeId CrimtaneBrick = new(347);

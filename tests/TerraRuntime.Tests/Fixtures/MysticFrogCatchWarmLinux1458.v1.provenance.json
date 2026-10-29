@@ -1,0 +1,12 @@
+{
+  "fixture": "MysticFrogCatchWarmLinux1458.v1.json.gz",
+  "sha256": "47a11934770d5f9ae4cbf8c8307d1147e38f94019f6b618b2dde2c8a7d721239",
+  "qualification": ".cache\\transform-interactions\\source-catch-warm-v1\\qualification-v1.json",
+  "qualificationSha256": "ac58b6f4342c1c4de936ae762b772b63e0f820f47d98f2f5b6404f2ae3b10bce",
+  "sources": {
+    ".cache\\transform-interactions\\source-catch-warm-v1\\qualified-v1-1458-a.json.gz": "3728cea2777628a90f7bd133d7fcfa1b715246867d32123d07ea867daf5e883a",
+    ".cache\\transform-interactions\\source-catch-warm-v1\\qualified-v1-42-a.json.gz": "fb87184dc796c6d96f82141efc2895fd2d1b8997ecaad8a7b2dc42024a006989",
+    ".cache\\transform-interactions\\source-catch-warm-v1\\qualified-v1-8675309-a.json.gz": "c73c22c12de80239e9e899fd4cca778b1bd04e88327e13febc22f9a05da46bdc"
+  },
+  "scope": "Actual original3UpdateNPC warmup+CatchNPC+2UpdateNPC, untouchedcontinuousphysicalRNG. Usualtarget0/birthpendingfalse context; no nextticknetUpdate latch inactualsource."
+}

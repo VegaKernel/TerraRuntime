@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "kind": "ground-transform-fish-endpoint-presentation-successor",
+  "acceptedOriginalComponent": true,
+  "acceptedPrivateRuntimeComponent": true,
+  "canonicalXunitAccepted": false,
+  "aggregateAccepted": false,
+  "types": [
+    55,
+    57,
+    465,
+    592
+  ],
+  "newFixtureCases": 288,
+  "earlierFixtureCasesPreserved": 2442,
+  "predecessor": {
+    "path": "docs/verification/ground-transform-presentation-20261029.json",
+    "sha256": "91c2a082fc37076a10d742797abce185d48e7a3c966f9932efb585bb66f0db94",
+    "unchanged": true
+  },
+  "fixture": {
+    "path": "tests/TerraRuntime.Tests/Fixtures/GroundTransformFishFramesLinux1458.json.gz",
+    "sha256": "6227805eb36a894ef709733f9af1e311474f75d484c4bec8c7d69a1eb96d9fcb",
+    "origin": "Existing independently repeated2874originalFindFrame calls;72rows each4endpoint; no altered source/expected values"
+  },
+  "privateRuntime": {
+    "qualification": ".cache/transform-npc-frames/runtime-v4/qualification.json",
+    "sha256": "4c08e9b28109904f246bc1e8d79a62a9513b87d932473bf1995a4e65912004b2",
+    "normalTestBodies": 5936,
+    "passed": 5936,
+    "errors": 0,
+    "sameTestDllCausalFailures": {
+      "missingFishRenderers": 288,
+      "missingSevenRenderers": 2442,
+      "missingSwimmerDirection": 90,
+      "missingFallingWalkerRotation": 48
+    },
+    "allOld3206ControlsPassed": true,
+    "sourcePins": {
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\src\\TerraRuntime.Application\\VanillaGroundCombatPresentation1458.cs": "f3246c1480534809129f0a4eaa19a77f277e48ee75b522d0863bf158949d8ec0",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\src\\TerraRuntime.Application\\VanillaGroundCritterPresentation1458.cs": "ea9854aff50d4744e2c23b774fabc2c3b26885fdcfdd68d7648c999e00c46dcd",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\GroundTransformFishPresentation1458Tests.cs": "21455f24027cf674ccf07e11b4e9d94b9a1782c112c04c7c22dd239fc6a04790",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\GroundTransformPresentation1458Tests.cs": "e67cb8f7dad7ffd2f8f5e74061ab04c41d1fe4f2b1912e339c928c7dd35484bf",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\GroundCombatPresentation1458Tests.cs": "16c1a6435c59ace68ebf2ed532cc93a56f1fd718b75303f83c6158ee80ab7930",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\GroundCritterPresentation1458Tests.cs": "ff2dfa60d1bf26fbc6eeb072e1bbf2aa1cb051805cb2c37c908c4864f32c9d92",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\GroundTransformFishFramesLinux1458.json.gz": "6227805eb36a894ef709733f9af1e311474f75d484c4bec8c7d69a1eb96d9fcb",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\GroundTransformFramesLinux1458.json.gz": "af1e52910a6b7dda325bf1c238d795f7bca3557ea32157c2c294838c4135d3d2",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\GroundCombatFramesLinux1458.json.gz": "fda483b946359f58645b8d0d96e991ca4b978b3374f2b2b45c20026ceb048b03",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\tests\\TerraRuntime.Tests\\Fixtures\\GroundCritterFindFrameLinux1458.json.gz": "668a5c402a352c6faf848d923b0162b8a69b5b1deb64dc46ac342bcd1127bc6a",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd"
+    },
+    "references": {
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\ColorHelper.dll": "c8269624b18b4896cbab5bc97d6050e61e5ad395974b1b32351f8682d8d39317",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\JetBrains.Annotations.dll": "0295966b8d44522eec6a3c560fbe4efcfa878d3e16ff1ab0fb3478ab17001381",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Markdig.dll": "6231c6a7216466cbe7fdeab7463a30ed29275cf90042ba64b49e1205d45e7eb5",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Bcl.AsyncInterfaces.dll": "5705d245072d3eb78400547b32147dbb6e2c8b02ba8bda76729798f5efdeaecb",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Extensions.Configuration.Binder.dll": "e02d79ea407e364826744409cb729969ad787ed9b6171cf6ce8881dffa9da7ea",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Extensions.Configuration.dll": "e4721f9230b5bc6f82c7fda4efdf3bd648d936dbd254387a0375d571017725a2",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Extensions.Configuration.FileExtensions.dll": "c48ea0bd13c56886bd4895c362ecab10388dfa40b219a94ccffaa76abeb692a7",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Extensions.Configuration.Json.dll": "063d52874c6f7aa048972d82e62227683ddd101332f46d594f3b500452d64dfe",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Extensions.FileProviders.Physical.dll": "ec3beace52339100009bdc970ec4ed82e19040f16caff1c7ce2378c2bd785512",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Extensions.FileSystemGlobbing.dll": "a19d53870bd3c6ceff7fcdec13f57ab6e15e9ed2d87286bcde65677d7e5c16d7",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Testing.Extensions.MSBuild.dll": "69d1426649a79e05008b6f37914482ab1abefd603d24fe683314bc993e9c6520",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Testing.Extensions.TrxReport.Abstractions.dll": "ce045911e4db7d82c8de0075c78944e1ba8922a60c70d299a99366f0a6f4cab2",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.Testing.Platform.dll": "8a58cef87471c51220b7f9c0944401d575fe02d5666aab12a86b2804d650d8f3",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.TestPlatform.CommunicationUtilities.dll": "e38a359aa502bb1867d6092dca9aba5c130dd6f9111decea8156aa746b2c69e6",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.TestPlatform.CoreUtilities.dll": "f6e2495c44640d8915b2aefc938f391c970300266da014350ff35512a448ee84",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.TestPlatform.CrossPlatEngine.dll": "d55399bc66dc5b451d60ad82662452ca4a5f735918135dfc91ca9b5e3e38a6ab",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.TestPlatform.PlatformAbstractions.dll": "7b919ce4429c3b7b8fa2c36fd641b70b2f459a30ecb7c65fd80f437673cec930",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.TestPlatform.Utilities.dll": "01ffd64d25a4bd905aef9594d2aa700e020273a90a77a8720af6bec8b4fd5444",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.VisualStudio.CodeCoverage.Shim.dll": "a753bc15f23a957f4f91a059376e4472c6bacd1503622de4b9b2b079ad8ea289",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.VisualStudio.TestPlatform.Common.dll": "059aa2f335c3f7b14ac3fb7caa1625bc2767581b9548e9ff53a246c7f2f94d6a",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Microsoft.VisualStudio.TestPlatform.ObjectModel.dll": "f83e38ee9020baa42e284e2299e233070ffa86ce4b10213583f9b7c8a521bcd0",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Multiplicity.Packets.dll": "6b839f929524831b4a41a2ce05b69dfb239c82a4dbeb976cfdf1ae8f9e40d7eb",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Newtonsoft.Json.dll": "22c649f75fce5be7c7ccda8880473b634ef69ecf33f5d1ab8ad892caf47d5a07",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Onigwrap.dll": "692899f8a9fbda37b309d88f982f25820195fcd88f9b5b99a373fa61a496907c",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\System.IO.Abstractions.dll": "ff31c7bc7e65cccd6764228bfc4baa261ee9dd567825f6fedeadd960cd738acd",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Terminal.Gui.dll": "77ad96c1e5b8e11a0b63a7c459ff8933e283bce27b5f2e6b2349a3f110c26a3d",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Application.dll": "a521860a9e9a4c7ebc19c855ec534df858c1fa4044896ea4d667ad43b79059ed",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Contracts.dll": "ad4d8e5559c3e6b4c3df0214894706b1c386a8194e3bb94563867e21fcf6a79f",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Core.dll": "695c505a771f74158662e69f4fe81c09bc3f8b399c6b981eb7d1e26fdc41b248",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Extensibility.dll": "9ff1afc4fd1daa83a41caea8a6fee9ef3726becd0dca8df592c1a419fe5ab0f6",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Extensible.Server.dll": "5a1ffbb7c36f5d9c8a9dbe22d8ecd556fdfdeebc1e1365208ad3c5c8acb84e98",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Gameplay.dll": "ab28d848cb1d91ea089484182ca54c94e88b03e0b7749a8e0752f7068b14fe56",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.HostContracts.dll": "5af3c1a03cc1ebdafd33ed58140bb6643eedfa471f068e550e86a1b083f371c2",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.HostModuleFixture.dll": "c94d6be26295d4d93855401837cadd83469d20e10c8ed97e88d7420d3b31adf0",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Network.dll": "3e08a4befe41327125543b92370c0651cababb9ebcb8be43c893a654a7c3506c",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Protocol.dll": "c6246f00a2fe5f8f7823cf72cdac117dfd8740410ff94eaa20d7922382ef495a",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Protocol.Multiplicity.dll": "2bd74e01c02446f67aedb9c07bb637dd7c04c3c9548ca8954f13905a990ac770",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Schematics.dll": "6a57fe756074d9ed6c6fda3b39000a11f5fe34a2d7bff2b8be3c43c8631ee16b",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Server.dll": "ad5651913ba8e07e039333735bc168ffa60b4da54fd88d5d5d09013d831b07d3",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Tests.dll": "b0a32bb27d2012d6f1ab7323e01c09e0dceaed4af2246bf17ba64509a5036f7b",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.Transport.dll": "b2b142520bf5b958a2ef0fe3caa9a8fde0e5974b044959608e4b9b0f8fbfa965",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.WorkerPoolProbe.dll": "f10a27f9e35a82c76139e7c99d94656a1776c0178a3db13035ec14b393442acc",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.World.dll": "e81f2c6a09abb28b385c0fbdc16dc8078a6d7f71662d82bb8cbfe77efb09b4cb",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TerraRuntime.WorldGeneration.dll": "26fe10f52873d00bac2c8a0cdf0fdd66a5608537d887b063029d37bbe43e90ea",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TestableIO.System.IO.Abstractions.dll": "b67b1633678ccc9cb5a5c322e549d1b6fc2c6447013634686ed04c30010d73b1",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TestableIO.System.IO.Abstractions.Wrappers.dll": "7a131018963a6f70535a199ba231e0d17fc063cc368a8a22f07f29ce009798a8",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Testably.Abstractions.FileSystem.Interface.dll": "e4e2bd926c0f353b30866f2fd70aa5525aec5540b2ef3424ab0d0138c090cf47",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\testhost.dll": "92cbdf52db5249112f9f53f1fcdaf9f9aa3fce467141c688a31a7fe095e4d304",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TextMateSharp.dll": "989bf40e3bea1c3d26636f115171175cd2efd0945829148954e3219514b4ecb9",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\TextMateSharp.Grammars.dll": "027d5b51d78ec5b4238b08f5265569d6e32a31df6f7d21f49acf37216877c4cb",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\Wcwidth.dll": "d7b4366f0024ca0a5516d6d83417487dd421e4df35006bca6982fca8e20f9b8b",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.abstractions.dll": "3166dc70323fb30ccf1cedb0fe86f2ad122c46d254542342d90386efc4c9285c",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.runner.visualstudio.testadapter.dll": "21916b70a45fa2f9a4ca145b14866846b0ca1f7e2578d744b22c2f76538076c6",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.v3.assert.dll": "cd1eee2c41ac7e880a3e6ab03a8b03191e2c4cc567fcf10cf3fc35a38fcaf77c",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.v3.common.dll": "050b5e9b2e07bdae637dab552918140d290b49e83f8741bb74e09f17789a4f74",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.v3.core.dll": "826f76dceb966b4596c2404361b503d41b73042f1ba9f2b8ab649b376f143356",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.v3.runner.common.dll": "4d5c2311a0b2f4fb0932644dbc845be331a64f9d84cd72003c95a2bc4d6c4d7c",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.v3.runner.inproc.console.dll": "68ea7c0e26a6f3246cd34033bf2177622070c3bcc885641c9b8048f1eaf1a8b7",
+      "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-next-20261029\\.cache\\ground-combat-app\\final-gate02\\bin\\xunit.v3.runner.utility.netcore.dll": "16ab8139154531f22d71d712a27fbe79623f2491b3fedfbe0a45b2081ba04140"
+    },
+    "runs": [
+      {
+        "name": "fixed",
+        "total": 5936,
+        "passed": 5936,
+        "failed": 0,
+        "errors": 0,
+        "failuresByGroup": {},
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\fixed-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\fixed.json"
+        ],
+        "exitCode": 0,
+        "resultSha256": "df94153673d10b0726046c009e99a9adac472c035146f4751bcbe483eb8427ed",
+        "appSha256": "ea7ff9c1bb38798dd67947fe01365e79a074df80af46e6be7490701f15e9e491",
+        "testSha256": "a0433def96e932734765ef47721ac7c54f5be5aa64c9f08fb3222ba202b79546"
+      },
+      {
+        "name": "omit-fish-endpoints",
+        "total": 5936,
+        "passed": 5648,
+        "failed": 288,
+        "errors": 0,
+        "failuresByGroup": {
+          "fish-endpoints": 288
+        },
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-fish-endpoints-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-fish-endpoints.json"
+        ],
+        "exitCode": 1,
+        "resultSha256": "a5cf0e22dabb93b2c68fd6ec46914a9d2a81f14fe5d605c42a5445a76b9727b8",
+        "appSha256": "bb6291c03f274c2a3ca5c52fa3cdfc0913277d598a1ccdb305bbd8483728ac1a",
+        "testSha256": "a0433def96e932734765ef47721ac7c54f5be5aa64c9f08fb3222ba202b79546"
+      },
+      {
+        "name": "omit-new-renderers",
+        "total": 5936,
+        "passed": 3494,
+        "failed": 2442,
+        "errors": 0,
+        "failuresByGroup": {
+          "new": 2442
+        },
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-new-renderers-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-new-renderers.json"
+        ],
+        "exitCode": 1,
+        "resultSha256": "66f09d9c71b26d6349f34dc6fdbc5ac79f670a2c5eb17014a4628e3b73cfe8d9",
+        "appSha256": "de41021a8dcb2adac8028eceb4291514553392c078575cc2059e5beb77cd2c74",
+        "testSha256": "a0433def96e932734765ef47721ac7c54f5be5aa64c9f08fb3222ba202b79546"
+      },
+      {
+        "name": "omit-swimmer-direction",
+        "total": 5936,
+        "passed": 5846,
+        "failed": 90,
+        "errors": 0,
+        "failuresByGroup": {
+          "new": 90
+        },
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-swimmer-direction-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-swimmer-direction.json"
+        ],
+        "exitCode": 1,
+        "resultSha256": "dea09fa81e19fe6a954e8a40d0839e2d8a2110abfd02326a5c071e8d34c5e76b",
+        "appSha256": "e4b12de92f9440ec80341842052ad38b2dbf4e3602e231c1bbf4b940ae16cc79",
+        "testSha256": "a0433def96e932734765ef47721ac7c54f5be5aa64c9f08fb3222ba202b79546"
+      },
+      {
+        "name": "omit-falling-rotation",
+        "total": 5936,
+        "passed": 5888,
+        "failed": 48,
+        "errors": 0,
+        "failuresByGroup": {
+          "new": 48
+        },
+        "command": [
+          "dotnet",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-falling-rotation-bin\\TerraRuntime.Tests.dll",
+          "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\transform-npc-frames\\runtime-v4\\omit-falling-rotation.json"
+        ],
+        "exitCode": 1,
+        "resultSha256": "c6db6a1c5a1136168877c1a41be2e4be9f20b8473acfa9a9932c5ea0678cc88c",
+        "appSha256": "d6cc51a729e337f00865bd5d603a48a494a33c44b44e01fe909f4ada003f7f1b",
+        "testSha256": "a0433def96e932734765ef47721ac7c54f5be5aa64c9f08fb3222ba202b79546"
+      }
+    ]
+  },
+  "scope": [
+    "Dedicated FindFrame component only; fish row6 wet/dry clocks and facing use actual final identity. No AI/lifecycle admission, fullNPC/wholeMain, native or network claim.",
+    "Private minimal2-source App assembly and exact normaltest bodies; final composed canonical source/DLL bridge still required.",
+    "EarlierRuntime-v3 completed fixed5936 andfishomission288, then preparation failed matching another historical mutation text; preserved, not counted as qualified causal package. Runtime-v4 successor qualifies all4 controls."
+  ]
+}
