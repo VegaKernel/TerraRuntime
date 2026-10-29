@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Ground-combat/equipment integration, 2026-10-29
+
+Fresh Windows x64 NativeAOT executable SHA256 `04f31a1194e0ac398581c754d46bc883321152f92a9e13b985b87dd137d50459` has CLR directory0/0 and passes loop/protocol/network/world/TUI smokes plus actual TCP acceptance. Source4146/DLL158 and shipping graph15/29 remain bound; no new production package, entity store, clock or RNG owner. Current WAE/fast49687 is green. Completed full1595001/all5551 has one explicitly retained test-clock failure, resolved by the deterministic test-only clock repair with all157runtimeDLLs exact; it is not claimed as a raw-green full run. [Acceptance](verification/ground-combat-acceptance-20261029.json). Linux Native, official GUI and graceful-save shutdown remain unverified.
+
 ## Ground-critter final checkpoint, 2026-10-28
 
 Ground-critter checkpoint2026-10-28: source4067/DLL158/index exact, old891fixtures unchanged; AI3/AI7 lifecycle247/300 (82.3%), global511/244. Existing retained owner now handles34critters and live squirrel7→3; no parallel store/RNG/dependency, graph15/29. Phase63744active+960surface/fullRNG strict,60legacy stability controls; terminal4224NPC/raw/RNGonly, inactivebuffownership unqualified. WAE/focus1391/full1575840/all5485methods and fast34426 actual subset of same unfiltered run green, freshWindowsNativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/5smokes/actualRelease+NativeTCP green. FullVanillaAiParity false; LinuxNative/GUI/gracefulsave open. See docs/verification/ground-critter-acceptance-20261028.json.

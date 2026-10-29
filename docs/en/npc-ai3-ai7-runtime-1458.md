@@ -1,5 +1,13 @@
 # AI3/AI7 runtime admission, Terraria 1.4.5.8
 
+## Ground-combat continuation accepted, 2026-10-29
+
+Sixteen additional identities now use the retained NPC/status/terrain/shared-RNG phase, source attack births, specific loot and presentation. Five projectile families (`436`, `438`, `471`, `508`, `592`) include collision/liquid/lifetime continuation and authoritative contact after each subupdate through the existing human and server-player HP owners. The Ankh-line equipment and six current-debuff continuations are integrated in the same checkpoint. AI3/AI7 lifecycle admission is **263/300 (87.7%)**, with 37 creation-only; this is lifecycle coverage, not complete vanilla AI fidelity.
+
+[Acceptance and limits](../verification/ground-combat-acceptance-20261029.json) bind the independent phase/component captures, real omission controls, unchanged 880 published gzip fixtures, fresh Windows NativeAOT/five smokes and actual Release/Native TCP. The complete unfiltered run executed 1,595,001 cases across all 5,551 methods: its sole failure was a wall-clock-sensitive rate-window test. A deterministic test-only clock repair then passes the current 49,687-case fast tier, including all twelve rate-limit facts, with all 157 runtime DLLs byte-identical. The raw full XML remains failed; no third unfiltered invocation or raw-green full result is claimed. Earlier seven roster/custom-stepper test failures are preserved separately.
+
+Inactive NPC status observations, weak/cross-CLR Flinx precision, lethal player death entropy, unrepresented player effects/environments, Linux NativeAOT, official GUI and graceful-save shutdown remain bounded as recorded. The following qualification section preserves the implementation history before acceptance.
+
 ## Ground-combat continuation in qualification, 2026-10-29
 
 The next candidate connects sixteen former creation-only identities: `185`, `385`, `482`, `508`, `580`, `582`, `590`, signed `77/-15`, `381`, `382`, `449..452`, `481` and `520`. Positive `77/77` is an existing-admission control. Candidate counts are 263/300 AI3/AI7 lifecycle identities, 37 creation-only, and 527 global lifecycle identities with 228 creation-only. These counts are not an accepted checkpoint yet; the published ground-critter checkpoint below remains the accepted baseline.

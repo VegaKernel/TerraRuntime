@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "accepted": true,
+  "scope": "Source-qualified retained sixteen-NPC ground-combat continuation, five NPC projectile families with ordered authoritative player contact, and the integrated Ankh/current-debuff component. Acceptance combines the completed all-method full02 with a deterministic test-only clock repair and fresh mandatory fast; raw full02 is explicitly not green.",
+  "shippingBaseCommit": "e747cc3f7ae6950c4af29460c0aafda1952cbacf",
+  "preservedRemoteWorldgenCommit": "b8074a3bbd938ed89033701997561b406c2e98a2",
+  "publication": "Git records the actual main merge and push; this receipt is written before publication.",
+  "coverage": {
+    "newNpcIdentities": [
+      185,
+      385,
+      482,
+      508,
+      580,
+      582,
+      590,
+      -15,
+      381,
+      382,
+      449,
+      450,
+      451,
+      452,
+      481,
+      520
+    ],
+    "existingPositive77IsControl": true,
+    "ai3Ai7Lifecycle": 263,
+    "ai3Ai7Total": 300,
+    "ai3Ai7CreationOnly": 37,
+    "positiveAi3Lifecycle": 164,
+    "positiveAi3Total": 191,
+    "signedAi3Lifecycle": 27,
+    "globalLifecycle": 527,
+    "globalCreationOnly": 228,
+    "fullVanillaAiParity": false
+  },
+  "verification": {
+    "warningsAsErrors": true,
+    "sourceInputCount": 4146,
+    "executedDllCount": 158,
+    "runtimeDllsIdenticalAcrossClockRepair": 157,
+    "currentFast": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 49687,
+      "skipped": 0,
+      "total": 49687
+    },
+    "currentRateClass": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 12,
+      "skipped": 0,
+      "total": 12
+    },
+    "completedUnfilteredFull": {
+      "rawAccepted": false,
+      "counts": {
+        "errors": 0,
+        "failed": 1,
+        "not-run": 0,
+        "passed": 1595000,
+        "skipped": 0,
+        "total": 1595001
+      },
+      "methods": 5551,
+      "onlyFailure": "TerraRuntime.Tests.TerrariaConnectionPolicyRateLimitTests.Compact_pickup_burst_fits_existing_policy_but_still_hits_aggregate_flood_ceiling",
+      "resolvedByTestOnlyClockFix": true,
+      "freshThirdUnfilteredRunClaimed": false,
+      "resolution": {
+        "path": ".cache/ground-combat-app/final-gate03/full02-failure-resolution.json",
+        "sha256": "981f4a488e55b4311e509046539631f0d3bc8d6060cd6205e9eb7b133c9099f1"
+      }
+    },
+    "freshManagedGate": {
+      "path": ".cache/ground-combat-app/final-gate03/accepted.json",
+      "sha256": "4125e9ea57d22c16d7fdf34d2d811ecf2252ad11e87bdf35fe9cdf6f32dca046"
+    },
+    "sourceManifest": {
+      "path": ".cache/ground-combat-app/final-gate03/source-before.json",
+      "sha256": "f1ccaf7ca38d30677a25d04ad0681e60028fd7d5b1387132660a08b8e2527437"
+    },
+    "dllManifest": {
+      "path": ".cache/ground-combat-app/final-gate03/dll-before.json",
+      "sha256": "7061579dbf6aa93d9724ac04d51c7616a6a3a42b68a3282085c8268ae5b594cd"
+    },
+    "testOnlySourceBridge": {
+      "path": ".cache/ground-combat-app/final-gate03/test-only-source-bridge.json",
+      "sha256": "849fbebb179886b2df9ffcd6c8addfa0e48400d258fc9d2c7bc355cf62d33a27"
+    },
+    "runtimeDllBridge": {
+      "path": ".cache/ground-combat-app/final-gate03/runtime-dll-bridge.json",
+      "sha256": "a6f20fa09650fea2acd270ccd5a1f144113a5eb5571d749630de60ecb70a474f"
+    },
+    "clockCauseProof": {
+      "path": ".cache/rate-limit-clock-fix02/qualification.json",
+      "sha256": "a44ae6d937d3d93c5e59973631c4b1a117b60ebfb7dedc79e3a43d091c113531"
+    }
+  },
+  "npcPhase": {
+    "summary": {
+      "path": ".cache/ground-combat-oracle/final-union02-component-summary.json",
+      "sha256": "78a40c3e6c8fe78dd718bf1081a217ed7cd1e58ecca71523eee57aa905c5d6e6"
+    },
+    "counts": {
+      "mainNpcPhases": 26784,
+      "activeAfterFull": 25248,
+      "retiredAfterOwned": 1536,
+      "busyNpcPhases": 180,
+      "rareIdleNpcPhases": 24,
+      "legacy17StrictSourcePhases": 55872,
+      "legacyRuntimeStabilityCases": 60,
+      "compilerControlPasses": 18,
+      "omissionAssertionFailures": 7,
+      "omissionPositiveControlPasses": 2,
+      "errors": 0,
+      "skips": 0
+    },
+    "strictFullNamedInactiveStatusAccepted": false,
+    "inactiveUnavailableFields": [
+      "statusKnown",
+      "stinky",
+      "buffs"
+    ],
+    "scope": "Active named NPC/raw-player/full RNG and owned projectile births; retirement retains exactly the declared three unavailable status observations. Legacy seventeen-NPC phase corpus and actual same-API ownership omissions are bound by the summary."
+  },
+  "projectiles": {
+    "types": [
+      436,
+      438,
+      471,
+      508,
+      592
+    ],
+    "sourceAndControls": {
+      "path": ".cache/npc16-projectiles/final02-controls01/summary.json",
+      "sha256": "d1c0e4dbd41870aff2ce07a359e9b83a8d40135db37684b84395fa15362de160"
+    },
+    "playerContactsAndAnkh": {
+      "path": ".cache/ground-combat-player-hit/component-qualified-final02.json",
+      "sha256": "500bdb8e3b0da620aae0a320f90be947456f25ed44f2780219405234a38219f6"
+    },
+    "sourcePlayerRows": 633,
+    "nonlethalFullPhysicalRngRows": 603,
+    "lethalHpDeathDebitOnlyRows": 30,
+    "scope": "Includes ordinary and inactive lifetime movement, source liquid/birth observations, guarded visual/collision offers, source-order contact at each subupdate, both existing HP owners and exact nonlethal entropy. A wall-start-overlap case is not general Javelin wall immunity."
+  },
+  "ankh": {
+    "accessories": 16,
+    "additionalCurrentDebuffs": [
+      22,
+      30,
+      32,
+      33,
+      35,
+      36
+    ],
+    "exactSixteenShippingInputBridge": {
+      "path": ".cache/ground-combat-app/final-ankh-source-bridge.json",
+      "sha256": "18ce27e988c6675949f97aa73b20f0e62a901379d81d3ea80612654c1624d55e"
+    },
+    "sameFinalTestDllControls": {
+      "path": ".cache/ground-combat-player-hit/ankh-final02/result.json",
+      "sha256": "172926b0ccca200bfbf34d1d2fd9133451c7bb0bcb460aa2401814ba69044bb8"
+    }
+  },
+  "native": {
+    "platform": "Windows x64",
+    "accepted": true,
+    "executableSha256": "04f31a1194e0ac398581c754d46bc883321152f92a9e13b985b87dd137d50459",
+    "executableBytes": 37715456,
+    "clrDirectory": {
+      "machine": "0x8664",
+      "optionalMagic": "0x20b",
+      "clrRva": 0,
+      "clrSize": 0
+    },
+    "smokes": [
+      {
+        "mode": "loop",
+        "exitCode": 0,
+        "logSha256": "209ffe5184f8923db3e7cd0ce071f0019f0d4e098fc0208153495e7d51fe05dc"
+      },
+      {
+        "mode": "protocol",
+        "exitCode": 0,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "mode": "network",
+        "exitCode": 0,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "mode": "world",
+        "exitCode": 0,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "mode": "tui",
+        "exitCode": 0,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ],
+    "record": {
+      "path": ".cache/ground-combat-app/final-gate03/native/result.json",
+      "sha256": "90f961f4487692a44733b3dce0b3f438cfff154f3fef75d9fd1a098b63929b87"
+    }
+  },
+  "actualTcp": {
+    "release": {
+      "path": ".cache/ground-combat-app/live-next-release-03/result.json",
+      "sha256": "6e2e9a306eebffb1e4cfc0827d6b3460afcaad1357949b8dcf2192d3854b8529"
+    },
+    "native": {
+      "path": ".cache/ground-combat-app/live-next-native-03/result.json",
+      "sha256": "f7ad42aef32cb2f02389bfc2f3f2ededfd8eee8e99b8f1c890979f9ead56fa6f"
+    },
+    "scope": "Two full joins, fifteen bootstrap sections per client, Banner/Bestiary82 before49 then129, two-client movement/chat and replacement Hello refusal; both owned host processes stopped."
+  },
+  "invariants": {
+    "unchangedPublishedGzipFixtures": 880,
+    "goldenGuard": {
+      "path": ".cache/ground-combat-app/old-goldens-before.json",
+      "sha256": "4286bc2cb42899b67dca706346db74fd8a5a7ba2ac29646303390861d82243f7"
+    },
+    "shippingProjects": 15,
+    "projectReferences": 29,
+    "newProductionDependencies": false,
+    "newEntityStoreClockOrRngOwner": false,
+    "projectGraph": {
+      "path": ".cache/ground-combat-app/final-project-graph.json",
+      "sha256": "28d116e565c96a53c6b5050129ded5f9358a4191f5381c09c736bd050fc4736b"
+    },
+    "finalIndexSourceBridge": {
+      "path": ".cache/ground-combat-app/final-gate03/final-index-source-bridge.json",
+      "sha256": "c088d72c2f3ab379c57c42cdf4501d004b15f1dab880ff94a8f4cf9452a7e37c"
+    }
+  },
+  "historicalRejectedEvidence": [
+    "full01: seven obsolete roster/custom-stepper test expectations; production unchanged by their repair",
+    "full02: one real-wall-clock rate-window harness failure; original XML remains failed and immutable",
+    "source crossing-v1: aliased AI-array preimage rejected and replaced by independently recaptured cloned-array v2",
+    "private projectile attempt with missing friend ABI: discarded loader failure, superseded by actual same-API assertions"
+  ],
+  "limits": [
+    "FullVanillaAiParity remains false; lifecycle counts are not complete vanilla AI fidelity.",
+    "No whole original Main.Update or dedicated net2 player-damage equivalence: original net2 skips Damage_EVP, runtime deliberately owns source client-damage semantics on the server.",
+    "Exact full inactive NPC status, legacy weak/cross-CLR Flinx float precision and lethal player KillMe/tombstone entropy remain unqualified.",
+    "Confused/Stoned full player-phase continuation, AnkhShield fireWalk and unrepresented equipment/environment histories retain their documented fences.",
+    "Linux NativeAOT, official GUI and graceful-save shutdown were not exercised for this checkpoint.",
+    "The separate seven-NPC transform worktree is unfinished and excluded from this acceptance."
+  ]
+}

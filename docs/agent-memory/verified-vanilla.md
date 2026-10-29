@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Accepted ground combat with resolved test-clock boundary, 2026-10-29
+
+Source4146/DLL158, no new shipping dependency or entity/RNG/clock owner, graph15/29; NPC263/300,global527/228. Completed full1595001/all5551 has exactly one retained rate-window System-clock test failure; deterministic TESTONLY repair passes currentfast49687/all12ratefacts with all157runtimeDLLs exact. AllNPC/gameplay/worldgen matrices passed; no raw-full-green/thirdfullclaim. WindowsNative04f31a1194e0ac398581c754d46bc883321152f92a9e13b985b87dd137d50459/fivesmokes/actualRelease+NativeTCP green. docs/verification/ground-combat-acceptance-20261029.json records scopes/controls/limits; separate next7branchunfinished/excluded. Historical paragraphs below retain their earlier boundaries.
+
 ## Ground-combat component facts; final union pending, 2026-10-29
 
 Actual1458 NPC ground attacks use projectile436/438/471/508/592; Hoplite481 emits508, not493. NewProjectile stores post-SetDefaults top-left coordinates, OriginalDamage0 and npcProjfalse even when source provenance is an NPC. WetCollision's first intersecting liquid supplies birth wet/honey/shimmer; ignoreWater clears onlywet, while lavaWetfalse and wetCount0 remain constructor defaults. Hostile AI1/AI2 returns immediately from Projectile.Shimmer, but entering/exiting Shimmer still evaluates source splash arguments before dedicated Dust no-ops. The owned counter is updated and ten Next6 offers are retained where the actual source requests them.
