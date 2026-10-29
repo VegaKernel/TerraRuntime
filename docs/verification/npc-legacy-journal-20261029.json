@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "legacy-npc-observer-source-journal-bridge",
+  "boundedComponentAccepted": true,
+  "aggregateAccepted": false,
+  "completedRedFull": {
+    "path": ".cache/transform-app/final-gate01",
+    "counts": {
+      "errors": 0,
+      "failed": 3,
+      "not-run": 0,
+      "passed": 1598612,
+      "skipped": 0,
+      "total": 1598615
+    },
+    "executedMethods": 5610,
+    "xmlSha256": "3a0cee1d36908576d3918177577f890419f1cc37afc6affdaabfd5482882a5d8",
+    "interrupted": false,
+    "stopAttemptNoProcesses": true,
+    "scope": "Actual complete unfiltered run, retained red. Two stale census assertions and one genuine legacy observer duplicate23. No cancellation, skipped rows or raw-green claim."
+  },
+  "fix": "Existing active prepared journal consumes exact same-actor generic lifecycle callbacks forwarded by legacy INpcStateCommitSink implementations; observers keep committed logical state while replication publishes one original source checkpoint. Retirement activation/despawn default pair cannot emit another inactive head; normal typed callbacks unchanged. No new state/store/clock/RNG.",
+  "sourceGoldensUnchanged": true,
+  "censusAssertions": {
+    "explicitImportWireFrames": 392,
+    "globalLifecycleCountIncludingSigned": 534
+  },
+  "normal08": {
+    "warnings": 0,
+    "errors": 0,
+    "focusedCounts": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 7156,
+      "skipped": 0,
+      "total": 7156
+    },
+    "sourceInputs": 4204,
+    "sourceManifestSha256": "e80b4a99c4edd991f28c0b68188939b3aba43dd0bd95d13484bf3580bc0108ed",
+    "runtimeManifestSha256": "8769ac4f1c5f8c9502d2bce5d86fefbe3664e35ff2f33d71152bdc3a7a7816bf",
+    "newGenericHistoricalRows": 12,
+    "existingStatueCatchSourceCases": 21,
+    "sameFixedTestDllCausalRows": 13
+  },
+  "causal": {
+    "qualifiedOldReceipt": ".cache/legacy-journal-fix/old07-current08-test02/qualification.json",
+    "qualifiedOldReceiptSha256": "29d78e35a192fe07ea3ef032a062b34d27ffea21335740b24d9ed6027e1470b8",
+    "actualCompleteOldRuntime": "diagnostic07",
+    "sameFixed08TestDll": true,
+    "oldGenuineEqualAssertionFailures": 13,
+    "fixedCanonical08Passed": 13,
+    "loaderErrors": 0,
+    "rejectedFirstFilterAttempt": ".cache/legacy-journal-fix/old07-current08-test/qualification.json",
+    "rejectedReason": "Combined class+method filter intersected to zero rows; explicitly unqualified and superseded."
+  },
+  "limits": "Final current-code unfiltered/Native/live gates remain pending. Bounded journal proof does not qualify all NPC/Town/source state or LinuxNative/GUI."
+}

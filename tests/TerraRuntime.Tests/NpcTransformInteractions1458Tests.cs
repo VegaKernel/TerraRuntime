@@ -277,9 +277,9 @@ public sealed partial class NpcTransformInteractions1458Tests
         internal readonly TerrariaConnectionOutboundQueue Outbound;
         private readonly PlayerJoinSession session;
         internal Fixture(int seed,JsonElement[] input,bool withWorldInfo=false,bool blocked=false,RuntimeWorldClock? clock=null,
-            bool withHomeCommands=false)
+            bool withHomeCommands=false,bool legacyObserver=false)
         {
-            Random=new(seed);Observer.Registry=Registry;Npcs=new(commitSink:Observer);
+            Random=new(seed);Observer.Registry=Registry;Npcs=new(commitSink:legacyObserver?new LegacyObserver(Observer):Observer);
             Assert.True(Tiles.TryAttachWorldSurface(80));
             for(int y=0;y<200;y++)for(int x=0;x<192;x++)if(blocked||y==100)Tiles.Set(x,y,new WorldTile {Type=1,Flags=WorldTileFlags.Active});
             Actors=new NpcSnapshot[input.Length];
@@ -333,6 +333,13 @@ public sealed partial class NpcTransformInteractions1458Tests
             var world=materialized.World! with {RuntimeMetadata=new WorldFileRuntimeMetadata {SpawnX=74,SpawnY=100,WorldSurface=80,RockLayer=120,DayTime=false}};
             return new(new(WorldRuntimeId.CreateNew(),WorldSessionId.CreateNew()),source,world,materialized.Bootstrap!,new InterestManagementControl(),new WorldRuntimeOptions {MaxPlayers=2});
         }
+    }
+    private sealed class LegacyObserver(Observer observer):INpcStateCommitSink
+    {
+        // Deliberately implements only the original observer method. The Core
+        // default historical/catch callbacks reach the real registry through it.
+        public void NpcStateCommitted(NpcStateCommitKind kind,in NpcSnapshot npc) =>
+            observer.NpcStateCommitted(kind,in npc);
     }
     private sealed class Observer:INpcStateCommitSink
     {

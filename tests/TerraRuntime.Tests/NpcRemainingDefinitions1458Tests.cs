@@ -145,8 +145,8 @@ public sealed class NpcRemainingDefinitions1458Tests
         Assert.Equal(690,created);Assert.Equal(1,metadata);
         // Previous431, the verified37 undead/gem cohort, four bunny siblings,
         // seventeen ordinary melee actors, twenty-two nonresident ground critters
-        // and sixteen further ground-combat identities.
-        Assert.Equal(527, lifecycle + CountSignedLifecycle());
+        // sixteen further ground-combat identities and seven transformation-dependent identities.
+        Assert.Equal(534, lifecycle + CountSignedLifecycle());
         int signed=0;
         for(short net=-65;net<0;net++) for(int type=1;type<=696;type++)
             if(VanillaNpcDefinitionCatalog.TryGet(new(type),new(net),out var d) && !d.DefinitionOnly) signed++;

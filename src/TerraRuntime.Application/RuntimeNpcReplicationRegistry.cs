@@ -250,8 +250,17 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     internal void ProgressionEvent(short eventId) =>
         Broadcast(TerrariaProgressionEventCodec1458.Encode(eventId));
 
-    public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot) =>
+    public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)
+    {
+        // A legacy observer can forward the generic default lifecycle callback.
+        // The adopted source journal still owns its single historical wire head.
+        if (activeHistoricalPublication is { } prepared && prepared.MatchesLegacy(kind, in snapshot))
+        {
+            prepared.TryPublishHead();
+            return;
+        }
         NpcStateCommittedCore(kind, in snapshot, vanillaAiPhase: false);
+    }
 
     public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false)
     {

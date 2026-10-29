@@ -23,13 +23,20 @@ public sealed partial class NpcTransformInteractions1458Tests
 
     [Theory, MemberData(nameof(OriginalHomePhases))]
     public void Source_home_call_and_network_tail_keep_their_order_after_powder_and_on_subsequent_ticks(string json)
+        => CheckOriginalHomePhase(json, legacyObserver: false);
+
+    [Theory, MemberData(nameof(OriginalHomePhases))]
+    public void A_legacy_observer_receives_committed_state_without_replacing_the_original_wire_checkpoint(string json)
+        => CheckOriginalHomePhase(json, legacyObserver: true);
+
+    private static void CheckOriginalHomePhase(string json, bool legacyObserver)
     {
         using var document = JsonDocument.Parse(json);
         var row = document.RootElement;
         var input = row.GetProperty("input");
         var original = input.GetProperty("npc");
         using var f = new Fixture(row.GetProperty("seed").GetInt32(), [original], withWorldInfo: true,
-            clock: new RuntimeWorldClock(0d, false, VanillaMoonPhase.Full, 0d, 0));
+            clock: new RuntimeWorldClock(0d, false, VanillaMoonPhase.Full, 0d, 0), legacyObserver: legacyObserver);
         var player = input.GetProperty("players")[0];
         f.MovePlayer(F(player.GetProperty("position")[0]), F(player.GetProperty("position")[1]));
         var appearance = new PlayerAppearanceCommitRequest(f.Connection.Player.Slot, 0, 0, 0, 0,

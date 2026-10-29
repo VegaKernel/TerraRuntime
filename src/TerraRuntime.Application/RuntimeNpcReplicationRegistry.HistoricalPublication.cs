@@ -244,6 +244,11 @@ internal sealed partial class RuntimeNpcReplicationRegistry
             adopted && retiredSource is null && historical == checkpoint && committed == accepted &&
             kind == (spawnNeedsSyncing ? NpcStateCommitKind.Spawn : NpcStateCommitKind.ForcedUpdate);
 
+        internal bool MatchesLegacy(NpcStateCommitKind kind, in NpcSnapshot snapshot) => adopted &&
+            (retiredSource is not null
+                ? snapshot == checkpoint && kind is NpcStateCommitKind.Spawn or NpcStateCommitKind.Despawn
+                : snapshot == accepted && kind == (spawnNeedsSyncing ? NpcStateCommitKind.Spawn : NpcStateCommitKind.ForcedUpdate));
+
         internal bool TryPublishHead()
         {
             if (!adopted || headAttempted) return false;

@@ -1,5 +1,9 @@
 # AI3/AI7 runtime admission, Terraria 1.4.5.8
 
+## Legacy observer journal correction, 2026-10-29
+
+Observers implementing only `NpcStateCommitted` can forward the Core default catch or historical callback to replication. The existing adopted journal now consumes those exact same-generation callbacks and publishes its original checkpoint once. A caught NPC no longer produces a second inactive packet; historical observers still see committed state. Independent source packets cover the existing 21 statue-catch scenarios and 12 added legacy historical cases. The unchanged current test DLL fails 13 assertions against the complete previous runtime and passes all 13 on diagnostic08, with no loader errors. Diagnostic08 passes 7,156 focused cases. The first full run completed with 1,598,612 passes and three failures: this bug and two stale census assertions, now corrected without changing numeric fixtures. That full remains explicitly red; final aggregate qualification is pending. [Evidence](../verification/npc-legacy-journal-20261029.json).
+
 ## Seven identities with transformations: implementation in progress, 2026-10-29
 
 The next source cohort is `198`, `230`, `532`, `534`, `586`, `593` and `687`. These identities are enabled in the candidate branch for integration checks; published support stays at the preceding accepted cohort until AI, collision-time transformations, status, combat/loot, rescue/catch and publication are checked together. The candidate census is 270/300 AI3/AI7 lifecycle identities and 30 creation-only, with 534 lifecycle/221 creation-only across the catalog. Existing endpoint identities do not add to these counts. `FullVanillaAiParity` remains false; this candidate is not aggregate acceptance.

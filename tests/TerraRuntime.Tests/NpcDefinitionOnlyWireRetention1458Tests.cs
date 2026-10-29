@@ -96,7 +96,7 @@ public sealed class NpcDefinitionOnlyWireRetention1458Tests
             if (!Convert.FromHexString(wire.GetProperty("frame").GetString()!).AsSpan().SequenceEqual(encoded))
                 mismatches.Add($"type={imported.Type} net={imported.NetId} mode={mode}: expected={wire.GetProperty("frame")} actual={Convert.ToHexString(encoded)}");
         }
-        Assert.Equal(384, frames);
+        Assert.Equal(392, frames);
         Assert.True(mismatches.Count == 0, string.Join(Environment.NewLine, mismatches));
     }
 
