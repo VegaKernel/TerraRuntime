@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "kind": "retained-npc-transformation-integration-acceptance",
+  "date": "2026-10-29",
+  "acceptedCheckpoint": true,
+  "fullVanillaAiParity": false,
+  "strictFullNamedNpcParity": false,
+  "counts": {
+    "ai3ai7Lifecycle": 270,
+    "ai3ai7Total": 300,
+    "ai3ai7Percent": 90,
+    "ai3ai7CreationOnly": 30,
+    "globalLifecycle": 534,
+    "globalCreationOnly": 221,
+    "newIdentities": [
+      198,
+      230,
+      532,
+      534,
+      586,
+      593,
+      687
+    ],
+    "existingEndpointsDoNotAddCounts": true
+  },
+  "sourceAndRuntime": {
+    "sourceInputs": 4204,
+    "sourceManifestSha256": "e80b4a99c4edd991f28c0b68188939b3aba43dd0bd95d13484bf3580bc0108ed",
+    "runtimeManifestSha256": "2e57baae4bed8a519c493c3b9c5fc23dc31d903f52f9dfaf182f37e83b75ec5b",
+    "immutableFinalFiles": 206,
+    "immutableFinalDlls": 158,
+    "immutableFinalBinManifestSha256": "3eae3682a0da4d566371d91ad95b556aef395177f79c5ea38fe4a05f25cce66d",
+    "allSourceAndCanonicalDllGuardsExact": true,
+    "qualifiedOriginalRuntimeContexts": 435,
+    "comparedActualPhases": 11904,
+    "explicitUnsupportedShimmerRefusals": 2016,
+    "sourceOnlyDiagnostics": 8,
+    "unownedTownNetworkSpam": "Explicit unknown wherever the existing network budget has no matching owner; never guessed zero.",
+    "projectionScope": "All represented NPC/status/raw-player/full physical RNG/world/projectile/raw-packet observations exact. Bounded actors and contexts, not whole original NPC/Main/Player state."
+  },
+  "tests": {
+    "warnings": 0,
+    "errors": 0,
+    "focused": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 7156,
+      "skipped": 0,
+      "total": 7156
+    },
+    "fullRaw": {
+      "errors": 0,
+      "failed": 2,
+      "not-run": 0,
+      "passed": 1598625,
+      "skipped": 0,
+      "total": 1598627
+    },
+    "fullRawAccepted": false,
+    "fullRawXmlSha256": "e53314eaa23408649d30a6fd14610081ce5cf786bb8897cec33fb41d61a227c8",
+    "executedMethods": 5611,
+    "completeSuiteResolved": true,
+    "uniqueResolvedRows": 1598627,
+    "actualExecutionsIncludingExactReruns": 1598629,
+    "environmentReplay": {
+      "path": ".cache/transform-app/final-gate02/environment-replay/qualification.json",
+      "sha256": "e48487ede2f38e44a315ffd049866de99e9816891969c0981658344841ce94bf",
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 2,
+        "skipped": 0,
+        "total": 2
+      },
+      "sameAll158DllsAnd4204SourceInputs": true,
+      "overrides": "Owned E: TEMP/TMP, one test thread; no production/test/fixture edits."
+    },
+    "fast": {
+      "errors": 0,
+      "failed": 0,
+      "not-run": 0,
+      "passed": 53313,
+      "skipped": 0,
+      "total": 53313
+    },
+    "fastSeparateProcessExecuted": false,
+    "fastScope": "Exact mandatory-fast method coverage from full02 plus only the two same-DLL environment reruns. No row sampling.",
+    "firstRawFullRetained": ".cache/transform-app/final-gate01",
+    "thirdFullExecuted": false
+  },
+  "native": {
+    "platform": "Windows x64",
+    "sha256": "be9dbfe9a3403cc426dd048eeaa017f2f98700f4856b9bce8f506c7b6fd80106",
+    "pe": {
+      "machine": "0x8664",
+      "optionalMagic": "0x20b",
+      "clrRva": 0,
+      "clrSize": 0
+    },
+    "smokes": [
+      {
+        "mode": "loop",
+        "exitCode": 0
+      },
+      {
+        "mode": "protocol",
+        "exitCode": 0
+      },
+      {
+        "mode": "network",
+        "exitCode": 0
+      },
+      {
+        "mode": "world",
+        "exitCode": 0
+      },
+      {
+        "mode": "tui",
+        "exitCode": 0
+      }
+    ],
+    "receiptSha256": "328fb74c684648f677049f5585bf28f217a4d715ac0f8ae29cff601de642f786",
+    "temporaryDirectoryOnE": true
+  },
+  "actualTcp": {
+    "release": {
+      "path": ".cache/transform-app/live-next-release-01/result.json",
+      "sha256": "f2482344e47776caa69b4d6077a1cb2e5e6833cda2413a4b923af792283e9f73"
+    },
+    "native": {
+      "path": ".cache/transform-app/live-next-native-01/result.json",
+      "sha256": "ea6833f8385494c1642efe4fa87a6c3294a23cf42f1c93598ec1421846abd316"
+    },
+    "twoClientsEach": true,
+    "bootstrapSectionsEach": 15,
+    "framesThrough49Each": 312,
+    "banner82Before49And129After49": true,
+    "movementChatRelay": true,
+    "replacementHelloRefused": true,
+    "allOwnedHostsStopped": true
+  },
+  "graph": {
+    "projects": 15,
+    "projectReferences": 29,
+    "sha256": "ba9477bdadf501ebb85e272f9f0dc583a7d2d4e217f031d128a47acfb77ea707",
+    "newProductionDependencies": false,
+    "newEntityRngOrClockOwner": false
+  },
+  "existingGzipFixtures": {
+    "baseline": "c50f2581",
+    "existingGzipFixtures": 904,
+    "unchanged": true,
+    "changedPaths": []
+  },
+  "components": [
+    {
+      "path": "docs/verification/npc-transform-phase-final02-20261029.json",
+      "sha256": "c57a68c9ad01f1abb1f2ffcf5f04a43db5c66b8cddb7619fe16fdd9d93e69e37"
+    },
+    {
+      "path": "docs/verification/npc-transform-original-phase-20261029.json",
+      "sha256": "2b50789dbf76803ce398a1805233248339f4b73b24d203d73da8ea4da3eea20f"
+    },
+    {
+      "path": "docs/verification/npc-transform-interactions-20261029.json",
+      "sha256": "0a4e31a769a12031e186f9db80d52d6c2312a44f557c0207adbaf071a205730f"
+    },
+    {
+      "path": "docs/verification/npc-spawn-shimmer-20261029.json",
+      "sha256": "22296525438b9fd1961cc7b34f92488de0958293836037b64ac6615315753a3b"
+    },
+    {
+      "path": "docs/verification/npc-town-source-home-20261029.json",
+      "sha256": "552c300c96d141965835e1d9a828b1e6fef527d62746f67c9caf5b8d638bc300"
+    },
+    {
+      "path": "docs/verification/npc-transform-currentness-20261029.json",
+      "sha256": "01612d99d0a37dedd4d397b85cea4cb07c0d267def601ee4eafa9bb6a8817447"
+    },
+    {
+      "path": "docs/verification/npc-legacy-journal-20261029.json",
+      "sha256": "187faa18ce4ad902593a271741d71f079b6d0dce99f8356a91c4b604facfceb2"
+    },
+    {
+      "path": "docs/verification/ground-transform-presentation-20261029.json",
+      "sha256": "91c2a082fc37076a10d742797abce185d48e7a3c966f9932efb585bb66f0db94"
+    },
+    {
+      "path": "docs/verification/ground-transform-fish-presentation-20261029.json",
+      "sha256": "91c3314eef0f5a01fdf3f5b5b4befefeec67a3b431b7f71eb7f91224236062fd"
+    },
+    {
+      "path": "docs/verification/town-slime-yellow-alias-presentation-20261029.json",
+      "sha256": "509b8f0bc9370a6bdcd4afaf58c09b5ec65c0bbd11dc03706c6c8990f3b45e85"
+    },
+    {
+      "path": "docs/verification/npc-transform-network-20261029.json",
+      "sha256": "95c2dfac4005a13ff7019b10bcab1b76b27e1950a711c0fab783f429528e23d8"
+    },
+    {
+      "path": "docs/verification/npc-transform-network-phase-20261029.json",
+      "sha256": "f0aaa0aaf6c1664e05eaf17bd22f4ec063d43e358f990160e30799bfef3e69b6"
+    },
+    {
+      "path": "docs/verification/semantic-state-candidate-20261029.json",
+      "sha256": "920b4894b40f6b6d7f0fb521060be599d3492c5624df68d52a505389573d9db2"
+    }
+  ],
+  "offlineTool": {
+    "sourceCommit": "a08d06b1154dfae8e33acd363104c7286137ee34",
+    "integrationCommit": "577c8e1d",
+    "schema": 3,
+    "actualOfficialCallsIncludingLegacyRegression": 7048,
+    "pythonChecks": 280,
+    "csharpSelfChecks": 103,
+    "scope": "Exact scalar/vector-component/fixed-array-slot capabilities on bounded call-free methods; globals/calls/aliases unsupported. Cache-only generation and evidence, no runtime autoinclusion or full AI translation claim."
+  },
+  "limits": [
+    "Genuine Linux NativeAOT is not qualified by this Windows checkpoint.",
+    "Official graphical client and graceful world-save shutdown are not qualified by raw TCP/owned-process termination.",
+    "WholeTown/NPC/Main parity and unrepresented contact/environment/entropy branches remain open.",
+    "Next ranged child/projectile/Electrified work is isolated and not included in this checkpoint."
+  ]
+}

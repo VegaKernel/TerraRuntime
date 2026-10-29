@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-transform-phase-diagnostic08-scoped-successor",
+  "boundedOwnedProjectionAccepted": true,
+  "strictFullNamedNpcParity": false,
+  "fullVanillaAiParity": false,
+  "aggregateAccepted": false,
+  "publicationAccepted": false,
+  "predecessor": {
+    "path": "docs/verification/npc-transform-phase-diagnostic07-20261029.json",
+    "sha256": "1fab8b88f9ab589620d55f85fe3624fde30396073937c054af215f14ca2c0a90"
+  },
+  "cacheBridge": {
+    "path": ".cache/transform-npc-phase/runtime08-bridge-v1.json",
+    "sha256": "c1b0b88264ee63588eb41ff6f67aca954fa94f8657eefb117f5b10b61e3243bd"
+  },
+  "actualCounts": {
+    "contexts": 435,
+    "comparedPhases": 11904,
+    "explicitUnsupportedShimmerRefusals": 2016,
+    "setupFailures": 0,
+    "differences": 0
+  },
+  "sourceSnapshot": {
+    "path": ".cache/transform-app/diagnostic08/source-before.json",
+    "sha256": "e80b4a99c4edd991f28c0b68188939b3aba43dd0bd95d13484bf3580bc0108ed"
+  },
+  "sourceInputs": 4204,
+  "sourceInputsStillExact": true,
+  "canonicalFileCount": 203,
+  "canonicalDllCount": 158,
+  "binPins": {
+    "path": ".cache/transform-app/diagnostic08/bin-pins.json",
+    "sha256": "8769ac4f1c5f8c9502d2bce5d86fefbe3664e35ff2f33d71152bdc3a7a7816bf"
+  },
+  "build": {
+    "path": ".cache/transform-app/diagnostic08/build.json",
+    "sha256": "07ab2ab1ec1a099370e350abe0cd3cf48cd18d9d07d8082e1ebcb5c7db87734f"
+  },
+  "focused": {
+    "path": ".cache/transform-app/diagnostic08/focused-result.json",
+    "sha256": "4f47d6c01c938d7068da16ac6dc65022c6f015628fa81db576a577ce853fd53c"
+  },
+  "normalFocusedCases": 7156,
+  "testDllSha256": "dcff7f536c8bcd8cad2f88c1d03e04d0a95bd2ea410c9f2253c68c2c229c5b2d",
+  "applicationDllSha256": "75ab2edae14168c65294a4a9a4bc0c46234e82ec4bf6c5bcd43d1576103bc563",
+  "runtimeComparisons": [
+    {
+      "previous": "runtime-on07-attempt01",
+      "current": "runtime-on08-attempt01",
+      "cases": 399,
+      "allInputComponentFrameStatesRngWireExactlyEqual": true,
+      "currentCapture": {
+        "path": ".cache/transform-npc-phase/runtime-on08-attempt01/capture-result.json",
+        "sha256": "e4120b61da91c683a9af5d6c0abebec3b3c4fbf0930b4569cbc011082729a9d5"
+      },
+      "currentComparison": {
+        "path": ".cache/transform-npc-phase/runtime-on08-attempt01/comparison.json",
+        "sha256": "2929230ec17b813819c07837e8644bbb970fe66f8ae8fd3ed48ebe2aa2186099"
+      },
+      "counts": {
+        "cases": 399,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 10752,
+        "unsupportedRefusals": 2016
+      },
+      "unavailableObservationCounts": {
+        "targetSetFrame": 22005,
+        "dontTakeDamageFromHostiles": 22005,
+        "sourceCatchable": 22005,
+        "takenDamageMultiplier": 22005,
+        "shimmering": 22005,
+        "npcSlots": 22005,
+        "sourceFrameCount": 22005,
+        "statsScaledPlayers": 22005,
+        "netSpamBeforeRegistryOwner": 2727
+      }
+    },
+    {
+      "previous": "runtime-hit-on07-attempt01",
+      "current": "runtime-hit-on08-attempt01",
+      "cases": 12,
+      "allInputComponentFrameStatesRngWireExactlyEqual": true,
+      "currentCapture": {
+        "path": ".cache/transform-npc-phase/runtime-hit-on08-attempt01/capture-result.json",
+        "sha256": "515f8a3ef576a3e11974cbb59ed03a164717eea3faeb3a7addb802dafeb0185f"
+      },
+      "currentComparison": {
+        "path": ".cache/transform-npc-phase/runtime-hit-on08-attempt01/comparison.json",
+        "sha256": "d5f40e83c90ba070939f247dea1e602c996c4ffac5a96c34abcfbc8a8226a8c6"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservationCounts": {
+        "shimmering": 780,
+        "statsScaledPlayers": 780,
+        "npcSlots": 780,
+        "takenDamageMultiplier": 780,
+        "sourceCatchable": 780,
+        "dontTakeDamageFromHostiles": 780,
+        "targetSetFrame": 780,
+        "sourceFrameCount": 780
+      }
+    },
+    {
+      "previous": "runtime-fish-pursuit07",
+      "current": "runtime-fish-pursuit08",
+      "cases": 12,
+      "allInputComponentFrameStatesRngWireExactlyEqual": true,
+      "currentCapture": {
+        "path": ".cache/transform-npc-phase/runtime-fish-pursuit08/capture-result.json",
+        "sha256": "39adaa29cd24283ccc583d90a6e9f21cc20687a8e381f4046d3c9683874fa50a"
+      },
+      "currentComparison": {
+        "path": ".cache/transform-npc-phase/runtime-fish-pursuit08/comparison.json",
+        "sha256": "a9a948c86edef1ed904c8f69f90be9b58c00d23f14bd91d302ad5f1eecb6f134"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservationCounts": {
+        "shimmering": 780,
+        "sourceFrameCount": 780,
+        "sourceCatchable": 780,
+        "takenDamageMultiplier": 780,
+        "statsScaledPlayers": 780,
+        "dontTakeDamageFromHostiles": 780,
+        "targetSetFrame": 780,
+        "npcSlots": 780,
+        "netSpamBeforeRegistryOwner": 24
+      }
+    },
+    {
+      "previous": "runtime-oldhome07-attempt02",
+      "current": "runtime-oldhome08",
+      "cases": 12,
+      "allInputComponentFrameStatesRngWireExactlyEqual": true,
+      "currentCapture": {
+        "path": ".cache/transform-npc-phase/runtime-oldhome08/capture-result.json",
+        "sha256": "43e56cc6fd2f811b8143f42953831cc9a2f506399171c6856bacff8d094ccd39"
+      },
+      "currentComparison": {
+        "path": ".cache/transform-npc-phase/runtime-oldhome08/comparison.json",
+        "sha256": "01ff3a2dcb63048d6ab82029d75bf653d0ba18ebd61934037a5a1553582f7a7b"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservationCounts": {
+        "sourceCatchable": 804,
+        "npcSlots": 804,
+        "targetSetFrame": 804,
+        "takenDamageMultiplier": 804,
+        "shimmering": 804,
+        "dontTakeDamageFromHostiles": 804,
+        "statsScaledPlayers": 804,
+        "sourceFrameCount": 804,
+        "netSpamBeforeRegistryOwner": 804
+      }
+    }
+  ],
+  "scope": [
+    "Freshactualcomposed435runtimecontexts afterlegacygeneric-catch-journalfix; actual07/08states/status/rawplayers/fullphysicalRNG/world/projectile/wire match, allrawbytes retained. No fixture/originalcorpuschange.",
+    "Fourprivatecarrierclosures loadunchanged198files/158DLLs each, exactbeforeafter. All4204sourceinputs matchimmutable08 atrecordtime.",
+    "Original-only8diagnostics preserved andstrictFullfalse; SourceSpamunknownwhereexistingnetworkownerabsent(includingresidentpath), neverfabricated0. NoexpandedTown/Shimmer/GUI/Main/fullPlayer/fullProjectileclaim.",
+    "Genericobservercatchduplication isindependently covered byRoot13genuineold07/fixed08normalcases. These435useactualtypedregistry anddoNOTsubstituteforthosegeneric-observercontrols.",
+    "Unfilteredfull02/Native/livejoin remainpending; no aggregateacceptance. Laterfinalmetadata/DLLclosure requiresitsownactualbridge."
+  ]
+}
