@@ -184,6 +184,21 @@ public sealed partial class RuntimeProjectileStore
 
         internal bool TryQueueGemStaffDespawn() => TryQueueGemStaffDespawn(null);
 
+        internal bool TryQueueGroundCombatDespawn(ProjectileKillOrigin? sourceKillOrigin)
+        {
+            if (adopted || shadow.Active || terminalPublicationQueued ||
+                before.Update.Spawner != byte.MaxValue || !before.SourceNpc.IsAssigned ||
+                !VanillaGroundCombatPlayerHit1458.IsSupported(before.Update.Type) ||
+                sourceKillOrigin is { IsValid: false }) return false;
+            // Extra-update lasers retain one inactive movement tail after lifetime Kill.
+            // The final physical image and the saved source packet29 origin are distinct.
+            var publication = sourceKillOrigin is { } origin
+                ? Snapshot with { PositionX = origin.X, PositionY = origin.Y } : Snapshot;
+            publications.Add((ProjectileStateCommitKind.Despawn, publication));
+            terminalPublicationQueued = true;
+            return true;
+        }
+
         internal bool TryQueueGemStaffDespawn(ProjectileKillOrigin? sourceKillOrigin)
         {
             if (adopted || shadow.Active || terminalPublicationQueued || !before.CombatTrusted ||

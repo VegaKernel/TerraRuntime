@@ -57,19 +57,29 @@ internal sealed class VanillaGroundCritterTerrain1458(WorldTileStore tiles) : IV
         visible = false;
         if (!target.IsValid || !float.IsFinite(x) || !float.IsFinite(y) || width <= 0 || height <= 0)
             return false;
-        // CanHit traverses center tiles and their immediate neighbors. Retain the
-        // containing sections before the query, including its world-edge clamps.
-        int left = Math.Clamp((int)(MathF.Min(x, target.PositionX) / 16f) - 3, 0, tiles.Dimensions.WidthTiles - 1);
-        int right = Math.Clamp((int)(MathF.Max(x + width, target.PositionX + target.Width) / 16f) + 3, 0, tiles.Dimensions.WidthTiles - 1);
-        int top = Math.Clamp((int)(MathF.Min(y, target.PositionY) / 16f) - 3, 0, tiles.Dimensions.HeightTiles - 1);
-        int bottom = Math.Clamp((int)(MathF.Max(y + height, target.PositionY + target.Height) / 16f) + 3, 0, tiles.Dimensions.HeightTiles - 1);
+        if (!FenceLineOfSight(x, y, width, height, target.PositionX, target.PositionY,
+                target.Width, target.Height)) return false;
+        visible = VanillaWorldCanHit.HasLineOfSight(tiles, x, y, width, height,
+            target.PositionX, target.PositionY, target.Width, target.Height);
+        return IsCurrent;
+    }
+
+    internal bool FenceLineOfSight(float x, float y, int width, int height,
+        float targetX, float targetY, int targetWidth, int targetHeight)
+    {
+        if (!float.IsFinite(x) || !float.IsFinite(y) || !float.IsFinite(targetX) ||
+            !float.IsFinite(targetY) || width < 0 || height < 0 || targetWidth < 0 || targetHeight < 0)
+            return false;
+        // CanHit and CanHitLine traverse center tiles and their neighbors.
+        // Zero-size point queries are valid for CanHitLine.
+        int left = Math.Clamp((int)(MathF.Min(x, targetX) / 16f) - 3, 0, tiles.Dimensions.WidthTiles - 1);
+        int right = Math.Clamp((int)(MathF.Max(x + width, targetX + targetWidth) / 16f) + 3, 0, tiles.Dimensions.WidthTiles - 1);
+        int top = Math.Clamp((int)(MathF.Min(y, targetY) / 16f) - 3, 0, tiles.Dimensions.HeightTiles - 1);
+        int bottom = Math.Clamp((int)(MathF.Max(y + height, targetY + targetHeight) / 16f) + 3, 0, tiles.Dimensions.HeightTiles - 1);
         var first = TerrariaSectionGeometry.FromTile(tiles.Dimensions, left, top);
         var last = TerrariaSectionGeometry.FromTile(tiles.Dimensions, right, bottom);
         for (int sy = first.Y; sy <= last.Y; sy++)
             for (int sx = first.X; sx <= last.X; sx++) RetainSection(new(sx, sy));
-        if (!IsCurrent) return false;
-        visible = VanillaWorldCanHit.HasLineOfSight(tiles, x, y, width, height,
-            target.PositionX, target.PositionY, target.Width, target.Height);
         return IsCurrent;
     }
 

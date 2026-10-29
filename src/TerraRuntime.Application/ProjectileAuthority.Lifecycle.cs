@@ -24,6 +24,11 @@ internal sealed partial class ProjectileAuthority
             !ordinaryArrowCombat.OwnsOrdinaryArrowWorld(projectiles, npcs, projectileRandom, players))
             throw new ArgumentException("Arrow simulation must use this world's stores and source RNG.", nameof(ordinaryArrowCombat));
         if (ordinaryArrowCombat is not null && !ordinaryArrowCombat.BeginOrdinaryArrowSimulation()) return false;
+        if (groundCombatPlayerCombat is not null && !groundCombatPlayerCombat.BeginGroundCombatSimulation())
+        {
+            ordinaryArrowCombat?.EndOrdinaryArrowSimulation();
+            return false;
+        }
         activeOrdinaryArrowCombat = ordinaryArrowCombat;
         activeToolAwareTick = true;
         try
@@ -34,9 +39,7 @@ internal sealed partial class ProjectileAuthority
             childSpawns.Reset();
             liveChildSpawns.Reset();
             SynchronizeControlledProjectileReleaseInputs();
-            LastTick = stepper is VanillaProjectileWorldStateStepper
-                ? executor.Tick(stepper, ordinaryArrowActor ??= TrySimulateOrdinaryArrowActor)
-                : executor.Tick(stepper);
+            LastTick = executor.Tick(stepper, ordinaryArrowActor ??= TrySimulateOrdinaryArrowActor);
             replication?.AdvanceNetSpamBudget();
             FallingBlocks.ForgetDisplaced(projectiles);
             ApplyPendingLiveChildSpawns();
@@ -48,6 +51,7 @@ internal sealed partial class ProjectileAuthority
             activeOrdinaryArrowCombat = null;
             activeToolAwareTick = false;
             ordinaryArrowCombat?.EndOrdinaryArrowSimulation();
+            groundCombatPlayerCombat?.EndGroundCombatSimulation();
         }
     }
 

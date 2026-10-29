@@ -356,7 +356,11 @@ internal sealed class ServerRuntimeComposition
             cultistLightningArcTrails: projectileAuthority.CultistLightningArcTrails,
             serverPlayers: serverPlayers,
             expertMode: expertMode,
-            masterMode: masterMode);
+            masterMode: masterMode,
+            sourceRandom: gameplayRandom,
+            goodWorld: worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
+            terminationEffects: projectileAuthority.TerminationEffects);
+        projectileAuthority.BindPlayerCombat(projectilePlayerCombat);
         var npcPlayerCombat = new RuntimeNpcPlayerCombatPass(
             npcStore,
             playersAuthority,

@@ -124,10 +124,10 @@ public sealed class NpcGroundRosterCreation1458Tests
     [Fact]
     public void Definition_materialization_does_not_grant_unverified_autonomous_ai_or_full_parity()
     {
-        // Source identities still fenced after the melee cohort: Snow Flinx, Torch Zombie,
-        // Fish230, Old Man, Travelling Merchant and Skeleton Merchant. Penguin148
+        // Source identities still fenced after the ground-combat cohort: Martian Officer,
+        // Medusa, Fish230, Old Man, Travelling Merchant and Skeleton Merchant. Penguin148
         // now has the separately composed nonresident ground-critter lifecycle.
-        foreach (int type in new[] { 185, 590, 230, 37, 368, 453 })
+        foreach (int type in new[] { 383, 480, 230, 37, 368, 453 })
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), out var definition));
             Assert.False(definition.DefinitionOnly);
@@ -169,7 +169,9 @@ public sealed class NpcGroundRosterCreation1458Tests
                 639 or 640 or 641 or 642 or 643 or 644 or 645 or 646 or 647 or 648 or 649 or 650 or 651 or 652;
             bool ordinaryMeleeRuntime = net is 44 or 104 or 140 or 181 or 196 or 197 or 464 or 470 or 489 or
                 524 or 525 or 526 or 527 or 528 or 529 or 536 or 691;
-            bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentGroundCritterRuntime && !ordinaryMeleeRuntime;
+            bool groundCombatRuntime = net is -15 or 185 or 385 or 482 or 508 or 580 or 582 or 590 or
+                381 or 382 or 449 or 450 or 451 or 452 or 481 or 520;
+            bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentGroundCritterRuntime && !ordinaryMeleeRuntime && !groundCombatRuntime;
             Assert.Equal(expected, definition.CreationDefaultsOnly);
             Assert.Equal(!expected, definition.SupportsRuntimeLifecycle);
             if (!expected) continue;
@@ -197,7 +199,7 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(store.TryGet(born.Handle, out retained));
             Assert.Equal(retainedDead, retained);
         }
-        Assert.Equal(53, fenced);
+        Assert.Equal(37, fenced);
     }
 
     private sealed class CountingLifecycle : INpcAiStateStepper, INpcAiPrepass1458

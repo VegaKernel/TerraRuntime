@@ -11,6 +11,7 @@ public sealed partial class RuntimeProjectileStore
     internal readonly record struct SpawnRequest(ProjectileStateUpdate State, int? TimeLeftOverride = null)
     {
         internal GemStaffFeatures1458? GemStaffFeatures { get; init; }
+        internal ProjectileLiquidState? InitialLiquid { get; init; }
     }
 
     /// <summary>Plans bounded, ordered NewProjectile allocations without exposing an intermediate generation.</summary>
@@ -77,6 +78,7 @@ public sealed partial class RuntimeProjectileStore
 
                 if (!TryFinalizePreparedSpawnLifecycle(in state, request.TimeLeftOverride,
                         request.GemStaffFeatures, ref lifecycle)) return false;
+                if (request.InitialLiquid is { } liquid) lifecycle = lifecycle with { Liquid = liquid };
 
                 ref SlotState next = ref shadow[slot];
                 if (!next.Active) finalActiveCount++;

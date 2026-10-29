@@ -1004,6 +1004,24 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
+        // Source SetDefaults/GetCollisionParams 1.4.5.8. These shapes do not
+        // opt a projectile into an unverified behavior or player-hit profile.
+        switch (type.Value)
+        {
+            case 436: // BrainScramblerBolt
+                definition = new(10, 10, VanillaProjectileAiStyles.Arrow, true, true, true, 10, 10);
+                return true;
+            case 438: // RayGunnerLaser
+            case 592: // MartianWalkerLaser
+                definition = new(8, 8, VanillaProjectileAiStyles.Arrow, true, true, true, 8, 8);
+                return true;
+            case 471: // SkeletonBone: source scale1.2 truncates the 16x16 body to19x19.
+                definition = new(19, 19, VanillaProjectileAiStyles.Thrown, true, false, true, 19, 19);
+                return true;
+            case 508: // JavelinHostile has a16x16 body but a centered4x4 tile collision shape.
+                definition = new(16, 16, VanillaProjectileAiStyles.Arrow, true, false, true, 4, 4);
+                return true;
+        }
         if (TerraRuntime.Gameplay.Players.FishingRules1458.IsBobber(type.Value))
         {
             definition = new(14, 14, new(61), true, false, false, 14, 14);

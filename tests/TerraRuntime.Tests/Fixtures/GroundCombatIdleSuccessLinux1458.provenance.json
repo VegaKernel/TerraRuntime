@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "actual-original-npc-phase-numeric-expectations",
+  "accepted": true,
+  "fixtureSha256": "ba724af9fee4ee5671519e75e520019f21d3cf0cdcee772dd62da98a3fac2c55",
+  "rows": 4,
+  "entry": "Original initialized NPC.UpdateNPC(0), one complete phase per original-idle scene; no projectile.Update/player/worldtime phase.",
+  "sourceQualificationSha256": "726437d3b19f163f3f8fe71d635a71d2d06195e180a6cdaa232c430fefb6669b",
+  "sourceObservationSha256": "d92fccf937df8f4338a53781987881441315c6e7e2ab715ed581f1e345cda2e5",
+  "originalSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalSourceSha256": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+  "sourceHarnessSha256": "89d158f7ad7f2af0d6f672a9dc062bb7d4f42fa76b8e6f724592fceb3d0cfe07",
+  "numericDomain": "binary32 raw hex, binary64 frameCounter raw hex, physical RNG cursor+all56slots",
+  "seedSelection": "Actual unchanged official UnifiedRandom.Next(600/800) searched a bounded range before capture; actual actor/stream then initialized with found2175/2554. No controlled outputs or artificial RNG restoration during phase.",
+  "scope": "Granite and Walker rare idle success arguments, including Granite defense and Walker shot. Three source-search starts each repeated identically; all actual runtime profiles and both real controls qualified independently.",
+  "generator": ".cache/ground-combat-oracle/promote-idle.py deterministic extraction from unchanged actual original observation",
+  "generatorSha256": "48bae1d8df530fcaffebaba7b48c6c684162939c81459bb697910f7673390b66"
+}

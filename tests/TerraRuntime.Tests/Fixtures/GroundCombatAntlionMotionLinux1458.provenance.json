@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "actual-original-npc-phase-numeric-expectations",
+  "accepted": true,
+  "fixtureSha256": "be9cfa082518368b0e1474bffcb994ce89767358cb3c429b1b5df9af14def3c3",
+  "rows": 18,
+  "entry": "Original initialized NPC.UpdateNPC(0), first complete phase per independent authored scene; no world/player/projectile update. Real noSpawnCycle suppression.",
+  "originalSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalSourceSha256": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+  "sourceHarnessSha256": "74636d3f85a540db4d90cc68ff0113fffd6e250e9728e015823df32e52f75b52",
+  "sourceObservationSha256": "d6b48f62cd77b1e97d64c84af9aff4d2b5c0008f8f00d92a280619cd22bdf6e2",
+  "sourceQualificationSha256": "ed104c0a9eb002c38c933b4caa7e10ad6a4d22155da2a2f7f51a54368c1ad661",
+  "numericDomain": "binary32 values retain hexadecimal raw bits; frameCounter is binary64 raw bits; RNG is cursor+all56 physical slots",
+  "repeat": "Full 279x32 original corpus repeated identically for each of3 seeds; this regression retains18 first-phase cases at1458 only.",
+  "generator": "Ignored .cache/ground-combat-oracle/promote-motion.py, deterministic extraction from independently source-qualified observations. No source game body included.",
+  "generatorSha256": "a7f1fe15c83c00690e741dc8d60fc6d54c96ae9a6e615c57356ff10024ddc343",
+  "runtimeScope": "Tests execute actual composed NPC phase and assert source motion/AI/pose and full physical RNG. This fixture does not claim complete AI parity."
+}

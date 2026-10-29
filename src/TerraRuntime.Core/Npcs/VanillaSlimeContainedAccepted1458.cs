@@ -294,7 +294,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             despawnAfterCompletion = despawn;
         }
         if (!ContainedInputsCurrent(plan) || !plan.World.TryClaimTileProducer() ||
-            !ContainedInputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in completedState, out var completed))
+            !ContainedInputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in completedState, () => ContainedInputsCurrent(plan), out var completed))
         {
             CancelContainedPlan();
             return default;

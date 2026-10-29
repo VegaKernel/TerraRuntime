@@ -95,8 +95,9 @@ public sealed class NpcSourceDefaultRoster1458Tests
         // The verified undead/gem cohort and four bunny siblings303/337/443/540
         // own lifecycle execution; Bunny46 already had a registered definition. The seventeen
         // ordinary melee identities and twenty-two further ground critters now use
-        // their composed generation/RNG phase owners as well.
-        Assert.Equal(244, creationOnly);
+        // their composed generation/RNG phase owners as well. The ground-combat block
+        // adds fifteen positive identities and the signed Armored Skeleton variant.
+        Assert.Equal(228, creationOnly);
     }
 
     [Fact]

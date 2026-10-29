@@ -260,7 +260,7 @@ internal sealed class VanillaGroundCritterAccepted1458
             // UpdateNetworkCode precedes CheckActive. Keep this active network offer's life;
             // the existing executor/store removal writes zero for the later inactive packet.
             TimeLeft = timeLeft } };
-        if (!InputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in final, out var completed))
+        if (!InputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in final, () => InputsCurrent(plan), out var completed))
         { pending = null; return default; }
         if (!plan.World.TryAdoptStatus(in completed))
             throw new InvalidOperationException("An accepted gem-bunny phase lost its status owner without a callback.");

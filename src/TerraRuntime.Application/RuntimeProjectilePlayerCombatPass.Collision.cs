@@ -30,6 +30,16 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         float playerWidth = PlayerAuthority.VanillaBasePlayerWidth;
         float playerHeight = PlayerAuthority.VanillaBasePlayerHeight;
 
+        if (VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type))
+        {
+            // Damage_GetHitbox/getRect truncate each origin independently. The centered
+            // 4-pixel javelin tile collider is not its 16-pixel player damage body.
+            int left = (int)projectile.PositionX, top = (int)projectile.PositionY;
+            int targetLeft = (int)playerLeft, targetTop = (int)playerTop;
+            return left < targetLeft + (int)playerWidth && left + definition.Width > targetLeft &&
+                top < targetTop + (int)playerHeight && top + definition.Height > targetTop;
+        }
+
         // Projectile.Colliding source gates: the eye is harmless before its firing phase, while a sphere
         // that is still attached to its source cannot hurt until ai[0] reaches 60 (unless ai[1] == -1).
         if (projectile.Type == VanillaProjectileIds.PhantasmalEye && projectile.Ai.Ai0 < 2f)

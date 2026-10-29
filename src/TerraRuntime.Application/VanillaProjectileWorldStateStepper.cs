@@ -157,21 +157,35 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
         capture = new(this,terrain);
         return true;
     }
+    internal bool TryCaptureGroundCombatTerrain(in ProjectileSnapshot projectile,
+        out OrdinaryArrowTerrainCapture capture)
+    {
+        capture = null!;
+        var wind = CaptureGemStaffWind();
+        if (!TerraRuntime.Application.OrdinaryArrowTerrainCapture.TryCaptureGroundCombat(ordinaryTiles,
+                in projectile, in wind, out var terrain) || terrain is null) return false;
+        capture = new(this, terrain, wind);
+        return true;
+    }
+
     internal sealed class OrdinaryArrowTerrainCapture
     {
         private readonly VanillaProjectileWorldStateStepper owner;
         private readonly TerraRuntime.Application.OrdinaryArrowTerrainCapture terrain;
+        private readonly VanillaProjectileBehaviorContext? capturedWind;
         internal OrdinaryArrowTerrainCapture(VanillaProjectileWorldStateStepper owner,
-            TerraRuntime.Application.OrdinaryArrowTerrainCapture terrain)
+            TerraRuntime.Application.OrdinaryArrowTerrainCapture terrain,
+            VanillaProjectileBehaviorContext? capturedWind = null)
         {
             this.owner = owner;
             this.terrain = terrain;
+            this.capturedWind = capturedWind;
         }
         internal bool IsCurrent
         {
             get
             {
-                if (owner.windPhysics) return false;
+                if (capturedWind is { } wind ? !owner.IsGemStaffWindCurrent(in wind) : owner.windPhysics) return false;
                 return terrain.IsCurrent;
             }
         }

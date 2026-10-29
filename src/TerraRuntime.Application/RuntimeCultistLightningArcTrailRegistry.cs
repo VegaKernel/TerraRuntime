@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Application;
 
@@ -130,11 +131,14 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
     VanillaUnifiedRandom1458? ordinaryAmmoRandom = null) : IProjectileSimulationCommitSink, IProjectileSimulationPrePublicationCommitSink
 {
     public bool OwnsCollisionTileCutOffers => collisionTileCuts is not null;
+    public bool OwnsShimmerVisualOffers => ordinaryAmmoRandom is not null;
     public bool OwnsOrdinaryAmmoSourceOffers => ordinaryAmmoRandom is not null;
     public void ProjectileSimulationCommittedBeforePublication(ReadOnlySpan<ProjectileSimulationStepResult> subupdates)
     {
         foreach (ref readonly ProjectileSimulationStepResult step in subupdates)
         {
+            // Liquid transition arguments precede HandleMovement's collision offer.
+            if (ordinaryAmmoRandom is not null) ConsumeShimmerOffers(in step, ordinaryAmmoRandom);
             collisionTileCuts?.Evaluate(in step);
             if (!step.OrdinaryAmmoSourceUpdate || ordinaryAmmoRandom is null) continue;
             // AI precedes HandleMovement. A terminal collision returns before the
@@ -149,6 +153,20 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
                 for (int index = 0; index < 60; index++) ordinaryAmmoRandom.Next(3);
         }
     }
+    private static void ConsumeShimmerOffers(in ProjectileSimulationStepResult step, VanillaUnifiedRandom1458 random)
+    {
+        for (int i = 0; i < step.ShimmerVisualOffers; i++) random.Next(6);
+    }
+
+    internal static void ConsumeGroundCombatOffers(in ProjectileSimulationStepResult step,
+        VanillaUnifiedRandom1458 previewRandom)
+    {
+        if (!VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(step.State.Type))
+            throw new ArgumentException("The prepared actor does not own this projectile's source offers.", nameof(step));
+        ConsumeShimmerOffers(in step, previewRandom);
+        RuntimeProjectileCollisionTileCut1458.Evaluate(in step, previewRandom);
+    }
+
     public void ProjectileSimulationCommitted(
         in ProjectileSnapshot initialProjectile,
         in ProjectileLifecycleState initialLifecycle,

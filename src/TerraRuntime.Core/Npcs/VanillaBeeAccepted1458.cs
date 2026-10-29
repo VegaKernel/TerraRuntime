@@ -196,7 +196,7 @@ internal sealed class VanillaBeeAccepted1458
             SpriteDirection = final.VelocityX > 0f ? 1 : final.VelocityX < 0f ? -1 : final.Simulation.SpriteDirection
         };
         var completedState = final with { Simulation = simulation };
-        if (!InputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in completedState, out var completed))
+        if (!InputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in completedState, () => InputsCurrent(plan), out var completed))
         {
             retained = null;
             return default;

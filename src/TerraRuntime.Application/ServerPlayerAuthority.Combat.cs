@@ -120,6 +120,15 @@ internal sealed partial class ServerPlayerAuthority
             masterMode,
             out committed);
 
+    internal PlayerDamageCommitResult TryCommitAuthoritativeNpcProjectileDamageWithStatus(
+        long tick, NpcHandle sourceNpc, ProjectileHandle projectile, ProjectileTypeId projectileType,
+        PlayerHandle target, int damage, int hitDirection, VanillaPlayerImmunityChannel1458 immunityChannel,
+        bool expertMode, bool masterMode, in ProjectilePlayerHurt1458 status,
+        out PlayerStateSnapshot committed) =>
+        TryCommitAuthoritativeDamage(tick, target, DamageSource.FromNpcProjectile(sourceNpc, projectile),
+            projectileType, damage, hitDirection, immunityChannel, expertMode, masterMode,
+            out committed, projectileStatus: status);
+
     internal PlayerDamageCommitResult TryCommitAuthoritativeEnvironmentProjectileDamage(
         long tick, ProjectileHandle projectile, ProjectileTypeId projectileType, PlayerHandle target,
         int damage, int hitDirection, VanillaPlayerImmunityChannel1458 immunityChannel, bool expertMode, bool masterMode,
@@ -140,7 +149,8 @@ internal sealed partial class ServerPlayerAuthority
         out PlayerStateSnapshot committed,
         bool pvp = false,
         bool critical = false,
-        NpcContactBuffSource1458? contactBuffs = null)
+        NpcContactBuffSource1458? contactBuffs = null,
+        ProjectilePlayerHurt1458? projectileStatus = null)
     {
         committed = default;
         if (!target.IsAssigned || !source.IsValid || damage <= 0 || damage > short.MaxValue ||
@@ -167,7 +177,9 @@ internal sealed partial class ServerPlayerAuthority
         FinalDamageToHp final;
         bool resolved = pvp
             ? VanillaCombatDamagePipeline.TryResolvePvp(in attack, in targetCombat, immune, out final, expertMode, masterMode)
-            : VanillaCombatDamagePipeline.TryResolvePlayerDamage(in attack, in targetCombat, immune, out final, expertMode, masterMode);
+            : VanillaCombatDamagePipeline.TryResolvePlayerDamage(in attack, in targetCombat, immune, out final,
+                expertMode || projectileStatus is { GoodWorld: true },
+                masterMode || expertMode && projectileStatus is { GoodWorld: true });
         if (!resolved ||
             final.Damage <= 0)
         {
@@ -175,7 +187,7 @@ internal sealed partial class ServerPlayerAuthority
         }
 
         return CommitResolvedDamage(tick, in current, source, projectileType, in final, hitDirection,
-            immunityChannel, pvp, damageOverTime: false, out committed, contactBuffs, targetCombat, expertMode, masterMode);
+            immunityChannel, pvp, damageOverTime: false, out committed, contactBuffs, targetCombat, expertMode, masterMode, projectileStatus);
     }
 
     private PlayerDamageCommitResult CommitResolvedDamage(
@@ -183,11 +195,12 @@ internal sealed partial class ServerPlayerAuthority
         in FinalDamageToHp final, int hitDirection, VanillaPlayerImmunityChannel1458 immunityChannel,
         bool pvp, bool damageOverTime, out PlayerStateSnapshot committed,
         NpcContactBuffSource1458? contactBuffs = null, VanillaPlayerCombatSnapshot targetCombat = default,
-        bool expertMode = false, bool masterMode = false)
+        bool expertMode = false, bool masterMode = false, ProjectilePlayerHurt1458? projectileStatus = null,
+        List<ResolvedDamagePublication>? deferredPublications = null, PlayerBuffState? preparedProjectileBuffs = null)
     {
         PlayerHandle target = current.Player;
         committed = default;
-        short nextLife = checked((short)Math.Max(0, current.Life - final.Damage));
+        short nextLife = ResolveLifeAfterDamage(in current, in final);
         var vitals = new ServerPlayerVitalsState(nextLife, current.MaxLife, current.Mana, current.MaxMana);
         if (!states.TrySetVitals(target, in vitals, out PlayerStateSnapshot afterVitals))
             return PlayerDamageCommitResult.Rejected;
@@ -217,6 +230,16 @@ internal sealed partial class ServerPlayerAuthority
         // can disconnect or replace this generation, and keep RNG after the accepted-damage boundary.
         bool buffsApplied = contactBuffs is { } status && !committed.IsDead &&
             ApplyNpcContactBuffs(target, in status, in targetCombat, expertMode, masterMode);
+        if (preparedProjectileBuffs is not null && !committed.IsDead)
+        {
+            int slot = target.Slot.Value;
+            if (npcContactBuffOwners[slot] != target) npcContactDebuffEffects[slot] = default;
+            npcContactBuffOwners[slot] = target;
+            npcContactBuffStates[slot] = preparedProjectileBuffs;
+            buffsApplied = true;
+        }
+        else if (projectileStatus is { } projectileSource && !committed.IsDead)
+            buffsApplied |= ApplyProjectileStatus(target, in targetCombat, in projectileSource, final.Damage, expertMode, masterMode);
         bool died = !current.IsDead && committed.IsDead;
         bool deathBuffsCleared = false;
         if (died)
@@ -227,25 +250,36 @@ internal sealed partial class ServerPlayerAuthority
             movementIntents.Remove(target);
             deathBuffsCleared = ResetPlayerBuffs(target, publish: false);
         }
-        var committedVitals = new ServerPlayerVitalsState(
-            committed.Life,
-            committed.MaxLife,
-            committed.Mana,
-            committed.MaxMana);
-        if (moved) events?.ServerPlayerMoved(in committed);
-        // Observers can synchronously remove/reuse this slot or mutate the same generation. Later notifications
-        // describe the adopted snapshot only while that exact snapshot remains current; cleanup has already run.
-        if (!states.TryGet(target, out var afterMotionPublication) || afterMotionPublication != committed)
-            return PlayerDamageCommitResult.Committed;
-        if (buffsApplied || deathBuffsCleared) PublishBuffTypes(target);
-        if (!states.TryGet(target, out var afterBuffPublication) || afterBuffPublication != committed)
-            return PlayerDamageCommitResult.Committed;
-        events?.ServerPlayerVitalsUpdated(target, in committedVitals);
-        if (died && states.TryGet(target, out var afterVitalsPublication) && afterVitalsPublication == committed)
-        {
-            // UpdateLifeRegen reports damage10, with other9 for poison and other8 for fire.
-            events?.ServerPlayerDied(target, source, projectileType, damageOverTime ? 10 : final.Damage, hitDirection);
-        }
+        var publication = new ResolvedDamagePublication(committed, source, projectileType,
+            damageOverTime ? 10 : final.Damage, hitDirection, moved, buffsApplied || deathBuffsCleared, died,
+            buffsApplied || deathBuffsCleared ? CaptureBuffTypes(target) : []);
+        if (deferredPublications is not null) deferredPublications.Add(publication);
+        else PublishResolvedDamage(publication);
         return PlayerDamageCommitResult.Committed;
+    }
+
+    private static short ResolveLifeAfterDamage(in PlayerStateSnapshot current, in FinalDamageToHp final) =>
+        checked((short)Math.Max(0, current.Life - final.Damage));
+
+    private sealed record ResolvedDamagePublication(PlayerStateSnapshot Committed, DamageSource Source,
+        ProjectileTypeId ProjectileType, int Damage, int HitDirection, bool Moved, bool BuffsChanged, bool Died,
+        BuffTypeId[] BuffTypes);
+
+    private void PublishResolvedDamage(ResolvedDamagePublication publication, Func<bool>? additionalGuard = null)
+    {
+        var committed = publication.Committed;
+        var target = committed.Player;
+        bool Current() => states.TryGet(target, out var current) && current == committed &&
+            (additionalGuard?.Invoke() ?? true);
+        if (!Current()) return;
+        if (publication.Moved) events?.ServerPlayerMoved(in committed);
+        if (!Current()) return;
+        if (publication.BuffsChanged) events?.ServerPlayerBuffTypesUpdated(target, publication.BuffTypes);
+        if (!Current()) return;
+        var vitals = new ServerPlayerVitalsState(committed.Life, committed.MaxLife, committed.Mana, committed.MaxMana);
+        events?.ServerPlayerVitalsUpdated(target, in vitals);
+        if (publication.Died && Current())
+            events?.ServerPlayerDied(target, publication.Source, publication.ProjectileType,
+                publication.Damage, publication.HitDirection);
     }
 }

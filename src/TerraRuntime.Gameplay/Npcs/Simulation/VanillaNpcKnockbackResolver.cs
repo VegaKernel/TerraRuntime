@@ -4,8 +4,8 @@ public readonly record struct VanillaNpcKnockbackResult(float VelocityX, float V
 
 /// <summary>
 /// Clean-room implementation of the ordinary knockback branches in TerrariaServer 1.4.5.8
-/// <c>NPC.StrikeNPC_Inner</c>. Source-specific knockback changes such as On Fire! 2 and the
-/// type-185 vertical multiplier remain upstream until their state is represented authoritatively.
+/// <c>NPC.StrikeNPC_Inner</c>. On Fire! 2 remains upstream until its state is
+/// represented authoritatively.
 /// </summary>
 public static class VanillaNpcKnockbackResolver
 {
@@ -19,7 +19,21 @@ public static class VanillaNpcKnockbackResolver
         int hitDirection,
         int resolvedDamage,
         bool critical,
-        bool expertMode)
+        bool expertMode) => Resolve(velocityX, velocityY, noGravity, lifeMax, knockBackResist,
+            knockBack, hitDirection, resolvedDamage, critical, expertMode, flinxVerticalKnockback: false);
+
+    public static VanillaNpcKnockbackResult Resolve(
+        float velocityX,
+        float velocityY,
+        bool noGravity,
+        int lifeMax,
+        float knockBackResist,
+        float knockBack,
+        int hitDirection,
+        int resolvedDamage,
+        bool critical,
+        bool expertMode,
+        bool flinxVerticalKnockback)
     {
         if (knockBack <= 0f || knockBackResist <= 0f)
             return new VanillaNpcKnockbackResult(velocityX, velocityY);
@@ -33,6 +47,9 @@ public static class VanillaNpcKnockbackResolver
         if (staggerThreshold > lifeMax)
         {
             velocityX = ApplyStrongHorizontalKnockback(velocityX, strength, hitDirection);
+            // NPC.StrikeNPC_Inner 1.4.5.8 applies type185's multiplier only
+            // after the strong horizontal branch, before its vertical impulse.
+            if (flinxVerticalKnockback) strength *= 1.5f;
             float verticalImpulse = strength * (noGravity ? -0.5f : -0.75f);
             if (velocityY > verticalImpulse)
             {

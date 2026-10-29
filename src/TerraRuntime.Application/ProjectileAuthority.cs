@@ -47,6 +47,8 @@ internal sealed partial class ProjectileAuthority
     private readonly PlayerAuthority players;
     private readonly IRuntimePlayerSlotSnapshotLookup playerSnapshots;
     private readonly RuntimeProjectileStateExecutor executor;
+    private readonly RuntimeProjectileTerminationEffectSink terminationEffects;
+    internal IProjectileTerminationCommitSink TerminationEffects { get; }
     private readonly RuntimeProjectileExplosionQueue explosions;
     private readonly RuntimeProjectileTileExplosionQueue tileExplosions;
     private readonly RuntimeProjectileChildSpawnQueue childSpawns;
@@ -90,7 +92,8 @@ internal sealed partial class ProjectileAuthority
         childSpawns = new RuntimeProjectileChildSpawnQueue(projectiles.Capacity);
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
         cultistLightningArcTrails = new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
-        var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns, FallingBlocks);
+        terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns, FallingBlocks, this.projectileRandom);
+        TerminationEffects = terminationEffects;
         var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns,
             cultistLightningArcTrails,
             players,

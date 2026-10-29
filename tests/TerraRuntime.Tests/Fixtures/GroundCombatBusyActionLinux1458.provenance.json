@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "actual-original-npc-phase-numeric-expectations",
+  "accepted": true,
+  "fixtureSha256": "9e58337400a5e3bbc71b4cb45aac3ccf383d41afe97f528e2ee44c5a7167eb41",
+  "rows": 15,
+  "entry": "Original initialized NPC.UpdateNPC(0), first complete phase per independent authored scene; no world/player/projectile update. Real noSpawnCycle suppression.",
+  "originalSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalSourceSha256": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+  "sourceHarnessSha256": "7455e5729bbab0e0b8631398e4733161a8e6af354d5a6a9bb69bf7278419e7f1",
+  "sourceObservationSha256": "af1126effebc1db92926d9875e8f4839f42c3dd7ebc7102ae7c872e2294bf24d",
+  "sourceQualificationSha256": "89e7ab998c55194f3dc2682403bdb5349e0629afd020f03352bed031b5d5dd96",
+  "numericDomain": "binary32 values retain hexadecimal raw bits; frameCounter is binary64 raw bits; RNG is cursor+all56 physical slots",
+  "repeat": "Full 15x4 original corpus repeated identically for each of3 seeds; this regression retains15 first-phase cases at1458 only.",
+  "generator": "Ignored .cache/ground-combat-oracle/promote-busy.py, deterministic wrapper over promote-motion.py extracting unchanged actual original-v2/busy observations.",
+  "generatorSha256": "3c55f6bbc257c7eba4f04b38eff67e1ad0a7d23b1e344e515c71077edae76398",
+  "runtimeScope": "Tests execute actual composed NPC phase and assert source motion/AI/pose and full physical RNG. This fixture does not claim complete AI parity.",
+  "generatorDependencies": [
+    {
+      "path": ".cache/ground-combat-oracle/promote-motion.py",
+      "sha256": "a7f1fe15c83c00690e741dc8d60fc6d54c96ae9a6e615c57356ff10024ddc343"
+    }
+  ]
+}

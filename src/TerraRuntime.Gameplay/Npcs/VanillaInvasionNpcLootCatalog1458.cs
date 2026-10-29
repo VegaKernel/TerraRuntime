@@ -64,6 +64,7 @@ public static class VanillaInvasionNpcLootCatalog1458
         Common(2804, 200, 1, 1),
         Common(2805, 200, 1, 1),
     ];
+    private static readonly VanillaNpcLootRule[] MartianWalkerRules = MartianRules[..4];
 
     // ItemDropDatabase.RegisterMiscDrops 1.4.5.8: every Frost Legion participant.
     private static readonly VanillaNpcLootRule[] FrostRules = [Common(593, 1, 5, 10)];
@@ -89,7 +90,8 @@ public static class VanillaInvasionNpcLootCatalog1458
             216 => PirateCaptainRules,
             // These populated source tables are empty; globals and death events remain separate.
             252 or 662 => [],
-            381 => MartianRules,
+            381 or 382 or 385 => MartianRules,
+            520 => MartianWalkerRules,
             _ => null
         };
         table = rules is null ? default : new(type, rules);

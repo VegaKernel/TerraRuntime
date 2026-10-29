@@ -24,16 +24,16 @@ internal static class RuntimeNpcStateOwnershipPolicy
             Homeless = update.Simulation.Homeless ?? false,
             CatchableNpcTempImmunityCounter = update.Simulation.CatchableNpcTempImmunityCounter ??
                 (GroundCritterProtectionAtSpawn(update.Type, update.NetId) ??
-                    (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(new(update.Type)) && update.Type == update.NetId ? 0 : null)),
+                    (VanillaGroundCombatCohort1458.IsSupported(new(update.Type), new(update.NetId)) ? 0 : null)),
             ReleaseOwner = update.Simulation.ReleaseOwner ??
                 (IsOwnedGroundCritter(update.Type, update.NetId) ||
-                    VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(new(update.Type)) && update.Type == update.NetId ? (short)255 : null),
+                    VanillaGroundCombatCohort1458.IsSupported(new(update.Type), new(update.NetId)) ? (short)255 : null),
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {
             // A fresh NPC constructor owns zero. SetDefaults/Transform do not reset this source field.
             if (definition.Type == VanillaNpcIds.Zombie ||
-                VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(definition.Type))
+                VanillaGroundCombatCohort1458.IsSupported(definition.Type, new(update.NetId)))
                 simulation = simulation with { ShimmerTransparency = simulation.ShimmerTransparency ?? 0f };
             if (simulation.LifeMax == 0)
             {

@@ -126,7 +126,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc) ||
             targeting.HasSlimeContainedPlan(in npc) || targeting.HasBeePlan(in npc) || targeting.GroundCritter.HasPlan(in npc) ||
-            targeting.OrdinaryMelee.HasPlan(in npc))) ||
+            targeting.GroundCombat.HasPlan(in npc))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -138,7 +138,11 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     internal bool TryApplyWorldMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next,
         VanillaNpcRawPlayer1458? rawTarget = null)
     {
-        if (!TryApplyTerrainMotion(in npc, in proposed, out var adjusted, rawTarget))
+        NpcStateUpdate adjusted = proposed;
+        // AI_003's Granite Golem defense returns before its terrain/jump tail,
+        // including the tick on which the negative counter reaches zero.
+        if (!(npc.Type == 482 && npc.Ai.Ai2 < 0f) &&
+            !TryApplyTerrainMotion(in npc, in proposed, out adjusted, rawTarget))
         {
             next = default;
             return false;
@@ -218,6 +222,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                     fighterProfile.PursuitGapJumpVelocity,
                     fighterProfile.PursuitGapSpeedMultiplier)
                 : VanillaZombieObstacleMotionParameters.Vanilla;
+            if (definition.Type.Value is 508 or 580 or 582)
+                obstacleParameters = obstacleParameters with { ForwardProbeOffset = hitboxWidth / 2 + 16 };
             float stuckHopVelocity = hasFighterProfile ? fighterProfile.StuckHopVelocity : -5f;
 
             // These source launches set AI_003's force-ground-scan flag despite negative vertical motion.
@@ -239,9 +245,13 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 aiState = aiState with { PositionY = stepUp.PositionY };
 
             VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState, rawTarget);
-            // Turning squirrels have source flag8=false: preserve their AI fields
-            // without door pressure, but retain the actual support used by jumps.
-            VanillaZombieDoorContactResult doorContact = hostileGroundCritter
+            NpcAiState beforeDoorAi = aiState.Ai;
+            // AI_003 flag8=false keeps attack/defense counters out of the door
+            // clock. Ground support still participates in the following jump tail.
+            bool skipsDoorPressure = hostileGroundCritter ||
+                definition.Type.Value is 381 or 382 or 449 or 450 or 451 or 452 or 464 or 470 or 481 or 482 or
+                    508 or 580 or 582 or 520 or >= 524 and <= 529;
+            VanillaZombieDoorContactResult doorContact = skipsDoorPressure
                 ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai,
                     velocityY == 0f && simulation.DirectionX != 0 &&
                     VanillaWorldZombieDoorContact.HasGroundSupport(tiles, aiState.PositionX, aiState.PositionY,
@@ -295,12 +305,20 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 verifiedFighter ? simulation.SpriteDirection : null);
             velocityX = obstacle.VelocityX;
             velocityY = obstacle.VelocityY;
+            bool movingWithSprite = velocityX < 0f && simulation.SpriteDirection == -1 ||
+                velocityX > 0f && simulation.SpriteDirection == 1;
+            // Source resets a non-door clock only in the final no-jump branch,
+            // after the horizontal-facing gate. The door primitive precedes it.
+            if (verifiedFighter && !doorContact.TouchingDoor && doorContact.GroundSupported &&
+                (obstacle.Jumped || !movingWithSprite))
+                aiState = aiState with { Ai = aiState.Ai with { Ai1 = beforeDoorAi.Ai1, Ai2 = beforeDoorAi.Ai2 } };
             if (obstacle.Jumped && verifiedFighter)
                 aiState = aiState with { RequiresImmediateSync = true };
 
             if (doorContact.GroundSupported &&
                 velocityY == 0f &&
                 fighterStuckHopEligible &&
+                (!verifiedFighter || movingWithSprite) &&
                 aiState.Ai.Ai3 == 1f)
             {
                 velocityY = stuckHopVelocity;
@@ -650,8 +668,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
-        if (targeting is not null && targeting.OrdinaryMelee.HasPlan(in before))
-            return targeting.OrdinaryMelee.Complete(in before, in committed);
+        if (targeting is not null && targeting.GroundCombat.HasPlan(in before))
+            return targeting.GroundCombat.Complete(in before, in committed);
         if (targeting is not null && targeting.GroundCritter.HasPlan(in before))
         {
             if (gemBunnyLifecycle is null ||

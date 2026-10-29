@@ -57,6 +57,25 @@ public static class VanillaOrdinaryMeleeDropCatalog1458
             5488 => (30, 30),
             5489 => (30, 30),
             6157 => (24, 24),
+            323 => (10, 20),
+            723 => (30, 30),
+            886 => (16, 24),
+            951 => (20, 20),
+            3086 => (12, 12),
+            3094 => (30, 30),
+            3109 => (22, 22),
+            3187 => (18, 18),
+            3188 => (18, 18),
+            3189 => (18, 18),
+            3772 => (28, 28),
+            4012 => (22, 22),
+            4029 => (22, 22),
+            4036 => (22, 22),
+            4400 => (22, 22),
+            4463 => (50, 18),
+            5070 => (16, 16),
+            5543 => (20, 20),
+            6167 => (24, 24),
             _ => null
         };
         definition = default;
@@ -70,6 +89,9 @@ public static class VanillaOrdinaryMeleeDropCatalog1458
     {
         1306 or 1320 or 5094 => VanillaItemPrefixFamily.Sword,
         393 or 485 or 885 or 3102 or 3212 or 6157 => VanillaItemPrefixFamily.Accessory,
+        723 or 3772 => VanillaItemPrefixFamily.Sword,
+        4463 => VanillaItemPrefixFamily.Spear,
+        886 or 5543 or 6167 => VanillaItemPrefixFamily.Accessory,
         _ => VanillaItemPrefixFamily.None
     };
 

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "actual-original-npc-phase-numeric-expectations",
+  "accepted": true,
+  "fixtureSha256": "5c9e6420af704bc1f5e9c007fbbdbc5d5ad66880b1092e0895c0db16d35d17ce",
+  "rows": 6,
+  "entry": "Original initialized NPC.UpdateNPC(0), first complete phase per independent authored scene; no world/player/projectile update. Real noSpawnCycle suppression.",
+  "originalSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalSourceSha256": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+  "sourceHarnessSha256": "74636d3f85a540db4d90cc68ff0113fffd6e250e9728e015823df32e52f75b52",
+  "sourceObservationSha256": "d6b48f62cd77b1e97d64c84af9aff4d2b5c0008f8f00d92a280619cd22bdf6e2",
+  "sourceQualificationSha256": "ed104c0a9eb002c38c933b4caa7e10ad6a4d22155da2a2f7f51a54368c1ad661",
+  "numericDomain": "binary32 values retain hexadecimal raw bits; frameCounter is binary64 raw bits; RNG is cursor+all56 physical slots",
+  "repeat": "Full 279x32 original corpus repeated identically for each of3 seeds; this regression retains6 first-phase cases at1458 only.",
+  "generator": "Ignored .cache/ground-combat-oracle/promote-antlion-probe.py, deterministic wrapper over promote-motion.py extracting unchanged actual original-v2/busy observations.",
+  "generatorSha256": "09c0d808c3e91eac6e62391620c50ff2db872eeba57d13102c2934bf4cb3808f",
+  "runtimeScope": "Tests execute actual composed NPC phase and assert source motion/AI/pose and full physical RNG. This fixture does not claim complete AI parity.",
+  "generatorDependencies": [
+    {
+      "path": ".cache/ground-combat-oracle/promote-motion.py",
+      "sha256": "a7f1fe15c83c00690e741dc8d60fc6d54c96ae9a6e615c57356ff10024ddc343"
+    }
+  ]
+}

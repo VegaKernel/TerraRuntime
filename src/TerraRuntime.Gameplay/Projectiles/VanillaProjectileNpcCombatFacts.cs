@@ -11,6 +11,10 @@ public static class VanillaProjectileNpcCombatFacts
 {
     public static bool TryGetInitialPenetration(ProjectileTypeId type, out int penetration)
     {
+        // Explicit hostile defaults also feed the shared lifecycle owner.
+        // Player contact consumes penetration only for its source-specific set.
+        if (type.Value is 436 or 438 or 471 or 592) { penetration = 1; return true; }
+        if (type.Value == 508) { penetration = -1; return true; }
         if (VanillaGemStaffProjectile1458.IsGemStaffProjectile(type))
         {
             penetration = 1;

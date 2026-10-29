@@ -55,19 +55,43 @@ internal sealed class RuntimeProjectileTerminationEffectSink : IProjectileTermin
     private readonly RuntimeProjectileTileExplosionQueue tileExplosions;
     private readonly RuntimeProjectileChildSpawnQueue children;
     private readonly IProjectileTerminationCommitSink? falling;
+    private readonly VanillaUnifiedRandom1458? random;
 
     public RuntimeProjectileTerminationEffectSink(
         RuntimeProjectileExplosionQueue explosions,
         RuntimeProjectileTileExplosionQueue tileExplosions,
-        RuntimeProjectileChildSpawnQueue children, IProjectileTerminationCommitSink? falling = null)
+        RuntimeProjectileChildSpawnQueue children, IProjectileTerminationCommitSink? falling = null,
+        VanillaUnifiedRandom1458? random = null)
     {
         this.explosions = explosions ?? throw new ArgumentNullException(nameof(explosions));
         this.tileExplosions = tileExplosions ?? throw new ArgumentNullException(nameof(tileExplosions));
         this.children = children ?? throw new ArgumentNullException(nameof(children));
         this.falling = falling;
+        this.random = random;
     }
 
     public void ProjectileTerminated(in ProjectileTerminationCommit termination)
+    {
+        ConsumeSourceOffers(in termination, random);
+        PublishAfterSourceOffers(in termination);
+    }
+
+    internal static void ConsumeSourceOffers(in ProjectileTerminationCommit termination, VanillaUnifiedRandom1458? random)
+    {
+        // Projectile.Kill(1458), BrainScramblerBolt: the dust-count argument
+        // consumes one sample even when dedicated-server Dust itself returns early.
+        // Pre-AI world-bounds removal bypasses Kill. This is the authority's shared
+        // stream, reached only after the generation-safe state commit.
+        if (termination.FinalProjectile.Type.Value == 436 && termination.Reason is
+            ProjectileSimulationTerminationReason.LifetimeExpired or
+            ProjectileSimulationTerminationReason.TileCollision or
+            ProjectileSimulationTerminationReason.BehaviorKill)
+            random?.Next(5, 10);
+    }
+
+    // The prepared actor has adopted the exact shared source offers before the first observer.
+    // Generic IProjectileTerminationCommitSink callers retain the ordinary combined method above.
+    internal void PublishAfterSourceOffers(in ProjectileTerminationCommit termination)
     {
         explosions.ProjectileTerminated(in termination);
         tileExplosions.ProjectileTerminated(in termination);

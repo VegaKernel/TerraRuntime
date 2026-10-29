@@ -60,6 +60,10 @@ public readonly record struct ProjectileSimulationStepResult(
     public int? SourceDirection { get; init; }
     /// <summary>Original ordinary-ammo Update phases, retained only by the concrete world stepper.</summary>
     public bool OrdinaryAmmoSourceUpdate { get; init; }
+    /// <summary>Source wetCount after the qualified liquid-history phase.</summary>
+    public byte? SourceWetCountOverride { get; init; }
+    /// <summary>Dedicated-server Shimmer splash arguments; evaluated on the accepted shared stream.</summary>
+    public byte ShimmerVisualOffers { get; init; }
 }
 
 /// <summary>Runtime-only top-left at the source Kill boundary before a remaining position-update tail.</summary>
@@ -90,6 +94,18 @@ public interface IProjectileStateStepper
 }
 
 /// <summary>
+/// Optional source-pinned 1458 movement after lifetime Kill when an extra subupdate remains.
+/// This pass runs no AI, damage, lifetime decrement or second Kill. A supported refusal
+/// rejects the complete speculative actor before state or source offers are adopted.
+/// </summary>
+public interface IProjectileInactiveLifetimeMotionStepper
+{
+    bool SupportsInactiveLifetimeMotion(ProjectileTypeId type);
+    bool TryStepInactiveLifetimeMotion(in ProjectileSimulationStepContext projectile,
+        out ProjectileSimulationStepResult next);
+}
+
+/// <summary>
 /// Observes only projectile simulation paths whose final generation-safe state commit succeeded. The span is
 /// backed by executor-owned scratch storage and is valid only for the synchronous callback. This boundary is
 /// suitable for side effects that must never escape a rejected speculative simulation. Effects whose mutation
@@ -110,6 +126,7 @@ public interface IProjectileSimulationPrePublicationCommitSink
 {
     bool OwnsCollisionTileCutOffers { get; }
     bool OwnsOrdinaryAmmoSourceOffers => false;
+    bool OwnsShimmerVisualOffers => false;
     void ProjectileSimulationCommittedBeforePublication(ReadOnlySpan<ProjectileSimulationStepResult> subupdates);
 }
 
@@ -258,6 +275,8 @@ public sealed class RuntimeProjectileStateExecutor
                         _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsOrdinaryAmmoSourceOffers: true } ||
                     next.CollisionTileCutOffer.HasValue &&
                         _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsCollisionTileCutOffers: true } ||
+                    next.ShimmerVisualOffers > 0 &&
+                        _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsShimmerVisualOffers: true } ||
                     !TryProjectLifecycle(
                         currentProjectile.Type,
                         nextState.Type,
@@ -266,6 +285,7 @@ public sealed class RuntimeProjectileStateExecutor
                         next.Liquid,
                         next.LocalAi,
                         next.PenetrateOverride,
+                        next.SourceWetCountOverride,
                         out ProjectileLifecycleState nextLifecycle))
                 {
                     invalid = true;
@@ -284,7 +304,25 @@ public sealed class RuntimeProjectileStateExecutor
                 currentLifecycle = nextLifecycle;
 
                 if (next.TimeLeft <= 0)
+                {
+                    if (next.TerminationReason == ProjectileSimulationTerminationReason.LifetimeExpired &&
+                        subupdate + 1 < subupdates &&
+                        VanillaProjectileUpdateFacts.SupportsInactiveLifetimeMotion1458(currentProjectile.Type) &&
+                        stepper is IProjectileInactiveLifetimeMotionStepper inactive &&
+                        inactive.SupportsInactiveLifetimeMotion(currentProjectile.Type))
+                    {
+                        if (!TryPlanInactiveLifetimeMotion(inactive, in currentProjectile, in currentLifecycle,
+                                subupdate + 1, subupdates, in next, out var tail, out var tailLifecycle))
+                        {
+                            invalid = true;
+                            break;
+                        }
+                        _stepBuffer[recordedSubupdates++] = tail;
+                        finalResult = tail;
+                        currentLifecycle = tailLifecycle;
+                    }
                     break;
+                }
             }
 
             if (!hasProposal)
@@ -315,7 +353,7 @@ public sealed class RuntimeProjectileStateExecutor
                     currentLifecycle.LocalAi,
                     out ProjectileSnapshot committed,
                     out bool expired,
-                    currentLifecycle.PenetrateOverride))
+                    currentLifecycle.PenetrateOverride, currentLifecycle.SourceWetCount))
             {
                 if (finalResult.TerminationReason != ProjectileSimulationTerminationReason.WorldBounds &&
                     !_projectiles.TrySetSourceDirectionAfterSimulation(in committed, expired, finalResult.SourceDirection))
@@ -359,10 +397,53 @@ public sealed class RuntimeProjectileStateExecutor
         return new ProjectileStateTickSummary(examined, proposed, applied, rejected);
     }
 
+    private bool TryPlanInactiveLifetimeMotion(IProjectileInactiveLifetimeMotionStepper stepper,
+        in ProjectileSnapshot projectile, in ProjectileLifecycleState lifecycle, int index, int count,
+        in ProjectileSimulationStepResult death, out ProjectileSimulationStepResult tail,
+        out ProjectileLifecycleState tailLifecycle)
+    {
+        tail = default;
+        tailLifecycle = default;
+        var context = new ProjectileSimulationStepContext(projectile, lifecycle, index, count,
+            ProjectileSimulationTerminationReason.LifetimeExpired, KillOrigin: death.KillOrigin);
+        if (lifecycle.TimeLeft != 0 || !stepper.TryStepInactiveLifetimeMotion(in context, out var proposed) ||
+            !TryNormalizeTermination(in proposed, out var normalized) || normalized.TimeLeft != 0 ||
+            normalized.TerminationReason != ProjectileSimulationTerminationReason.LifetimeExpired ||
+            !RuntimeProjectileStore.IsValidState(normalized.State) ||
+            normalized.State.Type != projectile.Type || normalized.State.Spawner != projectile.Spawner ||
+            normalized.State.Ai != projectile.Ai || normalized.State.Damage != projectile.Damage ||
+            normalized.State.OriginalDamage != projectile.OriginalDamage || normalized.State.KnockBack != projectile.KnockBack ||
+            normalized.State.BannerIdToRespondTo != projectile.BannerIdToRespondTo ||
+            normalized.PlayerBuff is not null || normalized.NpcHealing is not null || normalized.OrdinaryAmmoSourceUpdate ||
+            normalized.LocalAi is { } local && local != lifecycle.LocalAi ||
+            normalized.PenetrateOverride is { } penetration && penetration != lifecycle.PenetrateOverride ||
+            normalized.CollisionTileCutOffer is not null &&
+                _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsCollisionTileCutOffers: true } ||
+            normalized.ShimmerVisualOffers > 0 &&
+                _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsShimmerVisualOffers: true } ||
+            !TryProjectLifecycle(projectile.Type, projectile.Type, lifecycle, 0,
+                normalized.Liquid, normalized.LocalAi, normalized.PenetrateOverride,
+                normalized.SourceWetCountOverride, out tailLifecycle))
+            return false;
+
+        // The terminal snapshot includes this physical movement, but Kill and its
+        // effects still belong to the earlier lifetime boundary and run only once.
+        tail = normalized with { KillOrigin = death.KillOrigin ?? new ProjectileKillOrigin(
+            death.State.PositionX, death.State.PositionY) };
+        return true;
+    }
+
     internal static bool TryNormalizeTermination(
         in ProjectileSimulationStepResult proposed,
         out ProjectileSimulationStepResult normalized)
     {
+        if ((proposed.SourceWetCountOverride is not null || proposed.ShimmerVisualOffers != 0) &&
+                !VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(proposed.State.Type) ||
+            proposed.SourceWetCountOverride is > 10 || proposed.ShimmerVisualOffers is not (0 or 10))
+        {
+            normalized = default;
+            return false;
+        }
         if (proposed.OrdinaryAmmoSourceUpdate &&
             (proposed.State.Type.Value is not (1 or 2 or 4 or 5 or 14 or 981) ||
              proposed.TerminationReason is ProjectileSimulationTerminationReason.WorldBounds or ProjectileSimulationTerminationReason.BehaviorKill))
@@ -371,7 +452,8 @@ public sealed class RuntimeProjectileStateExecutor
             return false;
         }
         if (proposed.CollisionTileCutOffer.HasValue &&
-            (proposed.State.Type != VanillaProjectileIds.NurseSyringeHeal || proposed.State.Damage != 0))
+            !((proposed.State.Type == VanillaProjectileIds.NurseSyringeHeal && proposed.State.Damage == 0) ||
+                VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(proposed.State.Type) && proposed.State.Damage >= 0))
         {
             normalized = default;
             return false;
@@ -439,6 +521,7 @@ public sealed class RuntimeProjectileStateExecutor
         ProjectileLiquidState? liquid,
         ProjectileLocalAiState? localAi,
         int? penetrateOverride,
+        byte? sourceWetCount,
         out ProjectileLifecycleState next)
     {
         bool netImportant = previous.NetImportant;
@@ -465,6 +548,7 @@ public sealed class RuntimeProjectileStateExecutor
             Reflected = previous.Reflected,
             PenetrateOverride = penetrateOverride ?? previous.PenetrateOverride,
             LocalAi = localAi ?? previous.LocalAi,
+            SourceWetCount = sourceWetCount ?? previous.SourceWetCount,
             HeldTool = previousType == nextType ? previous.HeldTool : null,
             ThrownAxe = previousType == nextType ? previous.ThrownAxe : null
         };

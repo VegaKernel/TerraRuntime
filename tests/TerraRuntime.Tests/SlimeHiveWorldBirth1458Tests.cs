@@ -69,7 +69,7 @@ public sealed class SlimeHiveWorldBirth1458Tests
         }
         var placeholder = Update(parent);
         Assert.True(store.TryUpdateUnpublished(parent.Handle, in placeholder, out var accepted));
-        Assert.True(preview.TryAdopt(in accepted, in placeholder, out _));
+        Assert.True(preview.TryAdopt(in accepted, in placeholder, static () => true, out _));
         Assert.Equal(row.GetProperty("next").GetInt32(), random.Next());
         if (!allocated)
             return;

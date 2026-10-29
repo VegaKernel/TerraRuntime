@@ -116,6 +116,12 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId TheGroom = new(53);
     public static readonly NpcTypeId GoblinScout = new(73);
     public static readonly NpcTypeId ArmoredSkeleton = new(77);
+    public static readonly NpcTypeId SnowFlinx = new(185);
+    public static readonly NpcTypeId GraniteGolem = new(482);
+    public static readonly NpcTypeId GiantWalkingAntlion = new(508);
+    public static readonly NpcTypeId MartianWalker = new(520);
+    public static readonly NpcTypeId WalkingAntlion = new(580);
+    public static readonly NpcTypeId LarvaeAntlion = new(582);
     public static readonly NpcTypeId BaldZombie = new(132);
     public static readonly NpcTypeId ZombieEskimo = new(161);
     public static readonly NpcTypeId UndeadViking = new(167);

@@ -19,6 +19,9 @@ public readonly record struct VanillaZombieObstacleMotionParameters(
     float PursuitGapJumpVelocity,
     float PursuitGapSpeedMultiplier)
 {
+    /// <summary>Distance from the body center to AI_003's forward tile probe, in pixels.</summary>
+    public int ForwardProbeOffset { get; init; } = 15;
+
     public static VanillaZombieObstacleMotionParameters Vanilla { get; } =
         new(-5f, -6f, -7f, -8f, -8f, 1.5f);
 
@@ -28,7 +31,7 @@ public readonly record struct VanillaZombieObstacleMotionParameters(
         IsJumpVelocity(TwoTileJumpVelocity) &&
         IsJumpVelocity(ThreeTileJumpVelocity) &&
         IsJumpVelocity(PursuitGapJumpVelocity) &&
-        float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f;
+        float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f && ForwardProbeOffset > 0;
 
     private static bool IsJumpVelocity(float velocity) => float.IsFinite(velocity) && velocity < 0f;
 }
@@ -104,7 +107,7 @@ public static class VanillaWorldZombieObstacleMotion
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);
         }
 
-        int tileX = (int)((positionX + width / 2 + 15f * directionX) / TileSize);
+        int tileX = (int)((positionX + width / 2 + (float)(parameters.ForwardProbeOffset * directionX)) / TileSize);
         int tileY = (int)((positionY + height - 15f) / TileSize);
         if (!InProbeBounds(tiles, tileX, tileY))
             return new VanillaZombieObstacleMotionResult(velocityX, velocityY, false);

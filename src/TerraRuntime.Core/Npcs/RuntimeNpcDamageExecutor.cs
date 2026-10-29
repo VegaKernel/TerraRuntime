@@ -240,7 +240,8 @@ public sealed class RuntimeNpcDamageExecutor
             request.HitDirection,
             damage,
             request.Critical,
-            _expertMode);
+            _expertMode,
+            flinxVerticalKnockback: current.Type == 185);
 
         NpcAiState ai = current.Ai;
         // StrikeNPC_Inner wakes an idle AI_087 Mimic before its next AI update.
@@ -256,6 +257,11 @@ public sealed class RuntimeNpcDamageExecutor
             Life = lifeAfter,
             JustHit = true
         };
+        // StrikeNPC_Inner marks the existing Flinx response before HP/knockback.
+        // Prepare it with the accepted transaction so refused/stale/lethal
+        // capacity previews cannot publish a reaction without the strike.
+        if (current.Type == 185)
+            simulation = simulation with { LocalAi = simulation.LocalAi with { Ai0 = 1f } };
 
         if (townReaction is { } reaction)
         {

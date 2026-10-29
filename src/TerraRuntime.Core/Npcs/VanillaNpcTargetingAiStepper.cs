@@ -35,7 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
-        _ordinaryMelee.RequiresForcedUpdate(in before, in finalized) ||
+        _groundCombat.RequiresForcedUpdate(in before, in finalized) ||
         _groundCritter.RequiresForcedUpdate(in before, in finalized) ||
         _flyingEye.RequiresRetainedForcedUpdate(in before, in finalized) ||
         _bigMimic.RequiresForcedUpdate(in before, in finalized) ||
@@ -47,7 +47,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          _context.TryFindCandidate((byte)finalized.Target, out var target) && target.Active && !target.Dead));
 
     public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
-        _ordinaryMelee.Deactivates(in before, in completed) ||
+        _groundCombat.Deactivates(in before, in completed) ||
         _groundCritter.Deactivates(in before, in completed) ||
         _slimeGround.DeactivatesContainedAfterCompletion(in before, in completed) ||
         _flyingEye.DeactivatesRetainedAfterCompletion(in before, in completed) ||
@@ -134,11 +134,11 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaEmpressOfLightNpcBehaviorStrategy _empressOfLight = new();
     private readonly VanillaMoonLordNpcBehaviorStrategy _moonLord;
     private readonly IVanillaNpcRandom _random;
-    private readonly VanillaOrdinaryMeleeAccepted1458 _ordinaryMelee = new();
+    private readonly VanillaGroundCombatAccepted1458 _groundCombat = new();
 
-    internal VanillaOrdinaryMeleeAccepted1458 OrdinaryMelee => _ordinaryMelee;
-    internal void SetOrdinaryMeleeOwner(RuntimeNpcStore owner, IVanillaOrdinaryMeleeEnvironment1458 world) =>
-        _ordinaryMelee.Configure(owner, world, _random);
+    internal VanillaGroundCombatAccepted1458 GroundCombat => _groundCombat;
+    internal void SetGroundCombatOwner(RuntimeNpcStore owner, IVanillaGroundCombatEnvironment1458 world) =>
+        _groundCombat.Configure(owner, world, _random);
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
     private IVanillaDeerclopsEnvironment? _deerclopsEnvironment;
@@ -422,6 +422,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
+        // A rejected executor proposal may never reach completion. Release its
+        // prepared projectile lease before beginning another actor's plan.
+        _groundCombat.Cancel();
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType))
         {
             next = default;
@@ -449,8 +452,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (VanillaGroundCritterAi1458.IsSupported(npc.Type))
             return _groundCritter.TryStep(in npc, in definition, _context, _groundFighter, _inner, out next);
 
-        if (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(npcType))
-            return _ordinaryMelee.TryStep(in npc, in definition, _context, _groundFighter, _inner, out next);
+        if (VanillaGroundCombatCohort1458.IsSupported(npcType, npc.NetIdentity) &&
+            (npc.TypeIdentity != VanillaNpcIds.ArmoredSkeleton ||
+                npc.NetId != VanillaNpcIds.ArmoredSkeleton.Value || _groundCombat.IsConfigured))
+            return _groundCombat.TryStep(in npc, in definition, _context, _groundFighter, _inner, out next);
 
         // AI_069's ocean/enrage guard requires both loaded world dimensions. Do not let an unavailable
         // world context fall through to a generic AI stepper and manufacture an unverified Duke transition.
@@ -2588,7 +2593,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          _flyingEye.HasRetainedPlan(in before) ||
          _bee.HasPlan(in before) ||
          _groundCritter.HasPlan(in before) ||
-         _ordinaryMelee.HasPlan(in before) ||
+         _groundCombat.HasPlan(in before) ||
          _slimeGround.HasContainedPlan(in before) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 

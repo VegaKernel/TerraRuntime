@@ -38,6 +38,9 @@ public readonly record struct VanillaNpcLootRule(
     VanillaNpcLootAlternatives1458? Alternatives = null,
     VanillaNpcLootOptions1458? Options = null)
 {
+    /// <summary>Source expert wrapper with the same minimum and a different stack ceiling.</summary>
+    public short? ExpertMaximumStack { get; init; }
+
     public bool IsValid =>
         (Kind is >= VanillaNpcLootRuleKind.ExtraGel and <= VanillaNpcLootRuleKind.OnlyBadLuckCommon) &&
         !ItemType.IsNone &&
@@ -45,6 +48,8 @@ public readonly record struct VanillaNpcLootRule(
         ExpertChanceDenominator > 0 &&
         MinimumStack > 0 &&
         MaximumStack >= MinimumStack &&
+        (ExpertMaximumStack is null ||
+            (Kind == VanillaNpcLootRuleKind.NormalVsExpertCommon && ExpertMaximumStack >= MinimumStack)) &&
         ExtraGelMultiplier > 0 &&
         (Kind != VanillaNpcLootRuleKind.FailedRollChain || Alternatives is { IsValid: true }) &&
         (Kind != VanillaNpcLootRuleKind.OneFromOptions || Options is { IsValid: true });
@@ -381,7 +386,7 @@ public static class VanillaNpcLootEvaluator
             ? rule.ExtraGelMultiplier
             : 1;
         int inclusiveMin = checked(rule.MinimumStack * multiplier);
-        int inclusiveMax = checked(rule.MaximumStack * multiplier);
+        int inclusiveMax = checked((context.IsExpertMode ? rule.ExpertMaximumStack ?? rule.MaximumStack : rule.MaximumStack) * multiplier);
         int stack = rolls.NextInt32(inclusiveMin, checked(inclusiveMax + 1));
         drop = new NpcLootDrop(rule.ItemType, checked((short)stack));
         dropped = true;

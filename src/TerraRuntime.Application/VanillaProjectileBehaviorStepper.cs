@@ -270,6 +270,32 @@ internal static partial class VanillaProjectileBehaviorStepper
                     ai1Override = 1f;
                 break;
 
+            case VanillaProjectileBehaviorFamily.BrainScramblerBolt:
+                // AI_001 preserves the counter in its no-increment switch, but
+                // still applies ordinary arrow gravity to an imported counter >=15.
+                if (current.Ai.Ai1 == 0f) ai1Override = 1f;
+                if (ai0 >= 15f) { ai0 = 15f; velocityY += .1f; }
+                velocityY = Math.Min(MaximumArrowFallSpeed, velocityY);
+                break;
+
+            case VanillaProjectileBehaviorFamily.MartianLaser:
+                // Types438/592 share the no-gravity switch and first-update
+                // sound marker; their four subupdates remain in the executor.
+                if (current.Ai.Ai1 == 0f) ai1Override = 1f;
+                if (ai0 >= 15f) { ai0 = 15f; velocityY += .1f; }
+                velocityY = Math.Min(MaximumArrowFallSpeed, velocityY);
+                break;
+
+            case VanillaProjectileBehaviorFamily.HopliteJavelin:
+                ai0 += 1f;
+                if (ai0 > 60f)
+                {
+                    velocityX *= .98f;
+                    velocityY += .3f;
+                }
+                velocityY = Math.Min(MaximumArrowFallSpeed, velocityY);
+                break;
+
             case VanillaProjectileBehaviorFamily.PlanteraSeed:
             {
                 // Types 275/276 increment ai[0] through the common AI_001 gate but replace ordinary arrow gravity

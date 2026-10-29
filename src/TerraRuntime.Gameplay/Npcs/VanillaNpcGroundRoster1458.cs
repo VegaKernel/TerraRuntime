@@ -16,6 +16,7 @@ public static class VanillaNpcGroundRoster1458
     public static bool IsUndeadRuntimeIdentity(NpcTypeId type, NpcNetId netId) => netId.Value switch
     {
         -13 or -14 => type.Value == 31,
+        -15 => type.Value == 77,
         -26 or -27 => type.Value == 3,
         -28 or -29 => type.Value == 132,
         -30 or -31 => type.Value == 186,

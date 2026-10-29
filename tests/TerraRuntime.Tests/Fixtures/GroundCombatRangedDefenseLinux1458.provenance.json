@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "kind": "actual-original-npc-phase-numeric-expectations",
+  "accepted": true,
+  "fixtureSha256": "bb0d3b491a8029cf591a0891cf4f44b9790436d1ffecaccbeaf7ff18d0bf20a5",
+  "rows": 21,
+  "entry": "Original initialized NPC.UpdateNPC(0), one complete phase per immutable original-v2 scene; no projectile.Update/player/worldtime phase.",
+  "sourceQualificationSha256": "ed104c0a9eb002c38c933b4caa7e10ad6a4d22155da2a2f7f51a54368c1ad661",
+  "sourceObservationSha256": "d6b48f62cd77b1e97d64c84af9aff4d2b5c0008f8f00d92a280619cd22bdf6e2",
+  "originalSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "originalSourceSha256": "dc31203e7ed11cca746d3b58c82560c6bb0c033890201282a9e7419efb49edc4",
+  "sourceHarnessSha256": "74636d3f85a540db4d90cc68ff0113fffd6e250e9728e015823df32e52f75b52",
+  "numericDomain": "NPC/projectile binary32 raw hex, binary64 frameCounter raw hex, physical RNG cursor and all56slots. All original projectile observations retained, tests assert actual owned snapshot/lifecycle/shape/key fields.",
+  "scope": "Ranged8 Classic/Expert source births and Granite5 defense states. Source original-v2 source corps and first three-seed runtime qualification remain immutable; no usual projectile lifetime/AI claim from birth rows.",
+  "generator": "Ignored .cache/ground-combat-oracle/promote-ranged-defense.py, deterministic extraction from actual official observations",
+  "generatorSha256": "2e0684e878136430b9f22a8017c8e2f874f7a858abe63d7513f5560336629751"
+}

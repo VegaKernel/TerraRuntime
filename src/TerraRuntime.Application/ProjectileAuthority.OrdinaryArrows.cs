@@ -10,6 +10,10 @@ internal sealed partial class ProjectileAuthority
 
     private ProjectileActorSimulationResult TrySimulateOrdinaryArrowActor(ProjectileSnapshot initial)
     {
+        var groundCombat = TrySimulateGroundCombatActor(initial);
+        if (groundCombat != ProjectileActorSimulationResult.NotApplicable) return groundCombat;
+        // Other existing actors retain their concrete-world-stepper admission.
+        if (stepper is not VanillaProjectileWorldStateStepper) return ProjectileActorSimulationResult.NotApplicable;
         if (TerraRuntime.Gameplay.Players.FishingRules1458.IsBobber(initial.Type.Value))
             return TrySimulateFishingBobber(initial);
         var worldBomb = TrySimulateWorldToolBombActor(initial);

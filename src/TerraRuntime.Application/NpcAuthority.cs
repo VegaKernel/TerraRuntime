@@ -338,8 +338,8 @@ internal sealed partial class NpcAuthority
                         playerSnapshots: playerSnapshots),
                     progressionMutations: progression);
                 pirateGhostMotion = worldMotion;
-                vanillaTargeting.SetOrdinaryMeleeOwner(npcs, new VanillaOrdinaryMeleeEnvironment1458(
-                    worldTiles, npcs, npcBuffStatus, worldMotion, CaptureOrdinaryMeleeWorldFacts1458, npcReplication));
+                vanillaTargeting.SetGroundCombatOwner(npcs, new VanillaGroundCombatEnvironment1458(
+                    worldTiles, npcs, projectiles, npcBuffStatus, worldMotion, CaptureGroundCombatWorldFacts1458, npcReplication));
                 gemBunnyLifecycle = new RuntimeGroundCritterLifecycle1458(worldTiles, worldSurfaceTiles, npcs,
                     combat, expertMode, npcReplication, npcBuffStatus, worldMotion);
                 vanillaTargeting.SetGroundCritterOwner(npcs, new VanillaGroundCritterEnvironment1458(worldTiles, npcs,
@@ -2098,9 +2098,10 @@ internal sealed partial class NpcAuthority
 
     private bool? CaptureBunnyBloodMoon() => worldClock?.BloodMoonActive;
 
-    private OrdinaryMeleeWorldFacts1458 CaptureOrdinaryMeleeWorldFacts1458() => new(
+    private GroundCombatWorldFacts1458 CaptureGroundCombatWorldFacts1458() => new(
         worldClock is not null, worldClock?.DayTime ?? true, worldClock?.EclipseActive ?? false,
-        CaptureDifficulty() >= 2f, worldClock?.GetGoodWorld ?? false, naturalSpawnWorldFacts?.RemixWorld ?? false);
+        CaptureDifficulty() >= 2f, worldClock?.GetGoodWorld ?? false, naturalSpawnWorldFacts?.RemixWorld ?? false,
+        invasion is null ? 0 : invasion.TryCapture(out var active) ? active.State.Type : null);
 
     private RuntimeTownNpcScheduleConditions1458 CaptureGroundCritterConditions() => new(
         worldClock?.DayTime ?? true, worldClock?.Raining ?? false,

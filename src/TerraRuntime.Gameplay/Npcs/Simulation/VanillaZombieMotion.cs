@@ -38,6 +38,7 @@ public readonly record struct VanillaZombieMotionInput(
     public bool EncourageDespawn { get; init; }
     public bool JustHit { get; init; }
     public bool StuckTrackingAlreadyApplied { get; init; }
+    public bool BusyWithAction { get; init; }
     public int TimeLeft { get; init; }
     public int SpriteDirection { get; init; } = -1;
     public bool ScaleAdjustsMaximumHorizontalSpeed { get; init; } = true;
@@ -58,6 +59,9 @@ public readonly record struct VanillaZombieMotionInput(
     public float? TurningCritterClosestTargetOffsetX { get; init; }
     public bool? TurningCritterTargetDead { get; init; }
     public bool? TurningCritterClosestTargetDead { get; init; }
+    public float? SourceGravity { get; init; }
+    public float? AntlionTargetOffsetX { get; init; }
+    public float? AntlionClosestTargetOffsetX { get; init; }
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -100,7 +104,10 @@ public enum VanillaGroundFighterMotionProfile : byte
     Fritz = 20,
     Lamia = 21,
     BloodZombie = 22,
-    TurningCritter = 23
+    TurningCritter = 23,
+    WalkingAntlion = 24,
+    LarvaeAntlion = 25,
+    GroundCombatRanged = 26
 }
 
 /// <summary>
@@ -168,6 +175,11 @@ public static class VanillaZombieMotion
                 (input.TurningCritterClosestTargetOffsetX is not { } closestCritterOffset || !float.IsFinite(closestCritterOffset) ||
                  input.TurningCritterClosestTargetDead is null)))
         { result = default; return false; }
+        if (input.MotionProfile is VanillaGroundFighterMotionProfile.WalkingAntlion or VanillaGroundFighterMotionProfile.LarvaeAntlion &&
+            (input.SourceGravity is not { } sourceGravity || !float.IsFinite(sourceGravity) || sourceGravity < 0f ||
+             input.AntlionTargetOffsetX is not { } antlionOffset || !float.IsFinite(antlionOffset) ||
+             closestTarget.HasTarget && (input.AntlionClosestTargetOffsetX is not { } antlionClosestOffset || !float.IsFinite(antlionClosestOffset))))
+        { result = default; return false; }
         float velocityX = input.VelocityX;
         float velocityY = input.VelocityY;
         int directionX = input.DirectionX;
@@ -222,7 +234,7 @@ public static class VanillaZombieMotion
             if (directionY > 0 && closestTarget.HasTarget && closestTarget.DirectionY < 0)
                 directionY = -1;
         }
-        else if (!(input.MotionProfile == VanillaGroundFighterMotionProfile.Psycho && ai2 > 0f))
+        else if (!input.BusyWithAction && !(input.MotionProfile == VanillaGroundFighterMotionProfile.Psycho && ai2 > 0f))
         {
             if (input.EncourageDespawn && timeLeft > input.EncouragedDespawnTime)
                 timeLeft = input.EncouragedDespawnTime;
@@ -285,10 +297,30 @@ public static class VanillaZombieMotion
         {
             // The source's armed branch owns horizontal motion for this tick.
         }
-        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Salamander ||
+        else if (input.MotionProfile is VanillaGroundFighterMotionProfile.GroundCombatRanged or VanillaGroundFighterMotionProfile.Salamander ||
                  (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin or VanillaGroundFighterMotionProfile.StationaryArcher or VanillaGroundFighterMotionProfile.IcyMerman or VanillaGroundFighterMotionProfile.PirateDeadeye or VanillaGroundFighterMotionProfile.PirateCrossbower or VanillaGroundFighterMotionProfile.PirateCaptain && ai2 > 0f))
         {
             // AI_003's stationary ranged branches take over after the shared target/stuck prepass.
+        }
+        else if (input.MotionProfile is VanillaGroundFighterMotionProfile.WalkingAntlion or VanillaGroundFighterMotionProfile.LarvaeAntlion)
+        {
+            bool larva = input.MotionProfile == VanillaGroundFighterMotionProfile.LarvaeAntlion;
+            float speed = larva ? 2.25f : 2.5f;
+            float weight = larva ? 7f : 10f;
+            float magnitude = Math.Abs(velocityX);
+            if (larva ? magnitude > 2.5f : magnitude > 2.75f)
+            { speed = larva ? 3f : 3.5f; weight += larva ? 75f : 80f; }
+            else if (larva ? magnitude > 2f : (double)magnitude > 2.25)
+            { speed = larva ? 2.75f : 3f; weight += larva ? 55f : 60f; }
+            if ((double)Math.Abs(velocityY) < .5 &&
+                (velocityX > 0f && directionX < 0 || velocityX < 0f && directionX > 0))
+            { velocityX *= .95f; velocityY *= .95f; }
+            if (Math.Abs(velocityY) > input.SourceGravity!.Value) weight *= larva ? 2f : 3f;
+            if (velocityX <= 0f && directionX < 0) velocityX = (velocityX * weight - speed) / (weight + 1f);
+            else if (velocityX >= 0f && directionX > 0) velocityX = (velocityX * weight + speed) / (weight + 1f);
+            else if (Math.Abs(targetRefreshes > 0 && closestTarget.HasTarget ? input.AntlionClosestTargetOffsetX!.Value : input.AntlionTargetOffsetX!.Value) > 20f &&
+                Math.Abs(velocityY) <= input.SourceGravity.Value)
+            { velocityX *= .99f; velocityX += directionX * .025f; }
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Butcher)
         {

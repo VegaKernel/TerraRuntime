@@ -1,5 +1,9 @@
 # AI3 and AI7 NPC definitions, Terraria 1.4.5.8
 
+## Next sixteen-identity candidate, 2026-10-29
+
+The working ground-combat continuation selects 263/300 lifecycle identities (87.7%) and 37 creation-only; positive AI3 is 164/191 and signed AI3 lifecycle variants number27. Global counts are 527 lifecycle and228 creation-only. Shared phase/projectile integration and aggregate acceptance are still pending. The accepted published baseline remains247/300 below; [candidate scope and limits](npc-ai3-ai7-runtime-1458.md#ground-combat-continuation-in-qualification-2026-10-29).
+
 ## Ground-critter block accepted, 2026-10-28
 
 The connected catalog now selects the exact old twelve bunnies plus 22 new AI7 identities: `148`, `149`, `299`, `300`, `361`, `366`, `367`, `445`, `447`, `538`, `539`, `610`, `616`, `617`, `625`, `639..645`. Its accepted census is **247/300 (82.3%)** lifecycle and 53 creation-only, with positive AI3 unchanged at 149/191 and 26 signed lifecycle variants. Global lifecycle admission is 511 and creation-only 244. The bounded source/runtime comparison and aggregate gates are accepted; the earlier 17-enemy checkpoint below remains historical. [Acceptance record](../verification/ground-critter-acceptance-20261028.json).

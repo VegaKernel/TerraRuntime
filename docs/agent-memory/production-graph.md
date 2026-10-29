@@ -1,5 +1,7 @@
 # Production graph
 
+2026-10-29 ground-combat candidate remains15 shipping projects/29 references with no new dependency, RNG owner or entity store. Existing NPC preview/status/projectile-batch and player HP owners are extended. Optional Core inactive-lifetime motion and bounded wet-count/Shimmer offers belong to source-qualified438/592/new5 update paths. Diagnostic07 WAE0/0/focus14109 qualifies4114 source inputs and158 copied DLLs only as a component; shared NPC callback ordering and authoritative subupdate player-hit integration still block final union/full/Native acceptance. Published main remainsf4a05e19; frozen Ankh component65b95a67 awaits merge before one grouped full.
+
 ## Ground-critter retained owner, 2026-10-28
 
 Ground-critter checkpoint2026-10-28: source4067/DLL158/index exact, old891fixtures unchanged; AI3/AI7 lifecycle247/300 (82.3%), global511/244. Existing retained owner now handles34critters and live squirrel7→3; no parallel store/RNG/dependency, graph15/29. Phase63744active+960surface/fullRNG strict,60legacy stability controls; terminal4224NPC/raw/RNGonly, inactivebuffownership unqualified. WAE/focus1391/full1575840/all5485methods and fast34426 actual subset of same unfiltered run green, freshWindowsNativefa4de6a66d213e01675dd154278ea17da3eb51e26e660743df90da55608fe2ae/5smokes/actualRelease+NativeTCP green. FullVanillaAiParity false; LinuxNative/GUI/gracefulsave open. See docs/verification/ground-critter-acceptance-20261028.json.

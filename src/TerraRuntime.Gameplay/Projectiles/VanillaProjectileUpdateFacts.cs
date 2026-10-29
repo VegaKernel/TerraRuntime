@@ -19,6 +19,14 @@ public static class VanillaProjectileUpdateFacts
     public const int ExtraUpdateTypeCount = 234;
     public const int MaximumExtraUpdates = 180;
 
+    /// <summary>Explicit 1458 ground-combat HandleMovement collision-offer admission.</summary>
+    public static bool SupportsGroundCombatCollisionOffers1458(ProjectileTypeId type) =>
+        type.Value is 436 or 438 or 471 or 508 or 592;
+
+    /// <summary>Qualified extra-update lasers with one movement-only pass after lifetime Kill.</summary>
+    public static bool SupportsInactiveLifetimeMotion1458(ProjectileTypeId type) =>
+        type.Value is 438 or 592;
+
     public static int GetExtraUpdates(ProjectileTypeId type)
     {
         if (!VanillaProjectileLifecycleFacts.IsDefinedLiveType(type))

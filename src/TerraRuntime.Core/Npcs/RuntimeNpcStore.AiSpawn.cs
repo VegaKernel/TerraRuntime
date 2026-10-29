@@ -114,11 +114,19 @@ public sealed partial class RuntimeNpcStore
 
         internal bool IsCurrent(in NpcSnapshot acceptedParent)
         {
+            if (!IsCurrentOwnedState(in acceptedParent) || owner._spawnContext?.Invoke() != context)
+                return false;
+            return IsCurrentOwnedState(in acceptedParent);
+        }
+
+        // No caller-provided callbacks belong after the final captured-owner guard.
+        private bool IsCurrentOwnedState(in NpcSnapshot acceptedParent)
+        {
             if (completed || owner.mutationSerialExhausted || beforeSerial == ulong.MaxValue ||
                 owner.mutationSerial != beforeSerial + 1 || acceptedParent.Handle != parent.Handle ||
                 acceptedParent.Revision.Value != parent.Revision.Value + 1 ||
                 !owner.MatchesSource(in acceptedParent) || !owner.IsSpawnRandomSource(liveRandom) ||
-                !liveRandom.HasSameState(beforeRandom) || owner._spawnContext?.Invoke() != context)
+                !liveRandom.HasSameState(beforeRandom))
                 return false;
 
             var expected = new NpcStateUpdate(parent.Type, parent.NetId, parent.PositionX, parent.PositionY,
@@ -129,10 +137,15 @@ public sealed partial class RuntimeNpcStore
         }
 
         internal bool TryAdopt(in NpcSnapshot acceptedParent, in NpcStateUpdate finalParent,
+            Func<bool> ownedInputsCurrent,
             out NpcSnapshot final)
         {
             final = default;
-            if (!IsValid(in finalParent) || !IsCurrent(in acceptedParent))
+            ArgumentNullException.ThrowIfNull(ownedInputsCurrent);
+            // The public spawn-context provider may reenter other domain owners.
+            // Sample it before validating those owners, then adopt without calling it again.
+            if (!IsValid(in finalParent) || !IsCurrent(in acceptedParent) ||
+                !ownedInputsCurrent() || !IsCurrentOwnedState(in acceptedParent))
                 return false;
 
             ref SlotState parentState = ref owner._slots[parent.Handle.Slot];

@@ -66,7 +66,7 @@ internal sealed class RuntimeNpcRawPlayerSlots1458 : INpcRawPlayerSlotLookup1458
             facts = new(slot, true, player.IsDead,
                 (player.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0,
                 player.PositionX, player.PositionY,
-                (int)size.Item1, (int)size.Item2, 0, false, player.ItemAnimation ?? 0);
+                (int)size.Item1, (int)size.Item2, 0, false, player.ItemAnimation ?? 0) { Stealth = player.Stealth };
             retained = player;
             graveyard = player.Zones is { } zones ? (zones.Zone4 & (1 << 6)) != 0 : null;
         }

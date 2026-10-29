@@ -233,6 +233,34 @@ public static class VanillaGroundFighterNpcCatalog
             motionProfile: VanillaGroundFighterMotionProfile.Lamia, daySurfaceEncouragesDespawn: false)
         ,Fighter(new(536), 18, 40, 14, 8, 200, .5f, 1f, 1f)
         ,Fighter(new(691), 18, 40, 18, 10, 60, .45f, 1f, .85f)
+        // Independently read initialized SetDefaults and AI003 branches. Ranged
+        // motion/attack is deferred until after the shared target/stuck prepass.
+        ,Fighter(new(185), 28, 28, 26, 12, 70, 1.1f, 1f, 1.5f, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(385), 18, 40, 80, 30, 750, 0f, 1f, 1.8f, closeRangeLunge: true)
+        ,Fighter(new(482), 28, 48, 30, 18, 110, .35f, 1f, 1.5f)
+        ,Fighter(new(508), 50, 31, 38, 16, 110, .4f, 1f, 2.5f,
+            motionProfile: VanillaGroundFighterMotionProfile.WalkingAntlion, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(580), 26, 26, 25, 10, 80, .5f, 1f, 2.5f,
+            motionProfile: VanillaGroundFighterMotionProfile.WalkingAntlion, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(582), 18, 18, 10, 2, 30, .75f, 1f, 2.25f,
+            motionProfile: VanillaGroundFighterMotionProfile.LarvaeAntlion, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(590), 18, 40, 14, 6, 45, .5f, 1f, 1f)
+        ,Fighter(new(381), 18, 40, 50, 25, 350, .35f, 1f, 2f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        ,Fighter(new(382), 18, 40, 50, 25, 350, .35f, 1f, 2f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        ,Fighter(new(449), 18, 40, 20, 8, 60, .5f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        ,Fighter(new(450), 18, 40, 20, 12, 55, .5f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        ,Fighter(new(451), 18, 40, 18, 8, 65, .5f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        ,Fighter(new(452), 18, 40, 22, 8, 60, .5f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        ,Fighter(new(481), 18, 40, 22, 10, 70, .4f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        ,Fighter(new(520), 34, 110, 60, 40, 2000, 0f, 1f, 4f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
     ];
 
     private static readonly NpcTypeId[] AdditionalTypes =
@@ -318,7 +346,9 @@ public static class VanillaGroundFighterNpcCatalog
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280), VanillaNpcIds.Psycho, VanillaNpcIds.CreatureFromTheDeep, VanillaNpcIds.Butcher, VanillaNpcIds.Nailhead, VanillaNpcIds.DrManFly, VanillaNpcIds.Frankenstein, VanillaNpcIds.Fritz, VanillaNpcIds.ThePossessed,
         new(44), new(104), new(140), new(181), new(196), new(197), new(464), new(470), new(489),
-        new(524), new(525), new(526), new(527), new(528), new(529), new(536), new(691)
+        new(524), new(525), new(526), new(527), new(528), new(529), new(536), new(691),
+        new(185), new(385), new(482), new(508), new(580), new(582), new(590),
+        new(381), new(382), new(449), new(450), new(451), new(452), new(481), new(520)
     ];
 
     public static int DefinitionCount => Entries.Length;
@@ -335,7 +365,7 @@ public static class VanillaGroundFighterNpcCatalog
 
     /// <summary>Exact cohorts whose shared source target/network phases are represented.</summary>
     public static bool UsesVerifiedGroundFighterTargeting1458(NpcTypeId type) =>
-        IsUndeadVariantParent(type) || IsOrdinaryMeleeCohort1458(type) ||
+        IsUndeadVariantParent(type) || VanillaGroundCombatCohort1458.IsSupported(type, new(type.Value)) ||
         VanillaNonresidentGroundCritterCatalog1458.IsTurningSquirrel(type.Value);
 
     public static bool IsOrdinaryMeleeDayDespawnCandidate1458(NpcTypeId type) => type.Value is

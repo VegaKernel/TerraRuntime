@@ -6,11 +6,14 @@ public readonly record struct VanillaNpcRawPlayer1458(
     float PositionX, float PositionY, int Width, int Height,
     int Aggro, bool NoAggro, int ItemAnimation)
 {
+    /// <summary>Owned source Player.stealth; null is an imported/unknown live fact.</summary>
+    public float? Stealth { get; init; }
+
     public static VanillaNpcRawPlayer1458 Constructor(byte slot) =>
-        new(slot, false, false, false, 0f, 0f, 20, 42, 0, false, 0);
+        new(slot, false, false, false, 0f, 0f, 20, 42, 0, false, 0) { Stealth = 1f };
 
     public bool IsValid => float.IsFinite(PositionX) && float.IsFinite(PositionY) &&
-        Width > 0 && Height > 0 && ItemAnimation >= 0;
+        Width > 0 && Height > 0 && ItemAnimation >= 0 && (Stealth is null || float.IsFinite(Stealth.Value));
 
     public VanillaNpcTargetCandidate Candidate => new(Slot,
         PositionX + Width * .5f, PositionY + Height * .5f, Aggro, Active, Dead, Ghost, NoAggro)

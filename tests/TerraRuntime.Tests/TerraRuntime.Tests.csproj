@@ -1059,5 +1059,25 @@
     <EmbeddedResource Include="Fixtures/tool-frame-reset-full-caller-v1.json.gz" LogicalName="ToolFrameResetFullCaller1458" />
     <EmbeddedResource Include="Fixtures/placement-normal-switch-full-caller-v1.json.gz" LogicalName="PlacementNormalSwitchFullCaller1458" />
     <EmbeddedResource Include="Fixtures/released-tool-full-caller-v1.json.gz" LogicalName="ReleasedToolFullCaller1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatLootLinux1458.json.gz" LogicalName="GroundCombatLootLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatLootRareLinux1458.json.gz" LogicalName="GroundCombatLootRareLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatFramesLinux1458.json.gz" LogicalName="GroundCombatFramesLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatFlinxStrikeLinux1458.json.gz" LogicalName="GroundCombatFlinxStrikeLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatFlinxStrikeWindows1458.json.gz" LogicalName="GroundCombatFlinxStrikeWindows1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatFlinxNaturalLinux1458.json.gz" LogicalName="GroundCombatFlinxNaturalLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatAntlionMotionLinux1458.json.gz" LogicalName="GroundCombatAntlionMotionLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatBusyActionLinux1458.json.gz" LogicalName="GroundCombatBusyActionLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatRangedDefenseLinux1458.json.gz" LogicalName="GroundCombatRangedDefenseLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatAntlionProbeLinux1458.json.gz" LogicalName="GroundCombatAntlionProbeLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatIdleSuccessLinux1458.json.gz" LogicalName="GroundCombatIdleSuccessLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatProjectileUpdatesLinux1458.json.gz" LogicalName="GroundCombatProjectileUpdatesLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatProjectileInactiveTailLinux1458.json.gz" LogicalName="GroundCombatProjectileInactiveTailLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatProjectileSlopeOverlapLinux1458.json.gz" LogicalName="GroundCombatProjectileSlopeOverlapLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatProjectileBirthLiquidLinux1458.json.gz" LogicalName="GroundCombatProjectileBirthLiquidLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatProjectileLiquidHistoryLinux1458.json.gz" LogicalName="GroundCombatProjectileLiquidHistoryLinux1458" />
+    <EmbeddedResource Include="Fixtures/GroundCombatPlayerHitLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerHitLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/GroundCombatPlayerHitModesLinux1458.v2.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerHitModesLinux1458.v2.json.gz" />
+    <EmbeddedResource Include="Fixtures/GroundCombatPlayerSubupdatesLinux1458.v2.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerSubupdatesLinux1458.v2.json.gz" />
+    <EmbeddedResource Include="Fixtures/GroundCombatPlayerBoundariesLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerBoundariesLinux1458.v1.json.gz" />
   </ItemGroup>
 </Project>

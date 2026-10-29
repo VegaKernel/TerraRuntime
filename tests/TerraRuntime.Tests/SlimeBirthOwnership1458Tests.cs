@@ -60,7 +60,7 @@ public sealed class SlimeBirthOwnership1458Tests
         var placeholder = State(in parent);
         Assert.True(store.TryUpdateUnpublished(parent.Handle, in placeholder, out var accepted));
         var planned = placeholder with { Ai = new(50f, 1124f, 1f, 0f) };
-        Assert.True(preview.TryAdopt(in accepted, in planned, out var completed));
+        Assert.True(preview.TryAdopt(in accepted, in planned, static () => true, out var completed));
         Assert.Equal(planned.Ai, completed.Ai);
         Assert.Empty(sink.Events);
         Assert.Equal(expectedNext, random.Next());
@@ -70,7 +70,7 @@ public sealed class SlimeBirthOwnership1458Tests
         Assert.Equal(60f, child.Simulation.LocalAi.Ai0);
         Assert.Equal(994f, child.PositionX);
         Assert.Equal(988f, child.PositionY);
-        Assert.False(preview.TryAdopt(in completed, in parentState, out _));
+        Assert.False(preview.TryAdopt(in completed, in parentState, static () => true, out _));
         Assert.True(store.TryPublishPendingBirth(child.Handle));
         Assert.Single(sink.Events);
         Assert.Equal(NpcStateCommitKind.Spawn, sink.Events[0].Kind);
@@ -112,7 +112,7 @@ public sealed class SlimeBirthOwnership1458Tests
         }
         var expectedRandom = random.Clone();
         int expectedCount = store.ActiveCount;
-        Assert.False(preview.TryAdopt(in accepted, in parentState, out _));
+        Assert.False(preview.TryAdopt(in accepted, in parentState, static () => true, out _));
         Assert.True(random.HasSameState(expectedRandom));
         Assert.Equal(expectedCount, store.ActiveCount);
         Assert.True(store.TryGet(parent.Handle, out var unchanged));
@@ -132,7 +132,7 @@ public sealed class SlimeBirthOwnership1458Tests
         var foreign = State(in before) with { Ai = new(999f, 0f, 0f, 0f) };
         Assert.True(store.TryUpdateUnpublished(before.Handle, in foreign, out var accepted));
         var checkpoint = random.Clone();
-        Assert.False(preview.TryAdopt(in accepted, in input, out _));
+        Assert.False(preview.TryAdopt(in accepted, in input, static () => true, out _));
         Assert.True(random.HasSameState(checkpoint));
         Assert.True(store.TryGet(before.Handle, out var current));
         Assert.Equal(accepted, current);

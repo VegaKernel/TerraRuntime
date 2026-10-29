@@ -684,19 +684,60 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
 {
     private readonly IVanillaNpcRandom random = random ?? throw new ArgumentNullException(nameof(random));
 
-    internal bool TryStepOrdinaryMeleePreview(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+    internal bool TryStepGroundCombatPreview(in NpcSnapshot npc, in VanillaNpcDefinition definition,
         VanillaNpcBehaviorContext context, INpcAiStateStepper inner, IVanillaNpcRandom preview,
-        out NpcStateUpdate next)
+        IVanillaNpcProjectileEnvironment environment, Span<NpcAiProjectileIntent> shots, out int shotCount, out NpcStateUpdate next)
     {
-        if (preview is null || npc.TypeIdentity != definition.Type || npc.NetId != definition.Type.Value ||
+        shotCount = 0;
+        if (preview is null || npc.TypeIdentity != definition.Type ||
             definition.AiStyle != VanillaNpcAiStyles.Fighter ||
-            !VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(definition.Type) ||
+            !VanillaGroundCombatCohort1458.IsSupported(npc.TypeIdentity, npc.NetIdentity) ||
             !VanillaGroundFighterBehaviorCatalog.TryGet(definition.Type, out var parameters) || !parameters.IsValid)
         {
             next = default;
             return false;
         }
-        return TryStepCommon(in npc, in definition, in parameters, context, inner, out next, preview);
+        // NPC.IdleSounds precedes AI003; the server sound path has no extra offer.
+        if (npc.TypeIdentity == VanillaNpcIds.GiantWalkingAntlion || npc.TypeIdentity == VanillaNpcIds.WalkingAntlion ||
+            npc.TypeIdentity == VanillaNpcIds.LarvaeAntlion) _ = preview.NextInt32(0, 800);
+        else if (npc.TypeIdentity == VanillaNpcIds.GraniteGolem && preview.NextInt32(0, 600) == 0) _ = preview.NextInt32(63, 66);
+        else if (npc.TypeIdentity == VanillaNpcIds.MartianWalker && preview.NextInt32(0, 800) == 0) _ = preview.NextInt32(69, 73);
+        NpcSnapshot source = npc;
+        if (npc.TypeIdentity == VanillaNpcIds.GraniteGolem)
+        {
+            float timer = source.Ai.Ai2;
+            if (timer < 0f)
+            {
+                timer += 1f;
+                float x = source.VelocityX * .9f;
+                if ((double)Math.Abs(x) < .001) x = .001f * source.Simulation.DirectionX;
+                if (Math.Abs(source.VelocityY) > 1f) timer += 10f;
+                if (timer >= 0f) x += source.Simulation.DirectionX * .3f;
+                next = new(source.Type, source.NetId, source.PositionX, source.PositionY, x,
+                    source.VelocityY, source.Target, source.Ai with { Ai2 = timer },
+                    source.Simulation with { DontTakeDamage = true, JustHit = false })
+                { VanillaNetworkPhase = true, RequiresImmediateSync = timer >= 0f };
+                return true;
+            }
+            if (timer < 300f) timer += source.Simulation.JustHit ? 16f : 1f;
+            else if (source.VelocityY == 0f) timer = -120f;
+            source = source with { Ai = source.Ai with { Ai2 = timer },
+                Simulation = source.Simulation with { DontTakeDamage = false } };
+        }
+        if (!TryStepCommon(in source, in definition, in parameters, context, inner, out next, preview)) return false;
+        if (npc.TypeIdentity == VanillaNpcIds.SnowFlinx)
+        {
+            var simulation = next.Simulation;
+            if (npc.VelocityY == 0f) simulation = simulation with { Rotation = 0f, LocalAi = simulation.LocalAi with { Ai0 = 0f } };
+            else if (simulation.LocalAi.Ai0 == 1f) simulation = simulation with { Rotation = (simulation.Rotation ?? 0f) + next.VelocityX * .05f };
+            next = next with { Simulation = simulation };
+        }
+        if (VanillaGroundCombatCohort1458.IsRanged(npc.TypeIdentity))
+        {
+            var common = next;
+            return VanillaGroundCombatAttack1458.TryPlan(in npc, in common, in definition, context, preview, environment, shots, out shotCount, out next);
+        }
+        return true;
     }
 
     internal bool TryStepHostileGroundCritterPreview(in NpcSnapshot npc, in VanillaNpcDefinition definition,
@@ -726,7 +767,8 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
 
         // This cohort's outer IdleSounds/AI entropy is adopted by its retained
         // world-motion plan. The live-RNG strategy path cannot bypass that owner.
-        if (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(definition.Type))
+        if (VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(definition.Type) ||
+            VanillaGroundCombatCohort1458.IsNewDefinition(npc.TypeIdentity, npc.NetIdentity))
         {
             next = default;
             return false;
@@ -786,7 +828,9 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         INpcAiStateStepper inner, out NpcStateUpdate next, IVanillaNpcRandom? sourceRandom = null)
     {
         NpcSnapshot npc = sourceNpc;
-        bool ordinaryMelee = VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(definition.Type);
+        bool ordinaryMelee = sourceRandom is not null && VanillaGroundCombatCohort1458.IsSupported(npc.TypeIdentity, npc.NetIdentity);
+        bool verifiedTargeting = VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
+            (definition.Type.Value != 77 || ordinaryMelee);
         bool hostileCritter = VanillaNonresidentGroundCritterCatalog1458.IsTurningSquirrel(npc.Type) &&
             npc.Simulation.AiStyleOverride?.Value == 3;
         bool retainedTargetRead = ordinaryMelee || hostileCritter;
@@ -803,14 +847,14 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         }
         // These source AI003 identities select a different day-despawn branch during a Goblin invasion.
         // A bound owner with unknown state cannot be substituted by the standalone clear default.
-        if (context.InvasionType is null && definition.Type.Value is 26 or 27 or 28 or 111)
+        if (context.InvasionType is null && definition.Type.Value is 26 or 27 or 28 or 111 or 381 or 382 or 385 or 520)
         {
             next = default;
             return false;
         }
         // AI_003's ambient sound offer reads shimmerTransparency, independently of alpha. The preceding
         // Shimmer VFX phase remains unowned; unknown or nonzero histories cannot enter this dry lane.
-        if (VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
+        if (verifiedTargeting &&
             (npc.Simulation.ShimmerTransparency != 0f || npc.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer))
         {
             next = default;
@@ -907,16 +951,18 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         bool goblinInvasionExemption = context.InvasionType == 1 &&
             (definition.Type == VanillaNpcIds.GoblinPeon || definition.Type == VanillaNpcIds.GoblinThief ||
              definition.Type == VanillaNpcIds.GoblinWarrior || definition.Type == VanillaNpcIds.GoblinArcher);
-        bool daytimeSurface = context.DayTime && !goblinInvasionExemption &&
+        bool martianInvasionExemption = context.InvasionType == 4 && definition.Type.Value is 381 or 382 or 385 or 520;
+        bool daytimeSurface = context.DayTime && !goblinInvasionExemption && !martianInvasionExemption &&
             !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep || definition.Type == VanillaNpcIds.Butcher || definition.Type == VanillaNpcIds.Nailhead || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.Frankenstein ||
               definition.Type == VanillaNpcIds.Fritz || definition.Type == VanillaNpcIds.ThePossessed ||
               definition.Type == VanillaNpcIds.SwampThing) && context.EclipseActive) &&
             npc.PositionY < context.WorldSurfacePixels &&
-            parameters.DaySurfaceEncouragesDespawn;
+            parameters.DaySurfaceEncouragesDespawn &&
+            (!ordinaryMelee || VanillaGroundCombatCohort1458.IsDayDespawnCandidate(definition.Type));
         if (VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type) && definition.Type != VanillaNpcIds.AngryBones ||
-            ordinaryMelee && VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeDayDespawnCandidate1458(definition.Type))
+            ordinaryMelee && VanillaGroundCombatCohort1458.IsDayDespawnCandidate(definition.Type))
         {
-            daytimeSurface = context.DayTime && !context.EclipseActive && !npc.Simulation.SpawnedFromStatue &&
+            daytimeSurface = context.DayTime && !martianInvasionExemption && !context.EclipseActive && !npc.Simulation.SpawnedFromStatue &&
                 npc.PositionY <= context.WorldSurfacePixels;
             if (daytimeSurface)
             {
@@ -1006,7 +1052,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         }
 
         VanillaBlueSlimeTargetRefresh closest =
-            (VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type)
+            (verifiedTargeting
                 ? context.TrySelectRawClosestTarget(in npc, in definition, out var selected)
                 : context.TrySelectClosestTarget(in npc, in definition, out selected))
                 ? selected
@@ -1115,7 +1161,9 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
                 : context.TargetOverlapsNpc(in npc, in definition),
             ClosestTarget: fighterTarget)
         {
-            StuckTrackingAlreadyApplied = subtypeOwnsStuckPrepass,
+            StuckTrackingAlreadyApplied = subtypeOwnsStuckPrepass || ordinaryMelee &&
+                definition.Type.Value is 381 or 382 or 520 && npc.Ai.Ai2 > 0f,
+            BusyWithAction = ordinaryMelee && definition.Type.Value is 381 or 382 or 385 or 520 && npc.Ai.Ai2 > 0f,
             BaseMaximumHorizontalSpeed = ordinaryMelee && definition.Type.Value == 181 && context.RemixWorld
                 ? 3.75f : parameters.BaseMaximumHorizontalSpeed,
             HorizontalAcceleration = parameters.HorizontalAcceleration,
@@ -1152,6 +1200,21 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             TurningCritterClosestTargetDead = hostileCritter && closest.HasTarget ? meleeClosestTarget.Facts.Dead : null
         };
 
+        if (ordinaryMelee && parameters.MotionProfile is VanillaGroundFighterMotionProfile.WalkingAntlion or VanillaGroundFighterMotionProfile.LarvaeAntlion)
+        {
+            if (context.WorldWidthPixels is <= 0d or > int.MaxValue ||
+                !VanillaNpcGravity.TryApply(in definition, npc.PositionY, npc.VelocityY,
+                    npc.Simulation.Wet, npc.Simulation.LiquidContact, (int)(context.WorldWidthPixels / 16d),
+                    context.WorldSurfacePixels / 16d, out var gravity))
+            { next = default; return false; }
+            input = input with
+            {
+                SourceGravity = gravity.Parameters.Gravity,
+                AntlionTargetOffsetX = meleeCurrentTarget.Facts.PositionX + meleeCurrentTarget.Facts.Width * .5f - (npc.PositionX + fighterBody.Width * .5f),
+                AntlionClosestTargetOffsetX = closest.HasTarget ? meleeClosestTarget.Facts.PositionX + meleeClosestTarget.Facts.Width * .5f - (npc.PositionX + fighterBody.Width * .5f) : null
+            };
+        }
+
         bool armedMelee = parameters.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad;
         if (armedMelee &&
             npc.Ai.Ai2 == 0f &&
@@ -1182,7 +1245,8 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         // Genuine dedicated-server SoundID.Zombie offer, after source stuck tracking and before pursuit.
         // SoundEngine's server path adds no further random selection; this is not a cursor compensation.
         int ambientBound = VanillaGroundFighterNpcCatalog.IsUndeadVariantParent(definition.Type)
-            ? 1000 : VanillaGroundFighterNpcCatalog.OrdinaryMeleeAi003AmbientBound1458(definition.Type);
+            ? 1000 : ordinaryMelee ? VanillaGroundCombatCohort1458.Ai003AmbientBound(definition.Type) :
+                VanillaGroundFighterNpcCatalog.OrdinaryMeleeAi003AmbientBound1458(definition.Type);
         if (ambientBound > 0 && result.Ai.Ai3 < parameters.StuckThreshold && !daytimeSurface)
             _ = activeRandom.NextInt32(0, ambientBound);
 
@@ -1290,10 +1354,10 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             })
         {
             // SetTargetTrackingValues owns the source netUpdate offer before world collision.
-            VanillaNetworkPhase = VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type),
-            RequiresLowPrioritySync = VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) && npc.Simulation.JustHit,
+            VanillaNetworkPhase = verifiedTargeting,
+            RequiresLowPrioritySync = verifiedTargeting && npc.Simulation.JustHit,
             RequiresImmediateSync = retainedTargetRead && result.EnteredStuckThreshold ||
-                VanillaGroundFighterNpcCatalog.UsesVerifiedGroundFighterTargeting1458(definition.Type) &&
+                verifiedTargeting &&
                 result.TargetRefreshes > 0 && !npc.Simulation.CollideX && !npc.Simulation.CollideY &&
                 (closest.Target != npc.Target || closest.DirectionX != npc.Simulation.DirectionX ||
                  closest.DirectionY != npc.Simulation.DirectionY)

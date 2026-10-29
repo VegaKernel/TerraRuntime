@@ -44,10 +44,31 @@ internal sealed class OrdinaryArrowTerrainCapture
             BitConverter.SingleToInt32Bits(initial.Ai.Ai2) is not (0 or 3) ||
             !float.IsFinite(initial.PositionX) || !float.IsFinite(initial.PositionY) ||
             !float.IsFinite(initial.VelocityX) || !float.IsFinite(initial.VelocityY) ||
-            !VanillaDefinitionCatalog.TryGet(initial.Type, out var definition))
+            !VanillaDefinitionCatalog.TryGet(initial.Type, out _))
             return false;
-        int steps = initial.Type.Value == 5 ? 2 : 1;
-        double reachX = steps * 2d * Math.Abs(initial.VelocityX);
+        return TryCaptureBounds(tiles, in initial, initial.Type.Value == 5 ? 2 : 1, 0d, out capture);
+    }
+
+    internal static bool TryCaptureGroundCombat(WorldTileStore tiles, in ProjectileSnapshot initial,
+        in VanillaProjectileBehaviorContext wind, out OrdinaryArrowTerrainCapture? capture)
+    {
+        capture = null;
+        if (!VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) ||
+            !float.IsFinite(initial.PositionX) || !float.IsFinite(initial.PositionY) ||
+            !float.IsFinite(initial.VelocityX) || !float.IsFinite(initial.VelocityY) ||
+            !float.IsFinite(wind.WindSpeedCurrent) || !float.IsFinite(wind.WindPhysicsStrength)) return false;
+        int steps = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(initial.Type, initial.Ai);
+        double windReach = wind.WindPhysics
+            ? steps * (double)steps * Math.Abs((double)wind.WindSpeedCurrent * wind.WindPhysicsStrength) * 2d : 0d;
+        return TryCaptureBounds(tiles, in initial, steps, windReach, out capture);
+    }
+
+    private static bool TryCaptureBounds(WorldTileStore tiles, in ProjectileSnapshot initial,
+        int steps, double windReach, out OrdinaryArrowTerrainCapture? capture)
+    {
+        capture = null;
+        if (!VanillaDefinitionCatalog.TryGet(initial.Type, out var definition)) return false;
+        double reachX = steps * 2d * Math.Abs(initial.VelocityX) + windReach;
         double reachY = steps * 2d * Math.Max(Math.Abs(initial.VelocityY), 16f);
         double minX = initial.PositionX - reachX, maxX = initial.PositionX + reachX;
         double minY = initial.PositionY - reachY, maxY = initial.PositionY + reachY;

@@ -91,7 +91,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         snapshot.IsActive &&
         (TerraRuntime.Gameplay.Npcs.VanillaNpcGroundRoster1458.IsUndeadRuntimeIdentity(snapshot.TypeIdentity, snapshot.NetIdentity) ||
          VanillaNonresidentGroundCritterCatalog1458.IsSupported(snapshot.Type) && snapshot.Type == snapshot.NetId ||
-         VanillaGroundFighterNpcCatalog.IsOrdinaryMeleeCohort1458(snapshot.TypeIdentity) && snapshot.Type == snapshot.NetId);
+         VanillaGroundCombatCohort1458.IsSupported(snapshot.TypeIdentity, snapshot.NetIdentity));
 
     private struct UndeadNetworkState1458
     {

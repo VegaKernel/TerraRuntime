@@ -112,16 +112,18 @@ public sealed partial class RuntimeProjectileStore
 
     internal bool TryCommitSimulationStepUnpublished(ProjectileHandle handle, in ProjectileStateUpdate update,
         int timeLeft, ProjectileLiquidState? liquidState, ProjectileLocalAiState? localAiState,
-        out ProjectileSnapshot snapshot, out bool expired, int? penetrateOverride = null)
+        out ProjectileSnapshot snapshot, out bool expired, int? penetrateOverride = null,
+        byte? sourceWetCount = null)
         => TryCommitSimulationStepCore(handle, in update, timeLeft, liquidState, localAiState,
-            out snapshot, out expired, penetrateOverride, publish: false);
+            out snapshot, out expired, penetrateOverride, publish: false, sourceWetCount: sourceWetCount);
 
     private bool TryCommitSimulationStepCore(ProjectileHandle handle, in ProjectileStateUpdate update,
         int timeLeft, ProjectileLiquidState? liquidState, ProjectileLocalAiState? localAiState,
-        out ProjectileSnapshot snapshot, out bool expired, int? penetrateOverride, bool publish)
+        out ProjectileSnapshot snapshot, out bool expired, int? penetrateOverride, bool publish,
+        byte? sourceWetCount = null)
     {
         expired = false;
-        if (!IsCurrentHandleCandidate(handle) || !IsValidState(in update) || penetrateOverride is < -1)
+        if (!IsCurrentHandleCandidate(handle) || !IsValidState(in update) || penetrateOverride is < -1 || sourceWetCount is > 10)
         {
             snapshot = default;
             return false;
@@ -175,6 +177,7 @@ public sealed partial class RuntimeProjectileStore
             PenetrateOverride = penetrateOverride ?? lifecycle.PenetrateOverride,
             Liquid = liquidState ?? lifecycle.Liquid,
             LocalAi = localAiState ?? lifecycle.LocalAi,
+            SourceWetCount = sourceWetCount ?? lifecycle.SourceWetCount,
             OldVelocityX = state.Update.VelocityX,
             OldVelocityY = state.Update.VelocityY
         };

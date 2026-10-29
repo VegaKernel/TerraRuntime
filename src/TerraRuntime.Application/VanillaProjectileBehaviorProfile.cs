@@ -60,7 +60,10 @@ internal enum VanillaProjectileBehaviorFamily : byte
     PirateCaptainCannonball = 47,
     Nail = 48,
     DrManFlyFlask = 49,
-    NurseHealing = 50
+    NurseHealing = 50,
+    BrainScramblerBolt = 51,
+    MartianLaser = 52,
+    HopliteJavelin = 53
 }
 
 /// <summary>
@@ -133,6 +136,13 @@ internal static class VanillaProjectileBehaviorProfileCatalog
 
     private static readonly VanillaProjectileBehaviorProfile NailProfile = HostileStraightArrowProfile with
     { Family = VanillaProjectileBehaviorFamily.Nail };
+
+    private static readonly VanillaProjectileBehaviorProfile BrainScramblerBoltProfile = HostileStraightArrowProfile with
+    { Family = VanillaProjectileBehaviorFamily.BrainScramblerBolt };
+    private static readonly VanillaProjectileBehaviorProfile MartianLaserProfile = HostileStraightArrowProfile with
+    { Family = VanillaProjectileBehaviorFamily.MartianLaser };
+    private static readonly VanillaProjectileBehaviorProfile HopliteJavelinProfile = HostileStraightArrowProfile with
+    { Family = VanillaProjectileBehaviorFamily.HopliteJavelin };
 
     private static readonly VanillaProjectileBehaviorProfile DrManFlyFlaskProfile = new(
         VanillaProjectileBehaviorFamily.DrManFlyFlask, VanillaProjectileAiStyles.Thrown,
@@ -502,6 +512,10 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.Nail) { profile = NailProfile; return true; }
         if (type == VanillaProjectileIds.DrManFlyFlask) { profile = DrManFlyFlaskProfile; return true; }
         if (type == VanillaProjectileIds.NurseSyringeHeal) { profile = NurseHealingProfile; return true; }
+        if (type.Value == 436) { profile = BrainScramblerBoltProfile; return true; }
+        if (type.Value is 438 or 592) { profile = MartianLaserProfile; return true; }
+        if (type.Value == 508) { profile = HopliteJavelinProfile; return true; }
+        if (type.Value == 471) { profile = ThrownProfile; return true; }
 
         if (type == VanillaProjectileIds.RuneBlast)
         {

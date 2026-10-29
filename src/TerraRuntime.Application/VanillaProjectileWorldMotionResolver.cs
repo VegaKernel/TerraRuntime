@@ -139,13 +139,37 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
 
         // Projectile.Update performs this wind-physics pass after AI when the projectile is above the surface,
         // in open air, and horizontal motion meets the vanilla opposition/low-speed predicate.
-        ApplyPostAiWind(in definition, behaviorPositionX, behaviorPositionY, in behaviorContext, ref velocityX);
+        ApplyPostAiWind(current.Type, in definition, behaviorPositionX, behaviorPositionY, in behaviorContext, ref velocityX);
 
         // Fire Arrow evaluates its extinguish branch against the PREVIOUS update's wet flag. Current lava/honey/
         // shimmer flags are raised before wet is replaced by this update's contact result.
         ProjectileLiquidState liquid = projectile.Lifecycle.Liquid;
         ProjectileTypeId outputType = current.Type;
-        if (!definition.IgnoreWater)
+        byte? sourceWetCountOverride = null;
+        byte shimmerVisualOffers = 0;
+        if (!definition.IgnoreWater && VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(current.Type))
+        {
+            // Projectile.Update uses first-contact WetCollision for honey/shimmer,
+            // but an independent full-body LavaCollision. Kind history persists
+            // while wet and clears together on exit. IgnoreWater skips this block.
+            bool wetNow = VanillaWorldCollision.TryGetWetContact(tiles, behaviorPositionX, behaviorPositionY,
+                definition.Width, definition.Height, out var kind);
+            bool lavaNow = VanillaWorldCollision.LavaCollision(tiles, behaviorPositionX, behaviorPositionY,
+                definition.Width, definition.Height);
+            bool lavaWet = liquid.LavaWet || lavaNow;
+            bool honeyWet = liquid.HoneyWet || wetNow && kind == WorldLiquidKind.Honey;
+            bool shimmerWet = liquid.ShimmerWet || wetNow && kind == WorldLiquidKind.Shimmer;
+            byte count = projectile.Lifecycle.SourceWetCount;
+            bool entering = wetNow && !liquid.Wet;
+            bool leaving = !wetNow && liquid.Wet;
+            if (count == 0 && shimmerWet && (entering && !lavaNow || leaving && !lavaWet))
+                shimmerVisualOffers = 10;
+            if (leaving && count == 0) count = 10;
+            if (count > 0) count--;
+            sourceWetCountOverride = count;
+            liquid = wetNow ? new(true, lavaWet, honeyWet, shimmerWet) : default;
+        }
+        else if (!definition.IgnoreWater)
         {
             VanillaLiquidContactState contacts = VanillaWorldCollision.GetLiquidContacts(
                 tiles,
@@ -190,9 +214,10 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             collidedVelocityX = collision.VelocityX;
             collidedVelocityY = collision.VelocityY;
             if (!liquid.Wet && (current.Type == VanillaProjectileIds.Nail || current.Type == VanillaProjectileIds.DrManFlyFlask ||
-                current.Type == VanillaProjectileIds.NurseSyringeHeal))
+                current.Type == VanillaProjectileIds.NurseSyringeHeal || current.Type.Value is 436 or 438 or 471 or 508 or 592))
                 ResolveEclipseDryCollision(in definition, velocityX, velocityY,
-                    ref behaviorPositionX, ref behaviorPositionY, ref collidedVelocityX, ref collidedVelocityY);
+                    ref behaviorPositionX, ref behaviorPositionY, ref collidedVelocityX, ref collidedVelocityY,
+                    completeMotion: current.Type.Value is 436 or 438 or 471 or 508 or 592);
             collideX = collidedVelocityX != velocityX;
             collideY = collidedVelocityY != velocityY;
         }
@@ -201,6 +226,10 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         sourceTileImpact = tileCollide && (tileImpact ||
             behaviorPositionX != (behavior.PositionXOverride ?? current.PositionX) ||
             behaviorPositionY != (behavior.PositionYOverride ?? current.PositionY));
+        // HandleMovement treats a slope position correction as an impact even
+        // when both velocity components remain unchanged (horizontal overlap).
+        if (VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(current.Type))
+            tileImpact = sourceTileImpact;
         bool nurseCollisionHandled = false;
         int? nursePenetration = null;
         if (tileImpact && current.Type == VanillaProjectileIds.NurseSyringeHeal)
@@ -500,9 +529,12 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             resolvedLocalAi,
             KillOrigin: killOrigin,
             PenetrateOverride: nursePenetration,
-            CollisionTileCutOffer: current.Type == VanillaProjectileIds.NurseSyringeHeal && tileImpact
+            CollisionTileCutOffer: current.Type == VanillaProjectileIds.NurseSyringeHeal && tileImpact ||
+                current.Type.Value is 436 or 438 or 471 or 508 or 592 && sourceTileImpact
                 ? new ProjectileCollisionTileCutOffer() : null)
         {
+            SourceWetCountOverride = sourceWetCountOverride,
+            ShimmerVisualOffers = shimmerVisualOffers,
             SourceDirection = VanillaProjectileSourceDirection1458.TryResolveAfterMotion(
                 state.Type, state.Ai, state.VelocityX, out int direction) ? direction : null
         };
@@ -654,14 +686,31 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
 
     // HandleMovement's bounded dry high-speed branch; only independently verified families enter here.
     private void ResolveEclipseDryCollision(in VanillaProjectileDefinition definition, float velocityX, float velocityY,
-        ref float positionX, ref float positionY, ref float resolvedX, ref float resolvedY)
+        ref float positionX, ref float positionY, ref float resolvedX, ref float resolvedY, bool completeMotion = false)
     {
         float distance = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
         int stride = Math.Clamp(Math.Min(definition.CollisionWidth, definition.CollisionHeight),
             VanillaEclipseProjectileFacts1458.MinimumCollisionStride, VanillaEclipseProjectileFacts1458.MaximumCollisionStride);
-        if (distance <= stride) return;
-        float directionX = velocityX / distance;
-        float directionY = velocityY / distance;
+        if (distance <= stride)
+        {
+            if (completeMotion)
+            {
+                float colliderX = positionX + definition.CollisionOffsetX;
+                float colliderY = positionY + definition.CollisionOffsetY;
+                var slowSlope = VanillaWorldSlopeCollision.Resolve(tiles, colliderX, colliderY,
+                    resolvedX, resolvedY, definition.CollisionWidth, definition.CollisionHeight, fall: true);
+                positionX = slowSlope.PositionX + (positionX - colliderX);
+                positionY = slowSlope.PositionY + (positionY - colliderY);
+                resolvedX = slowSlope.VelocityX;
+                resolvedY = slowSlope.VelocityY;
+            }
+            return;
+        }
+        // FNA Vector2.Normalize multiplies by one rounded reciprocal; dividing
+        // each component separately changes high-speed collision by one ULP.
+        float inverse = 1f / distance;
+        float directionX = completeMotion ? velocityX * inverse : velocityX / distance;
+        float directionY = completeMotion ? velocityY * inverse : velocityY / distance;
         if (resolvedY == 0f) directionY = 0f;
         float cursorX = positionX + definition.CollisionOffsetX;
         float cursorY = positionY + definition.CollisionOffsetY;
@@ -695,13 +744,16 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
     }
 
     private void ApplyPostAiWind(
+        ProjectileTypeId type,
         in VanillaProjectileDefinition definition,
         float positionX,
         float positionY,
         in VanillaProjectileBehaviorContext behaviorContext,
         ref float velocityX)
     {
-        if (!behaviorContext.WindPhysics)
+        // ProjectileID.Sets.WindPhysicsImmunity overrides aiStyle 1 for these
+        // two admitted Martian shots; RayGunnerLaser438 remains wind-sensitive.
+        if (!behaviorContext.WindPhysics || type.Value is 436 or 592)
             return;
 
         float centerX = positionX + definition.Width * 0.5f;

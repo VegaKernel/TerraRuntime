@@ -153,7 +153,12 @@ internal sealed partial class ServerPlayerAuthority
 
     private void PublishBuffTypes(PlayerHandle player)
     {
-        if (!states.TryGet(player, out _)) return;
+        if (states.TryGet(player, out _)) events?.ServerPlayerBuffTypesUpdated(player, CaptureBuffTypes(player));
+    }
+
+    private BuffTypeId[] CaptureBuffTypes(PlayerHandle player)
+    {
+        if (!states.TryGet(player, out _)) return [];
         // NPC contact, lava and Moon Leech contribute to one packet50. The admitted contact type set plus
         // the two legacy effects fits the 44 source slots; no source may erase another's live presence.
         Span<BuffTypeId> buffs = stackalloc BuffTypeId[PlayerBuffState.Capacity];
@@ -169,7 +174,7 @@ internal sealed partial class ServerPlayerAuthority
         if (npcContactBuffOwners[slot] == player && npcContactBuffStates[slot] is { } contact)
             foreach (BuffTypeId type in contact.CaptureTypes())
                 if (!buffs[..count].Contains(type) && count < buffs.Length) buffs[count++] = type;
-        events?.ServerPlayerBuffTypesUpdated(player, buffs[..count]);
+        return buffs[..count].ToArray();
     }
 
     private bool ResetPlayerBuffs(PlayerHandle player, bool publish = true)

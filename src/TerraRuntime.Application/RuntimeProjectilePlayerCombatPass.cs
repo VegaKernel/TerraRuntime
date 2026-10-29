@@ -35,6 +35,9 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     private int pvpTargetCount;
     private readonly bool expertMode;
     private readonly bool masterMode;
+    private readonly VanillaUnifiedRandom1458? sourceRandom;
+    private readonly bool goodWorld;
+    private readonly IProjectileTerminationCommitSink? terminationEffects;
 
     public RuntimeProjectilePlayerCombatPass(
         RuntimeProjectileStore projectiles,
@@ -45,7 +48,10 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         RuntimeCultistLightningArcTrailRegistry? cultistLightningArcTrails = null,
         ServerPlayerAuthority? serverPlayers = null,
         bool expertMode = false,
-        bool masterMode = false)
+        bool masterMode = false,
+        VanillaUnifiedRandom1458? sourceRandom = null,
+        bool goodWorld = false,
+        IProjectileTerminationCommitSink? terminationEffects = null)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -55,11 +61,15 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             throw new ArgumentException("Master mode requires expert-mode player damage semantics.", nameof(masterMode));
         this.expertMode = expertMode;
         this.masterMode = masterMode;
+        this.sourceRandom = sourceRandom;
+        this.goodWorld = goodWorld;
+        this.terminationEffects = terminationEffects;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.random = random ?? Random.Shared;
         this.cultistLightningArcTrails = cultistLightningArcTrails ??
             new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
         projectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
+        groundCombatHandledGenerations = new ProjectileGeneration[projectiles.Capacity];
         int immunityCells = checked(projectiles.Capacity * PlayerSlotCount);
         lastProjectilePlayerHitTick = new long[immunityCells];
         lastProjectileHitGeneration = new ProjectileGeneration[immunityCells];
@@ -77,6 +87,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
     public void Tick(ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions)
     {
+        if (groundCombatSimulationActive) return;
         long tick = tickProvider();
         Array.Clear(humanTargets);
         foreach (var member in players.Members) humanTargets[member.Connection.Player.Slot.Value] = member;
@@ -238,6 +249,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         for (int i = 0; i < activeProjectiles.Length; i++)
         {
             ProjectileSnapshot projectile = activeProjectiles[i];
+            if (IsGroundCombatHandled(in projectile) ||
+                groundCombatActorOwnerBound && VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type)) continue;
             if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
                 !projectile.IsActive || projectile.Damage <= 0 ||
                 !VanillaProjectileFacts.IsHostile(projectile.Type) ||
@@ -253,6 +266,9 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
             VanillaPlayerImmunityChannel1458 immunityChannel =
                 VanillaIncomingPlayerDamageFacts1458.GetHostileProjectileImmunityChannel(projectile.Type);
+            bool groundCombat = VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type);
+            if (groundCombat && (sourceRandom is null || !sourceNpc.IsAssigned || lifecycle.Reflected ||
+                projectile.Type.Value == 436 && terminationEffects is null)) continue;
             NpcSnapshot? capturedSource = npcs.TryGet(sourceNpc, out var sourceSnapshot) ? sourceSnapshot : null;
             foreach (RuntimePlayerMember? target in humanTargets)
             {
@@ -267,11 +283,14 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
                 }
 
-                if (!players.TryCaptureIncomingCombat(target.Connection.Player, out var targetCapture) || !targetCapture.IsAlive)
+                if (!players.TryCaptureIncomingCombat(target.Connection.Player, out var targetCapture) || !targetCapture.IsAlive ||
+                    groundCombat && (!players.CanOwnGroundCombatHurt(in targetCapture) ||
+                        !IsGroundCombatShotCurrent(in projectile, in lifecycle, sourceNpc, capturedSource)))
                     continue;
                 int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
                     projectile.Damage,
-                    random.Next(-15, 16));
+                    groundCombat ? sourceRandom!.Next(-15, 16) : random.Next(-15, 16),
+                    groundCombat ? Math.Min(3, (masterMode ? 3 : expertMode ? 2 : 1) + (goodWorld ? 1 : 0)) : 1);
                 if (damage <= 0)
                     continue;
 
@@ -286,7 +305,13 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
                 bool killedBefore = target.IsDead;
                 PlayerStateSnapshot committed;
-                PlayerDamageCommitResult result = !sourceNpc.IsAssigned
+                var status = groundCombat
+                    ? new ProjectilePlayerHurt1458(projectile.Type, targetCapture.GodMode ? 0 : targetCapture.Player.DerivedLifeMax!.Value, goodWorld, sourceRandom!)
+                    : default;
+                PlayerDamageCommitResult result = groundCombat
+                    ? players.TryCommitAuthoritativeNpcProjectileDamageWithStatus(tick, sourceNpc, projectile.Handle,
+                        targetHandle, damage, hitDirection, immunityChannel, in status, out committed, targetCapture)
+                    : !sourceNpc.IsAssigned
                     ? players.TryCommitAuthoritativeEnvironmentProjectileDamage(tick, projectile.Handle, targetHandle,
                         damage, hitDirection, immunityChannel, out committed, targetCapture)
                     : players.TryCommitAuthoritativeNpcProjectileDamage(
@@ -301,6 +326,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
 
+                RetireGroundCombatPlayerHit(in projectile, in lifecycle, sourceNpc);
                 if (result == PlayerDamageCommitResult.AvoidedByGodMode)
                 {
                     HostileGodModeAvoidances++;
@@ -314,8 +340,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 if (!killedBefore && committed.IsDead)
                     HostileKills++;
 
-                // Projectile.Damage_EVP does not generically decrement penetrate on player contact. Only a small
-                // explicit type set does so; none is admitted here until those per-type side effects are modeled.
+                // Only Brain Scrambler Bolt in this cohort spends penetration on player contact.
+                // Other hostile types retain the existing source behavior.
             }
 
             if (serverPlayers is null)
@@ -333,9 +359,12 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
                 }
 
+                if (groundCombat && (!serverPlayers.CanOwnGroundCombatHurt(in target) ||
+                    !IsGroundCombatShotCurrent(in projectile, in lifecycle, sourceNpc, capturedSource))) continue;
                 int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
                     projectile.Damage,
-                    random.Next(-15, 16));
+                    groundCombat ? sourceRandom!.Next(-15, 16) : random.Next(-15, 16),
+                    groundCombat ? Math.Min(3, (masterMode ? 3 : expertMode ? 2 : 1) + (goodWorld ? 1 : 0)) : 1);
                 if (damage <= 0)
                     continue;
 
@@ -344,7 +373,14 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
                 bool killedBefore = target.IsDead;
                 PlayerStateSnapshot committed;
-                PlayerDamageCommitResult result = !sourceNpc.IsAssigned
+                var status = groundCombat
+                    ? new ProjectilePlayerHurt1458(projectile.Type, target.GodMode ? 0 : target.DerivedLifeMax!.Value, goodWorld, sourceRandom!)
+                    : default;
+                PlayerDamageCommitResult result = groundCombat
+                    ? serverPlayers.TryCommitAuthoritativeNpcProjectileDamageWithStatus(tick, sourceNpc, projectile.Handle,
+                        projectile.Type, targetHandle, damage, hitDirection, immunityChannel, expertMode, masterMode,
+                        in status, out committed)
+                    : !sourceNpc.IsAssigned
                     ? serverPlayers.TryCommitAuthoritativeEnvironmentProjectileDamage(tick, projectile.Handle, projectile.Type,
                         targetHandle, damage, hitDirection, immunityChannel, expertMode, masterMode, out committed)
                     : serverPlayers.TryCommitAuthoritativeNpcProjectileDamage(
@@ -361,6 +397,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     out committed);
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
+                RetireGroundCombatPlayerHit(in projectile, in lifecycle, sourceNpc);
                 if (result == PlayerDamageCommitResult.AvoidedByGodMode)
                 {
                     HostileGodModeAvoidances++;

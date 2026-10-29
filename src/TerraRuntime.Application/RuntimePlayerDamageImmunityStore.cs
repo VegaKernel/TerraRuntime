@@ -9,6 +9,17 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal sealed class RuntimePlayerDamageImmunityStore
 {
+    internal readonly record struct Capture1458(PlayerHandle Player,
+        PlayerSessionGeneration PvpGeneration, long PvpUntil,
+        PlayerSessionGeneration PveGeneration, long GeneralUntil, long BossUntil, long TileUntil, long LavaUntil);
+
+    internal Capture1458 Capture(PlayerHandle player)
+    {
+        int slot = player.Slot.Value;
+        return new(player, pvpGeneration[slot], pvpUntil[slot], pveGeneration[slot],
+            pveGeneralUntil[slot], pveBossNoCheeseUntil[slot], pveTileContactUntil[slot], pveLavaUntil[slot]);
+    }
+
     private readonly long[] pvpUntil;
     private readonly PlayerSessionGeneration[] pvpGeneration;
     private readonly long[] pveGeneralUntil;

@@ -247,6 +247,15 @@ internal sealed partial class PlayerAuthority
             immunityChannel,
             out committed, targetCapture);
 
+    internal PlayerDamageCommitResult TryCommitAuthoritativeNpcProjectileDamageWithStatus(
+        long tick, NpcHandle sourceNpc, ProjectileHandle projectile, PlayerHandle targetHandle,
+        int damage, int hitDirection, VanillaPlayerImmunityChannel1458 immunityChannel,
+        in ProjectilePlayerHurt1458 status, out PlayerStateSnapshot committed,
+        IncomingPlayerCombatCapture1458 targetCapture) =>
+        TryCommitAuthoritativePveDamage(tick, targetHandle,
+            DamageSource.FromNpcProjectile(sourceNpc, projectile), damage, hitDirection,
+            immunityChannel, out committed, targetCapture, projectileStatus: status);
+
     internal PlayerDamageCommitResult TryCommitAuthoritativeEnvironmentProjectileDamage(
         long tick, ProjectileHandle projectile, PlayerHandle target, int damage, int hitDirection,
         VanillaPlayerImmunityChannel1458 immunityChannel, out PlayerStateSnapshot committed,
@@ -263,7 +272,8 @@ internal sealed partial class PlayerAuthority
         VanillaPlayerImmunityChannel1458 immunityChannel,
         out PlayerStateSnapshot committed,
         IncomingPlayerCombatCapture1458? targetCapture = null,
-        NpcContactBuffSource1458? contactBuffs = null)
+        NpcContactBuffSource1458? contactBuffs = null,
+        ProjectilePlayerHurt1458? projectileStatus = null)
     {
         committed = default;
         if (!targetHandle.IsAssigned || !sourceDamage.IsValid || damage <= 0 ||
@@ -300,8 +310,8 @@ internal sealed partial class PlayerAuthority
                 in targetCombat,
                 immune,
                 out FinalDamageToHp final,
-                expertMode,
-                masterMode) ||
+                expertMode || projectileStatus is { GoodWorld: true },
+                masterMode || expertMode && projectileStatus is { GoodWorld: true }) ||
             final.Damage <= 0 ||
             !TryResolveIncomingLifeAfterDamage(in retained, final.Damage, out short nextLife) ||
             !IsCurrentIncomingCombat(in retained) ||
@@ -311,6 +321,29 @@ internal sealed partial class PlayerAuthority
         }
 
         ResetStealthAfterAcceptedHurt(target);
+        AdoptPveLifeAndImmunity(target, in retained, in final, nextLife, hitDirection, tick, immunityChannel);
+
+        // StatusFromNPC follows a positive, surviving Hurt. Adopt it before publishing HP:
+        // callbacks may disconnect, kill or replace the player, but cannot split the owned commit.
+        committed = target.CaptureSnapshot();
+        var effects = contactBuffs is { } source && !target.IsDead
+            ? ApplyNpcContactBuffs(target, in targetCombat, in source)
+            : projectileStatus is { } projectileSource && !target.IsDead
+                ? ApplyProjectileStatus(target, in targetCombat, in projectileSource, final.Damage) : [];
+        if (!membership.TryGet(target.Connection, out var current) || !ReferenceEquals(current, target) ||
+            target.CaptureSnapshot() != committed) return PlayerDamageCommitResult.Committed;
+        var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
+        events?.PlayerAuthoritativeHealthUpdated(target.Connection, in health);
+        PublishNpcContactBuffs(target, effects);
+        return PlayerDamageCommitResult.Committed;
+    }
+
+    // Shared callback-free HP/immunity adoption for an accepted Hurt. Actor preparation
+    // stages source offers separately, then reaches the same existing life owner here.
+    private void AdoptPveLifeAndImmunity(RuntimePlayerMember target,
+        in IncomingPlayerCombatCapture1458 retained, in FinalDamageToHp final,
+        short nextLife, int hitDirection, long tick, VanillaPlayerImmunityChannel1458 immunityChannel)
+    {
         AdoptIncomingLife(target, in retained, nextLife);
         target.IsDead = target.Life <= 0;
         if (target.IsDead) target.ItemAnimation = 0;
@@ -319,22 +352,8 @@ internal sealed partial class PlayerAuthority
             target.VelocityX = 4.5f * hitDirection;
             target.VelocityY = -3.5f;
         }
-
         long until = tick + VanillaIncomingPlayerDamageFacts1458.ResolvePveImmunityTicks(final.Damage);
-        damageImmunity.RecordPve(targetHandle, immunityChannel, until);
-
-        // StatusFromNPC follows a positive, surviving Hurt. Adopt it before publishing HP:
-        // callbacks may disconnect, kill or replace the player, but cannot split the owned commit.
-        committed = target.CaptureSnapshot();
-        var effects = contactBuffs is { } source && !target.IsDead
-            ? ApplyNpcContactBuffs(target, in targetCombat, in source)
-            : [];
-        if (!membership.TryGet(target.Connection, out var current) || !ReferenceEquals(current, target) ||
-            target.CaptureSnapshot() != committed) return PlayerDamageCommitResult.Committed;
-        var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
-        events?.PlayerAuthoritativeHealthUpdated(target.Connection, in health);
-        PublishNpcContactBuffs(target, effects);
-        return PlayerDamageCommitResult.Committed;
+        damageImmunity.RecordPve(retained.Player.Player, immunityChannel, until);
     }
 
     private PlayerDamageCommitResult AvoidGodModeDamage(
