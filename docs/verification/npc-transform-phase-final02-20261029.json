@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "kind": "npc-transform-phase-final02-scoped-successor",
+  "boundedOwnedProjectionAccepted": true,
+  "strictFullNamedNpcParity": false,
+  "fullVanillaAiParity": false,
+  "aggregateAccepted": false,
+  "publicationAccepted": false,
+  "predecessor": {
+    "path": "docs/verification/npc-transform-phase-diagnostic08-20261029.json",
+    "sha256": "041f0faf3e7073a69477ef9a39074267c32970f7f6aa59f1e8a162c58c293c07"
+  },
+  "actualCaptureQualification": {
+    "path": ".cache/transform-npc-phase/final02-actual01-qualification.json",
+    "sha256": "8d1487ab9a048d85d74e1a0813ba80c6a73da59c0f7ddc74a526314ac542b370"
+  },
+  "actualCounts": {
+    "cases": 435,
+    "comparedPhases": 11904,
+    "unsupportedRefusals": 2016,
+    "setupFailures": 0,
+    "differences": 0
+  },
+  "sourceSnapshot": {
+    "path": ".cache/transform-app/final-gate02/source-before.json",
+    "sha256": "e80b4a99c4edd991f28c0b68188939b3aba43dd0bd95d13484bf3580bc0108ed"
+  },
+  "sourceInputsExact": 4204,
+  "fullInvocationDllSnapshot": {
+    "path": ".cache/transform-app/final-gate02/dll-before.json",
+    "sha256": "2e57baae4bed8a519c493c3b9c5fc23dc31d903f52f9dfaf182f37e83b75ec5b"
+  },
+  "canonicalBinPins": {
+    "path": ".cache/transform-app/final-gate02/bin-pins.json",
+    "sha256": "3eae3682a0da4d566371d91ad95b556aef395177f79c5ea38fe4a05f25cce66d"
+  },
+  "canonicalFilesExact": 206,
+  "canonicalDllsExact": 158,
+  "testDllSha256": "95bacab90bfece92c9c2a85d70aa692e1071f3e1229e289e5442f23d04d1de1b",
+  "applicationDllSha256": "43fb4de09b18b7c2f363283db23b5eb635e8d92eb7bdebd749a6f15a766eed7b",
+  "build": {
+    "path": ".cache/transform-app/final-gate02/build.json",
+    "sha256": "29915ff9e1ed7271de9167fa551a68dc508736e614edc0f61f03598a74261c18"
+  },
+  "fullEnvironmentResolution": {
+    "path": ".cache/transform-app/final-gate02/environment-replay/qualification.json",
+    "sha256": "e48487ede2f38e44a315ffd049866de99e9816891969c0981658344841ce94bf"
+  },
+  "runtimeComparisons": [
+    {
+      "profile": "phase",
+      "capture": {
+        "path": ".cache/transform-npc-phase/final02-actual01-phase/capture-result.json",
+        "sha256": "16a2424cc41b9ea569233c47b9694be06a973a6a3031e662ec546bb6e3d715a0"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/final02-actual01-phase/comparison.json",
+        "sha256": "a6f814545398c8fb130284c55730b741c34509d2d32676e885bafb8fbef4e89e"
+      },
+      "counts": {
+        "cases": 399,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 10752,
+        "unsupportedRefusals": 2016
+      },
+      "unavailableObservations": {
+        "npcSlots": 22005,
+        "statsScaledPlayers": 22005,
+        "sourceFrameCount": 22005,
+        "takenDamageMultiplier": 22005,
+        "shimmering": 22005,
+        "targetSetFrame": 22005,
+        "sourceCatchable": 22005,
+        "dontTakeDamageFromHostiles": 22005,
+        "netSpamBeforeRegistryOwner": 2727
+      },
+      "allCaseInputsComponentsFramesAndExplicitUnknownsEqual08": true
+    },
+    {
+      "profile": "hit",
+      "capture": {
+        "path": ".cache/transform-npc-phase/final02-actual01-hit/capture-result.json",
+        "sha256": "7c82caf72cd8af0dea247f00685d2dfebbe519bd38a3f61f13967002f3dd7ee9"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/final02-actual01-hit/comparison.json",
+        "sha256": "d520c1df587b258bbc4128ba0b1f6dfefed73c89d5cc6af44316d6a08f2bcb3d"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservations": {
+        "sourceCatchable": 780,
+        "statsScaledPlayers": 780,
+        "shimmering": 780,
+        "takenDamageMultiplier": 780,
+        "targetSetFrame": 780,
+        "sourceFrameCount": 780,
+        "npcSlots": 780,
+        "dontTakeDamageFromHostiles": 780
+      },
+      "allCaseInputsComponentsFramesAndExplicitUnknownsEqual08": true
+    },
+    {
+      "profile": "fish",
+      "capture": {
+        "path": ".cache/transform-npc-phase/final02-actual01-fish/capture-result.json",
+        "sha256": "2a07e044ae2c45bb72b4def0396111040c6d08e068feda45df98ba3d08dd9ba3"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/final02-actual01-fish/comparison.json",
+        "sha256": "bc0d389998dc1fea174b301a70db1b526bca6f9c3e47ef4ba00299f078363d5f"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservations": {
+        "shimmering": 780,
+        "statsScaledPlayers": 780,
+        "takenDamageMultiplier": 780,
+        "targetSetFrame": 780,
+        "sourceCatchable": 780,
+        "sourceFrameCount": 780,
+        "npcSlots": 780,
+        "dontTakeDamageFromHostiles": 780,
+        "netSpamBeforeRegistryOwner": 24
+      },
+      "allCaseInputsComponentsFramesAndExplicitUnknownsEqual08": true
+    },
+    {
+      "profile": "home",
+      "capture": {
+        "path": ".cache/transform-npc-phase/final02-actual01-home/capture-result.json",
+        "sha256": "09c18c797334e2f6117683fc38ae34dc2477655713a7764f4237a2b4161c10f8"
+      },
+      "comparison": {
+        "path": ".cache/transform-npc-phase/final02-actual01-home/comparison.json",
+        "sha256": "6aa7d580532885aca7228fb826bfcb551bc455c8274075802f79a655140dc2e9"
+      },
+      "counts": {
+        "cases": 12,
+        "setupFailures": 0,
+        "casesWithDifferences": 0,
+        "differences": 0,
+        "comparedPhases": 384,
+        "unsupportedRefusals": 0
+      },
+      "unavailableObservations": {
+        "sourceCatchable": 804,
+        "targetSetFrame": 804,
+        "npcSlots": 804,
+        "sourceFrameCount": 804,
+        "statsScaledPlayers": 804,
+        "dontTakeDamageFromHostiles": 804,
+        "shimmering": 804,
+        "takenDamageMultiplier": 804,
+        "netSpamBeforeRegistryOwner": 804
+      },
+      "allCaseInputsComponentsFramesAndExplicitUnknownsEqual08": true
+    }
+  ],
+  "sourceOnlyDiagnosticFields": [
+    "targetSetFrame",
+    "shimmering",
+    "dontTakeDamageFromHostiles",
+    "npcSlots",
+    "takenDamageMultiplier",
+    "sourceCatchable",
+    "sourceFrameCount",
+    "statsScaledPlayers"
+  ],
+  "scope": [
+    "Fresh actual composed runtime captures on the exact complete 158-DLL closure exercised by full02. All 435 case inputs, immediate components, before/after phases, status, raw players, full physical RNG, world, projectiles, literal wire and explicit unknowns equal diagnostic08; only assembly/path provenance is expected to change.",
+    "All original captures, private carrier code and comparison rules are unchanged. All 4204 protected source/test/build inputs and all 206 immutable canonical files remain byte-exact. The tool-only cherry-pick does not alter those runtime inputs.",
+    "Eight source-only diagnostics remain explicit and strict full named-NPC parity stays false. Source network spam is observed only when the matching retained registry owner exists; town/before-owner observations are unknown, never fabricated zero.",
+    "Nonzero Shimmer-history AI contexts refuse the complete phase with no NPC/status/RNG/packet adoption. Powder spawn-bit handling is qualified separately and does not enable Shimmer AI.",
+    "Generic catch observer duplication has separate genuine old/fixed normal controls. These typed composed captures do not replace them.",
+    "This is bounded phase-component evidence, not a whole Main/player/projectile, full Town, Linux NativeAOT or official GUI claim. Root separately binds the composite full-suite resolution, fresh Windows Native/five smokes and actual Release/Native TCP receipts for publication."
+  ]
+}

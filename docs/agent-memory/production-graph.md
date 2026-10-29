@@ -1,5 +1,9 @@
 # Production graph
 
+## Accepted NPC transformations and offline state adapter, 2026-10-29
+
+Checkpoint270/300AI3/AI7,global534/221; source4204,finalimmutable206files/158DLL,graph15/29,904oldgzexact. No shipping dependency/newentitystore/RNG/clock. Existing preparedNPC preview/status/projectile/home/recipient owners now cover7transformation identities; legacygeneric observer callbacks consume the sameadopted historical journal. Protocolstate appends typedSpawnShimmered, finalpendingbirth gatesbit16. OldHomeXYZhistory extends existingstamp and remains distinct fromjoinbytes. FreshWindowsNativebe9dbfe9a3403cc426dd048eeaa017f2f98700f4856b9bce8f506c7b6fd80106/CLR0/0/5smokes+actualRelease/NativeTCP green. Full1598627/all5611 raw2environmentfails resolved2/2SAME158DLL E-temp; focus7156/fast53313, no3rdfull/rawgreenclaim. Offlineonlyschema3 tool adds exactsymbolstate capabilities,7048actualofficialcalls/280Python/103CSharp; no runtime reflection/autoinclusion. Acceptance docs/verification/npc-transform-acceptance-20261029.json. Next8 WIP onlyE:ranged branch excluded.
+
 ## Accepted NPC/equipment integration, 2026-10-29
 
 Source4146/DLL158, no new shipping dependency or entity/RNG/clock owner, graph15/29; NPC263/300,global527/228. Completed full1595001/all5551 has exactly one retained rate-window System-clock test failure; deterministic TESTONLY repair passes currentfast49687/all12ratefacts with all157runtimeDLLs exact. AllNPC/gameplay/worldgen matrices passed; no raw-full-green/thirdfullclaim. WindowsNative04f31a1194e0ac398581c754d46bc883321152f92a9e13b985b87dd137d50459/fivesmokes/actualRelease+NativeTCP green. docs/verification/ground-combat-acceptance-20261029.json records scopes/controls/limits; separate next7branchunfinished/excluded. Historical paragraphs below retain their earlier boundaries.

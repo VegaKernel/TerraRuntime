@@ -1,5 +1,11 @@
 # AI3 and AI7 NPC definitions, Terraria 1.4.5.8
 
+## Seven-identity transformation block accepted, 2026-10-29
+
+The accepted lifecycle census is **270/300 AI3/AI7 identities (90%)**, leaving 30 creation-only. The seven additions are exactly `198`, `230`, `532`, `534`, `586`, `593` and `687`; already admitted transform endpoints add no identities. Global admission is **534 lifecycle / 221 creation-only**. [Runtime scope](npc-ai3-ai7-runtime-1458.md#transformation-cohort-accepted-2026-10-29) and [aggregate evidence](../verification/npc-transform-acceptance-20261029.json) define the bounded AI/status/transform/combat/loot/presentation and publication owners. `FullVanillaAiParity` remains false; lifecycle counts are not full vanilla fidelity.
+
+The final checkpoint includes all unique 1,598,627 full-suite rows through the retained raw full result and an exact two-method environment replay on unchanged binaries, its 53,313 passing fast-subset rows, fresh Windows NativeAOT/five smokes and actual Release/Native TCP. The raw full retains its two environment failures; it is not relabelled green. Earlier census checkpoints below are historical.
+
 ## Sixteen-identity ground-combat block accepted, 2026-10-29
 
 The integrated catalog selects **263/300 lifecycle identities (87.7%)** and 37 creation-only. Positive AI3 is 164/191, with 27 signed AI3 lifecycle variants; global counts are 527 lifecycle and 228 creation-only. [Runtime scope and acceptance](npc-ai3-ai7-runtime-1458.md#ground-combat-continuation-accepted-2026-10-29) distinguish this admission from full vanilla AI parity and record the complete-full/test-clock-repair/current-fast boundary. The 247/300 checkpoint below is historical.

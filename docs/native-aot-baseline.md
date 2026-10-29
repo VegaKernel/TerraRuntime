@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## NPC transformation checkpoint, 2026-10-29
+
+Fresh Windows x64 NativeAOT executable SHA256`be9dbfe9a3403cc426dd048eeaa017f2f98700f4856b9bce8f506c7b6fd80106` has AMD64 PE/CLR-directory RVA0,size0 and passes loop/protocol/network/world/TUI smokes plus actual TCP. Both Release and Native TCP verify two clients,15bootstrap sections/312frames each through49, Banner82 before49 and129 after49, movement/chat relay and replacement-Hello refusal; owned hosts stopped. Source4204/immutable206files158DLL and15project/29reference graph remain pinned;904 existing gzip fixtures unchanged, no new production dependency/store/RNG/clock. Focus7156 and fast53313 pass; complete current-code1598627/all5611 coverage is resolved by same158DLL2/2 E-temp reruns of two environmental failures, with raw full explicitly retained red. No third full. [Acceptance](verification/npc-transform-acceptance-20261029.json). Genuine LinuxNative, graphical client and graceful-save shutdown remain unqualified.
+
 ## Ground-combat/equipment integration, 2026-10-29
 
 Fresh Windows x64 NativeAOT executable SHA256 `04f31a1194e0ac398581c754d46bc883321152f92a9e13b985b87dd137d50459` has CLR directory0/0 and passes loop/protocol/network/world/TUI smokes plus actual TCP acceptance. Source4146/DLL158 and shipping graph15/29 remain bound; no new production package, entity store, clock or RNG owner. Current WAE/fast49687 is green. Completed full1595001/all5551 has one explicitly retained test-clock failure, resolved by the deterministic test-only clock repair with all157runtimeDLLs exact; it is not claimed as a raw-green full run. [Acceptance](verification/ground-combat-acceptance-20261029.json). Linux Native, official GUI and graceful-save shutdown remain unverified.
