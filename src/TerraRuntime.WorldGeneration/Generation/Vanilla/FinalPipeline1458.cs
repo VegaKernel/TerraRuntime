@@ -1003,7 +1003,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
         long normalized = FillWallHolesAboveSurface(grid, (int)state.Layers.WorldSurface);
-        var framing = new GenerationTileFraming1458(grid.Store, random);
+        var framing = new GenerationTileFraming1458(grid.Store, random, context.Workspace as Workspace);
         for (int x = 0; x < grid.Width; x++)
         {
             if ((x & 31) == 0)

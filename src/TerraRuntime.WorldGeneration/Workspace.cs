@@ -464,6 +464,38 @@ public sealed class Workspace :
         return true;
     }
 
+    /// <summary>WorldGen.CheckChest/Chest.CanDestroyChest: populated generated chests resist framing removal.</summary>
+    internal bool CanDestroyGeneratedChest(int x, int y)
+    {
+        foreach (WorldChest chest in generatedChests)
+        {
+            if (chest.X == x && chest.Y == y)
+                return !chest.Items.Any(item => !item.IsEmpty);
+        }
+        return true;
+    }
+
+    /// <summary>Removes an empty generated chest after its tile object breaks during generation.</summary>
+    internal bool TryRemoveEmptyGeneratedChest(int x, int y)
+    {
+        for (int i = 0; i < generatedChests.Count; i++)
+        {
+            WorldChest chest = generatedChests[i];
+            if (chest.X != x || chest.Y != y)
+                continue;
+            if (chest.Items.Any(item => !item.IsEmpty))
+                return false;
+
+            generatedChests.RemoveAt(i);
+            // The persisted file writes occupied entries densely; subsequent runtime/network slots
+            // therefore follow their remaining file order, not the temporary generation slot hole.
+            for (int later = i; later < generatedChests.Count; later++)
+                generatedChests[later] = generatedChests[later] with { SlotId = checked((short)later) };
+            return true;
+        }
+        return true;
+    }
+
     /// <summary>Returns a detached dense chest snapshot suitable for persistence.</summary>
     public WorldChest[] CaptureGeneratedChests()
     {
