@@ -39,6 +39,7 @@ public sealed partial class RuntimeNpcStore
         private bool completed;
         private NpcSnapshot? child;
         private NpcSnapshot? transformCheckpoint;
+        private NpcSnapshot? publicationParent, replacementPublication, birthPublication;
 
         internal AiSpawnPreview(RuntimeNpcStore owner, NpcSnapshot parent,
             VanillaNpcSpawnContext? context, VanillaUnifiedRandom1458 liveRandom,
@@ -98,6 +99,63 @@ public sealed partial class RuntimeNpcStore
                 intent.Type != TerraRuntime.Contracts.Gameplay.VanillaNpcIds.SmallBee)
                 return false;
 
+            return TryStageChild(in intent, out birth);
+        }
+
+        // AI075's NewNPC allocation is evaluated before following the new mount.
+        // The physical slot table and all NewNPC entropy stay in this same preview.
+        internal bool TryStageScutlixMount(in NpcAiSpawnIntent intent, out NpcSnapshot birth)
+        {
+            birth = default;
+            if (completed || child is not null || parent.TypeIdentity != VanillaNpcIds.ScutlixRider ||
+                intent.Type != VanillaNpcIds.Scutlix || intent.StartSlot != parent.Handle.Slot ||
+                intent.Target != byte.MaxValue || intent.InitialAi != default || intent.InitialLocalAi != default)
+                return false;
+            if (!TryStageChild(in intent, out birth)) return false;
+            ref SlotState state = ref detached!._slots[birth.Handle.Slot];
+            state.BirthPending = true;
+            detached.MarkSlotMutation();
+            child = birth = Capture(birth.Handle.Slot, in state);
+            return true;
+        }
+
+        internal bool TryStageMartianChild(in NpcAiSpawnIntent intent, out NpcSnapshot birth)
+        {
+            birth = default;
+            bool shield = parent.TypeIdentity == VanillaNpcIds.MartianOfficer && intent.Type == VanillaNpcIds.ForceBubble;
+            bool turret = parent.TypeIdentity == VanillaNpcIds.MartianEngineer && intent.Type == VanillaNpcIds.MartianTurret;
+            if (completed || child is not null || (!shield && !turret) || intent.NetIdOverride is not null ||
+                intent.StartSlot != (shield ? parent.Handle.Slot : 0) || !TryStageChild(in intent, out birth)) return false;
+            ref SlotState state = ref detached!._slots[birth.Handle.Slot];
+            state.BirthPending = true;
+            detached.MarkSlotMutation();
+            child = birth = Capture(birth.Handle.Slot, in state);
+            return true;
+        }
+
+        // Wet belongs to NewNPC's original birth body; a later source AI assignment
+        // can then change placement/ai without running allocation or wet collision again.
+        internal bool TryFinishMartianChild(in NpcSnapshot birth, float positionX, float positionY,
+            in NpcAiState ai, bool wet, out NpcSnapshot finished)
+        {
+            finished = default;
+            bool shield = parent.TypeIdentity == VanillaNpcIds.MartianOfficer && birth.TypeIdentity == VanillaNpcIds.ForceBubble;
+            bool turret = parent.TypeIdentity == VanillaNpcIds.MartianEngineer && birth.TypeIdentity == VanillaNpcIds.MartianTurret;
+            if (completed || child != birth || (!shield && !turret) || !float.IsFinite(positionX) ||
+                !float.IsFinite(positionY) || !ai.IsValidFor(birth.TypeIdentity) ||
+                detached is null || !detached.MatchesSource(in birth)) return false;
+            ref SlotState state = ref detached._slots[birth.Handle.Slot];
+            state.Update = state.Update with { PositionX = positionX, PositionY = positionY, Ai = ai,
+                Simulation = state.Update.Simulation with { Wet = wet } };
+            detached.MarkSlotMutation();
+            child = finished = Capture(birth.Handle.Slot, in state);
+            return true;
+        }
+
+        private bool TryStageChild(in NpcAiSpawnIntent intent, out NpcSnapshot birth)
+        {
+            birth = default;
+
             if (detached is null)
             {
                 if (!IsBeforeCurrent())
@@ -142,6 +200,18 @@ public sealed partial class RuntimeNpcStore
             return true;
         }
 
+        internal bool TryFinishScutlixMount(in NpcSnapshot birth, bool wet, out NpcSnapshot finished)
+        {
+            finished = default;
+            if (completed || child != birth || birth.TypeIdentity != VanillaNpcIds.Scutlix ||
+                detached is null || !detached.MatchesSource(in birth)) return false;
+            ref SlotState state = ref detached._slots[birth.Handle.Slot];
+            state.Update = state.Update with { Simulation = state.Update.Simulation with { Wet = wet } };
+            detached.MarkSlotMutation();
+            child = finished = Capture(birth.Handle.Slot, in state);
+            return true;
+        }
+
         internal bool IsCurrent(in NpcSnapshot acceptedParent) => IsCurrent(in acceptedParent, direct: false);
 
         private bool IsCurrent(in NpcSnapshot acceptedParent, bool direct)
@@ -174,15 +244,22 @@ public sealed partial class RuntimeNpcStore
 
         internal bool TryAdopt(in NpcSnapshot acceptedParent, in NpcStateUpdate finalParent,
             Func<bool> ownedInputsCurrent,
-            out NpcSnapshot final) => TryAdoptCore(in acceptedParent, in finalParent, ownedInputsCurrent, direct: false, out final);
+            out NpcSnapshot final) => TryAdoptCore(in acceptedParent, in finalParent, ownedInputsCurrent,
+                direct: false, publish: true, out final);
+
+        // Retained multi-owner phases adopt status/projectiles before exposing any birth observer.
+        internal bool TryAdoptUnpublished(in NpcSnapshot acceptedParent, in NpcStateUpdate finalParent,
+            Func<bool> ownedInputsCurrent, out NpcSnapshot final) =>
+            TryAdoptCore(in acceptedParent, in finalParent, ownedInputsCurrent, direct: false, publish: false, out final);
 
         // Powder and caught-frog teleport begin from an unchanged live occupation,
         // rather than the AI executor's identical-state placeholder revision.
         internal bool TryAdoptDirect(in NpcStateUpdate finalParent, Func<bool> ownedInputsCurrent,
-            out NpcSnapshot final) => TryAdoptCore(in parent, in finalParent, ownedInputsCurrent, direct: true, out final);
+            out NpcSnapshot final) => TryAdoptCore(in parent, in finalParent, ownedInputsCurrent,
+                direct: true, publish: true, out final);
 
         private bool TryAdoptCore(in NpcSnapshot acceptedParent, in NpcStateUpdate finalParent,
-            Func<bool> ownedInputsCurrent, bool direct, out NpcSnapshot final)
+            Func<bool> ownedInputsCurrent, bool direct, bool publish, out NpcSnapshot final)
         {
             final = default;
             ArgumentNullException.ThrowIfNull(ownedInputsCurrent);
@@ -226,13 +303,27 @@ public sealed partial class RuntimeNpcStore
             liveRandom.CopyStateFrom(Random);
             completed = true;
 
-            // Replacement's old generation is announced before any later child update. Adopt all
-            // owned state and the stream first so observers cannot invalidate a half-finished birth.
-            if (replacedPending is { } previous)
-                owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in previous);
-            if (child is { } retainedChild && owner._commitSink is INpcBirthRetentionSink retained)
-                retained.NpcBirthRetained(in retainedChild);
+            publicationParent = final;
+            replacementPublication = replacedPending;
+            birthPublication = child;
+            if (publish) PublishBirths();
             return true;
+        }
+
+        internal void PublishBirths()
+        {
+            if (publicationParent is not { } accepted) return;
+            var previous = replacementPublication;
+            var birth = birthPublication;
+            // Consume before callbacks. Nested publication cannot replay an earlier generation's journal.
+            publicationParent = replacementPublication = birthPublication = null;
+            if (!owner.MatchesSource(in accepted)) return;
+            if (birth is { } born && !owner.MatchesSource(in born)) return;
+            if (previous is { } replaced)
+                owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in replaced);
+            if (birth is { } retainedChild && owner.MatchesSource(in accepted) &&
+                owner.MatchesSource(in retainedChild) && owner._commitSink is INpcBirthRetentionSink retained)
+                retained.NpcBirthRetained(in retainedChild);
         }
 
     }

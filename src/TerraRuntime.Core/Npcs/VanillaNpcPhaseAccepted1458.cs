@@ -15,10 +15,17 @@ internal interface IVanillaNpcPhaseWorld1458 : IVanillaNpcProjectileEnvironment,
     bool TryStageStatus(RuntimeNpcStore.AiSpawnPreview preview, IVanillaNpcRandom random, out NpcSnapshot staged);
     bool TryStageTransform(RuntimeNpcStore.AiSpawnPreview preview, in NpcSnapshot working,
         NpcTypeId target, in NpcAiState suppliedTransformAi, out NpcSnapshot transformed);
+    bool TryCaptureNpcSlot(byte slot, out VanillaNpcRetainedSlot captured);
+    bool TryFinishScutlixMount(RuntimeNpcStore.AiSpawnPreview preview, in NpcSnapshot birth, out NpcSnapshot finished);
+    bool TryCountNpcType(NpcTypeId type, out int count);
+    bool TryGetTurretSite(int tileX, int tileY, out bool eligible);
+    bool TryFinishMartianChild(RuntimeNpcStore.AiSpawnPreview preview, in NpcSnapshot birth,
+        float finalX, float finalY, in NpcAiState finalAi, out NpcSnapshot finished);
     bool TryStageProjectiles(ReadOnlySpan<NpcAiProjectileIntent> shots);
     bool TryFinishMotion(RuntimeNpcStore.AiSpawnPreview preview, in NpcSnapshot before, in NpcStateUpdate ai,
         in VanillaNpcRawPlayer1458 rawTarget, out NpcStateUpdate final);
     bool TryPrepareAdoption(in NpcStateUpdate final);
+    bool TryPrepareAiRetirementNetwork() => false;
     bool TryAdoptStatus(in NpcSnapshot accepted);
     void PublishStatus();
 }
@@ -34,22 +41,28 @@ internal interface IVanillaNpcPhaseEnvironment1458
 internal sealed partial class VanillaNpcPhaseAccepted1458
 {
     internal static bool SupportsIdentity(NpcTypeId type, NpcNetId net) =>
-        VanillaGroundCombatCohort1458.IsSupported(type, net) || net.Value == type.Value &&
+        VanillaGroundCombatCohort1458.IsSupported(type, net) ||
+        VanillaMartianChildAi1458.IsSupported(type, net) || type == VanillaNpcIds.Maggot && net.Value == type.Value ||
+        net.Value == type.Value &&
             (VanillaNpcTransformation1458.IsNewDefinition(type) ||
              type == VanillaNpcIds.Lihzahrd || VanillaNpcTransformation1458.IsRetainedFish(type));
+
+    internal static bool HasCatchProtection(NpcTypeId type) =>
+        VanillaNpcTransformation1458.HasPhaseCatchProtection(type) || type == VanillaNpcIds.Maggot;
 
     private RuntimeNpcStore? store;
     private SystemVanillaNpcRandom? random;
     private IVanillaNpcPhaseEnvironment1458? environment;
     private Plan? pending;
     private NpcSnapshot completedBefore, completedAfter;
-    private bool completedForce, completedInactive;
+    private bool completedForce, completedInactive, completedAiInactive;
     private bool completing;
 
     private sealed record Plan(NpcSnapshot Before, NpcStateUpdate Ai, RuntimeNpcStore.AiSpawnPreview Preview,
         IVanillaNpcPhaseWorld1458 World, VanillaNpcBehaviorContext Context,
         VanillaNpcTargetCandidate[] Candidates, NpcRawPlayerSlotSnapshot1458[] Players,
-        bool Day, bool Eclipse, bool Expert, bool Good, bool Remix, int? Invasion, double Surface, double Width);
+        bool Day, bool Eclipse, bool Expert, bool Good, bool Remix, int? Invasion, double Surface, double Width,
+        bool AiInactive);
 
     internal void Configure(RuntimeNpcStore owner, IVanillaNpcPhaseEnvironment1458 world, IVanillaNpcRandom source)
     { Cancel(); store = owner; environment = world; random = source as SystemVanillaNpcRandom; }
@@ -71,7 +84,7 @@ internal sealed partial class VanillaNpcPhaseAccepted1458
         // combat plan before this phase's notification and disposal finish.
         if (completing) { next = default; return false; }
         Cancel();
-        completedForce = completedInactive = false;
+        completedForce = completedInactive = completedAiInactive = false;
         next = default;
         if (store is null || random is null || environment is null ||
             !SupportsIdentity(before.TypeIdentity, before.NetIdentity) ||
@@ -107,6 +120,7 @@ internal sealed partial class VanillaNpcPhaseAccepted1458
                 return false;
             NpcStateUpdate ai;
             int count = 0;
+            bool aiInactive = false;
             int style = staged.Simulation.AiStyleOverride?.Value ?? workingDefinition.AiStyle.Value;
             bool stepped = style switch
             {
@@ -114,13 +128,16 @@ internal sealed partial class VanillaNpcPhaseAccepted1458
                     world, preview, shots, out count, out ai),
                 7 => TryStepGroundCritter(in staged, in workingDefinition, context, world, detached, out ai),
                 16 => fish.TryStepPreview(in staged, in workingDefinition, context, detached, world, out ai),
+                66 or 72 or 73 or 75 => TryStepChild(in staged, in workingDefinition, context, world,
+                    preview, detached, shots, out count, out aiInactive, out ai),
                 _ => Refuse(out ai)
             };
-            if (!stepped || !TryFinishCatchProtection(in ai, out ai) ||
+            if (!stepped || ai.Target > byte.MaxValue || !CapturePlayer((byte)ai.Target) ||
+                !TryFinishCatchProtection(in ai, out ai) ||
                 !RuntimeNpcStore.IsValid(in ai) || !world.TryStageProjectiles(shots[..count])) return false;
             var plan = new Plan(before, ai, preview, world, context, context.Candidates.ToArray(), players.ToArray(),
                 context.DayTime, context.EclipseActive, context.ExpertMode, context.GoodWorld, context.RemixWorld,
-                context.InvasionType, context.WorldSurfacePixels, context.WorldWidthPixels);
+                context.InvasionType, context.WorldSurfacePixels, context.WorldWidthPixels, aiInactive);
             if (!InputsCurrent(plan) || !preview.IsBeforeCurrent()) return false;
             pending = plan;
             retained = true;
@@ -156,10 +173,16 @@ internal sealed partial class VanillaNpcPhaseAccepted1458
             Span<VanillaNpcRawPlayer1458> players = stackalloc VanillaNpcRawPlayer1458[plan.Players.Length];
             int count = 0;
             foreach (var player in plan.Players) if (player.Facts.Active) players[count++] = player.Facts;
-            if (!VanillaOrdinarySlimeCheckActive1458.TryStep(motion.PositionX, motion.PositionY, body.Width, body.Height,
-                    motion.Simulation.TimeLeft, players[..count], out int timeLeft, out bool inactive)) return default;
+            int timeLeft = motion.Simulation.TimeLeft;
+            bool inactive = plan.AiInactive;
+            // AI072 can retire the actor before the outer motion/frame tail.
+            // CheckActive immediately returns for an already inactive source actor.
+            if (!inactive && motion.Type is not (379 or 380) &&
+                !VanillaOrdinarySlimeCheckActive1458.TryStep(motion.PositionX, motion.PositionY,
+                    body.Width, body.Height, timeLeft, players[..count], out timeLeft, out inactive)) return default;
             var final = motion with { Simulation = motion.Simulation with { TimeLeft = timeLeft } };
-            if (!plan.World.TryPrepareAdoption(in final) || !InputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in final,
+            if (plan.AiInactive && !plan.World.TryPrepareAiRetirementNetwork()) return default;
+            if (!plan.World.TryPrepareAdoption(in final) || !InputsCurrent(plan) || !plan.Preview.TryAdoptUnpublished(in accepted, in final,
                     () => InputsCurrent(plan), out var completed)) return default;
             if (!plan.World.TryAdoptStatus(in completed))
                 throw new InvalidOperationException("An accepted ground combat phase lost a prepared owner without a callback.");
@@ -167,7 +190,9 @@ internal sealed partial class VanillaNpcPhaseAccepted1458
             // Motion includes the collision-time Transform boundary, whose immediate23
             // can consume requests made earlier in AI. Its resulting offer is authoritative.
             completedForce = motion.RequiresImmediateSync;
-            completedInactive = inactive;
+            completedInactive = inactive || plan.AiInactive;
+            completedAiInactive = plan.AiInactive;
+            plan.Preview.PublishBirths();
             plan.World.PublishStatus();
             return completed;
         }
@@ -183,6 +208,8 @@ internal sealed partial class VanillaNpcPhaseAccepted1458
         completedBefore == before && completedAfter == after && completedForce;
     internal bool Deactivates(in NpcSnapshot before, in NpcSnapshot after) =>
         completedBefore == before && completedAfter == after && completedInactive;
+    internal bool RetiredDuringAi(in NpcSnapshot before, in NpcSnapshot after) =>
+        completedBefore == before && completedAfter == after && completedAiInactive;
 
     private static bool InputsCurrent(Plan plan)
     {
@@ -204,7 +231,7 @@ internal sealed partial class VanillaNpcPhaseAccepted1458
     private static bool TryFinishCatchProtection(in NpcStateUpdate ai, out NpcStateUpdate next)
     {
         next = ai;
-        if (!VanillaNpcTransformation1458.HasPhaseCatchProtection(new(ai.Type))) return true;
+        if (!HasCatchProtection(new(ai.Type))) return true;
         if (ai.Simulation.CatchableNpcTempImmunityCounter is not (>= 0 and <= 90) ||
             ai.Simulation.ReleaseOwner is not (>= 0 and <= 255)) return false;
         int counter = ai.Simulation.CatchableNpcTempImmunityCounter.Value;

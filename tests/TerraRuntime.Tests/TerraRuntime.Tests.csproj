@@ -1097,5 +1097,20 @@
     <EmbeddedResource Include="Fixtures/GroundCombatPlayerBoundariesLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.GroundCombatPlayerBoundariesLinux1458.v1.json.gz" />
     <EmbeddedResource Include="Fixtures/NpcSpawnShimmerFlagsLinux1458.v1.json.gz" LogicalName="NpcSpawnShimmerFlagsLinux1458.v1" />
     <EmbeddedResource Include="Fixtures/TownTransformHomePhaseLinux1458.v1.json.gz" LogicalName="TownTransformHomePhaseLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/RangedCohortPlayerHitLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.RangedCohortPlayerHitLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/RangedCohortPlayerHitModesLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.RangedCohortPlayerHitModesLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/RangedCohortPlayerBoundariesLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.RangedCohortPlayerBoundariesLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/RangedCohortUsualProjectilesLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.RangedCohortUsualProjectilesLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/RangedLegacyArrowPlayerHitLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.RangedLegacyArrowPlayerHitLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/ElectrifiedPlayerHealthLinux1458.v1.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.ElectrifiedPlayerHealthLinux1458.v1.json.gz" />
+    <EmbeddedResource Include="Fixtures/MartianChildAiLinux1458.json.gz" LogicalName="MartianChildAiLinux1458" />
+    <EmbeddedResource Include="Fixtures/MartianChildPhaseLinux1458.json.gz" LogicalName="MartianChildPhaseLinux1458" />
+    <EmbeddedResource Include="Fixtures/MaggotSiblingPhaseLinux1458.v1.json.gz" LogicalName="MaggotSiblingPhaseLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/RangedParentNpcPhaseLinux1458.v1.json.gz" LogicalName="RangedParentNpcPhaseLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/ScutlixCollisionBodyLinux1458.v1.json.gz" LogicalName="ScutlixCollisionBodyLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/RangedCohortDeathLootOriginal1458.v1.json.gz" LogicalName="RangedCohortDeathLootOriginal1458.v1" />
+    <EmbeddedResource Include="Fixtures/RangedCohortDeathLootOriginal1458.v2.json.gz" LogicalName="RangedCohortDeathLootOriginal1458.v2" />
+    <EmbeddedResource Include="Fixtures/NpcSourceProjectileBirthLinux1458.v1.json.gz" LogicalName="NpcSourceProjectileBirthLinux1458.v1" />
+    <EmbeddedResource Include="Fixtures/MartianChildFramesLinux1458.json.gz" LogicalName="MartianChildFramesLinux1458" />
   </ItemGroup>
 </Project>

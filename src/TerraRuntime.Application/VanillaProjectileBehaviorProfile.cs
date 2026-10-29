@@ -63,7 +63,9 @@ internal enum VanillaProjectileBehaviorFamily : byte
     NurseHealing = 50,
     BrainScramblerBolt = 51,
     MartianLaser = 52,
-    HopliteJavelin = 53
+    HopliteJavelin = 53,
+    GigaZapperSpear = 54,
+    RockGolemRock = 55
 }
 
 /// <summary>
@@ -512,7 +514,9 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.Nail) { profile = NailProfile; return true; }
         if (type == VanillaProjectileIds.DrManFlyFlask) { profile = DrManFlyFlaskProfile; return true; }
         if (type == VanillaProjectileIds.NurseSyringeHeal) { profile = NurseHealingProfile; return true; }
-        if (type.Value == 436) { profile = BrainScramblerBoltProfile; return true; }
+        if (type.Value is 435 or 436) { profile = BrainScramblerBoltProfile; return true; }
+        if (type.Value == 437) { profile = HostileStraightArrowProfile with { Family = VanillaProjectileBehaviorFamily.GigaZapperSpear }; return true; }
+        if (type.Value == 909) { profile = ThrownProfile with { Family = VanillaProjectileBehaviorFamily.RockGolemRock }; return true; }
         if (type.Value is 438 or 592) { profile = MartianLaserProfile; return true; }
         if (type.Value == 508) { profile = HopliteJavelinProfile; return true; }
         if (type.Value == 471) { profile = ThrownProfile; return true; }

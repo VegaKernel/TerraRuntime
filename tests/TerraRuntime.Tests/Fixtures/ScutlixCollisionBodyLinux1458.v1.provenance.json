@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "originalComponentQualified": true,
+  "runtimeQualified": false,
+  "originalSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "sourceQualificationSha256": "0f104c24c5b87c40f662fb9a8a64d13615a4902cea8c280aa417a05f17fc6e19",
+  "sourceFilesSha256": {
+    "original-1458-a.json.gz": "35e5ed872efa0d57c01b04f8ff4b58d5d5b745aaa781831dc6a7e9952d80fe28",
+    "original-42-a.json.gz": "acfc9c47e7a2b77cbd3c3c18d56ec420d8c99873e2f190192967ae5b7657d0f8",
+    "original-8675309-a.json.gz": "f1933a567763d9725de612344e1c2984c22586572c9b3d503dde9d8bf36f99b1"
+  },
+  "fixtureSha256": "0727f3cd17ac1e07ee15965b1ccf4aa1c43a4450a6933040521879e4ac4c8da1",
+  "cases": 6,
+  "expectedPerActorPhases": 192,
+  "originalCallsIncludingRepeat": 384,
+  "scope": "Actual NPC391.UpdateNPC only, optional actualNewNPC390 companion held constant. Authored upper tile exposes mounted query height62/Y-22 while both physical bodies stay60x40. Original unmounted control has no collision. No Main or rider AI claim. Every captured case field is unchanged."
+}

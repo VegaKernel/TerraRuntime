@@ -10,8 +10,8 @@ namespace TerraRuntime.Tests;
 
 public sealed class DefinitionOnlyProjectileTarget1458Tests
 {
-    // Rock Golem still requires its source attack/projectile lifecycle; Snow Flinx185 is now admitted.
-    private const int UnadmittedGroundActor = 631;
+    // Jungle Creeper still requires its climbing transformation/projectile lifecycle.
+    private const int UnadmittedGroundActor = 236;
 
     private static NpcStateUpdate Create(int type, float x) => new(type, (short)type,
         x, 320, 0, 0, 255, default, NpcSimulationState.Initial with

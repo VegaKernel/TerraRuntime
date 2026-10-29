@@ -76,6 +76,7 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
 
     private static bool SupportsPresentation(in NpcSnapshot source) =>
         VanillaGroundCombatPresentation1458.Supports(in source) ||
+        SupportsChildPresentation(in source) ||
         VanillaNpcTransformation1458.TryGetGroundCritterFamily(source.TypeIdentity, out _) &&
         VanillaGroundCritterPresentation1458.TryFinish(new(source.Type, source.NetId, source.PositionX, source.PositionY,
             source.VelocityX, source.VelocityY, source.Target, source.Ai, source.Simulation), out _);
@@ -102,12 +103,13 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
         private readonly int initialNetworkSpam = replication?.CaptureNpcPhaseSpam(source.Handle) ?? 0;
         private int networkSpamAdjustment;
         private bool ignoreSpamLimitStaged;
+        private bool aiRetirementNetworkStaged;
 
         public bool IsCurrent
         {
             get
             {
-                return !adopted && terrain.IsCurrent && CritterInputsCurrent() && factsOwner() == facts &&
+                return !adopted && terrain.IsCurrent && CritterInputsCurrent() && factsOwner() == facts && ChildInputsCurrent() &&
                     (projectileBatch is null || projectileBatch.IsCurrentOwned) &&
                     status.IsCurrentNpcPhase1458(in initialPhase) &&
                     (replication is null || replication.IsNpcPhaseSpamCurrent(source.Handle, initialNetworkSpam)) && terrain.IsCurrent;
@@ -123,6 +125,13 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
             if (!(networkSyncRequested || aiAlreadyRequested) || initialNetworkSpam > 90)
                 networkSpamAdjustment = -30;
             networkSyncRequested = true;
+            return true;
+        }
+
+        public bool TryPrepareAiRetirementNetwork()
+        {
+            if (aiRetirementNetworkStaged || replication is null || !IsCurrent) return false;
+            aiRetirementNetworkStaged = true;
             return true;
         }
 
@@ -164,9 +173,11 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
             if (!IsCurrent || projectileBatch is not null || shots.Length > 1) return false;
             if (shots.IsEmpty) return true;
             var shot = shots[0];
-            if (shot.Type.Value is not (436 or 438 or 471 or 508 or 592) ||
+            if (!TerraRuntime.Gameplay.Projectiles.VanillaGroundCombatPlayerHit1458.IsSupported(shot.Type) ||
                 shot.Damage is < 0 or > short.MaxValue ||
-                !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(shot.Type, out var shape)) return false;
+                !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(shot.Type, out var shape) ||
+                !VanillaNpcDeathPreludeCatalog1458.TryGet(source.TypeIdentity, source.NetIdentity, out var banner) ||
+                banner.BannerId is < 0 or > ushort.MaxValue) return false;
             terrain.FenceBody(shot.PositionX, shot.PositionY, 0f, 0f, shape.Width, shape.Height);
             bool wet = VanillaWorldCollision.TryGetWetContact(tiles, shot.PositionX, shot.PositionY,
                 shape.Width, shape.Height, out var kind);
@@ -179,8 +190,11 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
                 wet && kind == WorldLiquidKind.Honey, wet && kind == WorldLiquidKind.Shimmer);
             // NewProjectile receives the source center; the planner has already applied
             // SetDefaults' half-hitbox conversion. Runtime stores always receive top-left.
+            // Projectile.FindBannerToAssociateTo uses this NPC parent's BannerID mapping;
+            // packet27 carries the association independently of its damage and NPC-proj flag.
             var state = new ProjectileStateUpdate(shot.Type, byte.MaxValue, shot.PositionX, shot.PositionY,
-                shot.VelocityX, shot.VelocityY, shot.InitialAi, 0, (short)shot.Damage, shot.KnockBack, 0);
+                shot.VelocityX, shot.VelocityY, shot.InitialAi, (ushort)banner.BannerId,
+                (short)shot.Damage, shot.KnockBack, 0);
             Span<RuntimeProjectileStore.SpawnRequest> requests = stackalloc RuntimeProjectileStore.SpawnRequest[1];
             requests[0] = new(state, shot.TimeLeftOverride > 0 ? shot.TimeLeftOverride : null) { InitialLiquid = liquid };
             return projectiles.TryPrepareVanillaSpawnBatch(requests, out projectileBatch) && IsCurrent;
@@ -229,14 +243,27 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
             }
             var home = new VanillaNpcTownCollisionContext1458(ai.Simulation.HomeTileY ?? -1,
                 facts.Day, facts.Eclipse, facts.Invasion is > 0);
+            bool mountedScutlix = false;
+            if (ai.Type == VanillaNpcIds.Scutlix.Value)
+            {
+                if (!TryHasScutlixRider(before.Handle.Slot, out mountedScutlix)) return false;
+                if (mountedScutlix)
+                    terrain.FenceBody(ai.PositionX, ai.PositionY + body.Height - 62f,
+                        ai.VelocityX, ai.VelocityY, body.Width, 62);
+            }
             if (!SupportsMotion(in proposed, body.Width, body.Height) ||
                 !motion.TryApplyNpcPhaseWorldMotion(in before, in networkAi, in rawTarget, ContinueCollision,
-                    in home, out var physics)) return false;
-            if (VanillaNpcTransformation1458.TryGetGroundCritterFamily(new(physics.Type), out _))
+                    in home, out var physics, mountedScutlix)) return false;
+            if (ChildFrameCount(new(physics.Type)) > 0)
+            {
+                if (!TryFinishChildPresentation(in physics, out final)) return false;
+            }
+            else if (VanillaNpcTransformation1458.TryGetGroundCritterFamily(new(physics.Type), out _))
             {
                 if (!VanillaGroundCritterPresentation1458.TryFinish(in physics, out final)) return false;
             }
-            else if (!VanillaGroundCombatPresentation1458.TryFinish(in physics, out final)) return false;
+            else if (!VanillaGroundCombatPresentation1458.TryFinish(in physics, out final,
+                rawTarget, RockFrameVisibility(in physics, in rawTarget))) return false;
             if (!VanillaNpcDefinitionCatalog.TryGet(new(final.Type), new(final.NetId), out var finalDefinition) ||
                 !finalDefinition.TryResolveHitbox(final.Simulation, out var finalBody)) return false;
             var endpoint = before with { Type = final.Type, NetId = final.NetId, Ai = final.Ai,
@@ -273,10 +300,11 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
             // AiSpawnPreview also guards the store-wide mutation serial. This reusable scratch
             // supplies contact admission without retaining a second NPC table for every plan.
             bool unownedCritterContact = VanillaNpcTransformation1458.TryGetGroundCritterFamily(source.TypeIdentity, out _) ||
-                VanillaNpcTransformation1458.IsRetainedFish(source.TypeIdentity);
+                VanillaNpcTransformation1458.IsRetainedFish(source.TypeIdentity) || source.TypeIdentity == VanillaNpcIds.Maggot;
             int peerCount = npcs.CopyActive(peerScratch);
             foreach (var peer in peerScratch.AsSpan(0, peerCount))
                 if (peer.Handle != source.Handle && (peer.Simulation.Friendly == true || unownedCritterContact) &&
+                    !IsHarmlessMaggotPair(in state, in peer) &&
                     VanillaNpcDefinitionCatalog.TryGet(peer.TypeIdentity, peer.NetIdentity, out var definition) &&
                     definition.TryResolveHitbox(peer.Simulation, out var other) &&
                     state.PositionX - MathF.Abs(state.VelocityX) < peer.PositionX + other.Width &&
@@ -304,9 +332,13 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
                     return false;
                 replication?.ObserveMaterializedTransform(in accepted);
             }
-            if (replication is not null &&
-                !replication.TryAdoptNpcPhaseSpamAdjustment(in accepted, initialNetworkSpam, networkSpamAdjustment))
-                return false;
+            if (replication is not null)
+            {
+                bool networkAccepted = aiRetirementNetworkStaged
+                    ? replication.TryAdoptNpcPhaseAiRetirement(in accepted, initialNetworkSpam)
+                    : replication.TryAdoptNpcPhaseSpamAdjustment(in accepted, initialNetworkSpam, networkSpamAdjustment);
+                if (!networkAccepted) return false;
+            }
             if (replication is not null && source.TypeIdentity == VanillaNpcIds.MysticFrog)
             {
                 foreach (var frame in beforeTransformFrames)

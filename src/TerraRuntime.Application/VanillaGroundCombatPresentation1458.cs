@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Npcs;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Application;
 
@@ -15,7 +16,8 @@ internal static class VanillaGroundCombatPresentation1458
             (!IsHumanoid(npc.Type) || npc.Ai.Ai0 is 0f or 1f);
     }
 
-    internal static bool TryFinish(in NpcStateUpdate motion, out NpcStateUpdate final)
+    internal static bool TryFinish(in NpcStateUpdate motion, out NpcStateUpdate final,
+        VanillaNpcRawPlayer1458? rawTarget = null, bool? rockCanHit = null)
     {
         final = default;
         int count = FrameCount(motion.Type);
@@ -31,7 +33,8 @@ internal static class VanillaGroundCombatPresentation1458
         int direction = motion.Simulation.DirectionX;
         float speed = MathF.Abs(motion.VelocityX);
         bool grounded = motion.VelocityY == 0f;
-        if (grounded && direction is -1 or 1 && motion.Type is not (508 or 532 or 580 or 582)) sprite = direction;
+        if (grounded && direction is -1 or 1 && motion.Type is not (391 or 508 or 532 or 580 or 582) &&
+            !(motion.Type == 386 && motion.Ai.Ai2 > 0f)) sprite = direction;
 
         if (IsHumanoid(motion.Type))
         {
@@ -45,7 +48,7 @@ internal static class VanillaGroundCombatPresentation1458
                 timer += motion.Type == 489 ? speed : speed * 2f;
                 timer += motion.Type == 489 ? .5d : 1d;
                 if (row < 2) row = 2;
-                if (timer > (motion.Type == 489 ? 8d : motion.Type == 534 ? 12d : 6d)) { row++; timer = 0d; }
+                if (timer > (motion.Type == 489 ? 8d : motion.Type is 534 or 632 ? 12d : 6d)) { row++; timer = 0d; }
                 if (row >= count) row = 2;
             }
         }
@@ -127,16 +130,93 @@ internal static class VanillaGroundCombatPresentation1458
                 else { row = offset + 2; timer = 0d; }
             }
         }
-        else if (motion.Type is 381 or 382 or 385)
+        else if (motion.Type is 379 or 380)
+        {
+            if (!grounded) { row = 1; timer = 0d; }
+            else if (motion.Ai.Ai2 > 0f)
+            { sprite = direction; row = (int)motion.Ai.Ai2 + 1; timer = 0d; }
+            else if (motion.VelocityX == 0f) row = 0;
+            else
+            {
+                if (row < 7) row = 7;
+                timer += speed * 2f;
+                if (timer > 6d) { row++; timer = 0d; }
+                if (row >= count) row = 7;
+            }
+        }
+        else if (motion.Type is 381 or 382 or 383 or 385 or 389)
         {
             if (!grounded) { row = 1; timer = 0d; }
             else
             {
+                sprite = direction;
                 if (row < 2) row = 2;
-                timer += motion.Type == 385 ? (double)speed * 1.2d : speed * 2f;
+                timer += motion.Type is 385 or 389 ? (double)speed * 1.2d : speed * 2f;
                 if (timer > 6d) { row++; timer = 0d; }
                 if (row >= count) row = 2;
                 if (motion.VelocityX == 0f) row = 0;
+            }
+        }
+        else if (motion.Type == 386)
+        {
+            if (motion.Ai.Ai2 > 0f) row = 9 + (int)motion.Ai.Ai2 / 12 % 2;
+            else if (!grounded) { row = 1; timer = 0d; }
+            else
+            {
+                sprite = direction;
+                if (row < 2) row = 2;
+                timer += speed * 2f;
+                if (timer > 6d) { row++; timer = 0d; }
+                if (row >= 9) row = 2;
+                if (motion.VelocityX == 0f) row = 0;
+            }
+        }
+        else if (motion.Type == 391)
+        {
+            if (!grounded) { row = 0; timer = 0d; }
+            else
+            {
+                if (direction is -1 or 1) sprite = -direction;
+                if (row < 1) row = 1;
+                timer += speed * .5f;
+                if (timer > 6d) { row++; timer = 0d; }
+                if (row >= count) row = 1;
+                if (motion.VelocityX == 0f) row = 0;
+            }
+        }
+        else if (motion.Type == 631)
+        {
+            if (!grounded) { row = 0; timer = 0d; }
+            else
+            {
+                sprite = direction;
+                if (motion.Ai.Ai2 != 0f && motion.Ai.Ai2 < 100f)
+                {
+                    if (rawTarget is not { IsValid: true } target || target.Slot != motion.Target) return false;
+                    // Source Hitbox origins truncate independently of the float centers.
+                    if (!VanillaNpcDefinitionCatalog.TryGet(new(631), new(631), out var definition) ||
+                        !definition.TryResolveHitbox(motion.Simulation, out var body)) return false;
+                    bool face = target.PositionX + target.Width * .5f < motion.PositionX + body.Width * .5f
+                        ? direction == -1 : direction == 1;
+                    bool overlap = (int)target.PositionX < (int)motion.PositionX + body.Width &&
+                        (int)target.PositionX + target.Width > (int)motion.PositionX &&
+                        (int)target.PositionY < (int)motion.PositionY + body.Height &&
+                        (int)target.PositionY + target.Height > (int)motion.PositionY;
+                    float fraction = (motion.Ai.Ai2 - 68f) / 32f;
+                    if (face && !overlap)
+                    {
+                        if (!rockCanHit.HasValue) return false;
+                        row = rockCanHit.Value ? (int)(15f + (count - 15f) * fraction) : 0;
+                    }
+                    else row = face && overlap ? (int)(10f + 5f * fraction) : 0;
+                }
+                else if (motion.VelocityX == 0f) { row = 0; timer = 0d; }
+                else
+                {
+                    timer += .2f + speed;
+                    if (timer > 8d) { row++; timer = 0d; }
+                    if (row >= 8 || row < 1) row = 1;
+                }
             }
         }
         else if (motion.Type == 520)
@@ -207,13 +287,14 @@ internal static class VanillaGroundCombatPresentation1458
         return true;
     }
 
-    private static bool IsHumanoid(int type) => type is 44 or 77 or 104 or 140 or 181 or 185 or 196 or 197 or 198 or 489 or 534;
+    private static bool IsHumanoid(int type) => type is 44 or 77 or 104 or 140 or 181 or 185 or 196 or 197 or 198 or 489 or 534 or 632;
 
     // Main.npcFrameCount 1.4.5.8, independently read from the initialized official assembly.
     private static int FrameCount(int type) => type switch {
         44 or 140 or 197 => 15, 104 or 181 => 16, 196 => 14, 489 or 528 or 529 => 9,
         >= 524 and <= 527 => 8, 536 or 590 or 691 => 3, 464 => 7, 470 or 185 => 12,
-        77 => 15, 381 or 382 or 385 => 9, 520 => 8, >= 449 and <= 451 or 481 => 19,
+        77 => 15, 381 or 382 or 383 or 385 or 389 => 9, 379 or 380 => 12, 386 => 11,
+        391 => 6, 631 => 21, 632 => 16, 520 => 8, >= 449 and <= 451 or 481 => 19,
         452 or 482 => 20, 55 or 57 or 465 or 508 or 580 or 582 or 592 => 6,
         198 => 16, 199 or 532 or 534 => 8, 586 => 14, _ => 0 };
 }

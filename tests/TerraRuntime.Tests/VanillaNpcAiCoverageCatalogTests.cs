@@ -24,13 +24,14 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaMimicNpcCatalog1458.DefinitionCount - 1;
         expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14 + VanillaMothronNpcCatalog1458.DefinitionCount + VanillaBigMimicNpcCatalog1458.DefinitionCount;
         expected += 34; // Exact independent12-bunny +22-ground-critter source roster, checked separately.
+        expected += 4; // Captured AI066/072/073/075 children use the same retained phase.
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition));
             if (VanillaNonresidentGroundCritterCatalog1458.IsSupported(coverage.Type.Value) ||
-                coverage.Type.Value is 230 or 593 or 687)
+                coverage.Type.Value is 230 or 384 or 387 or 390 or 593 or 606 or 687)
             {
                 // None is explicit for the accepted nonresident owner and these three candidate
                 // NpcPhase identities. Their ordinary role does not grant a town behavior family.
@@ -40,7 +41,8 @@ public sealed class VanillaNpcAiCoverageCatalogTests
                 Assert.True(definition.SupportsRuntimeLifecycle);
                 Assert.Equal(VanillaNpcAiCapability.DefinitionDefaults | VanillaNpcAiCapability.TargetingSlice |
                     VanillaNpcAiCapability.StateTransitionSlice | VanillaNpcAiCapability.WorldPhysicsSlice |
-                    VanillaNpcAiCapability.CheckActiveSlice | VanillaNpcAiCapability.PacketSync, coverage.Capabilities);
+                    VanillaNpcAiCapability.CheckActiveSlice | VanillaNpcAiCapability.PacketSync |
+                    (coverage.Type.Value == 390 ? VanillaNpcAiCapability.ChildSpawnSlice : VanillaNpcAiCapability.None), coverage.Capabilities);
             }
             else Assert.NotEqual(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
             Assert.NotEqual(VanillaNpcPhysicsFamily.None, definition.PhysicsFamily);
@@ -136,7 +138,8 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             bool retainedDoorContext = type.Value is
                 44 or 77 or 104 or 140 or 181 or 185 or 196 or 197 or 381 or 382 or 385 or
                 449 or 450 or 451 or 452 or 464 or 470 or 481 or 482 or 489 or 508 or 520 or
-                524 or 525 or 526 or 527 or 528 or 529 or 536 or 580 or 582 or 590 or 691;
+                524 or 525 or 526 or 527 or 528 or 529 or 536 or 580 or 582 or 590 or 691 or
+                379 or 380 or 383 or 386 or 389 or 391 or 631 or 632;
             // The source transform phase retains flag8=false, including existing endpoint199.
             bool transformDoorContext = type.Value is 198 or 199 or 532 or 534 or 586;
             Assert.Equal(!(retainedDoorContext || transformDoorContext),

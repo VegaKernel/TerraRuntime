@@ -261,6 +261,19 @@ public static class VanillaGroundFighterNpcCatalog
             motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
         ,Fighter(new(520), 34, 110, 60, 40, 2000, 0f, 1f, 4f,
             motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged)
+        // AI003 ranged parents; their coupled children and shots share the retained phase.
+        ,Fighter(new(379), 18, 40, 45, 14, 210, .55f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(380), 18, 40, 45, 14, 210, .55f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.GroundCombatRanged, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new(383), 18, 40, 75, 50, 300, .25f, 1f, 1f)
+        ,Fighter(new(386), 18, 40, 40, 34, 400, .4f, 1f, 1.5f, acceleration: .15f,
+            overspeedGroundDamping: .7f, motionProfile: VanillaGroundFighterMotionProfile.MartianEngineer)
+        ,Fighter(new(389), 18, 40, 75, 38, 600, .3f, 1f, 2.25f, closeRangeLunge: true)
+        ,Fighter(new(391), 60, 40, 85, 30, 600, .1f, 1f, 5f, acceleration: .25f,
+            overspeedGroundDamping: .7f)
+        ,Fighter(new(631), 36, 48, 85, 35, 1000, .1f, 1.1f, .9f)
+        ,Fighter(new(632), 18, 40, 14, 6, 45, .5f, 1f, .8f)
         // The captured outer phase owns these coupled transformations/swimming branches.
         ,Fighter(new(198), 18, 40, 38, 20, 400, .4f, 1f, 1.5f, daySurfaceEncouragesDespawn: false),
         Fighter(new(532), 32, 31, 65, 34, 270, .3f, 1f, 5f, acceleration: .15f, overspeedGroundDamping: .98f),
@@ -355,7 +368,8 @@ public static class VanillaGroundFighterNpcCatalog
         new(524), new(525), new(526), new(527), new(528), new(529), new(536), new(691),
         new(185), new(385), new(482), new(508), new(580), new(582), new(590),
         new(381), new(382), new(449), new(450), new(451), new(452), new(481), new(520),
-        new(198), new(532), new(534), new(586)
+        new(198), new(532), new(534), new(586),
+        new(379), new(380), new(383), new(386), new(389), new(391), new(631), new(632)
     ];
 
     public static int DefinitionCount => Entries.Length;

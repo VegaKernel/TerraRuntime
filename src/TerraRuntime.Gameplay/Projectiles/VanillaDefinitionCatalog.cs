@@ -1008,12 +1008,17 @@ public static class VanillaDefinitionCatalog
         // opt a projectile into an unverified behavior or player-hit profile.
         switch (type.Value)
         {
+            case 435: // MartianTurretBolt
+            case 437: // GigaZapperSpear
             case 436: // BrainScramblerBolt
                 definition = new(10, 10, VanillaProjectileAiStyles.Arrow, true, true, true, 10, 10);
                 return true;
             case 438: // RayGunnerLaser
             case 592: // MartianWalkerLaser
                 definition = new(8, 8, VanillaProjectileAiStyles.Arrow, true, true, true, 8, 8);
+                return true;
+            case 909: // RockGolemRock: source hostile12x12 aiStyle2 body.
+                definition = new(12, 12, VanillaProjectileAiStyles.Thrown, true, false, true, 12, 12);
                 return true;
             case 471: // SkeletonBone: source scale1.2 truncates the 16x16 body to19x19.
                 definition = new(19, 19, VanillaProjectileAiStyles.Thrown, true, false, true, 19, 19);

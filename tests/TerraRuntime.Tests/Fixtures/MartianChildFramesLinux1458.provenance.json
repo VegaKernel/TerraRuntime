@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "kind": "martian-child-findframe-numeric-goldens",
+  "cases": 144,
+  "sourceQualificationSha256": "f20c8ece4300fe01ad9a2bacc5a7ee6f2918a138c499917b31ebb742543b6a65",
+  "sourceObservationsSha256": "498fa40ea4a19f335bc19e85befc663767a280f9b5efaae2d1ed09d194f90f87",
+  "fixtureSha256": "7f2f6d34b1e9c49a548d0eb0b26f6f175e52f9251d00adcbbaf069e9cf34d962",
+  "scope": "Actual initialized unchangedFindFrame; 144selectededges from1824profiles\u00d72; explicit606primary/below slope inputs;390spritepreimagevaried; no AI/physics/wholeUpdate claim",
+  "aggregateAccepted": false
+}

@@ -32,6 +32,19 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         return true;
     }
 
+    internal bool TryAdoptNpcPhaseAiRetirement(in NpcSnapshot accepted, int expected)
+    {
+        if (accepted.Simulation.Life != 0 || !IsNpcPhaseSpamCurrent(accepted.Handle, expected) ||
+            !IsUndeadNetworkPhaseCurrent(in accepted) || !UsesUndeadNetworkPhase1458(in accepted)) return false;
+        ref var state = ref undeadNetwork[accepted.Handle.Slot];
+        if (state.Owner != accepted.Handle) state = new() { Owner = accepted.Handle };
+        // NPC.UpdateNetworkCode resets an already inactive actor's spam before
+        // its mandatory offer. Reuse the same accepted phase and pending-request owner;
+        // its one inactive packet is published later by the terminal-removal owner.
+        state.Spam = 0;
+        return TrySelectUndeadNetworkPhase(NpcStateCommitKind.ForcedUpdate, in accepted, out bool send) && send;
+    }
+
     internal void ObserveMaterializedTransform(in NpcSnapshot accepted) => ClearSourceNetworkRequests(in accepted);
 
     private void ClearSourceNetworkRequests(in NpcSnapshot accepted)

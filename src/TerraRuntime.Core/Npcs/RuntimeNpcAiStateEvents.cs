@@ -107,6 +107,10 @@ public interface INpcAiStatePostCommitEffect
     /// <summary>Final source lifetime decision after accepted AI, physics and its update publication.</summary>
     bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) => false;
 
+    /// <summary>AI already made the source inactive before UpdateNetworkCode. The final
+    /// network phase announces that retirement once; CheckActive must not run again.</summary>
+    bool RetiresDuringAiAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) => false;
+
     /// <summary>Completes the unpublished accepted state; never runs for rejected speculative proposals.</summary>
     NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations) => committed;

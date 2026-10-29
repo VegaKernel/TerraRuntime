@@ -18,7 +18,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
             current = snapshot.Handle;
     }
 
-    public void NpcCatchCommitted(in NpcSnapshot caught, bool spawnNeedsSyncing)
+    public void NpcRetirementCommitted(in NpcSnapshot caught, bool spawnNeedsSyncing)
     {
         if (activeHistoricalPublication is { } prepared && prepared.MatchesCatch(in caught, spawnNeedsSyncing))
         {

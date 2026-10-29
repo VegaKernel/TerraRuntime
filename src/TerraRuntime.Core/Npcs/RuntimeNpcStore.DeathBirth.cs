@@ -97,22 +97,31 @@ public sealed partial class RuntimeNpcStore
         private readonly NpcSnapshot parent;
         private readonly ulong beforeSerial;
         private readonly VanillaNpcSpawnContext context;
-        private readonly int slot;
-        private readonly SlotState child;
+        private readonly int[] slots;
+        private readonly SlotState[] children;
+        private readonly NpcSnapshot[] births;
         private bool adopted;
         private bool published;
 
-        internal NpcSnapshot? Child => slot < 0 ? null : Capture((byte)slot, child);
+        internal NpcSnapshot? Child => births.Length == 0 ? null : births[0];
+        internal ReadOnlySpan<NpcSnapshot> Children => births;
 
         internal DeathBirth(RuntimeNpcStore owner, NpcSnapshot parent, ulong beforeSerial,
             VanillaNpcSpawnContext context, int slot, RuntimeNpcStore preview)
+            : this(owner, parent, beforeSerial, context, slot < 0 ? [] : [slot], preview)
+        {
+        }
+
+        internal DeathBirth(RuntimeNpcStore owner, NpcSnapshot parent, ulong beforeSerial,
+            VanillaNpcSpawnContext context, int[] slots, RuntimeNpcStore preview)
         {
             this.owner = owner;
             this.parent = parent;
             this.beforeSerial = beforeSerial;
             this.context = context;
-            this.slot = slot;
-            this.child = slot < 0 ? default : preview._slots[slot];
+            this.slots = slots;
+            children = slots.Select(slot => preview._slots[slot]).ToArray();
+            births = slots.Select((slot, index) => Capture((byte)slot, children[index])).ToArray();
         }
 
         // Providers are sampled by the containing death plan before its final pure guards.
@@ -128,26 +137,41 @@ public sealed partial class RuntimeNpcStore
         internal bool TryAdoptUnpublished(in NpcSnapshot acceptedParent)
         {
             if (!CanAdopt(in acceptedParent)) return false;
-            if (slot >= 0)
+            for (int index = 0; index < slots.Length; index++)
             {
+                int slot = slots[index];
                 if (!owner._slots[slot].Active) owner._activeCount++;
-                owner._slots[slot] = child;
+                owner._slots[slot] = children[index];
                 owner.MarkSlotMutation();
             }
             adopted = true;
             return true;
         }
 
-        internal bool TryPublish()
+        internal bool TryPublish(bool retentionOnly = false)
         {
             if (!adopted || published) return false;
             published = true;
-            if (slot < 0 || !SameDeathSlot(owner._slots[slot], child)) return true;
-            var born = Capture((byte)slot, child);
+            Exception? failure = null;
+            // All physical siblings were adopted together. Retain every still
+            // current baseline before any outward Spawn observer can reenter.
             if (owner._commitSink is INpcBirthRetentionSink retention)
-                retention.NpcBirthRetained(in born);
-            if (SameDeathSlot(owner._slots[slot], child))
-                owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in born);
+                for (int index = 0; index < slots.Length; index++)
+                {
+                    if (!SameDeathSlot(owner._slots[slots[index]], children[index])) continue;
+                    var born = births[index];
+                    try { retention.NpcBirthRetained(in born); }
+                    catch (Exception exception) { failure ??= exception; }
+                }
+            for (int index = 0; index < slots.Length; index++)
+            {
+                if (retentionOnly) break;
+                if (!SameDeathSlot(owner._slots[slots[index]], children[index])) continue;
+                var born = births[index];
+                try { owner._commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in born); }
+                catch (Exception exception) { failure ??= exception; }
+            }
+            if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
             return true;
         }
     }

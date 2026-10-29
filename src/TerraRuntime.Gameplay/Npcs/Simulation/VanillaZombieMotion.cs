@@ -108,7 +108,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     WalkingAntlion = 24,
     LarvaeAntlion = 25,
     GroundCombatRanged = 26,
-    ZombieMerman = 27
+    ZombieMerman = 27,
+    MartianEngineer = 28
 }
 
 /// <summary>
@@ -302,6 +303,12 @@ public static class VanillaZombieMotion
                  (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin or VanillaGroundFighterMotionProfile.StationaryArcher or VanillaGroundFighterMotionProfile.IcyMerman or VanillaGroundFighterMotionProfile.PirateDeadeye or VanillaGroundFighterMotionProfile.PirateCrossbower or VanillaGroundFighterMotionProfile.PirateCaptain && ai2 > 0f))
         {
             // AI_003's stationary ranged branches take over after the shared target/stuck prepass.
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.MartianEngineer)
+        {
+            if (ai2 > 0f)
+            { if (velocityY == 0f) velocityX *= .8f; }
+            else ApplyStandardMotion(maximumSpeed, input.HorizontalAcceleration, input.OverspeedGroundDamping);
         }
         else if (input.MotionProfile is VanillaGroundFighterMotionProfile.WalkingAntlion or VanillaGroundFighterMotionProfile.LarvaeAntlion)
         {

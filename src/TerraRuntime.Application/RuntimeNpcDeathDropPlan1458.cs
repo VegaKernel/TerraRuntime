@@ -62,11 +62,11 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
             (expected.TypeIdentity != VanillaNpcIds.Zombie && expected.TypeIdentity != VanillaNpcIds.BlueSlime &&
              expected.TypeIdentity != VanillaNpcIds.LavaSlime && expected.TypeIdentity != VanillaNpcIds.PirateCaptain &&
              expected.TypeIdentity != VanillaNpcIds.PirateGhost && !CanOwnMoonDeath(expected.TypeIdentity) &&
-             !CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) && !VanillaGroundCritterAi1458.IsSupported(expected.Type))) return false;
+             expected.Type != 632 && !CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) && !VanillaGroundCritterAi1458.IsSupported(expected.Type))) return false;
         // Client-local rewards require their own unpublished lease adoption; this lane owns ordinary drops only.
         foreach (var drop in drops.AsSpan(0, count))
             if (drop.LeaseTicks != 0 || drop.Recipients.Length != 0) return false;
-        drainPublication = CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) || CanOwnMoonDeath(expected.TypeIdentity) ||
+        drainPublication = expected.Type == 632 || CanOwnOrdinaryInvasionDeath(expected.TypeIdentity) || CanOwnMoonDeath(expected.TypeIdentity) ||
             expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost || VanillaGroundCritterAi1458.IsSupported(expected.Type));
         unpublishedMode = true;
         return CanAdoptUnpublished();
@@ -81,7 +81,8 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     // retained producer for these bodies. The generic Dungeon Spirit gate is
     // checked separately by the retained death planner; Captain/Ghost stay separate.
     internal static bool CanOwnOrdinaryInvasionDeath(NpcTypeId type) =>
-        type.Value is 26 or 27 or 28 or 29 or 111 or 143 or 144 or 145 or 212 or 213 or 214 or 215 or 252;
+        type.Value is 26 or 27 or 28 or 29 or 111 or 143 or 144 or 145 or 212 or 213 or 214 or 215 or 252 or
+            379 or 380 or 381 or 382 or 383 or 384 or 385 or 386 or 387 or 389 or 390 or 391 or 520 or 606 or 631;
 
     internal bool ValidateUnpublishedOwnerFacts() => unpublishedMode && !adoptedUnpublished &&
         allocation?.ValidateOwnerFacts() == true;

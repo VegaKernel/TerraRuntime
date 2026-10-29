@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "kind": "martian-child-app-phase-numeric-goldens",
+  "cases": 12,
+  "sourceQualificationSha256": "74377bf68dbee53c1347937c9c3de99554802d09e1a356a0f2ae6a354fe7a4cd",
+  "fixtureSha256": "3ec1fb313755a3bc1c8f99ce5c24df6d66f4c1034b8421301b8a6d2ac6718577",
+  "aggregateAccepted": false,
+  "scope": "First actual UpdateNPC of 12 source profiles: fresh390 mount with Stinky dry/wet, self-parent384 retirement, positive390 shot438 after one actual391 prepass. Original qualification covers 768 child calls plus 6 parent prepass calls. Other NPCs held constant during observed child calls; no whole-pair equivalence.",
+  "predecessorScopeReceiptSha256": "ee5c60d93cb4ba051d64e69595012becdd25bc22e826db1bd9cf60910e26a296"
+}

@@ -79,9 +79,9 @@ internal sealed partial class RuntimeConnectionRegistry
     {
         TerrariaPlayerDeathReasonState reason = source.Kind switch
         {
-            DamageSourceKind.Environment when source.EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning or EnvironmentDamageCause.Poison =>
+            DamageSourceKind.Environment when source.EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning or EnvironmentDamageCause.Poison or EnvironmentDamageCause.Electrified =>
                 new TerrariaPlayerDeathReasonState(-1, -1, -1,
-                    (sbyte)(source.EnvironmentCause switch { EnvironmentDamageCause.Lava => 2, EnvironmentDamageCause.Poison => 9, _ => 8 }), 0, 0, 0, null),
+                    (sbyte)(source.EnvironmentCause switch { EnvironmentDamageCause.Lava => 2, EnvironmentDamageCause.Poison => 9, EnvironmentDamageCause.Electrified => 10, _ => 8 }), 0, 0, 0, null),
             DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile when source.Player.IsAssigned =>
                 new TerrariaPlayerDeathReasonState(source.Player.Slot.Value, -1, -1, -1, 0, 0, 0, null),
             DamageSourceKind.NpcContact when source.Npc.IsAssigned => new TerrariaPlayerDeathReasonState(
@@ -97,7 +97,7 @@ internal sealed partial class RuntimeConnectionRegistry
             _ => default
         };
         bool knownEnvironment = source.Kind == DamageSourceKind.Environment &&
-            source.EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning or EnvironmentDamageCause.Poison;
+            source.EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning or EnvironmentDamageCause.Poison or EnvironmentDamageCause.Electrified;
         if (!source.IsValid || (!knownEnvironment && source.Kind is not (DamageSourceKind.NpcContact or DamageSourceKind.NpcProjectile or DamageSourceKind.EnvironmentProjectile or DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)) ||
             source.Kind == DamageSourceKind.EnvironmentProjectile && projectileType == default ||
             damage is < 0 or > short.MaxValue || hitDirection is < -1 or > 1)

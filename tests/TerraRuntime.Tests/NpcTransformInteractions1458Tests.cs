@@ -350,6 +350,6 @@ public sealed partial class NpcTransformInteractions1458Tests
         public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind,in NpcSnapshot npc,bool lowPriority=false)=>Registry.NpcVanillaAiStateCommitted(kind,in npc,lowPriority);
         public void NpcHistoricalStateCommitted(NpcStateCommitKind kind,in NpcSnapshot checkpoint,in NpcSnapshot committed)
         {Registry.NpcHistoricalStateCommitted(kind,in checkpoint,in committed);OnHistorical?.Invoke(checkpoint,committed);}
-        public void NpcCatchCommitted(in NpcSnapshot npc,bool needsSync) {Registry.NpcCatchCommitted(in npc,needsSync);OnCatch?.Invoke();}
+        public void NpcRetirementCommitted(in NpcSnapshot npc,bool needsSync) {Registry.NpcRetirementCommitted(in npc,needsSync);OnCatch?.Invoke();}
     }
 }

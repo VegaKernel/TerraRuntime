@@ -1,5 +1,9 @@
 # AI3 and AI7 NPC definitions, Terraria 1.4.5.8
 
+## Ranged and child block accepted, 2026-10-29
+
+The accepted census is **278/300 AI3/AI7 lifecycle identities (92.7%)**, leaving 22 creation-only. Eight new AI3 parents and four children in other AI styles bring global lifecycle admission to **546/755 (72.3%)**, with 209 creation-only definitions. The parents are `379/380/383/386/389/391/631/632`; the children are `384/387/390/606`. These counts describe admitted lifecycle slices, not complete behavior. `FullVanillaAiParity` remains false. [Runtime boundary](npc-ai3-ai7-runtime-1458.md#ranged-cohort-accepted-2026-10-29) and [acceptance](../verification/npc-ranged-acceptance-20261029.json) include independent replay, composite test-only repairs, Windows NativeAOT and actual TCP. Earlier checkpoints below retain their historical counts.
+
 ## Seven-identity transformation block accepted, 2026-10-29
 
 The accepted lifecycle census is **270/300 AI3/AI7 identities (90%)**, leaving 30 creation-only. The seven additions are exactly `198`, `230`, `532`, `534`, `586`, `593` and `687`; already admitted transform endpoints add no identities. Global admission is **534 lifecycle / 221 creation-only**. [Runtime scope](npc-ai3-ai7-runtime-1458.md#transformation-cohort-accepted-2026-10-29) and [aggregate evidence](../verification/npc-transform-acceptance-20261029.json) define the bounded AI/status/transform/combat/loot/presentation and publication owners. `FullVanillaAiParity` remains false; lifecycle counts are not full vanilla fidelity.

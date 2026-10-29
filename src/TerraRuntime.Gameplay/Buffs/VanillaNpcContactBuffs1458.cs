@@ -15,7 +15,7 @@ public static class VanillaNpcContactBuffs1458
 
     public static bool IsContactBuffType(BuffTypeId type) => type.Value is
         20 or 22 or 23 or 24 or 30 or 31 or 32 or 33 or 35 or 36 or 39 or 44 or 46 or 47 or 48 or
-        67 or 69 or 70 or 80 or 103 or 120 or 148 or 149 or 156;
+        67 or 69 or 70 or 80 or 103 or 120 or 144 or 148 or 149 or 156;
 
     /// <summary>
     /// Consumes the existing contact RNG in source order. Call only after a positive, nonlethal committed Hurt.

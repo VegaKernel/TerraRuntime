@@ -47,6 +47,12 @@ public static class VanillaOrdinaryMeleeLootCatalog1458
         Add(592);
         Add(593);
         Add(687);
+        // Populated 1.4.5.8 registrations; global/death producers stay separate.
+        Add(379);
+        Add(380);
+        Add(606);
+        Add(631, Common(new(3), 1, 10, 20), Common(new(4761), 3));
+        Add(632);
         Add(181, Common(VanillaOrdinaryMeleeDropItemIds1458.Vertebrae, 3),
             Common(VanillaOrdinaryMeleeDropItemIds1458.TentacleSpike, 100, kind: VanillaNpcLootRuleKind.DontStarveCommon),
             Common(VanillaOrdinaryMeleeDropItemIds1458.TentacleSpike, 525, kind: VanillaNpcLootRuleKind.NotDontStarveCommon),

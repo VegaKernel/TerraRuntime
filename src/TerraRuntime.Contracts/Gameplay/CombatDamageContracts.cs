@@ -24,7 +24,8 @@ public enum EnvironmentDamageCause : byte
     Unspecified = 0,
     Lava = 1,
     Burning = 2,
-    Poison = 3
+    Poison = 3,
+    Electrified = 4
 }
 
 /// <summary>
@@ -41,7 +42,7 @@ public readonly record struct DamageSource(
 
     public bool IsValid =>
         (EnvironmentCause == EnvironmentDamageCause.Unspecified ||
-         (Kind == DamageSourceKind.Environment && EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning or EnvironmentDamageCause.Poison)) &&
+         (Kind == DamageSourceKind.Environment && EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning or EnvironmentDamageCause.Poison or EnvironmentDamageCause.Electrified)) &&
         (Kind switch
     {
         DamageSourceKind.Environment or DamageSourceKind.Server =>

@@ -63,7 +63,8 @@ internal readonly record struct VanillaProjectileBehaviorContext(
     VanillaProjectilePlayerTargetResolver? HostilePlayerTargets = null,
     int CurrentTimeLeft = int.MaxValue,
     ProjectileLocalAiState LocalAi = default,
-    bool Wet = false);
+    bool Wet = false,
+    VanillaUnifiedRandom1458? PreviewRandom = null);
 
 /// <summary>State produced by one supported vanilla projectile AI-family step before world motion/collision.</summary>
 internal readonly record struct VanillaProjectileBehaviorResult(
@@ -221,12 +222,23 @@ internal static partial class VanillaProjectileBehaviorStepper
 
             case VanillaProjectileBehaviorFamily.BasicArrow:
                 // TerrariaServer 1.4.5.8 Projectile.AI_001(), source-backed basic aiStyle-1 path.
-                if (!VanillaProjectileBehaviorProfileCatalog.SkipsBasicArrowGravity(current.Type))
-                    ai0 += 1f;
-                if (ai0 >= 15f)
+                if (current.Type == VanillaProjectileIds.GoblinArcherArrow)
                 {
-                    ai0 = 15f;
-                    velocityY += 0.1f;
+                    // AI_001 types81/91 have their own later, gentler ballistic stage;
+                    // only the already-admitted hostile wooden arrow is routed here.
+                    if (current.Ai.Ai1 == 0f) ai1Override = 1f;
+                    ai0 += 1f;
+                    if (ai0 >= 20f) { ai0 = 20f; velocityY += .07f; }
+                }
+                else
+                {
+                    if (!VanillaProjectileBehaviorProfileCatalog.SkipsBasicArrowGravity(current.Type))
+                        ai0 += 1f;
+                    if (ai0 >= 15f)
+                    {
+                        ai0 = 15f;
+                        velocityY += 0.1f;
+                    }
                 }
 
                 if (velocityY > MaximumArrowFallSpeed)
@@ -284,6 +296,26 @@ internal static partial class VanillaProjectileBehaviorStepper
                 if (current.Ai.Ai1 == 0f) ai1Override = 1f;
                 if (ai0 >= 15f) { ai0 = 15f; velocityY += .1f; }
                 velocityY = Math.Min(MaximumArrowFallSpeed, velocityY);
+                break;
+
+            case VanillaProjectileBehaviorFamily.GigaZapperSpear:
+                if (current.Ai.Ai1 == 0f) ai1Override = 1f;
+                ai0 += 1f;
+                next = new(velocityX, Math.Min(MaximumArrowFallSpeed, velocityY), ai0,
+                    Ai1Override: ai1Override, Kill: ai0 >= 20f,
+                    LocalAiOverride: context.LocalAi with { Ai0 = context.LocalAi.Ai0 == 0f ? 1f : context.LocalAi.Ai0 });
+                return true;
+
+            case VanillaProjectileBehaviorFamily.RockGolemRock:
+                if (context.WindPhysics) velocityX += context.WindSpeedCurrent * context.WindPhysicsStrength;
+                ai0 += 1f;
+                if (ai0 >= 38f) { velocityY += .4f; velocityX *= .97f; }
+                if (current.Ai.Ai1 == 0f)
+                {
+                    if (context.PreviewRandom is null) { next = default; return false; }
+                    ai1Override = 1 + context.PreviewRandom.Next(6);
+                }
+                velocityY = Math.Min(MaximumThrownFallSpeed, velocityY);
                 break;
 
             case VanillaProjectileBehaviorFamily.HopliteJavelin:

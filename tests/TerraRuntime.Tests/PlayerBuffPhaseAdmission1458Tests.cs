@@ -28,7 +28,7 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
         Assert.NotNull(initial);
         Assert.Equal(0, initial.Value.Selected.Animation);
         f.State.Tick();
-        bool represented = id is 20 or 22 or 23 or 24 or 30 or 32 or 33 or 35 or 36 or 39;
+        bool represented = id is 20 or 22 or 23 or 24 or 30 or 32 or 33 or 35 or 36 or 39 or 144;
         Assert.Equal(duration - 1, f.Buffs.GetDuration(new BuffTypeId(id)));
         Assert.Contains(new BuffTypeId(id), f.Buffs.CaptureEffectTypes());
         Assert.Equal(represented, f.Member.ItemPhase.HasValue);
@@ -45,11 +45,13 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
         else
         {
             Assert.True(f.Member.NpcHealth is { SourceProfileKnown: true });
-            if (id is 20 or 24 or 39)
+            if (id is 20 or 24 or 39 or 144)
             {
                 // Source UpdateLifeRegen consumes the final positive effect
                 // even when UpdateBuffs has already removed its duration-one slot.
-                int rate = id == 20 ? -4 : id == 24 ? -8 : -24;
+                // The fixture holds right even at zero velocity; Electrified
+                // reads horizontal controls rather than velocity.
+                int rate = id == 144 ? -40 : id == 20 ? -4 : id == 24 ? -8 : -24;
                 Assert.Equal(rate, f.Member.NpcHealth.Value.RegenCount);
                 Assert.Equal(1f, f.Member.NpcHealth.Value.RegenTime);
             }

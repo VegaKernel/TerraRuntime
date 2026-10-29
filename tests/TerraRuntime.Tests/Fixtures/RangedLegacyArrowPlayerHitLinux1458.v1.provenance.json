@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "eef93621580d1e793add3867b75bb137d197cb98abfaad8f1e1d8f5d99a90aac",
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "probeSha256": "3b7cf1e9f78b99c189911eb8930f167f947a9c968b1279c6ad1ebf617f84d2e2",
+  "dependencies": {
+    "compat/System.Security.Permissions.dll": "c871a5ca73df949c25f6af62c1e2a331c7694630443f3b07a462ba451dcb2ccb",
+    "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+    "Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07"
+  },
+  "rows": 33,
+  "sourceQualification": {
+    "path": ".cache/ranged-projectiles/evp-v1-qualification.json",
+    "sha256": "69eabd86cabf260cf65115580606e402586ec5ae1f98e0bc9a94ff291517c117"
+  },
+  "scope": "Actual initialized original81/11scenes/3seeds. Existing315usual81controls unchanged, connected379/380dependency uses sameGroundCombattransaction andgenericblood withoutStatusPlayerproc/playerpenetrationdebit. LethalRNG remains diagnostic/unqualified."
+}

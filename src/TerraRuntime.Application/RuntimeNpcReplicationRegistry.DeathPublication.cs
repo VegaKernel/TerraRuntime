@@ -39,6 +39,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         private bool terminalAttempted;
         private bool birthPublished;
         private bool terminalPublished;
+        private bool suppressTerminalWire;
 
         internal bool Matches(NpcStateCommitKind kind, in NpcSnapshot snapshot) => kind switch
         {
@@ -60,14 +61,19 @@ internal sealed partial class RuntimeNpcReplicationRegistry
             {
                 if (terminalPublished) return false;
                 terminalPublished = true;
-                frame = terminalFrame;
+                frame = suppressTerminalWire ? null : terminalFrame;
             }
             if (frame is not null && removal.IsAcceptedCurrent) owner.Broadcast(frame);
             return true;
         }
 
         internal bool TryPublishPendingBirth() => Publish(pendingBirth: true);
-        internal bool TryPublishTerminal() => Publish(pendingBirth: false);
+        internal bool TryPublishTerminal(bool suppressTerminalWire = false)
+        {
+            if (terminalAttempted) return false;
+            this.suppressTerminalWire = suppressTerminalWire;
+            return Publish(pendingBirth: false);
+        }
 
         private bool Publish(bool pendingBirth)
         {

@@ -10,7 +10,7 @@ using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Tests;
 
-public sealed class GroundCombatPlayerHit1458Tests
+public sealed partial class GroundCombatPlayerHit1458Tests
 {
     public static IEnumerable<object[]> Cases()
     {

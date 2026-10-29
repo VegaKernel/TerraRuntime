@@ -17,6 +17,7 @@ public static class VanillaPlayerHealthContext1458
         // Out-of-range UpdateBuffs precedes the normal ResetEffects; previous flags can remain set.
         return previous is { } prior
             ? new(prior.OnFire || flags.OnFire, prior.OnFire2 || flags.OnFire2, prior.Poisoned || flags.Poisoned)
+                { Electrified = prior.Electrified || flags.Electrified }
             : null;
     }
 

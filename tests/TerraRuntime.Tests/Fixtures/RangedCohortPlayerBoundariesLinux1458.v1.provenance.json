@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "0f18d0e8e57fd91da4bc9a4ea76449e611a5487ece1506ffa37b80090b89f929",
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "probeSha256": "fcd12ddc818ae5d38d5a6d7638a6c088686d43fd2f430a1bb852e1b5bb741b5d",
+  "dependencies": {
+    "compat/System.Security.Permissions.dll": "c871a5ca73df949c25f6af62c1e2a331c7694630443f3b07a462ba451dcb2ccb",
+    "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+    "Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07"
+  },
+  "rows": 144,
+  "sourceQualification": {
+    "path": ".cache/ranged-projectiles/actor-boundaries-v1-qualification.json",
+    "sha256": "efc76baa7eeb41c5c663f558297a5e18cbf1efed36a74bd2842e376281ce1ba7"
+  },
+  "scope": "Actual unchanged original Projectile.Update(0), five hostile types. Controlled TTL1..4 contact/tail-only, collision/worldbounds, Godmode overlap and lethalHPdiagnostic. Actor640/1000 Vx12, GodmodeVx1; actual source dimensions/AI before andafter captured. Actual Player.Update warmup,then unchanged net0 fullUpdate/dedServ/myPlayer0/gameMenu=true with100actual already-active CombatText slots (no font needed). Raw visual-pool fixture is explicit; no full client/GUI claim. Full single Projectile.Update caller; not whole Main or player update parity.",
+  "controls": "Sourceactualmode/expert/master/GoodWorld getters retained; survivinglowDamage3 preservesHurt+statusRNG in all6modes. Actor net0 is explicit local-client component/dedServ with100actualCombatText slots, not net2 server automaticDamage or GUI. Legacy lethalKillMeentropy remains unqualified."
+}

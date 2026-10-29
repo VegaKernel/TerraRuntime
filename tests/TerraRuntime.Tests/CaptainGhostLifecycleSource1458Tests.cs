@@ -18,7 +18,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class CaptainGhostLifecycleSource1458Tests
+public sealed partial class CaptainGhostLifecycleSource1458Tests
 {
     [Fact]
     public void Captain_possible_or_unknown_dungeon_spirit_producer_refuses_before_ghost_loot_or_progress()
@@ -534,7 +534,7 @@ public sealed class CaptainGhostLifecycleSource1458Tests
         public bool IsCurrent(in NpcRawPlayerSlotSnapshot1458 snapshot) => TryCapture(snapshot.Facts.Slot, out var current) && current == snapshot;
     }
 
-    sealed class Fixture : IRuntimePlayerSlotSnapshotLookup, INpcStateCommitSink, IWorldItemStateCommitSink
+    sealed class Fixture : IRuntimePlayerSlotSnapshotLookup, INpcStateCommitSink, INpcBirthRetentionSink, IWorldItemStateCommitSink
     {
         internal readonly RuntimeNpcStore Npcs;
         internal readonly RuntimeNpcNetworkCombatPipeline Pipeline;
@@ -549,14 +549,20 @@ public sealed class CaptainGhostLifecycleSource1458Tests
         internal readonly RuntimeWorldProgressionMutations Progression = new();
         internal readonly RuntimeWorldClock Clock;
         internal Action<NpcSnapshot>? OnGhostSpawn;
+        internal Action<NpcSnapshot>? OnRetainedBirth;
+        internal Action<NpcStateCommitKind, NpcSnapshot>? OnNpcCommit;
         internal Action? OnPlayerRead;
         private readonly PlayerStateSnapshot player;
         private readonly bool living;
+        private readonly PlayerJoinSession? clientSession;
+        internal Action<WorldItemSnapshot>? OnDrop;
 
         internal Fixture(bool good, bool full, bool replicate = false, int invasionType = 3, bool attachInvasion = true, int invasionSize = 6, bool playerLiving = true, bool slimeRain = false,
-            bool hardmode = false, bool? planteraDowned = null, bool? dungeon = false)
+            bool hardmode = false, bool? planteraDowned = null, bool? dungeon = false,
+            int targetType = 216, WorldTileStore? tiles = null, int seed = 1458, bool clientPlayer = false)
         {
             living = playerLiving;
+            Random = new(seed);
             Clock = new(0, true, 0, slimeRain ? 100 : 0, 0);
             Owner = new(new InvasionState1458(invasionType, invasionSize, 120, 0, 50, 3600, 0, 0, 0, 0,
                 false, false, false, false));
@@ -579,7 +585,7 @@ public sealed class CaptainGhostLifecycleSource1458Tests
                 MaxMana = 200,
                 NpcLifeCurrent = true
             };
-            var update = new NpcStateUpdate(216, 216, 800, 440, 0, 0, 0, default, NpcSimulationState.Initial);
+            var update = new NpcStateUpdate(targetType, checked((short)targetType), 800, 440, 0, 0, 0, default, NpcSimulationState.Initial);
             if (!Npcs.TrySpawnVanilla(in update, out Captain)) Assert.Fail("Captain creation refused.");
             if (full)
             {
@@ -588,8 +594,25 @@ public sealed class CaptainGhostLifecycleSource1458Tests
                     if (!Npcs.TrySpawn(slot, in zombie, out _)) Assert.Fail("Full pool setup refused.");
             }
             Npcs.SetVanillaSpawnRandomSource(new SystemVanillaNpcRandom(Random));
-            Pipeline = new(Npcs, items, this, new PlayerAuthority(null, null), () => 0,
-                replicate ? Registry : null, new(items), null, Clock, Progression, false, false,
+            var clientAuthority = new PlayerAuthority(null, null);
+            if (clientPlayer)
+            {
+                var pool = new PlayerSlotPool(1);
+                Assert.True(pool.TryAcquireConnection(out var lease));
+                clientSession = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+                clientSession.ObserveWorldRequest(); clientSession.ObserveSectionRequest();
+                var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(9001), clientSession.Handle);
+                Assert.True(clientAuthority.TryApply(new PlayerSpawnRuntimeCommand(connection, clientSession,
+                    new PlayerSpawnCommitRequest(clientSession.Slot, 62, 27, 0, 0, 0, 0, 0))));
+                Assert.True(clientAuthority.TryApply(new PlayerHealthRuntimeCommand(connection,
+                    new PlayerHealthCommitRequest(clientSession.Slot, 400, 400))));
+                // A real owned selected inventory item, outside modeled direct
+                // melee weapons, exercises the existing compatibility ingress.
+                Assert.True(clientAuthority.TryApply(new PlayerEquipmentRuntimeCommand(connection,
+                    new PlayerEquipmentCommitRequest(clientSession.Slot, 0, 1, 0, 3, 0))));
+            }
+            Pipeline = new(Npcs, items, this, clientAuthority, () => 0,
+                replicate ? Registry : null, new(items), null, Clock, Progression, false, false, worldTiles: tiles,
                 lootRandom: Random, lootRemixWorld: false,
                 planteraDownedBaseline: planteraDowned,
                 globalLootWorld: new(100, 80, 1, hardmode, false, false, false, 35, 40, false, false),
@@ -603,9 +626,11 @@ public sealed class CaptainGhostLifecycleSource1458Tests
         {
             Commits.Add(new(kind, npc));
             Events.Add("23:" + kind + ":" + npc.Handle.Slot + ":" + npc.TypeIdentity.Value);
+            OnNpcCommit?.Invoke(kind, npc);
             if (kind == NpcStateCommitKind.Spawn && npc.TypeIdentity == VanillaNpcIds.PirateGhost)
                 OnGhostSpawn?.Invoke(npc);
         }
+        public void NpcBirthRetained(in NpcSnapshot npc) => OnRetainedBirth?.Invoke(npc);
         internal InvasionState1458 CaptureInvasion()
         { Owner.TryCapture(out var capture); return capture.State; }
         internal static ConnectionHandle Connection(int source) => new(GameCommandSourceId.FromConnection(source),
@@ -622,6 +647,7 @@ public sealed class CaptainGhostLifecycleSource1458Tests
         {
             if (kind != WorldItemStateCommitKind.Drop) return;
             Drops.Add(item); Events.Add("21:" + item.ItemNetId + ":" + item.Stack);
+            OnDrop?.Invoke(item);
         }
     }
 

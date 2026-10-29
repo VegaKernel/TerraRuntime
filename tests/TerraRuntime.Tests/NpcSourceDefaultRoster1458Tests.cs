@@ -98,7 +98,8 @@ public sealed class NpcSourceDefaultRoster1458Tests
         // their composed generation/RNG phase owners as well. The ground-combat block
         // adds fifteen positive identities and the signed Armored Skeleton variant.
         // Four transform fighters and three amphibious critters add seven exact identities.
-        Assert.Equal(221, creationOnly);
+        // Eight ranged parents and their four independently captured children.
+        Assert.Equal(209, creationOnly);
     }
 
     [Fact]

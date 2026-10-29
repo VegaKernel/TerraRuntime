@@ -53,6 +53,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         _flyingEye.DeactivatesRetainedAfterCompletion(in before, in completed) ||
         _bee.Deactivates(in before, in completed);
 
+    public bool RetiresDuringAiAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
+        _npcPhase.RetiredDuringAi(in before, in completed);
+
     public bool RequiresForcedUpdateAfterPlanning(
         in NpcSnapshot before,
         in NpcStateUpdate proposed,

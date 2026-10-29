@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "43d660b2ce2c331f33f7855bbbe0cfcc8160e8c167fe07a5d92e03fde12910df",
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "sourceDependencies": {
+    "FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+    "Terraria.Libraries.ReLogic.ReLogic.dll": "2e7750fe79ba48bcca8e7ea5691f87c0e5887024b58552c433efb2e2ad060a65",
+    "Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll": "588155340ef9b7aa609b71724679b5356ba2ecdaa31ce1de010ae6bb3436fd07"
+  },
+  "sourceWhole": {
+    "path": ".cache/electrified/qualification-v1.json",
+    "sha256": "c5dfef17f584b93a1ff395b56122c1a756acd39be5f13e87fc6174abf065684e",
+    "callsIncludingRepeats": 14784
+  },
+  "sourceComponents": {
+    "path": ".cache/electrified/regen-qualification-v3.json",
+    "sha256": "66c72d040923a93fce2aa5e62751b236fd9962c3d41e74c6626325c2f0761ed9",
+    "stepsIncludingRepeats": 14784,
+    "entry": "ActualResetEffects?UpdateBuffs(0)?UpdateLifeRegen; rawcontrolsinput/ownedsourcelocaltimer,neutral0orimported-117count/time0or299, nofullinputprelude/motion/ItemCheck."
+  },
+  "wholeRoleLimits": "SourcewholeLocalBoth clearsbothbeforeRegen giving8; wholeRemoteBothkeepsbothgiving40. WholeRemote buffs doNOTcountdown; runtimeownedcontactdurationprojects source-localcounter. No blanketfullremoteupdate/parityclaim. RuntimeLocalBoth144explicitrefusalbeforetimer/HP/RNG.",
+  "constructorHeat": "Actual0/fullrawRNGretained,nooffset",
+  "historicalPrototypes": "regenV1 omittedonFire/onFire2projection; regenV2 addsflagsbutoldglobalheader-117/299didnotdescribeneutral0rows. V3correctsheaderonly; oldrawbytespreserved, chosenfixtureconsumesV3only."
+}

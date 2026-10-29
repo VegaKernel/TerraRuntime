@@ -41,19 +41,20 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         ClearLiveFrame(parent);
     }
 
-    internal bool TryPrepareRetainedBirth(in NpcSnapshot birth, out RetainedBirthJournal? journal)
+    internal bool TryPrepareRetainedBirth(in NpcSnapshot birth, out RetainedBirthJournal? journal,
+        bool deferLive = false)
     {
         journal = null;
         if (!RuntimeNpcPacketProjection.TryCreate(in birth, RuntimeNpcSyncKind.Spawn, out var spawn) ||
             !TerrariaNpcUpdateEncoder.TryEncode(in spawn, out var encoded) ||
             !RuntimeNpcPacketProjection.TryCreate(in birth, RuntimeNpcSyncKind.Despawn, out var despawn) ||
             !TerrariaNpcUpdateEncoder.TryEncode(in despawn, out var retired)) return false;
-        journal = new(this, birth, encoded, retired);
+        journal = new(this, birth, encoded, retired, deferLive);
         return journal.TrySealRecipients();
     }
 
     internal sealed class RetainedBirthJournal(
-        RuntimeNpcReplicationRegistry owner, NpcSnapshot birth, byte[] encoded, byte[] retired)
+        RuntimeNpcReplicationRegistry owner, NpcSnapshot birth, byte[] encoded, byte[] retired, bool deferLive)
     {
         private readonly record struct Recipient(GameCommandSourceId Source, Endpoint Endpoint, object Occupation);
         private Recipient[] recipients = [];
@@ -87,7 +88,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry
             Volatile.Write(ref owner.baselineFrames[birth.Handle.Slot], encoded);
             Volatile.Write(ref owner.despawnFrames[birth.Handle.Slot], retired);
             owner.ClearLiveFrame(birth.Handle);
-            owner.retainedBirthJournals[birth.Handle.Slot] = this;
+            if (!deferLive) owner.retainedBirthJournals[birth.Handle.Slot] = this;
             acceptedStore = store;
             adopted = true;
             return true;
@@ -97,6 +98,9 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         {
             if (!adopted || published) return false;
             published = true;
+            // NewNPC only retains this generation for joins. Its normal NPC
+            // update/strike still owns the first live packet and pending flag.
+            if (deferLive) return true;
             if (ReferenceEquals(owner.retainedBirthJournals[birth.Handle.Slot], this))
                 owner.retainedBirthJournals[birth.Handle.Slot] = null;
             if (acceptedStore is null || !acceptedStore.TryGet(birth.Handle, out var current) || current != birth)

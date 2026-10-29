@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "fixtureSha256": "2dc438d2a8eab456ff58f228e9fa3a149143be1b68012ba1a2e10353a9cc92ba",
+  "originalQualification": {
+    "path": "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-projectiles-v1\\qualification.json",
+    "sha256": "0124f6cf83b7cb190878fd97c0ccbf831c0cd1ab7fd5c097ca2505f32053c37d"
+  },
+  "rows": 315,
+  "framesPerRow": 64,
+  "uniqueComparedFrames": 20160,
+  "originalExecutedCallsIncludingRepeat": 40320,
+  "controls": [
+    81,
+    438
+  ],
+  "newTypes": [
+    435,
+    437,
+    909
+  ],
+  "scope": "Full physical/AI/local/live lifecycle/liquids/direction/sharedRNG within sourcecomponent noactiveplayers/noNPCs/peers/net2. Visuals remain diagnostics; dead source internal lifecycle fields not available through runtimepublicprojection are explicitlyunqualified. No wholeMain/GUI/parity promotion from this record."
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "kind": "actual-npc-source-projectile-birth-cases",
+  "sourceOnly": true,
+  "runtimeQualified": false,
+  "aggregateAccepted": false,
+  "cases": 15,
+  "sourceProjectiles": [
+    81,
+    435,
+    437,
+    438,
+    909
+  ],
+  "seeds": [
+    1458,
+    42,
+    8675309
+  ],
+  "fixtureSha256": "bf957f0fc12c4f2db97d98a02e8aec3c188775cda0e9d65a04aa764c3affbcad",
+  "rawSha256": "eacbbb3a1c8d16b644ce0161b8d2da93314e177c29b47f5b0aafb7913c214faf",
+  "sourceCapsules": {
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-parent-v2\\original-1458-a.json.gz": "76e99ce947d5c9764fcdf356cb0d0bff24a896545dad8fbe807a515c31e6f158",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-children-v1\\original-1458-a.json.gz": "d9e7ea8982dba3c12c7ce61f9d4b75f4dfcf46ba112f32ebf71159c08159b8c1",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-ranged-20261029\\.cache\\child-ai\\original-observer-v1\\original-1458-a.json.gz": "675c462a636c8d2a3733bfd67b2e91cfc3b5a1791e22664e70a30a82965f2340",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-parent-v2\\original-42-a.json.gz": "d08e282beda16ae3089322d47e948d90355afe5a53ee487e96487f60edb8e0be",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-children-v1\\original-42-a.json.gz": "e43c3ff0c4d726a7929bcdd9680978d613f6e14aa922f4f9ac6eb1a6bad86e5c",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-ranged-20261029\\.cache\\child-ai\\original-observer-v1\\original-42-a.json.gz": "851c15bfba20cb6ef517349c7ada94396d314e347a0d56d426b7730091879837",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-parent-v2\\original-8675309-a.json.gz": "fc7709ff6e32f0e3c640ca7850dce21e16aa189c9894d7e95daf3bc5e9d3959a",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-children-v1\\original-8675309-a.json.gz": "e81fffda89aab513729fa07bcda90c435562ad432632630db12d634e1fb90bb6",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-ranged-20261029\\.cache\\child-ai\\original-observer-v1\\original-8675309-a.json.gz": "219b3dc5cdb6c45d53e09310261e2fd5dc695a40efce85bf965419287663053b"
+  },
+  "sourceQualifications": {
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-parent-v2\\qualification.json": "b3aa5dd6cbac4642e083c599738a976dbb08c069996a8c91796fdd0766b52a42",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-transform-20261029\\.cache\\next8-readonly\\original-children-v1\\qualification.json": "60236816cf7134c440a0263704f628d151b335a10ad3f8902001fae752a8bf9c",
+    "E:\\TerraRuntime-agent-cache\\TerraRuntime-npc-ranged-20261029\\.cache\\child-ai\\original-observer-v1\\qualification-scope-v2.json": "74377bf68dbee53c1347937c9c3de99554802d09e1a356a0f2ae6a354fe7a4cd"
+  },
+  "selection": "Complete unmodified original case objects selected by exact type/scene. All original input/birth/components/32frames/physicalRNG/rawjournals preserved; wrappers only add sourceGroup/projectileType. Test runs only to first actual positive shot.",
+  "sourceScope": "NPC.UpdateNPC selected-actor component, peers held unstepped; rider438 includes one actual391prepass before390. No wholeMain/world/player/projectile iteration or general source-banner HP reduction parity claim.",
+  "protocolCause": "Projectile.FindBannerToAssociateTo(EntitySource_Parent NPC) calls BannerSystem.NPCtoBanner(NPC.BannerID); source NetMessage27 flag3 iff banner nonzero. OriginalDamage0 remains0 and flag6 absent.",
+  "oldRawSourcesModified": false
+}

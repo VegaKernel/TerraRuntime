@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "numeric-extraction-of-independent-official-source-captures",
+  "runtimeAccepted": false,
+  "fixture": "RangedCohortDeathLootOriginal1458.v1.json.gz",
+  "fixtureSha256": "13a1a0abbbe8eeee5910adf3f1977832d7ced43cd66da5924194a5c19dec7256",
+  "sourceAudit": {
+    "path": ".cache\\ranged-death-audit\\admission-audit-v1.json",
+    "sha256": "c24f8c698d2f78fa31487f61fe4f85e70f7fa558c3852d39506b4fb7207584d8"
+  },
+  "parentEffectQualification": {
+    "path": ".cache\\ranged-death-audit\\effects-qualification-v3.json",
+    "sha256": "8a125797163139590fca352671030bc5906026d13f51b45189c2899f7839c2a5"
+  },
+  "parentLootQualification": {
+    "path": ".cache\\ranged-death-audit\\loot-qualification-v1.json",
+    "sha256": "53a24a45c07c5c75253632255e56f3508bcaac2ee2fcfd9fb6607f8e618db9d2"
+  },
+  "parentRareQualification": {
+    "path": ".cache\\ranged-death-audit\\loot-rare-qualification-v1.json",
+    "sha256": "5eb7ea4bf445f5d5d8435f62c01e217c43ae6ccd1d338026881ae2fb947e16be"
+  },
+  "scope": "Actual initialized official1458 NewNPC births, NPC.HitEffect including632 newborn peers, specific-rule graphs/resolution/materialization and rare-positive original seed search. Reuses immutable child captures with their complete pins inside fixture. Extraction only; no additional source execution or aggregate runtime parity claim. All earlier fixtures unchanged."
+}

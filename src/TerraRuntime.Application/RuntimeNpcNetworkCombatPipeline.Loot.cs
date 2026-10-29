@@ -32,7 +32,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
         // Dedicated NPC.HitEffect still makes the Eskimo Zombie's gore choice, even though
         // Gore.NewGore and Dust.NewDust perform no server-side particle allocation.
-        if (npc.TypeIdentity.Value == 186) random.NextInt32(0, 5);
+        if (npc.TypeIdentity.Value is 186 or 632) random.NextInt32(0, 5);
         // NPC.HitEffect chooses these admitted gold critters' dust identities
         // before dedicated Dust.NewDust returns without allocating.
         if (VanillaNonresidentGroundCritterCatalog1458.IsGoldCritter(npc.Type))
@@ -66,6 +66,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             // NPC.HitEffect (1.4.5.8) still makes six noGravity choices after dedicated Dust.NewDust returns.
             for (int particle = 0; particle < 6; particle++) random.NextInt32(0, 2);
         }
+        VanillaRangedNpcDeath1458.ConsumeDedicatedLethalChoices(npc.Type, random);
+        if (npc.Type == 632 && (!EnsurePreviewSpawnStream() ||
+            !DeathNpcs.TryStageMaggotDeathChildren(in npc, random))) deathPreviewFailed = true;
         if (npc.TypeIdentity == VanillaNpcIds.Slimer && EnsurePreviewSpawnStream() &&
             !DeathNpcs.TryExecuteSlimerDeathSpawn(in npc, out _, out _))
             deathPreviewFailed = true;

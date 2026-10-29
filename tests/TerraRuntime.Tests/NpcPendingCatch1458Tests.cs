@@ -160,7 +160,7 @@ public sealed class NpcPendingCatch1458Tests
         internal bool LowPriority;
         internal int AiPhases;
         public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot) { }
-        public void NpcCatchCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing) => OnCatch?.Invoke();
+        public void NpcRetirementCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing) => OnCatch?.Invoke();
         public void NpcVanillaAiStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot, bool lowPriority = false)
         { LowPriority = lowPriority; AiPhases++; }
     }

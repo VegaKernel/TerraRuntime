@@ -31,9 +31,12 @@ public sealed class NpcRemainingDefinitions1458Tests
                     Assert.True(definition.DefinitionOnly); Assert.False(definition.TryResolveHitbox(1f, out _));
                     continue;
                 }
-                Assert.False(definition.DefinitionOnly); Assert.True(definition.CreationDefaultsOnly);
-                Assert.False(definition.SupportsRuntimeLifecycle); Assert.Equal(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
-                Assert.Equal(VanillaNpcPhysicsFamily.None, definition.PhysicsFamily);
+                bool retainedChild = type is 384 or 387 or 390 or 606;
+                Assert.False(definition.DefinitionOnly); Assert.Equal(!retainedChild, definition.CreationDefaultsOnly);
+                Assert.Equal(retainedChild, definition.SupportsRuntimeLifecycle);
+                Assert.Equal(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
+                Assert.Equal(retainedChild ? VanillaNpcPhysicsFamily.GenericGround : VanillaNpcPhysicsFamily.None,
+                    definition.PhysicsFamily);
                 if (windows != OperatingSystem.IsWindows()) continue;
                 var store = new RuntimeNpcStore(4);
                 var update = new NpcStateUpdate(type, (short)net, 1000, 1000, 0, 0, 255, default, NpcSimulationState.Initial);
@@ -57,11 +60,14 @@ public sealed class NpcRemainingDefinitions1458Tests
                 Assert.Equal(row.GetProperty("hidden").GetBoolean(), born.Simulation.Hidden);
                 Assert.Equal(row.GetProperty("town").GetBoolean(), born.Simulation.TownNpc);
                 Assert.True(!VanillaNpcAiCoverageCatalog.TryGet(new(type), out var coverage) || !coverage.FullVanillaAiParity);
-                var stepper = new CountingLifecycle();
-                Assert.Equal(0, new RuntimeNpcAiStateExecutor(store).Tick(stepper).Applied); Assert.Equal(0, stepper.Calls);
-                var damage = new NpcDamageRequest(born.Handle, DamageSource.Environment, 100000);
-                Assert.False(new RuntimeNpcDamageExecutor(store).TryApply(in damage, out _));
-                Assert.True(store.TryGet(born.Handle, out var retained)); Assert.Equal(born, retained);
+                if (!retainedChild)
+                {
+                    var stepper = new CountingLifecycle();
+                    Assert.Equal(0, new RuntimeNpcAiStateExecutor(store).Tick(stepper).Applied); Assert.Equal(0, stepper.Calls);
+                    var damage = new NpcDamageRequest(born.Handle, DamageSource.Environment, 100000);
+                    Assert.False(new RuntimeNpcDamageExecutor(store).TryApply(in damage, out _));
+                    Assert.True(store.TryGet(born.Handle, out var retained)); Assert.Equal(born, retained);
+                }
                 var intentStore = new RuntimeNpcStore(4);
                 var intent = new NpcAiSpawnIntent(new(type), 1000, 1000, 0f, 0f, 255)
                     { NetIdOverride = new((short)net) };
@@ -146,7 +152,7 @@ public sealed class NpcRemainingDefinitions1458Tests
         // Previous431, the verified37 undead/gem cohort, four bunny siblings,
         // seventeen ordinary melee actors, twenty-two nonresident ground critters
         // sixteen further ground-combat identities and seven transformation-dependent identities.
-        Assert.Equal(534, lifecycle + CountSignedLifecycle());
+        Assert.Equal(546, lifecycle + CountSignedLifecycle());
         int signed=0;
         for(short net=-65;net<0;net++) for(int type=1;type<=696;type++)
             if(VanillaNpcDefinitionCatalog.TryGet(new(type),new(net),out var d) && !d.DefinitionOnly) signed++;

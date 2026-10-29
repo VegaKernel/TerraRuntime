@@ -233,6 +233,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             return RuntimeNpcNetworkDamageResult.Rejected;
         }
 
+        if (!VanillaRangedNpcDeath1458.CanOwnStrike(in current))
+            return RuntimeNpcNetworkDamageResult.Rejected;
+
         // Packet 28 contains a claimed hit, not a server collision/death entitlement.
         // Progression encounters and event participants use the owned projectile, melee or
         // environment lanes; the compatibility fallback must never manufacture progress.
@@ -330,7 +333,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             pendingTownStrike = townStrike;
             try
             {
-                applied = (current.TypeIdentity == VanillaNpcIds.PirateCaptain || current.TypeIdentity == VanillaNpcIds.PirateGhost)
+                applied = UsesPreparedLinkedDeath1458(current.TypeIdentity)
                     ? damage.TryApplyUnpublished(in request, out result, out captainCommitted,
                         out captainSpawnTrueEye, out captainForceUpdate, null, townStrike?.Reaction)
                     : damage.TryApplyClient(in request,
@@ -353,16 +356,19 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 if (!npcs.TryGet(current.Handle, out var captain)) throw new InvalidOperationException("Captain HP commit disappeared.");
                 AdoptCaptainOwners(in captain);
                 if (suppressing) npcReplication!.CompleteClientDamage(current.Handle);
-                PublishCaptainDeath(in captain, in normalizedWire, connection.Source);
+                PublishCaptainDeath(in captain, in normalizedWire, connection.Source, clientCaller: true);
                 return RuntimeNpcNetworkDamageResult.Killed;
             }
-            // The Captain-only retained death path must not alter ordinary client nonlethal completion.
-            if ((current.TypeIdentity == VanillaNpcIds.PirateCaptain || current.TypeIdentity == VanillaNpcIds.PirateGhost) && !result.Lethal &&
+            bool maggotHitEffectsApplied = current.Type == 632 && !result.Lethal;
+            if (maggotHitEffectsApplied) ExecuteNpcNonlethalHitEffects(in current, result.ResolvedDamage);
+            // Linked actors keep their accepted nonlethal HP unpublished until
+            // their caller-side HitEffect entropy has been consumed.
+            if (UsesPreparedLinkedDeath1458(current.TypeIdentity) && !result.Lethal &&
                 !damage.TryCompleteUnpublished(in captainCommitted, captainSpawnTrueEye,
                     publishUpdate: !captainRetainedBirth, captainForceUpdate))
                 throw new InvalidOperationException("Accepted Captain client strike lost its exact revision.");
             PublishTownStrikeRandom(townStrike);
-            if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in current, result.ResolvedDamage);
+            if (!result.Lethal && !maggotHitEffectsApplied) ExecuteNpcNonlethalHitEffects(in current, result.ResolvedDamage);
             NpcSnapshot dead;
             if (current.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&
                 TryResolveWallOfFleshRoot(in current, out NpcSnapshot wallRoot))
@@ -557,7 +563,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
         { CancelPendingDeathPlan(); return RuntimeProjectileNpcDamageResult.Rejected; }
 
-        if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost ||
+        if (result.Lethal && (UsesPreparedLinkedDeath1458(liveTarget.TypeIdentity) ||
             RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity) ||
             RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(liveTarget.TypeIdentity)))
             return RuntimeProjectileNpcDamageResult.Killed;
@@ -683,7 +689,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
-        if (result.Lethal && (liveTarget.TypeIdentity == VanillaNpcIds.PirateCaptain || liveTarget.TypeIdentity == VanillaNpcIds.PirateGhost ||
+        if (result.Lethal && (UsesPreparedLinkedDeath1458(liveTarget.TypeIdentity) ||
             RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(liveTarget.TypeIdentity) ||
             RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(liveTarget.TypeIdentity)))
             return RuntimeTownNpcMeleeDamageResult1458.Killed;
@@ -753,7 +759,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
     private void CompletePreparedCanonicalDeath(in NpcSnapshot dead)
     {
-        if ((dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost) && !npcs.TryGet(dead.Handle, out _)) return;
+        if (UsesPreparedLinkedDeath1458(dead.TypeIdentity) && !npcs.TryGet(dead.Handle, out _)) return;
         // The accepted items, RNG and ledger survive observer reentry. NPC continuation
         // belongs only to the exact committed revision, never a replacement or revised actor.
         if (!TryExecuteImportedLoot(in dead, eaterBoss: false))

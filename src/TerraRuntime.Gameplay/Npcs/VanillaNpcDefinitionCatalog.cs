@@ -240,6 +240,16 @@ public static class VanillaNpcDefinitionCatalog
 
     public static bool TryGet(NpcTypeId type, out VanillaNpcDefinition definition)
     {
+        // Explicit child-phase candidate identities. Sharing AI styles does not
+        // grant other actors lifecycle admission; source creation statistics remain authoritative.
+        if ((type == VanillaNpcIds.ForceBubble || type == VanillaNpcIds.MartianTurret ||
+             type == VanillaNpcIds.ScutlixRider || type == VanillaNpcIds.Maggot) &&
+            VanillaNpcSourceDefaultRoster1458.TryGetCreation(type, new((short)type.Value), out var child))
+        {
+            definition = child with { DefinitionOnly = false, CreationDefaultsOnly = false,
+                BehaviorFamily = VanillaNpcBehaviorFamily.None, PhysicsFamily = VanillaNpcPhysicsFamily.GenericGround };
+            return true;
+        }
         bool found = TryGetRegistered(type, out definition);
         if (VanillaNpcGroundRoster1458.TryGet(type, new((short)type.Value), out var source))
         {

@@ -53,8 +53,8 @@ public sealed class GroundCombatCohort1458Tests
     [Fact]
     public void Usual_unowned_attacks_children_and_transformations_keep_sibling_definitions_fenced()
     {
-        foreach (int type in new[] {236,379,380,383,386,389,391,409,411,415,419,
-            424,425,426,427,428,429,471,480,518,530,631,632})
+        foreach (int type in new[] {236,409,411,415,419,
+            424,425,426,427,428,429,471,480,518,530})
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type),out var definition));
             Assert.True(definition.CreationDefaultsOnly,$"Unproved sibling {type}");

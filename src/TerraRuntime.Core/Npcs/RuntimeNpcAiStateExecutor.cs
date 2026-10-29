@@ -276,7 +276,14 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 {
                     var completed = postCommitEffect!.CompleteCommittedState(in npc, in committed, this);
                     if (completed.Handle != committed.Handle || !_npcs.TryGet(completed.Handle, out var finalized) ||
-                        finalized.Revision != completed.Revision || !_npcs.TryPublishUpdate(in finalized,
+                        finalized.Revision != completed.Revision)
+                        continue;
+                    if (postCommitEffect.RetiresDuringAiAfterCompletion(in npc, in finalized))
+                    {
+                        _npcs.TryRetireAfterAi(in finalized);
+                        continue;
+                    }
+                    if (!_npcs.TryPublishUpdate(in finalized,
                             forceSync: forceUpdate || (forcedUpdatePlanner?.RequiresForcedUpdateAfterCompletion(in npc, in finalized) ?? false),
                             vanillaNetworkPhase: next.VanillaNetworkPhase,
                             // Materializing another identity runs SetDefaults, which clears

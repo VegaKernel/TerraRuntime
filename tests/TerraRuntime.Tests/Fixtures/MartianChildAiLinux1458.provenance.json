@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "martian-child-ai-component-numeric-goldens",
+  "cases": 102,
+  "sourceEntry": "Actual initialized unchanged NPC.AI; no outer status, gravity, collision, frames or wire claim",
+  "originalQualificationSha256": "3417662199b8787726069746671f77cd0381d1c08cc987c245a9bca93c45421e",
+  "fixtureSha256": "dae577cb8b649c02df141ecb55838b659e9f946875a7b72e1b0efab0c5eda15d",
+  "selected": "First step of32 direct-AI cases for3seeds, plussecondstep of2Maggot expiry cases; owner-dependent orphan/creation/Transform cases retainedonlyinoriginal/fullphasecorpora",
+  "officialExeSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "aggregateAccepted": false
+}

@@ -85,7 +85,8 @@ public sealed partial class RuntimeNpcStore
     // Death admission needs the real allocation/protection/generation rules without publishing child NPCs.
     // The trusted context provider is sampled once; the preview never retains a callback into live state.
     // Application must recheck the source NPC revision and shared RNG after this sample before accepting.
-    internal RuntimeNpcStore CreateDeathPreview(IVanillaNpcRandom random)
+    internal RuntimeNpcStore CreateDeathPreview(IVanillaNpcRandom random,
+        Func<float, float, int, int, bool>? capturedWetCollision = null)
     {
         ArgumentNullException.ThrowIfNull(random);
         var context = _spawnContext?.Invoke();
@@ -94,6 +95,7 @@ public sealed partial class RuntimeNpcStore
         _slots.CopyTo(preview._slots, 0);
         preview._activeCount = _activeCount;
         preview._spawnRandom = random;
+        preview.spawnWetCollision = capturedWetCollision;
         if (context is { } captured)
         {
             preview._spawnContext = () => captured;

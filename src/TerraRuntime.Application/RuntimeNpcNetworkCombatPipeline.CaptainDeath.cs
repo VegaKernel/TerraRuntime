@@ -45,8 +45,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void AdoptCaptainOwners(in NpcSnapshot committed)
     {
+        bool maggots = committed.Type == 632;
         if (plannedCaptainBirth?.CanAdopt(in committed) != true ||
-            plannedCaptainRemoval?.IsCurrent != true || !IsCaptainInvasionCurrent() ||
+            plannedCaptainRemoval?.IsCurrent != true || (!maggots && !IsCaptainInvasionCurrent()) ||
+            (maggots && plannedMaggotTerrain?.IsCurrent != true) ||
             pendingDeathPlan?.CanAdoptUnpublished() != true ||
             deathPrelude.Revision != plannedPreludeRevision ||
             progression.CaptureSnapshot() != plannedDeathProgression)
@@ -58,7 +60,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 out preparedDeathPreludePublication) ||
             !plannedCaptainBirth.TryAdoptUnpublished(in committed) ||
             !plannedCaptainRemoval.TryAdoptUnpublished() ||
-            invasion is not null && !invasion.TryAdopt(in plannedCaptainInvasion, in plannedCaptainCredit,
+            !maggots && invasion is not null && !invasion.TryAdopt(in plannedCaptainInvasion, in plannedCaptainCredit,
                 out acceptedCaptainInvasion))
             throw new InvalidOperationException("Validated Captain owners changed without a callback.");
         npcSpawnCycle?.SuppressNext();
@@ -67,13 +69,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             worldClock.AdoptDeathProgress(plannedUnpublishedClock);
         if (plannedCaptainBirthJournal is not null && !plannedCaptainBirthJournal.TryAdoptBaseline(npcs))
             throw new InvalidOperationException("Validated Captain child baseline could not be adopted.");
+        foreach (var journal in plannedMaggotBirthJournals)
+            if (!journal.TryAdoptBaseline(npcs))
+                throw new InvalidOperationException("Validated death-child baseline could not be adopted.");
         npcReplication?.RetirePreparedDeathBaseline(committed.Handle);
         if (pendingProjectileStrike is { } strike) strike.AcceptedDeath = pendingDeathPlan;
         preparedProjectileCommittedNpc = committed;
     }
 
     private void PublishCaptainDeath(in NpcSnapshot committed, in TerrariaNpcDamageState wire,
-        GameCommandSourceId excludedSource, NpcDamagePrelude1458? prelude = null)
+        GameCommandSourceId excludedSource, NpcDamagePrelude1458? prelude = null, bool clientCaller = false)
     {
         var drops = pendingDeathPlan!;
         if (!drops.TryBeginLinkedPublication()) return;
@@ -90,6 +95,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var deathPreludePublication = preparedDeathPreludePublication;
         var birth = plannedCaptainBirth!;
         var birthJournal = plannedCaptainBirthJournal;
+        var maggotJournals = plannedMaggotBirthJournals;
+        bool maggots = committed.Type == 632;
         var removal = plannedCaptainRemoval!;
         var terminalPublication = plannedCaptainDeathPublication;
         var credit = plannedCaptainCredit;
@@ -101,28 +108,45 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedCaptainBirth = null;
         plannedCaptainRemoval = null;
         plannedCaptainBirthJournal = null;
+        plannedMaggotBirthJournals = [];
+        plannedMaggotTerrain = null;
         plannedCaptainDeathPublication = null;
         preparedDeathPreludePublication = null;
         Drain(() => worldStateAdopted?.Invoke());
         Drain(() => prelude?.PublishBeforeStrike(capturedCommitted));
         if (terminalPublication is not null) Drain(() => terminalPublication.TryPublishPendingBirth());
         else Drain(() => removal.TryPublishPendingBirthBeforeStrike());
-        if (removal.IsAcceptedCurrent)
+        // Bare StrikeNPC emits28 before checkDead. MessageBuffer's client
+        // dispatcher forwards28 only after StrikeNPC/NPCLoot returns.
+        if ((!maggots || !clientCaller) && removal.IsAcceptedCurrent)
             Drain(() => npcReplication?.TryPublishDamage(excludedSource, in retainedWire));
+        // Maggot Zombie children belong to HitEffect, before the loot prelude;
+        // Captain's ghost remains at its later DoDeathEvents checkpoint.
+        if (maggots)
+        {
+            Drain(() => birth.TryPublish(retentionOnly: true));
+            foreach (var journal in maggotJournals) Drain(() => journal.TryPublish());
+        }
         Drain(() => drops.TryPublishPhase(NpcDeathDropPhase1458.Prelude, lootDelivery.Adopt));
         Drain(() => deathPreludePublication?.TryPublish());
         Drain(() => drops.TryPublishPhase(NpcDeathDropPhase1458.Imported, lootDelivery.Adopt));
         // DoDeathEvents Captain birth lies after specific drops and before Money/Healing.
-        Drain(() => birth.TryPublish());
+        if (!maggots) Drain(() => birth.TryPublish());
         // A separate operations observer may throw before the fanout reaches replication.
         // The retained network component still drains once against its exact accepted child.
         Drain(() => birthJournal?.TryPublish());
         Drain(() => drops.TryPublishPhase(NpcDeathDropPhase1458.Recovery, lootDelivery.Adopt));
         Drain(() => drops.TryPublishPhase(NpcDeathDropPhase1458.Money, lootDelivery.Adopt));
         Drain(() => drops.TryPublishPhase(NpcDeathDropPhase1458.Healing, lootDelivery.Adopt));
-        if (credit.Effects.Progress && invasion!.IsCurrent(in acceptedInvasion))
+        if (!maggots && credit.Effects.Progress && invasion!.IsCurrent(in acceptedInvasion))
             Drain(() => invasionProgressPublisher!(acceptedInvasion));
-        if (terminalPublication is not null) Drain(() => terminalPublication.TryPublishTerminal());
+        if (maggots && clientCaller && removal.IsAcceptedCurrent)
+            Drain(() => npcReplication?.TryPublishDamage(excludedSource, in retainedWire));
+        // A bare StrikeNPC retirement has no explicit inactive23. The client
+        // dispatcher adds it after forwarding28; domain retirement still drains
+        // on both lanes against the same accepted terminal journal.
+        if (terminalPublication is not null)
+            Drain(() => terminalPublication.TryPublishTerminal(suppressTerminalWire: maggots && !clientCaller));
         else Drain(() => removal.TryPublish());
         interactions.Forget(committed.Handle);
         drops.Dispose();

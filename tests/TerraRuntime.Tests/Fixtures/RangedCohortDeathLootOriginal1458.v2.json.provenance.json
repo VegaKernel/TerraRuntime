@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "numeric original-only successor extraction",
+  "fixtureSha256": "423c63e2bf67825ea2b1ce3e02e8e56ce90bac725ce2af8d2a17444177b2ee61",
+  "predecessorUnchanged": {
+    "path": "RangedCohortDeathLootOriginal1458.v1.json.gz",
+    "sha256": "13a1a0abbbe8eeee5910adf3f1977832d7ced43cd66da5924194a5c19dec7256"
+  },
+  "originalEffectsQualification": {
+    "path": ".cache/ranged-death-audit/parent-effects-v4-qualification.json",
+    "sha256": "96d0567019a442334f85d01928a5dbe01db6c711b1b52f2be0d9b58dd9e8ec9a"
+  },
+  "scope": "All inherited groups/births remain unchanged. Only parentHitEffects uses separately executed v4 independent contexts with full original spawnSlotProtected before/after. v1 original static history is retained, never restamped. No runtime acceptance or fullNPC claim."
+}

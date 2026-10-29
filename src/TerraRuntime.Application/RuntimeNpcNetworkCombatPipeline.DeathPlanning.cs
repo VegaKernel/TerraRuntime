@@ -75,6 +75,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool TryAdmitLethalDeath(in NpcSnapshot pending)
     {
         deathAdmissionRejected = false;
+        // checkDead's Good-world Rock Golem creates projectile99 after loot and
+        // deactivation. Its usual lifecycle is not admitted by this slice.
+        if ((pending.Type == 631 && (npcSpecificGoodWorld || worldClock?.GetGoodWorld == true)) ||
+            (pending.Type == 632 && worldTiles is null))
+        { deathAdmissionRejected = true; return false; }
         // A trusted strike does not authorize omitted participant rewards or death
         // producers. Unsupported point-bearing bodies stay alive until their existing
         // retained terminal/loot owner is source-qualified as one complete operation.
@@ -123,8 +128,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedTownNameOwner = default;
         plannedTownName = null;
         plannedDeathSpawnSerial = null;
+        plannedMaggotBirthJournals = [];
+        plannedMaggotTerrain = dead.Type == 632 && worldTiles is not null ? new(worldTiles) : null;
+        var capturedMaggotTerrain = plannedMaggotTerrain;
+        bool maggotDeath = dead.Type == 632;
         if (dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost ||
-            dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer ||
+            dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer || dead.Type == 632 ||
             pendingTownStrike is not null)
         {
             if (!npcs.TryCaptureDeathMutationSerial(out ulong spawnSerial)) return false;
@@ -166,7 +175,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             deathPreviewLiveRandom = liveRandom;
             random.UseSource(plan.Random);
             lootDelivery.Preview = plan;
-            previewDeathNpcs = npcs.CreateDeathPreview(random);
+            previewDeathNpcs = npcs.CreateDeathPreview(random, maggotDeath
+                ? (x, y, width, height) => CaptureMaggotBirthWet(capturedMaggotTerrain!, x, y, width, height) : null);
             plannedDeathSpawnContext = previewDeathNpcs.CapturedDeathSpawnContext;
             previewDeathClock = worldClock?.CreateDeathPreview();
             previewDeathProgression = progression.CreateDeathPreview();
@@ -241,8 +251,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             Span<WorldItemAllocationPlayer1458> allocationViews = stackalloc WorldItemAllocationPlayer1458[
                 VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
             if (!TryCaptureAllocationViews(allocationViews, out int viewCount) ||
-                !plan.TryReserve(worldItems, allocationViews[..viewCount]) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
-            if (dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost ||
+                !plan.TryReserve(worldItems, allocationViews[..viewCount]) ||
+                !plan.TryAccept((handle, revision) => IsCurrentDeathOwner(handle, revision) &&
+                    (!maggotDeath || ReferenceEquals(plannedMaggotTerrain, capturedMaggotTerrain)))) return false;
+            if (UsesPreparedLinkedDeath1458(dead.TypeIdentity) ||
                 pendingProjectileStrike is not null || pendingDebuffPrelude is not null || pendingGemBunnyDeath is not null ||
                 RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(dead.TypeIdentity) ||
                 RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity))
@@ -261,6 +273,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             }
             if ((dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost) &&
                 (!allowLoot || !TryRetainCaptainOwners(in dead))) return false;
+            if (dead.Type == 632 && !TryRetainMaggotOwners(in dead)) return false;
             if (RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(dead.TypeIdentity) &&
                 (!allowLoot || !TryRetainOrdinaryInvasionOwners(in dead))) return false;
             if (RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity) && !TryRetainMoonDeathOwners(in dead)) return false;
@@ -321,6 +334,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         preparedDeathPreludePublication = null;
         plannedCaptainBirth = null; plannedCaptainRemoval = null;
         plannedCaptainBirthJournal = null;
+        plannedMaggotBirthJournals = [];
+        plannedMaggotTerrain = null;
         plannedCaptainDeathPublication = null;
         plannedOrdinaryInvasionRemoval = null;
         plannedOrdinaryDeathPublication = null;
@@ -353,7 +368,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         bool ordinaryInvasionCurrent = !RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(actor.TypeIdentity) ||
             IsOrdinaryInvasionCurrent();
         bool moonCurrent = !RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(actor.TypeIdentity) || IsMoonDeathCurrent();
-        bool linkedDeath = actor.TypeIdentity == VanillaNpcIds.PirateCaptain || actor.TypeIdentity == VanillaNpcIds.PirateGhost;
+        bool linkedDeath = UsesPreparedLinkedDeath1458(actor.TypeIdentity);
         // Check the captured clock even if a provider has just stopped the event;
         // consulting only the later active flag would let that transition evade validation.
         bool moonDeath = actor.Handle.IsAssigned && RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(actor.TypeIdentity);
@@ -361,8 +376,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         bool clockCurrent = (pendingProjectileStrike is null && pendingDebuffPrelude is null && pendingGemBunnyDeath is null && !linkedDeath && !moonDeath && !ordinaryInvasion) ||
             CaptureStrikeClock() == plannedStrikeClock && CaptureStrikeDaily() == plannedStrikeDaily;
         // Seal after the final external dependency read, before HP or any other owner write.
-        bool captainRecipientsCurrent = plannedCaptainBirthJournal?.TrySealRecipients() ?? true;
-        return captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && moonCurrent && moonPlayersCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && critterCurrent && clockCurrent && fallbackCurrent &&
+        bool captainRecipientsCurrent = SealLinkedBirthRecipients1458();
+        return (plannedMaggotTerrain?.IsCurrent ?? true) && captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && moonCurrent && moonPlayersCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && critterCurrent && clockCurrent && fallbackCurrent &&
             npcs.TryGet(handle, out var current) && current.Revision == revision &&
             deathPrelude.Revision == plannedPreludeRevision && progression.CaptureSnapshot() == plannedDeathProgression &&
             (plannedDeathSpawnSerial is not { } serial ||

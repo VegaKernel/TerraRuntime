@@ -51,7 +51,7 @@ internal sealed partial class ProjectileAuthority
             var current = actor.Snapshot;
             var life = actor.Lifecycle;
             var context = new ProjectileSimulationStepContext(current, life, subupdate, steps);
-            if (!concrete.TryStepState(in context, out var proposed) ||
+            if (!concrete.TryStepGroundCombatState(in context, plannedRandom, out var proposed) ||
                 !RuntimeProjectileStateExecutor.TryNormalizeTermination(in proposed, out var next) ||
                 !IsGroundCombatStep(in current, in next)) return ProjectileActorSimulationResult.Rejected;
             RuntimeProjectileSimulationCommitSink.ConsumeGroundCombatOffers(in next, plannedRandom);
@@ -101,15 +101,16 @@ internal sealed partial class ProjectileAuthority
                 // any inactive tail, joint adoption or callback. Publication never redraws them.
                 RuntimeProjectileTerminationEffectSink.ConsumeSourceOffers(in termination, plannedRandom);
                 afterLife = afterLife with { TimeLeft = 0 };
-                if (reason == ProjectileSimulationTerminationReason.LifetimeExpired && subupdate + 1 < steps &&
+                if ((reason == ProjectileSimulationTerminationReason.LifetimeExpired ||
+                     consumed && initial.Type.Value == 437) && subupdate + 1 < steps &&
                     VanillaProjectileUpdateFacts.SupportsInactiveLifetimeMotion1458(initial.Type))
                 {
                     var tailContext = new ProjectileSimulationStepContext(death, afterLife, subupdate + 1, steps,
-                        ProjectileSimulationTerminationReason.LifetimeExpired, KillOrigin: killOrigin);
+                        reason, KillOrigin: killOrigin);
                     if (!concrete.TryStepInactiveLifetimeMotion(in tailContext, out var tailProposed) ||
                         !RuntimeProjectileStateExecutor.TryNormalizeTermination(in tailProposed, out var tail) ||
                         !IsGroundCombatStep(in death, in tail) || tail.TimeLeft != 0 ||
-                        tail.TerminationReason != ProjectileSimulationTerminationReason.LifetimeExpired ||
+                        tail.TerminationReason != reason ||
                         tail.State.Ai != death.Ai || tail.State.Damage != death.Damage ||
                         tail.LocalAi is { } local && local != afterLife.LocalAi ||
                         tail.PenetrateOverride is { } penetration && penetration != afterLife.PenetrateOverride)

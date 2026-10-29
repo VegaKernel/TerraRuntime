@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "kind": "original606-sibling-numeric-checkpoints",
+  "sourceQualificationSha256": "93cf0dec6b00457f1f6339b0a2fdffdca8f500eb71894d09e306f81bd92db509",
+  "fixtureSha256": "ea50cc09d48862d03137dd583ae7547399b1310fceafebddb091f96003747c92",
+  "cases": 6,
+  "sourceActualUpdateCalls": 1536,
+  "normalPhasesPerCase": 128,
+  "checkpoints": [
+    0,
+    89,
+    90,
+    127
+  ],
+  "aggregateAccepted": false,
+  "scope": "Two actual original606 NewNPC births per profile; selected actor updates128times, sibling held unstepped. Only sibling position differs between overlap/far controls. Both actual live damage0 facts; actor protection90 reaches0/friendlyfalse. Numeric checkpoints do not claim632death/whole-pair/main-loop equivalence."
+}

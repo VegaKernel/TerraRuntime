@@ -36,10 +36,10 @@ internal sealed class RuntimeNpcStateCommitFanout(
         second.NpcVanillaAiStateCommitted(kind, in snapshot, lowPriority);
     }
 
-    public void NpcCatchCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing)
+    public void NpcRetirementCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing)
     {
-        first.NpcCatchCommitted(in snapshot, spawnNeedsSyncing);
-        second.NpcCatchCommitted(in snapshot, spawnNeedsSyncing);
+        first.NpcRetirementCommitted(in snapshot, spawnNeedsSyncing);
+        second.NpcRetirementCommitted(in snapshot, spawnNeedsSyncing);
     }
 
     public void NpcBirthRetained(in NpcSnapshot snapshot)

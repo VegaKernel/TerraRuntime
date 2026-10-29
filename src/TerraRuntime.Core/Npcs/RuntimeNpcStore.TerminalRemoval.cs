@@ -11,7 +11,7 @@ public sealed partial class RuntimeNpcStore
             !TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(expected.TypeIdentity, expected.NetIdentity, out var definition) ||
             !definition.SupportsRuntimeLifecycle ||
             !TerraRuntime.Gameplay.Npcs.VanillaNpcCatchCatalog1458.TryGetCatchItem(expected.TypeIdentity, out _)) return false;
-        removal = new(this, expected, catchRemoval: true);
+        removal = new(this, expected, singleInactiveAnnouncement: true);
         return true;
     }
 
@@ -35,22 +35,32 @@ public sealed partial class RuntimeNpcStore
         return true;
     }
 
+    internal bool TryRetireAfterAi(in NpcSnapshot expected)
+    {
+        // The retained AI owner explicitly identified an already inactive actor.
+        // Source UpdateNetworkCode announces it once and consumes its pending birth;
+        // CheckActive returns without decrementing lifetime or suppressing spawn work.
+        if (expected.Simulation.Life != 0 || !MatchesSource(in expected)) return false;
+        var removal = new TerminalRemoval(this, expected, singleInactiveAnnouncement: true);
+        return removal.TryAdoptUnpublished() && removal.TryPublish();
+    }
+
     internal sealed class TerminalRemoval
     {
         private readonly RuntimeNpcStore owner;
         private readonly NpcSnapshot expected;
         private readonly NpcSnapshot beforeStrike;
         private readonly SlotState before;
-        private readonly bool catchRemoval;
+        private readonly bool singleInactiveAnnouncement;
         private SlotState after;
         private bool adopted;
         private bool published;
         private bool pendingBirthPublished;
 
-        internal TerminalRemoval(RuntimeNpcStore owner, NpcSnapshot expected, bool projected = false, bool catchRemoval = false)
+        internal TerminalRemoval(RuntimeNpcStore owner, NpcSnapshot expected, bool projected = false, bool singleInactiveAnnouncement = false)
         {
             this.owner = owner;
-            this.catchRemoval = catchRemoval;
+            this.singleInactiveAnnouncement = singleInactiveAnnouncement;
             var retained = owner._slots[expected.Handle.Slot];
             beforeStrike = Capture(expected.Handle.Slot, retained);
             if (projected)
@@ -110,9 +120,9 @@ public sealed partial class RuntimeNpcStore
             if (!adopted || published) return false;
             published = true;
             if (!Same(owner._slots[expected.Handle.Slot], after)) return true;
-            if (catchRemoval)
+            if (singleInactiveAnnouncement)
             {
-                owner._commitSink?.NpcCatchCommitted(in expected, before.BirthPending);
+                owner._commitSink?.NpcRetirementCommitted(in expected, before.BirthPending);
                 return true;
             }
             if (before.BirthPending && !pendingBirthPublished)

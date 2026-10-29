@@ -268,7 +268,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 VanillaIncomingPlayerDamageFacts1458.GetHostileProjectileImmunityChannel(projectile.Type);
             bool groundCombat = VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type);
             if (groundCombat && (sourceRandom is null || !sourceNpc.IsAssigned || lifecycle.Reflected ||
-                projectile.Type.Value == 436 && terminationEffects is null)) continue;
+                VanillaGroundCombatPlayerHit1458.ConsumesPlayerPenetration(projectile.Type) && terminationEffects is null)) continue;
             NpcSnapshot? capturedSource = npcs.TryGet(sourceNpc, out var sourceSnapshot) ? sourceSnapshot : null;
             foreach (RuntimePlayerMember? target in humanTargets)
             {

@@ -16,6 +16,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             result = default;
             return false;
         }
+        if (!TerraRuntime.Gameplay.Npcs.VanillaRangedNpcDeath1458.CanOwnStrike(in before))
+        { result = default; return false; }
         if (!TryPlanTownStrike(in before, request.HitDirection, out var townStrike))
         { result = default; return false; }
         bool applied, spawnTrueEye, forceUpdate;

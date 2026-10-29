@@ -216,7 +216,7 @@ public sealed class NpcStatueCatch1458Tests
         internal RuntimeNpcReplicationRegistry Registry = null!;
         internal Action? OnCatch;
         public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot npc) => Registry.NpcStateCommitted(kind, in npc);
-        public void NpcCatchCommitted(in NpcSnapshot npc, bool spawnNeedsSyncing)
-        { Registry.NpcCatchCommitted(in npc, spawnNeedsSyncing); OnCatch?.Invoke(); }
+        public void NpcRetirementCommitted(in NpcSnapshot npc, bool spawnNeedsSyncing)
+        { Registry.NpcRetirementCommitted(in npc, spawnNeedsSyncing); OnCatch?.Invoke(); }
     }
 }

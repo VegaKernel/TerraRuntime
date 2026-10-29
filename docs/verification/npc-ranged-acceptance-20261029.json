@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "npc-ranged-20261029",
+  "gameVersion": "1.4.5.8",
+  "protocol": 326,
+  "acceptedWindowsRuntimeCheckpoint": true,
+  "fullVanillaAiParity": false,
+  "allNamedStateAccepted": false,
+  "wholeMainParityAccepted": false,
+  "scope": "Bounded ranged NPC/status/birth/combat/loot/projectile/Electrified integration. Admission is not complete vanilla behavior. Original components retain their own narrower captures and explicit unknown fields.",
+  "census": {
+    "ai3Ai7Lifecycle": 278,
+    "ai3Ai7Total": 300,
+    "ai3Ai7CreationOnly": 22,
+    "globalLifecycle": 546,
+    "globalTotal": 755,
+    "globalCreationOnly": 209
+  },
+  "newParents": [
+    379,
+    380,
+    383,
+    386,
+    389,
+    391,
+    631,
+    632
+  ],
+  "newChildren": [
+    384,
+    387,
+    390,
+    606
+  ],
+  "projectiles": [
+    81,
+    435,
+    437,
+    909
+  ],
+  "projectileControl": 438,
+  "playerEffect": 144,
+  "independentPhaseReplay": {
+    "parentHistories": 153,
+    "parentPhases": 4896,
+    "childHistories": 63,
+    "childPhases": 2016,
+    "representedDifferences": 0,
+    "setupFailures": 0,
+    "sourceOnlyDiagnosticGroupsRemainUnknown": true,
+    "selectedActorsOnly": true,
+    "heldPeersDoNotQualifyWholeNpcLoop": true
+  },
+  "buildAndCoverage": {
+    "warningsAsErrors": true,
+    "sourceInputs": 4260,
+    "executedDlls": 158,
+    "productionDllsExactDiagnostic09": 157,
+    "rawUnfilteredFull": {
+      "green": false,
+      "tests": {
+        "errors": 0,
+        "failed": 4,
+        "not-run": 0,
+        "passed": 1601244,
+        "skipped": 0,
+        "total": 1601248
+      },
+      "methods": 5654,
+      "receipt": {
+        "path": ".cache/ranged-app/final-gate02/full-terminal-review.json",
+        "sha256": "762977eafd70df2aa0e7824be451195c4322678a22750a738917ac339e9b6059"
+      },
+      "runnerAllFileGuardRejectedFiveOwnJsonlOutputs": true,
+      "all198OriginalPinnedInputsUnchanged": true
+    },
+    "priorFast": {
+      "green": false,
+      "tests": {
+        "errors": 0,
+        "failed": 2,
+        "not-run": 0,
+        "passed": 55932,
+        "skipped": 0,
+        "total": 55934
+      },
+      "reason": "Root test repair initially assumed idle controls. Its fixture holds right at zero velocity; source Electrified rate is40, not8."
+    },
+    "currentCompositeFast": {
+      "tests": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 55934,
+        "skipped": 0,
+        "total": 55934
+      },
+      "methods": 5487,
+      "receipt": {
+        "path": ".cache/ranged-app/qualified-gate02/fast/audit.json",
+        "sha256": "1fd2cc4bd61d101872c56565450df047921657ae6e3025c777f46480be6333b8"
+      }
+    },
+    "currentCompositeFocused": {
+      "tests": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 12866,
+        "skipped": 0,
+        "total": 12866
+      },
+      "methods": 262,
+      "classes": 62,
+      "receipt": {
+        "path": ".cache/ranged-app/qualified-gate02/focused-audit.json",
+        "sha256": "abe3bbb51fa6dbad07e1d8d554eecd3a9e8f4923ec2f88870cb330a7756913c5"
+      }
+    },
+    "actualFinalReplay": {
+      "tests": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 1929,
+        "skipped": 0,
+        "total": 1929
+      },
+      "methods": 9,
+      "receipt": {
+        "path": ".cache/ranged-app/qualified-gate02/replay/audit.json",
+        "sha256": "e9eb844d5133faba762d53f125a6e6d020cdae0ae3351dddee339486cc599a2e"
+      }
+    },
+    "coverageIsComposite": true,
+    "secondUnfilteredFullExecuted": false,
+    "allCurrentTestMethodsExecutedOnOneFinalTestDll": false,
+    "testOnlyQualification": {
+      "path": ".cache/ranged-app/qualified-gate02/result.json",
+      "sha256": "5f6924a0b51eee7fc52617448caaf6c7a1bf061f0ea64a95f8cceeb684a09c6b"
+    },
+    "testOnlyChanges": [
+      "tests/TerraRuntime.Tests/PlayerBuffPhaseAdmission1458Tests.cs",
+      "tests/TerraRuntime.Tests/DefinitionOnlyProjectileTarget1458Tests.cs"
+    ]
+  },
+  "windowsNative": {
+    "path": ".cache/ranged-app/qualified-gate02/native-attempt01/result.json",
+    "sha256": "83b0521fa02a7487c7da35d1face9834b53d9369eb63310075f87b07a8f67c4b",
+    "sha256Executable": "7b8ebdc99711185b17156aa878a897c4421ab08a59e7e47ebe2aad4733f9370f",
+    "bytes": 37986304,
+    "pe": {
+      "machine": "0x8664",
+      "optionalMagic": "0x20b",
+      "clrRva": 0,
+      "clrSize": 0
+    },
+    "smokes": [
+      "loop",
+      "protocol",
+      "network",
+      "world",
+      "tui"
+    ]
+  },
+  "actualTcp": {
+    "release": {
+      "path": ".cache/ranged-app/live-ranged-qualified-gate02-release-attempt01/result.json",
+      "sha256": "e84e0322f98b727bc6e7bce1425e152bd486069bd68c6d691b758cb951f703cf",
+      "processStopped": true,
+      "scope": "Fresh actual localhost TCP join/sections/Banner-Bestiary82-before49/129/two-client movement-chat82/replacement, using existing probe. Private world first import only. Not official GUI or gameplay parity; no graceful world-save shutdown claim."
+    },
+    "native": {
+      "path": ".cache/ranged-app/live-ranged-qualified-gate02-native-attempt01/result.json",
+      "sha256": "a7d50846382414c67f6c9b7f987a0ed8034d0da656cb308cfa912eea902c560f",
+      "processStopped": true,
+      "scope": "Fresh actual localhost TCP join/sections/Banner-Bestiary82-before49/129/two-client movement-chat82/replacement, using existing probe. Private world first import only. Not official GUI or gameplay parity; no graceful world-save shutdown claim."
+    }
+  },
+  "inputs": {
+    "sourceManifest": {
+      "path": ".cache/ranged-app/qualified-gate02/source-before.json",
+      "sha256": "1affeeea631a7d14f7d5ef4810bfa7b718026af26f2f7bc11a51c1f7046f034d"
+    },
+    "dllManifest": {
+      "path": ".cache/ranged-app/qualified-gate02/dll-before.json",
+      "sha256": "cce0d32790531f960be07baabac902da5a9c549a84e76dd3c9442e5204fd0cb3"
+    },
+    "unchangedExistingGzipFixtures": 918,
+    "newNumericGzipFixtures": 15,
+    "shippingProjects": 15,
+    "shippingReferences": 29,
+    "newShippingDependencies": false,
+    "newEntityStoreClockOrRandomOwner": false,
+    "gitIndexBridge": {
+      "path": ".cache/ranged-app/final-index-source-bridge.json",
+      "sha256": "b52a91fc07081cf65f69c516982fca997d359fe5418d677c8c44c5a750a83091"
+    },
+    "indexRawExactProtectedFiles": 4257,
+    "jsonMetadataOnlyLfBridges": [
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/MartianChildAiLinux1458.provenance.json",
+        "testedWorkingCopySha256": "c4b633845dbc958bd0641674aa2c0c3011fc4ad42085427c2d4f7e8335a8417e",
+        "gitLfBlobSha256": "94bf2c8b640ed3fe37e0a555d77b67982d52fa0de13385ed00377a3abba45954",
+        "onlyCrlfToLf": true,
+        "jsonValuesEqual": true,
+        "notEmbeddedOrCompiledByProject": true
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/MartianChildFramesLinux1458.provenance.json",
+        "testedWorkingCopySha256": "5ee334dd5cf592ccc1e0a058e0f7510a2cacff8397616466a7c94577ff61ea54",
+        "gitLfBlobSha256": "0469aa7ef902a4d8b76c73fa9b78082b1a6bac0e091ed67b1b22d960bd118467",
+        "onlyCrlfToLf": true,
+        "jsonValuesEqual": true,
+        "notEmbeddedOrCompiledByProject": true
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/ScutlixCollisionBodyLinux1458.v1.provenance.json",
+        "testedWorkingCopySha256": "0636e77f666b8f3a86e9dce5f3cf079cb8fb8d7e65bb45b06b730acea4823153",
+        "gitLfBlobSha256": "f539f83864e6153296401f44c08aacc15be72c0dc7050338021ae4366cc0a5fd",
+        "onlyCrlfToLf": true,
+        "jsonValuesEqual": true,
+        "notEmbeddedOrCompiledByProject": true
+      }
+    ]
+  },
+  "components": [
+    {
+      "path": ".cache/ranged-parent-oracle/initial09/qualification.json",
+      "sha256": "728f93cd82e0f1a02d073cda81a209fb284cd2d7667773347deee9a1a65add6f"
+    },
+    {
+      "path": ".cache/child-ai/component09-for-root.json",
+      "sha256": "d3800617dc50858db012c949a0fdbf8d3e7a7ffdd5b503d3d3531fb080a430d5"
+    },
+    {
+      "path": ".cache/ranged-death-audit/verification-summary09.json",
+      "sha256": "e8f7ebbe41e73e5befbec1cbb2f9fed590554d782594a880dd4a3992173fdf93"
+    },
+    {
+      "path": ".cache/ranged-app/motion-birth-causal-actual09-qualification.json",
+      "sha256": "deb96da1b74916e2113c4403898df16e6c25b24c2e1d8480bcfdf7558f5d979a"
+    },
+    {
+      "path": ".cache/ranged-parent-oracle/roof-causal/execution09/qualification.json",
+      "sha256": "0320be1f35947a5b5c36cf391e01f7916bfc8cf2f7a457c728230415e2c6900e"
+    },
+    {
+      "path": ".cache/child-ai/retirement-causals09/result.json",
+      "sha256": "4339d4a3cd6a964e10b206b846e4414cfeb28abe5f6caff84c8a2db4178116e6"
+    },
+    {
+      "path": ".cache/ranged-death-audit/owner-causals09/result.json",
+      "sha256": "3e53ecd70956d615e48e50960237def3e9ca5d379aa5430af6aa146389da89d7"
+    },
+    {
+      "path": ".cache/ranged-projectiles/banner-causal/execution08/qualification.json",
+      "sha256": "daff1b353402d272b4657de49199860921942bf1129f6757a12d45a2bca41dcb"
+    },
+    {
+      "path": ".cache/ranged-projectiles/banner-causal/bridge08-to09.json",
+      "sha256": "567e91e80720fae2f8820ee99101c80d14fd8cd4dfa698494015dc38ba21f751"
+    },
+    {
+      "path": ".cache/ranged-projectiles/causal81-03/qualification.json",
+      "sha256": "71653e54f5e763e2b4dbff6fa4b63f0840a79b5821df7804fd825ef385b91565"
+    },
+    {
+      "path": ".cache/ranged-app/baseline09-audit.json",
+      "sha256": "4cd7e44d1e692c94cf3fdd48ec180813b7623b23c1de874785793dca6973f677"
+    },
+    {
+      "path": ".cache/ranged-app/final-index-source-bridge.json",
+      "sha256": "b52a91fc07081cf65f69c516982fca997d359fe5418d677c8c44c5a750a83091"
+    }
+  ],
+  "knownLimits": [
+    "FullVanillaAiParity remains false; roster lifecycle counts do not measure complete behavioral fidelity.",
+    "Selected-parent/child histories hold peers constant; no whole Main, natural spawn distribution or complete NPC-loop parity is claimed.",
+    "Source-only NPC diagnostic, collision-query/global and projectile visual/index groups remain explicitly unrepresented in component records.",
+    "Projectile parent banner metadata is qualified; banner-buff damage modifiers are not established by neutral-banner HP captures.",
+    "Bounded ordinary player/equipment and Electrified roles do not establish full Player.Update or inventory/gear parity.",
+    "Unowned Cultist ritual controller438 histories and GoodWorld RockGolem death projectile99 refuse the whole operation.",
+    "Saturated Maggot Zombie birth preparation can retain an unnecessary wet-terrain guard and conservatively refuse on stale unused cells.",
+    "Specific-loot captures and selected client/server632 wire projections are not complete global loot, callback or whole-game death parity.",
+    "Linux NativeAOT, official GUI client and graceful-save shutdown are not qualified by this checkpoint."
+  ],
+  "publication": "Git records the actual commit and main push; this receipt does not invent a commit hash."
+}

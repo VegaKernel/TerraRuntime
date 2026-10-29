@@ -74,7 +74,8 @@ internal sealed partial class PlayerBuffState
     internal PlayerDebuffSnapshot1458 CaptureDebuffFlags() =>
         new(CountActive(VanillaBuffIds.OnFire) != 0 || contactDebuffsForUpdate.OnFire,
             CountActive(VanillaBuffIds.CursedInferno) != 0 || contactDebuffsForUpdate.OnFire2,
-            CountActive(VanillaBuffIds.Poisoned) != 0 || contactDebuffsForUpdate.Poisoned);
+            CountActive(VanillaBuffIds.Poisoned) != 0 || contactDebuffsForUpdate.Poisoned)
+            { Electrified = HasCurrentEffect(VanillaBuffIds.Electrified.Value) || contactDebuffsForUpdate.Electrified };
 
     public bool HasNonPersistentBuffs()
     {

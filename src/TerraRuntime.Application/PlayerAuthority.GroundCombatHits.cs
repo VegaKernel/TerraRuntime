@@ -156,10 +156,9 @@ internal sealed partial class PlayerAuthority
             if (life > 0)
             {
                 var status = new ProjectilePlayerHurt1458(shot.Type, capture.Player.DerivedLifeMax!.Value, goodWorld, previewRandom);
-                if (status.HasStatusAfterSurvivingHurt(final.Damage))
+                if (status.TryResolveStatusAfterSurvivingHurt(final.Damage, expert, master, out var type, out int duration))
                 {
-                    var type = new BuffTypeId(31);
-                    if (next.TryApplyNpcContactBuff(type, status.ConfusedDuration(expert, master), capture.Combat.IsImmuneToNpcContactBuff(type)))
+                    if (next.TryApplyNpcContactBuff(type, duration, capture.Combat.IsImmuneToNpcContactBuff(type)))
                         effects = [new(type, next.GetDuration(type))];
                 }
             }

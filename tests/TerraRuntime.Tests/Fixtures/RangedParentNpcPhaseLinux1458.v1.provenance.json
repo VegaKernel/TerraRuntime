@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-original-parent-npc-phase-numeric-fixture",
+  "originalComponentQualified": true,
+  "runtimeQualified": false,
+  "sourceExecutableSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "sourceQualificationSha256": "b3aa5dd6cbac4642e083c599738a976dbb08c069996a8c91796fdd0766b52a42",
+  "sourceFilesSha256": {
+    "original-1458-a.json.gz": "76e99ce947d5c9764fcdf356cb0d0bff24a896545dad8fbe807a515c31e6f158",
+    "original-42-a.json.gz": "d08e282beda16ae3089322d47e948d90355afe5a53ee487e96487f60edb8e0be",
+    "original-8675309-a.json.gz": "fc7709ff6e32f0e3c640ca7850dce21e16aa189c9894d7e95daf3bc5e9d3959a"
+  },
+  "fixtureSha256": "5e39b93c1d2ade62e865b974bb6990e92bdcc632e9ea9f1477260763a75d3ae4",
+  "cases": 147,
+  "expectedPerActorPhases": 4704,
+  "originalCallsIncludingRepeat": 9408,
+  "ids": [
+    379,
+    380,
+    383,
+    386,
+    389,
+    391,
+    631,
+    632
+  ],
+  "scope": "Actual NPC.UpdateNPC(0) only. Active companions are observed and not stepped. Original caller-authored inputs and all case states are unchanged. This is not whole Main/NPC-loop/player/projectile/world parity or runtime acceptance.",
+  "topLevelOmissions": [
+    "localization bootstrap readback",
+    "loaded assembly location diagnostics"
+  ],
+  "caseProjectionOmissions": []
+}

@@ -42,7 +42,8 @@ internal sealed partial class ServerPlayerAuthority
             if (burning) lava.BurningTicks--;
             PlayerDebuffSnapshot1458 contactEffects = npcContactBuffOwners[player.Player.Slot.Value] == player.Player
                 ? npcContactDebuffEffects[player.Player.Slot.Value] : default;
-            int regenLoss = (burning ? 8 : 0) + (contactEffects.Poisoned ? 4 : 0) + (contactEffects.OnFire2 ? 24 : 0);
+            int regenLoss = (burning ? 8 : 0) + (contactEffects.Poisoned ? 4 : 0) + (contactEffects.OnFire2 ? 24 : 0) +
+                (contactEffects.Electrified ? ((player.ControlFlags & 12) != 0 ? 40 : 8) : 0);
             if (regenLoss > 0)
             {
                 lava.RegenLoss += regenLoss;
@@ -53,7 +54,8 @@ internal sealed partial class ServerPlayerAuthority
                     {
                         var burn = new FinalDamageToHp(1, new TargetMitigation(0, 0, 0, false, false, true));
                         if (CommitResolvedDamage(tick, in player,
-                                DamageSource.FromEnvironment(contactEffects.Poisoned ? EnvironmentDamageCause.Poison : EnvironmentDamageCause.Burning), default, in burn,
+                                DamageSource.FromEnvironment(contactEffects.Poisoned ? EnvironmentDamageCause.Poison :
+                                    contactEffects.Electrified ? EnvironmentDamageCause.Electrified : EnvironmentDamageCause.Burning), default, in burn,
                                 0, default, false, damageOverTime: true, out var burned) == PlayerDamageCommitResult.Committed)
                         {
                             player = burned;

@@ -27,7 +27,7 @@ internal sealed partial class ServerPlayerAuthority
         foreach (var type in buffs.CaptureEffectTypes())
             if (!Represented(type)) return false;
         return true;
-        static bool Represented(BuffTypeId type) => type.Value is 20 or 22 or 24 or 30 or 31 or 32 or 35 or 39;
+        static bool Represented(BuffTypeId type) => type.Value is 20 or 22 or 24 or 30 or 31 or 32 or 35 or 39 or 144;
     }
 
     private sealed record GroundCombatBuffImage(PlayerHandle Owner, PlayerBuffState? Reference,
@@ -182,10 +182,11 @@ internal sealed partial class ServerPlayerAuthority
             CommittedHits++;
             if (ResolveLifeAfterDamage(in player, in final) == 0) { Kills++; return true; }
             var status = new ProjectilePlayerHurt1458(shot.Type, player.DerivedLifeMax!.Value, good, previewRandom);
-            if (status.HasStatusAfterSurvivingHurt(final.Damage) && !target.Combat.IsImmuneToNpcContactBuff(new(31)))
+            if (status.TryResolveStatusAfterSurvivingHurt(final.Damage, expert, master, out var type, out int duration) &&
+                !target.Combat.IsImmuneToNpcContactBuff(type))
             {
                 var next = target.Buffs.Owner == player.Player ? target.Buffs.Copy?.Clone() ?? new() : new PlayerBuffState();
-                if (next.TryApplyNpcContactBuff(new(31), status.ConfusedDuration(expert, master))) target.PreparedBuffs = next;
+                if (next.TryApplyNpcContactBuff(type, duration)) target.PreparedBuffs = next;
             }
             return true;
         }

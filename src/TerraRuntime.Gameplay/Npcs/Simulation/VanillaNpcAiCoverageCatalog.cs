@@ -129,7 +129,7 @@ public static class VanillaNpcAiCoverageCatalog
         int nonresidentBunnyBehaviorCount = VanillaNonresidentGroundCritterCatalog1458.Types.Length +
             VanillaNpcTransformation1458.GroundCritterTypes.Length;
         var entries = new VanillaNpcAiCoverage[
-            16 + hardmodeBossBehaviorCount + nonresidentBunnyBehaviorCount +
+            16 + 4 + hardmodeBossBehaviorCount + nonresidentBunnyBehaviorCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
             VanillaFlyerNpcCatalog.DefinitionCount +
@@ -495,6 +495,10 @@ public static class VanillaNpcAiCoverageCatalog
             entries[index++] = Partial(new(type), OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice);
         foreach (NpcTypeId type in VanillaNpcTransformation1458.GroundCritterTypes)
             entries[index++] = Partial(type, OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice);
+
+        foreach (var type in new NpcTypeId[] { new(384), new(387), new(390), new(606) })
+            entries[index++] = Partial(type, OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice |
+                (type.Value == 390 ? VanillaNpcAiCapability.ChildSpawnSlice : VanillaNpcAiCapability.None));
 
         if (index != entries.Length)
             throw new InvalidOperationException("Vanilla NPC coverage catalog count drifted.");

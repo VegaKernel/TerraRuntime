@@ -43,10 +43,10 @@ public sealed class NpcStateCommitSinkFanout : INpcStateCommitSink, INpcBirthRet
             sink.NpcVanillaAiStateCommitted(kind, in snapshot, lowPriority);
     }
 
-    public void NpcCatchCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing)
+    public void NpcRetirementCommitted(in NpcSnapshot snapshot, bool spawnNeedsSyncing)
     {
         foreach (INpcStateCommitSink sink in sinks)
-            sink.NpcCatchCommitted(in snapshot, spawnNeedsSyncing);
+            sink.NpcRetirementCommitted(in snapshot, spawnNeedsSyncing);
     }
 
     public void NpcBirthRetained(in NpcSnapshot snapshot)

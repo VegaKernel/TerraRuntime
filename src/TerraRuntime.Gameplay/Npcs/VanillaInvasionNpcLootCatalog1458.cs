@@ -65,6 +65,14 @@ public static class VanillaInvasionNpcLootCatalog1458
         Common(2805, 200, 1, 1),
     ];
     private static readonly VanillaNpcLootRule[] MartianWalkerRules = MartianRules[..4];
+    // RegisterMiscDrops gives the officer bodies uniform pieces, in the same
+    // ordered common-rule prefix as the costume-bearing Martians.
+    private static readonly VanillaNpcLootRule[] MartianUniformRules =
+    [
+        .. MartianWalkerRules,
+        Common(2806, 200), Common(2807, 200), Common(2808, 200)
+    ];
+    private static readonly VanillaNpcLootRule[] ScutlixRiderRules = [.. MartianRules, Common(2771, 30)];
 
     // ItemDropDatabase.RegisterMiscDrops 1.4.5.8: every Frost Legion participant.
     private static readonly VanillaNpcLootRule[] FrostRules = [Common(593, 1, 5, 10)];
@@ -91,6 +99,10 @@ public static class VanillaInvasionNpcLootCatalog1458
             // These populated source tables are empty; globals and death events remain separate.
             252 or 662 => [],
             381 or 382 or 385 => MartianRules,
+            383 or 386 or 389 => MartianUniformRules,
+            390 => ScutlixRiderRules,
+            // Actual populated source tables are empty, including the mount.
+            384 or 387 or 391 => [],
             520 => MartianWalkerRules,
             _ => null
         };

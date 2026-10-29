@@ -19,10 +19,12 @@ internal static class VanillaGroundCombatAttack1458
         if (!VanillaGroundCombatCohort1458.IsRanged(before.TypeIdentity) || shots.Length < 1 ||
             !definition.TryResolveHitbox(common.Simulation, out var body) || environment is null)
             return false;
+        if (type == 389)
+            return TryPlanGigaZapper(in before, in common, in body, random, shots, out count, out next);
         bool moving = type is 381 or 382 or 520;
         var line = environment as IVanillaNpcProjectileLineEnvironment;
         if (moving && line is null) return false;
-        float windup = type is 381 or 382 ? 80f : type == 481 ? 100f : type == 520 ? 15f : 70f;
+        float windup = type is 379 or 380 or 381 or 382 ? 80f : type == 481 ? 100f : type == 520 ? 15f : 70f;
         float fireAt = (int)windup / 2;
         float timer = common.Ai.Ai1, mode = common.Ai.Ai2, stuck = common.Ai.Ai3;
         float x = common.VelocityX, y = common.VelocityY;
@@ -54,7 +56,7 @@ internal static class VanillaGroundCombatAttack1458
                 float centerX = common.PositionX + body.Width * .5f;
                 float centerY = type == 520 ? common.PositionY + 20f : common.PositionY + body.Height * .5f + (type == 481 ? -14f : type is 381 or 382 ? 6f : 0f);
                 float dx = raw.PositionX + raw.Width * .5f - centerX;
-                float lift = moving ? 0f : type == 481
+                float lift = moving ? 0f : type is 379 or 380 ? Math.Abs(dx) * .1f : type == 481
                     ? Math.Abs(dx) * random.NextInt32(-10, 11) * .0035f
                     : Math.Abs(dx) * random.NextInt32(10, 50) * .01f;
                 float dy = raw.PositionY + raw.Height * .5f - centerY - lift;
@@ -73,10 +75,10 @@ internal static class VanillaGroundCombatAttack1458
                     float jitter = type == 481 ? .4f : 1f;
                     dx += random.NextInt32(-40, 41) * jitter; dy += random.NextInt32(-40, 41) * jitter;
                 }
-                float speed = type == 381 ? 11f : type == 382 ? 7f : type is 481 or 520 ? 8f : 7f;
+                float speed = type is 379 or 380 or 381 ? 11f : type == 382 ? 7f : type is 481 or 520 ? 8f : 7f;
                 if (!Normalize(ref dx, ref dy, speed)) return false;
-                int projectile = type == 381 ? 436 : type == 382 ? 438 : type == 481 ? 508 : type == 520 ? 592 : 471;
-                int damage = type == 381 ? 24 : type == 382 ? 30 : type == 481 ? 18 : type == 520 ? 35 : 15;
+                int projectile = type is 379 or 380 ? 81 : type == 381 ? 436 : type == 382 ? 438 : type == 481 ? 508 : type == 520 ? 592 : 471;
+                int damage = type is 379 or 380 ? 40 : type == 381 ? 24 : type == 382 ? 30 : type == 481 ? 18 : type == 520 ? 35 : 15;
                 if (type is 381 or 382)
                 {
                     if (before.Simulation.SpawnDifficulty is not { } difficulty || !float.IsFinite(difficulty)) return false;
@@ -147,6 +149,34 @@ internal static class VanillaGroundCombatAttack1458
             Ai = common.Ai with { Ai1 = timer, Ai2 = mode, Ai3 = stuck },
             Simulation = common.Simulation with { DirectionX = direction, DirectionY = vertical, SpriteDirection = sprite, LocalAi = local },
             RequiresImmediateSync = sync };
+        return RuntimeNpcStore.IsValid(in next);
+    }
+
+    private static bool TryPlanGigaZapper(in NpcSnapshot before, in NpcStateUpdate common,
+        in VanillaNpcHitboxSize body, IVanillaNpcRandom random, Span<NpcAiProjectileIntent> shots,
+        out int count, out NpcStateUpdate next)
+    {
+        count = 0;
+        float timer = common.Ai.Ai2;
+        if (common.Simulation.Confused) timer = -60f;
+        else
+        {
+            if (timer < 20f) timer++;
+            if (before.Simulation.JustHit) timer = -30f;
+            if (timer == 20f)
+            {
+                // AI003 does not request NPC synchronization at this firing edge.
+                // The caller adopts the projectile and the single reset roll together.
+                timer = -10f - random.NextInt32(0, 3) * 10f;
+                if (!VanillaDefinitionCatalog.TryGet(new(437), out var projectile))
+                { next = default; return false; }
+                shots[0] = new(new(437), common.PositionX + body.Width * .5f - projectile.Width * .5f,
+                    common.PositionY + body.Height * .5f + 8f - projectile.Height * .5f,
+                    common.Simulation.DirectionX * 6f, 0f, 25, 1f);
+                count = 1;
+            }
+        }
+        next = common with { Ai = common.Ai with { Ai2 = timer } };
         return RuntimeNpcStore.IsValid(in next);
     }
 

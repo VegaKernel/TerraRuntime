@@ -62,6 +62,14 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
     public bool TryStepState(
         in ProjectileSimulationStepContext projectile,
         out ProjectileSimulationStepResult next)
+        => TryStepStateCore(in projectile, null, out next);
+
+    internal bool TryStepGroundCombatState(in ProjectileSimulationStepContext projectile,
+        VanillaUnifiedRandom1458 previewRandom, out ProjectileSimulationStepResult next) =>
+        TryStepStateCore(in projectile, previewRandom, out next);
+
+    private bool TryStepStateCore(in ProjectileSimulationStepContext projectile,
+        VanillaUnifiedRandom1458? previewRandom, out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
         if (current.Type == VanillaProjectileIds.NurseSyringeHeal && current.Damage != 0)
@@ -110,7 +118,7 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
             hostilePlayerTargets,
             projectile.Lifecycle.TimeLeft,
             projectile.Lifecycle.LocalAi,
-            projectile.Lifecycle.Liquid.Wet);
+            projectile.Lifecycle.Liquid.Wet, previewRandom);
         if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,

@@ -31,12 +31,13 @@ public static class VanillaNpcTransformation1458
         592 => target.Value == 593 || IsEvilFish(target),
         534 => target == VanillaNpcIds.TaxCollector,
         687 => target == VanillaNpcIds.TownSlimeYellow,
+        390 => target == VanillaNpcIds.RayGunner,
         _ => false
     };
 
     public static bool IsRetainedFish(NpcTypeId type) => type.Value is 55 or 57 or 465 or 592;
 
-    public static bool IsDestination(NpcTypeId type) => type.Value is 55 or 57 or 199 or 230 or 441 or 465 or 592 or 593 or 683;
+    public static bool IsDestination(NpcTypeId type) => type.Value is 55 or 57 or 199 or 230 or 382 or 441 or 465 or 592 or 593 or 683;
 
     // Main.Initialize_TileAndNPCData1 owns this distinction. catchItem alone is
     // insufficient (for example, the legacy seasonal bunny identities).

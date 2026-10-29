@@ -124,10 +124,10 @@ public sealed class NpcGroundRosterCreation1458Tests
     [Fact]
     public void Definition_materialization_does_not_grant_unverified_autonomous_ai_or_full_parity()
     {
-        // Source identities still fenced after the ground-combat cohort: Martian Officer,
-        // Medusa, the unproved identity362, Old Man, Travelling Merchant and Skeleton Merchant. Penguin148
+        // Source identities still fenced after the ranged cohort: Medusa,
+        // the unproved identity362, Old Man, Travelling Merchant and Skeleton Merchant. Penguin148
         // now has the separately composed nonresident ground-critter lifecycle.
-        foreach (int type in new[] { 383, 480, 362, 37, 368, 453 })
+        foreach (int type in new[] { 480, 362, 37, 368, 453 })
         {
             Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(type), out var definition));
             Assert.False(definition.DefinitionOnly);
@@ -170,7 +170,8 @@ public sealed class NpcGroundRosterCreation1458Tests
             bool ordinaryMeleeRuntime = net is 44 or 104 or 140 or 181 or 196 or 197 or 464 or 470 or 489 or
                 524 or 525 or 526 or 527 or 528 or 529 or 536 or 691;
             bool groundCombatRuntime = net is -15 or 185 or 385 or 482 or 508 or 580 or 582 or 590 or
-                381 or 382 or 449 or 450 or 451 or 452 or 481 or 520;
+                381 or 382 or 449 or 450 or 451 or 452 or 481 or 520 or
+                379 or 380 or 383 or 386 or 389 or 391 or 631 or 632;
             bool transformRuntime = net is 198 or 230 or 532 or 534 or 586 or 593 or 687;
             bool expected = promoted.Contains(net) && !undeadRuntime && !nonresidentGroundCritterRuntime && !ordinaryMeleeRuntime && !groundCombatRuntime && !transformRuntime;
             Assert.Equal(expected, definition.CreationDefaultsOnly);
@@ -200,7 +201,7 @@ public sealed class NpcGroundRosterCreation1458Tests
             Assert.True(store.TryGet(born.Handle, out retained));
             Assert.Equal(retainedDead, retained);
         }
-        Assert.Equal(30, fenced);
+        Assert.Equal(22, fenced);
     }
 
     private sealed class CountingLifecycle : INpcAiStateStepper, INpcAiPrepass1458

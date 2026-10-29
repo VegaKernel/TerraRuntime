@@ -21,11 +21,11 @@ public static class VanillaProjectileUpdateFacts
 
     /// <summary>Explicit 1458 ground-combat HandleMovement collision-offer admission.</summary>
     public static bool SupportsGroundCombatCollisionOffers1458(ProjectileTypeId type) =>
-        type.Value is 436 or 438 or 471 or 508 or 592;
+        VanillaGroundCombatPlayerHit1458.IsSupported(type);
 
     /// <summary>Qualified extra-update lasers with one movement-only pass after lifetime Kill.</summary>
     public static bool SupportsInactiveLifetimeMotion1458(ProjectileTypeId type) =>
-        type.Value is 438 or 592;
+        type.Value is 437 or 438 or 592;
 
     public static int GetExtraUpdates(ProjectileTypeId type)
     {

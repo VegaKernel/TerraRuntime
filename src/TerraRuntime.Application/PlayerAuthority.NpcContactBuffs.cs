@@ -82,6 +82,7 @@ internal sealed partial class PlayerAuthority
         {
             if (!transferProfiles.HasOwnedNpcContactBuffs(member.Connection)) continue;
             if (transferProfiles.CaptureBuffState(member.Connection) is not { HasOwnedNpcContactBuffs: true } before) continue;
+            if (!member.IsDead && HasUnownedLocalElectrifiedControls(member, before)) continue;
             var next = before.Clone();
             bool changed = member.IsDead ? next.ClearNonPersistentOnDeath() : next.TickNpcContactBuffs();
             if (!member.TryAdvanceRevision() || !transferProfiles.TryAdoptBuffState(member.Connection, before, next) || !changed) continue;

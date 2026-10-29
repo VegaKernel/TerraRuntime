@@ -703,10 +703,23 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             npc.TypeIdentity == VanillaNpcIds.LarvaeAntlion) _ = preview.NextInt32(0, 800);
         else if (npc.TypeIdentity == VanillaNpcIds.GraniteGolem && preview.NextInt32(0, 600) == 0) _ = preview.NextInt32(63, 66);
         else if (npc.TypeIdentity == VanillaNpcIds.MartianWalker && preview.NextInt32(0, 800) == 0) _ = preview.NextInt32(69, 73);
+        else if (npc.Type == 389 && preview.NextInt32(0, 800) == 0) _ = preview.NextInt32(59, 61);
+        else if (npc.Type == 391 && preview.NextInt32(0, 700) == 0) _ = preview.NextInt32(86, 87);
         else if (VanillaNpcTransformation1458.UsesLihzahrdIdleSound(npc.TypeIdentity) &&
                  preview.NextInt32(0, 1000) == 0) _ = preview.NextInt32(36, 38);
         NpcSnapshot source = npc;
         var workingDefinition = definition;
+        if (!TryPrepareRangedPrelude(in npc, in definition, context, environment, transaction, preview,
+                shots, out source, out bool rangedReturns, out bool rangedSync, out shotCount))
+        { next = default; return false; }
+        if (rangedReturns)
+        {
+            next = new(source.Type, source.NetId, source.PositionX, source.PositionY,
+                source.VelocityX, source.VelocityY, source.Target, source.Ai,
+                source.Simulation with { JustHit = false })
+                { VanillaNetworkPhase = true, RequiresImmediateSync = rangedSync };
+            return true;
+        }
         bool mermanSync = false;
         if (VanillaNpcTransformation1458.IsZombieMerman(npc.TypeIdentity))
         {
@@ -751,8 +764,8 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
                 Simulation = source.Simulation with { DontTakeDamage = false } };
         }
         if (!TryStepCommon(in source, in workingDefinition, in parameters, context, inner, out next, preview,
-                transaction.TransformCheckpoint.HasValue ? byte.MaxValue : null)) return false;
-        if (mermanSync) next = next with { RequiresImmediateSync = true };
+                transaction.TransformCheckpoint.HasValue ? byte.MaxValue : npc.Type == 631 ? npc.Target : null)) return false;
+        if (mermanSync || rangedSync) next = next with { RequiresImmediateSync = true };
         if (VanillaNpcTransformation1458.IsZombieMerman(npc.TypeIdentity) && npc.Simulation.Alpha == 255)
             next = next with { RequiresImmediateSync = true };
         if (npc.TypeIdentity == VanillaNpcIds.SnowFlinx)
@@ -762,6 +775,8 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             else if (simulation.LocalAi.Ai0 == 1f) simulation = simulation with { Rotation = (simulation.Rotation ?? 0f) + next.VelocityX * .05f };
             next = next with { Simulation = simulation };
         }
+        var beforeEngineer = next;
+        if (!TryFinishEngineer(in npc, in beforeEngineer, environment, transaction, preview, out next)) return false;
         if (VanillaGroundCombatCohort1458.IsRanged(npc.TypeIdentity))
         {
             var common = next;
@@ -880,7 +895,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         }
         // These source AI003 identities select a different day-despawn branch during a Goblin invasion.
         // A bound owner with unknown state cannot be substituted by the standalone clear default.
-        if (context.InvasionType is null && definition.Type.Value is 26 or 27 or 28 or 111 or 381 or 382 or 385 or 520)
+        if (context.InvasionType is null && definition.Type.Value is 26 or 27 or 28 or 111 or 381 or 382 or 383 or 385 or 386 or 389 or 391 or 520)
         {
             next = default;
             return false;
@@ -984,7 +999,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         bool goblinInvasionExemption = context.InvasionType == 1 &&
             (definition.Type == VanillaNpcIds.GoblinPeon || definition.Type == VanillaNpcIds.GoblinThief ||
              definition.Type == VanillaNpcIds.GoblinWarrior || definition.Type == VanillaNpcIds.GoblinArcher);
-        bool martianInvasionExemption = context.InvasionType == 4 && definition.Type.Value is 381 or 382 or 385 or 520;
+        bool martianInvasionExemption = context.InvasionType == 4 && definition.Type.Value is 381 or 382 or 383 or 385 or 386 or 389 or 391 or 520;
         bool daytimeSurface = context.DayTime && !goblinInvasionExemption && !martianInvasionExemption &&
             !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep || definition.Type == VanillaNpcIds.Butcher || definition.Type == VanillaNpcIds.Nailhead || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.Frankenstein ||
               definition.Type == VanillaNpcIds.Fritz || definition.Type == VanillaNpcIds.ThePossessed ||
@@ -996,7 +1011,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             ordinaryMelee && VanillaGroundCombatCohort1458.IsDayDespawnCandidate(definition.Type))
         {
             daytimeSurface = context.DayTime && !martianInvasionExemption && !context.EclipseActive && !npc.Simulation.SpawnedFromStatue &&
-                npc.PositionY <= context.WorldSurfacePixels;
+                npc.PositionY <= context.WorldSurfacePixels && !(npc.Type == 631 && npc.Ai.Ai2 > 0f);
             if (daytimeSurface)
             {
                 bool graveyard;
@@ -1102,7 +1117,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             }
             var raw = meleeClosestTarget.Facts;
             bool retainFacing = raw.Dead || raw.NoAggro && npc.Simulation.DirectionX != 0 ||
-                raw.ItemAnimation == 0 && raw.Aggro < 0 && npc.Target < byte.MaxValue;
+                raw.ItemAnimation == 0 && raw.Aggro < 0 && (sourceOldTarget ?? npc.Target) < byte.MaxValue;
             int facingX = retainFacing ? npc.Simulation.DirectionX :
                 (int)raw.PositionX + raw.Width / 2 < npc.PositionX + fighterBody.Width / 2 ? -1 : 1;
             int facingY = retainFacing ? startingDirectionY :
@@ -1195,8 +1210,8 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             ClosestTarget: fighterTarget)
         {
             StuckTrackingAlreadyApplied = subtypeOwnsStuckPrepass || ordinaryMelee &&
-                definition.Type.Value is 381 or 382 or 520 && npc.Ai.Ai2 > 0f,
-            BusyWithAction = ordinaryMelee && definition.Type.Value is 381 or 382 or 385 or 520 && npc.Ai.Ai2 > 0f,
+                definition.Type.Value is 379 or 380 or 381 or 382 or 520 && npc.Ai.Ai2 > 0f,
+            BusyWithAction = ordinaryMelee && definition.Type.Value is 381 or 382 or 383 or 385 or 386 or 389 or 391 or 520 && npc.Ai.Ai2 > 0f,
             BaseMaximumHorizontalSpeed = ordinaryMelee && definition.Type.Value == 181 && context.RemixWorld
                 ? 3.75f : parameters.BaseMaximumHorizontalSpeed,
             HorizontalAcceleration = parameters.HorizontalAcceleration,
@@ -1205,7 +1220,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             EncouragedDespawnTime = parameters.EncouragedDespawnTime,
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = ordinaryMelee
-                ? context.DayTime && (double)(npc.PositionY / 16f) < context.WorldSurfacePixels / 16d
+                ? npc.Type != 631 && context.DayTime && (double)(npc.PositionY / 16f) < context.WorldSurfacePixels / 16d
                 : daytimeSurface,
             JustHit = simulation.JustHit,
             TimeLeft = simulation.TimeLeft,

@@ -23,7 +23,9 @@ internal sealed partial class ServerPlayerAuthority
                 outOfRange, ghost: false, player.IsDead);
             ref LavaState lava = ref lavaStates[player.Player.Slot.Value];
             var represented = new PlayerDebuffSnapshot1458(
-                lava.Owner == player.Player && lava.BurningTicks > 0, false, false);
+                lava.Owner == player.Player && lava.BurningTicks > 0, false, false)
+                { Electrified = npcContactBuffOwners[player.Player.Slot.Value] == player.Player &&
+                    npcContactDebuffEffects[player.Player.Slot.Value].Electrified };
             var debuffs = VanillaPlayerHealthContext1458.ResolveDebuffs(
                 player.Debuffs, represented, outOfRange, ghost: false, player.IsDead);
             states.TrySetHealthContext(in player, next, debuffs);

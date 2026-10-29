@@ -82,7 +82,7 @@ internal sealed class RuntimeProjectileTerminationEffectSink : IProjectileTermin
         // consumes one sample even when dedicated-server Dust itself returns early.
         // Pre-AI world-bounds removal bypasses Kill. This is the authority's shared
         // stream, reached only after the generation-safe state commit.
-        if (termination.FinalProjectile.Type.Value == 436 && termination.Reason is
+        if (termination.FinalProjectile.Type.Value is 435 or 436 && termination.Reason is
             ProjectileSimulationTerminationReason.LifetimeExpired or
             ProjectileSimulationTerminationReason.TileCollision or
             ProjectileSimulationTerminationReason.BehaviorKill)

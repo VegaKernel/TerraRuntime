@@ -96,7 +96,7 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             return true;
         }
 
-        if (behavior.Kill)
+        if (behavior.Kill && current.Type.Value != 437)
         {
             next = new ProjectileSimulationStepResult(
                 new ProjectileStateUpdate(
@@ -214,10 +214,10 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             collidedVelocityX = collision.VelocityX;
             collidedVelocityY = collision.VelocityY;
             if (!liquid.Wet && (current.Type == VanillaProjectileIds.Nail || current.Type == VanillaProjectileIds.DrManFlyFlask ||
-                current.Type == VanillaProjectileIds.NurseSyringeHeal || current.Type.Value is 436 or 438 or 471 or 508 or 592))
+                current.Type == VanillaProjectileIds.NurseSyringeHeal || VanillaGroundCombatPlayerHit1458.IsSupported(current.Type)))
                 ResolveEclipseDryCollision(in definition, velocityX, velocityY,
                     ref behaviorPositionX, ref behaviorPositionY, ref collidedVelocityX, ref collidedVelocityY,
-                    completeMotion: current.Type.Value is 436 or 438 or 471 or 508 or 592);
+                    completeMotion: VanillaGroundCombatPlayerHit1458.IsSupported(current.Type));
             collideX = collidedVelocityX != velocityX;
             collideY = collidedVelocityY != velocityY;
         }
@@ -521,6 +521,14 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
                     ? ProjectileSimulationTerminationReason.LifetimeExpired
                     : ProjectileSimulationTerminationReason.None;
         }
+        // Type437 kills inside AI_001 but the same Update body still reaches
+        // HandleMovement before its inactive return. It never reaches player contact.
+        if (behavior.Kill && current.Type.Value == 437)
+        {
+            timeLeft = 0;
+            terminationReason = ProjectileSimulationTerminationReason.BehaviorKill;
+            killOrigin = new ProjectileKillOrigin(behaviorPositionX, behaviorPositionY);
+        }
         next = new ProjectileSimulationStepResult(
             state,
             timeLeft,
@@ -530,7 +538,7 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             KillOrigin: killOrigin,
             PenetrateOverride: nursePenetration,
             CollisionTileCutOffer: current.Type == VanillaProjectileIds.NurseSyringeHeal && tileImpact ||
-                current.Type.Value is 436 or 438 or 471 or 508 or 592 && sourceTileImpact
+                VanillaGroundCombatPlayerHit1458.IsSupported(current.Type) && sourceTileImpact
                 ? new ProjectileCollisionTileCutOffer() : null)
         {
             SourceWetCountOverride = sourceWetCountOverride,
@@ -753,7 +761,7 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
     {
         // ProjectileID.Sets.WindPhysicsImmunity overrides aiStyle 1 for these
         // two admitted Martian shots; RayGunnerLaser438 remains wind-sensitive.
-        if (!behaviorContext.WindPhysics || type.Value is 436 or 592)
+        if (!behaviorContext.WindPhysics || type.Value is 435 or 436 or 437 or 592)
             return;
 
         float centerX = positionX + definition.Width * 0.5f;

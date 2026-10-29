@@ -56,8 +56,8 @@ public sealed class GroundRosterDefaults1458Tests
         Assert.Equal(191, fighters);
         Assert.Equal(27, variants);
         Assert.Equal(82, town);
-        Assert.Equal(270, lifecycle);
-        Assert.Equal(30, creationOnly);
+        Assert.Equal(278, lifecycle);
+        Assert.Equal(22, creationOnly);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(new(624), out var legacyGnome) &&
             legacyGnome.SupportsRuntimeLifecycle);
         Assert.False(VanillaNpcGroundRoster1458.TryGet(new(3), new(-13), out _));

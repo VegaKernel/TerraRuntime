@@ -20,26 +20,29 @@ internal static partial class RuntimeNpcStateOwnershipPolicy
         bool ownsPhase = VanillaNpcPhaseAccepted1458.SupportsIdentity(new(update.Type), new(update.NetId));
         bool ownsSlimeContinuation = update.Type == VanillaNpcIds.TownSlimeYellow.Value && update.NetId == update.Type;
         bool ownsFreshTransform = update.Type == update.NetId &&
-            (VanillaNpcTransformation1458.IsNewDefinition(new(update.Type)) || ownsSlimeContinuation);
+            (VanillaNpcTransformation1458.IsNewDefinition(new(update.Type)) || ownsSlimeContinuation ||
+             VanillaMartianChildAi1458.IsSupported(new(update.Type), new(update.NetId)) ||
+             update.Type == VanillaNpcIds.Maggot.Value || update.Type == VanillaNpcIds.Scutlix.Value ||
+             update.Type is 379 or 380 or 383 or 386 or 389 or 631 or 632);
         NpcSimulationState simulation = update.Simulation with {
             StairFall = update.Simulation.StairFall ?? false,
             TeleportTime = update.Simulation.TeleportTime ?? (ownsFreshTransform ? 0f : null),
             TeleportStyle = update.Simulation.TeleportStyle ?? (ownsFreshTransform ? 0 : null),
             BreathCounter = update.Simulation.BreathCounter ?? (ownsFreshTransform ? 0 : null),
-            WetCount = update.Simulation.WetCount ?? (ownsPhase || ownsSlimeContinuation ? 0 : null),
-            LavaWet = update.Simulation.LavaWet ?? (ownsPhase || ownsSlimeContinuation ? false : null),
-            HoneyWet = update.Simulation.HoneyWet ?? (ownsPhase || ownsSlimeContinuation ? false : null),
-            ShimmerWet = update.Simulation.ShimmerWet ?? (ownsPhase || ownsSlimeContinuation ? false : null),
+            WetCount = update.Simulation.WetCount ?? (ownsPhase || ownsFreshTransform ? 0 : null),
+            LavaWet = update.Simulation.LavaWet ?? (ownsPhase || ownsFreshTransform ? false : null),
+            HoneyWet = update.Simulation.HoneyWet ?? (ownsPhase || ownsFreshTransform ? false : null),
+            ShimmerWet = update.Simulation.ShimmerWet ?? (ownsPhase || ownsFreshTransform ? false : null),
             HomeTileX = update.Simulation.HomeTileX ?? -1,
             HomeTileY = update.Simulation.HomeTileY ?? -1,
             Homeless = update.Simulation.Homeless ?? false,
             CatchableNpcTempImmunityCounter = update.Simulation.CatchableNpcTempImmunityCounter ??
                 (GroundCritterProtectionAtSpawn(update.Type, update.NetId) ??
-                    (ownsPhase
-                        ? VanillaNpcTransformation1458.HasPhaseCatchProtection(new(update.Type)) ? 90 : 0 : null)),
+                    (ownsPhase || ownsFreshTransform
+                        ? VanillaNpcPhaseAccepted1458.HasCatchProtection(new(update.Type)) ? 90 : 0 : null)),
             ReleaseOwner = update.Simulation.ReleaseOwner ??
                 (IsOwnedGroundCritter(update.Type, update.NetId) ||
-                    ownsPhase ? (short)255 : null),
+                    ownsPhase || ownsFreshTransform ? (short)255 : null),
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {

@@ -167,7 +167,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
     internal bool TryApplyNpcPhaseWorldMotion(in NpcSnapshot before, in NpcStateUpdate proposed,
         in VanillaNpcRawPlayer1458 rawTarget, VanillaNpcCollisionContinuation1458 continuation,
-        in VanillaNpcTownCollisionContext1458 home, out NpcStateUpdate next)
+        in VanillaNpcTownCollisionContext1458 home, out NpcStateUpdate next, bool mountedScutlix = false)
     {
         // Mid-AI Transform already materialized its new body. AI003's earlier
         // flag6 still belongs to the incoming actor, before SetDefaults clears JustHit.
@@ -176,6 +176,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             Simulation = proposed.Simulation };
         var adjusted = proposed;
         if (!(before.Type == 482 && before.Ai.Ai2 < 0f) &&
+            !(before.Type == 631 && before.Ai.Ai2 != 0f && before.Ai.Ai2 < 100f) &&
             !TryApplyTerrainMotion(in working, in proposed, out adjusted, rawTarget,
                 before.VelocityX == 0f && !before.Simulation.JustHit))
         { next = default; return false; }
@@ -191,7 +192,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if (accelerated.Simulation.Friendly == true || accelerated.Type is 55 or 230 or 592 or 593 or 687)
             accelerated = RuntimeTownNpcCombat1458.PlanFriendlyRegeneration(in accelerated);
         return TryFinishCollision(tiles, in accelerated, gravity.Value.Parameters.Gravity,
-            out next, townContext: home, continuation: continuation);
+            out next, townContext: home, continuation: continuation, mountedScutlix: mountedScutlix);
     }
 
     internal bool TryApplyTerrainMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next,
@@ -283,7 +284,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             // clock. Ground support still participates in the following jump tail.
             bool skipsDoorPressure = hostileGroundCritter ||
                 definition.Type.Value is 381 or 382 or 449 or 450 or 451 or 452 or 464 or 470 or 481 or 482 or
-                    508 or 580 or 582 or 520 or >= 524 and <= 529;
+                    508 or 580 or 582 or 520 or >= 524 and <= 529 or 379 or 380 or 383 or 386 or 391 or 631;
             skipsDoorPressure |= sourceStuckHopEligible.HasValue && definition.Type.Value is 199 or 532;
             VanillaZombieDoorContactResult doorContact = skipsDoorPressure
                 ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai,
@@ -521,7 +522,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     internal static bool TryFinishCollision(WorldTileStore tiles, in NpcStateUpdate aiState,
         float gravityAcceleration, out NpcStateUpdate next, bool? fallThroughOverride = null,
         VanillaNpcTownCollisionContext1458? townContext = null,
-        VanillaNpcCollisionContinuation1458? continuation = null)
+        VanillaNpcCollisionContinuation1458? continuation = null, bool mountedScutlix = false)
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
             !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
@@ -621,14 +622,18 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             hitboxWidth = hitbox.Width; hitboxHeight = hitbox.Height;
         }
         float oldDryVelocityX = velocityX, oldDryVelocityY = velocityY;
+        // GetTileCollisionParameters expands only the queried body. Liquid,
+        // gravity, targets and the retained physical hitbox still use height40.
+        int queriedHeight = mountedScutlix && collisionState.Type == VanillaNpcIds.Scutlix.Value ? 62 : hitboxHeight;
+        float queriedOffsetY = hitboxHeight - queriedHeight;
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
             collisionState.PositionX,
-            collisionState.PositionY,
+            collisionState.PositionY + queriedOffsetY,
             velocityX,
             velocityY,
             hitboxWidth,
-            hitboxHeight,
+            queriedHeight,
             fallThrough: fallThroughPlatforms,
             fall2: fallThroughPlatforms);
 
@@ -668,17 +673,17 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         VanillaSlopeCollisionResult slope = VanillaWorldSlopeCollision.Resolve(
             tiles,
             nextPositionX,
-            nextPositionY,
+            nextPositionY + queriedOffsetY,
             collidedVelocityX,
             collidedVelocityY,
             hitboxWidth,
-            hitboxHeight,
+            queriedHeight,
             stairFall);
         // A falling actor retains the incoming flag even without stair contact. Otherwise only
         // actual slope contact retains it (NPC.Collision_MoveSlopesAndStairFall, 1.4.5.8).
         stairFall = slope.StairFall || (fallThroughPlatforms && stairFall);
         nextPositionX = slope.PositionX;
-        nextPositionY = slope.PositionY;
+        nextPositionY = slope.PositionY - queriedOffsetY;
         float finalVelocityX = slope.VelocityX;
         float finalVelocityY = slope.VelocityY;
 
@@ -745,6 +750,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
         NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
             .DeactivatesAfterCompletion(in before, in completed) ?? false;
+
+    public bool RetiresDuringAiAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
+        NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
+            .RetiresDuringAiAfterCompletion(in before, in completed) ?? false;
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)

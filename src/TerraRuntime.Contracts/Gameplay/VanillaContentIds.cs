@@ -6,6 +6,14 @@ namespace TerraRuntime.Contracts.Gameplay;
 /// </summary>
 public static class VanillaNpcIds
 {
+    public static readonly NpcTypeId RayGunner = new(382);
+    public static readonly NpcTypeId MartianOfficer = new(383);
+    public static readonly NpcTypeId ForceBubble = new(384);
+    public static readonly NpcTypeId MartianEngineer = new(386);
+    public static readonly NpcTypeId MartianTurret = new(387);
+    public static readonly NpcTypeId ScutlixRider = new(390);
+    public static readonly NpcTypeId Scutlix = new(391);
+    public static readonly NpcTypeId Maggot = new(606);
     public static readonly NpcTypeId BlueSlime = new(1);
     public static readonly NpcTypeId StatueMimic = new(690);
     public static readonly NpcTypeId Gnome = new(624);
@@ -645,6 +653,8 @@ public static class VanillaItemIds
 /// </summary>
 public static class VanillaProjectileIds
 {
+    public static readonly ProjectileTypeId MartianTurretBolt = new(435);
+    public static readonly ProjectileTypeId RayGunnerLaser = new(438);
     public const int Count = 1136;
 
     public static ProjectileTypeId None => default;

@@ -11,16 +11,29 @@ namespace TerraRuntime.Application;
 internal readonly record struct ProjectilePlayerHurt1458(
     ProjectileTypeId Type, int MaximumLife, bool GoodWorld, VanillaUnifiedRandom1458 Random)
 {
-    internal bool HasStatusAfterSurvivingHurt(int damage)
+    internal bool TryResolveStatusAfterSurvivingHurt(int damage, bool expert, bool master,
+        out BuffTypeId type, out int duration)
     {
         int count = VanillaGroundCombatPlayerHit1458.SurvivingBloodSamples(damage, MaximumLife);
         for (int i = 0; i < count; i++) Random.NextDouble();
-        return Type.Value == 436 && Random.Next(5) >= 2;
+        int sourceDuration;
+        switch (Type.Value)
+        {
+            case 436:
+                if (Random.Next(5) < 2) { type = default; duration = 0; return false; }
+                type = new(31); sourceDuration = 300; break;
+            case 435:
+                if (Random.Next(3) == 0) { type = default; duration = 0; return false; }
+                type = new(144); sourceDuration = 300; break;
+            case 437:
+                type = new(144); sourceDuration = 60 * Random.Next(4, 9); break;
+            default: type = default; duration = 0; return false;
+        }
+        duration = VanillaNpcContactBuffs1458.ResolveDuration(type, sourceDuration,
+            expert || GoodWorld, master || expert && GoodWorld, resistCold: false);
+        return true;
     }
 
-    internal int ConfusedDuration(bool expert, bool master) =>
-        VanillaNpcContactBuffs1458.ResolveDuration(new BuffTypeId(31), 300,
-            expert || GoodWorld, master || expert && GoodWorld, resistCold: false);
 }
 
 internal sealed partial class PlayerAuthority
@@ -40,10 +53,8 @@ internal sealed partial class PlayerAuthority
     private NpcContactBuff1458[] ApplyProjectileStatus(RuntimePlayerMember target,
         in VanillaPlayerCombatSnapshot combat, in ProjectilePlayerHurt1458 source, int damage)
     {
-        if (!source.HasStatusAfterSurvivingHurt(damage)) return [];
+        if (!source.TryResolveStatusAfterSurvivingHurt(damage, expertMode, masterMode, out var type, out int duration)) return [];
         if (transferProfiles.CaptureBuffState(target.Connection) is not { } before) return [];
-        var type = new BuffTypeId(31);
-        int duration = source.ConfusedDuration(expertMode, masterMode);
         var next = before.Clone();
         if (!next.TryApplyNpcContactBuff(type, duration, combat.IsImmuneToNpcContactBuff(type)) ||
             !transferProfiles.TryAdoptBuffState(target.Connection, before, next)) return [];
@@ -65,7 +76,6 @@ internal sealed partial class ServerPlayerAuthority
 
     private bool ApplyProjectileStatus(PlayerHandle target, in VanillaPlayerCombatSnapshot combat,
         in ProjectilePlayerHurt1458 source, int damage, bool expert, bool master) =>
-        source.HasStatusAfterSurvivingHurt(damage) &&
-        TryApplyNpcContactBuff(target, new BuffTypeId(31), source.ConfusedDuration(expert, master),
-            combat.IsImmuneToNpcContactBuff(new BuffTypeId(31)), publish: false);
+        source.TryResolveStatusAfterSurvivingHurt(damage, expert, master, out var type, out int duration) &&
+        TryApplyNpcContactBuff(target, type, duration, combat.IsImmuneToNpcContactBuff(type), publish: false);
 }

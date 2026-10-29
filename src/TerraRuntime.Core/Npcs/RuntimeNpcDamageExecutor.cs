@@ -165,6 +165,14 @@ public sealed class RuntimeNpcDamageExecutor
             return false;
         }
 
+        // StrikeNPC_Inner writes the ritual controller's localAI before the
+        // ordinary strike. That NPC438 link is not an owned actor transaction.
+        if (!VanillaRangedNpcDeath1458.CanOwnStrike(in current))
+        {
+            result = default;
+            return false;
+        }
+
         if (prelude is not null)
         {
             if (prelude.Before != current || sharedLifeOwner is not null || !prelude.IsCurrent())
