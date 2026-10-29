@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace SourceProbe;
 
-internal static class ScalarVerification
+internal static partial class ScalarVerification
 {
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
     private static string Sha(byte[] data) => Convert.ToHexStringLower(SHA256.HashData(data));

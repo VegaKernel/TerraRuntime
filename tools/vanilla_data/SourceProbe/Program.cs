@@ -4,6 +4,14 @@ using SourceProbe;
 
 var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, WriteIndented = true };
+if (args.Length == 2 && args[0] == "--state-candidate-self-test")
+{
+    var checks = ScalarStateChecks.Run();
+    using var output = new FileStream(args[1], FileMode.CreateNew, FileAccess.Write);
+    JsonSerializer.Serialize(output, checks, options);
+    Console.WriteLine(JsonSerializer.Serialize(checks, options));
+    return;
+}
 if (args.Length == 2 && args[0] == "--value-candidate-self-test")
 {
     var checks = ScalarValueChecks.Run();
@@ -40,7 +48,13 @@ if (args.Length == 3 && args[0] == "--adapt-scalar")
     byte[] raw = bounded.ToArray();
     using var envelope = JsonDocument.Parse(raw);
     object observation;
-    if (envelope.RootElement.GetProperty("schemaVersion").GetInt32() == 2)
+    if (envelope.RootElement.GetProperty("schemaVersion").GetInt32() == 3)
+    {
+        var state = JsonSerializer.Deserialize<StateRequest>(raw, options) ?? throw new ArgumentException("Missing state request");
+        var loaded = CompilationLoader.Load(state.Analysis.SourceRoot, state.Analysis.Assembly, state.Analysis.Sources);
+        observation = ScalarVerification.RunState(ScalarCandidate.PlanState(loaded, state), destination);
+    }
+    else if (envelope.RootElement.GetProperty("schemaVersion").GetInt32() == 2)
     {
         var value = JsonSerializer.Deserialize<ValueRequest>(raw, options) ?? throw new ArgumentException("Missing value request");
         var loaded = CompilationLoader.Load(value.Analysis.SourceRoot, value.Analysis.Assembly, value.Analysis.Sources);

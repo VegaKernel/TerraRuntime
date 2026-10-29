@@ -129,7 +129,8 @@ def _tool_inputs():
     paths += [ROOT / name for name in ('Directory.Build.props', 'global.json', 'tools/vanilla.py',
         'tools/vanilla_data/source_analysis.py', 'tools/vanilla_data/cli.py',
         'tools/vanilla_data/capture.py', 'tools/vanilla_data/reference.json', 'tools/vanilla_data/pass_probe.py',
-        'tools/vanilla_data/scalar_candidate.py', 'tools/vanilla_data/scalar_values.py')]
+        'tools/vanilla_data/scalar_candidate.py', 'tools/vanilla_data/scalar_values.py',
+        'tools/vanilla_data/scalar_states.py')]
     return {path.relative_to(ROOT).as_posix(): facts.digest(path) for path in sorted(paths)}
 
 
