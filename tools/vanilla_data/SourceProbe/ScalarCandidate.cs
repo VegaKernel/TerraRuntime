@@ -17,7 +17,7 @@ internal sealed record ScalarPlan(ScalarRequest Request, CompilationContext Cont
 
 // Offline candidate generation only. The operation whitelist is deliberately much
 // smaller than the inventory: a resolved symbol is not permission to translate it.
-internal static class ScalarCandidate
+internal static partial class ScalarCandidate
 {
     internal static ScalarPlan Plan(CompilationContext context, ScalarRequest request)
     {

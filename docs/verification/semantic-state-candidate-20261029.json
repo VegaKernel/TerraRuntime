@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 1,
+  "kind": "semantic-state-fieldchain-candidate-component",
+  "acceptedToolComponent": true,
+  "candidateOnly": true,
+  "runtimeAdmitted": false,
+  "npcCohortAdmitted": false,
+  "newRuntimeDependency": false,
+  "newConverterOrCommand": false,
+  "qualification": {
+    "path": ".cache\\semantic-mutation-next\\release-v2\\qualification.json",
+    "sha256": "bd7910dd35a4f03063f09581746dfb40547f6258d9053247e43c522c02f25bfe"
+  },
+  "officialAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "officialFnaSha256": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+  "actualCalls": {
+    "newProfiles": 3700,
+    "oldSchema1And2Compatibility": 3348,
+    "total": 7048
+  },
+  "newProfiles": [
+    {
+      "entry": "Terraria.NPC.SimpleFlyMovement(Microsoft.Xna.Framework.Vector2, float)",
+      "casesPerRun": 1736,
+      "repeats": 2,
+      "identicalObservations": true,
+      "globalCompilationErrorsPerRun": 162,
+      "genericInventorySourceClosureComplete": true,
+      "actualMutationControls": [
+        {
+          "mutation": "omit-operation-0",
+          "cases": 1736,
+          "differences": 457,
+          "errors": 0,
+          "assemblySha256": "b97fd3c226020075839ad54db4465eb2c5add98e64f301f3bbe4cba67ad75cd2"
+        },
+        {
+          "mutation": "omit-operation-1",
+          "cases": 1736,
+          "differences": 48,
+          "errors": 0,
+          "assemblySha256": "80140c52222037a2b43661ee85812a857c7e37a5f1a09ac6b2f2641e9af87dcb"
+        },
+        {
+          "mutation": "omit-operation-2",
+          "cases": 1736,
+          "differences": 435,
+          "errors": 0,
+          "assemblySha256": "6a7517f4b558c588b4cc4e29b9978065a9adf2aebef63ce02f5fd2f768dddb75"
+        },
+        {
+          "mutation": "omit-operation-3",
+          "cases": 1736,
+          "differences": 48,
+          "errors": 0,
+          "assemblySha256": "db48e2957a22cf6dd1f13cb1835a462cc1e54b1630d315a30470cf7b0a416c03"
+        },
+        {
+          "mutation": "omit-operation-4",
+          "cases": 1736,
+          "differences": 459,
+          "errors": 0,
+          "assemblySha256": "cf2427a33f00a831a4c10d837ded45a87281c0c83d5459e8f60658bac748cee5"
+        },
+        {
+          "mutation": "omit-operation-5",
+          "cases": 1736,
+          "differences": 48,
+          "errors": 0,
+          "assemblySha256": "5b9a8d869b5b1074e4e2c8d9ce3aa39dad9b3ec82285277e43000dfcc89b314f"
+        },
+        {
+          "mutation": "omit-operation-6",
+          "cases": 1736,
+          "differences": 433,
+          "errors": 0,
+          "assemblySha256": "fdc15274a6b160c01fa86bc739f7d8394b3d1d06dad21faa9fc748ee4dd878df"
+        },
+        {
+          "mutation": "omit-operation-7",
+          "cases": 1736,
+          "differences": 48,
+          "errors": 0,
+          "assemblySha256": "daa2b90fe885d75b8c9140518a7c99458cc88d415e70faeb533f004dd1d90047"
+        }
+      ]
+    },
+    {
+      "entry": "Terraria.NPC.AI_120_HallowBoss_IsInPhase2()",
+      "casesPerRun": 42,
+      "repeats": 2,
+      "identicalObservations": true,
+      "globalCompilationErrorsPerRun": 162,
+      "genericInventorySourceClosureComplete": false,
+      "actualMutationControls": [
+        {
+          "mutation": "invert-result",
+          "cases": 42,
+          "differences": 42,
+          "errors": 0,
+          "assemblySha256": "0e8e9c6ec09effb327685de2e682820d736b875a7a7e710570417a3f755f04cd"
+        }
+      ]
+    },
+    {
+      "entry": "Terraria.NPC.RedHatSkeletronAdjustmentsEnabled()",
+      "casesPerRun": 72,
+      "repeats": 2,
+      "identicalObservations": true,
+      "globalCompilationErrorsPerRun": 162,
+      "genericInventorySourceClosureComplete": false,
+      "actualMutationControls": [
+        {
+          "mutation": "invert-result",
+          "cases": 72,
+          "differences": 72,
+          "errors": 0,
+          "assemblySha256": "09be7b2516050a0a9b2fcfac54292c9c708f07a3f0983e8d8e61019f87ef46ae"
+        }
+      ]
+    }
+  ],
+  "oldSchemaCompatibility": [
+    {
+      "schema": 1,
+      "entry": "Terraria.NPC.EncourageDespawn(int)",
+      "cases": 1014,
+      "result": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\EncourageDespawn-run\\result.json",
+        "sha256": "7fcd3d6f45aee75cb47477016f441f1c029fd754a51e94029f353becd7fe025c"
+      },
+      "observation": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\EncourageDespawn-run\\observation.json",
+        "sha256": "5ce9f1180248fa3d75f6f0bda387b9dd60f4605e070b494261d23f95cd52ccba"
+      },
+      "priorImmutableObservation": {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\scalar-release-final\\EncourageDespawn-a\\observation.json",
+        "sha256": "5ce9f1180248fa3d75f6f0bda387b9dd60f4605e070b494261d23f95cd52ccba"
+      },
+      "allPriorObservationRowsExactlyPreserved": true
+    },
+    {
+      "schema": 1,
+      "entry": "Terraria.NPC.DiscourageDespawn(int)",
+      "cases": 1014,
+      "result": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\DiscourageDespawn-run\\result.json",
+        "sha256": "e989031d56ec2bdfbda8adc4a860459267eefd05f831213c4d6ed248c1fc9322"
+      },
+      "observation": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\DiscourageDespawn-run\\observation.json",
+        "sha256": "5e69cea13554655e342421306abe7fa176771c3cd377c25ccb594ef9e0d5f79b"
+      },
+      "priorImmutableObservation": {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\scalar-release-final\\DiscourageDespawn-a\\observation.json",
+        "sha256": "5e69cea13554655e342421306abe7fa176771c3cd377c25ccb594ef9e0d5f79b"
+      },
+      "allPriorObservationRowsExactlyPreserved": true
+    },
+    {
+      "schema": 2,
+      "entry": "Terraria.Player.GetWeaponKnockback(Terraria.Item, float)",
+      "cases": 1185,
+      "result": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\knockback-run\\result.json",
+        "sha256": "1f3701d91d070c72e70b67f88651b41e0c390058aac1a1bc48f2aeae5ba40853"
+      },
+      "observation": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\knockback-run\\observation.json",
+        "sha256": "37ead0de4f2676b4d60add9dd1f20cb2025bb0b6de54f29ec27ec5591eb820e6"
+      },
+      "priorImmutableObservation": {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\typed-final\\knockback-a\\observation.json",
+        "sha256": "37ead0de4f2676b4d60add9dd1f20cb2025bb0b6de54f29ec27ec5591eb820e6"
+      },
+      "allPriorObservationRowsExactlyPreserved": true
+    },
+    {
+      "schema": 2,
+      "entry": "Terraria.Player.GetWeaponCrit(Terraria.Item)",
+      "cases": 135,
+      "result": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\crit-run\\result.json",
+        "sha256": "02754e77e31950c5a3ce8f78daf267264e4de39b1caeb3a92a8ca5e87157b462"
+      },
+      "observation": {
+        "path": ".cache\\semantic-mutation-next\\legacy-regression-v1\\crit-run\\observation.json",
+        "sha256": "1485e23754d35b968c83b9b1b154b9670b68596110fa94bb13a0a6af1feca9ff"
+      },
+      "priorImmutableObservation": {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\typed-final\\crit-a\\observation.json",
+        "sha256": "1485e23754d35b968c83b9b1b154b9670b68596110fa94bb13a0a6af1feca9ff"
+      },
+      "allPriorObservationRowsExactlyPreserved": true
+    }
+  ],
+  "capabilityProfile": {
+    "schema": 3,
+    "entryCommand": "py -3 tools/vanilla.py source adapt-scalar --request request.json --output-dir .cache/source-adaptation/run01",
+    "symbolPaths": "Exactown/inherited scalarroot, Vector2.X/Y fieldchain orliteralai/localAI slot0..3; targetnamesexplicit, no syntactic-only guesses.",
+    "stateAccess": "readOnly orreadWrite, everymappedfieldobserved; declaredwritecap mustactuallyoccurinboundbody. Readonlycapwritesrefused.",
+    "arrays": "Runtime4floatshape/directaliaseschecked. Writesadditionallyrequireactualsourcefresh4floatinitializer+nonpublishingqualifiedconstructorchain; opaqueconstructorsrefuse. ActualofficialarrayprofileshereREADONLY; mutablearrayproofcurrentlyauthoredsynthetic.",
+    "arguments": "byvaluescalars orreadonlybyvalueclosedVector2 x/y rawfloatbits. Classrefs/ref/in/out/vectorrebindorcomponentwritesrefused.",
+    "numeric": "Finitebinary32input/output including?0/subnormals/boundaries; cast/widening/division/checked/unsafe/refaliases/globals/properties/APIs/RNGcalls/loops/exceptionflow remainunsupported.",
+    "ownership": "No new owner/store/stream. Generatedflatstateisacachecandidate; bindingtoactualruntimeproviders remainsmanualreviewedwork."
+  },
+  "verification": {
+    "sourceMethodSpansQualified": true,
+    "wholeOriginalNpcSourceCompiled": false,
+    "outsideEntryCompilationErrorsVisible": 162,
+    "originalMethodBodyCarrierCompiled": true,
+    "carrierVector2Scope": "Closedtwofloatdatashapeonly; no APIbehaviorstubbed andno wholeFNA/NPCclasscompilationclaim.",
+    "originalPhysicalRng56SlotsUnchanged": true,
+    "unmappedDirectActorFieldsArraysAndValueTypesUnchanged": true,
+    "referenceObjectInternalsTransitiveProof": false,
+    "mutationErrors": 0,
+    "negativeCSharpStateChecks": 38,
+    "legacyCSharpChecks": {
+      "inventory": 20,
+      "schema1": 18,
+      "schema2": 27
+    },
+    "pythonCiTests": 280,
+    "finalSameBackendSelfTests": {
+      "inventory": {
+        "path": ".cache/semantic-mutation-next/checks-final/inventory.json",
+        "sha256": "62ae910a94138905b6d6d29277409ea90745808de2773b6892e6499b6e1ffdea",
+        "checks": 20
+      },
+      "scalar": {
+        "path": ".cache/semantic-mutation-next/checks-final/scalar.json",
+        "sha256": "b5be7339e5ce55d6fc7f1b2c51084f21092984cfbc9cde143465bff342feb8b1",
+        "checks": 18
+      },
+      "value": {
+        "path": ".cache/semantic-mutation-next/checks-final/value.json",
+        "sha256": "ad0b6c96623fc581259667601065c79efeef49006e9d904e4481b87f4f759f5d",
+        "checks": 27
+      },
+      "state": {
+        "path": ".cache/semantic-mutation-next/checks-final/state.json",
+        "sha256": "ee79015d3ce1ba691f67302c1cfa3195d9f13c2e4d7466d0c577f6b5609ff228",
+        "checks": 38
+      }
+    },
+    "documentation": {
+      "mirroredPages": 137,
+      "markdownFiles": 313,
+      "accepted": true
+    }
+  },
+  "provenance": {
+    "toolInputs": {
+      "Directory.Build.props": "37d98d593eb8c721f32e590690c568a31ad2bdbd2ba6401939053a5d6c81b7dd",
+      "global.json": "5854d736f332dad68a6636e7b95e7954ee4e63e05f600e74408900c31bdb54b2",
+      "tools/vanilla.py": "486e5cb697cc4789f1d671b57831eabb0f815ad2498a8d3e461995263ac4061b",
+      "tools/vanilla_data/SourceProbe/CompilationLoader.cs": "0c112206981c94b9f8d8aa0d0d6c3c55afeabbe493ed467b485479755a55be70",
+      "tools/vanilla_data/SourceProbe/InventoryChecks.cs": "4208f2422972add2d6b0ee9b01c0650182a63193ec1a3407e7c238d1080ecfb8",
+      "tools/vanilla_data/SourceProbe/Program.cs": "716ec1b99213cccd2c5d0f7bc5f59d8d023feea2f950bfdbfb5eb743f8a11a5d",
+      "tools/vanilla_data/SourceProbe/ScalarCandidate.State.cs": "a456c53d1403e96b581477699c2425a0191c6ec603dcbd6d1287ae5ee6d79ffc",
+      "tools/vanilla_data/SourceProbe/ScalarCandidate.cs": "da4e03cbb771efd00fbc0290ff60b9a6638f2b1019cee3bdb055f7a9f492545b",
+      "tools/vanilla_data/SourceProbe/ScalarChecks.cs": "9f46ebe4e70727d3e5c269f4ce8dcfd68fce2c229961b030465c25d04ecb6f64",
+      "tools/vanilla_data/SourceProbe/ScalarStateChecks.cs": "54fe95b96de0e0aebe1857f875255d5364f797f8a389e7fa07f2bb0f958625fe",
+      "tools/vanilla_data/SourceProbe/ScalarValueCandidate.cs": "c974591fad0e70959caa06d2615ed754625dcd90a5278d6f807c36dbb707c8fb",
+      "tools/vanilla_data/SourceProbe/ScalarValueChecks.cs": "8abc9eb6a7d4e87aa3abd183aee672fca746d59ac64d393988c99eb8e360eabe",
+      "tools/vanilla_data/SourceProbe/ScalarValueVerification.cs": "d5c226ceba3c95f9c4e83aa0d181ae56bc8e8499b523c0d0dd03b97a5e3aa674",
+      "tools/vanilla_data/SourceProbe/ScalarVerification.State.cs": "28587025dfc220a26ea8648112eb5666ec0f4b6259541032ad45c13f32be7211",
+      "tools/vanilla_data/SourceProbe/ScalarVerification.cs": "645611e6eff0d8a58885c206d6230f785ec10d80e22b3423c1e6c797743aeed3",
+      "tools/vanilla_data/SourceProbe/SemanticInventory.cs": "ee445e1665ac43ca9d665abdf5e6373b9ae7023c99c1eacfab6459fe5fd63f86",
+      "tools/vanilla_data/SourceProbe/SourceProbe.csproj": "2ecbd9c81b1d177d6edbd73fbf13756fcaa7ebfde1c177e5c6a0fc3f262ec20c",
+      "tools/vanilla_data/capture.py": "bc02043a24f6f14358f2ca71db6baa9aa784d8e1019ecd235f246d4298f8becf",
+      "tools/vanilla_data/cli.py": "4482c34181e64f6ef4565f79084b9248346a06f2d2850420a55b2d740d6095d5",
+      "tools/vanilla_data/pass_probe.py": "7e1238d683b7b3e441ea211d1a07352781f3751ccd87ea30abc0b86245542e36",
+      "tools/vanilla_data/reference.json": "811aac2bf4e8f8e0b541ef5866df4b423f8f3ae48d58f831e4e880f5f265e4b6",
+      "tools/vanilla_data/scalar_candidate.py": "6a1d80b1f0bbd747180341a9f8e75a422488a606c192e2ed9d7f13e2fd8ff76c",
+      "tools/vanilla_data/scalar_states.py": "81e3c6a59e23f7673ae69864e04ad3ac5bd85b1cfbb0534fc101d459417bfbea",
+      "tools/vanilla_data/scalar_values.py": "4bfb7001ed67b9879f1a51e7c66f7fdd5683f3551937c8883172ccf48d342ea7",
+      "tools/vanilla_data/source_analysis.py": "a0e9a63c3688c3a51f0b548bd37b8ae911c376a353b5cb654ad26dfcbc5e74d1"
+    },
+    "backendDlls": {
+      "Microsoft.CodeAnalysis.CSharp.dll": "48bb0a61ec9796b9a44c87f940bed3c5c36c6f0d0e7cabe054b313fbe198794b",
+      "Microsoft.CodeAnalysis.dll": "7d810b7e11032676b9b08c645fdb482237ba71278bd429a1dee5d24c9194f32b",
+      "SourceProbe.dll": "4a475943119263595a3807f2d6f3d47752c8a7e72a601c3b1987c2f96a5e41d1",
+      "cs/Microsoft.CodeAnalysis.CSharp.resources.dll": "77d81669ffa67fa4863de2659251057b6fe1da9005dc522df06f1c6cfd56261a",
+      "cs/Microsoft.CodeAnalysis.resources.dll": "727650e73b1750c3a39b1a595e521b3318cfc6ca9bc38f3c77cba48e823f9804",
+      "de/Microsoft.CodeAnalysis.CSharp.resources.dll": "42b947c7fc4e3117201520c1976c3fe66e0577f380b948f3ca6613c55b443488",
+      "de/Microsoft.CodeAnalysis.resources.dll": "f08616fbf334a366ef6325334204340c90466f8aece5cd07bb8655f8181b3f8c",
+      "es/Microsoft.CodeAnalysis.CSharp.resources.dll": "bce3242f9fee093010b3c8bbc401d6f05cc127ace61f8ed80c74b616727f4005",
+      "es/Microsoft.CodeAnalysis.resources.dll": "fac618778f4174b49d970411c8f42fdbb7fbda7d4f94eeab7c655e7bdcb0c98e",
+      "fr/Microsoft.CodeAnalysis.CSharp.resources.dll": "987e59b93bfadfaa539e0313962376c018b2ffd1a808aad76eda40fd7ab40642",
+      "fr/Microsoft.CodeAnalysis.resources.dll": "80189220e4d97598dfe419b66854968a710d4f2790fe596164530af8636b6ae2",
+      "it/Microsoft.CodeAnalysis.CSharp.resources.dll": "d37d563d65a6bf0fb384f8070d13e77cc73c38711ad9a38ed22635f53bec482f",
+      "it/Microsoft.CodeAnalysis.resources.dll": "0230f1de28a794a2b0de239cc7c02ce845ec4f9c240a7d527ad5e770c6cb3c94",
+      "ja/Microsoft.CodeAnalysis.CSharp.resources.dll": "12016acf50406c2c014bf1aba3f67a62759b651b831a7de93a48c6b1024279b3",
+      "ja/Microsoft.CodeAnalysis.resources.dll": "5d5e07efda6bfaca68843effe601c79f3c1c15e8042adb6289d0f21fe51bdc6a",
+      "ko/Microsoft.CodeAnalysis.CSharp.resources.dll": "3bd2d1cdfcc1ddbde9d8cfe94297189cc162e5b19678d7dd1f0cf1c2c8ef0d9f",
+      "ko/Microsoft.CodeAnalysis.resources.dll": "6543504c87fdfa85ead30a8f3920656bbd9c62e7665d1163343e9ed6b57258dc",
+      "pl/Microsoft.CodeAnalysis.CSharp.resources.dll": "4a67dc61e60e65caa043fc1b8e65a463b72e8d9dc14e2584ef4bbea8df96860d",
+      "pl/Microsoft.CodeAnalysis.resources.dll": "375f1a36e339ac88ab6ebc5ebcf6f93e9728b02b26960d64d76fbd9716deeea2",
+      "pt-BR/Microsoft.CodeAnalysis.CSharp.resources.dll": "36994eecdf30c29876f90c02d0081692c8a0daa7e725d9d80421ec852f981842",
+      "pt-BR/Microsoft.CodeAnalysis.resources.dll": "5c71f491989511d0e29af1e04c8a2ff3527e6a51cb782ece3201c042fd664729",
+      "ru/Microsoft.CodeAnalysis.CSharp.resources.dll": "26b6c9ecf1e8f790c6322557ed644407237c03d9e96293a0c9b82b26bd33712c",
+      "ru/Microsoft.CodeAnalysis.resources.dll": "53f325f1193893fbd6aaf68b94cc70f7f5b3e49a61784de35b769031d2ee0f48",
+      "tr/Microsoft.CodeAnalysis.CSharp.resources.dll": "38764afee5267d941dd433b2d37fbb3d68479bbe2547e6cb91c9ca2b1afb9073",
+      "tr/Microsoft.CodeAnalysis.resources.dll": "ad6dbdfcd244414957a23cd48c5d5c300e0f28d2e8a4b88c96bab4032c9b377e",
+      "zh-Hans/Microsoft.CodeAnalysis.CSharp.resources.dll": "5fe0961fb268b8726be77497d5d6caf7ed820e1c34fb8cf2b72530b8999a9fc8",
+      "zh-Hans/Microsoft.CodeAnalysis.resources.dll": "a694e3b1fb4635a52c4b18b2c32ae6a4484020f6db01d310077a1b6fac19a1f5",
+      "zh-Hant/Microsoft.CodeAnalysis.CSharp.resources.dll": "fdfd7d877a8d4bedabd74ef13046ef8b29f18e54be37dd44a765bab810478d80",
+      "zh-Hant/Microsoft.CodeAnalysis.resources.dll": "c2fe2d2a21f4549dc04d52b6b6b819489cd242843fd862e596caaabdbc61d3b0"
+    },
+    "pythonTestSource": {
+      "path": "tools\\ci\\test_vanilla_scalar_states.py",
+      "sha256": "c8c31db021634f0d619fc85dc1f23f4cbb01c739845c123663064b60174f043f"
+    },
+    "generatedBodyLocation": "Ignored .cache/semantic-mutation-next only; no original-derived bodies committed or automatically included in shipping code.",
+    "schema1And2ObservationContinuity": "All 3348 actual old-row observations equal immutable predecessor proofs exactly, including default unmapped fingerprints.",
+    "previousPreview": "release-v1 is preserved as the first six green CLI runs before the strict array-write constructor guard; this record uses fresh release-v2."
+  },
+  "limits": [
+    "The real 35-line SimpleFlyMovement body is automatically mapped to cached flat velocity state. The two official read-only array helpers do not prove whole Skeletron or Hallow Boss AI.",
+    "Original Linux 1458 IL executes on Windows CoreCLR. This is not original Windows server startup/FPU, Linux NativeAOT, GUI or whole Main parity.",
+    "The generic inventory array frontier remains visible. Bounded capability/runtime guards refine only specified slots, not general alias or effect analysis.",
+    "No measured development speedup or automatic broad AI/world-generation port is claimed."
+  ]
+}

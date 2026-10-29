@@ -160,3 +160,37 @@ No production behavior changes here. Glove, knockback-buff, stealth and other fa
 py -3 -m unittest tools.ci.test_vanilla_source_analysis tools.ci.test_vanilla_scalar_candidate tools.ci.test_vanilla_scalar_values
 dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --value-candidate-self-test .cache/scalar/value-checks01.json
 ```
+
+## Explicit field paths and fixed state slots, schema 3
+
+The same `source adapt-scalar` command accepts schema3 for bounded scalar mutation and results. It resolves exact own or inherited field symbols, including `Entity.position`/`velocity` followed by the real `Vector2.X`/`Y` fields, and literal `NPC.ai`/`localAI` slots `0..3`. Mappings are flattened into an explicitly named typed candidate state. They grant only the stated `readOnly` or `readWrite` access; they do not discover a runtime binding or admit an NPC.
+
+This mapping fragment illustrates the contract; it is not a complete differential request:
+
+```json
+{
+  "schemaVersion": 3,
+  "returnType": "void",
+  "fields": [
+    {"path":["Terraria.Entity.velocity","Microsoft.Xna.Framework.Vector2.X"],
+     "index":null,"target":"VelocityX","type":"float","access":"readWrite"},
+    {"path":["Terraria.NPC.ai"],
+     "index":3,"target":"Phase","type":"float","access":"readOnly"}
+  ]
+}
+```
+
+Supply the analysis envelope, exactly the fields used by the selected method, and cases covering every generated mutation control. Each case supplies all mapped state, by-value scalar arguments, and `rngSeed`. The only supported struct argument is a read-only by-value two-float `Microsoft.Xna.Framework.Vector2`, represented as `{"x":{"bits":0},"y":{"bits":2147483648}}`. Float values use finite IEEE bit records, preserving signed zero and subnormals. Scalar locals, branches, add/subtract/multiply, increments and typed results are supported. Schema1 and schema2 retain their separate earlier contracts.
+
+Array writes require more than an index mapping: the planner must prove a fresh four-element source initializer and a source-qualified, nonpublishing parameterless constructor chain. Opaque constructors, shared array initializers, rebinding and aliases are refused. Read-only array slots do not require constructor purity; execution still checks the actual array shape and aliases. Calls, globals, properties, arbitrary reference paths, computed indices, whole-vector writes, ref aliases, casts/widening, division, exceptions and implicit protocols remain outside this capability.
+
+The [state-candidate evidence](../verification/semantic-state-candidate-20261029.json) records automatic generation of the real 35-line `NPC.SimpleFlyMovement` helper: 1,736 cases per repeat, two identical repeats, and eight independently compiled operation-omission controls with genuine state differences and zero runner errors. Two more real helpers exercise read-only fixed slots: `AI_120_HallowBoss_IsInPhase2` has 42 cases per repeat; `RedHatSkeletronAdjustmentsEnabled` has 72. Their inverted-result controls are detected. These six runs make 3,700 actual untouched official calls. Fresh schema1/2 compatibility runs add 3,348 calls with every observation row equal to its predecessor. Actual official array writes are **not** qualified by this package; those admission paths have synthetic checks only.
+
+Every run compares the actual official method, an unchanged-body data carrier and the generated candidate, including all mapped state/results, unchanged unmapped direct actor state, and the original RNG cursor/all 56 slots. The carrier represents only the required two-float struct data shape. Other reference internals remain identity-scoped. The original source reports 162 diagnostics outside the selected method spans; this is not a whole-source compilation claim. Generic array-alias frontiers remain visible in the inventory rather than becoming a transitive effect proof.
+
+Original-derived bodies and compiled candidates stay exclusively in ignored `.cache`. A host must separately bind each fact and effect to retained gameplay owners, preserve caller order and qualify production behavior. This tool adds no production dependency, automatic include, whole-AI support or measured development-speed claim.
+
+```powershell
+py -3 -m unittest tools.ci.test_vanilla_scalar_states
+dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --state-candidate-self-test .cache/scalar/state-checks01.json
+```

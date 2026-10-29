@@ -151,7 +151,7 @@ internal static class ScalarValueVerification
         return (result, initial.Keys.ToDictionary(k => k, k => ScalarValueCandidate.Observe(state.GetField(k)!.GetValue(args[0])!)));
     }
 
-    private static object Fingerprint(object actor, Dictionary<object, int> identities)
+    internal static object Fingerprint(object actor, Dictionary<object, int> identities, Func<string, bool>? ownedWrite = null)
     {
         int count = 0;
         int Identity(object value)
@@ -159,9 +159,10 @@ internal static class ScalarValueVerification
             if (!identities.TryGetValue(value, out int identity)) { identity = identities.Count + 1; identities.Add(value, identity); }
             return identity;
         }
-        object? Value(object? value, int depth)
+        object? Value(object? value, int depth, string path)
         {
             if (++count > 65536 || depth > 16) throw new InvalidDataException("Actor fingerprint bound exceeded");
+            if (ownedWrite?.Invoke(path) == true) return "<owned-scalar-write>";
             if (value is null || value is string || value is bool || value is char || value is byte || value is sbyte || value is short || value is ushort || value is int || value is uint || value is long || value is ulong) return value;
             if (value is float number) return new { FloatBits = BitConverter.SingleToUInt32Bits(number) };
             if (value is double wide) return new { DoubleBits = BitConverter.DoubleToUInt64Bits(wide) };
@@ -169,21 +170,24 @@ internal static class ScalarValueVerification
             if (type.IsEnum) return new { Enum = type.FullName, Value = value.ToString() };
             if (value is Array array)
             {
-                var entries = new List<object?>(); foreach (object? element in array) entries.Add(Value(element, depth + 1));
+                var entries = new List<object?>(); int index = 0; foreach (object? element in array) entries.Add(Value(element, depth + 1, path + "[" + index++ + "]"));
                 return new { Array = type.FullName, Identity = Identity(array), Shape = Enumerable.Range(0, array.Rank).Select(array.GetLength).ToArray(), Values = entries };
             }
-            if (type.IsValueType) return Fields(value, depth + 1);
+            if (type.IsValueType) return Fields(value, depth + 1, path);
             return new { ReferenceType = type.FullName, Identity = Identity(value) };
         }
-        object Fields(object value, int depth)
+        object Fields(object value, int depth, string prefix)
         {
             var result = new SortedDictionary<string, object?>(StringComparer.Ordinal);
             for (Type? type = value.GetType(); type is not null; type = type.BaseType)
                 foreach (var field in type.GetFields(Flags | BindingFlags.DeclaredOnly).Where(f => !f.IsStatic).OrderBy(f => f.Name, StringComparer.Ordinal))
-                    result.Add(type.FullName + "." + field.Name, Value(field.GetValue(value), depth));
+                {
+                    string key = type.FullName + "." + field.Name;
+                    result.Add(key, Value(field.GetValue(value), depth, prefix.Length == 0 ? key : prefix + "/" + key));
+                }
             return result;
         }
-        object all = Fields(actor, 0);
+        object all = Fields(actor, 0, "");
         return new { Sha256 = Sha(Encoding.UTF8.GetBytes(Canonical(all))), Fields = ((SortedDictionary<string, object?>)all).Count };
     }
 }

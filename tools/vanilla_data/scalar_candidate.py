@@ -22,6 +22,9 @@ def _scalar(value, kind):
 
 
 def validate_request(data):
+    if type(data) is dict and type(data.get('schemaVersion')) is int and data['schemaVersion'] == 3:
+        from .scalar_states import validate_request as state_request
+        return state_request(data)
     if type(data) is dict and type(data.get('schemaVersion')) is int and data['schemaVersion'] == 2:
         from .scalar_values import validate_request as value_request
         return value_request(data)
@@ -62,6 +65,9 @@ def validate_request(data):
 
 
 def validate_observation(request, data):
+    if request['schemaVersion'] == 3:
+        from .scalar_states import validate_observation as state_observation
+        return state_observation(request, data)
     if request['schemaVersion'] == 2:
         from .scalar_values import validate_observation as value_observation
         return value_observation(request, data)
@@ -155,7 +161,7 @@ def adapt(request_path, output_dir):
                 for name, key in [('candidate.cs', 'candidateSha256'), ('original-carrier.cs', 'originalCarrierSha256'), ('candidate.dll', 'assemblySha256')]:
                     if facts.digest(output_dir / name) != observation.get(key): raise ValueError('Generated artifact differs: ' + name)
                 for mutant in observation['mutants']:
-                    name = (mutant['mutation'] if request['schemaVersion'] == 2 else 'omit-' + mutant['mutation'].removeprefix('omit-field-write:')) + '.dll'
+                    name = (mutant['mutation'] if request['schemaVersion'] in (2, 3) else 'omit-' + mutant['mutation'].removeprefix('omit-field-write:')) + '.dll'
                     if facts.digest(output_dir / name) != mutant.get('assemblySha256'): raise ValueError('Mutant artifact differs')
                 runtime = observation.get('runtimeReference', {})
                 if analysis._digest_bounded(Path(runtime['path']), 64 * 1024 * 1024) != runtime['sha256']:
@@ -179,7 +185,9 @@ def adapt(request_path, output_dir):
               'originalCarrierCompiled': observation is not None, 'wholeOriginalTypeCompiled': False,
               'validationErrors': errors, 'commands': commands, 'artifacts': artifacts,
               'wallSeconds': time.monotonic() - started,
-              'scope': ('Cache-only automatic finite binary32/int/bool return adaptation with exact read-only receiver field maps and actual-original sampled differential. No transitive object, getter, API, RNG, caller/equipment ownership or runtime admission.'
+              'scope': ('Cache-only exact-symbol scalar/Vector2-component/fixed-ai-slot state adaptation and actual-original differential. Finite inputs/outputs; no globals, calls, alias writes, numeric conversions, transitive object proof, gameplay binding or runtime admission.'
+                        if request['schemaVersion'] == 3 else
+                        'Cache-only automatic finite binary32/int/bool return adaptation with exact read-only receiver field maps and actual-original sampled differential. No transitive object, getter, API, RNG, caller/equipment ownership or runtime admission.'
                         if request['schemaVersion'] == 2 else
                         'Cache-only automatic semantic bool/int state adaptation and compiled actual-original sampled differential. No whole AI translation, caller/state ownership, numeric/API/RNG mapping or runtime admission.')}
     save('result.json', result)
