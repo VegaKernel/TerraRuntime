@@ -1,8 +1,8 @@
 # AI3 and AI7 NPC definitions, Terraria 1.4.5.8
 
-## Next sixteen-identity candidate, 2026-10-29
+## Sixteen-identity ground-combat block accepted, 2026-10-29
 
-The working ground-combat continuation selects 263/300 lifecycle identities (87.7%) and 37 creation-only; positive AI3 is 164/191 and signed AI3 lifecycle variants number27. Global counts are 527 lifecycle and228 creation-only. Shared phase/projectile integration and aggregate acceptance are still pending. The accepted published baseline remains247/300 below; [candidate scope and limits](npc-ai3-ai7-runtime-1458.md#ground-combat-continuation-in-qualification-2026-10-29).
+The integrated catalog selects **263/300 lifecycle identities (87.7%)** and 37 creation-only. Positive AI3 is 164/191, with 27 signed AI3 lifecycle variants; global counts are 527 lifecycle and 228 creation-only. [Runtime scope and acceptance](npc-ai3-ai7-runtime-1458.md#ground-combat-continuation-accepted-2026-10-29) distinguish this admission from full vanilla AI parity and record the complete-full/test-clock-repair/current-fast boundary. The 247/300 checkpoint below is historical.
 
 ## Ground-critter block accepted, 2026-10-28
 

@@ -1,5 +1,9 @@
 # Production graph
 
+## Accepted NPC/equipment integration, 2026-10-29
+
+Source4146/DLL158, no new shipping dependency or entity/RNG/clock owner, graph15/29; NPC263/300,global527/228. Completed full1595001/all5551 has exactly one retained rate-window System-clock test failure; deterministic TESTONLY repair passes currentfast49687/all12ratefacts with all157runtimeDLLs exact. AllNPC/gameplay/worldgen matrices passed; no raw-full-green/thirdfullclaim. WindowsNative04f31a1194e0ac398581c754d46bc883321152f92a9e13b985b87dd137d50459/fivesmokes/actualRelease+NativeTCP green. docs/verification/ground-combat-acceptance-20261029.json records scopes/controls/limits; separate next7branchunfinished/excluded. Historical paragraphs below retain their earlier boundaries.
+
 2026-10-29 combined NPC/Ankh candidate retains15 shipping projects/29 references, existing HP/buff/entity/shared-RNG owners and no new production package. NPC callback and ordered player subupdate blockers are fixed and component-tested in diagnostic11; frozen Ankh65b is now merged. One final combined full/Native/TCP gate remains pending. Historical component paragraphs below retain their earlier snapshot scope.
 
 2026-10-29 ground-combat candidate remains15 shipping projects/29 references with no new dependency, RNG owner or entity store. Existing NPC preview/status/projectile-batch and player HP owners are extended. Optional Core inactive-lifetime motion and bounded wet-count/Shimmer offers belong to source-qualified438/592/new5 update paths. Diagnostic07 WAE0/0/focus14109 qualifies4114 source inputs and158 copied DLLs only as a component; shared NPC callback ordering and authoritative subupdate player-hit integration still block final union/full/Native acceptance. Published main remainsf4a05e19; frozen Ankh component65b95a67 awaits merge before one grouped full.
