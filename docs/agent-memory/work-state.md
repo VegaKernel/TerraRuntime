@@ -1,5 +1,9 @@
 # Work state
 
+## Final Cleanup paired-object accepted checkpoint, 2026-10-29
+
+Fast-forwarded clean branch from published `b8074a3b` to concurrent main `8d87d5ba` (18 NPC/player commits; no worldgen overlap). This row109 slice adds all ten `Check1x2` identities and six non-tile-entity `Check1x2Top` identities to GenerationTileFraming1458. Official registered FinalCleanup1000x500 seed1458 whole-grid six-field digests are `552d053093d246ce0221c52bd3e543446dfb1ac68256c8c190a060de61c7e845`, next RNG798503781, and `027d71ff3e2581deb50e05b71627a69927922abaf5b6ce5cbe10834e2bf4b334`, next RNG526643438. Both runtime fixtures pass; disabling either dispatch or type20 restyle RNG fails unchanged assertions, and mutations were restored. Official source `Item.NewItem` is inert under isGeneratingOrLoadingWorld; no new item store. Final Release solution WAE0/0, focused Final95/95, fast55936/55936 and one unfiltered full1601250/1601250 across all5656 methods pass without failures/errors/skips. Fresh Windows NativeAOT exe SHA256 `70c7d81ea300061736c6f3631d74ffa2f8c2ee13a7f7d541ce2a76bbf9e77045` passes loop/protocol/network/world/TUI smokes. Type698's item-bearing TE, PlanterBox380 framing, sandfall support rewrite, special-seed tails and real-prefix parity remain debt; row109 stays P. Fetch remote before publication.
+
 ## Current ranged checkpoint complete; stop after main publication, 2026-10-29
 
 **User explicitly requested finish current task, commit main and STOP. This overrides the older continuous-work instructions below.** Current block accepted in `docs/verification/npc-ranged-acceptance-20261029.json`: AI3/AI7 lifecycle278/300(92.7%),global546/755(72.3%),creation22/209; FullVanillaAiParity=false. Eightparents379/380/383/386/389/391/631/632 +fourchildren384/387/390/606, usualprojectiles81/435/437/909,Electrified144,sourceorderedloot/death/birth/wire. No next block implemented. Readonlynext22 andtestbatching recommendations remain ignoredcache only.

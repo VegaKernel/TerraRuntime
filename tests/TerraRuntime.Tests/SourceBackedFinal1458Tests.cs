@@ -1075,6 +1075,116 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_one_by_two_family_matches_official_registered_passlegacy()
+    {
+        // Official TerrariaServer 1.4.5.8 registered FinalCleanup, seed1458: all ten Check1x2
+        // identities with intact, unsupported and missing-member pairs; all eleven type20 ground
+        // styles and an inactive platform anchor. The digest covers every cell after sand settling.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        ushort[] objects = [15, 20, 216, 338, 390, 493, 497, 590, 595, 615];
+        for (int n = 0; n < objects.Length; n++)
+        {
+            int x = 200 + n * 45;
+            ushort floorType = objects[n] == 20 ? (ushort)2 : (ushort)1;
+            var top = new WorldTile { Type = objects[n], Flags = WorldTileFlags.Active };
+            var bottom = top with { FrameY = 18 };
+            var secondStyleTop = top with { FrameY = 40 };
+            var floor = new WorldTile { Type = floorType, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 100, in top);
+            workspace.TileStore.Set(x, 101, in bottom);
+            workspace.TileStore.Set(x, 102, in floor);
+            workspace.TileStore.Set(x, 130, in top);
+            workspace.TileStore.Set(x, 131, in bottom);
+            workspace.TileStore.Set(x, 160, in secondStyleTop);
+            workspace.TileStore.Set(x, 162, in floor);
+        }
+        ushort[] grounds = [2, 147, 60, 23, 199, 109, 53, 116, 234, 112, 633];
+        for (int n = 0; n < grounds.Length; n++)
+        {
+            int x = 770 + n * 18;
+            var top = new WorldTile { Type = 20, Flags = WorldTileFlags.Active };
+            var bottom = top with { FrameY = 18 };
+            var floor = new WorldTile { Type = grounds[n], Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 100, in top);
+            workspace.TileStore.Set(x, 101, in bottom);
+            workspace.TileStore.Set(x, 102, in floor);
+            if (grounds[n] is 53 or 116 or 234 or 112)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, 103, in stone);
+            }
+        }
+        var chair = new WorldTile { Type = 15, Flags = WorldTileFlags.Active };
+        var chairBottom = chair with { FrameY = 18 };
+        var inactivePlatform = new WorldTile { Type = 19 };
+        workspace.TileStore.Set(750, 200, in chair);
+        workspace.TileStore.Set(750, 201, in chairBottom);
+        workspace.TileStore.Set(750, 202, in inactivePlatform);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("552D053093D246CE0221C52BD3E543446DFB1AC68256C8C190A060DE61C7E845", HashFixture(workspace));
+        Assert.Equal(798503781, random.Next());
+        Assert.True(workspace.TileStore.Get(750, 200).IsActive);
+        Assert.False(workspace.TileStore.Get(200, 130).IsActive);
+        Assert.False(workspace.TileStore.Get(200, 160).IsActive);
+        Assert.Equal((short)72, workspace.TileStore.Get(788, 100).FrameX);
+    }
+
+    [Fact]
+    public void Final_cleanup_hanging_one_by_two_family_matches_official_registered_passlegacy()
+    {
+        // TerrariaServer 1.4.5.8 registered FinalCleanup PassLegacy, seed1458.
+        // All six non-tile-entity Check1x2Top identities: solid/platform ceilings,
+        // missing ceiling/member and wrong second-row frame. Type698's tile entity is separate debt.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        ushort[] objects = [42, 270, 271, 572, 581, 660];
+        for (int n = 0; n < objects.Length; n++)
+        {
+            int x = 200 + n * 80;
+            foreach ((int y, ushort ceiling, bool complete, short lowerFrame) in new[]
+                { (100, (ushort)1, true, (short)18), (140, (ushort)19, true, (short)18),
+                  (220, (ushort)0, true, (short)18),
+                  (260, (ushort)1, false, (short)18), (300, (ushort)1, true, (short)36) })
+            {
+                if (ceiling != 0)
+                {
+                    var support = new WorldTile { Type = ceiling, Flags = WorldTileFlags.Active };
+                    workspace.TileStore.Set(x, y - 1, in support);
+                }
+                var upper = new WorldTile { Type = objects[n], Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in upper);
+                if (complete)
+                {
+                    var lower = upper with { FrameY = lowerFrame };
+                    workspace.TileStore.Set(x, y + 1, in lower);
+                }
+            }
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("027D71FF3E2581DEB50E05B71627A69927922ABAF5B6CE5CBE10834E2BF4B334", HashFixture(workspace));
+        Assert.Equal(526643438, random.Next());
+        foreach (int x in new[] { 200, 280, 360, 440, 520, 600 })
+        {
+            Assert.True(workspace.TileStore.Get(x, 100).IsActive);
+            Assert.True(workspace.TileStore.Get(x, 140).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 220).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 260).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 300).IsActive);
+        }
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);

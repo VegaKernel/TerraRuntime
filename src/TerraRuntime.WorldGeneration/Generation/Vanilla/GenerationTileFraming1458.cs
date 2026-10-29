@@ -32,7 +32,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// piles, the ordinary/table-supported <c>Check2x1</c> identities <c>16</c>/<c>18</c>/<c>29</c>/
 /// <c>103</c>/<c>134</c>/<c>462</c>/<c>649</c>, basic chests <c>21</c>/<c>467</c> (with an optional
 /// workspace chest side table), the twelve ordinary one-cell <c>Check1x1</c> objects, both
-/// <c>CheckGolf1x1</c> identities, all six <c>CheckLogicTiles</c> identities, dye <c>227</c>,
+/// <c>CheckGolf1x1</c> identities, all six <c>CheckLogicTiles</c> identities, all ten
+/// <c>Check1x2</c> identities and six non-tile-entity <c>Check1x2Top</c> identities, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -150,6 +151,18 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 419 or 420 or 423 or 424 or 429 or 445)
         {
             CheckLogicTile(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 15 or 20 or 216 or 338 or 390 or 493 or 497 or 590 or 595 or 615)
+        {
+            CheckOneByTwo(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 42 or 270 or 271 or 572 or 581 or 660)
+        {
+            CheckOneByTwoTop(i, j, tile.Type);
             return;
         }
 
@@ -675,6 +688,113 @@ internal sealed class GenerationTileFraming1458(
         if (type == 419 && (!below.IsActive || below.Type is not (419 or 420)) ||
             tile.FrameX % 18 != 0 || tile.FrameY % 18 != 0)
             KillTile(x, y);
+    }
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 WorldGen.Check1x2. The style's vertical stride is 40, not 36;
+    /// type20 reselects its horizontal variant only after a coherent pair passes support checks.
+    /// Item.NewItem arms are inert while isGeneratingOrLoadingWorld is set.
+    /// </summary>
+    private void CheckOneByTwo(int x, int y, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        int style = 0;
+        int row = At(x, y).FrameY;
+        while (row >= 40)
+        {
+            row -= 40;
+            style++;
+        }
+        int top = y - (row == 18 ? 1 : 0);
+        if (!Contains(x, top) || !Contains(x, top + 2))
+            return;
+
+        WorldTile first = At(x, top);
+        WorldTile second = At(x, top + 1);
+        WorldTile floor = At(x, top + 2);
+        bool broken = first.FrameY != style * 40 || second.FrameY != style * 40 + 18 ||
+            first.Type != type || second.Type != type ||
+            !SolidTileAllowBottomSlope(x, top + 2) && !VanillaTileIds.IsPlatform(floor.TileType);
+
+        if (first.Type == 20)
+        {
+            int groundStyle = floor.Type switch
+            {
+                2 or 477 => 0,
+                147 => 1,
+                60 => 2,
+                23 or 661 => 3,
+                199 or 662 => 4,
+                109 or 492 => 5,
+                53 => 6,
+                116 => 7,
+                234 => 8,
+                112 => 9,
+                633 => 10,
+                _ => -1
+            };
+            if (groundStyle < 0)
+                broken = true;
+            else if (!broken && first.FrameX / 54 != groundStyle)
+            {
+                short frame = checked((short)(groundStyle * 54 + random.Next(3) * 18));
+                At(x, top).FrameX = frame;
+                At(x, top + 1).FrameX = frame;
+            }
+        }
+
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        if (At(x, top).Type == type)
+            KillTile(x, top);
+        if (At(x, top + 1).Type == type)
+            KillTile(x, top + 1);
+        destroyingObject = false;
+    }
+
+    /// <summary>
+    /// WorldGen.Check1x2Top's six ordinary hanging identities. Type698 also owns a tile entity and
+    /// remains outside this slice so a broken item-bearing display jar cannot be silently discarded.
+    /// </summary>
+    private void CheckOneByTwoTop(int x, int y, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        int frameRow = At(x, y).FrameY / 18;
+        int style = 0;
+        while (frameRow >= 2)
+        {
+            frameRow -= 2;
+            style++;
+        }
+        int top = y - frameRow;
+        if (!Contains(x, top - 1) || !Contains(x, top + 1))
+            return;
+
+        WorldTile first = At(x, top);
+        WorldTile second = At(x, top + 1);
+        WorldTile ceiling = At(x, top - 1);
+        bool intact = first.FrameY == style * 36 && second.FrameY == style * 36 + 18 &&
+            first.Type == type && second.Type == type;
+        bool platformAnchor = ceiling.IsActive &&
+            (VanillaTileIds.IsPlatform(ceiling.TileType) || ceiling.Type == 380);
+        bool ordinaryAnchor = ceiling.IsActive && !ceiling.IsActuated &&
+            VanillaTileCollisionCatalog.IsSolid(ceiling.TileType) &&
+            !VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType);
+        if (intact && (platformAnchor || ordinaryAnchor))
+            return;
+
+        destroyingObject = true;
+        if (At(x, top).Type == type)
+            KillTile(x, top);
+        if (At(x, top + 1).Type == type)
+            KillTile(x, top + 1);
+        destroyingObject = false;
     }
 
     private bool IsTwoByOneTableSupport(int x, int y)
