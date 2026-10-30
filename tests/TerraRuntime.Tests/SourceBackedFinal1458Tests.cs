@@ -1313,6 +1313,71 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_remaining_ordinary_and_boulder_two_by_two_match_official_passlegacy()
+    {
+        // Registered TerrariaServer 1.4.5.8 FinalCleanup, 1000x500 seed1458.
+        // Thirteen more common Check2x2 identities and all ten TileID.Sets.Boulders.
+        // The boulders exercise two, one, zero and container-protected support columns.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        void Put(int x, int y, ushort type, short fx = 0, short fy = 0, bool active = true)
+        {
+            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
+                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        void PutSquare(int x, int y, ushort type, bool complete = true)
+        {
+            for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 2; dy++)
+                if (complete || dx != 1 || dy != 1)
+                    Put(x + dx, y + dy, type, (short)(dx * 18), (short)(dy * 18));
+        }
+        ushort[] ordinary = [142, 143, 288, 289, 290, 291, 292, 293, 294, 295, 316, 317, 318];
+        for (int n = 0; n < ordinary.Length; n++)
+        {
+            int x = 100 + n * 30;
+            PutSquare(x, 100, ordinary[n]);
+            PutSquare(x, 140, ordinary[n], complete: false);
+            PutSquare(x, 180, ordinary[n]);
+            foreach (int y in new[] { 102, 142, 182 }) Put(x, y, 1);
+            foreach (int y in new[] { 102, 142 }) Put(x + 1, y, 1);
+        }
+        ushort[] boulders = [138, 484, 664, 665, 711, 712, 713, 714, 715, 716];
+        for (int n = 0; n < boulders.Length; n++)
+        {
+            int x = 520 + n * 35;
+            foreach (int y in new[] { 100, 140, 180, 220 }) PutSquare(x, y, boulders[n]);
+            foreach (int y in new[] { 102, 142 }) Put(x, y, 1);
+            Put(x + 1, 102, 1);
+            Put(x, 219, 21, active: false);
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("4573C78BD6A10E4D963F4F85C7554CBD9724B47BE67E02E40ABCA463012CE7C5", HashFixture(workspace));
+        Assert.Equal(1616844330, random.Next());
+        foreach (int n in Enumerable.Range(0, ordinary.Length))
+        {
+            int x = 100 + n * 30;
+            Assert.True(workspace.TileStore.Get(x, 100).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 140).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 180).IsActive);
+        }
+        foreach (int n in Enumerable.Range(0, boulders.Length))
+        {
+            int x = 520 + n * 35;
+            Assert.True(workspace.TileStore.Get(x, 100).IsActive);
+            Assert.True(workspace.TileStore.Get(x, 140).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 180).IsActive);
+            Assert.True(workspace.TileStore.Get(x, 220).IsActive);
+        }
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);

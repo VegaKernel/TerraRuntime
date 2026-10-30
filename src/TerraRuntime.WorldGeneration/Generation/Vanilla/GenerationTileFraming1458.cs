@@ -34,7 +34,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// workspace chest side table), the twelve ordinary one-cell <c>Check1x1</c> objects, both
 /// <c>CheckGolf1x1</c> identities, all six <c>CheckLogicTiles</c> identities, all ten
 /// <c>Check1x2</c> identities and six non-tile-entity <c>Check1x2Top</c> identities,
-/// the ordinary-support <c>Check2x2</c> family, dye <c>227</c>,
+/// the ordinary-support and boulder <c>Check2x2</c> families, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -168,9 +168,11 @@ internal sealed class GenerationTileFraming1458(
         }
 
         if (tile.Type is 94 or 97 or 98 or 99 or 100 or 125 or 173 or 282 or 287 or 319 or
-            335 or 360 or 411 or 490 or 505 or 521 or 522 or 523 or 524 or 525 or 526 or 527 or
+            142 or 143 or 288 or 289 or 290 or 291 or 292 or 293 or 294 or 295 or
+            316 or 317 or 318 or 335 or 360 or 411 or 490 or 505 or 521 or 522 or 523 or 524 or 525 or 526 or 527 or
             543 or 564 or 565 or 568 or 569 or 570 or 580 or 594 or 598 or 620 or 621 or 622 or
-            654 or 751 or 752 or 95 or 126 or 172 or 652)
+            654 or 751 or 752 or 95 or 126 or 172 or 652 or
+            138 or 484 or 664 or 665 or 711 or 712 or 713 or 714 or 715 or 716)
         {
             CheckOrdinaryTwoByTwo(i, j, tile.Type);
             return;
@@ -821,7 +823,7 @@ internal sealed class GenerationTileFraming1458(
 
     /// <summary>
     /// WorldGen.Check2x2 (TerrariaServer 1.4.5.8): common bottom support, top-hung 95/126,
-    /// stride-38 172 and frame-atlas 652. Boulders and wall-supported 132 have other arms.
+    /// stride-38 172, frame-atlas 652 and boulder/container support. Wall-supported 132 has another arm.
     /// </summary>
     private void CheckOrdinaryTwoByTwo(int i, int j, ushort type)
     {
@@ -873,7 +875,7 @@ internal sealed class GenerationTileFraming1458(
                     VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType))
                     broken = true;
             }
-            else
+            else if (!GenerationObjectSupport1458.IsBoulder(type))
             {
                 WorldTile floor = At(x, top + 2);
                 if (!floor.IsActive ||
@@ -881,6 +883,15 @@ internal sealed class GenerationTileFraming1458(
                     !GenerationFurnitureTiles1458.IsTable(floor.Type) || floor.Shape == 1)
                     broken = true;
             }
+        }
+        if (GenerationObjectSupport1458.IsBoulder(type))
+        {
+            ushort aboveLeft = At(left, top - 1).Type;
+            ushort aboveRight = At(left + 1, top - 1).Type;
+            bool protectedAbove = IsBoulderContainer(aboveLeft) || IsBoulderContainer(aboveRight);
+            if (!protectedAbove && !SolidTileAllowBottomSlope(left, top + 2) &&
+                !SolidTileAllowBottomSlope(left + 1, top + 2))
+                broken = true;
         }
         if (!broken)
             return;
@@ -898,6 +909,9 @@ internal sealed class GenerationTileFraming1458(
         for (int y = top - 1; y < top + 3; y++)
             TileFrame(x, y);
     }
+
+    private static bool IsBoulderContainer(ushort type) =>
+        type is 21 or 467 or 88 or 441 or 468 or 470 or 475;
 
     /// <summary>WorldGen.Check2x2Style for the four generation-safe non-pumpkin identities.</summary>
     private void CheckTwoByTwoStyle(int i, int j, ushort type)
