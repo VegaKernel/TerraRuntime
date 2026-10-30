@@ -1236,6 +1236,83 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_special_two_by_two_families_match_official_registered_passlegacy()
+    {
+        // TerrariaServer 1.4.5.8 registered FinalCleanup, 1000x500, seed1458. Top-hung
+        // 95/126, stride-38 172, wall-supported 132, atlas652, and 96/441/457/468
+        // Check2x2Style share this whole-grid/RNG oracle. Boulders and 254 remain separate.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+
+        void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0)
+        {
+            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall,
+                Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        void PutSquare(int x, int y, ushort type, short fx = 0, short fy = 0,
+            bool complete = true, ushort wall = 0)
+        {
+            for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 2; dy++)
+                if (complete || dx != 1 || dy != 1)
+                    Put(x + dx, y + dy, type, (short)(fx + dx * 18), (short)(fy + dy * 18), wall);
+        }
+        foreach ((int x, ushort type) in new[] { (100, (ushort)95), (150, (ushort)126) })
+        {
+            PutSquare(x, 100, type);
+            PutSquare(x, 140, type);
+            PutSquare(x, 180, type, complete: false);
+            foreach (int y in new[] { 99, 139, 179 }) Put(x, y, 1);
+            foreach (int y in new[] { 99, 179 }) Put(x + 1, y, 1);
+        }
+        PutSquare(200, 100, 172, fy: 38);
+        PutSquare(200, 140, 172, complete: false);
+        PutSquare(200, 180, 172);
+        foreach (int y in new[] { 102, 142, 182 }) Put(200, y, 1);
+        foreach (int y in new[] { 102, 142 }) Put(201, y, 1);
+        foreach ((int x, ushort type) in new[]
+            { (300, (ushort)96), (350, (ushort)441), (400, (ushort)457), (450, (ushort)468) })
+        {
+            PutSquare(x, 100, type, fx: 36);
+            PutSquare(x, 140, type);
+            Put(x + 1, 141, type, fx: 18, fy: 72);
+            PutSquare(x, 180, type);
+            PutSquare(x, 220, type, complete: false);
+            foreach (int y in new[] { 102, 142, 182, 222 }) Put(x, y, 1);
+            foreach (int y in new[] { 102, 142, 222 }) Put(x + 1, y, 1);
+        }
+        PutSquare(550, 100, 132);
+        PutSquare(550, 140, 132, wall: 13);
+        PutSquare(550, 180, 132, fx: 72);
+        PutSquare(550, 220, 132);
+        foreach (int y in new[] { 102, 182 })
+        {
+            Put(550, y, 1);
+            Put(551, y, 1);
+        }
+        PutSquare(650, 100, 652, fx: 72);
+        PutSquare(650, 140, 652, fx: 108);
+        PutSquare(650, 180, 652, fx: 144, complete: false);
+        foreach (int y in new[] { 102, 142, 182 }) Put(650, y, 1);
+        foreach (int y in new[] { 102, 182 }) Put(651, y, 1);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("EEBFD9498C6D89AE4D86DE182033C8F7F5ABF2CF416D35200BD2D99FE7EA1631", HashFixture(workspace));
+        Assert.Equal(1056314798, random.Next());
+        Assert.Equal((short)72, workspace.TileStore.Get(550, 140).FrameX);
+        Assert.Equal((short)0, workspace.TileStore.Get(550, 180).FrameX);
+        Assert.False(workspace.TileStore.Get(550, 220).IsActive);
+        Assert.True(workspace.TileStore.Get(650, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(650, 140).IsActive);
+        Assert.False(workspace.TileStore.Get(650, 180).IsActive);
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);

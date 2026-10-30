@@ -170,9 +170,21 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 94 or 97 or 98 or 99 or 100 or 125 or 173 or 282 or 287 or 319 or
             335 or 360 or 411 or 490 or 505 or 521 or 522 or 523 or 524 or 525 or 526 or 527 or
             543 or 564 or 565 or 568 or 569 or 570 or 580 or 594 or 598 or 620 or 621 or 622 or
-            654 or 751 or 752)
+            654 or 751 or 752 or 95 or 126 or 172 or 652)
         {
             CheckOrdinaryTwoByTwo(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type == 132)
+        {
+            CheckWallSupportedTwoByTwo(i, j);
+            return;
+        }
+
+        if (tile.Type is 96 or 441 or 457 or 468)
+        {
+            CheckTwoByTwoStyle(i, j, tile.Type);
             return;
         }
 
@@ -808,8 +820,8 @@ internal sealed class GenerationTileFraming1458(
     }
 
     /// <summary>
-    /// The common-support arm of WorldGen.Check2x2 (TerrariaServer 1.4.5.8). Boulders, top-hung
-    /// 95/126, wall-supported 132, stride-38 172 and style-atlas 652 have different source arms.
+    /// WorldGen.Check2x2 (TerrariaServer 1.4.5.8): common bottom support, top-hung 95/126,
+    /// stride-38 172 and frame-atlas 652. Boulders and wall-supported 132 have other arms.
     /// </summary>
     private void CheckOrdinaryTwoByTwo(int i, int j, ushort type)
     {
@@ -825,11 +837,17 @@ internal sealed class GenerationTileFraming1458(
             styleX = 36;
         }
         int left = i + offsetX;
+        if (type == 652)
+        {
+            styleX = observed.FrameX / 36 * 36;
+            left = i - observed.FrameX % 36 / 18;
+        }
         int remainderY = observed.FrameY;
         int styleY = 0;
-        while (remainderY >= 36)
+        int strideY = type == 172 ? 38 : 36;
+        while (remainderY >= strideY)
         {
-            remainderY -= 36;
+            remainderY -= strideY;
             styleY++;
         }
         int top = j - remainderY / 18;
@@ -844,15 +862,25 @@ internal sealed class GenerationTileFraming1458(
                 WorldTile part = At(x, y);
                 if (!part.IsActive || part.Type != type ||
                     part.FrameX != (x - left) * 18 + styleX ||
-                    part.FrameY != (y - top) * 18 + styleY * 36)
+                    part.FrameY != (y - top) * 18 + styleY * strideY)
                     broken = true;
             }
 
-            WorldTile floor = At(x, top + 2);
-            if (!floor.IsActive ||
-                !VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
-                !GenerationFurnitureTiles1458.IsTable(floor.Type) || floor.Shape == 1)
-                broken = true;
+            if (type is 95 or 126)
+            {
+                WorldTile ceiling = At(x, top - 1);
+                if (!ceiling.IsActive || !VanillaTileCollisionCatalog.IsSolid(ceiling.TileType) ||
+                    VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType))
+                    broken = true;
+            }
+            else
+            {
+                WorldTile floor = At(x, top + 2);
+                if (!floor.IsActive ||
+                    !VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                    !GenerationFurnitureTiles1458.IsTable(floor.Type) || floor.Shape == 1)
+                    broken = true;
+            }
         }
         if (!broken)
             return;
@@ -869,6 +897,129 @@ internal sealed class GenerationTileFraming1458(
         for (int x = left - 1; x < left + 3; x++)
         for (int y = top - 1; y < top + 3; y++)
             TileFrame(x, y);
+    }
+
+    /// <summary>WorldGen.Check2x2Style for the four generation-safe non-pumpkin identities.</summary>
+    private void CheckTwoByTwoStyle(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        WorldTile observed = At(i, j);
+        int row = observed.FrameY / 18;
+        while (row > 1)
+            row -= 2;
+        int top = j - row;
+
+        int column = observed.FrameX / 18;
+        int style = 0;
+        while (column > 1)
+        {
+            column -= 2;
+            style++;
+        }
+        int left = i - column;
+        if (!Contains(left - 1, top - 1) || !Contains(left + 2, top + 2))
+            return;
+
+        bool broken = false;
+        for (int x = left; x < left + 2; x++)
+        {
+            for (int y = top; y < top + 2; y++)
+            {
+                WorldTile part = At(x, y);
+                // Source deliberately does not check FrameY inside the footprint.
+                if (!part.IsActive || part.Type != type ||
+                    part.FrameX != (x - left) * 18 + style * 36)
+                    broken = true;
+            }
+            if (!SolidTileAllowBottomSlope(x, top + 2))
+                broken = true;
+        }
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 2; y++)
+            if (At(x, y).IsActive && At(x, y).Type == type)
+                KillTile(x, y);
+        destroyingObject = false;
+        for (int x = left - 1; x < left + 3; x++)
+        for (int y = top - 1; y < top + 3; y++)
+            TileFrame(x, y);
+    }
+
+    /// <summary>WorldGen.Check2x2's type132 wall fallback and two style bands.</summary>
+    private void CheckWallSupportedTwoByTwo(int i, int j)
+    {
+        if (destroyingObject)
+            return;
+
+        WorldTile observed = At(i, j);
+        int offsetX = -(observed.FrameX / 18);
+        int styleX = 0;
+        while (offsetX < -1)
+        {
+            offsetX += 2;
+            styleX += 36;
+        }
+        int left = i + offsetX;
+        int top = j - observed.FrameY / 18;
+        if (!Contains(left - 1, top - 1) || !Contains(left + 2, top + 2))
+            return;
+
+        bool broken = false;
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 2; y++)
+        {
+            WorldTile part = At(x, y);
+            if (!part.IsActive || part.Type != 132 ||
+                part.FrameX != (x - left) * 18 + styleX ||
+                part.FrameY != (y - top) * 18)
+                broken = true;
+        }
+
+        bool supported = true;
+        for (int x = left; x < left + 2; x++)
+        {
+            WorldTile floor = At(x, top + 2);
+            if (!floor.IsActive ||
+                !VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType) ||
+                floor.Shape is 1 or 2 or 3)
+                supported = false;
+        }
+        if (!supported)
+        {
+            if (At(left, top).Wall == 0 || At(left + 1, top).Wall == 0 ||
+                At(left, top + 1).Wall == 0 || At(left + 1, top + 1).Wall == 0)
+                broken = true;
+            else if (styleX < 72)
+                ShiftFrameX(left, top, 72);
+        }
+        else if (styleX >= 72)
+            ShiftFrameX(left, top, -72);
+
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 2; y++)
+            if (At(x, y).IsActive && At(x, y).Type == 132)
+                KillTile(x, y);
+        destroyingObject = false;
+        for (int x = left - 1; x < left + 3; x++)
+        for (int y = top - 1; y < top + 3; y++)
+            TileFrame(x, y);
+    }
+
+    private void ShiftFrameX(int left, int top, int amount)
+    {
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 2; y++)
+            At(x, y).FrameX = checked((short)(At(x, y).FrameX + amount));
     }
 
     private bool IsTwoByOneTableSupport(int x, int y)
