@@ -35,7 +35,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <c>CheckGolf1x1</c> identities, all six <c>CheckLogicTiles</c> identities, all ten
 /// <c>Check1x2</c> identities and six non-tile-entity <c>Check1x2Top</c> identities,
 /// the ordinary-support and boulder <c>Check2x2</c> families, planter box <c>380</c>,
-/// sunflower <c>27</c> and alchemical plants <c>82</c>/<c>83</c>/<c>84</c>, dye <c>227</c>,
+/// sunflower <c>27</c> and alchemical plants <c>82</c>/<c>83</c>/<c>84</c>, the 25
+/// non-tile-entity <c>Check2xX</c> and three <c>Check1xX</c> identities, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -206,6 +207,20 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 82 or 83 or 84)
         {
             FrameAlchemicalPlant(i, j);
+            return;
+        }
+
+        if (tile.Type is 104 or 105 or 207 or 320 or 337 or 349 or 356 or 410 or 456 or
+            465 or 480 or 489 or 506 or 509 or 531 or 545 or 560 or 591 or 592 or 657 or
+            658 or 663 or 720 or 721 or 725)
+        {
+            CheckTwoByX(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 92 or 93 or 453)
+        {
+            CheckOneByX(i, j, tile.Type);
             return;
         }
 
@@ -552,6 +567,130 @@ internal sealed class GenerationTileFraming1458(
         }
         if (broken)
             KillTile(x, y);
+    }
+
+    /// <summary>
+    /// WorldGen.Check2xX for the 25 identities without tile entities. Type378's training dummy
+    /// owns a TE and is intentionally excluded until its item/kill side table is represented.
+    /// </summary>
+    private void CheckTwoByX(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        int left = i;
+        int frameColumn = At(i, j).FrameX;
+        while (frameColumn >= 36)
+            frameColumn -= 36;
+        if (frameColumn == 18)
+            left--;
+        if (!Contains(left, j))
+            return;
+
+        int height = type switch { 104 => 5, 207 => 4, _ => 3 };
+        int frameRow = At(left, j).FrameY / 18;
+        int styleY = 0;
+        while (frameRow >= height)
+        {
+            frameRow -= height;
+            styleY += height * 18;
+        }
+        int top = j - frameRow;
+        if (type == 410 && styleY != 0)
+            styleY += 2;
+        if (!Contains(left, top - 1) || !Contains(left + 1, top + height))
+            return;
+
+        short styleX = At(left, j).FrameX;
+        bool broken = false;
+        for (int row = 0; row < height; row++)
+        for (int column = 0; column < 2; column++)
+        {
+            WorldTile part = At(left + column, top + row);
+            if (!part.IsActive || part.Type != type ||
+                part.FrameY != row * 18 + styleY ||
+                part.FrameX != styleX + column * 18)
+                broken = true;
+        }
+
+        if (type is 465 or 531 or 591 or 592)
+        {
+            int supportBand = -1;
+            for (int column = 0; column < 2; column++)
+            {
+                WorldTile ceiling = At(left + column, top - 1);
+                bool valid;
+                int band = 0;
+                if (type != 531 && ceiling.Type == 380)
+                    valid = true;
+                else if (type != 531 && VanillaTileIds.IsPlatform(ceiling.TileType))
+                {
+                    if (ceiling.IsActive && ceiling.Shape == 0)
+                        band = 8;
+                    valid = true;
+                }
+                else
+                    valid = SolidTileAllowTopSlope(left + column, top - 1);
+                if (valid && supportBand == -1)
+                    supportBand = band;
+                if (!valid || supportBand != band)
+                {
+                    broken = true;
+                    break;
+                }
+            }
+        }
+        else if (!SolidTileAllowBottomSlope(left, top + height) ||
+            !SolidTileAllowBottomSlope(left + 1, top + height))
+            broken = true;
+
+        if (!broken)
+            return;
+        destroyingObject = true;
+        for (int row = 0; row < height; row++)
+        for (int column = 0; column < 2; column++)
+            if (At(left + column, top + row).Type == type)
+                KillTile(left + column, top + row);
+        destroyingObject = false;
+    }
+
+    /// <summary>WorldGen.Check1xX for the three one-column furniture identities.</summary>
+    private void CheckOneByX(int x, int y, ushort type)
+    {
+        if (destroyingObject)
+            return;
+        WorldTile observed = At(x, y);
+        int height = type == 92 ? 6 : 3;
+        int remainder = observed.FrameY;
+        int style = 0;
+        while (remainder >= height * 18)
+        {
+            remainder -= height * 18;
+            style++;
+        }
+        int top = y - remainder / 18;
+        if (!Contains(x, top) || !Contains(x, top + height))
+            return;
+
+        bool broken = false;
+        for (int row = 0; row < height; row++)
+        {
+            WorldTile part = At(x, top + row);
+            if (!part.IsActive || part.Type != type ||
+                part.FrameY != (style * height + row) * 18 ||
+                part.FrameX != observed.FrameX)
+                broken = true;
+        }
+        if (!SolidTileAllowBottomSlope(x, top + height))
+            broken = true;
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int row = 0; row < height; row++)
+            if (At(x, top + row).Type == type)
+                KillTile(x, top + row);
+        destroyingObject = false;
     }
 
     /// <summary>The ordinary, unsloped half of the platform table.</summary>
