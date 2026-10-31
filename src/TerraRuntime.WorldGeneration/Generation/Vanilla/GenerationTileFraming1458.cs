@@ -34,7 +34,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// workspace chest side table), the twelve ordinary one-cell <c>Check1x1</c> objects, both
 /// <c>CheckGolf1x1</c> identities, all six <c>CheckLogicTiles</c> identities, all ten
 /// <c>Check1x2</c> identities and six non-tile-entity <c>Check1x2Top</c> identities,
-/// the ordinary-support and boulder <c>Check2x2</c> families, dye <c>227</c>,
+/// the ordinary-support and boulder <c>Check2x2</c> families, planter box <c>380</c>,
+/// sunflower <c>27</c> and alchemical plants <c>82</c>/<c>83</c>/<c>84</c>, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -187,6 +188,24 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 96 or 441 or 457 or 468)
         {
             CheckTwoByTwoStyle(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type == 380)
+        {
+            FramePlanterBox(i, j);
+            return;
+        }
+
+        if (tile.Type == 27)
+        {
+            CheckSunflower(i, j);
+            return;
+        }
+
+        if (tile.Type is 82 or 83 or 84)
+        {
+            FrameAlchemicalPlant(i, j);
             return;
         }
 
@@ -432,6 +451,107 @@ internal sealed class GenerationTileFraming1458(
                 cullLeft, cullRight, cullUpperRight, cullLowerLeft, forbidsSloping),
             _ => Flat(type, left, right, leftIdentity, rightIdentity)
         }));
+    }
+
+    /// <summary>WorldGen.TileFrameImportant's PlanterBox380 side-merging frame table.</summary>
+    private void FramePlanterBox(int i, int j)
+    {
+        ref WorldTile planter = ref At(i, j);
+        WorldTile left = Neighbour(i - 1, j);
+        WorldTile right = Neighbour(i + 1, j);
+        int leftType = left.IsActive ? IsStoneMerging(left.Type) ? 1 : left.Type : -1;
+        int rightType = right.IsActive ? IsStoneMerging(right.Type) ? 1 : right.Type : -1;
+        bool coating = Coated(planter);
+        if (leftType >= 0 && Coated(left) != coating ||
+            leftType >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(leftType)))
+            leftType = -1;
+        if (rightType >= 0 && Coated(right) != coating ||
+            rightType >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(rightType)))
+            rightType = -1;
+        planter.FrameX = (short)(leftType == 380
+            ? rightType == 380 ? 18 : 36
+            : rightType == 380 ? 0 : 54);
+        // Source HandleRopeEndFraming is inert when no rope occupies this column's edge; rope
+        // continuation remains outside the generation framer's admitted object slice.
+    }
+
+    /// <summary>WorldGen.CheckSunflower's exact 2×4 footprint and grass support.</summary>
+    private void CheckSunflower(int i, int j)
+    {
+        if (destroyingObject)
+            return;
+        WorldTile observed = At(i, j);
+        int column = observed.FrameX / 18;
+        while (column > 1)
+            column -= 2;
+        int left = i - column;
+        int top = j - observed.FrameY / 18;
+        if (!Contains(left, top) || !Contains(left + 1, top + 4))
+            return;
+
+        bool broken = false;
+        for (int x = left; x < left + 2; x++)
+        {
+            for (int y = top; y < top + 4; y++)
+            {
+                WorldTile part = At(x, y);
+                int partColumn = part.FrameX / 18;
+                while (partColumn > 1)
+                    partColumn -= 2;
+                if (!part.IsActive || part.IsActuated || part.Type != 27 ||
+                    partColumn != x - left || part.FrameY != (y - top) * 18)
+                    broken = true;
+            }
+            WorldTile floor = At(x, top + 4);
+            if (!floor.IsActive || floor.IsActuated ||
+                floor.Type is not (2 or 477 or 492 or 109 or 60 or 633) ||
+                !SolidTile(x, top + 4))
+                broken = true;
+        }
+        if (!broken)
+            return;
+        destroyingObject = true;
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 4; y++)
+            if (At(x, y).IsActive && At(x, y).Type == 27)
+                KillTile(x, y);
+        destroyingObject = false;
+    }
+
+    /// <summary>WorldGen.CheckAlch's substrate, lava and source frame reset rules.</summary>
+    private void FrameAlchemicalPlant(int x, int y)
+    {
+        ref WorldTile plant = ref At(x, y);
+        WorldTile floor = At(x, y + 1);
+        int style = plant.FrameX / 18;
+        plant.FrameY = 0;
+        bool broken = !floor.IsActive || floor.IsActuated || floor.Shape == 1;
+        if (!broken)
+        {
+            bool validFloor = style switch
+            {
+                0 => floor.Type is 109 or 2 or 477 or 492 or 78 or 380,
+                1 => floor.Type is 60 or 78 or 380,
+                2 => floor.Type is 0 or 59 or 78 or 380,
+                3 => floor.Type is 661 or 662 or 199 or 203 or 23 or 25 or 78 or 380,
+                4 => floor.Type is 53 or 78 or 380 or 116,
+                5 => floor.Type is 57 or 633 or 78 or 380,
+                6 => floor.Type is 78 or 380 or 147 or 161 or 163 or 164 or 200,
+                _ => true
+            };
+            broken = !validFloor || style != 5 && plant.LiquidAmount > 0 &&
+                plant.LiquidKind == WorldLiquidKind.Lava;
+            if (!broken && style == 5 && plant.Type != 82 &&
+                plant.LiquidAmount > 0 && plant.LiquidKind == WorldLiquidKind.Lava)
+            {
+                if (plant.LiquidAmount > 16 && plant.Type == 83)
+                    plant.Type = 84;
+                else if (plant.LiquidAmount <= 16 && plant.Type == 84)
+                    plant.Type = 83;
+            }
+        }
+        if (broken)
+            KillTile(x, y);
     }
 
     /// <summary>The ordinary, unsloped half of the platform table.</summary>

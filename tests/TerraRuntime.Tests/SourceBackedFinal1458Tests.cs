@@ -1378,6 +1378,73 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_planter_sunflower_and_alchemical_plants_match_official_passlegacy()
+    {
+        // Registered TerrariaServer 1.4.5.8 FinalCleanup, 1000x500 seed1458/netMode0.
+        // PlanterBox380 framing, type42 hung beneath it, 2x4 Sunflower27 and all seven
+        // CheckAlch style substrates plus lava death / 83-to-84 and 84-to-83 transitions.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        void Put(int x, int y, ushort type, short fx = 0, short fy = 0,
+            byte amount = 0, WorldLiquidKind kind = WorldLiquidKind.Water)
+        {
+            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
+                LiquidAmount = amount, LiquidKind = kind, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        void PutSunflower(int x, int y, bool complete, bool rightSupport, ushort support)
+        {
+            for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 4; dy++)
+                if (complete || dx != 1 || dy != 3)
+                    Put(x + dx, y + dy, 27, (short)(dx * 18), (short)(dy * 18));
+            Put(x, y + 4, support);
+            if (rightSupport) Put(x + 1, y + 4, support);
+        }
+        foreach (int x in new[] { 100, 130, 131, 160, 161, 162, 200 }) Put(x, 100, 380);
+        Put(200, 101, 42);
+        Put(200, 102, 42, fy: 18);
+        PutSunflower(300, 100, true, true, 2);
+        PutSunflower(340, 100, true, false, 2);
+        PutSunflower(380, 100, false, true, 2);
+        PutSunflower(420, 100, true, true, 60);
+        ushort[] herbFloors = [2, 60, 59, 23, 53, 57, 147];
+        for (int style = 0; style < herbFloors.Length; style++)
+        {
+            int x = 500 + style * 22;
+            Put(x, 100, 82, fx: (short)(style * 18), fy: 18);
+            Put(x, 101, herbFloors[style]);
+            if (herbFloors[style] == 53) Put(x, 102, 1);
+            Put(x, 140, 82, fx: (short)(style * 18));
+            Put(x, 141, 1);
+        }
+        Put(680, 100, 82, amount: 100, kind: WorldLiquidKind.Lava);
+        Put(680, 101, 2);
+        Put(700, 100, 83, fx: 90, amount: 30, kind: WorldLiquidKind.Lava);
+        Put(700, 101, 57);
+        Put(720, 100, 84, fx: 90, amount: 10, kind: WorldLiquidKind.Lava);
+        Put(720, 101, 57);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("40A0E74A7EF0B01DE43B2DFB053A7ABB166FB09F490422CC4B26C8158C2D6D8A", HashFixture(workspace));
+        Assert.Equal((short)54, workspace.TileStore.Get(100, 100).FrameX);
+        Assert.True(workspace.TileStore.Get(200, 101).IsActive);
+        Assert.True(workspace.TileStore.Get(300, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(340, 100).IsActive);
+        Assert.Equal((ushort)84, workspace.TileStore.Get(700, 100).Type);
+        Assert.Equal((ushort)83, workspace.TileStore.Get(720, 100).Type);
+        // The registered source pass's netMode=0 AnglerQuestSwap epilogue draws once from
+        // its aliased Main.rand/genRand in this headless harness. The runtime tile pass does
+        // not own Angler quests, so first pin its pre-epilogue state, then that one-draw bridge.
+        Assert.Equal(36698868, random.Next());
+        Assert.Equal(1211352691, random.Next());
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);
