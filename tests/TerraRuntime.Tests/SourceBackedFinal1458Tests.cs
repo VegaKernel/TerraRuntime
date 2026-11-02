@@ -1569,6 +1569,63 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_floor_supported_rectangular_furniture_matches_official_passlegacy()
+    {
+        // Registered TerrariaServer 1.4.5.8 FinalCleanup, 1000x500 seed1458.
+        // Fifteen identities across Check3x4/5x4/4x4/2x5/3x5/3x6/4x2, each with
+        // intact, missing-member, missing-support and second-style instances.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        ushort[] identities = [101, 102, 463, 617, 464, 466, 699, 547, 623,
+            613, 548, 614, 79, 90, 487];
+        void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
+        {
+            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
+                Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        for (int n = 0; n < identities.Length; n++)
+        {
+            ushort type = identities[n];
+            int x = 100 + n * 55;
+            int width = type is 464 or 466 ? 5 : type is 699 or 79 or 90 or 487 ? 4 :
+                type is 547 or 623 ? 2 : 3;
+            int height = type is 547 or 623 or 613 ? 5 : type is 548 or 614 ? 6 :
+                type is 79 or 90 or 487 ? 2 : 4;
+            foreach ((int y, bool complete, bool support, bool styled) in new[]
+                { (100, true, true, false), (160, false, true, false),
+                  (220, true, false, false), (280, true, true, true) })
+            {
+                int baseFx = styled ? (type is 79 or 90 ? 72 : width * 18) : 0;
+                int baseFy = styled && (type is 101 or 102 or 463 or 617 or 699 || type is 79 or 90)
+                    ? height * 18 : 0;
+                for (int dx = 0; dx < width; dx++)
+                for (int dy = 0; dy < height; dy++)
+                    if (complete || dx != width - 1 || dy != height - 1)
+                        Put(x + dx, y + dy, type, (short)(baseFx + dx * 18), (short)(baseFy + dy * 18));
+                for (int dx = 0; dx < (support ? width : width - 1); dx++)
+                    Put(x + dx, y + height, 1);
+            }
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("0B9462B68EA9BA1FAD0EED82AE6EEE763CF1163387ED1461844D53ED245B303C", HashFixture(workspace));
+        Assert.Equal(1056314798, random.Next());
+        for (int n = 0; n < identities.Length; n++)
+        {
+            int x = 100 + n * 55;
+            Assert.True(workspace.TileStore.Get(x, 100).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 160).IsActive);
+            Assert.False(workspace.TileStore.Get(x, 220).IsActive);
+            Assert.True(workspace.TileStore.Get(x, 280).IsActive);
+        }
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);

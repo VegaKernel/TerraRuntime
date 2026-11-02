@@ -69,6 +69,8 @@ Its generation-time framing validates all seven `Check2x1` objects `16/18/29/103
 
 The same generation framer now handles 25 non-tile-entity `Check2xX` furniture identities and three `Check1xX` identities, including the hanging-anchor agreement across two ceiling columns. TrainingDummy `378` remains outside this slice because its tile entity has separate item and kill ownership.
 
+It also validates fifteen floor-supported rectangular furniture identities across `Check3x4`, `Check5x4`, `Check4x4`, `Check2x5`, `Check3x5`, `Check3x6` and `Check4x2`, retaining each family's style and reframe-halo rules.
+
 `Finalizer` now enforces the fail-closed `Validator1458` before publication:
 
 - `Finalized` is returned only when the structural validator reports `Valid`;

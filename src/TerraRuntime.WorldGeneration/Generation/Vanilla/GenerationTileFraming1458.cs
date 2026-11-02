@@ -36,7 +36,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <c>Check1x2</c> identities and six non-tile-entity <c>Check1x2Top</c> identities,
 /// the ordinary-support and boulder <c>Check2x2</c> families, planter box <c>380</c>,
 /// sunflower <c>27</c> and alchemical plants <c>82</c>/<c>83</c>/<c>84</c>, the 25
-/// non-tile-entity <c>Check2xX</c> and three <c>Check1xX</c> identities, dye <c>227</c>,
+/// non-tile-entity <c>Check2xX</c> and three <c>Check1xX</c> identities, six floor-supported
+/// rectangular furniture families, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -221,6 +222,19 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 92 or 93 or 453)
         {
             CheckOneByX(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 101 or 102 or 463 or 617 or 464 or 466 or 699 or
+            547 or 623 or 613 or 548 or 614)
+        {
+            CheckFloorRectangle(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 79 or 90 or 487)
+        {
+            CheckFourByTwo(i, j, tile.Type);
             return;
         }
 
@@ -691,6 +705,121 @@ internal sealed class GenerationTileFraming1458(
             if (At(x, top + row).Type == type)
                 KillTile(x, top + row);
         destroyingObject = false;
+    }
+
+    /// <summary>
+    /// Source Check3x4/5x4/4x4/2x5/3x5/3x6. These families share strict frame-derived
+    /// footprints and bottom support, but not the frame atlas or post-destruction halo reach.
+    /// </summary>
+    private void CheckFloorRectangle(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+        WorldTile observed = At(i, j);
+        (int width, int height) = type switch
+        {
+            101 or 102 or 463 or 617 => (3, 4),
+            464 or 466 => (5, 4),
+            699 => (4, 4),
+            547 or 623 => (2, 5),
+            613 => (3, 5),
+            548 or 614 => (3, 6),
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+        int styleX = observed.FrameX / (width * 18) * width * 18;
+        int left = i - observed.FrameX / 18 % width;
+        int styleY = type is 101 or 102 or 463 or 617 or 699
+            ? observed.FrameY / (height * 18) * height * 18 : 0;
+        int top = type switch
+        {
+            464 or 466 => j - observed.FrameY / 18,
+            547 or 623 => j - observed.FrameY % 80 / 18,
+            613 => j - observed.FrameY % 90 / 18,
+            548 or 614 => j - observed.FrameY % 96 / 18,
+            _ => j - observed.FrameY % (height * 18) / 18
+        };
+        if (!Contains(left - 1, top - 1) || !Contains(left + width, top + height))
+            return;
+
+        bool broken = false;
+        for (int x = left; x < left + width; x++)
+        {
+            for (int y = top; y < top + height; y++)
+            {
+                WorldTile part = At(x, y);
+                if (!part.IsActive || part.Type != type ||
+                    part.FrameX != styleX + (x - left) * 18 ||
+                    part.FrameY != styleY + (y - top) * 18)
+                    broken = true;
+            }
+            if (!SolidTileAllowBottomSlope(x, top + height))
+                broken = true;
+        }
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int x = left; x < left + width; x++)
+        for (int y = top; y < top + height; y++)
+            if (At(x, y).IsActive && At(x, y).Type == type)
+                KillTile(x, y);
+        destroyingObject = false;
+        int bottomExclusive = type is 101 or 102 or 463 or 617 ? top + height : top + height + 1;
+        for (int x = left - 1; x < left + width + 1; x++)
+        for (int y = top - 1; y < bottomExclusive; y++)
+            TileFrame(x, y);
+    }
+
+    /// <summary>Source Check4x2 for beds, bathtubs and picnic tables.</summary>
+    private void CheckFourByTwo(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+        WorldTile observed = At(i, j);
+        int left = type == 487
+            ? i - observed.FrameX / 18 % 4
+            : i - observed.FrameX / 18 + (observed.FrameX >= 72 ? 4 : 0);
+        int frameRow = observed.FrameY / 18;
+        int styleY = 0;
+        while (frameRow > 1)
+        {
+            frameRow -= 2;
+            styleY += 36;
+        }
+        int top = j - frameRow;
+        int styleX = type == 487 ? observed.FrameX / 72 * 72 : observed.FrameX >= 72 ? 72 : 0;
+        if (type == 487)
+            styleY = 0;
+        if (!Contains(left - 1, top - 1) || !Contains(left + 3, top + 3))
+            return;
+
+        bool broken = false;
+        for (int x = left; x < left + 4; x++)
+        {
+            for (int y = top; y < top + 2; y++)
+            {
+                WorldTile part = At(x, y);
+                if (!part.IsActive || part.Type != type ||
+                    part.FrameX != styleX + (x - left) * 18 ||
+                    part.FrameY != styleY + (y - top) * 18)
+                    broken = true;
+            }
+            WorldTile support = At(x, top + 2);
+            if (!SolidTileAllowBottomSlope(x, top + 2) &&
+                !(support.IsActive && VanillaTileIds.IsPlatform(support.TileType)))
+                broken = true;
+        }
+        if (!broken)
+            return;
+        destroyingObject = true;
+        for (int x = left; x < left + 4; x++)
+        for (int y = top; y < top + 3; y++)
+            if (At(x, y).IsActive && At(x, y).Type == type)
+                KillTile(x, y);
+        destroyingObject = false;
+        for (int x = left - 1; x < left + 4; x++)
+        for (int y = top - 1; y < top + 4; y++)
+            TileFrame(x, y);
     }
 
     /// <summary>The ordinary, unsloped half of the platform table.</summary>
