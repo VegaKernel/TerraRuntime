@@ -194,3 +194,13 @@ Original-derived bodies and compiled candidates stay exclusively in ignored `.ca
 py -3 -m unittest tools.ci.test_vanilla_scalar_states
 dotnet tools/vanilla_data/SourceProbe/bin/Release/net11.0/SourceProbe.dll --state-candidate-self-test .cache/scalar/state-checks01.json
 ```
+
+## Read-only unsigned tile fields
+
+Schema3 also admits an exact root field with `type: "ushort"`, `access: "readOnly"`, and `index: null`. Values must be JSON integers in `0..65535`. The only new numeric conversion is the compiler's implicit, lossless `ushort` to `int` promotion. Explicit casts, narrowing, other widening, unsigned parameters/results, writes and nested unsigned paths remain refused. This is the sole exception to the earlier conversion frontier. Schema1 and schema2 are unchanged.
+
+The [world-generation cohort receipt](../verification/worldgen-object-cohort-20261103.json) records actual `source adapt-scalar` generation for eight original `Tile` accessors: `active`, `inActive`, `nactive`, `wire`, `wire2`, `wire3`, `halfBrick`, and `actuator`. Each runs 2,048 cases twice, covering 1,024 authored header profiles and two RNG seeds: 32,768 untouched official calls. Results, mapped state, direct-field fingerprints and the original RNG cursor/all 56 slots match the compiled carrier and candidate; repeats match. Inverted-result controls differ in every case with zero execution errors. Two copied-tool controls confirm that restoring either former capability restriction refuses the new positive case. These are sampled accessor checks, not exhaustive tile-state or world-generation parity.
+
+Generated bodies stay in ignored `.cache`; the retained generation owner is implemented independently. Thirty separately captured original `SolidTileAllowTopSlope` profiles establish that a platform with its half-brick flag remains valid with additional slope bits. That production fix and its object callers have their own differential and regression evidence in the same receipt.
+
+The tile-header request maps `path: ["Terraria.Tile.sTileHeader"]`, `target: "Header"`, `type: "ushort"`, `access: "readOnly"`, `index: null`; each selected accessor returns `bool` and has no arguments.

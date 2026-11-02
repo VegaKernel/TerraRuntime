@@ -80,6 +80,34 @@ internal static class ScalarStateChecks
             parameterTypes: [ScalarCandidate.VectorType, "float"], values: vectorCases));
         Reject("vector-argument-rebinding", () => Plan(vectorCode.Replace("position.X+=desired.X", "position.X+=desired.X; desired=velocity"),
             parameterTypes: [ScalarCandidate.VectorType, "float"], values: vectorCases));
+        // Authored bit-field examples exercise only the admitted lossless promotion.
+        StatePlan HeaderPlan(string body, string access = "readOnly", string fieldType = "ushort", string value = "65535")
+        {
+            var tree = CSharpSyntaxTree.ParseText("public class H { public " + fieldType + " bits; public bool Read() { " + body + " } }", path: "HeaderSynthetic.cs");
+            var context = new CompilationContext(CSharpCompilation.Create("HeaderSynthetic", [tree],
+                [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)], new(OutputKind.DynamicallyLinkedLibrary)),
+                new Dictionary<string, SyntaxTree> { ["HeaderSynthetic.cs"] = tree }, new Dictionary<string, string>(), new Dictionary<string, string>());
+            using var state = JsonDocument.Parse(value);
+            return ScalarCandidate.PlanState(context, new(3, new(1, "unused", "unused", ["HeaderSynthetic.cs"],
+                [new("HeaderSynthetic.cs", "H", "Read", [])], 0, 1), "bool",
+                [new(["H.bits"], null, "Header", fieldType, access)],
+                [new(new() { ["Header"] = state.RootElement.Clone() }, [], 1458)]));
+        }
+        var header = HeaderPlan("return (bits & 16) != 0;");
+        Check("ushort-readonly-root-and-lossless-promotion-compile", ScalarCandidate.Compile(header.Candidate, header.Carrier).Length > 0 &&
+            header.Candidate.Contains("public ushort Header"));
+        using var ushortValue = JsonDocument.Parse("65535");
+        Check("ushort-preimage-preserves-runtime-box-type", ScalarCandidate.StateValue(ushortValue.RootElement, "ushort") is ushort.MaxValue);
+        Reject("ushort-write-capability", () => HeaderPlan("bits = 0; return true;", "readWrite"));
+        Reject("ushort-readonly-write", () => HeaderPlan("bits = 0; return true;"));
+        Reject("ushort-explicit-widening", () => HeaderPlan("return ((int)bits & 16) != 0;"));
+        Reject("ushort-narrowing", () => HeaderPlan("return (byte)bits != 0;"));
+        Reject("ushort-float-widening", () => HeaderPlan("return (float)bits != 0f;"));
+        Reject("ushort-signed-field", () => HeaderPlan("return (bits & 16) != 0;", fieldType: "short", value: "0"));
+        Reject("ushort-byte-field", () => HeaderPlan("return (bits & 16) != 0;", fieldType: "byte", value: "0"));
+        Reject("ushort-negative-preimage", () => HeaderPlan("return (bits & 16) != 0;", value: "-1"));
+        Reject("ushort-overflow-preimage", () => HeaderPlan("return (bits & 16) != 0;", value: "65536"));
+        Reject("ushort-bool-preimage", () => HeaderPlan("return (bits & 16) != 0;", value: "true"));
         return new { Accepted = true, Checks = checks.Count, Results = checks };
     }
 }

@@ -33,6 +33,7 @@ internal static partial class ScalarVerification
         Type RuntimeType(ITypeSymbol type) => type.SpecialType switch
         {
             SpecialType.System_Int32 => typeof(int), SpecialType.System_Boolean => typeof(bool), SpecialType.System_Single => typeof(float),
+            SpecialType.System_UInt16 => typeof(ushort),
             _ when ScalarCandidate.IsVector(type) => game.GetType("Terraria.Entity", true)!.GetField("position", Flags)!.FieldType,
             _ => throw new InvalidDataException("Unowned runtime parameter type")
         };
@@ -76,7 +77,7 @@ internal static partial class ScalarVerification
         int index = 0;
         foreach (var item in plan.Request.Cases)
         {
-            var initial = plan.Paths.ToDictionary(p => p.Map.Target, p => ScalarValueCandidate.Value(item.State[p.Map.Target], p.Map.Type));
+            var initial = plan.Paths.ToDictionary(p => p.Map.Target, p => ScalarCandidate.StateValue(item.State[p.Map.Target], p.Map.Type));
             object actor = Activator.CreateInstance(originalType)!;
             foreach (var path in plan.Paths) SetProjected(actor, roots[path.Map.Path[0]], path, initial[path.Map.Target]);
             RejectArrayAliases(actor, roots, plan.Paths);
@@ -144,7 +145,7 @@ internal static partial class ScalarVerification
             RuntimeReference = new { Path = runtimeReference, Sha256 = runtimeSha }, CandidateSha256 = Sha(Encoding.UTF8.GetBytes(plan.Candidate)),
             OriginalCarrierSha256 = Sha(Encoding.UTF8.GetBytes(plan.Carrier)), AssemblySha256 = Sha(binary), plan.Context.SourceSha256, plan.Context.ReferenceSha256,
             CompilationErrorCount = plan.Inventory.CompilationErrorCount, Mutants = controls, Observations = rows,
-            Scope = "Cache-only exact-symbol scalar/Vector2-component/fixed-float-array projection, actual untouched official method and proper unchanged-body data carrier. Vector2 carrier represents only two scalar fields; no API behavior is stubbed. Globals/calls/properties/ref aliases/numeric conversions remain unsupported. Finite inputs/outputs only. Fingerprint covers direct fields/arrays/value types; reference-object internals are not a transitive proof. No runtime binding, NPC admission or whole-AI equivalence." };
+            Scope = "Cache-only exact-symbol scalar/Vector2-component/fixed-float-array projection, actual untouched official method and proper unchanged-body data carrier. Vector2 carrier represents only two scalar fields; no API behavior is stubbed. Read-only ushort roots allow only implicit lossless int promotion; other nonidentity numeric conversions, globals/calls/properties/ref aliases remain unsupported. Finite inputs/outputs only. Fingerprint covers direct fields/arrays/value types; reference-object internals are not a transitive proof. No runtime binding, NPC admission or whole-AI equivalence." };
 
         Dictionary<string, object?> Project(object actor, Dictionary<string, FieldInfo> fields) => plan.Paths.ToDictionary(p => p.Map.Target, p => Observe(GetProjected(actor, fields[p.Map.Path[0]], p)));
         StateExecution Execute(MethodInfo invoke, Type shape, Dictionary<string, object> initial, object?[] args)

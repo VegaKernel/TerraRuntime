@@ -81,7 +81,9 @@ internal static partial class ScalarCandidate
                 valueType = array.ElementType;
             }
             if (symbols.Any(f => f.IsStatic || f.IsConst || f.IsReadOnly || f.IsVolatile || f.GetAttributes().Length != 0) ||
-                !StateScalar(valueType) || Type(valueType) != map.Type || paths.Any(p => SamePath(p, symbols, map.Index)))
+                !(StateScalar(valueType) || valueType.SpecialType == SpecialType.System_UInt16 &&
+                    map.Access == "readOnly" && map.Path.Length == 1 && map.Index is null) ||
+                Type(valueType) != map.Type || paths.Any(p => SamePath(p, symbols, map.Index)))
                 throw new InvalidDataException("Unsupported or duplicate semantic state capability");
             if (map.Index.HasValue && map.Access == "readWrite") RequireFreshArray(context, method.ContainingType, root);
             paths.Add(new(map, symbols.ToArray()));
@@ -123,7 +125,9 @@ internal static partial class ScalarCandidate
                 ILocalReferenceOperation l => StateScalar(l.Local.Type) && l.Local.RefKind == RefKind.None,
                 IParameterReferenceOperation p => StateScalar(p.Parameter.Type) && SymbolEqualityComparer.Default.Equals(p.Parameter.ContainingSymbol, method),
                 ILiteralOperation l => l.Type is { } t && StateScalar(t),
-                IConversionOperation c => c.Conversion.IsIdentity && c.OperatorMethod is null && !c.IsTryCast && !c.IsChecked,
+                IConversionOperation c => c.OperatorMethod is null && !c.IsTryCast && !c.IsChecked &&
+                    (c.Conversion.IsIdentity || c.IsImplicit && c.Conversion.IsNumeric &&
+                        c.Operand.Type?.SpecialType == SpecialType.System_UInt16 && c.Type?.SpecialType == SpecialType.System_Int32),
                 IBinaryOperation b => b.OperatorMethod is null && !b.IsLifted && !b.IsChecked && StateScalar(b.LeftOperand.Type!) &&
                     SymbolEqualityComparer.Default.Equals(b.LeftOperand.Type, b.RightOperand.Type) && b.OperatorKind is
                     BinaryOperatorKind.Add or BinaryOperatorKind.Subtract or BinaryOperatorKind.Multiply or BinaryOperatorKind.Equals or BinaryOperatorKind.NotEquals or
@@ -141,7 +145,7 @@ internal static partial class ScalarCandidate
         foreach (var item in request.Cases)
         {
             if (!targets.SetEquals(item.State.Keys) || item.Arguments.Length != method.Parameters.Length) throw new InvalidDataException("Incomplete state case");
-            foreach (var p in paths) _ = ScalarValueCandidate.Value(item.State[p.Map.Target], p.Map.Type);
+            foreach (var p in paths) _ = StateValue(item.State[p.Map.Target], p.Map.Type);
             for (int i = 0; i < method.Parameters.Length; i++) ValidateStateArgument(item.Arguments[i], Type(method.Parameters[i].Type));
         }
         var rewritten = (MethodDeclarationSyntax)new StateRewrite(model, paths).Visit(syntax)!;
@@ -159,6 +163,11 @@ internal static partial class ScalarCandidate
             syntax.WithAttributeLists(default).WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword))).NormalizeWhitespace() + "\n} }";
         return new(request, context, method, syntax, paths.ToArray(), candidate, carrier, inventory);
     }
+
+    internal static object StateValue(JsonElement value, string type) => type == "ushort"
+        ? value.ValueKind == JsonValueKind.Number && value.TryGetUInt16(out ushort number) ? number
+            : throw new InvalidDataException("Expected exact unsigned 16-bit field value")
+        : ScalarValueCandidate.Value(value, type);
 
     internal static void ValidateStateArgument(JsonElement value, string type)
     {

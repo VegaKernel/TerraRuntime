@@ -185,7 +185,7 @@ def adapt(request_path, output_dir):
               'originalCarrierCompiled': observation is not None, 'wholeOriginalTypeCompiled': False,
               'validationErrors': errors, 'commands': commands, 'artifacts': artifacts,
               'wallSeconds': time.monotonic() - started,
-              'scope': ('Cache-only exact-symbol scalar/Vector2-component/fixed-ai-slot state adaptation and actual-original differential. Finite inputs/outputs; no globals, calls, alias writes, numeric conversions, transitive object proof, gameplay binding or runtime admission.'
+              'scope': ('Cache-only exact-symbol scalar/Vector2-component/fixed-ai-slot state adaptation and actual-original differential. Read-only ushort roots admit only implicit lossless int promotion. Finite inputs/outputs; no globals, calls, alias writes, other nonidentity numeric conversions, transitive object proof, gameplay binding or runtime admission.'
                         if request['schemaVersion'] == 3 else
                         'Cache-only automatic finite binary32/int/bool return adaptation with exact read-only receiver field maps and actual-original sampled differential. No transitive object, getter, API, RNG, caller/equipment ownership or runtime admission.'
                         if request['schemaVersion'] == 2 else

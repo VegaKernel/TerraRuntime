@@ -263,6 +263,51 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         }
 
+        if (tile.Type is 275 or 276 or 277 or 278 or 279 or 280 or 281 or 296 or 297 or 309 or
+            358 or 359 or 413 or 414 or 542 or 550 or 551 or 553 or 554 or 558 or 559 or
+            599 or 600 or 601 or 602 or 603 or 604 or 605 or 606 or 607 or 608 or 609 or 610 or 611 or 612 or
+            632 or 640 or 643 or 644 or 645 or 710)
+        {
+            CheckCritterCageSixByThree(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 241 or 242 or 245 or 246)
+        {
+            CheckRectangularWallObject(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 55 or 425 or 510 or 511 or 573)
+        {
+            SignCheckFraming(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 128 or 269)
+        {
+            LegacyCheckMannequin(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type == 171)
+        {
+            LegacyCheckChristmasTree(i, j);
+            return;
+        }
+
+        if (tile.Type == 567)
+        {
+            LegacyCheckGnome(i, j);
+            return;
+        }
+
+        if (tile.Type is 630 or 631 or 723 or 724)
+        {
+            LegacyCheckReorientingAnchor(i, j, tile.Type);
+            return;
+        }
+
         if (tile.Type is 376 or 443 or 485)
         {
             CheckSuperFurniture(i, j, tile.Type);
@@ -2553,7 +2598,7 @@ internal sealed partial class GenerationTileFraming1458(
         bool platform = VanillaTileIds.IsPlatform(support.TileType);
         return support.IsActive && !support.IsActuated &&
             (VanillaTileCollisionCatalog.IsSolid(support.TileType) || support.Type == 380) &&
-            (platform ? support.Shape == 1 : support.Shape is not (4 or 5));
+            (platform ? support.IsHalfBrick : support.Shape is not (4 or 5));
     }
 
     /// <summary><c>WorldGen.CheckUnderwaterPlant</c> for the generated seaweed identity.</summary>

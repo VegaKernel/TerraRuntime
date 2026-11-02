@@ -57,6 +57,47 @@ class StateCandidateTests(unittest.TestCase):
         for field, value in [('schemaVersion', True), ('schemaVersion', 4), ('returnType', 'double'), ('extra', 1)]:
             with self.subTest(field=field, value=value): self.reject_request(lambda r: r.__setitem__(field, value))
 
+    def ushort_request(self):
+        request = copy.deepcopy(self.request)
+        request['analysis']['entries'][0]['parameterTypes'] = []
+        request['returnType'] = 'bool'
+        request['fields'] = [{'path': ['C.header'], 'index': None, 'target': 'Header', 'type': 'ushort', 'access': 'readOnly'}]
+        request['cases'] = [{'state': {'Header': 65535}, 'arguments': [], 'rngSeed': 1458}]
+        return request
+
+    def test_readonly_ushort_root_has_exact_unsigned_domain(self):
+        for value in [0, 1, 32767, 32768, 65535]:
+            request = self.ushort_request(); request['cases'][0]['state']['Header'] = value
+            with self.subTest(value=value): self.assertEqual(scalar.validate_request(request), request)
+        for value in [-1, 65536, True, False, 1.0, '1', None]:
+            request = self.ushort_request(); request['cases'][0]['state']['Header'] = value
+            with self.subTest(value=value), self.assertRaises(ValueError): scalar.validate_request(request)
+
+    def test_ushort_is_not_a_write_parameter_result_or_nested_capability(self):
+        for edit in [lambda r: r['fields'][0].update(access='readWrite'),
+                     lambda r: r['fields'][0].update(index=0),
+                     lambda r: r['fields'][0].update(path=['C.header', 'Microsoft.Xna.Framework.Vector2.X']),
+                     lambda r: r.update(returnType='ushort'),
+                     lambda r: r['analysis']['entries'][0].update(parameterTypes=['ushort'])]:
+            request = self.ushort_request(); edit(request)
+            with self.assertRaises(ValueError): scalar.validate_request(request)
+
+    def test_ushort_observation_requires_exact_range_and_readonly_state(self):
+        request = self.ushort_request(); result = self.observation()
+        result.update(entry='C.Step()', returnType='bool')
+        row = result['observations'][0]
+        row.update(initial={'Header': 65535}, arguments=[], original=True, carrier=True, candidate=True,
+                   originalState={'Header': 65535}, carrierState={'Header': 65535}, candidateState={'Header': 65535})
+        scalar.validate_observation(request, result)
+        for key in ['initial', 'originalState', 'carrierState', 'candidateState']:
+            for value in [-1, 65536, True, 1.0, 65534]:
+                changed = copy.deepcopy(result); changed['observations'][0][key]['Header'] = value
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                    scalar.validate_observation(request, changed)
+        changed = copy.deepcopy(result)
+        for key in ['originalState', 'carrierState', 'candidateState']: changed['observations'][0][key]['Header'] = 0
+        with self.assertRaises(ValueError): scalar.validate_observation(request, changed)
+
     def test_one_zero_depth_entry_is_required(self):
         for field, value in [('maxDepth', 1), ('maxMethods', 2), ('entries', [])]:
             with self.subTest(field=field): self.reject_request(lambda r: r['analysis'].__setitem__(field, value))

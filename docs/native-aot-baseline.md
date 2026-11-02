@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Managed world-generation 58 object checkpoint, 2026-11-03
+
+System SDK `11.0.100-rc.3.26522.148`, existing `net11.0` targets and package graph are retained. Release warnings-as-errors: 0 warnings and 0 errors; focused `283/283`; 18 causal controls with 49 expected assertion failures, 64 passing controls and no runner errors; fast `56,084/56,084`; unfiltered full `1,601,398/1,601,398` across all `5,684` methods without skips. Ordinary and published CoreCLR each pass five smokes. Fresh CoreCLR executable SHA-256: `ff6fd948fe5d231771d764b179332923147c31aa0cb62195259e6e2b60b46236`. Frozen source/DLL guard passes after full and publication. [Managed acceptance](verification/worldgen-object-cohort-20261103.json) records exact scope and raw diagnostics. User authorization remains managed-only; no NativeAOT qualification or C++ toolchain installation was attempted.
+
 ## Managed world-generation cohort, 2026-11-02
 
 The combined forty-one-identity generation block retains SDK `11.0.100-rc.3.26522.148`, the existing `net11.0` graph and package versions. Windows managed Release warnings-as-errors, focused `189/189`, fast `55,990/55,990`, unfiltered full `1,601,304/1,601,304` across all `5,674` methods without skips, and both ordinary/published CoreCLR five-smoke paths pass. Fresh self-contained CoreCLR executable SHA-256: `9383a1f687a9c6f738b6b2235b1e5b6cad334115721017d2e71ab6c881517b4b`. Source/DLL guards remain unchanged after full and publication. [Managed acceptance](verification/worldgen-object-cohort-20261102.json) records the exact scope and diagnostics; NativeAOT verification remains explicitly deferred by the user.

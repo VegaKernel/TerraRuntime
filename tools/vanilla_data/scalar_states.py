@@ -10,6 +10,10 @@ from .scalar_values import scalar, SCALARS, IDENTIFIER, SYMBOL
 VECTOR = 'Microsoft.Xna.Framework.Vector2'
 
 
+def state_scalar(value, kind):
+    return type(value) is int and 0 <= value <= 65535 if kind == 'ushort' else scalar(value, kind)
+
+
 def argument(value, kind):
     return type(value) is dict and set(value) == {'x', 'y'} and all(scalar(v, 'float') for v in value.values()) \
         if kind == VECTOR else scalar(value, kind)
@@ -32,12 +36,14 @@ def validate_request(data):
     identities, fields = set(), {}
     for field in data['fields']:
         if type(field) is not dict or set(field) != {'path', 'index', 'target', 'type', 'access'} or \
-                field['type'] not in SCALARS or field['access'] not in ('readOnly', 'readWrite') or \
+                field['type'] not in (*SCALARS, 'ushort') or field['access'] not in ('readOnly', 'readWrite') or \
                 type(field['path']) is not list or not 1 <= len(field['path']) <= 2 or \
                 any(type(s) is not str or not SYMBOL.fullmatch(s) for s in field['path']) or \
                 type(field['target']) is not str or not IDENTIFIER.fullmatch(field['target']) or field['target'] == '__state' or \
                 field['target'] in fields or field['index'] is not None and (type(field['index']) is not int or not 0 <= field['index'] <= 3):
             raise ValueError('Invalid state capability shape')
+        if field['type'] == 'ushort' and (field['access'] != 'readOnly' or len(field['path']) != 1 or field['index'] is not None):
+            raise ValueError('Only an exact read-only ushort root field is admitted')
         if len(field['path']) == 2 and (field['path'][1] not in (VECTOR + '.X', VECTOR + '.Y') or field['index'] is not None or field['type'] != 'float'):
             raise ValueError('Only exact Vector2 scalar leaves are admitted')
         if field['index'] is not None and (len(field['path']) != 1 or field['path'][0].split('.')[-1] not in ('ai', 'localAI') or field['type'] != 'float'):
@@ -50,7 +56,7 @@ def validate_request(data):
         raise ValueError('Expected1..4096 explicit state cases')
     for case in data['cases']:
         if type(case) is not dict or set(case) != {'state', 'arguments', 'rngSeed'} or type(case['state']) is not dict or \
-                set(case['state']) != set(fields) or any(not scalar(case['state'][key], kind) for key, kind in fields.items()) or \
+                set(case['state']) != set(fields) or any(not state_scalar(case['state'][key], kind) for key, kind in fields.items()) or \
                 type(case['arguments']) is not list or len(case['arguments']) != len(parameters) or \
                 any(not argument(value, kind) for value, kind in zip(case['arguments'], parameters)) or not scalar(case['rngSeed'], 'int'):
             raise ValueError('Incomplete or mistyped state preimage')
@@ -77,7 +83,7 @@ def validate_observation(request, data):
                 type(row.get('rngSeed')) is not int or row['rngSeed'] != case['rngSeed'] or \
                 row.get('initial') != case['state'] or row.get('arguments') != case['arguments'] or \
                 type(row.get('initial')) is not dict or set(row['initial']) != set(fields) or \
-                any(not scalar(row['initial'][key], field['type']) for key, field in fields.items()) or \
+                any(not state_scalar(row['initial'][key], field['type']) for key, field in fields.items()) or \
                 type(row['arguments']) is not list or len(row['arguments']) != len(entry['parameterTypes']) or \
                 any(not argument(value, kind) for value, kind in zip(row['arguments'], entry['parameterTypes'])):
             raise ValueError('State observation preimage differs')
@@ -89,7 +95,7 @@ def validate_observation(request, data):
             raise ValueError('Original/carrier/candidate return mismatch')
         for key in ('originalState', 'carrierState', 'candidateState'):
             state = row.get(key)
-            if type(state) is not dict or set(state) != set(fields) or any(not scalar(state[name], field['type']) for name, field in fields.items()):
+            if type(state) is not dict or set(state) != set(fields) or any(not state_scalar(state[name], field['type']) for name, field in fields.items()):
                 raise ValueError('Incomplete state result')
             if any(state[name] != case['state'][name] for name, field in fields.items() if field['access'] == 'readOnly'):
                 raise ValueError('Readonly state capability changed')
