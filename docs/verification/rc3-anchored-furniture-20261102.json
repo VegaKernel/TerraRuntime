@@ -1,0 +1,319 @@
+{
+  "date": "2026-11-02",
+  "acceptedManaged": true,
+  "scope": "Managed .NET 11 RC3 migration and bounded generation framing for tiles 34/35/139/209; no complete world-generation parity claim.",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "targetFramework": "net11.0",
+  "fullSuiteEnvironment": "64-bit (x64) .NET 11.0.0-rc.3.26522.148 [collection-per-class, parallel (4 threads)]",
+  "ci": {
+    "sdkSource": "global.json",
+    "setupDotnetInput": "global-json-file",
+    "workflowSetupSteps": 82,
+    "housingTemplateUpdated": true
+  },
+  "productionGraph": {
+    "projects": 15,
+    "references": 29,
+    "newDependencies": 0
+  },
+  "official": {
+    "version": "1.4.5.8",
+    "assemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "executionHost": "Windows x64 CoreCLR RC3, admitted Linux reference assembly",
+    "registeredPass": "FinalCleanup",
+    "dimensions": [
+      1000,
+      500
+    ],
+    "seed": 1458,
+    "fixtureSites": 24,
+    "tiles": {
+      "34": "Chandeliers",
+      "35": "Jackolanterns",
+      "139": "MusicBoxes",
+      "209": "Cannon"
+    },
+    "projection": [
+      "active",
+      "type",
+      "wall",
+      "frameX",
+      "frameY",
+      "liquidAmount"
+    ],
+    "captures": [
+      {
+        "netMode": 0,
+        "gridSha256": "655a1da3aaa0e01e391d2812198ac7ecbef206acebf979b0927edbfaa87daaa1",
+        "nextRandom": 332119727,
+        "logSha256": "26d43ca988aa8ce418b2ace22360b086dee51343e9a76c0b5081a41c743691f8"
+      },
+      {
+        "netMode": 1,
+        "gridSha256": "655a1da3aaa0e01e391d2812198ac7ecbef206acebf979b0927edbfaa87daaa1",
+        "nextRandom": 822212472,
+        "logSha256": "2156364df2f90d841fc222d908df4fc6bb3f5b9e1a2b5f28a362b24fdfd5b61f"
+      }
+    ],
+    "probeInputs": {
+      "Program.cs": "d19a4fff7d70ccb7780e82e0552452c40b5d2c35016e821a4f6acc7fdb498a93",
+      "Probe.csproj": "fd81abe3ca28a4ef1643c3a96d9b70b83f3312b24285d39b7178250f180721c8",
+      "bin/Release/net11.0/Probe.dll": "dd8e4b54176c9ff30cfc426f1d76aea4c66654b325b32b4af9e8149efdc64da2"
+    },
+    "rngBoundary": "netMode1 skips AnglerQuestSwap; next-value observations do not assert the complete RNG state.",
+    "rejectedExploration": "netMode2 oracle runs required uninitialized networking for AnglerQuestSwap; retained diagnostics are not accepted evidence."
+  },
+  "omissionControls": {
+    "sourceRestored": true,
+    "results": [
+      {
+        "omission": "chandelier",
+        "total": 1,
+        "failed": 1,
+        "errors": 0,
+        "librarySha256": "e5315cb3857dc989ae49cf3c546bff4e4ba9a05ec572fb6a4cc40371ef6092f4",
+        "failure": "Assert.Equal() Failure: Strings differ\n           ↓ (pos 0)\nExpected: \\\"655A1DA3AAA0E01E391D2812198AC7ECBEF206ACEBF979B092\\\"···\nActual:   \\\"73D8AED457A1649C6C0B32C2DD45CC02E5C5EA0ECDD4C74E30\\\"···\n           ↑ (pos 0)"
+      },
+      {
+        "omission": "music",
+        "total": 1,
+        "failed": 1,
+        "errors": 0,
+        "librarySha256": "13863aa9f041a4e629aee36f97a13cad3e8915355f78f55733f1baa6fd641f23",
+        "failure": "Assert.Equal() Failure: Strings differ\n           ↓ (pos 0)\nExpected: \\\"655A1DA3AAA0E01E391D2812198AC7ECBEF206ACEBF979B092\\\"···\nActual:   \\\"4648B5C5C9A08CA5611E66D7884FF5C4A5B9B0C2F3FA9A7CD1\\\"···\n           ↑ (pos 0)"
+      },
+      {
+        "omission": "cannon",
+        "total": 1,
+        "failed": 1,
+        "errors": 0,
+        "librarySha256": "b5002bc528a1ef99ac6c59ac8e7552460e071f4f3d7d833e1803968d1ce69574",
+        "failure": "Assert.Equal() Failure: Strings differ\n           ↓ (pos 0)\nExpected: \\\"655A1DA3AAA0E01E391D2812198AC7ECBEF206ACEBF979B092\\\"···\nActual:   \\\"7777AF7D62C9A3F3EA452B1A4333AF15C03D1FB2F10B1DC089\\\"···\n           ↑ (pos 0)"
+      }
+    ]
+  },
+  "validation": {
+    "releaseWarnings": 0,
+    "releaseErrors": 0,
+    "focusedPassed": 103,
+    "pythonCiToolTestsPassed": 280,
+    "sourceProbeAuthoredChecksPassed": 103,
+    "sourceProbeChecks": {
+      "self-test": {
+        "accepted": true,
+        "checks": 20,
+        "names": [
+          "exact-overload-and-source-callee",
+          "increment-is-read-write",
+          "source-depth-budget-rejects",
+          "source-method-budget-rejects",
+          "recursive-symbol-visited-once",
+          "ref-out-effects-retained",
+          "property-and-array-mutations-opaque",
+          "resolved-metadata-not-pure",
+          "delegate-target-opaque",
+          "unresolved-invocation-rejects",
+          "dynamic-invocation-rejects",
+          "absent-entry-rejects",
+          "global-errors-never-hidden",
+          "virtual-dispatch-not-inlined",
+          "ref-local-alias-stays-opaque",
+          "ref-return-alias-stays-opaque",
+          "deconstruction-targets-are-writes",
+          "implicit-dispose-stays-opaque",
+          "implicit-iterator-stays-opaque",
+          "pointer-store-stays-opaque"
+        ],
+        "scope": "Author-written synthetic compiler/semantic cases; no original game execution or vanilla behavior acceptance."
+      },
+      "candidate-self-test": {
+        "accepted": true,
+        "cases": 18,
+        "checks": [
+          "semantic-shadowed-parameter-kept-distinct",
+          "original-method-proper-carrier-compiles-with-candidate",
+          "wrong-same-name-field-owner-rejected",
+          "wrong-field-type-rejected",
+          "two-fields-cannot-alias-one-target",
+          "property-target-path-rejected",
+          "unmapped-field-rejected",
+          "nested-property-effect-rejected",
+          "aliased-receiver-rejected",
+          "readonly-ref-argument-rejected",
+          "numeric-conversion-rejected",
+          "call-not-mapped-by-text",
+          "throw-rejected",
+          "loop-rejected",
+          "static-global-rejected",
+          "implicit-synchronized-method-protocol-rejected",
+          "unused-mapping-rejected",
+          "both-state-write-mutations-are-generated"
+        ],
+        "scope": "Authored synthetic semantic admission/compile checks only; actual original differential is separate."
+      },
+      "value-candidate-self-test": {
+        "accepted": true,
+        "cases": 27,
+        "checks": [
+          "readonly-receiver-fields-and-scalar-parameter-assignment-rewritten",
+          "proper-body-carrier-and-value-candidate-compile",
+          "compound-assignment-control-is-generated",
+          "scalar-local-shadowing-preserves-field-and-local-symbols",
+          "readonly-own-field-write-refused",
+          "readonly-argument-field-write-refused",
+          "reference-argument-rebinding-refused",
+          "reference-local-alias-refused",
+          "unknown-receiver-map-refused",
+          "same-name-wrong-symbol-refused",
+          "implicit-numeric-widening-refused",
+          "numeric-cast-refused",
+          "property-getter-refused",
+          "static-global-refused",
+          "method-call-refused",
+          "loop-refused",
+          "array-creation-and-alias-refused",
+          "unsafe-block-refused",
+          "unsafe-method-refused",
+          "unsafe-containing-type-refused",
+          "reserved-local-name-refused",
+          "schema1-write-capability-not-inferred",
+          "method-attributes-refused",
+          "missing-observed-input-refused",
+          "nonfinite-input-bits-refused",
+          "negative-zero-survives-bit-domain",
+          "early-return-priority-control-compiles-with-distinct-branches"
+        ],
+        "scope": "Authored synthetic capability/compile checks; actual official differential is separate."
+      },
+      "state-candidate-self-test": {
+        "accepted": true,
+        "checks": 38,
+        "results": [
+          "exact-inherited-field-chain-and-fixed-slot-generated",
+          "unchanged-body-proper-carrier-and-candidate-compile",
+          "wrong-same-name-root-owner",
+          "wrong-same-name-vector-leaf-owner",
+          "wrong-leaf-type",
+          "readonly-capability-write",
+          "duplicate-target-alias",
+          "duplicate-physical-path",
+          "out-of-range-map-index",
+          "unmapped-literal-slot",
+          "computed-even-constant-index",
+          "dynamic-array-index",
+          "array-length-property",
+          "arbitrary-array-name",
+          "array-reference-rebinding",
+          "array-initializer-global-alias",
+          "constructor-array-publication",
+          "constructor-array-alias",
+          "array-local-alias",
+          "reference-this-alias",
+          "ref-local-alias",
+          "vector-local-alias",
+          "whole-vector-assignment",
+          "explicit-base-carrier-shape",
+          "nested-getter-call",
+          "unmapped-global",
+          "api-invocation",
+          "nonidentity-numeric-conversion",
+          "division-frontier",
+          "exception-flow",
+          "loop-frontier",
+          "method-attribute-effects",
+          "virtual-dispatch",
+          "readonly-reference-parameter",
+          "checked-arithmetic",
+          "readonly-by-value-vector-argument-compiles",
+          "vector-argument-component-write",
+          "vector-argument-rebinding"
+        ]
+      }
+    },
+    "fast": {
+      "executed": true,
+      "exit_code": 0,
+      "wall_seconds": 468.4400358999992,
+      "tests": {
+        "total": "55944",
+        "passed": "55944",
+        "failed": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "466.691",
+        "skipped_tests": []
+      },
+      "accepted": true
+    },
+    "full": {
+      "executed": true,
+      "exit_code": 0,
+      "wall_seconds": 1344.8615031000081,
+      "tests": {
+        "total": "1601258",
+        "passed": "1601258",
+        "failed": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1327.498",
+        "skipped_tests": []
+      },
+      "accepted": true
+    },
+    "managedServerSmokes": [
+      "loop",
+      "protocol",
+      "network",
+      "world",
+      "tui"
+    ],
+    "publishedCoreclr": {
+      "accepted": true,
+      "smokes": [
+        {
+          "name": "loop",
+          "exitCode": 0
+        },
+        {
+          "name": "protocol",
+          "exitCode": 0
+        },
+        {
+          "name": "network",
+          "exitCode": 0
+        },
+        {
+          "name": "world",
+          "exitCode": 0
+        },
+        {
+          "name": "tui",
+          "exitCode": 0
+        }
+      ],
+      "executableSha256": "c55897312611f24f36b43daa0201efd8d19968cb8c3065761ecca0d5a3bc38e0"
+    },
+    "documentation": {
+      "mirroredPages": 137,
+      "markdownFiles": 313
+    },
+    "selectedSourceInputs": 4253,
+    "testRuntimeDlls": 158,
+    "manifestSha256": "76fd8527fa31f8047db999bca06b938113274fc93c99fbdfda2b2ee6d293e0e4",
+    "sourceAndDllsUnchangedAfterFullAndPublish": true
+  },
+  "nativeAot": {
+    "verified": false,
+    "deferredByExplicitUserRequest": true,
+    "windowsAttempt": "Stopped before compilation: required vswhere.exe was not found; C++ prerequisites were not installed at the user's request.",
+    "linux": "Unverified; no usable Linux toolchain on this host."
+  },
+  "remaining": [
+    "Type454 chandelier reward RNG",
+    "Other frame-important objects and tile entities",
+    "Special-seed tails",
+    "Real-prefix whole-world generation parity"
+  ],
+  "worldgenAuditRow109": "P",
+  "evidenceDirectory": ".cache/anchored-furniture-20261102"
+}

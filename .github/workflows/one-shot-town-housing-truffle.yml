@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
       - name: Apply Truffle housing parity block
         run: python3 tools/ci/apply_town_housing_truffle.py
       - name: Keep threshold fixture inside source-tested room bounds

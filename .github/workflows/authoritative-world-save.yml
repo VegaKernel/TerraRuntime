@@ -51,7 +51,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Build isolated atomic save probe
         run: dotnet build tools/TerraRuntime.AtomicSaveCrashProbe/TerraRuntime.AtomicSaveCrashProbe.csproj -c Release
@@ -241,7 +241,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Build persistence test assembly
         run: dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release

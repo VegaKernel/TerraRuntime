@@ -68,7 +68,7 @@ flowchart LR
 
 ## 4. Build
 
-The SDK is pinned by `global.json`; the main solution is `build/TerraRuntime.slnx`.
+The SDK is pinned to .NET 11 RC3 (`11.0.100-rc.3.26522.148`) by `global.json`; the main solution is `build/TerraRuntime.slnx`. GitHub Actions installs the SDK through `global-json-file: global.json`, so local builds and CI use the same version selection. Install the SDK, then check `dotnet --version` from the repository root. Projects continue to target `net11.0`; the RC3 migration does not require a target-framework rename.
 
 Run normal restore/build/test commands from the repository root:
 

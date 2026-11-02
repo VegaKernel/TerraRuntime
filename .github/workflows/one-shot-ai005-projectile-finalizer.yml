@@ -22,7 +22,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Repair section cache fixture against current world API
         run: python3 tools/ci/repair_section_cache_rebuild_fixture.py

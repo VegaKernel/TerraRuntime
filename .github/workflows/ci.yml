@@ -32,7 +32,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Restore
         run: dotnet restore build/TerraRuntime.slnx
@@ -82,7 +82,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Publish extensible CoreCLR linux-x64
         shell: pwsh
@@ -149,7 +149,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Publish extensible CoreCLR win-x64
         shell: pwsh
@@ -207,7 +207,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Publish NativeAOT linux-x64
         shell: pwsh
@@ -273,7 +273,7 @@ jobs:
       - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          global-json-file: global.json
 
       - name: Publish NativeAOT win-x64
         shell: pwsh

@@ -37,7 +37,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// the ordinary-support and boulder <c>Check2x2</c> families, planter box <c>380</c>,
 /// sunflower <c>27</c> and alchemical plants <c>82</c>/<c>83</c>/<c>84</c>, the 25
 /// non-tile-entity <c>Check2xX</c> and three <c>Check1xX</c> identities, six floor-supported
-/// rectangular furniture families, dye <c>227</c>,
+/// rectangular furniture families, chandeliers <c>34</c>, music objects <c>35</c>/<c>139</c>,
+/// cannons <c>209</c>, dye <c>227</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -235,6 +236,12 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 79 or 90 or 487)
         {
             CheckFourByTwo(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 34 or 35 or 139 or 209)
+        {
+            CheckAnchoredFurniture(i, j, tile.Type);
             return;
         }
 
@@ -820,6 +827,81 @@ internal sealed class GenerationTileFraming1458(
         for (int x = left - 1; x < left + 4; x++)
         for (int y = top - 1; y < top + 4; y++)
             TileFrame(x, y);
+    }
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 CheckChand (34), CheckMB (35/139), and CheckCannon (209).
+    /// Their frame rectangles agree, but their anchors, removal reach and recursion guards differ.
+    /// The type454 chandelier has additional reward RNG and remains outside this slice.
+    /// </summary>
+    private void CheckAnchoredFurniture(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+        WorldTile observed = At(i, j);
+        int objectWidth = type == 209 ? 4 : type == 34 ? 3 : 2;
+        int objectHeight = type is 34 or 209 ? 3 : 2;
+        int column = observed.FrameX / 18;
+        // CheckMB subtracts one orientation band, rather than reducing arbitrary bands modulo two.
+        int styleX = type is 35 or 139
+            ? (column >= 2 ? 36 : 0)
+            : column / objectWidth * objectWidth * 18;
+        int left = i - (observed.FrameX - styleX) / 18;
+        int styleY = observed.FrameY / (objectHeight * 18) * objectHeight * 18;
+        int top = j - observed.FrameY / 18 % objectHeight;
+        if (!Contains(left - 1, top - 1) || !Contains(left + objectWidth, top + objectHeight))
+            return;
+
+        bool broken = false;
+        for (int x = left; x < left + objectWidth; x++)
+        {
+            for (int y = top; y < top + objectHeight; y++)
+            {
+                WorldTile part = At(x, y);
+                if (!part.IsActive || part.Type != type ||
+                    part.FrameX != styleX + (x - left) * 18 ||
+                    part.FrameY != styleY + (y - top) * 18)
+                    broken = true;
+            }
+            if (type == 209 && x > left && x < left + 3 &&
+                !SolidTileAllowBottomSlope(x, top + 3))
+                broken = true;
+            if (type is 35 or 139)
+            {
+                WorldTile anchor = At(x, top + 2);
+                // CheckMB accepts shaped solid/table tops, but requires nactive (not actuated).
+                if (!anchor.IsActive || anchor.IsActuated ||
+                    !VanillaTileCollisionCatalog.IsSolid(anchor.TileType) &&
+                    !GenerationFurnitureTiles1458.IsTable(anchor.Type))
+                    broken = true;
+            }
+        }
+        if (type == 34)
+        {
+            WorldTile ceiling = At(left + 1, top - 1);
+            if (!ceiling.IsActive || ceiling.IsActuated ||
+                !VanillaTileCollisionCatalog.IsSolid(ceiling.TileType) ||
+                VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType))
+                broken = true;
+        }
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        int removalHeight = type is 35 or 139 ? 3 : objectHeight;
+        for (int x = left; x < left + objectWidth; x++)
+        for (int y = top; y < top + removalHeight; y++)
+            if (At(x, y).IsActive && At(x, y).Type == type)
+                KillTile(x, y);
+        // CheckMB reframes while destroyObject is still raised; its neighbours cannot recurse.
+        if (type is not (35 or 139))
+            destroyingObject = false;
+        int halo = type == 209 ? 0 : 1;
+        int bottomExclusive = type is 35 or 139 ? top + 3 : top + objectHeight + halo;
+        for (int x = left - halo; x < left + objectWidth + halo; x++)
+        for (int y = top - halo; y < bottomExclusive; y++)
+            TileFrame(x, y);
+        destroyingObject = false;
     }
 
     /// <summary>The ordinary, unsloped half of the platform table.</summary>

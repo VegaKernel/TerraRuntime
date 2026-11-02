@@ -1626,6 +1626,76 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_chandeliers_music_boxes_and_cannons_match_official_passlegacy()
+    {
+        // Untouched TerrariaServer 1.4.5.8 registered FinalCleanup; 1000x500, seed1458.
+        // All four identities have intact, missing-member, missing-anchor, styled,
+        // inner-only support, and actuated-anchor predecessors.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
+        {
+            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        ushort[] identities = [34, 35, 139, 209];
+        for (int n = 0; n < identities.Length; n++)
+        {
+            ushort type = identities[n];
+            int x = 100 + n * 180;
+            int width = type == 209 ? 4 : type == 34 ? 3 : 2;
+            int height = type is 34 or 209 ? 3 : 2;
+            for (int scenario = 0; scenario < 6; scenario++)
+            {
+                int y = 80 + scenario * 55;
+                int baseFx = scenario == 3 ? width * 18 : 0;
+                int baseFy = scenario == 3 ? height * 18 : 0;
+                for (int dx = 0; dx < width; dx++)
+                for (int dy = 0; dy < height; dy++)
+                    if (scenario != 1 || dx != width - 1 || dy != height - 1)
+                        Put(x + dx, y + dy, type, (short)(baseFx + dx * 18), (short)(baseFy + dy * 18));
+                if (type == 34)
+                {
+                    if (scenario != 2)
+                        Put(x + 1, y - 1, 1);
+                }
+                else
+                    for (int dx = 0; dx < width; dx++)
+                        if ((scenario != 2 || dx != 1) && (scenario != 4 || dx > 0 && dx < width - 1))
+                            Put(x + dx, y + height, 1);
+                if (scenario == 5)
+                {
+                    int anchorX = x + (type == 34 ? 1 : 0);
+                    int anchorY = type == 34 ? y - 1 : y + height;
+                    WorldTile anchor = workspace.TileStore.Get(anchorX, anchorY);
+                    anchor.Flags |= WorldTileFlags.Inactive;
+                    workspace.TileStore.Set(anchorX, anchorY, in anchor);
+                }
+            }
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+
+        Assert.Equal("655A1DA3AAA0E01E391D2812198AC7ECBEF206ACEBF979B0927EDBFAA87DAAA1", HashFixture(workspace));
+        // Official netMode0 and netMode1 give the same entire grid. The latter skips the
+        // unrelated AnglerQuestSwap epilogue and exposes this generation owner's RNG boundary.
+        Assert.Equal(822212472, random.Next());
+        for (int n = 0; n < identities.Length; n++)
+        {
+            int x = 100 + n * 180;
+            for (int scenario = 0; scenario < 6; scenario++)
+            {
+                bool survives = scenario is 0 or 3 || scenario == 4 && identities[n] is 34 or 209 ||
+                    scenario == 5 && identities[n] == 209;
+                Assert.Equal(survives, workspace.TileStore.Get(x, 80 + scenario * 55).IsActive);
+            }
+        }
+    }
+
+    [Fact]
     public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);

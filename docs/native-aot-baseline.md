@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Managed RC3 checkpoint, 2026-11-02
+
+`global.json` now selects .NET SDK `11.0.100-rc.3.26522.148`; all CI SDK setup steps read that file. The existing `net11.0` project graph and package versions are unchanged. Windows x64 RC3 Release warnings-as-errors, fast `55,944/55,944`, unfiltered full `1,601,258/1,601,258` across all `5,664` methods without skips, and both ordinary managed and fresh self-contained CoreCLR five-smoke paths pass. The published CoreCLR executable SHA-256 is `c55897312611f24f36b43daa0201efd8d19968cb8c3065761ecca0d5a3bc38e0`. RC3 NativeAOT verification is explicitly deferred by the user after Windows publication stopped at the missing `vswhere.exe` prerequisite; Linux NativeAOT remains unverified. [Managed acceptance](verification/rc3-anchored-furniture-20261102.json) records the exact scope and preserved source/DLL guard.
+
 ## Ranged NPC checkpoint, 2026-10-29
 
 Fresh Windows x64 NativeAOT executable SHA256 `7b8ebdc99711185b17156aa878a897c4421ab08a59e7e47ebe2aad4733f9370f` has CLR-directory RVA/size0/0 and passes loop/protocol/network/world/TUI smokes. Actual Release and Native TCP each pass twojoins,15bootstrap sections/312frames through49,82before49then129,movement/chat/replacementHello; ownedhosts are stopped. Current source4260/158DLL/15projects29references are pinned; all157productionDLLs are exactdiagnostic09 across the two test-only repairs. Rawfull1601248/all5654 retains4failedstaleassertions; priorfast55934 retains2incorrecttestinputassertions. Actualfinal9methods/1929rows resolve compositefast55934/focus12866; nosecondfull/rawgreenclaim. Original198pinnedfullinputs unchanged;5ownJSONLoutputs separately recorded. ExactGit-index bridge covers4257files plus3JSON-sidecar-onlyLFnormalizations. [Acceptance](verification/npc-ranged-acceptance-20261029.json) records all scopes and hashes. Linux NativeAOT, official GUI and graceful-save shutdown remain unverified.

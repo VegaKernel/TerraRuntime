@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 11.0.x
+          global-json-file: global.json
       - name: Rebase onto current main
         shell: bash
         run: |
