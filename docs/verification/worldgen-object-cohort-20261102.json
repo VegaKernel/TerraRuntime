@@ -1,0 +1,1415 @@
+{
+  "date": "2026-11-02",
+  "acceptedManaged": true,
+  "publishedBaseline": "054985fa",
+  "scope": "Forty-one generation object identities, shared locked-door breakability and independent halfbrick floor support. Synthetic configured predecessors; no complete vanilla world-generation parity claim.",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "fullSuiteEnvironment": "64-bit (x64) .NET 11.0.0-rc.3.26522.148 [collection-per-class, parallel (4 threads)]",
+  "families": {
+    "Check3x3": [
+      106,
+      212,
+      219,
+      220,
+      228,
+      243,
+      247,
+      283,
+      300,
+      301,
+      302,
+      303,
+      304,
+      305,
+      306,
+      307,
+      308,
+      354,
+      355,
+      406,
+      412,
+      452,
+      455,
+      491,
+      499,
+      642,
+      733,
+      753
+    ],
+    "Check3x3Wall": [
+      240,
+      440
+    ],
+    "Doors": [
+      10,
+      11
+    ],
+    "Trapdoors": [
+      386,
+      387
+    ],
+    "TallGates": [
+      388,
+      389
+    ],
+    "CheckSuper": [
+      376,
+      443,
+      485
+    ],
+    "CheckBanner": [
+      91
+    ],
+    "CheckChand": [
+      454
+    ]
+  },
+  "identityCount": 41,
+  "productionGraph": {
+    "projects": 15,
+    "references": 29,
+    "newDependencies": 0
+  },
+  "ownership": "Same GenerationTileFraming1458/WorldTileStore/shared RNG. Removed limited Obsidian-door and desert-object pre-passes/classes; final per-cell TileFrame remains the dispatch owner.",
+  "official": {
+    "version": "1.4.5.8",
+    "assemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "executionHost": "Admitted Linux assembly on Windows x64 CoreCLR RC3, not Linux NativeAOT.",
+    "sixFieldProjection": [
+      "active",
+      "type",
+      "wall",
+      "frameX",
+      "frameY",
+      "liquidAmount"
+    ],
+    "componentRecords": [
+      {
+        "path": ".cache/worldgen-three-by-three-20261102/original-qualification.json",
+        "sha256": "82195fb9a4949221c0f90df024438119f58d3b6c2214f5d17fe6848ee92ea161",
+        "originalRecord": {
+          "acceptedOriginalFixture": true,
+          "shippingQualificationPending": true,
+          "netMode": 1,
+          "dimensions": [
+            1000,
+            500
+          ],
+          "seed": 1458,
+          "projection": [
+            "active",
+            "type",
+            "wall",
+            "frameX",
+            "frameY",
+            "liquidAmount"
+          ],
+          "pins": {
+            ".cache/worldgen-three-by-three-20261102/Program.cs": "eb52787e4afcbe761a91b26c9bfc88e6be4a8c0c9e9cfff3e849de9c20c55d64",
+            ".cache/worldgen-three-by-three-20261102/Probe.csproj": "fd81abe3ca28a4ef1643c3a96d9b70b83f3312b24285d39b7178250f180721c8",
+            ".cache/worldgen-three-by-three-20261102/bin/Release/net11.0/Probe.dll": "3aecdb7c39fb89ce290e74d49adee55a8653b13268a2655c049e6dca9e727df9",
+            "decompiled/1458/Terraria/WorldGen.cs": "a2b0de8a1d2a3c0bcb977308eb6bafb20d7b08e525713ef20fd773c6cfb342d4",
+            "decompiled/1458/Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            ".cache/terraria-1458/extracted/1458/Linux/TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+            ".cache/terraria-1458/extracted/1458/Linux/FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171"
+          },
+          "profiles": [
+            {
+              "profile": "whole",
+              "gridSha256": "44059f86228733793e1f1b390b8ca68b9a7c89ec19aaa6d4bf1a264b69459001",
+              "nextRandom": 320683462,
+              "byteIdenticalRepeats": true,
+              "logs": [
+                {
+                  "path": ".cache/worldgen-three-by-three-20261102/qualified-whole-1.log",
+                  "sha256": "a6d7de0db9e4b5ea9340bbf7723e2697036bfb061b974f95d873bbfbe38b8ae6"
+                },
+                {
+                  "path": ".cache/worldgen-three-by-three-20261102/qualified-whole-2.log",
+                  "sha256": "a6d7de0db9e4b5ea9340bbf7723e2697036bfb061b974f95d873bbfbe38b8ae6"
+                }
+              ]
+            },
+            {
+              "profile": "floor-halo",
+              "gridSha256": "f1c54676e405ca05da6b732453cc0817cdb06f12ce2dd7e40f6b552afcd6c75d",
+              "nextRandom": 1948299158,
+              "byteIdenticalRepeats": true,
+              "logs": [
+                {
+                  "path": ".cache/worldgen-three-by-three-20261102/qualified-floor-halo-1.log",
+                  "sha256": "61bd9cfe7cff69c3097546a661b5abd21ab61cb7bb849b3d4204e339a196167e"
+                },
+                {
+                  "path": ".cache/worldgen-three-by-three-20261102/qualified-floor-halo-2.log",
+                  "sha256": "61bd9cfe7cff69c3097546a661b5abd21ab61cb7bb849b3d4204e339a196167e"
+                }
+              ]
+            },
+            {
+              "profile": "wall-no-halo",
+              "gridSha256": "ace43f85542baca3fe05bc2ce8b50557f94c7a5f32540b34451d318dd5d5eeca",
+              "nextRandom": 906992634,
+              "byteIdenticalRepeats": true,
+              "logs": [
+                {
+                  "path": ".cache/worldgen-three-by-three-20261102/qualified-wall-no-halo-1.log",
+                  "sha256": "5eb8f68988bf55a1d14ef971fef0ea69a25da279b87c8fb3236ea2b52671d336"
+                },
+                {
+                  "path": ".cache/worldgen-three-by-three-20261102/qualified-wall-no-halo-2.log",
+                  "sha256": "5eb8f68988bf55a1d14ef971fef0ea69a25da279b87c8fb3236ea2b52671d336"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "path": ".cache/worldgen-gates-20261102/qualification.json",
+        "sha256": "15675741fe0b5c15d3933ee2da7f56593baa96901681ce18292e6de9c1c08298",
+        "originalRecord": {
+          "originalEvidenceAccepted": true,
+          "runtimeAcceptancePending": true,
+          "identities": [
+            10,
+            11,
+            386,
+            387,
+            388,
+            389
+          ],
+          "registeredPass": "FinalCleanup",
+          "dimensions": [
+            1000,
+            500
+          ],
+          "seed": 1458,
+          "fixtureSites": 120,
+          "gridFields": [
+            "active",
+            "type",
+            "wall",
+            "frameX",
+            "frameY",
+            "liquidAmount"
+          ],
+          "gridSha256": "9827875de943b87abdb4dedd01dc0e246b2b46fcf51da0923d47de651d9fa1cb",
+          "captures": [
+            {
+              "mode": 0,
+              "next": 261937618,
+              "logSha256": "d9796a747276dabf6318185bfe5e78af303e801ca171089dd7cdbd169b4e1b02"
+            },
+            {
+              "mode": 1,
+              "next": 1056314798,
+              "logSha256": "e22c6865cca030c5bcf52a255c76e52978817ff8b8d6a5b175deb997f6a5e084"
+            }
+          ],
+          "legacyContexts": 11,
+          "lockedBoundaryContexts": 18,
+          "lockedBoundarySourceCodes": [
+            2,
+            2,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            2,
+            2,
+            2,
+            0,
+            2,
+            0,
+            2,
+            2,
+            0,
+            1
+          ],
+          "legacyObservationsSha256": "c9b20ac737d25044eb5d300dd075bb79fe27816798fceb030b88ff4fb97dd17d",
+          "protectionObservationsSha256": "26a2ee3984dcd99ae40ba98c34d64a33b770ed707570edb107f441d2f8bc8d0b",
+          "probeFiles": {
+            ".cache\\worldgen-gates-20261102\\Fixture.cs": "a14366ebe75d024af2b3bf204969ccf7d36ed683530c7f07e4d2d3817e27eb1b",
+            ".cache\\worldgen-gates-20261102\\Program.cs": "b3e4247a569224347e252a8c4d02b2e27c56196843260a63d814a78e13daf5dc",
+            ".cache\\worldgen-obsidian-door-20261102\\Program.cs": "6e13998a8a6c7b559c26dd384877de33535dbea8544ce74fca0fcc69bf3a8872"
+          },
+          "probeDlls": {
+            ".cache\\worldgen-gates-20261102": "eded1f15e5dabe6c07dcf065a62e23f0fb4d1b6b016916a2ba5a094ebe47f5f2",
+            ".cache\\worldgen-obsidian-door-20261102": "5d0ba787d5b6119cf9cbea7174c77ba1c8ae99d6b5603432c75fc51d3726c85d"
+          },
+          "inputs": {
+            "src\\TerraRuntime.WorldGeneration\\Generation\\Vanilla\\GenerationTileFraming1458.Gates.cs": "c18f676625f7ca8038757b755a46af71f821a686133c8781912b4c4a5df659e6",
+            "tests\\TerraRuntime.Tests\\GenerationGates1458Tests.cs": "5006b8dbba9d156d7c4afd7f34b2f1d7c9c84b6e3fce8b72dd5b03798ab4b3b5",
+            "tests\\TerraRuntime.Tests\\GenerationObsidianDoorFraming1458Tests.cs": "c55752e8e720321ec1a83740f7ccaaba211bbcec694df50b77a6c2c3737f94fa",
+            "decompiled\\1458\\Terraria\\WorldGen.cs": "a2b0de8a1d2a3c0bcb977308eb6bafb20d7b08e525713ef20fd773c6cfb342d4",
+            "decompiled\\1458\\Terraria\\Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "decompiled\\1458\\Terraria.ObjectData\\TileObjectData.cs": "9801983edc31d3c178a274ccda2a95700128e5791014380340608cacb3fb9a8e"
+          },
+          "limits": [
+            "Synthetic predecessor only, not real-prefix whole-world generation parity",
+            "Only next RNG values, not a complete physical RNG state comparison",
+            "Ordinary generatingWorld context; falling projectile queue producer is disabled",
+            "Other source breakability and tile-entity families are not claimed"
+          ],
+          "rejectedExplorations": [
+            "First direct probe build failed due unused Pass local; no original execution",
+            "Initial direct oracle assertion incorrectly expected locked mixed594 removal; rejected against actual source, corrected to preservation"
+          ]
+        }
+      },
+      {
+        "path": ".cache/worldgen-painting-metadata-20261102/qualified-metadata-bridge.json",
+        "sha256": "710949c4ea595056a8febee9021420e12e254f2bf1c2a28e59ad2a10cdc5a5e8",
+        "originalRecord": {
+          "acceptedConfiguredMetadataBridge": true,
+          "shippingAggregateQualificationPending": true,
+          "date": "2026-11-02",
+          "official": "TerrariaServer1.4.5.8 admitted Linux assembly, Windows CoreCLR RC3 execution",
+          "netMode": 1,
+          "seed": 1458,
+          "pass": "Actual registered FinalCleanup delegate b__285_104",
+          "projection": [
+            "active",
+            "type",
+            "wall",
+            "frameX",
+            "frameY",
+            "liquidAmount"
+          ],
+          "metadata": {
+            "tileSolidTrue": [
+              0,
+              1,
+              25,
+              53,
+              397
+            ],
+            "tileFrameImportantTrueCommon": [
+              373,
+              374
+            ],
+            "wallDungeonTrue": [
+              7,
+              8,
+              9
+            ],
+            "tileFrameImportant240": "false reproduces both historical fixtures; true is verified Main initialization",
+            "allOtherBools": "defaultfalse; this is a configured retained-component context, not complete Main.Initialize",
+            "staticContent": "Actual original TileID.Sets initialization and PostSetupContent",
+            "sourceLocations": {
+              "solid53": "Main.cs8117",
+              "solid397": "Main.cs10340",
+              "important373": "Main.cs9674",
+              "important374": "Main.cs9676",
+              "important240": "Main.cs10389",
+              "dungeon7_8_9": "Main.cs10780..10782"
+            }
+          },
+          "profiles": [
+            {
+              "profile": "ordinary",
+              "painting240Important": false,
+              "gridSha256": "a604bd6338328f10604f9110511437b6c01d2383c3af5450d54d63bde8464d6b",
+              "nextRandom": 1056314798,
+              "byteIdenticalRepeats": true,
+              "logs": [
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-ordinary-false-1.log",
+                  "sha256": "94266de643b199c4490e9432da1e7662864d78b464af8a3a165635c6339aaffd"
+                },
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-ordinary-false-2.log",
+                  "sha256": "94266de643b199c4490e9432da1e7662864d78b464af8a3a165635c6339aaffd"
+                }
+              ]
+            },
+            {
+              "profile": "ordinary",
+              "painting240Important": true,
+              "gridSha256": "383cc8243b5f34c937e67e72f9ef709763522ebb38f05cf248b75198629b91ab",
+              "nextRandom": 1056314798,
+              "byteIdenticalRepeats": true,
+              "logs": [
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-ordinary-true-1.log",
+                  "sha256": "d85c08536f438145da1c3efa818ec3111f04bcdd54c305c41598a59b4ea94e55"
+                },
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-ordinary-true-2.log",
+                  "sha256": "d85c08536f438145da1c3efa818ec3111f04bcdd54c305c41598a59b4ea94e55"
+                }
+              ]
+            },
+            {
+              "profile": "canonical",
+              "painting240Important": false,
+              "gridSha256": "c06fbeb48979d6ca13603bfa58172eb7df72c8fef9f754b4a3aea07cda811a90",
+              "nextRandom": 1056314798,
+              "byteIdenticalRepeats": true,
+              "logs": [
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-canonical-false-1.log",
+                  "sha256": "c4793375b534d3f4232d772856c13e746e138ec9c3360b94e644a4a92dc2ab92"
+                },
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-canonical-false-2.log",
+                  "sha256": "c4793375b534d3f4232d772856c13e746e138ec9c3360b94e644a4a92dc2ab92"
+                }
+              ]
+            },
+            {
+              "profile": "canonical",
+              "painting240Important": true,
+              "gridSha256": "a6a57516c9d04fa548426df76bfe3de2cd3ea4f0d36a8768b909efd29e834bc3",
+              "nextRandom": 1056314798,
+              "byteIdenticalRepeats": true,
+              "logs": [
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-canonical-true-1.log",
+                  "sha256": "bfa52626f185c11e54ab5c1b09d488760dbd4b59165ebe374029691a035ec78a"
+                },
+                {
+                  "path": ".cache/worldgen-painting-metadata-20261102/qualified-canonical-true-2.log",
+                  "sha256": "bfa52626f185c11e54ab5c1b09d488760dbd4b59165ebe374029691a035ec78a"
+                }
+              ]
+            }
+          ],
+          "exactComparisons": [
+            {
+              "profile": "ordinary",
+              "runtimeVsNewOfficialDifferences": 0,
+              "metadataOnlyChangedCells": [
+                {
+                  "cell": [
+                    340,
+                    120
+                  ],
+                  "old": [
+                    1,
+                    240,
+                    7,
+                    0,
+                    0,
+                    0
+                  ],
+                  "new": [
+                    0,
+                    0,
+                    7,
+                    -1,
+                    -1,
+                    0
+                  ]
+                }
+              ]
+            },
+            {
+              "profile": "canonical",
+              "runtimeVsNewOfficialDifferences": 0,
+              "metadataOnlyChangedCells": [
+                {
+                  "cell": [
+                    340,
+                    120
+                  ],
+                  "old": [
+                    1,
+                    240,
+                    7,
+                    0,
+                    0,
+                    0
+                  ],
+                  "new": [
+                    0,
+                    0,
+                    7,
+                    -1,
+                    -1,
+                    0
+                  ]
+                },
+                {
+                  "cell": [
+                    1000,
+                    220
+                  ],
+                  "old": [
+                    1,
+                    240,
+                    7,
+                    0,
+                    0,
+                    0
+                  ],
+                  "new": [
+                    0,
+                    0,
+                    7,
+                    -1,
+                    -1,
+                    0
+                  ]
+                }
+              ]
+            }
+          ],
+          "pins": {
+            ".cache/worldgen-painting-metadata-20261102/Program.cs": "ab76f892442ce84f342afd6cd6751f4a93df0378391534f6230069a98ad4e2d4",
+            ".cache/worldgen-painting-metadata-20261102/Probe.csproj": "fd81abe3ca28a4ef1643c3a96d9b70b83f3312b24285d39b7178250f180721c8",
+            ".cache/worldgen-painting-metadata-20261102/bin/Release/net11.0/Probe.dll": "f0d6e5e2ccb6f42a6b469b5a84f7ee99fdbc4076487955687321fbcd8dd079b3",
+            ".cache/worldgen-painting-metadata-20261102/authored-ordinary.cs.txt": "cff7396df326a7a124b92dce5750d2b8e04439405b718bdc50714b6c99e29c0d",
+            ".cache/worldgen-painting-metadata-20261102/authored-canonical.cs.txt": "af95776fe75568874923a0442aae1c45941d3692cf9e2a52574a174b3eb0dc41",
+            ".cache/worldgen-painting-runtime-20261102/Program.cs": "a5f2767c3f73390cee883fd96fc70f10bc9462c16ced0bbba06631da9d6880bf",
+            ".cache/worldgen-painting-runtime-20261102/RuntimeProbe.csproj": "95e4f45911da096c05381ad64b770e6f695c0d5fcb1470d71d9d5e1ac295d2b7",
+            ".cache/worldgen-painting-runtime-20261102/bin/Release/net11.0/TerraRuntime.Tests.dll": "08f43795bdc918d6556b74fd518054af71edaa64fdbb322e5933853635319ef4",
+            "decompiled/1458/Terraria/Main.cs": "734111ceeab87e5906ec24040f6e6e6ae373d72007545c1aa8cfb48deb9acc6c",
+            "decompiled/1458/Terraria/WorldGen.cs": "a2b0de8a1d2a3c0bcb977308eb6bafb20d7b08e525713ef20fd773c6cfb342d4",
+            ".cache/terraria-1458/extracted/1458/Linux/TerrariaServer.exe": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+            ".cache/terraria-1458/extracted/1458/Linux/FNA.dll": "46d201f59ce6c3827414b2c2c5141c218acabda605b02e564d73ca2efb2a3171",
+            ".cache/worldgen-painting-runtime-20261102/inputs/System.IO.Hashing.dll": "f2c17e3603b4852391d3dd1c77e4decfd48a969322cf67b995930488d7148ee6",
+            ".cache/worldgen-painting-runtime-20261102/inputs/TerraRuntime.Contracts.dll": "7d0acb903a5952264e7e149adf12da6cc6deaadfbf92e48b9bd93031ea9c6f7d",
+            ".cache/worldgen-painting-runtime-20261102/inputs/TerraRuntime.Core.dll": "a61d86b0db5a56878de5cb6eb18896be61a478db02646610a1ab2fd2c743f2a6",
+            ".cache/worldgen-painting-runtime-20261102/inputs/TerraRuntime.Gameplay.dll": "9341cadb3e79c15d1add0642ace964b60ff204fa0f8f031539213206ecc2430c",
+            ".cache/worldgen-painting-runtime-20261102/inputs/TerraRuntime.World.dll": "e1aff93948a0ae2d97ce330037fee6472b0c622aafe9cedfebdf82cb35129a39",
+            ".cache/worldgen-painting-runtime-20261102/inputs/TerraRuntime.WorldGeneration.dll": "bb411ce9296f72a4017954b06dd7932c5eac37066f5b88a9531fc905a796b1d5"
+          },
+          "runtimeLibraryScope": "Private exact six-DLL copy of diagnostic02 current test output; no ProjectReference or shared build, original halfbrick bug irrelevant to these ordinary-shape inputs.",
+          "authoredFixtureScope": "Pinned copied SetTile input snippets and adapters. Root later changed only expected golden literals/comments; no claim that the whole current SourceBackedFinal1458Tests.cs is byte-identical to the initial capture.",
+          "initialDiagnostics": "Minimal empty-liquid prefix and drip/dungeon-only runs remain raw and unqualified for reproducing both old fixture hashes; they revealed missing configured context, not production failures.",
+          "limits": [
+            "Configured synthetic predecessors, not natural real-prefix worlds",
+            "Six output fields and next RNG only; no full RNG-state claim",
+            "netMode1 skips AnglerQuestSwap",
+            "No new Main-wide source initialization or broad ordinary block-framing claim"
+          ]
+        }
+      }
+    ],
+    "componentRecordScope": "Original-only component snapshots retain their historical runtime-pending flags; the aggregate validation below qualifies the final combined shipping source.",
+    "specialFurniture": {
+      "identities": [
+        376,
+        443,
+        485,
+        91,
+        454
+      ],
+      "fixtureSites": 60,
+      "seeds": [
+        1,
+        42,
+        1458
+      ],
+      "gridSha256": "b35831d97ee78a56293052dcfe9907bf310b3c6eb71c1141ede806d41776165e",
+      "nextRandom": [
+        1376255771,
+        31239240,
+        233147420
+      ],
+      "wholePassRepeatsByteIdentical": true,
+      "rewardPhysicalState": [
+        {
+          "branch": 0,
+          "seed": 0,
+          "dustDraws": 120,
+          "dustStateSha256": "7ABFD8D0286C85EAD4534A14D4009453165B651B341A8B474F811D743775327E",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "1BB0651A7BD1D645C012AB17D2127E55010268D00A98F54BFBB9411382A1E468",
+          "cursor": 11,
+          "slots": [
+            0,
+            320184299,
+            229721678,
+            1309686373,
+            2046643866,
+            1053609611,
+            317948407,
+            1455159704,
+            1223768777,
+            484049542,
+            1327536041,
+            10913937,
+            365378955,
+            1383227060,
+            1775570415,
+            470701926,
+            2147425016,
+            1033724855,
+            1400600080,
+            1545599780,
+            1738307654,
+            216757113,
+            1565717558,
+            1542861112,
+            269567713,
+            1943851495,
+            406140275,
+            1023941401,
+            1161348939,
+            699007419,
+            1441040276,
+            1005876490,
+            1789920966,
+            1737751956,
+            1704308182,
+            1641764103,
+            2013352686,
+            633500808,
+            1122672881,
+            1424625261,
+            714229503,
+            615731728,
+            1762246713,
+            477853607,
+            401303705,
+            147143111,
+            1341367161,
+            1488302902,
+            1353761627,
+            1992086094,
+            475328415,
+            1994384454,
+            142854040,
+            1932959265,
+            1457079406,
+            201816305
+          ],
+          "nextRandom": 775110646
+        },
+        {
+          "branch": 1,
+          "seed": 13,
+          "dustDraws": 120,
+          "dustStateSha256": "133FB243608661BA356040B915FE77C4D259463A984681F7E3BB23DE5F49DBA5",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "139CDAD33BD8FE3B9FF49EE255CD04CC2A2AF83E56775CAA45D7F7589A60948E",
+          "cursor": 11,
+          "slots": [
+            0,
+            2147010048,
+            2144082594,
+            1004569153,
+            1348558605,
+            128975506,
+            769862850,
+            1422836503,
+            1349527920,
+            869092315,
+            1444034647,
+            390518952,
+            197179926,
+            547739226,
+            109115361,
+            1622268639,
+            752056009,
+            185862402,
+            1043508844,
+            1482195327,
+            1853447521,
+            465021487,
+            1032003417,
+            954306980,
+            1745809653,
+            1569663430,
+            274073872,
+            966577595,
+            699393544,
+            425347402,
+            1353729846,
+            877467141,
+            1739328003,
+            834008605,
+            1109310227,
+            1506837899,
+            1897425768,
+            1112805275,
+            1893191755,
+            819763590,
+            1138815075,
+            1067162211,
+            1076300923,
+            1120519562,
+            1424962734,
+            1652227497,
+            324840632,
+            1084429277,
+            1310082323,
+            1420379093,
+            1265540447,
+            1790692383,
+            197377509,
+            810626052,
+            586991354,
+            1248453688
+          ],
+          "nextRandom": 1510654968
+        },
+        {
+          "branch": 2,
+          "seed": 11,
+          "dustDraws": 120,
+          "dustStateSha256": "0898DFB35C82BC6AA1E5B589B09ED1766FD3D09B1450B3132A5F7644CD188866",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "38FD473C0D6BA2B0D3740790BE276D7B9111A9F2A55C9513CDB8625BC3505F5C",
+          "cursor": 17,
+          "slots": [
+            0,
+            1700768883,
+            1849565530,
+            886319214,
+            1786338437,
+            106035857,
+            39573352,
+            106280905,
+            999798260,
+            314281816,
+            1095729685,
+            662500280,
+            736730104,
+            136191641,
+            324616733,
+            851372249,
+            423235187,
+            1845473385,
+            1263637007,
+            1657140908,
+            1340160546,
+            1087591167,
+            288158036,
+            714471670,
+            362358160,
+            636084526,
+            1120347029,
+            1636166995,
+            605272555,
+            1954168391,
+            541206971,
+            1227604525,
+            1581920486,
+            2129383392,
+            1861612573,
+            1197213677,
+            98159131,
+            1204257176,
+            1609459340,
+            1408392381,
+            908303168,
+            1328093467,
+            851448945,
+            30501578,
+            937094630,
+            1420676053,
+            316038279,
+            320608432,
+            1977566415,
+            1673525066,
+            1969924614,
+            170119127,
+            188989283,
+            1809247949,
+            225277905,
+            1913387801
+          ],
+          "nextRandom": 2002728273
+        },
+        {
+          "branch": 3,
+          "seed": 9,
+          "dustDraws": 120,
+          "dustStateSha256": "50D8EEE02F88FBB80E56B9926B8E797CA72CBEB6E04263142BA3A43B5770F718",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "3F058E42398A2F77170C498BC7F7F5182F7DE504E694A772BC505A181797B20C",
+          "cursor": 16,
+          "slots": [
+            0,
+            1254527718,
+            1555048466,
+            768069275,
+            76634622,
+            83096208,
+            1456767501,
+            937208954,
+            650068600,
+            1906954964,
+            747424723,
+            934481608,
+            2110288887,
+            833954283,
+            2046956004,
+            1977901627,
+            1207219640,
+            281552107,
+            1483765170,
+            1832086489,
+            826873571,
+            1710160847,
+            1691796302,
+            474636360,
+            1126390314,
+            1849989269,
+            1966620186,
+            158272748,
+            511151566,
+            1335505733,
+            1876167743,
+            1577741909,
+            1424512969,
+            1277274532,
+            466431272,
+            887589455,
+            446376141,
+            1295709077,
+            1325726925,
+            1997021172,
+            677791261,
+            1589024723,
+            626596967,
+            1087967241,
+            449226526,
+            1189124609,
+            307235926,
+            1704271234,
+            497566860,
+            1926671039,
+            526825134,
+            697029518,
+            180601057,
+            660386199,
+            2011048103,
+            430838267
+          ],
+          "nextRandom": 1103308829
+        },
+        {
+          "branch": 4,
+          "seed": 8,
+          "dustDraws": 120,
+          "dustStateSha256": "51DA8E705A54E8700CE261AB8130A88872657295EA2D811F63CAF47E587B8BDB",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "11A570B46FA5CAC8226FB9CA6DDA12D1C739E4E9D60340940AB6C05903E8442E",
+          "cursor": 17,
+          "slots": [
+            0,
+            2105148959,
+            1407789934,
+            1782686129,
+            295524538,
+            1145368207,
+            1091622752,
+            278931155,
+            475203770,
+            555807891,
+            573272242,
+            1070472272,
+            1723326455,
+            1182835604,
+            1834383816,
+            393682669,
+            525470043,
+            732226551,
+            520087428,
+            845817456,
+            1643971907,
+            2021445687,
+            246131788,
+            354718705,
+            1508406391,
+            1383199817,
+            1316014941,
+            493067448,
+            1537832895,
+            1026174404,
+            396164482,
+            1752810601,
+            272067387,
+            851220102,
+            842582445,
+            732777344,
+            620484646,
+            267693204,
+            110118894,
+            1217593744,
+            1636277131,
+            1719490351,
+            514170978,
+            542958249,
+            205292474,
+            1073348887,
+            1376576573,
+            248618988,
+            831308906,
+            979502202,
+            1952759041,
+            2034226537,
+            176406944,
+            85955324,
+            756449555,
+            1837047147
+          ],
+          "nextRandom": 1449977331
+        },
+        {
+          "branch": 5,
+          "seed": 6,
+          "dustDraws": 120,
+          "dustStateSha256": "A1CABC8BF7E22DF9CACF02CEF1C580DC36B12F0557E57EA3EA9401B8A78FCE61",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "6829595AE51B254C33F66DCBE658945B4891B017448FBC4DB6E3B1422AD2B95C",
+          "cursor": 18,
+          "slots": [
+            0,
+            1658907794,
+            1113272870,
+            1664436190,
+            733304370,
+            1122428558,
+            361333254,
+            1109859204,
+            125474110,
+            997392,
+            224967280,
+            1342453600,
+            949401591,
+            1880598246,
+            1409239440,
+            1520212047,
+            1309454496,
+            2137545642,
+            1081476703,
+            1020763037,
+            1130684932,
+            496531720,
+            1649770054,
+            114883395,
+            124954898,
+            449620913,
+            14804451,
+            1162656848,
+            1443711906,
+            407511746,
+            1731125254,
+            2102947985,
+            114659870,
+            2146594889,
+            1594884791,
+            423153122,
+            968701656,
+            359145105,
+            1973870126,
+            1806222535,
+            1405765224,
+            1980421607,
+            289319000,
+            1600423912,
+            1864908017,
+            841797443,
+            1367774220,
+            1632281790,
+            1498792998,
+            1232648175,
+            509659561,
+            413653281,
+            168018718,
+            1084577221,
+            394736106,
+            354497613
+          ],
+          "nextRandom": 1762481460
+        },
+        {
+          "branch": 6,
+          "seed": 4,
+          "dustDraws": 120,
+          "dustStateSha256": "906E365594883786E78083426932FE8ECDB6EC9E0CD9FA2E8028AE55F7F70104",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "4F59DE3B57561B395CBDEC09F9805C6CB09447B441366D1443D915DA21E20B1C",
+          "cursor": 20,
+          "slots": [
+            0,
+            1212666629,
+            818755806,
+            1546186251,
+            1171084202,
+            1099488909,
+            1778527403,
+            1940787253,
+            1923228097,
+            1593670540,
+            2024145965,
+            1614434928,
+            175476727,
+            430877241,
+            984095064,
+            499257778,
+            2093438949,
+            1395381086,
+            712976075,
+            20455301,
+            523528741,
+            1119101400,
+            905924673,
+            2022531732,
+            888987052,
+            1663525656,
+            861077608,
+            1832246248,
+            1349590917,
+            1936332735,
+            918602379,
+            305601722,
+            2104736000,
+            1294486029,
+            199703490,
+            113528900,
+            1316918666,
+            450597006,
+            1690137711,
+            247367679,
+            1175253317,
+            93869216,
+            64467022,
+            510405928,
+            1377039913,
+            610245999,
+            1358971867,
+            868460945,
+            18793443,
+            1485794148,
+            1214043728,
+            940563672,
+            159630492,
+            2083199118,
+            33022657,
+            1019431726
+          ],
+          "nextRandom": 1054634378
+        },
+        {
+          "branch": 7,
+          "seed": 2,
+          "dustDraws": 120,
+          "dustStateSha256": "A5F46D44D4F62657EC2410895F2AAF1CC0167F644DE9B0CB1311887A0FB39F17",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "7AC7504A89563DF2B0843F6562FAF8D5B6492E63AC771ADA4F8007C719ECD3F7",
+          "cursor": 18,
+          "slots": [
+            0,
+            766425464,
+            524238742,
+            1427936312,
+            1608864034,
+            1076549260,
+            1048237905,
+            624231655,
+            1573498437,
+            1038860041,
+            1675841003,
+            1886416256,
+            1549035510,
+            1128639883,
+            558950688,
+            1625787156,
+            729939755,
+            653216530,
+            344475447,
+            1370654199,
+            104110982,
+            1741671080,
+            162079292,
+            1782696422,
+            1653019206,
+            729946752,
+            1707350765,
+            354352001,
+            1255469928,
+            1317670077,
+            106079504,
+            655739106,
+            1947328483,
+            442377169,
+            952005836,
+            1951388325,
+            1665135676,
+            542048907,
+            1406405296,
+            835996470,
+            944741410,
+            354800472,
+            1987098691,
+            1567871591,
+            889171809,
+            378694555,
+            1350169514,
+            104640100,
+            686277535,
+            1738940121,
+            1918427895,
+            1467474063,
+            151242266,
+            934337368,
+            1818792855,
+            1684365839
+          ],
+          "nextRandom": 425912789
+        },
+        {
+          "branch": 8,
+          "seed": 1,
+          "dustDraws": 120,
+          "dustStateSha256": "7C856ED3A4E9419CE2EB656D0ACCBD57975C90C07087237A396DF7841441660F",
+          "gridSha256": "D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7",
+          "physicalRandomSha256": "037E0764D98986BFAA6F5EA352A17A8A68F6C30A38B780971A1663806DBCB929",
+          "cursor": 30,
+          "slots": [
+            0,
+            1617046705,
+            376980210,
+            295069519,
+            1827753950,
+            2138821259,
+            683093156,
+            2113437503,
+            1398633607,
+            1835196615,
+            1501688522,
+            2022406920,
+            1162073078,
+            1477521204,
+            346378500,
+            41568198,
+            48190158,
+            282134252,
+            160225133,
+            628641533,
+            435943218,
+            178283218,
+            1988519473,
+            1017541010,
+            1772116450,
+            2138614433,
+            260274019,
+            1816610767,
+            1490379973,
+            1958944240,
+            116372455,
+            830807798,
+            794882901,
+            16322739,
+            1328157009,
+            1796576214,
+            1839244181,
+            1661516681,
+            190797265,
+            56569042,
+            1903227280,
+            485266100,
+            1874672702,
+            1022862599,
+            645237757,
+            262918833,
+            272026514,
+            796471501,
+            1020019581,
+            791771284,
+            1196878155,
+            657187435,
+            147048153,
+            359906493,
+            564194307,
+            943091072
+          ],
+          "nextRandom": 683759645
+        }
+      ],
+      "rewardProofInputsSha256": "e8c591ae1cac27f4d76e1bfc064748a790404e16f831d49af46a80e4168a976e"
+    },
+    "halfbrickSupport": {
+      "slopeOnly": [
+        3,
+        4
+      ],
+      "halfbrickAndSlope": [
+        3,
+        4
+      ],
+      "keepHash": "49e5ecb5197a19db9f07a2516247a8c6068e597486e8e7252a39a90614c61c8f",
+      "keepNext": 906992634,
+      "rejectHash": "6ec117ce3e1907abfe168a11b1738b6d7710df43d9da2fcb606e5c0772e8e885",
+      "rejectNext": 1566222742
+    },
+    "sourceAnalysis": {
+      "analysisOnly": true,
+      "selectedQualifiedSpans": 3,
+      "localDiagnostics": 0,
+      "completeClosureAccepted": false,
+      "reason": "Configured maxDepth0; explicit source/API/ownership frontiers remain.",
+      "observationSha256": "cb669785ebc54ffe83bc6e27139dbfef9b6b3269014662e7ae351f66712eeaf9"
+    }
+  },
+  "validation": {
+    "releaseWarnings": 0,
+    "releaseErrors": 0,
+    "focusedPassed": 189,
+    "fast": {
+      "executed": true,
+      "exit_code": 0,
+      "wall_seconds": 394.7690986999951,
+      "tests": {
+        "total": "55990",
+        "passed": "55990",
+        "failed": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "392.931",
+        "skipped_tests": []
+      },
+      "accepted": true
+    },
+    "full": {
+      "executed": true,
+      "exit_code": 0,
+      "wall_seconds": 1357.684809600003,
+      "tests": {
+        "total": "1601304",
+        "passed": "1601304",
+        "failed": "0",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1341.117",
+        "skipped_tests": []
+      },
+      "accepted": true
+    },
+    "causals": {
+      "count": 13,
+      "assertionFailures": 37,
+      "passingControls": 29,
+      "runnerErrors": 0,
+      "testDllSha256": "f440bce3fae428174a51081a4fde221f3ba66f7f1eeec74d00b1131df4485902",
+      "rows": [
+        {
+          "control": "floor-dispatch",
+          "total": 1,
+          "failedAssertions": 1,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "d6ecfabb76ea1e5c084bd22a8853806e57ab55f2dd1d13bda6aced32e9fb32d4",
+          "method": "TerraRuntime.Tests.GenerationThreeByThree1458Tests.Registered_final_cleanup_matches_all_thirty_three_by_three_identities"
+        },
+        {
+          "control": "wall-dispatch",
+          "total": 1,
+          "failedAssertions": 1,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "a32df8eb8b7b7afeca175fa42d53a909da20f2439c5394953ad309215f0dd9d4",
+          "method": "TerraRuntime.Tests.GenerationThreeByThree1458Tests.Registered_final_cleanup_matches_all_thirty_three_by_three_identities"
+        },
+        {
+          "control": "door-dispatch",
+          "total": 1,
+          "failedAssertions": 1,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "33959d6259243d4dffd4004ef01d77bb62474940dba5c8973e781e9760142070",
+          "method": "TerraRuntime.Tests.GenerationGates1458Tests.Final_cleanup_doors_trapdoors_and_tall_gates_match_official_pass"
+        },
+        {
+          "control": "gate-dispatch",
+          "total": 1,
+          "failedAssertions": 1,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "70adab4787887cb0c53bce9211361ddcbc6760b179dbe1f3803be754683d79e6",
+          "method": "TerraRuntime.Tests.GenerationGates1458Tests.Final_cleanup_doors_trapdoors_and_tall_gates_match_official_pass"
+        },
+        {
+          "control": "super-dispatch",
+          "total": 3,
+          "failedAssertions": 3,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "a368ad1e5b61f0305c2ab903d5ca317a65811450ba97a699eae81bbea80e25f5",
+          "method": "TerraRuntime.Tests.GenerationSpecialFurniture1458Tests.Special_furniture_matches_registered_official_FinalCleanup"
+        },
+        {
+          "control": "banner-dispatch",
+          "total": 3,
+          "failedAssertions": 3,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "4fd810922c16e4a6bf52473c749bde2bb4a778cce9075e7c52f2b190a12729e1",
+          "method": "TerraRuntime.Tests.GenerationSpecialFurniture1458Tests.Special_furniture_matches_registered_official_FinalCleanup"
+        },
+        {
+          "control": "pigronata-dispatch",
+          "total": 3,
+          "failedAssertions": 3,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "0d224dd97277a5a628470280160d2bea97d5e431572a27283cb01a5ca212225e",
+          "method": "TerraRuntime.Tests.GenerationSpecialFurniture1458Tests.Special_furniture_matches_registered_official_FinalCleanup"
+        },
+        {
+          "control": "reward-rng",
+          "total": 9,
+          "failedAssertions": 9,
+          "passingControls": 0,
+          "runnerErrors": 0,
+          "librarySha256": "4b50f7f01fd6fb79bb19e73a05747fb9d2b01369a7e08eefbc75930fb70c2bf4",
+          "method": "TerraRuntime.Tests.GenerationSpecialFurniture1458Tests.Pigronata_all_nine_reward_selectors_match_original_complete_random_state"
+        },
+        {
+          "control": "locked-breakability",
+          "total": 18,
+          "failedAssertions": 10,
+          "passingControls": 8,
+          "runnerErrors": 0,
+          "librarySha256": "6efb824c99153850382fd30eea45aed171f3908e151f74b5decd398e3f099e13",
+          "method": "TerraRuntime.Tests.GenerationObsidianDoorFraming1458Tests.Shared_kill_preserves_original_locked_door_breakability_and_failure_framing"
+        },
+        {
+          "control": "locked-failure-framing",
+          "total": 18,
+          "failedAssertions": 1,
+          "passingControls": 17,
+          "runnerErrors": 0,
+          "librarySha256": "262aed0ae709534402fde4657453d5cd0d0cf6e5de1bb25dccd5adecd267c263",
+          "method": "TerraRuntime.Tests.GenerationObsidianDoorFraming1458Tests.Shared_kill_preserves_original_locked_door_breakability_and_failure_framing"
+        },
+        {
+          "control": "floor-halo",
+          "total": 2,
+          "failedAssertions": 1,
+          "passingControls": 1,
+          "runnerErrors": 0,
+          "librarySha256": "ae8517a27bf36d29cd602942278aa0f1d0c81d93488051fd062042c7686eee68",
+          "method": "TerraRuntime.Tests.GenerationThreeByThree1458Tests.Direct_frame_preserves_the_family_specific_neighbour_revalidation_boundary"
+        },
+        {
+          "control": "wall-extra-halo",
+          "total": 2,
+          "failedAssertions": 1,
+          "passingControls": 1,
+          "runnerErrors": 0,
+          "librarySha256": "630b492e87abc6cad531138be96fb81e6b5235e3a2e7912f29477bcfb734abdc",
+          "method": "TerraRuntime.Tests.GenerationThreeByThree1458Tests.Direct_frame_preserves_the_family_specific_neighbour_revalidation_boundary"
+        },
+        {
+          "control": "old-halfbrick-helper",
+          "total": 4,
+          "failedAssertions": 2,
+          "passingControls": 2,
+          "runnerErrors": 0,
+          "librarySha256": "bb411ce9296f72a4017954b06dd7932c5eac37066f5b88a9531fc905a796b1d5",
+          "method": "TerraRuntime.Tests.GenerationThreeByThree1458Tests.Independent_halfbrick_flag_rejects_otherwise_valid_bottom_sloped_support"
+        }
+      ]
+    },
+    "pythonCiTools": {
+      "resolvedUniqueTests": 280,
+      "rawInvocation": {
+        "total": 280,
+        "passed": 279,
+        "errors": 1,
+        "reason": "Git executable missing from inherited PATH"
+      },
+      "isolatedCorrectPathReplay": {
+        "passed": 1,
+        "errors": 0
+      },
+      "rawFullGreenClaim": false,
+      "extraRejectedReplay": "Initial isolated invocation had a module-path import error before the intended test ran."
+    },
+    "ordinaryManagedSmokes": [
+      "loop",
+      "protocol",
+      "network",
+      "world",
+      "tui"
+    ],
+    "publishedCoreclr": {
+      "accepted": true,
+      "smokes": [
+        {
+          "name": "loop",
+          "exitCode": 0
+        },
+        {
+          "name": "protocol",
+          "exitCode": 0
+        },
+        {
+          "name": "network",
+          "exitCode": 0
+        },
+        {
+          "name": "world",
+          "exitCode": 0
+        },
+        {
+          "name": "tui",
+          "exitCode": 0
+        }
+      ],
+      "executableSha256": "9383a1f687a9c6f738b6b2235b1e5b6cad334115721017d2e71ab6c881517b4b"
+    },
+    "selectedSourceResourceInputs": 4257,
+    "testRuntimeDlls": 158,
+    "manifestSha256": "ec31137508b12ce1e81b03f16849899af794fbe9cd8da34eccabb68aa44e470c",
+    "unchangedAfterFullAndPublish": true,
+    "documentation": {
+      "mirroredPages": 137,
+      "markdownFiles": 313
+    }
+  },
+  "diagnostics": {
+    "01": "Compile-only test request seed int-to-ulong conversion; no tests executed.",
+    "02": "180 total/176 passed/4 assertion failures: two intended old-halfbrick failures and two independently requalified painting metadata goldens.",
+    "03": "86 new/legacy component rows passed after shared halfbrick correction; old full-grid goldens not selected.",
+    "04": "189/189 complete focused union passed after source-proven metadata requalification.",
+    "final": "189/189 passed after all controls restored; exact same TestDLL as the thirteen causal invocations."
+  },
+  "nativeAot": {
+    "verified": false,
+    "deferredByExplicitUserInstruction": true
+  },
+  "remaining": [
+    "Larva231 Hive-solidity/QueenBee ownership",
+    "BeeHive444 projectile655 ownership",
+    "Other furniture and tile entities",
+    "Other CheckTileBreakability contexts",
+    "Special-seed tails",
+    "Real-prefix/complete-world equality"
+  ],
+  "worldgenAuditRow109": "P",
+  "evidenceDirectory": ".cache/worldgen-cohort-20261102",
+  "gitIndexBridge": {
+    "productionAndOtherCompiledFilesRawExact": [
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/FinalPipeline1458.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.Gates.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.SpecialFurniture.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.ThreeByThree.cs",
+      "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.cs",
+      "tests/TerraRuntime.Tests/GenerationDesertObjectFraming1458Tests.cs",
+      "tests/TerraRuntime.Tests/GenerationGates1458Tests.cs",
+      "tests/TerraRuntime.Tests/GenerationObsidianDoorFraming1458Tests.cs",
+      "tests/TerraRuntime.Tests/GenerationSpecialFurniture1458Tests.cs",
+      "tests/TerraRuntime.Tests/SourceBackedFinal1458Tests.cs"
+    ],
+    "testOnlyLineEndingBridges": [
+      {
+        "path": "tests/TerraRuntime.Tests/GenerationThreeByThree1458Tests.cs",
+        "rawSha256": "3306f5cf9d64d3b2153e7d0b7467d317641ad047b02bd25fb9635a3d2f1a4250",
+        "indexSha256": "5e1d372c7a296199281fdea0780a297cf88029be0337e3e323a087a210ef08c1",
+        "kind": "test-only CRLF to LF; raw full run retains its original source-byte scope"
+      }
+    ],
+    "scope": "Production sources remain raw-exact. One authored test source is indexed with LF instead of tested CRLF; all other bytes are identical, with no verbatim or raw multiline string literals. Raw full/DLL evidence is not relabelled as an execution of a newly compiled LF test binary."
+  }
+}

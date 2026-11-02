@@ -1,5 +1,6 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration.Vanilla;
 
 namespace TerraRuntime.Tests;
 
@@ -28,7 +29,7 @@ public sealed class GenerationDesertObjectFraming1458Tests
             At(workspace, i).FrameX += (short)(style * 36);
         }
         int touch = broken == 0 ? 1 : 0;
-        Assert.Equal(broken >= 0, GenerationDesertObjectFraming1458.Check(workspace.TileStore, 30 + touch / 2, 30 + touch % 2));
+        new GenerationTileFraming1458(workspace.TileStore, new RandomAdapter()).TileFrame(30 + touch / 2, 30 + touch % 2);
         for (int i = 0; i < 4; i++)
         {
             WorldTile cell = At(workspace, i);
@@ -50,7 +51,7 @@ public sealed class GenerationDesertObjectFraming1458Tests
     {
         Workspace workspace = Fixture(broken);
         int touch = broken == 0 ? 1 : 0;
-        Assert.Equal(broken >= 0, GenerationDesertObjectFraming1458.Check(workspace.TileStore, 30 + touch / 2, 30 + touch % 2));
+        new GenerationTileFraming1458(workspace.TileStore, new RandomAdapter()).TileFrame(30 + touch / 2, 30 + touch % 2);
         for (int i = 0; i < 4; i++)
         {
             WorldTile cell = At(workspace, i);
@@ -66,13 +67,24 @@ public sealed class GenerationDesertObjectFraming1458Tests
 
     [Theory]
     [InlineData(-1)] [InlineData(36)]
-    public void Unknown_boulder_frames_fail_before_mutation(short frame)
+    public void Noncanonical_boulder_frames_use_official_fragment_removal(short frame)
     {
+        // Actual original TileFrame in generation mode removes the three484 fragments
+        // for both preimages; it does not impose the deleted helper's arbitrary frame whitelist.
         Workspace workspace = Fixture(3);
         At(workspace, 0).FrameX = frame;
-        Assert.Throws<InvalidOperationException>(() => GenerationDesertObjectFraming1458.Check(workspace.TileStore, 30, 30));
-        Assert.True(At(workspace, 0).IsActive);
-        Assert.True(At(workspace, 1).IsActive);
+        new GenerationTileFraming1458(workspace.TileStore, new RandomAdapter()).TileFrame(30, 30);
+        for (int i = 0; i < 3; i++)
+        {
+            Assert.False(At(workspace, i).IsActive);
+            Assert.Equal((ushort)0, At(workspace, i).Type);
+            Assert.Equal((short)-1, At(workspace, i).FrameX);
+            Assert.Equal((short)-1, At(workspace, i).FrameY);
+        }
+        Assert.True(At(workspace, 3).IsActive);
+        Assert.Equal((ushort)396, At(workspace, 3).Type);
+        Assert.Equal((short)18, At(workspace, 3).FrameX);
+        Assert.Equal((short)18, At(workspace, 3).FrameY);
     }
 
     [Fact]

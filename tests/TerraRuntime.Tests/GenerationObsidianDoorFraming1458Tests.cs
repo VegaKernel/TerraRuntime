@@ -19,7 +19,9 @@ public sealed class GenerationObsidianDoorFraming1458Tests
         Workspace workspace = Fixture(broken);
         int touchedY = broken == 1 ? 41 : 40;
 
-        Assert.Equal(broken >= 0, GenerationObsidianDoorFraming1458.Check(workspace.TileStore, 40, touchedY));
+        var random = new RandomAdapter();
+        new GenerationTileFraming1458(workspace.TileStore, random).TileFrame(40, touchedY);
+        Assert.Equal(906992634, random.Next());
 
         for (int row = 0; row < 3; row++)
         {
@@ -57,28 +59,36 @@ public sealed class GenerationObsidianDoorFraming1458Tests
         Workspace workspace = Fixture(-1);
         At(workspace, 40, 39).Shape = shape;
         if (actuated) At(workspace, 40, 39).Flags |= WorldTileFlags.Inactive;
-        Assert.True(GenerationObsidianDoorFraming1458.Check(workspace.TileStore, 40, 40));
+        new GenerationTileFraming1458(workspace.TileStore, new RandomAdapter()).TileFrame(40, 40);
         Assert.False(At(workspace, 40, 40).IsActive);
         Assert.True(At(workspace, 40, 39).IsActive);
     }
 
     [Fact]
-    public void Unadmitted_door_style_is_not_removed()
+    public void Ordinary_style_damaged_door_is_removed_by_the_same_shared_owner()
     {
         Workspace workspace = Fixture(3);
         At(workspace, 40, 40).FrameY = 0;
-        Assert.False(GenerationObsidianDoorFraming1458.Check(workspace.TileStore, 40, 40));
-        Assert.True(At(workspace, 40, 40).IsActive);
+        // Actual original CheckDoorClosed validates members/supports, not an Obsidian-only atlas.
+        var random = new RandomAdapter();
+        new GenerationTileFraming1458(workspace.TileStore, random).TileFrame(40, 40);
+        Assert.False(At(workspace, 40, 40).IsActive);
+        Assert.False(At(workspace, 40, 41).IsActive);
+        Assert.Equal(906992634, random.Next());
     }
 
     [Fact]
-    public void Mixed_foreign_door_semantics_abort_before_removing_the_known_fragment()
+    public void Locked_member_protects_neighboring_fragments_without_throwing_a_style_exception()
     {
         Workspace workspace = Fixture(3);
         At(workspace, 40, 41).FrameY = 594;
-        Assert.Throws<InvalidOperationException>(() => GenerationObsidianDoorFraming1458.Check(workspace.TileStore, 40, 40));
+        var random = new RandomAdapter();
+        new GenerationTileFraming1458(workspace.TileStore, random).TileFrame(40, 40);
+        // Actual original CheckTileBreakability returns2 for the fragment above the locked
+        // member, then fail1 for that member. It preserves both, with no invented exception.
         Assert.True(At(workspace, 40, 40).IsActive);
         Assert.True(At(workspace, 40, 41).IsActive);
+        Assert.Equal(906992634, random.Next());
     }
 
     [Fact]
@@ -94,6 +104,60 @@ public sealed class GenerationObsidianDoorFraming1458Tests
         Assert.False(At(workspace, 40, 40).IsActive);
         Assert.False(At(workspace, 40, 41).IsActive);
         Assert.Equal(75, At(workspace, 40, 42).Type);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    [InlineData(9)]
+    [InlineData(10)]
+    [InlineData(11)]
+    [InlineData(12)]
+    [InlineData(13)]
+    [InlineData(14)]
+    [InlineData(15)]
+    [InlineData(16)]
+    [InlineData(17)]
+    public void Shared_kill_preserves_original_locked_door_breakability_and_failure_framing(int scenario)
+    {
+        // Actual original CheckTileBreakability + KillTile on18 independent inputs, seed1458.
+        // Return2 does no dust/framing; fail1 keeps a locked door but frames its neighbours.
+        int[] targets = [1, 1, 11, 10, 10, 1, 1, 1, 10, 11, 1, 1, 1, 386, 387, 388, 389, 10];
+        int[] sourceBreakability = [2, 2, 0, 1, 0, 0, 0, 0, 2, 2, 2, 0, 2, 0, 2, 2, 0, 1];
+        var workspace = new Workspace(80, 80);
+        void Put(int y, ushort type, short fy = 0, short fx = 0, bool active = true)
+        {
+            At(workspace, 40, y) = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
+                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None };
+        }
+        Put(40, (ushort)targets[scenario], (short)(scenario is 3 or 4 or 8 or 17 ? 594 : 0));
+        At(workspace, 40, 40).Wall = 14;
+        At(workspace, 40, 40).LiquidAmount = 80;
+        if (scenario is 1 or 2 or 5 or 8 or 13 or 14 or 15 or 16)
+            Put(39, 10, 594, active: scenario != 5);
+        if (scenario is 3 or 17)
+            Put(39, 75);
+        if (scenario is 0 or 6 or 7 or 9 or 10 or 11 or 12)
+            Put(41, 10, (short)(scenario == 10 ? 646 : scenario == 11 ? 647 : 594),
+                (short)(scenario == 7 ? 54 : scenario == 12 ? -18 : 0), scenario != 6);
+        if (scenario == 17)
+            At(workspace, 41, 40) = new WorldTile { Type = 4, Flags = WorldTileFlags.Active };
+        var random = new RandomAdapter();
+        new GenerationTileFraming1458(workspace.TileStore, random).KillTile(40, 40);
+
+        Assert.Equal(sourceBreakability[scenario] != 0, At(workspace, 40, 40).IsActive);
+        Assert.Equal(14, At(workspace, 40, 40).Wall);
+        Assert.Equal(80, At(workspace, 40, 40).LiquidAmount);
+        Assert.Equal(906992634, random.Next());
+        if (scenario == 17)
+            Assert.False(At(workspace, 41, 40).IsActive);
     }
 
     private static Workspace Fixture(int broken)

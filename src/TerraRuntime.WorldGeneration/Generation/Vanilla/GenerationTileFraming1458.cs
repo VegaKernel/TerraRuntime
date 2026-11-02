@@ -39,6 +39,10 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// non-tile-entity <c>Check2xX</c> and three <c>Check1xX</c> identities, six floor-supported
 /// rectangular furniture families, chandeliers <c>34</c>, music objects <c>35</c>/<c>139</c>,
 /// cannons <c>209</c>, dye <c>227</c>,
+/// the 28 non-Larva <c>Check3x3</c> identities and wall paintings <c>240</c>/<c>440</c>,
+/// closed/open doors <c>10</c>/<c>11</c>, trapdoors <c>386</c>/<c>387</c>, tall gates
+/// <c>388</c>/<c>389</c>, crates/geysers/antlion larvae <c>376</c>/<c>443</c>/<c>485</c>,
+/// banners <c>91</c> and Pigronata <c>454</c>,
 /// the nine one-cell <c>CheckOnTable1x1</c> identities,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -57,7 +61,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <see cref="GenerationKillTileDust1458"/>.
 /// </para>
 /// </remarks>
-internal sealed class GenerationTileFraming1458(
+internal sealed partial class GenerationTileFraming1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
     Workspace? workspace = null)
@@ -242,6 +246,50 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 34 or 35 or 139 or 209)
         {
             CheckAnchoredFurniture(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 106 or 212 or 219 or 220 or 228 or 243 or 247 or 283 or
+            300 or 301 or 302 or 303 or 304 or 305 or 306 or 307 or 308 or
+            354 or 355 or 406 or 412 or 452 or 455 or 491 or 499 or 642 or 733 or 753)
+        {
+            CheckFloorThreeByThree(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 240 or 440)
+        {
+            CheckWallThreeByThree(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 376 or 443 or 485)
+        {
+            CheckSuperFurniture(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type == 91)
+        {
+            CheckBanner(i, j);
+            return;
+        }
+
+        if (tile.Type == 454)
+        {
+            CheckPigronata(i, j);
+            return;
+        }
+
+        if (tile.Type is 10 or 11)
+        {
+            DoorCheckFraming(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 386 or 387 or 388 or 389)
+        {
+            GateCheckFraming(i, j, tile.Type);
             return;
         }
 
@@ -2127,6 +2175,19 @@ internal sealed class GenerationTileFraming1458(
         if (!tile.IsActive)
             return;
 
+        // CheckTileBreakability's locked-door portion precedes all destruction and dust.
+        // Its fail=1 lane leaves the door intact but still frames its neighbours; door dust
+        // has no random choices. Other breakability contexts remain outside this slice.
+        int doorBreakability = DoorBreakability(i, j);
+        if (doorBreakability == 2)
+            return;
+        if (doorBreakability == 1)
+        {
+            GenerationKillTileDust1458.Consume(random, tile.Type);
+            SquareTileFrame(i, j);
+            return;
+        }
+
         if (tile.Type is 21 or 467)
         {
             int left = i - tile.FrameX / 18 % 2;
@@ -2856,12 +2917,14 @@ internal sealed class GenerationTileFraming1458(
             return true;
 
         WorldTile tile = At(i, j);
+        // Vanilla's halfBrick bit can coexist with a bottom slope. Shape alone does not
+        // establish a usable anchor; the independent halfbrick bit still disqualifies it.
         return tile.IsActive &&
             (VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||
              VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) &&
             (tile.Shape is not (2 or 3) ||
              VanillaTileIds.IsPlatform(tile.TileType) && PlatformProperTopFrame(tile.FrameX)) &&
-            tile.Shape != 1 &&
+            !tile.IsHalfBrick &&
             !tile.IsActuated;
     }
 

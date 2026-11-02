@@ -1985,7 +1985,10 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
 
-        Assert.Equal("A604BD6338328F10604F9110511437B6C01D2383C3AF5450D54D63BDE8464D6B", HashFixture(workspace));
+        // Fresh official replay initializes painting240 as frame-important, as Main requires.
+        // The old headless profile left that flag false and retained an invalid one-cell painting.
+        // Replaying that single metadata toggle reproduces both old and corrected goldens.
+        Assert.Equal("383CC8243B5F34C937E67E72F9EF709763522EBB38F05CF248B75198629B91AB", HashFixture(workspace));
         Assert.Equal(1056314798, random.Next());
         Assert.Equal(WorldLiquidKind.Lava, workspace.TileStore.Get(140, 120).LiquidKind);
         Assert.Equal(byte.MaxValue, workspace.TileStore.Get(140, 120).LiquidAmount);
@@ -2057,7 +2060,9 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
 
-        Assert.Equal("C06FBEB48979D6CA13603BFA58172EB7DF72C8FEF9F754B4A3AEA07CDA811A90", HashFixture(workspace));
+        // The independent source replay's painting240 metadata toggle removes the two
+        // incomplete paintings while preserving all other cells and the generation RNG.
+        Assert.Equal("A6A57516C9D04FA548426DF76BFE3DE2CD3EA4F0D36A8768B909EFD29E834BC3", HashFixture(workspace));
         Assert.Equal(1056314798, random.Next());
     }
 

@@ -1018,8 +1018,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 if (!tile.HasOnlyKnownFlags)
                     throw new InvalidOperationException($"Final Cleanup found unknown tile flags at ({x}, {y}).");
 
-                if (GenerationObsidianDoorFraming1458.Check(grid.Store, x, y))
-                    normalized++;
                 // TerrariaServer 1.4.5.8 FinalCleanup first stabilizes unsupported surface sand-family
                 // cells before its per-cell framing tail.  This deliberately changes only identity/activity/
                 // shape; it does not normalize unrelated packed tile state.
@@ -1066,8 +1064,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
                     normalized++;
                 }
-                if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
-                    normalized++;
                 if (tile.IsActive && tile.Type == 323 && tile.LiquidAmount > 0)
                 {
                     KillSingleTileDuringCleanup(ref tile);

@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Managed world-generation cohort, 2026-11-02
+
+The combined forty-one-identity generation block retains SDK `11.0.100-rc.3.26522.148`, the existing `net11.0` graph and package versions. Windows managed Release warnings-as-errors, focused `189/189`, fast `55,990/55,990`, unfiltered full `1,601,304/1,601,304` across all `5,674` methods without skips, and both ordinary/published CoreCLR five-smoke paths pass. Fresh self-contained CoreCLR executable SHA-256: `9383a1f687a9c6f738b6b2235b1e5b6cad334115721017d2e71ab6c881517b4b`. Source/DLL guards remain unchanged after full and publication. [Managed acceptance](verification/worldgen-object-cohort-20261102.json) records the exact scope and diagnostics; NativeAOT verification remains explicitly deferred by the user.
+
 ## Managed RC3 checkpoint, 2026-11-02
 
 `global.json` now selects .NET SDK `11.0.100-rc.3.26522.148`; all CI SDK setup steps read that file. The existing `net11.0` project graph and package versions are unchanged. Windows x64 RC3 Release warnings-as-errors, fast `55,944/55,944`, unfiltered full `1,601,258/1,601,258` across all `5,664` methods without skips, and both ordinary managed and fresh self-contained CoreCLR five-smoke paths pass. The published CoreCLR executable SHA-256 is `c55897312611f24f36b43daa0201efd8d19968cb8c3065761ecca0d5a3bc38e0`. RC3 NativeAOT verification is explicitly deferred by the user after Windows publication stopped at the missing `vswhere.exe` prerequisite; Linux NativeAOT remains unverified. [Managed acceptance](verification/rc3-anchored-furniture-20261102.json) records the exact scope and preserved source/DLL guard.
