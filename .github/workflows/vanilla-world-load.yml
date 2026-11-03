@@ -358,11 +358,21 @@ jobs:
 
           test -s "$cache"
           # Final save rebuilds the world cache and invalidates bootstrap data. Prime bootstrap
-          # for this canonical generation, then prove reuse before either host writes a new checkpoint.
+          # for this canonical generation. The prime must release its exclusive custody lease
+          # before warm startup, and its test-only stop must preserve the exact generation.
+          prime_source_sha="$(sha256sum "$world" | cut -d ' ' -f1)"
+          prime_pid=""
+          stop_prime_without_checkpoint() {
+            if [[ -n "$prime_pid" ]]; then
+              kill -KILL "$prime_pid" 2>/dev/null || true
+              wait "$prime_pid" 2>/dev/null || true
+              prime_pid=""
+            fi
+          }
           prime_log="$GITHUB_WORKSPACE/artifacts/terraruntime-bootstrap-prime.log"
           dotnet "$server_dll" --world "$world" --port 17783 --max-players 2 --no-tui > "$prime_log" 2>&1 &
           prime_pid=$!
-          trap 'kill "$prime_pid" 2>/dev/null || true; wait "$prime_pid" 2>/dev/null || true' EXIT
+          trap stop_prime_without_checkpoint EXIT
           for _ in $(seq 1 120); do
             if ! kill -0 "$prime_pid" 2>/dev/null; then cat "$prime_log" >&2; exit 1; fi
             grep -q "TerraRuntime listening on 0.0.0.0:17783" "$prime_log" && break
@@ -370,6 +380,8 @@ jobs:
           done
           grep -q "TerraRuntime listening on 0.0.0.0:17783" "$prime_log"
           test -s "$bootstrap_cache"
+          stop_prime_without_checkpoint
+          test "$(sha256sum "$world" | cut -d ' ' -f1)" = "$prime_source_sha"
 
           dotnet "$server_dll" \
             --world "$world" \
@@ -382,8 +394,7 @@ jobs:
           cleanup_warm() {
             kill "$warm_pid" 2>/dev/null || true
             wait "$warm_pid" 2>/dev/null || true
-            kill "$prime_pid" 2>/dev/null || true
-            wait "$prime_pid" 2>/dev/null || true
+            stop_prime_without_checkpoint
           }
           trap cleanup_warm EXIT
 
@@ -521,5 +532,6 @@ jobs:
             artifacts/terraruntime-chest-selection.txt
             artifacts/terraruntime-chest-spawn-selection.txt
             artifacts/terraruntime-warm-cache.log
+            artifacts/terraruntime-bootstrap-prime.log
             artifacts/runtime-cache-parallel.txt
           retention-days: 3

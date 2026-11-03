@@ -33,6 +33,19 @@ class WorkflowWorldCustodyTests(unittest.TestCase):
                         self.assertNotIn('--import-world-custody', command,
                                          'Restart and corrupt/unsupported recovery must exercise existing authority')
 
+    def test_warm_cache_releases_exclusive_prime_owner_before_second_start(self):
+        text = (ROOT / '.github/workflows/vanilla-world-load.yml').read_text()
+        warm = text.split('      - name: Prove warm world', 1)[1].split('      - name: Benchmark', 1)[0]
+        self.assertIn('\n          stop_prime_without_checkpoint\n', warm)
+        release = warm.index('\n          stop_prime_without_checkpoint\n')
+        second_start = warm.index('> "$warm_log" 2>&1 &')
+        self.assertLess(release, second_start)
+        self.assertIn('kill -KILL "$prime_pid"', warm[:release])
+        self.assertIn('wait "$prime_pid"', warm[:release])
+        self.assertIn('test "$(sha256sum "$world" | cut -d \' \' -f1)" = "$prime_source_sha"',
+                      warm[release:second_start])
+        self.assertNotIn('--import-world-custody', warm)
+
     def test_startup_gate_forwards_only_cold_import_arguments(self):
         text = (ROOT / '.github/workflows/startup-performance-gate.yml').read_text()
         commands = host_commands(text)

@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "acceptedManaged": true,
+  "fastPending": false,
+  "remoteCiAccepted": false,
+  "allGenerationComplete": false,
+  "goalStatus": "active",
+  "parentCommit": "c14903ad836550fc6620324573c94f0256c53eab",
+  "scope": "Warm-cache CI releases prime exclusive writer without a checkpoint before starting the warm writer",
+  "productionCodeChanged": false,
+  "managedOnly": true,
+  "componentEvidence": {
+    "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/worldgen-world-load-cache-lifecycle-20261103/qualification.json",
+    "sha256": "83a39bcdbcb8f5074d8970cff5a87bdf0536185002a96696df1fb19245c051ff"
+  },
+  "remoteCiStatus": "Awaiting push and fresh WorldLoad/Documentation verification; parentc149 WorldLoad passed both chest probes and failed the concurrent warm-prime owner step",
+  "validation": {
+    "python": {
+      "passed": 300,
+      "evidence": {
+        "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/gates-python.log",
+        "sha256": "ea2842e742272e64eb245a447fbfd73be6c99acb3f35efce463545108a92271a"
+      }
+    },
+    "fast": {
+      "total": "56997",
+      "passed": "56997",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "403.227",
+      "skipped_tests": [],
+      "evidence": {
+        "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/fast/result.json",
+        "sha256": "f7afc7cf128701fd824f6e558c03686cc804f987849902ba5f4ba15581fbce92"
+      }
+    },
+    "managedLifecycle": {
+      "repeats": 3,
+      "checksEach": 24,
+      "source": {
+        "repeats": 3,
+        "checksEach": 24,
+        "oldConcurrentOwnerRefused": true,
+        "warmWorldAndBootstrapReuse": true,
+        "snapshotCanonicalRestoreExact": true,
+        "strictManagedRestart": true
+      },
+      "evidence": [
+        {
+          "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/result.json",
+          "sha256": "caa46982e19ff1ff0fe7fef116e5a3761c19dbd3f32cab22adb4e599f33bf03d"
+        },
+        {
+          "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/result-repeat2.json",
+          "sha256": "34dcef18df35d2d60f2b6a9dfafba4fe12b40e47e0945a04938f5d22bea35276"
+        },
+        {
+          "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/result-repeat3.json",
+          "sha256": "eba8177de119df01f40914f10cfd74b63401b62a09724eeb71557b408abfe99a"
+        }
+      ]
+    },
+    "sameObserverOldWorkflow": {
+      "expectedAssertionFailures": 1,
+      "runnerErrors": 0,
+      "evidence": {
+        "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/old-workflow-causal.json",
+        "sha256": "af60cceebf5fdafd74866e13951219fc4e1085ef9dddcdcab4767a741471f022"
+      }
+    },
+    "managedHelperWarningsAsErrors": {
+      "warnings": 0,
+      "errors": 0,
+      "evidence": {
+        "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/build02.log",
+        "sha256": "3c809e64c489c6552c7d384eba93736a381fcb6fb9cd936a549a28dfd0ac53e9"
+      }
+    },
+    "cacheBenchmark": {
+      "exitCode": 0,
+      "evidence": {
+        "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/cache-bench.log",
+        "sha256": "2fa764476ef8fc2282e809382a9aeb6d1e29a92bd9b686a1d3c7e71cb53e51da"
+      },
+      "performanceClaim": false
+    },
+    "guard": {
+      "accepted": true,
+      "sourceInputs": 4547,
+      "testDlls": 158,
+      "productionSourceChanged": false,
+      "drift": [],
+      "evidence": {
+        "path": ".cache/worldgen-world-load-cache-lifecycle-20261103/managed-inputs.json",
+        "sha256": "83b269dc859715d48da0901e7d8fb8c4aa8feca3e6ef38c1b519ae935f1943c2"
+      }
+    }
+  },
+  "priorFull": {
+    "fresh": false,
+    "passed": 1602311,
+    "methods": 5717,
+    "unchangedTestDllSha256": "74a2e71dc16983bbc24b04ce60be020f89f1c8261f5a53e38979ea6402ca3d66",
+    "receipt": "docs/verification/worldgen-live-custody-followup-20261103.json"
+  },
+  "selectedShippingInputs": [
+    {
+      "path": ".github/workflows/vanilla-world-load.yml",
+      "sha256": "7dc75700d5b5f9c9ef3e1880c6ef1b8df8a3e0c2d4acd0ca012314a1e27f9e6e"
+    },
+    {
+      "path": "tools/ci/test_workflow_world_custody.py",
+      "sha256": "fe68d64de78298be5149bd1303168855958de9ad8456e6d04577f5772413ad94"
+    }
+  ],
+  "limits": [
+    "Windows managed startup/persistence APIs exercise the same lease/cache/export owners; Linux SIGKILL/readiness shell execution awaits fresh workflow",
+    "Bootstrap invalidation is by source stamp; physical stale file need not be deleted"
+  ]
+}

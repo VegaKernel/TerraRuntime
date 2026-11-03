@@ -1,5 +1,9 @@
 # Testing, verification and evidence
 
+The [single-owner warm-cache verification](../verification/worldgen-warm-cache-owner-20261103.json) records three repetitions of 24 actual lifecycle checks, cache benchmark execution, 300 Python checks and fresh fast `56,997/56,997`. The unchanged production/test DLLs retain the previously accepted unfiltered full result. Fresh Linux workflow execution remains a separate publication check.
+
+Warm-cache verification uses sequential exclusive owners of one canonical generation. The bootstrap-prime process ends without a final checkpoint, and a canonical SHA-256 check confirms the bytes stayed unchanged before the warm host starts. The warm host then follows ordinary graceful-save behavior. Local lifecycle checks also cover cache reuse, bootstrap stamp invalidation after a new checkpoint, exact snapshot export and a strict managed restart.
+
 The [pose verification](../verification/worldgen-world-load-pose-20261103.json) records 299 Python checks, fresh fast `56,997/56,997`, read-only picker acceptance/refusal fixtures and three repeated real-host runs. The previous full `1,602,311/1,602,311` applies to the same unchanged production/test DLLs; this follow-up changes only the tool, probes and workflow. The native regenerated world matches the failing CI seed and selected chest; whole-file identity to the CI world is not claimed because its artifact omitted world bytes.
 
 Live chest probes on generated worlds accept an explicit player spawn selected by `TerraRuntime.TileLocate <world.wld> --probe-spawn`. This read-only mode finds dry, empty body space over flat Dirt or Stone inside the player border. Both chest probes use the selected pose from the first join, including replacement connections. The World Load workflow records this selection and passes it to both probes. Unsupported wet or occupied health profiles remain an open gameplay boundary; these chest checks exercise the admitted dry profile.
