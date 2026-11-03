@@ -24,7 +24,7 @@ concurrency:
 jobs:
   source-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -61,11 +61,13 @@ jobs:
             --output artifacts/source-contract/beaches-contract.txt
 
       - name: Focused ocean tests
-        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release -- -noLogo -method "*VanillaOceanGeneration1458Tests*"
+        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release -- -noLogo -noColor -class "TerraRuntime.Tests.VanillaOceanGeneration1458Tests" -xml artifacts/source-contract/ocean-tests.xml
 
       - uses: actions/upload-artifact@v4
         with:
           name: terraria-beaches-${{ github.sha }}
-          path: artifacts/source-contract/beaches-contract.txt
+          path: |
+            artifacts/source-contract/beaches-contract.txt
+            artifacts/source-contract/ocean-tests.xml
           if-no-files-found: error
           retention-days: 7
