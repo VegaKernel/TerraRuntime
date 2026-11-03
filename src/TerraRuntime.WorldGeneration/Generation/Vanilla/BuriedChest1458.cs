@@ -41,7 +41,8 @@ internal sealed class BuriedChest1458(
     private const ushort Containers2 = 467;
     private const ushort MagicStorage = 231;
 
-    private readonly GenerationTileFraming1458 framing = new(store, random, workspace);
+    private readonly GenerationTileFraming1458 framing = new(store, random, workspace,
+        useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true);
 
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
@@ -88,7 +89,7 @@ internal sealed class BuriedChest1458(
             // very slope this branch exists to repair (WorldGen.AddBuriedChest, TerrariaServer 1.4.5.8).
             if (trySlope && At(i, k).IsActive &&
                 !(spikyLihzahrdIsNonSolid && At(i, k).Type == 232) &&
-                VanillaTileCollisionCatalog.IsSolid(At(i, k).TileType) &&
+                ChestSolidIdentity(At(i, k).TileType) &&
                 !VanillaTileCollisionCatalog.IsSolidTop(At(i, k).TileType))
             {
                 // The ocean's chests refuse to land anywhere within thirty tiles of another chest, which is a
@@ -308,26 +309,26 @@ internal sealed class BuriedChest1458(
         // TileObject.Place clears the whole footprint before it writes any chest fragments.
         // KillTile can remove neighbouring pile fragments and advances the shared generation RNG.
         for (int column = 0; column < 2; column++)
-        for (int row = 0; row < 2; row++)
-        {
-            WorldTile cell = At(x + column, top + row);
-            if (cell.IsActive && cell.Type != 484 &&
-                (VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) ||
-                 GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type)))
-                framing.KillTile(x + column, top + row);
-        }
+            for (int row = 0; row < 2; row++)
+            {
+                WorldTile cell = At(x + column, top + row);
+                if (cell.IsActive && cell.Type != 484 &&
+                    (VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) ||
+                     GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type)))
+                    framing.KillTile(x + column, top + row);
+            }
 
         for (int column = 0; column < 2; column++)
-        for (int row = 0; row < 2; row++)
-        {
-            ref WorldTile cell = ref AtRef(x + column, top + row);
-            if (cell.IsActive)
-                continue;
-            cell.Flags |= WorldTileFlags.Active;
-            cell.Type = type;
-            cell.FrameX = checked((short)(style * 36 + column * 18));
-            cell.FrameY = checked((short)(row * 18));
-        }
+            for (int row = 0; row < 2; row++)
+            {
+                ref WorldTile cell = ref AtRef(x + column, top + row);
+                if (cell.IsActive)
+                    continue;
+                cell.Flags |= WorldTileFlags.Active;
+                cell.Type = type;
+                cell.FrameX = checked((short)(style * 36 + column * 18));
+                cell.FrameY = checked((short)(row * 18));
+            }
 
         // Source Chest.CreateChest runs AFTER the object is written, so a refused slot leaves a chest-shaped
         // hole in the world and still reports failure. Nothing in generation reaches that, but the order is
@@ -435,9 +436,14 @@ internal sealed class BuriedChest1458(
     // TerrariaServer 1.4.5.8 templePart2 temporarily sets Main.tileSolid[232] = false only while its
     // AddBuriedChest offers run, so Spiky Lihzahrd Brick cannot become a chest's floor in that source scope.
     private bool IsSolidForChest(in WorldTile tile) =>
-        tile.Type != 232 || !spikyLihzahrdIsNonSolid
-            ? HellFortGenerator1458.Solid(tile, noDoors: false)
-            : false;
+        tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick && tile.SourceSlope == 0 &&
+        (tile.Type != 232 || !spikyLihzahrdIsNonSolid) &&
+        ChestSolidIdentity(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+
+    private bool ChestSolidIdentity(TileTypeId type) =>
+        workspace is { HasVanillaGenerationSolidity: true }
+            ? workspace.IsVanillaGenerationSolid(type)
+            : VanillaTileCollisionCatalog.IsSolid(type);
 
     private bool IsTopSlope(int x, int y)
     {
@@ -452,7 +458,8 @@ internal sealed class BuriedChest1458(
     {
         if (!Contains(x, y))
             return;
-        AtRef(x, y).Shape = (byte)(slope == 0 ? 0 : slope + 1);
+        ref WorldTile tile = ref AtRef(x, y);
+        tile.TrySetSourceShape(tile.IsHalfBrick, checked((byte)slope));
     }
 
     private bool InWorld(int x, int y, int fluff) =>

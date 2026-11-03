@@ -234,10 +234,9 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 "Source-backed jungle-structure Terraria generation requires Workspace.");
         state.EnsureInitialized(context, workspace);
         var grid = new RuntimeGrid(workspace);
-        var random = new VanillaRandom(
-            context.VanillaRandom ??
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
             throw new InvalidOperationException(
-                "Source-backed jungle-structure Terraria generation requires shared UnifiedRandom semantics."));
+                "Source-backed jungle-structure Terraria generation requires shared UnifiedRandom semantics.");
 
         switch (stage)
         {
@@ -273,7 +272,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         }
     }
 
-    private void ApplyDirtRockWallRunner(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyDirtRockWallRunner(IWorldGenerationContext context, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
         int placed = ApplyDirtRockWallRunnerCore(grid, random, state.WorldSurface, context.CancellationToken);
         context.ReportProgress(1d, $"Running source-backed dirt/rock wall runner ({placed} wall cells)");
@@ -281,13 +280,13 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
 
     internal static int ApplyDirtRockWallRunnerForTesting(
         Workspace workspace, IWorldGenerationVanillaRandom random, double worldSurface) =>
-        ApplyDirtRockWallRunnerCore(new RuntimeGrid(workspace), new VanillaRandom(random), worldSurface, default);
+        ApplyDirtRockWallRunnerCore(new RuntimeGrid(workspace), random, worldSurface, default);
 
     // TerrariaServer 1.4.5.8 GenPassNameID.DirtRockWallRunner and WorldGen.DirtyRockRunner.
     // The pass samples exactly width surface-region candidates; each accepted Dirt wall launches
     // a drifting, shrinking brush. Even rejected brush cells consume their distance-jitter draw.
     private static int ApplyDirtRockWallRunnerCore(
-        RuntimeGrid grid, IRandom random, double worldSurface, CancellationToken cancellation)
+        RuntimeGrid grid, IWorldGenerationVanillaRandom random, double worldSurface, CancellationToken cancellation)
     {
         int changed = 0;
         for (int attempt = 0; attempt < grid.Width; attempt++)
@@ -315,16 +314,16 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 int top = Math.Max(0, (int)(positionY - radius * 0.5));
                 int bottom = Math.Min(grid.Height, (int)(positionY + radius * 0.5));
                 for (int brushX = left; brushX < right; brushX++)
-                for (int brushY = top; brushY < bottom; brushY++)
-                {
-                    if (Math.Abs(brushX - positionX) + Math.Abs(brushY - positionY) <
-                        size * 0.5 * (1d + random.Next(-10, 11) * 0.015) &&
-                        grid.At(brushX, brushY).Wall == DirtUnsafeWall)
+                    for (int brushY = top; brushY < bottom; brushY++)
                     {
-                        grid.At(brushX, brushY).Wall = RockyDirtUnsafeWall;
-                        changed++;
+                        if (Math.Abs(brushX - positionX) + Math.Abs(brushY - positionY) <
+                            size * 0.5 * (1d + random.Next(-10, 11) * 0.015) &&
+                            grid.At(brushX, brushY).Wall == DirtUnsafeWall)
+                        {
+                            grid.At(brushX, brushY).Wall = RockyDirtUnsafeWall;
+                            changed++;
+                        }
                     }
-                }
                 positionX += velocityX;
                 positionY += velocityY;
                 velocityX = Math.Clamp(velocityX + random.Next(-10, 11) * 0.05, -1d, 1d);
@@ -343,9 +342,9 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     /// patch mode, each re-tested against the same box.
     /// </summary>
     /// <remarks>
-    /// One exclusion of the source's is absent: it also refuses a column within fifty tiles of a recorded
-    /// mountain-cave entrance (<c>GenVars.mCaveX</c>), which this runtime's Mountain Caves pass does not
-    /// record. Everything else, including the retry loop's draw pattern, is the source's.
+    /// Primary sites reject the retained mountain-cave entrances within a strict fifty-cell band.
+    /// Companion sites repeat the parent's dungeon/cloud exclusion box after its tree has grown; the nearby
+    /// living-wood test belongs only to primary offers. Room chests run at their original point in the shaft walk.
     /// </remarks>
     private void ApplyLivingTrees(IWorldGenerationContext context, Workspace workspace)
     {
@@ -355,8 +354,12 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         CancellationToken cancellation = context.CancellationToken;
         int width = workspace.WidthTiles;
         double worldSurface = state.WorldSurface;
+        var chestState = new ChestPlacementState1458();
+        chestState.EnsureInitialized(context, workspace);
+        BuriedChest1458 chests = chestState.CreatePlacer(workspace, random);
         var grower = new LivingTreeGrower1458(
-            store, random, worldSurface, state.UnderworldTop, cancellation);
+            store, random, worldSurface, state.UnderworldTop, cancellation,
+            (x, y, signature) => chests.TryAdd(x, y, out _, out _, signature, chestStyle: 12), workspace);
 
         const int spawnHalfWidth = 200;
         const int beachDistance = 380;
@@ -394,6 +397,14 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                     continue;
                 if (!IsLivingTreeSiteAllowed(store, x, y))
                     continue;
+                bool nearMountainCave = false;
+                foreach (WorldGenerationPoint cave in workspace.VanillaMountainCaves)
+                    if (x > cave.X - 50 && x < cave.X + 50)
+                    {
+                        nearMountainCave = true;
+                        break;
+                    }
+                if (nearMountainCave) continue;
 
                 done = grower.TryGrow(x, y);
                 if (!done)
@@ -404,6 +415,10 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             }
         }
 
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(192), false);
+        }
         context.ReportProgress(1d, $"Growing living trees ({grown}/{target})");
     }
 
@@ -452,7 +467,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                     y--;
                 }
 
-                if (IsLivingTreeSiteAllowed(store, parentX, parentY))
+                if (IsLivingTreeSiteAllowed(store, parentX, parentY, checkNearbyTrees: false))
                     grower.TryGrow(x, y, patch: true);
             }
         }
@@ -462,9 +477,9 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     /// The source's two site tests: no living wood or leaves within ten tiles, and no dungeon brick, cloud or
     /// aether identity anywhere in the hundred-by-hundred box whose top-left corner is fifty tiles up and left.
     /// </summary>
-    private static bool IsLivingTreeSiteAllowed(WorldTileStore store, int x, int y)
+    private static bool IsLivingTreeSiteAllowed(WorldTileStore store, int x, int y, bool checkNearbyTrees = true)
     {
-        if (IsTileNearby(store, x, y, LivingWood, 10) || IsTileNearby(store, x, y, LeafBlock, 10))
+        if (checkNearbyTrees && (IsTileNearby(store, x, y, LivingWood, 10) || IsTileNearby(store, x, y, LeafBlock, 10)))
             return false;
 
         int width = store.Dimensions.WidthTiles;
@@ -535,18 +550,18 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
 
                 bool enclosed = true;
                 for (int neighborX = x - 1; neighborX <= x + 1 && enclosed; neighborX++)
-                for (int neighborY = y - 1; neighborY <= y + 1; neighborY++)
-                {
-                    // The source's conjunction intentionally selects only the four diagonal cells.
-                    if (neighborX == x || neighborY == y)
-                        continue;
-                    WorldTile diagonal = grid.At(neighborX, neighborY);
-                    if ((!diagonal.IsActive || diagonal.Type != LivingWood) && diagonal.Wall != LivingWoodUnsafeWall)
+                    for (int neighborY = y - 1; neighborY <= y + 1; neighborY++)
                     {
-                        enclosed = false;
-                        break;
+                        // The source's conjunction intentionally selects only the four diagonal cells.
+                        if (neighborX == x || neighborY == y)
+                            continue;
+                        WorldTile diagonal = grid.At(neighborX, neighborY);
+                        if ((!diagonal.IsActive || diagonal.Type != LivingWood) && diagonal.Wall != LivingWoodUnsafeWall)
+                        {
+                            enclosed = false;
+                            break;
+                        }
                     }
-                }
                 if (!enclosed)
                     continue;
 
@@ -563,6 +578,11 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
 
     private void ApplyAltars(IWorldGenerationContext context, Workspace workspace)
     {
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(484), false);
+        }
+
         WorldGenerationPoint shimmer = workspace.VanillaShimmerPosition ??
             throw new InvalidOperationException("Evil altars require the preceding Shimmer generation position.");
         int placed = new EvilAltarPlacement1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
@@ -585,22 +605,22 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         // The delegate neither creates pools nor consumes RNG.
         int columns = 0;
         for (int x = 0; x < grid.Width; x++)
-        for (int y = worldSurfaceLow; y < worldSurface - 1d; y++)
-        {
-            if (!grid.At(x, y).IsActive)
-                continue;
-            if (grid.At(x, y).Type == JungleGrass && y >= 2)
+            for (int y = worldSurfaceLow; y < worldSurface - 1d; y++)
             {
-                ref WorldTile first = ref grid.At(x, y - 1);
-                first.LiquidKind = WorldLiquidKind.Water;
-                first.LiquidAmount = byte.MaxValue;
-                ref WorldTile second = ref grid.At(x, y - 2);
-                second.LiquidKind = WorldLiquidKind.Water;
-                second.LiquidAmount = byte.MaxValue;
-                columns++;
+                if (!grid.At(x, y).IsActive)
+                    continue;
+                if (grid.At(x, y).Type == JungleGrass && y >= 2)
+                {
+                    ref WorldTile first = ref grid.At(x, y - 1);
+                    first.LiquidKind = WorldLiquidKind.Water;
+                    first.LiquidAmount = byte.MaxValue;
+                    ref WorldTile second = ref grid.At(x, y - 2);
+                    second.LiquidKind = WorldLiquidKind.Water;
+                    second.LiquidAmount = byte.MaxValue;
+                    columns++;
+                }
+                break;
             }
-            break;
-        }
         return columns;
     }
 
@@ -705,15 +725,16 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             random,
             state.WorldSurface,
             state.RockLayer,
-            context.CancellationToken);
+            context.CancellationToken, workspace);
 
         int placed = biome.Apply();
         workspace.SetVanillaHiveProtectedAreas(biome.CaptureProtectedAreas());
+        workspace.SetVanillaHiveLarvaAnchors(biome.LarvaAnchors.Select(p => new WorldGenerationPoint(p.X, p.Y)).ToArray());
 
         context.ReportProgress(1d, $"Growing bee hives ({placed})");
     }
 
-    private void ApplyJungleChests(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
+    private void ApplyJungleChests(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         double target = ApplyJungleChestsCore(grid, random, bootstrap.DungeonSide,
@@ -721,6 +742,11 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             context.CancellationToken);
         workspace.SetVanillaJungleShrineChestAnchors(state.JungleChestCandidates);
         workspace.SetVanillaJungleShrineProtectedAreas(protectedShrines.ToArray());
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(137), false);
+        }
+
 
         context.ReportProgress(
             1d,
@@ -733,14 +759,14 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     {
         var state = new JungleStructureState1458();
         var pass = new JungleStructurePass1458(JungleStructureStage1458.JungleChests, state);
-        pass.ApplyJungleChestsCore(new RuntimeGrid(workspace), new VanillaRandom(random),
+        pass.ApplyJungleChestsCore(new RuntimeGrid(workspace), random,
             dungeonSide, jungleHut, worldSurface, rockLayer, default);
         workspace.SetVanillaJungleShrineChestAnchors(state.JungleChestCandidates);
         workspace.SetVanillaJungleShrineProtectedAreas(pass.protectedShrines.ToArray());
         return state.JungleChestCandidates;
     }
 
-    private double ApplyJungleChestsCore(RuntimeGrid grid, IRandom random,
+    private double ApplyJungleChestsCore(RuntimeGrid grid, IWorldGenerationVanillaRandom random,
         int dungeonSide, ushort jungleHut, double worldSurface, double rockLayer,
         CancellationToken cancellation)
     {
@@ -797,12 +823,12 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         if (!grid.At(x, y).IsActive || grid.At(x, y).Type != JungleGrass)
             return false;
         for (int scanX = x - 30; scanX < x + 30; scanX += 3)
-        for (int scanY = y - 30; scanY < y + 30; scanY += 3)
-        {
-            WorldTile tile = grid.At(scanX, scanY);
-            if (tile.IsActive && tile.Type is Hive or 229 or LihzahrdBrick or 119 or 120 || tile.Wall is HiveUnsafeWall or LihzahrdBrickUnsafeWall)
-                return false;
-        }
+            for (int scanY = y - 30; scanY < y + 30; scanY += 3)
+            {
+                WorldTile tile = grid.At(scanX, scanY);
+                if (tile.IsActive && tile.Type is Hive or 229 or LihzahrdBrick or 119 or 120 || tile.Wall is HiveUnsafeWall or LihzahrdBrickUnsafeWall)
+                    return false;
+            }
 
         // StructureMap.CanPlace(area, 1) first checks the unpadded rectangle bounds, then
         // checks protected overlap and GeneralPlacementTiles over the padded rectangle.
@@ -814,6 +840,14 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         if (areaX < 0 || areaY < 0 || areaX + areaWidth > grid.Width - 1 ||
             areaY + areaHeight > grid.Height - 1)
             return false;
+        foreach (WorldTileRegion protectedArea in grid.Workspace.VanillaHiveProtectedAreas)
+        {
+            if (areaX - 1 < protectedArea.ExclusiveRight && protectedArea.X < areaX + areaWidth + 1 &&
+                areaY - 1 < protectedArea.ExclusiveBottom && protectedArea.Y < areaY + areaHeight + 1) return false;
+        }
+        if (grid.Workspace.VanillaShimmerStructure is { } shimmer &&
+            areaX - 1 < shimmer.ExclusiveRight && shimmer.X < areaX + areaWidth + 1 &&
+            areaY - 1 < shimmer.ExclusiveBottom && shimmer.Y < areaY + areaHeight + 1) return false;
         foreach (WorldTileRegion protectedArea in protectedShrines)
         {
             if (areaX - 1 < protectedArea.ExclusiveRight && protectedArea.X < areaX + areaWidth + 1 &&
@@ -821,12 +855,12 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 return false;
         }
         for (int scanX = areaX - 1; scanX < areaX + areaWidth + 1; scanX++)
-        for (int scanY = areaY - 1; scanY < areaY + areaHeight + 1; scanY++)
-        {
-            WorldTile tile = grid.At(scanX, scanY);
-            if (tile.IsActive && !IsGeneralPlacementTile(tile.Type))
-                return false;
-        }
+            for (int scanY = areaY - 1; scanY < areaY + areaHeight + 1; scanY++)
+            {
+                WorldTile tile = grid.At(scanX, scanY);
+                if (tile.IsActive && !IsGeneralPlacementTile(tile.Type))
+                    return false;
+            }
         return true;
     }
 
@@ -835,19 +869,19 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         225 or 41 or 481 or 43 or 482 or 44 or 483 or 226 or 203 or 112 or 25 or 70 or 151 or 21 or 31 or
         696 or 467 or 12 or 665 or 639 or 138 or 664 or 711 or 712 or 713 or 714 or 715 or 716);
 
-    private static void BuildJungleShrine(RuntimeGrid grid, int x, int y, int halfWidth, int halfHeight, ushort hut, IRandom random)
+    private static void BuildJungleShrine(RuntimeGrid grid, int x, int y, int halfWidth, int halfHeight, ushort hut, IWorldGenerationVanillaRandom random)
     {
         ushort wall = hut switch { 119 => 23, 120 => 24, 158 => 42, 175 => 45, 45 => 10, _ => 0 };
         for (int tx = x - halfWidth - 1; tx <= x + halfWidth + 1; tx++)
-        for (int ty = y - halfHeight - 1; ty <= y + halfHeight + 1; ty++)
-            SetJungleShrineShell(ref grid.At(tx, ty), hut);
+            for (int ty = y - halfHeight - 1; ty <= y + halfHeight + 1; ty++)
+                SetJungleShrineShell(ref grid.At(tx, ty), hut);
         for (int tx = x - halfWidth; tx <= x + halfWidth; tx++)
-        for (int ty = y - halfHeight; ty <= y + halfHeight; ty++)
-        {
-            // JungleShrines only clears the active bit; it retains the shell identity and frames.
-            grid.At(tx, ty).Flags &= ~WorldTileFlags.Active;
-            grid.At(tx, ty).Wall = wall;
-        }
+            for (int ty = y - halfHeight; ty <= y + halfHeight; ty++)
+            {
+                // JungleShrines only clears the active bit; it retains the shell identity and frames.
+                grid.At(tx, ty).Flags &= ~WorldTileFlags.Active;
+                grid.At(tx, ty).Wall = wall;
+            }
 
         // Source attempts a style-3 torch up to one hundred times. Preserve the offer stream; object framing is
         // intentionally delegated to the shared placement boundary as this pass is completed.
@@ -857,10 +891,12 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             int torchY = random.Next(y - halfHeight, y + halfHeight - 2);
             if (!grid.At(torchX, torchY).IsActive)
             {
-                SetType(ref grid.At(torchX, torchY), 4);
-                // Official PlaceTile(4, style: 3) selects the background-attached frame (0,66) in a shrine wall.
-                grid.At(torchX, torchY).FrameX = 0;
+                HellFortGenerator1458.ClearPlacementAnchor(ref grid.At(torchX, torchY));
+                grid.At(torchX, torchY).Flags |= WorldTileFlags.Active;
+                grid.At(torchX, torchY).Type = 4;
                 grid.At(torchX, torchY).FrameY = 66;
+                new GenerationTileFraming1458(grid.Store, random, grid.Workspace,
+                    useWorldGenerationSolidity: true).SquareTileFrame(torchX, torchY);
                 break;
             }
         }
@@ -868,8 +904,8 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         // The source reopens the bottom three rows before it grows up to four Mud support cells below
         // every shell column, then builds the stepped hut roof with one-to-two-cell contractions.
         for (int tx = x - halfWidth - 1; tx <= x + halfWidth + 1; tx++)
-        for (int ty = y + halfHeight - 2; ty <= y + halfHeight; ty++)
-            grid.At(tx, ty).Flags &= ~WorldTileFlags.Active;
+            for (int ty = y + halfHeight - 2; ty <= y + halfHeight; ty++)
+                grid.At(tx, ty).Flags &= ~WorldTileFlags.Active;
         for (int tx = x - halfWidth - 1; tx <= x + halfWidth + 1; tx++)
         {
             int remainingSupport = 4;
@@ -888,7 +924,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     }
 
     internal static void BuildJungleShrineForTesting(Workspace workspace, int x, int y, int halfWidth, int halfHeight, ushort hut, IWorldGenerationVanillaRandom random) =>
-        BuildJungleShrine(new RuntimeGrid(workspace), x, y, halfWidth, halfHeight, hut, new VanillaRandom(random));
+        BuildJungleShrine(new RuntimeGrid(workspace), x, y, halfWidth, halfHeight, hut, random);
 
     private static void SetJungleShrineShell(ref WorldTile tile, ushort type)
     {
@@ -923,7 +959,20 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     {
         var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace,
             useWorldGenerationSolidity: true);
-        VanillaWaterCheckDiagnostic1458 waterCheck = framing.SettleLiquidsDuringGeneration(cancellationToken);
+        if (!workspace.TryGetLayers(out WorldGenerationLayers layers) ||
+            workspace.VanillaLiquidLines is not VanillaLiquidLines1458 liquidLines ||
+            workspace.VanillaBootstrapState is not VanillaWorldGenerationBootstrapState1458 bootstrap ||
+            !workspace.HasVanillaGenerationSolidity)
+            throw new InvalidOperationException("Source Settle Liquids requires retained generation state.");
+        UnderworldLiquidPreparation1458.NormalizeOceanLiquids(workspace.TileStore, layers.WorldSurface, layers.RockLayer, cancellationToken);
+        DungeonBounds1458 bounds = DungeonGraphGenerator1458.ResolvePotentialBounds(workspace.TileStore.Dimensions, layers.WorldSurface, bootstrap.DungeonSide);
+        bool DungeonWater(int x, int y, ushort wall) => workspace.VanillaDungeonGraph is not null &&
+            x >= bounds.Left && x < bounds.Right && y >= bounds.Top && y < bounds.Bottom && DungeonGenerationTiles1458.IsDungeonWall(wall);
+        var shimmer = workspace.VanillaShimmerPosition.GetValueOrDefault();
+        VanillaWaterCheckDiagnostic1458 waterCheck = framing.SettleLiquidsWithContext(liquidLines.WaterLine,
+            workspace.IsVanillaGenerationSolid, workspace.SetVanillaGenerationSolid, DungeonWater,
+            () => UnderworldLiquidPreparation1458.RemoveWaterAroundShimmer(workspace.TileStore, shimmer.X, shimmer.Y),
+            () => UnderworldLiquidPreparation1458.CleanupInteractions(workspace.TileStore, cancellationToken), cancellationToken);
         if (!waterCheck.IsApplied)
         {
             throw new InvalidOperationException(
@@ -950,11 +999,11 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             return false;
 
         for (int x = left; x < left + width; x++)
-        for (int y = top; y < top + height; y++)
-        {
-            if (grid.At(x, y).IsActive)
-                return false;
-        }
+            for (int y = top; y < top + height; y++)
+            {
+                if (grid.At(x, y).IsActive)
+                    return false;
+            }
 
         if (!requireFloor)
             return true;
@@ -1129,27 +1178,12 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             tile.Wall = wall;
     }
 
-    private interface IRandom
-    {
-        int Next();
-        int Next(int max);
-        int Next(int min, int max);
-        double NextDouble();
-    }
-
-    private sealed class VanillaRandom(IWorldGenerationVanillaRandom inner) : IRandom
-    {
-        public int Next() => inner.Next();
-        public int Next(int max) => inner.Next(max);
-        public int Next(int min, int max) => inner.Next(min, max);
-        public double NextDouble() => inner.NextDouble();
-    }
-
     private sealed class RuntimeGrid
     {
         private readonly WorldTileStore store;
 
-        public RuntimeGrid(Workspace workspace) => store = workspace.TileStore;
+        public Workspace Workspace { get; }
+        public RuntimeGrid(Workspace workspace) { Workspace = workspace; store = workspace.TileStore; }
 
         public WorldTileStore Store => store;
 

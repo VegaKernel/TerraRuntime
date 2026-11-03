@@ -155,16 +155,8 @@ internal sealed class PostSettleState1458
 
 internal sealed class PostSettlePass1458 : IWorldGenerationPass
 {
-    private const ushort Dirt = 0;
-    private const ushort Stone = 1;
-    private const ushort Grass = 2;
     private const ushort LifeCrystal = 12;
     private const ushort Sand = 53;
-    private const ushort Mud = 59;
-    private const ushort JungleGrass = 60;
-    private const ushort Statue = 105;
-    private const ushort Silt = 123;
-    private const ushort Snow = 147;
     private const ushort SandstoneBrick = 151;
     private const ushort Ice = 161;
     private const ushort Sandstone = 396;
@@ -173,17 +165,6 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
     private const ushort FossilOre = 407;
     private const ushort ShellPile = 495;
 
-    private const ushort DirtUnsafeWall = 2;
-    private const ushort RockyDirtUnsafeWall = 59;
-    private const ushort OldStoneUnsafeWall = 61;
-    private const ushort IceUnsafeWall = 71;
-    private const ushort CaveDirtUnsafeWall = 170;
-    private const ushort RoughDirtUnsafeWall = 171;
-    private const ushort CraggyStoneUnsafeWall = 185;
-    private const ushort WornStoneUnsafeWall = 212;
-    private const ushort StalactiteStoneUnsafeWall = 213;
-    private const ushort MottledStoneUnsafeWall = 214;
-    private const ushort FracturedStoneUnsafeWall = 215;
 
     private readonly PostSettleStage1458 stage;
     private readonly PostSettleState1458 state;
@@ -203,14 +184,13 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Post-settle Terraria generation requires Workspace.");
         state.EnsureInitialized(context, workspace);
         var grid = new RuntimeGrid(workspace);
-        var random = new VanillaRandom(
-            context.VanillaRandom ??
-            throw new InvalidOperationException("Post-settle Terraria generation requires shared UnifiedRandom semantics."));
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Post-settle Terraria generation requires shared UnifiedRandom semantics.");
 
         switch (stage)
         {
             case PostSettleStage1458.RemoveWaterFromSand:
-                ApplyRemoveWaterFromSand(context, grid);
+                ApplyRemoveWaterFromSand(context, workspace, grid);
                 break;
             case PostSettleStage1458.Oasis:
                 ApplyOasis(context, workspace);
@@ -222,7 +202,7 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
                 ApplySmoothWorld(context, workspace);
                 break;
             case PostSettleStage1458.Waterfalls:
-                ApplyWaterfalls(context, grid, random);
+                ApplyWaterfalls(context, workspace, grid, random);
                 break;
             case PostSettleStage1458.Ice:
                 ApplyIce(context, workspace, grid);
@@ -231,17 +211,17 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
                 ApplyWallVariety(context, workspace);
                 break;
             case PostSettleStage1458.LifeCrystals:
-                ApplyLifeCrystals(context, grid, random);
+                ApplyLifeCrystals(context, workspace, grid, random);
                 break;
             case PostSettleStage1458.Statues:
-                ApplyStatues(context, grid, random);
+                ApplyStatues(context, workspace, grid, random);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
     }
 
-    private void ApplyRemoveWaterFromSand(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplyRemoveWaterFromSand(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid)
     {
         long drained = 0;
         // WorldGen.AddPasses / RemoveSurfaceWaterAboveSand: inspect only the first active
@@ -271,6 +251,8 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
             }
         }
 
+        if (workspace.HasVanillaGenerationSolidity)
+            workspace.SetVanillaGenerationSolid(new TileTypeId(192), true);
         context.ReportProgress(1d, $"Removing surface liquid above sand ({drained} liquid units)");
     }
 
@@ -325,7 +307,7 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Generating oasis basins ({placed}/{count})");
     }
 
-    private void ApplyShellPiles(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
+    private void ApplyShellPiles(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
         // TerrariaServer 1.4.5.8 GenPassNameID.ShellPilesMarblePilesAndSpikePits.
         // The source-backed provider enters this pass only for ordinary seeds;
@@ -335,11 +317,11 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         if (random.Next(2) == 0)
         {
             for (int x = left.X - 20; x <= left.X + 20; x++)
-            for (int y = left.Y - 10; y <= left.Y + 10; y++)
-                if (grid.At(x, y).IsActive && grid.At(x, y).Type == Sand &&
-                    !grid.At(x, y - 1).IsActive && grid.At(x, y - 1).LiquidAmount == 0 &&
-                    !grid.At(x - 1, y).IsActive && grid.At(x - 1, y).LiquidAmount > 0)
-                    left = new VanillaShellAnchor1458(x, y);
+                for (int y = left.Y - 10; y <= left.Y + 10; y++)
+                    if (grid.At(x, y).IsActive && grid.At(x, y).Type == Sand &&
+                        !grid.At(x, y - 1).IsActive && grid.At(x, y - 1).LiquidAmount == 0 &&
+                        !grid.At(x - 1, y).IsActive && grid.At(x - 1, y).LiquidAmount > 0)
+                        left = new VanillaShellAnchor1458(x, y);
             left = left with { Y = left.Y - 50, X = left.X - random.Next(5) };
             if (random.Next(2) == 0) left = left with { X = left.X - random.Next(10) };
             if (random.Next(3) == 0) left = left with { X = left.X - random.Next(15) };
@@ -354,11 +336,11 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         if (random.Next(2) == 0)
         {
             for (int x = right.X - 20; x <= right.X + 20; x++)
-            for (int y = right.Y - 10; y <= right.Y + 10; y++)
-                if (grid.At(x, y).IsActive && grid.At(x, y).Type == Sand &&
-                    !grid.At(x, y - 1).IsActive && grid.At(x, y - 1).LiquidAmount == 0 &&
-                    !grid.At(x + 1, y).IsActive && grid.At(x + 1, y).LiquidAmount > 0)
-                    right = new VanillaShellAnchor1458(x, y);
+                for (int y = right.Y - 10; y <= right.Y + 10; y++)
+                    if (grid.At(x, y).IsActive && grid.At(x, y).Type == Sand &&
+                        !grid.At(x, y - 1).IsActive && grid.At(x, y - 1).LiquidAmount == 0 &&
+                        !grid.At(x + 1, y).IsActive && grid.At(x + 1, y).LiquidAmount > 0)
+                        right = new VanillaShellAnchor1458(x, y);
             right = right with { Y = right.Y - 50, X = right.X + random.Next(5) };
             // The source's next two right-beach draws alter shellStartXLeft, not shellStartXRight.
             if (random.Next(2) == 0) left = left with { X = left.X + random.Next(10) };
@@ -375,7 +357,7 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Applied source-backed ocean shell-pile offers");
     }
 
-    private bool ShellPileAt(RuntimeGrid grid, IRandom random, int x, int y)
+    private bool ShellPileAt(RuntimeGrid grid, IWorldGenerationVanillaRandom random, int x, int y)
     {
         if (!grid.Contains(x, y)) return false;
         int groundY = y;
@@ -462,8 +444,12 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
             $"removed={result.RemovedTiles}, filled={result.FilledTiles})");
     }
 
-    private void ApplyWaterfalls(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyWaterfalls(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(191), false);
+        }
         // TerrariaServer 1.4.5.8 GenPassNameID.Waterfalls scans the entire interior twice.
         // It shapes the lip of a liquid fall; it never paints a descending liquid column.
         long pounded = 0;
@@ -473,8 +459,8 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
                 context.CancellationToken.ThrowIfCancellationRequested();
             for (int y = 20; y < grid.Height - 20; y++)
             {
-                if (!SolidWaterfallTile(grid.At(x, y)) || grid.At(x - 1, y).IsActive ||
-                    !SolidWaterfallTile(grid.At(x, y + 1)) || grid.At(x + 1, y).IsActive ||
+                if (!SolidWaterfallTile(workspace, grid.At(x, y)) || grid.At(x - 1, y).IsActive ||
+                    !SolidWaterfallTile(workspace, grid.At(x, y + 1)) || grid.At(x + 1, y).IsActive ||
                     grid.At(x - 1, y).LiquidAmount == 0 && grid.At(x + 1, y).LiquidAmount == 0)
                     continue;
 
@@ -497,29 +483,30 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
             for (int y = 20; y < grid.Height - 20; y++)
             {
                 WorldTile tile = grid.At(x, y);
-                if (tile.Type is 48 or 232 || !SolidWaterfallTile(tile) ||
-                    !SolidWaterfallTile(grid.At(x, y + 1)))
+                if (tile.Type is 48 or 232 || !SolidWaterfallTile(workspace, tile) ||
+                    !SolidWaterfallTile(workspace, grid.At(x, y + 1)))
                     continue;
-                if (!SolidWaterfallTile(grid.At(x + 1, y)) && grid.At(x - 1, y).IsActive &&
+                if (!SolidWaterfallTile(workspace, grid.At(x + 1, y)) && grid.At(x - 1, y).IsActive &&
                     grid.At(x - 1, y).Shape == 1 && grid.At(x - 2, y).LiquidAmount > 0 &&
                     PoundWaterfallTile(grid, x, y))
                     pounded++;
-                if (!SolidWaterfallTile(grid.At(x - 1, y)) && grid.At(x + 1, y).IsActive &&
+                if (!SolidWaterfallTile(workspace, grid.At(x - 1, y)) && grid.At(x + 1, y).IsActive &&
                     grid.At(x + 1, y).Shape == 1 && grid.At(x + 2, y).LiquidAmount > 0 &&
                     PoundWaterfallTile(grid, x, y))
                     pounded++;
             }
         }
 
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(191), true);
+        }
         context.ReportProgress(1d, $"Shaped waterfall lips ({pounded} pound operations)");
     }
 
-    private static bool SolidWaterfallTile(in WorldTile tile) =>
+    private static bool SolidWaterfallTile(Workspace workspace, in WorldTile tile) =>
         tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
-        // Smooth World has already made type 192 and cracked bricks non-solid;
-        // Waterfalls additionally suspends type 191 solidity for this pass.
-        tile.Type is not (191 or 192 or 481 or 482 or 483 or 484) &&
-        VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        (workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid(tile.TileType) : VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
         !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
 
     private static bool PoundWaterfallTile(RuntimeGrid grid, int x, int y)
@@ -542,7 +529,8 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         // Ordinary generation scans every liquid cell below worldSurface; it
         // does not sample the snow bounds or convert stone/walls at random.
         var framer = new GenerationTileFraming1458(workspace.TileStore,
-            context.VanillaRandom ?? throw new InvalidOperationException("Ice requires shared vanilla RNG."));
+            context.VanillaRandom ?? throw new InvalidOperationException("Ice requires shared vanilla RNG."), workspace,
+            useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
         long placed = 0;
         for (int x = 10; x < grid.Width - 10; x++)
         {
@@ -557,7 +545,12 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         }
         // The source ends this pass by making Lihzahrd brick and fragile ice
         // temporarily non-solid for later generation owners.
-        workspace.SetVanillaPostIceNonSolidTiles();
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(162), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(226), false);
+        }
+
         context.ReportProgress(1d, $"Placed thin ice over snow-biome water ({placed} cells)");
     }
 
@@ -629,231 +622,111 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         // the published one puts most pockets above the line and floods the world with the shallow family.
         double rockLayer = workspace.VanillaTerrainState?.CurrentRockLayer ?? state.RockLayer;
         var pass = new CaveWallVarietyPass1458(
-            workspace.TileStore, random, state.WorldSurface, rockLayer, lavaLine, shimmer,
-            context.CancellationToken);
+            workspace.TileStore, random, workspace.VanillaTerrainState?.CurrentWorldSurface ?? state.WorldSurface, rockLayer, lavaLine, shimmer,
+            context.CancellationToken, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
         pass.Apply();
         context.ReportProgress(1d, $"Adding Wall Variety ({pass.Painted} cells in {pass.Pockets} pockets)");
     }
 
-    private void ApplyLifeCrystals(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyLifeCrystals(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
-        long area = (long)grid.Width * grid.Height;
-        int target = Math.Max(18, (int)(area / 145000));
+        int quota = (int)((double)grid.Width * grid.Height * 0.00002);
+        int top = (int)(state.WorldSurface * 2d + state.RockLayer) / 3;
         int placed = 0;
-        int minY = Math.Clamp((int)state.WorldSurface + 60, 5, state.UnderworldTop - 120);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 70);
-
-        for (int attempt = 0; attempt < target * 220 && placed < target; attempt++)
+        for (int offer = 0; offer < quota; offer++)
         {
-            if ((attempt & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int x = random.Next(20, grid.Width - 22);
-            int y = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, y, Math.Min(grid.Height, y + 35));
-            if (floor < y + 2 || floor >= grid.Height - 1)
-                continue;
-            int top = floor - 2;
-            if (!CanPlaceObject(grid, x, top, 2, 2, requireFloor: true))
-                continue;
-            if (grid.HasFrameImportantNearby(x, top, 18, 12))
-                continue;
-
-            PlaceFramedObject(grid, x, top, 2, 2, LifeCrystal, style: 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing Life Crystals ({placed}/{target})");
-    }
-
-    private void ApplyStatues(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        int target = grid.Width switch
-        {
-            <= 4200 => 18,
-            <= 6400 => 28,
-            _ => 38
-        };
-        int placed = 0;
-        int minY = Math.Clamp((int)state.RockLayer + 20, 5, state.UnderworldTop - 100);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 55);
-
-        for (int attempt = 0; attempt < target * 180 && placed < target; attempt++)
-        {
-            if ((attempt & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int x = random.Next(20, grid.Width - 22);
-            int y = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, y, Math.Min(grid.Height, y + 45));
-            if (floor < y + 3 || floor >= grid.Height - 1)
-                continue;
-            int top = floor - 3;
-            if (!CanPlaceObject(grid, x, top, 2, 3, requireFloor: true))
-                continue;
-            if (grid.HasFrameImportantNearby(x, top, 16, 12))
-                continue;
-
-            int style = random.Next(0, 46);
-            PlaceFramedObject(grid, x, top, 2, 3, Statue, style);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing underground statues ({placed}/{target})");
-    }
-
-    private static bool CanPlaceObject(
-        RuntimeGrid grid,
-        int left,
-        int top,
-        int width,
-        int height,
-        bool requireFloor)
-    {
-        if (left < 1 || top < 1 || left + width >= grid.Width - 1 || top + height >= grid.Height - 1)
-            return false;
-
-        for (int x = left; x < left + width; x++)
-            for (int y = top; y < top + height; y++)
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for (int attempt = 0; attempt < 10000; attempt++)
             {
-                WorldTile tile = grid.At(x, y);
-                if (tile.IsActive || tile.LiquidAmount > 0)
-                    return false;
+                int y = random.Next(top, grid.Height - 300);
+                int x = random.Next(40, grid.Width - 40);
+                if (TryLifeCrystal(workspace, grid, x, y)) { placed++; break; }
             }
+        }
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(225), false);
+        }
+        context.ReportProgress(1d, $"Placing Life Crystals ({placed}/{quota})");
+    }
 
-        if (!requireFloor)
+    private static bool LifeCrystalSolid(Workspace workspace, ushort type) =>
+        workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid(new TileTypeId(type)) : VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type));
+
+    private static bool TryLifeCrystal(Workspace workspace, RuntimeGrid grid, int x, int y)
+    {
+        for (int floor = y; floor < grid.Height; floor++)
+        {
+            WorldTile ground = grid.At(x, floor);
+            if (!ground.IsActive || !LifeCrystalSolid(workspace, ground.Type)) continue;
+            int bottom = floor - 1, top = floor - 2;
+            WorldTile a = grid.At(x, top), b = grid.At(x - 1, top);
+            if (a.LiquidAmount > 0 && (a.LiquidKind == WorldLiquidKind.Lava || a.LiquidKind == WorldLiquidKind.Shimmer) ||
+                b.LiquidAmount > 0 && b.LiquidKind == WorldLiquidKind.Lava) return false;
+            for (int column = x - 1; column <= x; column++)
+                for (int row = top; row <= bottom; row++)
+                    if (grid.At(column, row).IsActive) return false;
+            ushort wall = grid.At(x, bottom).Wall;
+            if (wall is 7 or 8 or 9 or >= 94 and <= 99) return false;
+            WorldTile left = grid.At(x - 1, floor);
+            if (!left.IsActive || left.IsActuated || !LifeCrystalSolid(workspace, left.Type) || ground.IsActuated) return false;
+            grid.At(x - 1, floor).ClearSourceShape();
+            grid.At(x, floor).ClearSourceShape();
+            for (int column = 0; column < 2; column++)
+                for (int row = 0; row < 2; row++)
+                {
+                    ref WorldTile tile = ref grid.At(x - 1 + column, top + row);
+                    tile.Flags |= WorldTileFlags.Active;
+                    tile.Type = LifeCrystal;
+                    tile.FrameX = checked((short)(18 * column));
+                    tile.FrameY = checked((short)(18 * row));
+                }
             return true;
-        int floorY = top + height;
-        for (int x = left; x < left + width; x++)
-        {
-            if (!grid.At(x, floorY).IsActive)
-                return false;
         }
-        return true;
+        return false;
     }
 
-    private static void PlaceFramedObject(
-        RuntimeGrid grid,
-        int left,
-        int top,
-        int width,
-        int height,
-        ushort type,
-        int style)
+    private void ApplyStatues(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
-        int styleStrideX = width * 18;
-        for (int dx = 0; dx < width; dx++)
-            for (int dy = 0; dy < height; dy++)
-            {
-                ref WorldTile tile = ref grid.At(left + dx, top + dy);
-                SetType(ref tile, type);
-                tile.FrameX = checked((short)(style * styleStrideX + dx * 18));
-                tile.FrameY = checked((short)(dy * 18));
-            }
-    }
-
-    private static void CarveEllipse(RuntimeGrid grid, int centerX, int centerY, int radiusX, int radiusY)
-    {
-        radiusX = Math.Max(1, radiusX);
-        radiusY = Math.Max(1, radiusY);
-        for (int dx = -radiusX; dx <= radiusX; dx++)
+        int listIndex = 0, quota = (int)(146d * grid.Width / 4200d), placed = 0;
+        double oceanLine = (state.WorldSurface + state.RockLayer) / 2d + 40d;
+        int top = (int)(state.WorldSurface * 2d + state.RockLayer) / 3;
+        for (int offer = 0; offer < quota; offer++)
         {
-            double nx = dx / (double)radiusX;
-            for (int dy = -radiusY; dy <= radiusY; dy++)
+            if (listIndex == 73) listIndex = 0;
+            (ushort material, int style) = CaveHousePlacement1458.ResolveStatue(listIndex);
+            for (int attempt = 0; attempt < 10000; attempt++)
             {
-                double ny = dy / (double)radiusY;
-                if (nx * nx + ny * ny > 1d)
-                    continue;
-                int x = centerX + dx;
-                int y = centerY + dy;
-                if (!grid.Contains(x, y))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.Type is LifeCrystal or Statue)
-                    continue;
-                ClearTile(ref tile);
+                context.CancellationToken.ThrowIfCancellationRequested();
+                int x = random.Next(20, grid.Width - 20), y = random.Next(top, grid.Height - 300);
+                int oceanBudget = 100;
+                while (y <= oceanLine && (x < 380 || x > grid.Width - 380))
+                {
+                    if (--oceanBudget <= 0) break;
+                    x = random.Next(20, grid.Width - 20); y = random.Next(top, grid.Height - 300);
+                }
+                if (oceanBudget <= 0) break;
+                while (y < grid.Height && !grid.At(x, y).IsActive) y++;
+                if (y == grid.Height) break;
+                y--;
+                WorldTile anchor = grid.At(x, y);
+                bool allowed = (!anchor.IsActive || !VanillaWorldFrameImportance326.IsFrameImportant(anchor.Type) ||
+                    VanillaProjectileTileCutFacts.IsCuttable(anchor.TileType)) &&
+                    !(anchor.LiquidAmount > 0 && anchor.LiquidKind == WorldLiquidKind.Shimmer);
+                if (allowed) CaveHousePlacement1458.PlaceHouseObject(workspace, context.VanillaRandom!, x, y, material, style, forced: true);
+                if (grid.At(x, y) is { IsActive: true } result && result.Type == material)
+                {
+                    if (listIndex is 4 or 7 or 10 or 18)
+                        CaveHousePlacement1458.PlaceStatueTrap(workspace, context.VanillaRandom!, x, y);
+                    placed++; listIndex++; break;
+                }
             }
         }
+        context.ReportProgress(1d, $"Placing Statues ({placed}/{quota})");
     }
-
-    private static void FillLiquidEllipse(
-        RuntimeGrid grid,
-        int centerX,
-        int centerY,
-        int radiusX,
-        int radiusY,
-        WorldLiquidKind liquid)
-    {
-        radiusX = Math.Max(1, radiusX);
-        radiusY = Math.Max(1, radiusY);
-        for (int dx = -radiusX; dx <= radiusX; dx++)
-        {
-            double nx = dx / (double)radiusX;
-            for (int dy = 0; dy <= radiusY; dy++)
-            {
-                double ny = dy / (double)radiusY;
-                if (nx * nx + ny * ny > 1d)
-                    continue;
-                int x = centerX + dx;
-                int y = centerY + dy;
-                if (!grid.Contains(x, y))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive)
-                    continue;
-                tile.LiquidAmount = byte.MaxValue;
-                tile.LiquidKind = liquid;
-            }
-        }
-    }
-
-    private static bool IsSandFamily(ushort type) => type is Sand or HardenedSand or Sandstone;
-
-    private static bool IsNaturalCaveWall(ushort wall) =>
-        wall is DirtUnsafeWall or RockyDirtUnsafeWall or OldStoneUnsafeWall or CaveDirtUnsafeWall or RoughDirtUnsafeWall or
-            CraggyStoneUnsafeWall or WornStoneUnsafeWall or StalactiteStoneUnsafeWall or MottledStoneUnsafeWall or
-            FracturedStoneUnsafeWall;
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Post-settle pass executed before bootstrap initialization.");
-
-    private static void SetType(ref WorldTile tile, ushort type)
-    {
-        tile.Type = type;
-        tile.Flags |= WorldTileFlags.Active;
-        tile.FrameX = -1;
-        tile.FrameY = -1;
-        tile.Shape = 0;
-        tile.LiquidAmount = 0;
-        tile.LiquidKind = WorldLiquidKind.Water;
-    }
-
-    private static void ClearTile(ref WorldTile tile)
-    {
-        tile.Type = 0;
-        tile.Flags &= ~WorldTileFlags.Active;
-        tile.FrameX = -1;
-        tile.FrameY = -1;
-        tile.Shape = 0;
-        tile.LiquidAmount = 0;
-        tile.LiquidKind = WorldLiquidKind.Water;
-    }
-
-    private interface IRandom
-    {
-        int Next();
-        int Next(int max);
-        int Next(int min, int max);
-        double NextDouble();
-    }
-
-    private sealed class VanillaRandom(IWorldGenerationVanillaRandom inner) : IRandom
-    {
-        public int Next() => inner.Next();
-        public int Next(int max) => inner.Next(max);
-        public int Next(int min, int max) => inner.Next(min, max);
-        public double NextDouble() => inner.NextDouble();
-    }
 
     private sealed class RuntimeGrid
     {
@@ -867,33 +740,5 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         public bool Contains(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
         public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
 
-        public int FindFirstActiveY(int x, int minY, int maxExclusive)
-        {
-            int max = Math.Min(Height, maxExclusive);
-            for (int y = Math.Max(0, minY); y < max; y++)
-            {
-                if (At(x, y).IsActive)
-                    return y;
-            }
-            return max;
-        }
-
-        public bool HasFrameImportantNearby(int centerX, int centerY, int radiusX, int radiusY)
-        {
-            int left = Math.Max(0, centerX - radiusX);
-            int right = Math.Min(Width - 1, centerX + radiusX);
-            int top = Math.Max(0, centerY - radiusY);
-            int bottom = Math.Min(Height - 1, centerY + radiusY);
-            for (int x = left; x <= right; x++)
-                for (int y = top; y <= bottom; y++)
-                {
-                    WorldTile tile = At(x, y);
-                    if (!tile.IsActive)
-                        continue;
-                    if (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                        return true;
-                }
-            return false;
-        }
     }
 }

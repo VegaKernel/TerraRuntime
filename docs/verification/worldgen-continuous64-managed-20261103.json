@@ -1,0 +1,444 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "acceptedManaged": true,
+  "goalStatus": "active",
+  "allGenerationComplete": false,
+  "base": "efb132d81d981d65940d27677717925aead683fc",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "nativeAot": {
+    "accepted": false,
+    "status": "Explicitly deferred by user"
+  },
+  "scope": {
+    "continuousNativePasses": "Reset through64 SpiderCaves",
+    "dimensions": [
+      4200,
+      1200
+    ],
+    "difficulty": "Classic",
+    "evil": "Corruption",
+    "seeds": [
+      1458,
+      42
+    ],
+    "originalImports": false,
+    "projection": "21 canonical tile fields; 17bytes/cell x-major; all56 physical RNG slots/cursor+report",
+    "bytesPerWorld": 85680000,
+    "orderedChestCounts": [
+      168,
+      164
+    ],
+    "orderedProtectedRectangleCounts": [
+      99,
+      94
+    ],
+    "chestItemSlots": 40,
+    "liveSolidityEntries": 754,
+    "detachedLiquidMacros": "Actual incoming original checkpoints for native50 and99, both seeds; full grid/RNG/solidity/queues/skip flags/wet/stuck counters"
+  },
+  "continuousGridSha256": [
+    "4D9818ABBDA4FE174F7C04F4EDFFA088B2FBBFCFAF0EE43BEEAA71604DAA94D8",
+    "14A37DF44DBDD08AFC49FB916AB7975EF487222F458E6B75F0ACD7950000D6C3"
+  ],
+  "releaseBuild": {
+    "warnings": 0,
+    "errors": 0
+  },
+  "pythonCiChecks": 300,
+  "domainAudit": true,
+  "documentationCheck": true,
+  "focused": {
+    "total": 9991,
+    "passed": 9991,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 582.3168107000238,
+    "tests": {
+      "total": "65540",
+      "passed": "65540",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "580.081",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1557.9796423999942,
+    "tests": {
+      "total": "1610854",
+      "passed": "1610854",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1542.423",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredFullMethods": 5731,
+  "ordinaryManagedSmokes": [
+    "loop",
+    "protocol",
+    "network",
+    "world",
+    "tui"
+  ],
+  "publishedCoreClr": {
+    "accepted": true,
+    "managedOnly": true,
+    "executableSha256": "b8a82867334612159c18d6b24c17c559e4a6ac1a297f4ddff9b62f60ac6ea22c",
+    "smokes": [
+      "loop",
+      "protocol",
+      "network",
+      "world",
+      "tui"
+    ]
+  },
+  "mergedCausals": [
+    {
+      "mutation": "shrine-halo",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "c719aa27f99f599361450a787b47b742682003ecede38bb6522ed4190c83f0e4",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "vine-dispatch",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "16057acae4c66ab8c53439b6f887a90da9ed2097dcb0b37490590c3d4ad4758f",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 8064,
+        "passed": 250,
+        "failed": 7814,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "static-solidity",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "edb435f6516db933b456ceb0f3317f31b2f8dce9d74e9ac8892e3504268a1d6d",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 4,
+        "passed": 0,
+        "failed": 4,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "later-waterline",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "475860112788fd4056dbfeb4fa0e69920c63d5c6fac93bf768474283935b0e1c",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 14,
+        "passed": 11,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-dispatch",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "258df005f245c78802384190d9259c415795d16fa8486b1ee15346aac5f9a303",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 37,
+        "failed": 7,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-guard",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "c3d70d6388d49f0255d965afd3d1aec790ca11faabf8b6bff5e70cf911c308c5",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 38,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-default-wide",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "a9eb8fa86fe06b7848d68da6a1426ffda30d50081cabef300eb33ef975b25751",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 32,
+        "failed": 12,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-cut-wide",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "b5c3454f967ca7da0e5c9127050bc9487088dcc0bdbf7b94db66c1d039c69e59",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 38,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-prepare-wide",
+      "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+      "mutantSha256": "fd8e36930f9a2c1b3243b92e1176531ce1cd3c799424502697a2f5c1281c33b1",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 38,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    }
+  ],
+  "loadingLiquidKindCausal": {
+    "accepted": true,
+    "tests": {
+      "total": 142,
+      "passed": 141,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "singleMutationSourceVerified": true,
+    "testDllSha256": "66a6ba4b0176b89aea66a2bf39a4c0604c84d18356f57af6b6aa10b73c7e144f",
+    "worldDllSha256": "0b7017b5296635bdefd3482861d5c9c7d71dbdd4a507336d5e3fc76804e089ed"
+  },
+  "causalTotals": {
+    "assertionOrExpectedGuardFailures": 7861,
+    "passingControls": 1035,
+    "runnerErrors": 0
+  },
+  "sourceGuard": {
+    "sourceInputs": 4570,
+    "recursiveRuntimeDlls": 158,
+    "pairedDocumentationInputs": 2,
+    "drift": [],
+    "manifestSha256": "7d550e5814e2814db3675f40f26dabf8f9d16c55eb0d1e0049f871f441257b9e",
+    "afterFullSha256": "92292aeb8f9399b275036c0bc75ac50600429527d99a65ace53a41a412f959cf",
+    "afterPublicationSha256": "92292aeb8f9399b275036c0bc75ac50600429527d99a65ace53a41a412f959cf"
+  },
+  "selectedShippingInputs": {
+    "docs/en/vanilla-world-generation.md": "cebc3dd53acc588a66c9c2e17bb8c0ef571b40aeb9b75dbe1dacec3fe0ee12f4",
+    "docs/ru/vanilla-world-generation.md": "e218b137d5760b6d319f4d982784d03e81aca7c941bbcab02cc9c866de41289c",
+    "src/TerraRuntime.World/VanillaLiquidQuickWaterFacts1458.cs": "17866e49b1e479643f5cd2ea3b53bbdba16458a00b85adc103ef15d52f1d2c77",
+    "src/TerraRuntime.World/VanillaWorldLiquidSimulator1458.cs": "1c994223ac7738ca63e074af10256a3dedc61a9e60da3da44792c559bbdd8eda",
+    "src/TerraRuntime.World/WorldLiquidUpdateQueue.cs": "0b1605d3632be4021e76cc2a339d32fa7560b045565e6496e6de8c717055a41d",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/Bootstrap1458.cs": "911cd2b3e955ac5ce626293f268cdb2b064c93882de65ec399e18f2c6d61ec85",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/BuriedChest1458.cs": "aeebc1662ad1642a6c972a85cbcb90e277e25c3c3248a5ef651d485701bf765a",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.Aging.cs": "f2b745a8508a6b64e20a66b4b46d96118a889b3e7eeb4bd3ec3d3661d8df759e",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.Furniture.cs": "d77d5f4b2c74dbfd32e280bc36e122fc4a5447329fff365613ba776ea7141472",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.cs": "7278cc94683dc525c64d52bea99de564fe71206ac4c324ce7d4c707986f6964a",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveWallVarietyPass1458.cs": "12258410c84c2cfc538d50a353f23102a3b942ecf69d5deb91e634586aea3fb1",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/ChestPlacementPipeline1458.cs": "55f99ea38ed2789efb03b45fb8f61fcf277aa259c2fc73669d32cc6278e701df",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonGraphGenerator1458.cs": "e83a8747226fee9861da378d39e9410ddc9bb686282aaf05f9d3ec2429d06bdc",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonPipeline1458.cs": "1c469d156d946202b0a8484ee01f84619f732595bbb2e6083ad2b1efdd224942",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/EvilAltarPlacement1458.cs": "935de7d4600dba5eaa3898911582147e62a95bedc475bc0cc66d76210fbdb58a",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/FinalPipeline1458.cs": "0ec835d8bc1e7f5a4cc9b1a188348ec87e5e12108f632114a0ad455394505c27",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationDecorationPlacement1458.cs": "6fc1a8d376423453f12089b14fffbbc60a12f4d293edd894be2890a7afe6bfd8",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.LiquidFinalization.cs": "6e630a2ef024ba56b8fb70b62d61c02bf47f35cf02348e16da447d15ff0246a9",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.Solidity.cs": "10e9974446bd3e807186586ae9db0bd3b8159c5a982fa6f8fd0ff9a9d9aea883",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.cs": "7b29fc4758c06773ed2da1b7fab0188baac666338be2ce86fc1270c462476b4b",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/HiveBiome1458.cs": "274b585e219e23fee6aaf537c6eac340a66dd21f7bf3b0fc75b1a4e6a8de89df",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/JungleStructurePipeline1458.cs": "0f8d7a89d255a3c40108a9dbe55abadcecb22a4c5f869306298ef4e23f142c03",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/JungleTempleBuilder1458.cs": "6c3a1b5bd9cf2df3513c33939545bbc9f370060d316dbffc593040aa093fcffe",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/LateStructurePipeline1458.cs": "c9969b78762c6298dd950f0057c2807d48d29e13fef5f8e0eadf592862bca80c",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/LivingTreeGrower1458.cs": "03e1ef25f854b5638da17bb303b623065b72633a2cf10e4292ed6b615bfd94d4",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/LivingTreePassage1458.cs": "f8941eb54ac8c04672ea9352118c3217c2a098ce93c13fd9c182f6dd9f8d2467",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/MidPipeline1458.cs": "555921125474680fadc0f850bdd289330acbef08dd34d9b99c56cd7be4a74249",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/PostSettlePipeline1458.cs": "9110e106912e4d4e62f64cfcaaf3c9ea82e151abe378dbada13b24e70f562c81",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/UnderworldLiquidPreparation1458.cs": "5a5383c5f88c23dfdaee60fdc2d92342e25e4fcfeca2985eb1b768196985903f",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/WorldSmoother1458.cs": "c627d5c80ad4d49acf8eccf3cdea72bea5e9d5b259fad408c24459c763af2ac1",
+    "src/TerraRuntime.WorldGeneration/Workspace.cs": "8140c55947f632604cd6ed763d3ad44b6d5e3081a2d8dd97a151710a947bbf56",
+    "tests/TerraRuntime.Tests/GenerationSettleCaller1458Tests.cs": "61c6a8a8bfc37b95728425d1642c898e917a806c4c21e01753202532cd1a7c7f",
+    "tests/TerraRuntime.Tests/GenerationSpecialFurniture1458Tests.cs": "25cca1a88430f132d8e6a87fc8169584a5c7dc714b1201b197b4c8122c71db6a",
+    "tests/TerraRuntime.Tests/LoadingLiquidObjectDestruction1458Tests.cs": "6b87618a2a53f769cf1889e2a68b20086198fe4ef53db5155a22b16bd949b958",
+    "tests/TerraRuntime.Tests/SourceBackedFinal1458Tests.cs": "2db518c39fa7b235859108dffb12efb8b14bef2f7c2de9c36c665beeff992675",
+    "tests/TerraRuntime.Tests/SourceBackedJungleStructures1458Tests.cs": "c4b7732bda85f37ac01c465bbef357c81ef41b4544dca312cf1e58d1140e3b09",
+    "tests/TerraRuntime.Tests/SourceBackedPostSettle1458Tests.cs": "f3e3fadce46f9b71137c789b0e16e89ea52b60a942f598598b124bd4c0b3e982",
+    "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj": "8a9bd21068a7ed4021148fdbf2f53d0aece0ef5e2a0d1ffa44e148c011e149c9",
+    "src/TerraRuntime.World/WorldGenerationLiquidContext1458.cs": "0266a59cccb02734dcba17b24f68218e19ea0f0950fb9e976aec9cd201022a02",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.BeeHive.cs": "ff1944295f719a63b7c74cc781a4062620c047dd8ffe88d1516ed3b7473d959e",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.LiquidSettling.cs": "825fb0787b4eebce862f8da2295ae74609a93d5900843f36f1815079eb26cb4a",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.Vines.cs": "6793b50819ed443a0943ce95bd580a5b19818e47794932e7b734c3a70788c6ae",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/HoneyPatch1458.cs": "0a4ad4349612517f0cbbf11fc911456545ea7b572dc1943921116cd7a1497f92",
+    "src/TerraRuntime.WorldGeneration/Workspace.GenerationSolidity.cs": "8d84c35e0e586850c4fcbc8b6b7999c7b501e0764626b877da502e0e33450a5c",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationDecorationPhaseHelpers1458.json.gz": "af321927dc92d5c7264c0241cc6f6782c456fb2c2cdf56b3d19d4677c70ee5f3",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationDesertChestBounds1458.json.gz": "dd147c8651e827b550bdfae9ab68bafc1fc73bcf0d2615b7115f5d7c36ab1bf9",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationHouseOfferBoundaries1458.json.gz": "4d73724be162c446ad1296f4f95141a18f281d2e27d9cfaa94e2d6c26a13233a",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationSolidity1458.json.gz": "26ca06e417ab79203021029524b6e424b2594c2907c56b4b97b38932b881e778",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationVines1458.json.gz": "35effcff1bf2ce96a68daf41a2d47e888badba5905e53830315e32e72b2e2dfa",
+    "tests/TerraRuntime.Tests/GenerationDecorationPhaseHelpers1458Tests.cs": "2b472ba121a4ab672a712e3c49e43d6b65adaea8c671776af714f363d45e7a10",
+    "tests/TerraRuntime.Tests/GenerationDesertChestBounds1458Tests.cs": "c818cfc280f7f200635de821031a26e920b3828fccaaa92de43d19f2ae58c921",
+    "tests/TerraRuntime.Tests/GenerationHoneyPatch1458Tests.cs": "756c32d8d072be64ee5aecdc23f5de57bfd4bcc7ddf6b5cd1d10ba43c7ee18f0",
+    "tests/TerraRuntime.Tests/GenerationHouseOfferBoundaries1458Tests.cs": "2a6824aa1b0938c3bdaba85a4bad4341e8b6af7cf1c47a36286ffa820e38f2fb",
+    "tests/TerraRuntime.Tests/GenerationLiquidFixture1458.cs": "8f5791ba54624be1046f86d1e3525b24d0dd2f7994895d11927e709d2cdd603d",
+    "tests/TerraRuntime.Tests/GenerationLivingTreeCaveFilter1458Tests.cs": "b4c340b6e7c5a81e4162315b945d5ea4b6a1558350ee0a6495f76005129480f6",
+    "tests/TerraRuntime.Tests/GenerationNaturalPrefix49Tests.cs": "6e200d6901544bc8838334738d78da140c1edc6a0c2263f80265073dc5997e97",
+    "tests/TerraRuntime.Tests/GenerationNaturalPrefix60Tests.cs": "92abce4a3464aab84a79460a820fd3eb2000159b31391beb1d4c08fdee86cc1b",
+    "tests/TerraRuntime.Tests/GenerationNaturalPrefix64Tests.cs": "8879b5351b099cde2ffdfbf3c0168eab233f6be2860e9f48dd10ae7c22a9a74f",
+    "tests/TerraRuntime.Tests/GenerationSolidity1458Tests.cs": "c094def6c0ed0ea45becd976d9d9520a878c2b7b33c980dfea51f659129d6179",
+    "tests/TerraRuntime.Tests/GenerationVines1458Tests.cs": "c06f260d2ea7e50f6beb08bcb525263191df753b0888866eaf74ed407b61b40f",
+    "tests/TerraRuntime.Tests/GenerationWetBeeHive1458Tests.cs": "341ac767e09094263afba0ef7738949fdeb9c683ea842d1692c7ab64668f8592"
+  },
+  "componentQualificationSha256": {
+    ".cache/worldgen-natural-prefix-20261103/qualification.json": "5e4dafb0890d44b8e121d8edc2feec1511481817eb0e9221aa64f5fd1dc81eb3",
+    ".cache/worldgen-vines-source-20261103/qualification.json": "18a926027a3b5f4561e8463ccca39edf91bf32bd17e36cea1dc4ab297a6d01f0",
+    ".cache/worldgen-later-settle-integration-20261103/qualification.json": "4538a7cf58e33ed1b200ed130b03f9264fa5c5a8b92a14deddd1cffe6cb27a92",
+    ".cache/worldgen-kill-hellstone-20261103/qualification.json": "f4b35b7cfc81e82cd2b720f4a95cc0c45a8aea3acb23a0027b8a18cbe1ed2f2c",
+    ".cache/worldgen-wet-beehive-20261103/qualification.json": "b592e82f5003da3fab1d1ff3acb3eaa98669f4ce21a79d62af475bfb69454edb",
+    ".cache/worldgen-wet-beehive-caller-scope-20261103/qualification.json": "48546675740e59c83351bcf436ce56b39f122b012267faa6919a27d7c1e7af97"
+  },
+  "evidenceFilesSha256": {
+    "build-worldgen.log": "cc45af0c1a924ed7b7ccb6567c91e5342cf675eaecf8f74f142b96e2d3cc3687",
+    "build-tests.log": "f9e34e80c487cc4bfc8ffb434a1a8baa94ed78914b1008028ac3f9ca9ae53e50",
+    "python-ci.log": "d4b1bd01c3f6477b3392612006c0fc8041159d69655c121150e8ccb5898bbec9",
+    "domain-audit.log": "d155a13513cf6c0ccff7455511083f866a90a5ff7837927c6572ffdf09b986c7",
+    "documentation.log": "bb313e2fe9df077598db474ed1abfa9cddca3099ce820f5e100d57536c5b8e20",
+    "focused.xml": "c0c116a36a07a9603131955793b781caeff387f896306bc4bec23f856cb849b8",
+    "fast/result.json": "19086828a77e83d2803fce2713ee387d390b673355b7c6d77d36fcc5aeaa6de7",
+    "full/result.json": "08a4cab0295c133dedf4ba12b71713b477cd27c75208aae302734bf913538529",
+    "macro-result.json": "3a361ba5f33b90849871e005777c6e2d969ada85c919d6a641540fed5f652801",
+    "causals-final-result.json": "46ee84221692bde1ae56846a53c9d1edca668c5137e55280bb48bc8bb963db6f",
+    "causal-loading-kind/result.json": "b6a2842fe139c5190051e18e45f230666d223c6e4ff4e92c944482ff810dbbf0",
+    "coreclr-result.json": "180871d9158e0d62bf4c3f245ef9267428656c43f496a29cf4d84d53414bf431"
+  },
+  "originalAssemblySha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "preservedRejectedHistory": [
+    "V1 fast65496: one stale loading-door expectation; no full/publish.",
+    "V2 full1610810: three failures at two real wet444 inputs; no publish.",
+    "V3 focus10049: one stale dry444 no-op expectation; no full/publish.",
+    "V4 full1610842 and CoreCLR smokes pass, but shared wet444 admission was too broad for Cut/Prepare; rejected for shipping.",
+    "Current V5 narrows wet admission to TryKillLiquidSensitiveObject, adds12 before-mutation Cut/Prepare guards, and reruns all gates."
+  ],
+  "limitations": [
+    "No whole .wld identity or complete-world parity claim.",
+    "No continuous prefix through99; that pass has detached checkpoint evidence.",
+    "Later ordinary passes, complete other dimensions/special-seed pipelines and effects remain open.",
+    "Dry unowned444 destruction refuses before mutation; only qualified wet444 liquid continuation is admitted.",
+    "Fresh remote CI is a separate post-publication gate."
+  ]
+}

@@ -1,0 +1,178 @@
+using System.Buffers.Binary;
+using System.Reflection;
+using System.Security.Cryptography;
+using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.World;
+using TerraRuntime.WorldGeneration.Vanilla;
+
+namespace TerraRuntime.Tests;
+
+public sealed class GenerationWetBeeHive1458Tests
+{
+    // Initial17x17 terrain is retained runtime input from the two independent full64 failures.
+    // Goldens are untouched official whole KillTile444 -> CheckSuper -> ordered halo outputs,
+    // configured at the original coordinates with the rest empty; not natural-prefix equality.
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, 1)]
+    [InlineData(0, 2)]
+    [InlineData(1, 0)]
+    [InlineData(1, 1)]
+    [InlineData(1, 2)]
+    public void Captured_wet_members_match_original_whole_kill(int fixture, int kind)
+    {
+        int width = fixture == 0 ? 8400 : 6400, height = fixture == 0 ? 2400 : 1800;
+        int targetX = fixture == 0 ? 7178 : 5186, targetY = fixture == 0 ? 1871 : 1370;
+        var tiles = new WorldTileStore(new(width, height));
+        byte[] input = Convert.FromBase64String(Inputs[fixture]);
+        for (int n = 0; n < 289; n++)
+        {
+            var b = input.AsSpan(n * 17, 17);
+            var tile = new WorldTile
+            {
+                Type = BinaryPrimitives.ReadUInt16LittleEndian(b[1..]),
+                Wall = BinaryPrimitives.ReadUInt16LittleEndian(b[3..]),
+                FrameX = BinaryPrimitives.ReadInt16LittleEndian(b[5..]),
+                FrameY = BinaryPrimitives.ReadInt16LittleEndian(b[7..]),
+                LiquidAmount = b[9], LiquidKind = (WorldLiquidKind)kind,
+                TileColor = b[13], WallColor = b[14],
+                Flags = (WorldTileFlags)BinaryPrimitives.ReadUInt16LittleEndian(b[15..])
+            };
+            Assert.True(tile.TrySetSourceShape(b[11] != 0, b[12]));
+            // The diagnostic records x-major17x17 cells.
+            tiles.Set(targetX - 8 + n / 17, targetY - 8 + n % 17, in tile);
+        }
+        var random = new NoDrawRandom();
+        var framing = new GenerationTileFraming1458(tiles, random);
+        Assert.True(framing.HasWetBeeHiveFootprint(targetX, targetY));
+        Assert.True(Sink(framing).TryKillLiquidSensitiveObject(targetX, targetY));
+        Assert.Equal(Goldens[fixture * 3 + kind], GridDigest(tiles, width, height));
+        // All56source RNG slots+cursor+next stayed equal in the twelve original comparisons.
+        Assert.Equal(0, random.Draws);
+    }
+
+    public static IEnumerable<object[]> UnsupportedTargets()
+    {
+        foreach (ushort type in new ushort[] { 85, 231, 334, 378, 395, 404, 444, 470, 471, 475, 520, 597, 698 })
+        foreach (byte liquid in new byte[] { 0, 255 })
+            if (type != 444 || liquid == 0) yield return new object[] { type, liquid };
+    }
+
+    [Theory]
+    [MemberData(nameof(UnsupportedTargets))]
+    public void Other_effect_targets_stay_refused(ushort type, byte liquid)
+    {
+        var tiles = new WorldTileStore(new(80, 80));
+        tiles.Set(40, 40, new WorldTile { Type = type, Flags = WorldTileFlags.Active, LiquidAmount = liquid });
+        var random = new NoDrawRandom();
+        Assert.Throws<NotSupportedException>(() => Sink(new GenerationTileFraming1458(tiles, random)).TryKillLiquidSensitiveObject(40, 40));
+        Assert.True(tiles.Get(40, 40).IsActive);
+        Assert.Equal(0, random.Draws);
+    }
+
+    [Fact]
+    public void Dry_broken_hive_refuses_before_mutating_members()
+    {
+        var tiles = new WorldTileStore(new(80, 80));
+        for (int x = 0; x < 2; x++)
+        for (int y = 0; y < 2; y++)
+            tiles.Set(40 + x, 40 + y, new WorldTile { Type = 444, Flags = WorldTileFlags.Active, FrameX = (short)(x * 18), FrameY = (short)(y * 18) });
+        var random = new NoDrawRandom();
+        Assert.Throws<NotSupportedException>(() => new GenerationTileFraming1458(tiles, random).TileFrame(40, 40));
+        Assert.True(tiles.Get(40, 40).IsActive);
+        Assert.True(tiles.Get(41, 41).IsActive);
+        Assert.Equal(0, random.Draws);
+    }
+
+    [Theory]
+    [InlineData(0, true, false)]
+    [InlineData(0, true, true)]
+    [InlineData(0, false, false)]
+    [InlineData(0, false, true)]
+    [InlineData(1, true, false)]
+    [InlineData(1, true, true)]
+    [InlineData(1, false, false)]
+    [InlineData(1, false, true)]
+    [InlineData(2, true, false)]
+    [InlineData(2, true, true)]
+    [InlineData(2, false, false)]
+    [InlineData(2, false, true)]
+    public void Wet_hive_cut_and_merge_prepare_stay_refused_before_mutation(int liquidKind, bool onlyTargetWet, bool prepare)
+    {
+            var tiles = new WorldTileStore(new(80, 80));
+            for (int x = 0; x < 2; x++)
+            for (int y = 0; y < 2; y++)
+                tiles.Set(40 + x, 40 + y, new WorldTile { Type = 444, Flags = WorldTileFlags.Active,
+                    FrameX = (short)(x * 18), FrameY = (short)(y * 18),
+                    LiquidAmount = (byte)(!onlyTargetWet || x == 0 && y == 0 ? 255 : 0),
+                    LiquidKind = (WorldLiquidKind)liquidKind });
+            string before = GridDigest(tiles, 80, 80);
+            var random = new NoDrawRandom();
+            var sink = Sink(new GenerationTileFraming1458(tiles, random));
+            var request = new VanillaLiquidMergeTileRequest1458(40, 40, new(56),
+                WorldLiquidKind.Lava, WorldLiquidKind.Water, tiles.Get(40, 40), false);
+            if (prepare)
+            {
+                Assert.Throws<NotSupportedException>(() => sink.TryPrepareMergeTile(in request));
+                Assert.Throws<InvalidOperationException>(() => sink.CommitPreparedMergeTile(in request));
+            }
+            else Assert.Throws<NotSupportedException>(() => sink.TryCutTile(40, 40));
+            Assert.Equal(before, GridDigest(tiles, 80, 80));
+            Assert.Equal(0, random.Draws);
+    }
+
+    private static IVanillaLiquidTileSideEffectSink1458 Sink(GenerationTileFraming1458 framing) =>
+        (IVanillaLiquidTileSideEffectSink1458)Activator.CreateInstance(
+            typeof(GenerationTileFraming1458).GetNestedType("GenerationLiquidMergeSink", BindingFlags.NonPublic)!,
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { framing }, null)!;
+
+    private static string GridDigest(WorldTileStore tiles, int width, int height)
+    {
+        WorldTileFlags[] masks = [WorldTileFlags.WireRed, WorldTileFlags.WireBlue, WorldTileFlags.WireGreen,
+            WorldTileFlags.WireYellow, WorldTileFlags.Actuator, WorldTileFlags.Inactive, WorldTileFlags.InvisibleBlock,
+            WorldTileFlags.FullbrightBlock, WorldTileFlags.InvisibleWall, WorldTileFlags.FullbrightWall];
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        byte[] chunk = new byte[17 * 4096];
+        int used = 0;
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+        {
+            WorldTile tile = tiles.Get(x, y);
+            var b = chunk.AsSpan(used, 17);
+            b.Clear(); b[0] = (byte)(tile.IsActive ? 1 : 0);
+            BinaryPrimitives.WriteUInt16LittleEndian(b[1..], tile.Type);
+            BinaryPrimitives.WriteUInt16LittleEndian(b[3..], tile.Wall);
+            BinaryPrimitives.WriteInt16LittleEndian(b[5..], tile.FrameX);
+            BinaryPrimitives.WriteInt16LittleEndian(b[7..], tile.FrameY);
+            b[9] = tile.LiquidAmount; b[10] = (byte)tile.LiquidKind; b[11] = (byte)(tile.IsHalfBrick ? 1 : 0);
+            b[12] = tile.SourceSlope; b[13] = tile.TileColor; b[14] = tile.WallColor;
+            ushort flags = 0;
+            for (int i = 0; i < 10; i++) if ((tile.Flags & masks[i]) != 0) flags |= (ushort)(1 << i);
+            BinaryPrimitives.WriteUInt16LittleEndian(b[15..], flags);
+            used += 17;
+            if (used == chunk.Length) { hash.AppendData(chunk); used = 0; }
+        }
+        if (used != 0) hash.AppendData(chunk.AsSpan(0, used));
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    private sealed class NoDrawRandom : IWorldGenerationVanillaRandom
+    {
+        public int Draws { get; private set; }
+        private int Unexpected() { Draws++; throw new InvalidOperationException("This original wet profile spends zero RNG draws."); }
+        public int Next() => Unexpected(); public int Next(int maxValue) => Unexpected();
+        public int Next(int minValue, int maxValue) => Unexpected(); public double NextDouble() => Unexpected();
+        public void NextBytes(byte[] bytes) => Unexpected();
+    }
+
+    private static readonly string[] Goldens = [
+        "F75E2B535247A953E9F2E4FA72592230FBB8E821DD9D6AF032319BD39B5C3F0F",
+        "70BADDB6044E93CBF358516513EFFCD68610FC3E0BE3719EAEF043C70DEB7BC2",
+        "CEE6B88E5019B30CAF5B2FE1909F97436729F7523A23275AB523B7F6A5768422",
+        "59CD6A5FC7AF45CBCB9D773FCE2BA74CB1D5AA2E9427B27B5976101404F1BA2D",
+        "6095EF0A0F04E48A7E415C0FFB06E656F94156A39081992DDF3106BC31BE68A4",
+        "DC48CA93F7221540A158FBC7AEC41829848BC5CE4B0E347E9069C6F14842A577"];
+    private static readonly string[] Inputs = [
+        "ADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAAAADwD//////wEAAAAAAAAAAAAPAP//////AQAAAAAAAAE8AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAAQcADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAAAAA8A//////8BAAAAAAAAAAAADwD//////wEAAAAAAAABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAE8AA8A/////wAAAQAAAAEAATwADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAE8AA8A/////wAAAAEAAAEAATwADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAAAAPAP//////AQAAAAAAAAE8AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAAAAA8A//////8BAAAAAAAAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAABPAAPAP////8AAAACAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAE7AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE8AA8A/////wAAAAMAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAG8AQ8AAAAAAP8BAAAAAAEAAbwBDwAAABIA/wEAAAAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAAAADwD//////wEAAAAAAAABPAAPAP////8AAAACAAABAAE8AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABvAEPABIAAAD/AQAAAAABAAG8AQ8AEgASAP8BAAAAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAE8AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAAT4ADwD//////wEAAAAAAQABPgAPAP//////AQAAAAABAAE+AA8A//////8BAAAAAAEAAT4ADwD//////wEAAAAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAF7AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE+AA8A//////8BAAAAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAATwADwD/////AAAAAgAAAQABPAAPAP////8AAAAAAAABAAE+AA8A//////8BAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABewAPAP////8AAAADAAABAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAT0ADwBaAAAA/wEAAAAAAQABPAAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAF7AA8A/////wAAAAAAAAEAAHsADwD//////wEAAAAAAAAAewAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAE8AA8A/////wAAAAIAAAEAATwADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABewAPAP////8AAAAAAAABAAB7AA8A//////8BAAAAAAAAAHsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAT0ADwAkAAAA/wEAAAAAAQABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE+AA8A//////8BAAAAAAEAAT4ADwD//////wEAAAAAAQABPgAPAP//////AQAAAAABAAE+AA8A//////8BAAAAAAEAAT4ADwD//////wEAAAAAAQABPgAPAP//////AQAAAAABAAE+AA8A//////8BAAAAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAE8AA8A/////wAAAAIAAAEAATwADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAwAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAATwADwD/////AAAAAgAAAQABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABOwAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQA=",
+        "AeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAAAAAAAAAAAAAAAAAAEAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQABPgAPAP////8AAAAAAAABAAAAAAAA//////8BAAAAAAAAAAAAAAD//////wEAAAAAAAAAAAAAAP//////AQAAAAAAAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gAAAAAAAAAAAAAAAAABAAE8AA8A/////wAAAAAAAAEAATsADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAwAAAQAAAAAPAP//////AQAAAAAAAAE8AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAAAAAAAAAAAAAAAAAAQABPAAPAP////8AAAAAAAABAAE7AA8A/////wAAAAAAAAEAATwADwD/////AAAAAAAAAQAAAAAPAP//////AQAAAAAAAAAAAA8A//////8BAAAAAAAAAAAADwD//////wEAAAAAAAAAAAAPAP//////AQAAAAAAAAAAAA8A//////8BAAAAAAAAAAAAAAD//////wEAAAAAAAAAAAAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAAAAAAAAAAAAAAAAAAEAATwADwD/////AAAAAAAAAQABPAAPAP////8AAAAAAAABAAE8AA8A/////wAAAAMAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gAAAAAAAAAAAAAAAAABAAE8AA8A/////wAAAAMAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAAAAAAAAAAAAAAAAAAQAAAAAPAP//////AQAAAAAAAAAAAA8A//////8BAAAAAAAAAAAADwD//////wEAAAAAAAAAAAAPAP//////AQAAAAAAAAAAAA8A//////8BAAAAAAAAAAAADwD//////wEAAAAAAAAAAAAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAAAAAAAAAAAAAAAAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gAAAAAAAAAAAAAAAAABAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAAAAAAAAAAAAAAAAAAQABPAAPAP////8AAAAAAAABAAG8AQ8AAAAAAP8BAAAAAAEAAbwBDwAAABIA/wEAAAAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAAAAAAAAAAAAAAAAAAEAATwADwD/////AAAAAAAAAQABvAEPABIAAAD/AQAAAAABAAG8AQ8AEgASAP8BAAAAAAEAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gAAAAAAAAAAAAAAAAABAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAAAAAAAAAAAAAAAAAAQAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAAAAAAAAAAAAAAAAAAEAAT4ADwD//////wEAAAAAAQABPgAPAP//////AQAAAAABAAE+AAAA//////8BAAAAAAEAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gAAAAAAAAAAAAAAAAABAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAAAAAAAAAAAAAAAAAAQAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAAAAAAAAAAAAAAAAAAEAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gBXAAAAAAAAAAAAAAABAAHiAFcAAAAAAAAAAAAAAAEAAeIAVwAAAAAAAAAAAAAAAQAB4gAAAAAAAAAAAAAAAAABAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAAAP//////AQAAAAAAAAA7AAAA//////8BAAAAAAAAADsAAAD//////wEAAAAAAAAAOwAPAP//////AQAAAAAAAAA7AA8A//////8BAAAAAAAAADsADwD//////wEAAAAAAAA="];
+}

@@ -27,10 +27,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// one-in-three draw.
 /// </para>
 /// <para>
-/// Bounded slice: the room's chest is placed from this runtime's buried-chest loot rather than through
-/// <c>WorldGen.AddBuriedChest</c>, whose site scan and loot cascade are a separate sixteen-hundred-line
-/// primitive that is not ported. The chest's signature item is the source's - a Leaf Wand, or a Living Wood Wand
-/// on a one-in-three draw - but the shared RNG position after a room differs from the source's for that reason.
+/// The room offers its chest to the retained buried-chest owner before the shaft continues. Placement and
+/// loot therefore consume the same stream at the original call site, including a refused chest offer.
 /// </para>
 /// </remarks>
 internal sealed class LivingTreePassage1458(
@@ -38,7 +36,9 @@ internal sealed class LivingTreePassage1458(
     IWorldGenerationVanillaRandom random,
     double worldSurface,
     int underworldTop,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Action<int, int, int>? placeChest = null,
+    Workspace? workspace = null)
 {
     private const ushort LivingWood = 191;
     private const ushort Sandstone = 40;
@@ -54,8 +54,6 @@ internal sealed class LivingTreePassage1458(
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
 
-    /// <summary>Where the secret room wants a chest, if it opened one. The caller owns the loot.</summary>
-    public (int X, int Y, int SignatureItem)? ChestRequest { get; private set; }
 
     /// <summary>Source <c>GrowLivingTree_MakePassage</c>.</summary>
     public void MakePassage(int j, int trunkWidth, ref int minl, ref int minr, bool noSecretRoom)
@@ -142,7 +140,7 @@ internal sealed class LivingTreePassage1458(
                         ref WorldTile cell = ref At(column, row);
                         cell.Type = LivingWood;
                         cell.Flags |= WorldTileFlags.Active;
-                        cell.Shape = 0;
+                        ClearHalfBrick(ref cell);
                     }
 
                     if (TypeAt(column - 1, row) == Sandstone)
@@ -368,7 +366,7 @@ internal sealed class LivingTreePassage1458(
         if (random.Next(3) == 0)
             signature = 4281;
 
-        ChestRequest = (anchor, y, signature);
+        placeChest?.Invoke(anchor, y, signature);
     }
 
     /// <summary>Fills the corridor's block with wood and hollows the three rows the player walks through.</summary>
@@ -387,7 +385,7 @@ internal sealed class LivingTreePassage1458(
                     ref WorldTile cell = ref At(column, row);
                     cell.Flags |= WorldTileFlags.Active;
                     cell.Type = LivingWood;
-                    cell.Shape = 0;
+                    ClearHalfBrick(ref cell);
                 }
 
                 if (row < top || row > y)
@@ -420,7 +418,7 @@ internal sealed class LivingTreePassage1458(
                     ref WorldTile cell = ref At(column, row);
                     cell.Flags |= WorldTileFlags.Active;
                     cell.Type = LivingWood;
-                    cell.Shape = 0;
+                    ClearHalfBrick(ref cell);
                 }
 
                 if (row < top || row > y || column < near || column > far)
@@ -591,7 +589,7 @@ internal sealed class LivingTreePassage1458(
                         ref WorldTile cell = ref At(column, row);
                         cell.Flags |= WorldTileFlags.Active;
                         cell.Type = LivingWood;
-                        cell.Shape = 0;
+                        ClearHalfBrick(ref cell);
                     }
 
                     if (TypeAt(column, row - 1) == Sandstone)
@@ -696,14 +694,15 @@ internal sealed class LivingTreePassage1458(
             cell.Type = 0;
             cell.FrameX = 0;
             cell.FrameY = 0;
-            cell.Shape = 0;
+            cell.ClearSourceShape();
             cell.TileColor = 0;
         }
 
         cell.FrameY = checked((short)(18 * style));
         cell.Flags |= WorldTileFlags.Active;
         cell.Type = Platform;
-        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
+        new GenerationTileFraming1458(store, random, workspace,
+            useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true).SquareTileFrame(x, y);
     }
 
     /// <summary>Source <c>PlaceTile</c> plus <c>PlaceDoor</c>, whose three frame draws happen only on success.</summary>
@@ -837,7 +836,7 @@ internal sealed class LivingTreePassage1458(
 
     private bool IsActive(int x, int y) => Contains(x, y) && At(x, y).IsActive;
 
-    private ushort TypeAt(int x, int y) => Contains(x, y) && At(x, y).IsActive ? At(x, y).Type : (ushort)0;
+    private ushort TypeAt(int x, int y) => Contains(x, y) ? At(x, y).Type : (ushort)0;
 
     private ushort WallAt(int x, int y) => Contains(x, y) ? At(x, y).Wall : (ushort)0;
 
@@ -846,5 +845,12 @@ internal sealed class LivingTreePassage1458(
 
     private bool Contains(int x, int y) => (uint)x < (uint)width && (uint)y < (uint)height;
 
-    private ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
+    private ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)]; private static void ClearHalfBrick(ref WorldTile cell)
+    {
+        // Source halfBrick(false) leaves slope bits intact, including painted living wood.
+        if (cell.Shape == 1) cell.Shape = 0;
+        cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
+    }
+
+
 }

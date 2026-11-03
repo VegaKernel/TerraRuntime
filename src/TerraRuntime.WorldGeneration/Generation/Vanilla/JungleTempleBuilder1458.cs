@@ -204,7 +204,7 @@ internal sealed class JungleTempleBuilder1458(
             for (int column = box.Left; column <= box.Right; column++)
             {
                 for (int row = box.Top; row <= box.Bottom; row++)
-                    WriteBrick(column, row);
+                    WriteBrick(column, row, clearEverything: true);
             }
         }
 
@@ -312,7 +312,7 @@ internal sealed class JungleTempleBuilder1458(
             if (!InWorld(cellX, cellY, 5))
                 break;
 
-            WriteBrick(cellX, cellY);
+            WriteBrick(cellX, cellY, clearEverything: true);
             BrickLineFillY(fillUpwards, lastX, cellX, cellY);
             BrickLineFillX(fillLeft, lastY, cellX, cellY);
             lastX = cellX;
@@ -349,7 +349,7 @@ internal sealed class JungleTempleBuilder1458(
         row = currentY + step;
         while (!IsBrick(currentX, row))
         {
-            WriteBrick(currentX, row);
+            WriteBrick(currentX, row, clearEverything: true);
             row += step;
             if (!InWorld(currentX, row, 5))
                 break;
@@ -379,7 +379,7 @@ internal sealed class JungleTempleBuilder1458(
         column = currentX + step;
         while (!IsBrick(column, currentY))
         {
-            WriteBrick(column, currentY);
+            WriteBrick(column, currentY, clearEverything: true);
             column += step;
             if (!InWorld(column, currentY, 5))
                 break;
@@ -932,6 +932,8 @@ internal sealed class JungleTempleBuilder1458(
             int x = lastRoom.X + halfWidth + 15 - random.Next(30);
             int y = lastRoom.Y + halfHeight + 15 - random.Next(30);
 
+            if (!At(x, y).IsActive)
+                HellFortGenerator1458.ClearPlacementAnchor(ref At(x, y));
             if (TryPlaceAltar3x2(x, y))
             {
                 AltarX = x - At(x, y).FrameX / 18;
@@ -1164,12 +1166,13 @@ internal sealed class JungleTempleBuilder1458(
         return placed;
     }
 
-    private void WriteBrick(int x, int y)
+    private void WriteBrick(int x, int y, bool clearEverything = false)
     {
         if (!Contains(x, y))
             return;
 
         ref WorldTile cell = ref At(x, y);
+        if (clearEverything) cell = default;
         cell.Flags |= WorldTileFlags.Active;
         cell.Type = LihzahrdBrick;
     }

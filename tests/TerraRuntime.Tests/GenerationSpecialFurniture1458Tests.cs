@@ -64,14 +64,14 @@ public sealed class GenerationSpecialFurniture1458Tests
     }
 
     [Fact]
-    public void Beehive_projectile_frontier_is_not_included_in_special_furniture_dispatch()
+    public void Dry_beehive_destruction_requires_its_projectile_owner_before_mutation()
     {
         var workspace = new Workspace(40, 40);
         var tile = new WorldTile { Type = 444, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(20, 20, in tile);
-        new GenerationTileFraming1458(workspace.TileStore, new RandomAdapter(1)).TileFrame(20, 20);
-        // This scope has no projectile655 owner. Retain the previous unsupported path,
-        // rather than destroying the tile while silently losing its source projectile.
+        Assert.Throws<NotSupportedException>(() =>
+            new GenerationTileFraming1458(workspace.TileStore, new RandomAdapter(1)).TileFrame(20, 20));
+        // Dry destruction needs projectile655; the unowned call refuses before changing the tile.
         Assert.Equal(tile, workspace.TileStore.Get(20, 20));
     }
 

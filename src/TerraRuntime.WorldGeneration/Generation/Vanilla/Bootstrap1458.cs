@@ -37,6 +37,8 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
 
         IWorldGenerationVanillaRandom random = context.VanillaRandom ??
             throw new InvalidOperationException("The source-backed Terraria bootstrap requires shared UnifiedRandom semantics.");
+        if (context.Workspace is Workspace workspace)
+            workspace.InitializeVanillaGenerationSolidity();
         state.Bootstrap = Run(
             random,
             context.Workspace.WidthTiles,

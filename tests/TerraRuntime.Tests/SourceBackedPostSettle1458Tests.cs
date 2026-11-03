@@ -17,6 +17,7 @@ public sealed class SourceBackedPostSettle1458Tests
         // seed1458: five snow/ice floors, shallow water, Honey/Shimmer,
         // ordinary-stone refusal and lava refusal.
         var workspace = new Workspace(width, height);
+        workspace.InitializeVanillaGenerationSolidity();
         Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         int firstX = height == 1200 ? 1000 : 100;
@@ -63,10 +64,11 @@ public sealed class SourceBackedPostSettle1458Tests
 
         int thinIce = 0;
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: 162 }) thinIce++;
+            for (int y = 0; y < height; y++)
+                if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: 162 }) thinIce++;
         Assert.Equal(71, thinIce);
-        Assert.True(workspace.VanillaPostIceNonSolidTiles);
+        Assert.False(workspace.IsVanillaGenerationSolid(new TileTypeId(162)));
+        Assert.False(workspace.IsVanillaGenerationSolid(new TileTypeId(226)));
         Assert.Equal(digest, HashFixture(workspace));
         Assert.Equal(906992634, random.Next());
     }
@@ -98,8 +100,8 @@ public sealed class SourceBackedPostSettle1458Tests
         void SandBand(int firstX, int lastX)
         {
             for (int x = firstX; x <= lastX; x++)
-            for (int y = floorY; y < floorY + 50; y++)
-                workspace.TileStore.Set(x, y, in sand);
+                for (int y = floorY; y < floorY + 50; y++)
+                    workspace.TileStore.Set(x, y, in sand);
         }
         SandBand(leftX, leftX + bandWidth - 1);
         SandBand(rightX - bandWidth + 1, rightX);
@@ -119,8 +121,8 @@ public sealed class SourceBackedPostSettle1458Tests
         Assert.Equal(new VanillaShellAnchor1458(rightXAfter, rightYAfter), workspace.VanillaRightShellAnchor);
         int shells = 0;
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: 495 }) shells++;
+            for (int y = 0; y < height; y++)
+                if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: 495 }) shells++;
         Assert.Equal(expectedShells, shells);
         Assert.Equal(digest, HashFixture(workspace));
         Assert.Equal(nextRandom, random.Next());
@@ -141,6 +143,7 @@ public sealed class SourceBackedPostSettle1458Tests
         // exercises both scans, snow-type rarity, halfbrick veto, protected supports,
         // type-191 temporary non-solidity and a twice-pounded lip.
         var workspace = new Workspace(width, height);
+        workspace.InitializeVanillaGenerationSolidity();
         Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         void Put(int x, int y, ushort type = 0, bool active = false, byte liquid = 0,
@@ -148,8 +151,11 @@ public sealed class SourceBackedPostSettle1458Tests
         {
             var tile = new WorldTile
             {
-                Type = type, Flags = active ? WorldTileFlags.Active : WorldTileFlags.None,
-                LiquidAmount = liquid, Wall = wall, Shape = half ? (byte)1 : (byte)0
+                Type = type,
+                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None,
+                LiquidAmount = liquid,
+                Wall = wall,
+                Shape = half ? (byte)1 : (byte)0
             };
             workspace.TileStore.Set(x, y, in tile);
         }
@@ -296,13 +302,13 @@ public sealed class SourceBackedPostSettle1458Tests
     {
         var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
-                .Append(tile.Shape).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
+                    .Append(tile.Shape).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 

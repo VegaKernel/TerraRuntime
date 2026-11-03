@@ -219,7 +219,22 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         // the source queue ordering that controls downstream liquid state.
         var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace,
             useWorldGenerationSolidity: true);
-        VanillaWaterCheckDiagnostic1458 waterCheck = framing.SettleLiquidsDuringGeneration(context.CancellationToken);
+        if (!workspace.TryGetLayers(out WorldGenerationLayers layers) ||
+            workspace.VanillaLiquidLines is not VanillaLiquidLines1458 liquidLines ||
+            workspace.VanillaBootstrapState is not VanillaWorldGenerationBootstrapState1458 bootstrap ||
+            !workspace.HasVanillaGenerationSolidity)
+            throw new InvalidOperationException("Source Settle Liquids Again requires retained generation state.");
+        DungeonBounds1458 bounds = DungeonGraphGenerator1458.ResolvePotentialBounds(
+            workspace.TileStore.Dimensions, layers.WorldSurface, bootstrap.DungeonSide);
+        bool DungeonWater(int x, int y, ushort wall) => workspace.VanillaDungeonGraph is not null &&
+            x >= bounds.Left && x < bounds.Right && y >= bounds.Top && y < bounds.Bottom &&
+            DungeonGenerationTiles1458.IsDungeonWall(wall);
+        var shimmer = workspace.VanillaShimmerPosition.GetValueOrDefault();
+        VanillaWaterCheckDiagnostic1458 waterCheck = framing.SettleLiquidsWithContext(liquidLines.WaterLine,
+            workspace.IsVanillaGenerationSolid, workspace.SetVanillaGenerationSolid, DungeonWater,
+            () => UnderworldLiquidPreparation1458.RemoveWaterAroundShimmer(workspace.TileStore, shimmer.X, shimmer.Y),
+            () => UnderworldLiquidPreparation1458.CleanupInteractions(workspace.TileStore, context.CancellationToken),
+            context.CancellationToken);
         if (!waterCheck.IsApplied)
         {
             throw new InvalidOperationException(
@@ -561,15 +576,15 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         int styleY)
     {
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
-            piece.Flags |= WorldTileFlags.Active;
-            piece.Shape = 0;
-            piece.Type = type;
-            piece.FrameX = checked((short)(dx * 18 + 36 * styleX));
-            piece.FrameY = checked((short)(dy * 18 + 36 * styleY));
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
+                piece.Flags |= WorldTileFlags.Active;
+                piece.Shape = 0;
+                piece.Type = type;
+                piece.FrameX = checked((short)(dx * 18 + 36 * styleX));
+                piece.FrameY = checked((short)(dy * 18 + 36 * styleY));
+            }
     }
 
     private static void EnsureTwoWideTerrainSupport(RuntimeGrid grid, int originX, int supportY)
@@ -590,15 +605,15 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
     private static void RepairThreeByTwoObject(RuntimeGrid grid, int originX, int originY, ushort type, int style)
     {
         for (int dx = 0; dx < 3; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
-            piece.Flags |= WorldTileFlags.Active;
-            piece.Shape = 0;
-            piece.Type = type;
-            piece.FrameX = checked((short)(dx * 18 + 54 * style));
-            piece.FrameY = checked((short)(dy * 18));
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
+                piece.Flags |= WorldTileFlags.Active;
+                piece.Shape = 0;
+                piece.Type = type;
+                piece.FrameX = checked((short)(dx * 18 + 54 * style));
+                piece.FrameY = checked((short)(dy * 18));
+            }
     }
 
     private static void EnsureThreeWideHeartSupport(RuntimeGrid grid, int originX, int supportY)
@@ -801,9 +816,9 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
 
         int neighbours = 0;
         for (int i = x - 5; i <= x + 5; i++)
-        for (int j = y - 5; j <= y + 5; j++)
-            if (grid.At(i, j).IsActive && grid.At(i, j).Type == LilyPad)
-                neighbours++;
+            for (int j = y - 5; j <= y + 5; j++)
+                if (grid.At(i, j).IsActive && grid.At(i, j).Type == LilyPad)
+                    neighbours++;
         if (neighbours > 3)
             return false;
 
@@ -909,9 +924,9 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
     {
         int count = 0;
         for (int i = Math.Max(0, x - range); i <= Math.Min(grid.Width - 1, x + range); i++)
-        for (int j = Math.Max(0, y - range * 3); j <= Math.Min(grid.Height - 1, y + range * 3); j++)
-            if (grid.At(i, j).IsActive && grid.At(i, j).Type == type)
-                count++;
+            for (int j = Math.Max(0, y - range * 3); j <= Math.Min(grid.Height - 1, y + range * 3); j++)
+                if (grid.At(i, j).IsActive && grid.At(i, j).Type == type)
+                    count++;
         return count;
     }
 
@@ -929,11 +944,11 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             return;
         int neighbours = 0;
         for (int i = Math.Max(0, x - 4); i <= Math.Min(grid.Width - 1, x + 4); i++)
-        for (int j = y; j <= Math.Min(grid.Height - 1, y + 12); j++)
-        {
-            if (grid.At(i, j).IsActive && grid.At(i, j).Type == 549 && ++neighbours > 30)
-                return;
-        }
+            for (int j = y; j <= Math.Min(grid.Height - 1, y + 12); j++)
+            {
+                if (grid.At(i, j).IsActive && grid.At(i, j).Type == 549 && ++neighbours > 30)
+                    return;
+            }
         int floor = y;
         while (floor < grid.Height - 50 && !IsOrdinarySolid(grid.At(x, floor)))
             floor++;
@@ -1289,7 +1304,12 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
 
     private static ushort LooseMaterialFallback(ushort type) => type switch
     {
-        53 => 397, 112 => 398, 234 => 399, 224 => 147, 123 => 1, _ => type
+        53 => 397,
+        112 => 398,
+        234 => 399,
+        224 => 147,
+        123 => 1,
+        _ => type
     };
 
     private static void StabilizeLooseSurfaceMaterial(RuntimeGrid grid, int x, int y, GenerationTileFraming1458 framing)
@@ -1353,15 +1373,15 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             return;
         ushort replacement = type == 484 ? (ushort)397 : (ushort)0;
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
-            piece.Flags |= WorldTileFlags.Active;
-            piece.Shape = 0;
-            piece.Type = replacement;
-            piece.FrameX = 0;
-            piece.FrameY = 0;
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
+                piece.Flags |= WorldTileFlags.Active;
+                piece.Shape = 0;
+                piece.Type = replacement;
+                piece.FrameX = 0;
+                piece.FrameY = 0;
+            }
     }
 
     // TileID.Sets.Clouds, including the six 1.4.5.8 identities (not MergesWithClouds).
@@ -1422,11 +1442,11 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
     private static void PlaceFramedObject(RuntimeGrid grid, int left, int top, int width, int height, ushort type)
     {
         for (int dx = 0; dx < width; dx++)
-        for (int dy = 0; dy < height; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            SetObjectTile(ref tile, type, checked((short)(dx * 18)), checked((short)(dy * 18)));
-        }
+            for (int dy = 0; dy < height; dy++)
+            {
+                ref WorldTile tile = ref grid.At(left + dx, top + dy);
+                SetObjectTile(ref tile, type, checked((short)(dx * 18)), checked((short)(dy * 18)));
+            }
     }
 
     private static void ClearTile(ref WorldTile tile, bool preserveLiquid)
@@ -1481,23 +1501,23 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             if (left < 1 || top < 1 || left + width >= Width - 1 || top + height >= Height - 1)
                 return false;
             for (int x = left; x < left + width; x++)
-            for (int y = top; y < top + height; y++)
-            {
-                if (At(x, y).IsActive)
-                    return false;
-            }
+                for (int y = top; y < top + height; y++)
+                {
+                    if (At(x, y).IsActive)
+                        return false;
+                }
             return true;
         }
 
         public bool ContainsTileType(ushort type)
         {
             for (int x = 0; x < Width; x++)
-            for (int y = 0; y < Height; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (tile.IsActive && tile.Type == type)
-                    return true;
-            }
+                for (int y = 0; y < Height; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (tile.IsActive && tile.Type == type)
+                        return true;
+                }
             return false;
         }
 
@@ -1508,16 +1528,16 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             int top = Height;
             int bottom = -1;
             for (int x = 0; x < Width; x++)
-            for (int y = 0; y < Height; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (!tile.IsActive || tile.Type != type)
-                    continue;
-                left = Math.Min(left, x);
-                right = Math.Max(right, x);
-                top = Math.Min(top, y);
-                bottom = Math.Max(bottom, y);
-            }
+                for (int y = 0; y < Height; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (!tile.IsActive || tile.Type != type)
+                        continue;
+                    left = Math.Min(left, x);
+                    right = Math.Max(right, x);
+                    top = Math.Min(top, y);
+                    bottom = Math.Max(bottom, y);
+                }
 
             if (right < left || bottom < top)
             {
@@ -1548,11 +1568,11 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             int top = Math.Max(0, cy - radius);
             int bottom = Math.Min(Height - 1, cy + radius);
             for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottom; y++)
-            {
-                if (At(x, y).HasAnyWire)
-                    return true;
-            }
+                for (int y = top; y <= bottom; y++)
+                {
+                    if (At(x, y).HasAnyWire)
+                        return true;
+                }
             return false;
         }
     }

@@ -203,6 +203,12 @@ internal static class DungeonGraphGenerator1458
     {
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(sharedRandom);
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(481), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(482), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(483), false);
+        }
         DungeonSetupProfile1458 setup = workspace.VanillaDungeonSetupProfile ??
             throw new InvalidOperationException("Dungeon generation requires the Dunes-owned dungeon setup profile.");
 

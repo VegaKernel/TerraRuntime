@@ -48,9 +48,12 @@ internal static partial class CaveHousePlacement1458
 
         ushort aged = type switch
         {
-            CaveHouseType1458.Ice => 161, CaveHouseType1458.Desert => 396,
-            CaveHouseType1458.Jungle => 60, CaveHouseType1458.Mushroom => 70,
-            CaveHouseType1458.Granite => 368, CaveHouseType1458.Marble => 367,
+            CaveHouseType1458.Ice => 161,
+            CaveHouseType1458.Desert => 396,
+            CaveHouseType1458.Jungle => 60,
+            CaveHouseType1458.Mushroom => 70,
+            CaveHouseType1458.Granite => 368,
+            CaveHouseType1458.Marble => 367,
             _ => throw new ArgumentOutOfRangeException(nameof(type))
         };
         double failure = type == CaveHouseType1458.Desert ? 0.8 : type == CaveHouseType1458.Mushroom ? 0.7 : 0.6;
@@ -112,8 +115,14 @@ internal static partial class CaveHousePlacement1458
             else
             {
                 if (type == CaveHouseType1458.Desert && aging.At(x, y).Wall != palette.WallType) return;
-                ushort wall = type switch { CaveHouseType1458.Desert => 216, CaveHouseType1458.Jungle => 64,
-                    CaveHouseType1458.Granite => 180, CaveHouseType1458.Marble => 178, _ => 0 };
+                ushort wall = type switch
+                {
+                    CaveHouseType1458.Desert => 216,
+                    CaveHouseType1458.Jungle => 64,
+                    CaveHouseType1458.Granite => 180,
+                    CaveHouseType1458.Marble => 178,
+                    _ => 0
+                };
                 aging.Walls.PlaceWall(x, y, wall);
             }
         });
@@ -122,7 +131,7 @@ internal static partial class CaveHousePlacement1458
     /// <summary>Transient traversal over the existing candidate; all mutations go to its retained store.</summary>
     private sealed class AgingRoom(Workspace workspace, IWorldGenerationVanillaRandom random)
     {
-        private readonly GenerationTileFraming1458 tiles = new(workspace.TileStore, random, workspace);
+        private readonly GenerationTileFraming1458 tiles = new(workspace.TileStore, random, workspace, useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
         public GenerationWallFraming1458 Walls { get; } = new(workspace.TileStore, random);
         public SpeleothemPass1458 Speleothems { get; } = new(workspace.TileStore, random, 0, 0, 0, CancellationToken.None);
         public ref WorldTile At(int x, int y) => ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(x, y)];
@@ -130,7 +139,7 @@ internal static partial class CaveHousePlacement1458
         public void Scan(CaveHouseRoom1458 area, Action<int, int> action)
         {
             for (int x = area.Left; x < area.Right; x++)
-            for (int y = area.Top; y < area.Bottom; y++) action(x, y);
+                for (int y = area.Top; y < area.Bottom; y++) action(x, y);
         }
 
         public void Scatter(CaveHouseRoom1458 area, double failure, double chance, Action<int, int> action)
@@ -143,7 +152,7 @@ internal static partial class CaveHousePlacement1458
                 int left = random.Next(-1, 1), right = random.Next(0, 2);
                 int top = random.Next(-1, 1), bottom = random.Next(0, 2);
                 for (int dx = left; dx <= right; dx++)
-                for (int dy = top; dy <= bottom; dy++) action(x + dx, y + dy);
+                    for (int dy = top; dy <= bottom; dy++) action(x + dx, y + dy);
             });
         }
 

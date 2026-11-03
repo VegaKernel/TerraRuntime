@@ -4,6 +4,16 @@
 
 `terraruntime:vanilla` is TerraRuntime's runtime-owned clean-room TerrariaServer 1.4.5.8 generator. The public generator ID is stable while the runtime owns the exact generation plan behind it.
 
+## Continuous ordinary prefix through spider caves
+
+The source-backed ordinary executor is independently qualified from Reset through native pass `64` (Spider Caves) for Classic Corruption, seeds `1458` and `42`, at $4200\times1200\,\text{tiles}$. These runs import no original tiles, random state or metadata. They compare every cell's canonical 21 fields, all 56 physical RNG slots and the report draw, ordered chest contents and protected rectangles, and all 754 generation solidity entries. The two worlds retain 168/164 chests and 99/94 protected rectangles respectively. This projection does not establish whole `.wld` byte identity.
+
+Mutable generation solidity belongs to the candidate workspace. Framing reads that live owner, while the immutable gameplay collision catalog remains separate. Both liquid-settle passes borrow the retained water line, dungeon bounds, shimmer boundary, solidity callbacks and existing liquid queues. Only the first pass performs the ocean prelude. Loading WaterCheck now preserves the liquid kind when clearing its amount; the retained live/loading and FIFO compatibility checks remain exercised.
+
+Wet bee hive `444` destruction follows the original footprint and ordered halo framing without creating a projectile. Unsupported dry destruction still requires its projectile owner and refuses before mutation. Generation KillTile also retains the verified Hellstone `58` lava rule strictly below the underworld boundary.
+
+Native pass `99` is independently checked from actual original incoming checkpoints for the same two seeds, including vine framing, liquid skip flags, wet/stuck counters and queue state. That evidence does not establish a continuous prefix through `99`. Later passes, other world sizes, complete special-seed pipelines and entity-effect integration remain open. The [managed acceptance record](../verification/worldgen-continuous64-managed-20261103.json) records the final combined qualification; NativeAOT remains deferred by explicit user request.
+
 ## Ordinary canonical pipeline
 
 For the three canonical Terraria dimensions (`4200x1200`, `6400x1800`, `8400x2400`) with an ordinary seed profile, the production provider now composes the source-backed/source-shaped overlays through the end of the pinned 109-pass registration catalog.

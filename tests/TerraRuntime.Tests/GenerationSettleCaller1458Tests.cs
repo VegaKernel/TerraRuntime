@@ -25,6 +25,7 @@ public sealed class GenerationSettleCaller1458Tests
         var workspace = new Workspace(600, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        GenerationLiquidFixture1458.Configure(workspace, laterPass);
         void Place(int x, int y, ushort type)
         {
             var tile = new WorldTile { Type = type, Flags = WorldTileFlags.Active };
@@ -58,16 +59,16 @@ public sealed class GenerationSettleCaller1458Tests
             WorldTileFlags.InvisibleBlock, WorldTileFlags.FullbrightBlock,
             WorldTileFlags.InvisibleWall, WorldTileFlags.FullbrightWall];
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            text.Append(tile.IsActive ? 1 : 0).Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
-                .Append((byte)tile.LiquidKind).Append(',').Append(tile.IsHalfBrick ? 1 : 0).Append(',')
-                .Append(tile.SourceSlope).Append(',').Append(tile.TileColor).Append(',').Append(tile.WallColor);
-            foreach (WorldTileFlags flag in flags) text.Append(',').Append((tile.Flags & flag) != 0 ? 1 : 0);
-            text.Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                text.Append(tile.IsActive ? 1 : 0).Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
+                    .Append((byte)tile.LiquidKind).Append(',').Append(tile.IsHalfBrick ? 1 : 0).Append(',')
+                    .Append(tile.SourceSlope).Append(',').Append(tile.TileColor).Append(',').Append(tile.WallColor);
+                foreach (WorldTileFlags flag in flags) text.Append(',').Append((tile.Flags & flag) != 0 ? 1 : 0);
+                text.Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 

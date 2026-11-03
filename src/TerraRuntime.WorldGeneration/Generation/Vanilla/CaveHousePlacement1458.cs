@@ -63,7 +63,7 @@ internal static partial class CaveHousePlacement1458
         ArgumentNullException.ThrowIfNull(random);
         result = default;
 
-        var grid = new Grid(workspace.TileStore);
+        var grid = new Grid(workspace.TileStore, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
         if (!grid.InWorld(originX, originY, 1, 1, 30) || HasWireOrChestNearby(grid, originX, originY, 25) ||
             !TryCreateRooms(grid, random, originX, originY, out CaveHouseRoom1458[] rooms))
         {
@@ -82,13 +82,13 @@ internal static partial class CaveHousePlacement1458
     internal static CaveHousePlacementResult1458 PlaceRooms(Workspace workspace, ChestPlacementState1458 state,
         IWorldGenerationVanillaRandom random, CaveHouseRoom1458[] rooms, CaveHouseType1458 type)
     {
-        var grid = new Grid(workspace.TileStore);
+        var grid = new Grid(workspace.TileStore, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
         Array.Sort(rooms, static (left, right) => left.Top.CompareTo(right.Top));
         if (type is CaveHouseType1458.Wood or CaveHouseType1458.Ice or CaveHouseType1458.Desert or CaveHouseType1458.Jungle)
             random.NextDouble(); // Ordinary PotentiallyConvertToSeedHouse draws before testing its empty choices.
         CaveHousePalette1458 palette = ResolvePalette(type);
         var construction = new AgingRoom(workspace, random);
-        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
         PlaceEmptyRooms(grid, construction, framing, rooms, in palette);
         foreach (CaveHouseRoom1458 room in rooms)
             state.ProtectedHouseRooms.Add(room.Inflate(8));
@@ -206,25 +206,25 @@ internal static partial class CaveHousePlacement1458
             }
 
             for (int x = padded.Left; x < padded.Right; x++)
-            for (int y = padded.Top; y < padded.Bottom; y++)
-            {
-                if (!grid.InWorld(x, y))
-                    return false;
-                WorldTile tile = grid.At(x, y);
-                if (tile.IsActive && Array.IndexOf(InvalidStructureTiles, tile.Type) >= 0)
-                    return false;
-            }
+                for (int y = padded.Top; y < padded.Bottom; y++)
+                {
+                    if (!grid.InWorld(x, y))
+                        return false;
+                    WorldTile tile = grid.At(x, y);
+                    if (tile.IsActive && Array.IndexOf(InvalidStructureTiles, tile.Type) >= 0)
+                        return false;
+                }
 
             if (type == CaveHouseType1458.Granite)
                 continue;
             CaveHouseRoom1458 lavaSearch = room.Inflate(2);
             for (int x = lavaSearch.Left; x < lavaSearch.Right; x++)
-            for (int y = lavaSearch.Top; y < lavaSearch.Bottom; y++)
-            {
-                WorldTile tile = grid.At(x, y);
-                if (tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Lava)
-                    return false;
-            }
+                for (int y = lavaSearch.Top; y < lavaSearch.Bottom; y++)
+                {
+                    WorldTile tile = grid.At(x, y);
+                    if (tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Lava)
+                        return false;
+                }
         }
         return true;
     }
@@ -242,44 +242,44 @@ internal static partial class CaveHousePlacement1458
         {
             CaveHouseRoom1458 scan = room.Inflate(10);
             for (int x = scan.Left; x < scan.Right; x++)
-            for (int y = scan.Top; y < scan.Bottom; y++)
-            {
-                WorldTile tile = grid.At(x, y);
-                if (!tile.IsActive)
-                    continue;
-                switch (tile.Type)
+                for (int y = scan.Top; y < scan.Bottom; y++)
                 {
-                    case 0:
-                    case 1:
-                        wood++;
-                        break;
-                    case 59:
-                        jungle++;
-                        mushroom++;
-                        break;
-                    case 60:
-                        jungle += 10;
-                        break;
-                    case 70:
-                        mushroom += 10;
-                        break;
-                    case 147:
-                    case 161:
-                        ice++;
-                        break;
-                    case 53:
-                    case 396:
-                    case 397:
-                        desert++;
-                        break;
-                    case 368:
-                        granite++;
-                        break;
-                    case 367:
-                        marble++;
-                        break;
+                    WorldTile tile = grid.At(x, y);
+                    if (!tile.IsActive)
+                        continue;
+                    switch (tile.Type)
+                    {
+                        case 0:
+                        case 1:
+                            wood++;
+                            break;
+                        case 59:
+                            jungle++;
+                            mushroom++;
+                            break;
+                        case 60:
+                            jungle += 10;
+                            break;
+                        case 70:
+                            mushroom += 10;
+                            break;
+                        case 147:
+                        case 161:
+                            ice++;
+                            break;
+                        case 53:
+                        case 396:
+                        case 397:
+                            desert++;
+                            break;
+                        case 368:
+                            granite++;
+                            break;
+                        case 367:
+                            marble++;
+                            break;
+                    }
                 }
-            }
         }
 
         CaveHouseType1458 result = CaveHouseType1458.Wood;
@@ -309,17 +309,17 @@ internal static partial class CaveHousePlacement1458
         foreach (CaveHouseRoom1458 room in rooms)
         {
             for (int x = room.Left; x < room.Right; x++)
-            for (int y = room.Top; y < room.Bottom; y++)
-            {
-                SetBlock(ref grid.At(x, y), palette.TileType);
-                FrameStructure(framing, x, y);
-            }
+                for (int y = room.Top; y < room.Bottom; y++)
+                {
+                    SetBlock(ref grid.At(x, y), palette.TileType);
+                    FrameStructure(framing, x, y);
+                }
             for (int x = room.Left + 1; x < room.Right - 1; x++)
-            for (int y = room.Top + 1; y < room.Bottom - 1; y++)
-            {
-                construction.ClearTile(x, y);
-                construction.Walls.PlaceWall(x, y, palette.WallType);
-            }
+                for (int y = room.Top + 1; y < room.Bottom - 1; y++)
+                {
+                    construction.ClearTile(x, y);
+                    construction.Walls.PlaceWall(x, y, palette.WallType);
+                }
         }
     }
 
@@ -364,14 +364,14 @@ internal static partial class CaveHousePlacement1458
         foreach (CaveHouseRoom1458 room in rooms)
         {
             foreach (bool left in new[] { false, true })
-            for (int step = 0; step < room.Height - 5; step++)
-            {
-                int y = room.Bottom - 4 - step;
-                if (!IsClearRectangle(grid, left ? room.Left - 4 : room.Right, y, 4, 3))
-                    continue;
-                exits.Add((left ? room.Left : room.Right - 1, y));
-                break;
-            }
+                for (int step = 0; step < room.Height - 5; step++)
+                {
+                    int y = room.Bottom - 4 - step;
+                    if (!IsClearRectangle(grid, left ? room.Left - 4 : room.Right, y, 4, 3))
+                        continue;
+                    exits.Add((left ? room.Left : room.Right - 1, y));
+                    break;
+                }
         }
         foreach ((int x, int y) in exits)
         {
@@ -388,22 +388,22 @@ internal static partial class CaveHousePlacement1458
         CaveHouseRoom1458 bottom = rooms[^1];
         var exits = new List<(int X, int Y)>();
         foreach ((CaveHouseRoom1458 room, bool up) in new[] { (top, true), (bottom, false) })
-        for (int step = 0; step < room.Width - 7; step++)
-        {
-            int x = room.Right - 5 - step, y = up ? room.Top : room.Bottom - 1;
-            if (!IsClearRectangle(grid, x, up ? y - 5 : y, 3, 5))
-                continue;
-            exits.Add((x, y));
-            break;
-        }
+            for (int step = 0; step < room.Width - 7; step++)
+            {
+                int x = room.Right - 5 - step, y = up ? room.Top : room.Bottom - 1;
+                if (!IsClearRectangle(grid, x, up ? y - 5 : y, 3, 5))
+                    continue;
+                exits.Add((x, y));
+                break;
+            }
         foreach ((int left, int y) in exits)
-        for (int x = left; x < left + 3; x++)
-        {
-            WorldTile previous = grid.At(x, y);
-            grid.At(x, y) = new WorldTile { Type = previous.Type, Wall = previous.Wall }; // Tile.ClearMetadata.
-            PlaceStructurePlatform(grid, framing, x, y, platformStyle);
-            FrameStructure(framing, x, y);
-        }
+            for (int x = left; x < left + 3; x++)
+            {
+                WorldTile previous = grid.At(x, y);
+                grid.At(x, y) = new WorldTile { Type = previous.Type, Wall = previous.Wall }; // Tile.ClearMetadata.
+                PlaceStructurePlatform(grid, framing, x, y, platformStyle);
+                FrameStructure(framing, x, y);
+            }
     }
 
     private static void PlaceSupportBeams(Grid grid, GenerationTileFraming1458 framing,
@@ -417,32 +417,32 @@ internal static partial class CaveHousePlacement1458
 
         var beams = new List<(int X, int Top, int Bottom)>();
         for (int x = left; x <= right; x += spacing)
-        for (int roomIndex = 0; roomIndex < rooms.Count; roomIndex++)
-        {
-            CaveHouseRoom1458 room = rooms[roomIndex];
-            if (x < room.Left || x >= room.Right)
-                continue;
-            int startY = room.Bottom;
-            int maximum = 50;
-            for (int next = roomIndex + 1; next < rooms.Count; next++)
+            for (int roomIndex = 0; roomIndex < rooms.Count; roomIndex++)
             {
-                CaveHouseRoom1458 lower = rooms[next];
-                if (x >= lower.Left && x < lower.Right)
-                    maximum = Math.Min(maximum, lower.Top - startY);
+                CaveHouseRoom1458 room = rooms[roomIndex];
+                if (x < room.Left || x >= room.Right)
+                    continue;
+                int startY = room.Bottom;
+                int maximum = 50;
+                for (int next = roomIndex + 1; next < rooms.Count; next++)
+                {
+                    CaveHouseRoom1458 lower = rooms[next];
+                    if (x >= lower.Left && x < lower.Right)
+                        maximum = Math.Min(maximum, lower.Top - startY);
+                }
+                if (maximum <= 0)
+                    continue;
+                // HouseBuilder.CreateSupportBeamList forces the gap to a lower room when it is
+                // shorter than 50, even if there is no terrain. Only the unconstrained 50-cell
+                // search needs a solid hit. The preceding platform check is on the top cell,
+                // not a blanket ban on frame-important objects anywhere inside the beam path.
+                int endY;
+                if (maximum < 50)
+                    endY = startY + maximum;
+                else if (!TryFindSolidDown(grid, x, startY, maximum, out endY))
+                    continue;
+                beams.Add((x, startY, endY));
             }
-            if (maximum <= 0)
-                continue;
-            // HouseBuilder.CreateSupportBeamList forces the gap to a lower room when it is
-            // shorter than 50, even if there is no terrain. Only the unconstrained 50-cell
-            // search needs a solid hit. The preceding platform check is on the top cell,
-            // not a blanket ban on frame-important objects anywhere inside the beam path.
-            int endY;
-            if (maximum < 50)
-                endY = startY + maximum;
-            else if (!TryFindSolidDown(grid, x, startY, maximum, out endY))
-                continue;
-            beams.Add((x, startY, endY));
-        }
         foreach ((int x, int top, int bottom) in beams)
         {
             if (bottom - top <= 1 || grid.At(x, top - 1).Type == Platform)
@@ -459,18 +459,18 @@ internal static partial class CaveHousePlacement1458
     internal static void PlaceSupportBeamsForTesting(
         Workspace workspace, IReadOnlyList<CaveHouseRoom1458> rooms, ushort beamType,
         IWorldGenerationVanillaRandom random) =>
-        PlaceSupportBeams(new Grid(workspace.TileStore), new GenerationTileFraming1458(workspace.TileStore, random, workspace),
+        PlaceSupportBeams(new Grid(workspace.TileStore, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null), new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity),
             rooms, beamType);
 
     private static bool HasWireOrChestNearby(Grid grid, int originX, int originY, int radius)
     {
         for (int x = originX - radius; x <= originX + radius; x++)
-        for (int y = originY - radius; y <= originY + radius; y++)
-        {
-            WorldTile tile = grid.At(x, y);
-            if (tile.HasAnyWire || tile.IsActive && tile.Type is Chest or Containers2)
-                return true;
-        }
+            for (int y = originY - radius; y <= originY + radius; y++)
+            {
+                WorldTile tile = grid.At(x, y);
+                if ((tile.Flags & WorldTileFlags.WireRed) != 0 || tile.Type is Chest or Containers2)
+                    return true;
+            }
         return false;
     }
 
@@ -478,11 +478,11 @@ internal static partial class CaveHousePlacement1458
     {
         int solid = 0;
         for (int x = room.Left; x < room.Right; x++)
-        for (int y = room.Top; y < room.Bottom; y++)
-        {
-            if (grid.IsSolid(x, y))
-                solid++;
-        }
+            for (int y = room.Top; y < room.Bottom; y++)
+            {
+                if (grid.IsSolid(x, y))
+                    solid++;
+            }
         return solid / (double)(room.Width * room.Height);
     }
 
@@ -526,11 +526,11 @@ internal static partial class CaveHousePlacement1458
         if (!grid.InWorld(left, top, width, height, 1))
             return false;
         for (int x = left; x < left + width; x++)
-        for (int y = top; y < top + height; y++)
-        {
-            if (grid.IsSearchSolid(x, y))
-                return false;
-        }
+            for (int y = top; y < top + height; y++)
+            {
+                if (grid.IsSearchSolid(x, y))
+                    return false;
+            }
         return true;
     }
 
@@ -540,17 +540,17 @@ internal static partial class CaveHousePlacement1458
         HellFortGenerator1458.ClearPlacementAnchor(ref grid.At(x, anchorY));
         int middle;
         if (!grid.At(x, anchorY - 1).IsActive && !grid.At(x, anchorY - 2).IsActive &&
-            grid.At(x, anchorY - 3).IsActive && VanillaTileCollisionCatalog.IsSolid(grid.At(x, anchorY - 3).TileType))
+            grid.At(x, anchorY - 3).IsActive && grid.IsSolidType(grid.At(x, anchorY - 3).TileType))
             middle = anchorY - 1;
         else
         {
             if (grid.At(x, anchorY + 1).IsActive || grid.At(x, anchorY + 2).IsActive ||
-                !grid.At(x, anchorY + 3).IsActive || !VanillaTileCollisionCatalog.IsSolid(grid.At(x, anchorY + 3).TileType))
+                !grid.At(x, anchorY + 3).IsActive || !grid.IsSolidType(grid.At(x, anchorY + 3).TileType))
                 return;
             middle = anchorY + 1;
         }
         WorldTile above = grid.At(x, middle - 2), below = grid.At(x, middle + 2);
-        if (above.IsActive && !above.IsActuated && VanillaTileCollisionCatalog.IsSolid(above.TileType) &&
+        if (above.IsActive && !above.IsActuated && grid.IsSolidType(above.TileType) &&
             grid.IsSolid(x, middle + 2) && below.SourceSlope == 0 && !below.IsHalfBrick)
         {
             int frameX = style / 36 * 54, frameY = style % 36 * 54;
@@ -635,7 +635,7 @@ internal static partial class CaveHousePlacement1458
         ushort ChestTileType,
         int ChestStyle);
 
-    private sealed class Grid(WorldTileStore store)
+    private sealed class Grid(WorldTileStore store, Func<TileTypeId, bool>? solidity = null)
     {
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;
@@ -643,14 +643,16 @@ internal static partial class CaveHousePlacement1458
         public bool InWorld(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
         public bool InWorld(int x, int y, int width, int height, int padding) =>
             x >= padding && y >= padding && x + width <= Width - padding && y + height <= Height - padding;
+        public bool IsSolidType(TileTypeId type) => solidity?.Invoke(type) ?? VanillaTileCollisionCatalog.IsSolid(type);
+
         public bool IsSolid(int x, int y)
         {
             WorldTile tile = At(x, y);
             return tile.IsActive && !tile.IsActuated &&
-                   VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+                   (solidity?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
                    !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
         }
         public bool IsSearchSolid(int x, int y) => InWorld(x, y, 1, 1, 10) && At(x, y).IsActive &&
-            VanillaTileCollisionCatalog.IsSolid(At(x, y).TileType);
+            (solidity?.Invoke(At(x, y).TileType) ?? VanillaTileCollisionCatalog.IsSolid(At(x, y).TileType));
     }
 }

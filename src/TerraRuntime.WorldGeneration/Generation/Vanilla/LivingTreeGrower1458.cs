@@ -20,7 +20,9 @@ internal sealed class LivingTreeGrower1458(
     IWorldGenerationVanillaRandom random,
     double worldSurface,
     int underworldTop,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Action<int, int, int>? placeChest = null,
+    Workspace? workspace = null)
 {
     private const ushort LivingWood = 191;
     private const ushort LeafBlock = 192;
@@ -148,19 +150,16 @@ internal sealed class LivingTreeGrower1458(
             if (!obstructed)
             {
                 var passage = new LivingTreePassage1458(
-                    store, random, worldSurface, underworldTop, cancellation);
+                    store, random, worldSurface, underworldTop, cancellation, placeChest, workspace);
                 int shaftLeft = baseLeft;
                 int shaftRight = baseRight;
                 passage.MakePassage(j, trunkWidth, ref shaftLeft, ref shaftRight, patch);
-                ChestRequest = passage.ChestRequest;
             }
         }
 
         return true;
     }
 
-    /// <summary>The secret room's chest, when the last grown tree opened one. The caller owns the loot.</summary>
-    public (int X, int Y, int SignatureItem)? ChestRequest { get; private set; }
 
     /// <summary>
     /// Grows the trunk upward. Every few rows one side steps inward, and that step is recorded as a branch
@@ -600,6 +599,7 @@ internal sealed class LivingTreeGrower1458(
         cell.Flags |= WorldTileFlags.Active;
         if (cell.Shape == 1)
             cell.Shape = 0;
+        cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
     }
 
     /// <summary>The root plug ignores dungeon walls; only the living-wood wall stops a spreading root.</summary>
@@ -613,6 +613,7 @@ internal sealed class LivingTreeGrower1458(
         cell.Flags |= WorldTileFlags.Active;
         if (cell.Shape == 1)
             cell.Shape = 0;
+        cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
     }
 
     private void WriteRoot(int x, int y)
@@ -625,6 +626,7 @@ internal sealed class LivingTreeGrower1458(
         cell.Flags |= WorldTileFlags.Active;
         if (cell.Shape == 1)
             cell.Shape = 0;
+        cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
     }
 
     private void WriteLeaves(int x, int y)
@@ -634,6 +636,7 @@ internal sealed class LivingTreeGrower1458(
         cell.Flags |= WorldTileFlags.Active;
         if (cell.Shape == 1)
             cell.Shape = 0;
+        cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
     }
 
     private bool IsSolid(int x, int y)

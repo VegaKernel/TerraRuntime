@@ -104,17 +104,17 @@ public sealed class SourceBackedJungleStructures1458Tests
         double surface = canonical ? 300d : 140d;
         var workspace = new Workspace(width, height);
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-        {
-            var tile = new WorldTile
+            for (int y = 0; y < height; y++)
             {
-                Type = 1,
-                Wall = x >= 30 && x < width - 30 && y >= 20 && y < surface - 20 && x % 13 < 8
-                    ? (ushort)2 : (ushort)1,
-                Flags = WorldTileFlags.Active
-            };
-            workspace.TileStore.Set(x, y, in tile);
-        }
+                var tile = new WorldTile
+                {
+                    Type = 1,
+                    Wall = x >= 30 && x < width - 30 && y >= 20 && y < surface - 20 && x % 13 < 8
+                        ? (ushort)2 : (ushort)1,
+                    Flags = WorldTileFlags.Active
+                };
+                workspace.TileStore.Set(x, y, in tile);
+            }
 
         var random = new RandomAdapter(1458);
         JungleStructurePass1458.ApplyDirtRockWallRunnerForTesting(workspace, random, surface);
@@ -178,8 +178,8 @@ public sealed class SourceBackedJungleStructures1458Tests
         {
             int centerY = centerX % 300 == 0 ? canonical ? 300 : 140 : 60;
             foreach (int dx in new[] { -1, 1 })
-            foreach (int dy in new[] { -1, 1 })
-                SetActive(workspace, centerX + dx, centerY + dy, 191);
+                foreach (int dy in new[] { -1, 1 })
+                    SetActive(workspace, centerX + dx, centerY + dy, 191);
             SetActive(workspace, centerX, centerY, 191);
         }
 
@@ -260,14 +260,14 @@ public sealed class SourceBackedJungleStructures1458Tests
         int height = workspace.HeightTiles;
         var snapshot = new StringBuilder(width * height * 12);
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',')
-                .Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',')
-                .Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < height; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',')
+                    .Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',')
+                    .Append(tile.LiquidAmount).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 
@@ -315,30 +315,35 @@ public sealed class SourceBackedJungleStructures1458Tests
     [Theory]
     [InlineData(false,
         "1571,588;1931,400;1148,560;945,600;1684,722;509,608;235,653;148,703;1033,536;1513,500;1398,645",
-        "2FB948C3E7B191C76C8E737BD0323A755B79103A299438AEDB403E3E018F81DA", 1005695146)]
+        "B84D5A7C7CEE46C02243E363EC338A8414E93B2812D4D637B54E7AF3B7433187",
+        "D117D6374B077B91485E8658D6DFD0FC471C133294B3377128AE1D16883E0145", "425462772092904595DDCC06FC2771533844790DB6F5C62B228F8A526C41584B", 1005695146)]
     [InlineData(true,
         "1571,588;1931,400;619,588;52,411;807,519;1804,488;558,636;311,704;581,428;1660,669;1859,587",
-        "54F4030BCB27A6BC67ECBF61214B5BDD4DE50D7A944EF2D4B1854CB42ADCC92C", 1299000437)]
+        "72F79AAA2D6691B50995A454849975E13F4EB77C37EFF6B31297F13EBAFA5FEB",
+        "1E7E236E6959DFA501679C76635662DE2A5F950DB5CD9E9FC48413C12C93A74D", "13A9B8A4C6D9CF9C4A6412987147EF9EE26C6BF5A6F850E11DB092D6705B53CC", 1299000437)]
     public void Jungle_shrines_canonical_full_pass_matches_official_cells_anchors_and_rng(
-        bool obstructed, string expectedAnchors, string expectedHash, int expectedNext)
+        bool obstructed, string expectedAnchors, string expectedHash,
+        string expectedWholeGrid, string expectedPhysicalRandom, int expectedNext)
     {
         // Direct TerrariaServer 1.4.5.8 registered JungleShrines PassLegacy, seed 1458:
         // uniformly active Stone, with Jungle Grass replacing rows 380..749.
+        // Requalified twice with actual Initialize_TileAndNPCData1/2, including frame-important
+        // torches. The earlier oracle omitted their halo framing; anchors and RNG were unchanged.
         var workspace = new Workspace(4200, 1200);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            var tile = new WorldTile
+            for (int y = 0; y < workspace.HeightTiles; y++)
             {
-                Type = y is >= 380 and < 750
-                    ? obstructed && x is >= 900 and < 1300 && x % 19 < 3 ? (ushort)226 : (ushort)60
-                    : (ushort)1,
-                Wall = obstructed && x is >= 900 and < 1300 && x % 101 < 7 && y is >= 390 and < 730
-                    ? (ushort)86 : (ushort)0,
-                Flags = WorldTileFlags.Active
-            };
-            workspace.TileStore.Set(x, y, in tile);
-        }
+                var tile = new WorldTile
+                {
+                    Type = y is >= 380 and < 750
+                        ? obstructed && x is >= 900 and < 1300 && x % 19 < 3 ? (ushort)226 : (ushort)60
+                        : (ushort)1,
+                    Wall = obstructed && x is >= 900 and < 1300 && x % 101 < 7 && y is >= 390 and < 730
+                        ? (ushort)86 : (ushort)0,
+                    Flags = WorldTileFlags.Active
+                };
+                workspace.TileStore.Set(x, y, in tile);
+            }
         var random = new RandomAdapter(1458);
 
         IReadOnlyList<WorldGenerationPoint> anchors =
@@ -351,6 +356,8 @@ public sealed class SourceBackedJungleStructures1458Tests
         Assert.Equal(anchors, workspace.VanillaJungleShrineChestAnchors.ToArray());
         Assert.Equal(anchors.Count, workspace.VanillaJungleShrineProtectedAreas.Length);
         Assert.Equal(expectedHash, HashOfficialCells(workspace));
+        Assert.Equal(expectedWholeGrid, GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal(expectedPhysicalRandom, GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
         Assert.Equal(expectedNext, random.Next());
     }
 
@@ -360,7 +367,7 @@ public sealed class SourceBackedJungleStructures1458Tests
         // TerrariaServer 1.4.5.8 GenPassNameID.SettleLiquids calls Liquid.QuickWater, WaterCheck and
         // ten quick-settle rounds before clearing transient liquid work.
         // While that runs, tile 137 is non-solid. The previous six direct gravity sweeps stopped above it.
-        // Direct official QuickWater -> WaterCheck -> ten quick-settle rounds -> ClearPendingLiquid
+        // Actual registered official first Settle delegate, explicit source predecessor phase,
         // on this 600x500 enclosed basin leaves x291..309,y121 at amount12 (sum228); next RNG906992634.
         // The former 48x48 fixture fell outside vanilla's update border and underworld evaporation bounds.
         var workspace = new Workspace(600, 500);
@@ -375,8 +382,12 @@ public sealed class SourceBackedJungleStructures1458Tests
             SetActive(workspace, 310, y, type: 1);
         }
 
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        GenerationLiquidFixture1458.Configure(workspace, laterPass: false);
         var firstPassRandom = new RandomAdapter(1458);
         JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+        GenerationLiquidFixture1458.AssertState(workspace, firstPassRandom, "D10DDD93341223DEEBBC1B7E3EFB78CE8EC4DAA5C6967A87A9959F8E8499F46F", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
         Assert.Equal(906992634, firstPassRandom.Next());
 
         Assert.Equal((byte)0, workspace.TileStore.Get(300, 100).LiquidAmount);

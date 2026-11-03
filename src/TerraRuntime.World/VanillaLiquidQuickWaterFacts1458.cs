@@ -29,6 +29,8 @@ internal static class VanillaLiquidQuickWaterFacts1458
         716
     ];
 
+    internal static ReadOnlySpan<ushort> SourceSettleSolidityTypes => IgnoredSolidTypes;
+
     public static bool IgnoresSolidDuringSettle(TileTypeId type)
     {
         int value = type.Value;

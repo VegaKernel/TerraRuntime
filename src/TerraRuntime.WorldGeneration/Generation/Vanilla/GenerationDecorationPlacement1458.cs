@@ -25,7 +25,7 @@ internal static class GenerationDecorationPlacement1458
     /// Lava in the target cell refuses either outright.
     /// </summary>
     public static bool TryPlaceSmallPile(
-        WorldTileStore store, int x, int y, int style, int size = 1, IReadOnlySet<ushort>? notSolid = null)
+        WorldTileStore store, int x, int y, int style, int size = 1, IReadOnlySet<ushort>? notSolid = null, Workspace? workspace = null)
     {
         if (!Contains(store, x, y) || !Contains(store, x + 1, y + 1))
             return false;
@@ -35,7 +35,7 @@ internal static class GenerationDecorationPlacement1458
         short frameY = checked((short)(size * 18));
         if (size == 1)
         {
-            if (!IsFlatSolidFloor(store, x, y + 1, notSolid) || !IsFlatSolidFloor(store, x + 1, y + 1, notSolid))
+            if (!IsFlatSolidFloor(store, x, y + 1, notSolid, workspace) || !IsFlatSolidFloor(store, x + 1, y + 1, notSolid, workspace))
                 return false;
             if (store.Get(x, y).IsActive || store.Get(x + 1, y).IsActive)
                 return false;
@@ -48,7 +48,7 @@ internal static class GenerationDecorationPlacement1458
             return true;
         }
 
-        if (!IsFlatSolidFloor(store, x, y + 1, notSolid) || store.Get(x, y).IsActive)
+        if (!IsFlatSolidFloor(store, x, y + 1, notSolid, workspace) || store.Get(x, y).IsActive)
             return false;
 
         Write(store, x, y, SmallPiles, checked((short)(style * 18)), frameY);
@@ -69,7 +69,7 @@ internal static class GenerationDecorationPlacement1458
         int y,
         ushort type,
         int style,
-        IReadOnlySet<ushort>? notSolid = null)
+        IReadOnlySet<ushort>? notSolid = null, Workspace? workspace = null)
     {
         if (!Contains(store, x, y))
             return false;
@@ -90,8 +90,9 @@ internal static class GenerationDecorationPlacement1458
             anchor.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         }
 
-        bool placed = TryPlace3x2(store, x, y, type, style, notSolid);
-        var framing = new GenerationTileFraming1458(store, random);
+        bool placed = TryPlace3x2(store, x, y, type, style, notSolid, workspace);
+        var framing = new GenerationTileFraming1458(store, random, workspace,
+            useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true);
         framing.SquareTileFrame(x, y);
 
         // PlaceTile's common tail tests the anchor after branch framing, even when raw
@@ -107,7 +108,7 @@ internal static class GenerationDecorationPlacement1458
     /// stand on flat solid ground, and for detritus no column may stand on a boulder.
     /// </summary>
     public static bool TryPlace3x2(
-        WorldTileStore store, int x, int y, ushort type, int style, IReadOnlySet<ushort>? notSolid = null)
+        WorldTileStore store, int x, int y, ushort type, int style, IReadOnlySet<ushort>? notSolid = null, Workspace? workspace = null)
     {
         int width = store.Dimensions.WidthTiles;
         int height = store.Dimensions.HeightTiles;
@@ -124,7 +125,7 @@ internal static class GenerationDecorationPlacement1458
 
             if (type is PlantDetritus or 186 && IsBoulder(store, column, y + 1))
                 return false;
-            if (!IsFlatSolidFloor(store, column, y + 1, notSolid))
+            if (!IsFlatSolidFloor(store, column, y + 1, notSolid, workspace))
                 return false;
         }
 
@@ -153,7 +154,7 @@ internal static class GenerationDecorationPlacement1458
         IWorldGenerationVanillaRandom random,
         int x,
         int y,
-        int style)
+        int style, Workspace? workspace = null)
     {
         bool valid = Contains(store, x, y - 1) && Contains(store, x + 1, y + 1);
         for (int column = x; valid && column < x + 2; column++)
@@ -164,7 +165,7 @@ internal static class GenerationDecorationPlacement1458
                     valid = false;
             }
 
-            if (!IsFlatSolidFloor(store, column, y + 1))
+            if (!IsFlatSolidFloor(store, column, y + 1, workspace: workspace))
                 valid = false;
         }
 
@@ -191,7 +192,7 @@ internal static class GenerationDecorationPlacement1458
 
     /// <summary>Source <c>SolidTile2</c>: active, solid, unsloped, not a half brick and not actuated.</summary>
     private static bool IsFlatSolidFloor(
-        WorldTileStore store, int x, int y, IReadOnlySet<ushort>? notSolid = null)
+        WorldTileStore store, int x, int y, IReadOnlySet<ushort>? notSolid = null, Workspace? workspace = null)
     {
         if (!Contains(store, x, y))
             return true;
@@ -203,7 +204,9 @@ internal static class GenerationDecorationPlacement1458
             return false;
 
         return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType);
+            (workspace is { HasVanillaGenerationSolidity: true }
+                ? workspace.IsVanillaGenerationSolid(tile.TileType)
+                : VanillaTileCollisionCatalog.IsSolid(tile.TileType));
     }
 
     /// <summary>Source <c>InvalidTileForPilesOrSpeleothems</c>, which is the boulder set alone.</summary>
@@ -213,7 +216,7 @@ internal static class GenerationDecorationPlacement1458
             return false;
 
         WorldTile tile = store.Get(x, y);
-        return tile.IsActive && tile.Type is 138 or 664;
+        return tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type);
     }
 
     private static void Write(WorldTileStore store, int x, int y, ushort type, short frameX, short frameY)

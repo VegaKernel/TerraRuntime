@@ -497,6 +497,11 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
     private void ApplyGems(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid)
     {
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(484), false);
+        }
+
         context.CancellationToken.ThrowIfCancellationRequested();
         VanillaUndergroundDesertRegion1458 desert = workspace.VanillaUndergroundDesertRegion ??
             throw new InvalidOperationException("Gems requires retained underground desert bounds.");
@@ -512,8 +517,12 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         {
             double factor = gem switch
             {
-                Sapphire => 0.3, Ruby => 0.1, Emerald => 0.25,
-                Topaz => 0.45, Amethyst => 0.5, Diamond => 0.05,
+                Sapphire => 0.3,
+                Ruby => 0.1,
+                Emerald => 0.25,
+                Topaz => 0.45,
+                Amethyst => 0.5,
+                Diamond => 0.05,
                 _ => throw new InvalidOperationException()
             };
             double count = grid.Width * factor;
@@ -990,12 +999,12 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                     if (tile.IsActive && (tile.Type == Sand || (forward && tile.Type is Ebonsand or Crimsand)))
                         continue;
                     for (int side = -1; side <= 1; side += 2)
-                    for (int distance = 1; distance <= 3; distance++)
-                    {
-                        ref WorldTile neighbor = ref grid.At(x + side * distance, y);
-                        if (neighbor.Wall is 2 or 40 && (distance == 1 || random.Next(2) == 0))
-                            neighbor.Wall = 0;
-                    }
+                        for (int distance = 1; distance <= 3; distance++)
+                        {
+                            ref WorldTile neighbor = ref grid.At(x + side * distance, y);
+                            if (neighbor.Wall is 2 or 40 && (distance == 1 || random.Next(2) == 0))
+                                neighbor.Wall = 0;
+                        }
                     if (tile.IsActive) exposed = false;
                 }
             }
@@ -1098,8 +1107,8 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             SilverBar = bootstrap.SilverBar,
             GoldBar = bootstrap.GoldBar,
             TungstenIsSilverTier = bootstrap.SilverOre == 168,
-            DesertHiveLow = workspace.VanillaUndergroundDesertRegion?.Y ?? 0,
-            DesertHiveHigh = workspace.VanillaUndergroundDesertRegion?.Bottom ?? 0,
+            DesertHiveLow = workspace.VanillaDesertGenerationState?.DensityBounds.ExclusiveBottom - 1 ?? 0,
+            DesertHiveHigh = workspace.VanillaDesertGenerationState?.DensityBounds.Y ?? 0,
             HellChestItem = bootstrap.HellChestItems
         };
         workspace.SetVanillaBuriedChestContext(result);

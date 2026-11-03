@@ -23,10 +23,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// per hive, more than every other consumer in the biome put together.
 /// </para>
 /// <para>
-/// Bounded slice: the four honey patches the source scatters around each accepted hive are NOT ported.
-/// <c>HoneyPatchBiome</c> is written against vanilla's shape-generation DSL - blotches, radial dither, inner
-/// outlines and rectangle masks - which this runtime does not have, and inventing it would put made-up draws
-/// into the shared stream. The pass therefore consumes the hive's draws and not the patches'.
+/// Accepted hives offer zero to four honey patches. Their radial dither, blotches, masks and framing share
+/// the pass RNG and the retained protected rectangles, so each accepted patch changes later offers.
 /// </para>
 /// </remarks>
 internal sealed class HiveBiome1458(
@@ -34,7 +32,8 @@ internal sealed class HiveBiome1458(
     IWorldGenerationVanillaRandom random,
     double worldSurface,
     double rockLayer,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Workspace? workspace = null)
 {
     private const ushort Mud = 59;
     private const ushort JungleGrass = 60;
@@ -81,9 +80,19 @@ internal sealed class HiveBiome1458(
             budget -= 1.0;
             placed++;
 
-            // The source rolls how many honey patches to scatter even though this runtime does not place them,
-            // because the draw belongs to the shared stream whether or not the patch is built.
-            _ = random.Next(5);
+            // Both polar samples precede the horizontal boundary test, including rejected offers.
+            int wantedPatches = random.Next(5);
+            int madePatches = 0, patchBudget = 10000;
+            var patches = new HoneyPatch1458(store, random, CanPlace, protectedAreas.Add, workspace);
+            while (madePatches < wantedPatches && patchBudget > 0)
+            {
+                double radius = random.NextDouble() * 60d + 30d;
+                double angle = random.NextDouble() * 6.2831854820251465;
+                int patchX = (int)(Math.Cos(angle) * radius) + originX;
+                int patchY = (int)(Math.Sin(angle) * radius) + originY;
+                patchBudget--;
+                if (patchX > 50 && patchX < width - 50 && patches.TryPlace(patchX, patchY)) madePatches++;
+            }
         }
 
         return placed;
@@ -284,7 +293,8 @@ internal sealed class HiveBiome1458(
                 {
                     // Hive is not frame-important, so the source's SquareTileFrame does nothing during
                     // generation beyond the inactive-cell cleanup the framing slice already carries.
-                    new GenerationTileFraming1458(store, random).SquareTileFrame(column, row);
+                    new GenerationTileFraming1458(store, random, workspace,
+                        useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true).SquareTileFrame(column, row);
                 }
 
                 if (tile.Wall == HiveWall)
@@ -468,14 +478,16 @@ internal sealed class HiveBiome1458(
 
     /// <summary>
     /// Source <c>StructureMap.CanPlace</c> against <c>TileID.Sets.GeneralPlacementTiles</c>, plus the hives
-    /// this pass has already protected. The shared structure map earlier passes contribute to does not exist in
-    /// this runtime, so only the tile-set half of the source's guard and this pass's own entries apply.
+    /// and honey patches this pass has protected, together with the preceding Aether reservation.
     /// </summary>
     private bool CanPlace(int x, int y, int areaWidth, int areaHeight)
     {
         if (x < 0 || y < 0 || x + areaWidth > width - 1 || y + areaHeight > height - 1)
             return false;
 
+        if (workspace?.VanillaShimmerStructure is { } shimmer &&
+            x < shimmer.ExclusiveRight && shimmer.X < x + areaWidth &&
+            y < shimmer.ExclusiveBottom && shimmer.Y < y + areaHeight) return false;
         foreach (WorldTileRegion protectedArea in protectedAreas)
         {
             if (x < protectedArea.ExclusiveRight && protectedArea.X < x + areaWidth &&

@@ -45,7 +45,13 @@ internal static class WorldSmoother1458
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(random);
 
-        var grid = new Grid(workspace.TileStore);
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(481), true);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(482), true);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(483), true);
+        }
+        var grid = new Grid(workspace.TileStore, new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true));
         long sloped = 0;
         long halfBricks = 0;
         long removed = 0;
@@ -57,7 +63,10 @@ internal static class WorldSmoother1458
                 cancellationToken.ThrowIfCancellationRequested();
 
             for (int y = Border; y < grid.Height - Border; y++)
+            {
                 ApplyTopologyCell(grid, random, x, y, ref sloped, ref halfBricks, ref removed, ref filled);
+            }
+
         }
 
         for (int x = Border; x < grid.Width - Border; x++)
@@ -69,6 +78,18 @@ internal static class WorldSmoother1458
                 ApplyFinishCell(grid, random, x, y, ref sloped, ref halfBricks);
         }
 
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(137), true);
+        }
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(190), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(192), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(481), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(482), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(483), false);
+        }
         return new WorldSmoothingResult1458(sloped, halfBricks, removed, filled);
     }
 
@@ -96,7 +117,7 @@ internal static class WorldSmoother1458
              WorldSmoothingCatalog1458.IsPressurePlateWire(grid.At(x + 1, y).TileType));
         if (topOpen && !pressurePlateBeside)
         {
-            if (IsFullSolid(tile) && WorldSmoothingCatalog1458.CanBeClearedDuringGeneration(tile.TileType))
+            if (IsFullSolid(grid, tile) && WorldSmoothingCatalog1458.CanBeClearedDuringGeneration(tile.TileType))
             {
                 if ((!grid.At(x - 1, y).IsActive || IsFull(grid.At(x - 1, y))) &&
                     (!grid.At(x + 1, y).IsActive || IsFull(grid.At(x + 1, y))))
@@ -104,26 +125,26 @@ internal static class WorldSmoother1458
                     ShapeExposedTop(grid, random, x, y, ref sloped, ref halfBricks, ref removed);
                 }
             }
-            else if (!tile.IsActive && IsFullSolid(grid.At(x, y + 1)) &&
+            else if (!tile.IsActive && IsFullSolid(grid, grid.At(x, y + 1)) &&
                      WorldSmoothingCatalog1458.SupportsGapFillBase(grid.At(x, y + 1).TileType))
             {
                 FillDiagonalGap(grid, random, x, y, ref sloped, ref halfBricks, ref filled);
             }
         }
-        else if (!grid.At(x, y + 1).IsActive && random.Next(2) == 0 && IsFullSolid(tile) &&
-                 IsFullSolid(grid.At(x, y - 1)) &&
+        else if (!grid.At(x, y + 1).IsActive && random.Next(2) == 0 && IsFullSolid(grid, tile) &&
+                 IsFullSolid(grid, grid.At(x, y - 1)) &&
                  (!grid.At(x + 1, y).IsActive || IsFull(grid.At(x + 1, y))) &&
                  (!grid.At(x - 1, y).IsActive || IsFull(grid.At(x - 1, y))))
         {
-            if (IsFullSolid(grid.At(x - 1, y)) && !IsFullSolid(grid.At(x + 1, y)) &&
-                IsFullSolid(grid.At(x - 1, y - 1)) && CanPound(grid, x, y))
+            if (IsFullSolid(grid, grid.At(x - 1, y)) && !IsFullSolid(grid, grid.At(x + 1, y)) &&
+                IsFullSolid(grid, grid.At(x - 1, y - 1)) && CanPound(grid, x, y))
             {
-                SetSlope(ref tile, sourceSlope: 3, ref sloped);
+                SetSlope(grid, x, y, ref tile, sourceSlope: 3, ref sloped);
             }
-            else if (IsFullSolid(grid.At(x + 1, y)) && !IsFullSolid(grid.At(x - 1, y)) &&
-                     IsFullSolid(grid.At(x + 1, y - 1)) && CanPound(grid, x, y))
+            else if (IsFullSolid(grid, grid.At(x + 1, y)) && !IsFullSolid(grid, grid.At(x - 1, y)) &&
+                     IsFullSolid(grid, grid.At(x + 1, y - 1)) && CanPound(grid, x, y))
             {
-                SetSlope(ref tile, sourceSlope: 4, ref sloped);
+                SetSlope(grid, x, y, ref tile, sourceSlope: 4, ref sloped);
             }
         }
     }
@@ -138,55 +159,55 @@ internal static class WorldSmoother1458
         ref long removed)
     {
         ref WorldTile tile = ref grid.At(x, y);
-        if (IsFullSolid(grid.At(x, y + 1)))
+        if (IsFullSolid(grid, grid.At(x, y + 1)))
         {
-            if (!IsFullSolid(grid.At(x - 1, y)) && !IsHalfBrick(grid.At(x - 1, y + 1)) &&
-                IsFullSolid(grid.At(x - 1, y + 1)) && IsFullSolid(grid.At(x + 1, y)) &&
+            if (!IsFullSolid(grid, grid.At(x - 1, y)) && !IsHalfBrick(grid.At(x - 1, y + 1)) &&
+                IsFullSolid(grid, grid.At(x - 1, y + 1)) && IsFullSolid(grid, grid.At(x + 1, y)) &&
                 !grid.At(x + 1, y - 1).IsActive)
             {
-                ShapeSlopeOrHalf(ref tile, random, sourceSlope: 2, ref sloped, ref halfBricks);
+                ShapeSlopeOrHalf(grid, x, y, ref tile, random, sourceSlope: 2, ref sloped, ref halfBricks);
             }
-            else if (!IsFullSolid(grid.At(x + 1, y)) && !IsHalfBrick(grid.At(x + 1, y + 1)) &&
-                     IsFullSolid(grid.At(x + 1, y + 1)) && IsFullSolid(grid.At(x - 1, y)) &&
+            else if (!IsFullSolid(grid, grid.At(x + 1, y)) && !IsHalfBrick(grid.At(x + 1, y + 1)) &&
+                     IsFullSolid(grid, grid.At(x + 1, y + 1)) && IsFullSolid(grid, grid.At(x - 1, y)) &&
                      !grid.At(x - 1, y - 1).IsActive)
             {
-                ShapeSlopeOrHalf(ref tile, random, sourceSlope: 1, ref sloped, ref halfBricks);
+                ShapeSlopeOrHalf(grid, x, y, ref tile, random, sourceSlope: 1, ref sloped, ref halfBricks);
             }
-            else if (IsFullSolid(grid.At(x + 1, y + 1)) && IsFullSolid(grid.At(x - 1, y + 1)) &&
+            else if (IsFullSolid(grid, grid.At(x + 1, y + 1)) && IsFullSolid(grid, grid.At(x - 1, y + 1)) &&
                      !grid.At(x + 1, y).IsActive && !grid.At(x - 1, y).IsActive)
             {
-                Pound(ref tile, ref halfBricks);
+                Pound(grid, x, y, ref tile, ref halfBricks);
             }
 
-            if (IsFullSolid(tile))
+            if (IsFullSolid(grid, tile))
             {
-                if (IsFullSolid(grid.At(x - 1, y)) && IsFullSolid(grid.At(x + 1, y + 2)) &&
+                if (IsFullSolid(grid, grid.At(x - 1, y)) && IsFullSolid(grid, grid.At(x + 1, y + 2)) &&
                     !grid.At(x + 1, y).IsActive && !grid.At(x + 1, y + 1).IsActive &&
                     !grid.At(x - 1, y - 1).IsActive)
                 {
-                    Kill(ref tile, ref removed);
+                    Kill(grid, x, y, ref removed);
                 }
-                else if (IsFullSolid(grid.At(x + 1, y)) && IsFullSolid(grid.At(x - 1, y + 2)) &&
+                else if (IsFullSolid(grid, grid.At(x + 1, y)) && IsFullSolid(grid, grid.At(x - 1, y + 2)) &&
                          !grid.At(x - 1, y).IsActive && !grid.At(x - 1, y + 1).IsActive &&
                          !grid.At(x + 1, y - 1).IsActive)
                 {
-                    Kill(ref tile, ref removed);
+                    Kill(grid, x, y, ref removed);
                 }
                 else if (!grid.At(x - 1, y + 1).IsActive && !grid.At(x - 1, y).IsActive &&
-                         IsFullSolid(grid.At(x + 1, y)) && IsFullSolid(grid.At(x, y + 2)))
+                         IsFullSolid(grid, grid.At(x + 1, y)) && IsFullSolid(grid, grid.At(x, y + 2)))
                 {
-                    ShapeErodedEdge(ref tile, random, sourceSlope: 2, ref sloped, ref halfBricks, ref removed);
+                    ShapeErodedEdge(grid, x, y, ref tile, random, sourceSlope: 2, ref sloped, ref halfBricks, ref removed);
                 }
                 else if (!grid.At(x + 1, y + 1).IsActive && !grid.At(x + 1, y).IsActive &&
-                         IsFullSolid(grid.At(x - 1, y)) && IsFullSolid(grid.At(x, y + 2)))
+                         IsFullSolid(grid, grid.At(x - 1, y)) && IsFullSolid(grid, grid.At(x, y + 2)))
                 {
-                    ShapeErodedEdge(ref tile, random, sourceSlope: 1, ref sloped, ref halfBricks, ref removed);
+                    ShapeErodedEdge(grid, x, y, ref tile, random, sourceSlope: 1, ref sloped, ref halfBricks, ref removed);
                 }
             }
         }
 
-        if (IsFullSolid(tile) && !grid.At(x - 1, y).IsActive && !grid.At(x + 1, y).IsActive)
-            Kill(ref tile, ref removed);
+        if (IsFullSolid(grid, tile) && !grid.At(x - 1, y).IsActive && !grid.At(x + 1, y).IsActive)
+            Kill(grid, x, y, ref removed);
     }
 
     private static void FillDiagonalGap(
@@ -202,26 +223,26 @@ internal static class WorldSmoother1458
         WorldTile below = grid.At(x, y + 1);
         WorldTile right = grid.At(x + 1, y);
         if (WorldSmoothingCatalog1458.SupportsGapFillNeighbor(right.TileType) &&
-            IsFullSolid(grid.At(x - 1, y + 1)) && IsFullSolid(right) && !grid.At(x - 1, y).IsActive &&
+            IsFullSolid(grid, grid.At(x - 1, y + 1)) && IsFullSolid(grid, right) && !grid.At(x - 1, y).IsActive &&
             !grid.At(x + 1, y - 1).IsActive)
         {
             PlaceGapTile(ref tile, WorldSmoothingCatalog1458.UsesNeighborIdentityForGapFill(right.TileType)
                 ? right.TileType
                 : below.TileType);
             filled++;
-            ShapeSlopeOrHalf(ref tile, random, sourceSlope: 2, ref sloped, ref halfBricks);
+            ShapeSlopeOrHalf(grid, x, y, ref tile, random, sourceSlope: 2, ref sloped, ref halfBricks);
         }
 
         WorldTile left = grid.At(x - 1, y);
         if (WorldSmoothingCatalog1458.SupportsGapFillNeighbor(left.TileType) &&
-            IsFullSolid(grid.At(x + 1, y + 1)) && IsFullSolid(left) && !grid.At(x + 1, y).IsActive &&
+            IsFullSolid(grid, grid.At(x + 1, y + 1)) && IsFullSolid(grid, left) && !grid.At(x + 1, y).IsActive &&
             !grid.At(x - 1, y - 1).IsActive)
         {
             PlaceGapTile(ref tile, WorldSmoothingCatalog1458.UsesNeighborIdentityForGapFill(left.TileType)
                 ? left.TileType
                 : below.TileType);
             filled++;
-            ShapeSlopeOrHalf(ref tile, random, sourceSlope: 1, ref sloped, ref halfBricks);
+            ShapeSlopeOrHalf(grid, x, y, ref tile, random, sourceSlope: 1, ref sloped, ref halfBricks);
         }
     }
 
@@ -235,43 +256,43 @@ internal static class WorldSmoother1458
     {
         ref WorldTile tile = ref grid.At(x, y);
         if (random.Next(2) == 0 && !grid.At(x, y - 1).IsActive &&
-            WorldSmoothingCatalog1458.IsSecondPhaseCandidate(tile.TileType) && IsFullSolid(tile) &&
+            WorldSmoothingCatalog1458.IsSecondPhaseCandidate(tile.TileType) && IsFullSolid(grid, tile) &&
             (!grid.At(x - 1, y).IsActive || !WorldSmoothingCatalog1458.IsTrap(grid.At(x - 1, y).TileType)) &&
             (grid.At(x + 1, y).IsActive || !WorldSmoothingCatalog1458.IsTrap(grid.At(x + 1, y).TileType)))
         {
-            if (IsFullSolid(grid.At(x, y + 1)) && IsFullSolid(grid.At(x + 1, y)) && !grid.At(x - 1, y).IsActive)
-                SetSlope(ref tile, sourceSlope: 2, ref sloped);
-            if (IsFullSolid(grid.At(x, y + 1)) && IsFullSolid(grid.At(x - 1, y)) && !grid.At(x + 1, y).IsActive)
-                SetSlope(ref tile, sourceSlope: 1, ref sloped);
+            if (IsFullSolid(grid, grid.At(x, y + 1)) && IsFullSolid(grid, grid.At(x + 1, y)) && !grid.At(x - 1, y).IsActive)
+                SetSlope(grid, x, y, ref tile, sourceSlope: 2, ref sloped);
+            if (IsFullSolid(grid, grid.At(x, y + 1)) && IsFullSolid(grid, grid.At(x - 1, y)) && !grid.At(x + 1, y).IsActive)
+                SetSlope(grid, x, y, ref tile, sourceSlope: 1, ref sloped);
         }
 
         if (tile.IsActive && WorldSmoothingCatalog1458.IsSandConversion(tile.TileType))
             SmoothSandSlope(grid, x, y, ref sloped, ref halfBricks);
 
         int sourceSlope = GetSourceSlope(tile.Shape);
-        if (sourceSlope == 1 && !IsFullSolid(grid.At(x - 1, y)) && CanPound(grid, x, y))
+        if (sourceSlope == 1 && !IsFullSolid(grid, grid.At(x - 1, y)) && CanPound(grid, x, y))
         {
             ClearShape(ref tile);
-            Pound(ref tile, ref halfBricks);
+            Pound(grid, x, y, ref tile, ref halfBricks);
         }
-        if (GetSourceSlope(tile.Shape) == 2 && !IsFullSolid(grid.At(x + 1, y)) && CanPound(grid, x, y))
+        if (GetSourceSlope(tile.Shape) == 2 && !IsFullSolid(grid, grid.At(x + 1, y)) && CanPound(grid, x, y))
         {
             ClearShape(ref tile);
-            Pound(ref tile, ref halfBricks);
+            Pound(grid, x, y, ref tile, ref halfBricks);
         }
     }
 
     private static void SmoothSandSlope(Grid grid, int x, int y, ref long sloped, ref long halfBricks)
     {
         ref WorldTile tile = ref grid.At(x, y);
-        if (!CanPound(grid, x, y) || !IsSolidOrSloped(tile))
+        if (!CanPound(grid, x, y) || !IsSolidOrSloped(grid, tile))
             return;
 
         bool occupiedAbove = !IsTileEmpty(grid.At(x, y - 1));
-        bool nonSolidAbove = occupiedAbove && !IsSolidOrSloped(grid.At(x, y - 1));
-        bool solidBelow = IsSolidOrSloped(grid.At(x, y + 1));
-        bool solidLeft = IsSolidOrSloped(grid.At(x - 1, y));
-        bool solidRight = IsSolidOrSloped(grid.At(x + 1, y));
+        bool nonSolidAbove = occupiedAbove && !IsSolidOrSloped(grid, grid.At(x, y - 1));
+        bool solidBelow = IsSolidOrSloped(grid, grid.At(x, y + 1));
+        bool solidLeft = IsSolidOrSloped(grid, grid.At(x - 1, y));
+        bool solidRight = IsSolidOrSloped(grid, grid.At(x + 1, y));
         SlopeNeighborMask1458 mask =
             (occupiedAbove ? SlopeNeighborMask1458.OccupiedAbove : SlopeNeighborMask1458.None) |
             (solidBelow ? SlopeNeighborMask1458.SolidBelow : SlopeNeighborMask1458.None) |
@@ -282,21 +303,21 @@ internal static class WorldSmoother1458
         {
             case SlopeNeighborMask1458.OccupiedAbove | SlopeNeighborMask1458.SolidLeft
                 when !nonSolidAbove:
-                SetSlope(ref tile, sourceSlope: 3, ref sloped);
+                SetSlope(grid, x, y, ref tile, sourceSlope: 3, ref sloped);
                 break;
             case SlopeNeighborMask1458.OccupiedAbove | SlopeNeighborMask1458.SolidRight
                 when !nonSolidAbove:
-                SetSlope(ref tile, sourceSlope: 4, ref sloped);
+                SetSlope(grid, x, y, ref tile, sourceSlope: 4, ref sloped);
                 break;
             case SlopeNeighborMask1458.SolidBelow | SlopeNeighborMask1458.SolidLeft:
-                SetSlope(ref tile, sourceSlope: 1, ref sloped);
+                SetSlope(grid, x, y, ref tile, sourceSlope: 1, ref sloped);
                 break;
             case SlopeNeighborMask1458.SolidBelow | SlopeNeighborMask1458.SolidRight:
-                SetSlope(ref tile, sourceSlope: 2, ref sloped);
+                SetSlope(grid, x, y, ref tile, sourceSlope: 2, ref sloped);
                 break;
             case SlopeNeighborMask1458.SolidBelow:
                 ClearShape(ref tile);
-                Pound(ref tile, ref halfBricks);
+                Pound(grid, x, y, ref tile, ref halfBricks);
                 break;
             default:
                 ClearShape(ref tile);
@@ -305,20 +326,20 @@ internal static class WorldSmoother1458
     }
 
     private static void ShapeSlopeOrHalf(
-        ref WorldTile tile,
+        Grid grid, int x, int y, ref WorldTile tile,
         IWorldGenerationVanillaRandom random,
         int sourceSlope,
         ref long sloped,
         ref long halfBricks)
     {
         if (random.Next(2) == 0)
-            SetSlope(ref tile, sourceSlope, ref sloped);
+            SetSlope(grid, x, y, ref tile, sourceSlope, ref sloped);
         else
-            Pound(ref tile, ref halfBricks);
+            Pound(grid, x, y, ref tile, ref halfBricks);
     }
 
     private static void ShapeErodedEdge(
-        ref WorldTile tile,
+        Grid grid, int x, int y, ref WorldTile tile,
         IWorldGenerationVanillaRandom random,
         int sourceSlope,
         ref long sloped,
@@ -326,11 +347,11 @@ internal static class WorldSmoother1458
         ref long removed)
     {
         if (random.Next(5) == 0)
-            Kill(ref tile, ref removed);
+            Kill(grid, x, y, ref removed);
         else if (random.Next(5) == 0)
-            Pound(ref tile, ref halfBricks);
+            Pound(grid, x, y, ref tile, ref halfBricks);
         else
-            SetSlope(ref tile, sourceSlope, ref sloped);
+            SetSlope(grid, x, y, ref tile, sourceSlope, ref sloped);
     }
 
     private static bool CanPound(Grid grid, int x, int y)
@@ -341,50 +362,46 @@ internal static class WorldSmoother1458
         if (tile.WallType == VanillaWallIds.UnbreakableTemple)
             return false;
         WorldTile above = grid.At(x, y - 1);
-        return WorldSmoothingCatalog1458.CanRemoveTileBelow(in above, tile.TileType) &&
+        return grid.Framer.CanRemoveTile(x, y) &&
                (!above.IsActive || !WorldSmoothingCatalog1458.ForbidsSlopingBelow(above.TileType));
     }
 
-    private static void SetSlope(ref WorldTile tile, int sourceSlope, ref long sloped)
+    private static void SetSlope(Grid grid, int x, int y, ref WorldTile tile, int sourceSlope, ref long sloped)
     {
-        if (!tile.IsActive || !WorldSmoothingCatalog1458.CanBePounded(tile.TileType))
+        if (!CanPound(grid, x, y))
             return;
-        tile.Shape = checked((byte)(sourceSlope + 1));
+        tile.TrySetSourceShape(false, checked((byte)sourceSlope));
         sloped++;
     }
 
-    private static void Pound(ref WorldTile tile, ref long halfBricks)
+    private static void Pound(Grid grid, int x, int y, ref WorldTile tile, ref long halfBricks)
     {
-        if (!tile.IsActive || !WorldSmoothingCatalog1458.CanBePounded(tile.TileType))
+        if (!CanPound(grid, x, y))
             return;
-        tile.Shape = tile.Shape == (byte)TileShape1458.HalfBrick
-            ? (byte)TileShape1458.Full
-            : (byte)TileShape1458.HalfBrick;
+        tile.TrySetSourceShape(!tile.IsHalfBrick, tile.SourceSlope);
         halfBricks++;
     }
 
-    private static void Kill(ref WorldTile tile, ref long removed)
+    private static void Kill(Grid grid, int x, int y, ref long removed)
     {
-        if (!tile.IsActive)
-            return;
-        tile.Type = checked((ushort)VanillaTileIds.Dirt.Value);
-        tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.Actuator);
-        tile.FrameX = 0;
-        tile.FrameY = 0;
-        tile.Shape = 0;
-        removed++;
+        bool before = grid.At(x, y).IsActive;
+        grid.Framer.KillTile(x, y);
+        if (before && !grid.At(x, y).IsActive) removed++;
     }
 
     private static void PlaceGapTile(ref WorldTile tile, TileTypeId type)
     {
+        if (type.Value is 2 or 23 or 109 or 199 or 60 or 661 or 662 or 70 or 633 or
+            179 or 180 or 181 or 182 or 183 or 381 or 534 or 536 or 539 or 625 or 627)
+            return;
         tile.Type = checked((ushort)type.Value);
         tile.Flags |= WorldTileFlags.Active;
         tile.Flags &= ~WorldTileFlags.Inactive;
-        tile.FrameX = -1;
-        tile.FrameY = -1;
+        tile.FrameX = 0;
+        tile.FrameY = 0;
         tile.Shape = 0;
-        tile.LiquidAmount = 0;
-        tile.LiquidKind = WorldLiquidKind.Water;
+        tile.TileColor = 0;
+        tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
     }
 
     private static void ClearShape(ref WorldTile tile) => tile.Shape = (byte)TileShape1458.Full;
@@ -395,31 +412,30 @@ internal static class WorldSmoother1458
 
     private static bool IsFull(in WorldTile tile) => tile.Shape == (byte)TileShape1458.Full;
 
-    private static bool IsHalfBrick(in WorldTile tile) => tile.Shape == (byte)TileShape1458.HalfBrick;
+    private static bool IsHalfBrick(in WorldTile tile) => tile.IsHalfBrick;
 
-    private static bool IsFullSolid(in WorldTile tile) =>
-        tile.IsActive && !tile.IsActuated && IsFull(tile) && IsSolidIdentity(tile.TileType);
+    private static bool IsFullSolid(Grid grid, in WorldTile tile) =>
+        tile.IsActive && !tile.IsActuated && IsFull(tile) && IsSolidIdentity(grid, tile.TileType);
 
-    private static bool IsSolidOrSloped(in WorldTile tile) =>
-        tile.IsActive && !tile.IsActuated && IsSolidIdentity(tile.TileType);
+    private static bool IsSolidOrSloped(Grid grid, in WorldTile tile) =>
+        tile.IsActive && !tile.IsActuated && IsSolidIdentity(grid, tile.TileType);
 
-    private static bool IsSolidIdentity(TileTypeId type) =>
-        // WorldGen.SolidTile and SolidOrSlopedTile(default includePlatforms:false) exclude tileSolidTop.
-        !VanillaTileCollisionCatalog.IsSolidTop(type) &&
-        !WorldSmoothingCatalog1458.IsTemporarilyNonSolidDesertBoulder(type) &&
-        (VanillaTileCollisionCatalog.IsSolid(type) || WorldSmoothingCatalog1458.IsTemporarilySolidCrackedBrick(type));
+    private static bool IsSolidIdentity(Grid grid, TileTypeId type) =>
+        !VanillaTileCollisionCatalog.IsSolidTop(type) && grid.Framer.GenerationSolid(checked((ushort)type.Value));
 
     private readonly ref struct Grid
     {
         private readonly Span<WorldTile> tiles;
 
-        public Grid(WorldTileStore store)
+        public Grid(WorldTileStore store, GenerationTileFraming1458 framer)
         {
+            Framer = framer;
             Width = store.Dimensions.WidthTiles;
             Height = store.Dimensions.HeightTiles;
             tiles = store.Tiles;
         }
 
+        public GenerationTileFraming1458 Framer { get; }
         public int Width { get; }
         public int Height { get; }
         public ref WorldTile At(int x, int y) => ref tiles[x * Height + y];

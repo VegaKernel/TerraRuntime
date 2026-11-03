@@ -45,7 +45,7 @@ public sealed class LoadingLiquidObjectDestruction1458Tests
             if (loading)
             {
                 wet.LiquidAmount = 0;
-                wet.LiquidKind = WorldLiquidKind.Water;
+                // WorldGen.WaterCheck clears amount without changing the independent kind bits.
             }
             Assert.Equal(wet, tiles.Get(40, 42));
         }

@@ -48,7 +48,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
 /// underwater plants <c>549</c>, projectile pressure pads <c>442</c>, bamboo <c>571</c>,
 /// lily pads <c>518</c>, cat tails <c>519</c>, stalactites <c>165</c>,
-/// and the generation-time part of <c>KillTile</c>.
+/// all eight vine identities and the generation-time part of <c>KillTile</c>.
 /// The cosmetic branch is genuinely absent during generation - the source guards it with
 /// <c>!generatingWorld</c> - so nothing is dropped there. Frame-important identities outside those families
 /// keep their own validators in the source; this slice does not run them, and callers must not use it to frame
@@ -134,6 +134,14 @@ internal sealed partial class GenerationTileFraming1458(
             tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
             return;
         }
+
+        if (tile.Type is 52 or 62 or 115 or 205 or 382 or 528 or 636 or 638)
+        {
+            FrameVine(i, j);
+            return;
+        }
+
+        if (tile.Type == 444) { FrameBeeHive(i, j); return; }
 
         if (tile.Type is LargePiles or LargePiles2 or FallenLog)
         {
@@ -702,9 +710,9 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         destroyingObject = true;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 4; y++)
-            if (At(x, y).IsActive && At(x, y).Type == 27)
-                KillTile(x, y);
+            for (int y = top; y < top + 4; y++)
+                if (At(x, y).IsActive && At(x, y).Type == 27)
+                    KillTile(x, y);
         destroyingObject = false;
     }
 
@@ -779,14 +787,14 @@ internal sealed partial class GenerationTileFraming1458(
         short styleX = At(left, j).FrameX;
         bool broken = false;
         for (int row = 0; row < height; row++)
-        for (int column = 0; column < 2; column++)
-        {
-            WorldTile part = At(left + column, top + row);
-            if (!part.IsActive || part.Type != type ||
-                part.FrameY != row * 18 + styleY ||
-                part.FrameX != styleX + column * 18)
-                broken = true;
-        }
+            for (int column = 0; column < 2; column++)
+            {
+                WorldTile part = At(left + column, top + row);
+                if (!part.IsActive || part.Type != type ||
+                    part.FrameY != row * 18 + styleY ||
+                    part.FrameX != styleX + column * 18)
+                    broken = true;
+            }
 
         if (type is 465 or 531 or 591 or 592)
         {
@@ -823,9 +831,9 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         destroyingObject = true;
         for (int row = 0; row < height; row++)
-        for (int column = 0; column < 2; column++)
-            if (At(left + column, top + row).Type == type)
-                KillTile(left + column, top + row);
+            for (int column = 0; column < 2; column++)
+                if (At(left + column, top + row).Type == type)
+                    KillTile(left + column, top + row);
         destroyingObject = false;
     }
 
@@ -921,14 +929,14 @@ internal sealed partial class GenerationTileFraming1458(
 
         destroyingObject = true;
         for (int x = left; x < left + width; x++)
-        for (int y = top; y < top + height; y++)
-            if (At(x, y).IsActive && At(x, y).Type == type)
-                KillTile(x, y);
+            for (int y = top; y < top + height; y++)
+                if (At(x, y).IsActive && At(x, y).Type == type)
+                    KillTile(x, y);
         destroyingObject = false;
         int bottomExclusive = type is 101 or 102 or 463 or 617 ? top + height : top + height + 1;
         for (int x = left - 1; x < left + width + 1; x++)
-        for (int y = top - 1; y < bottomExclusive; y++)
-            TileFrame(x, y);
+            for (int y = top - 1; y < bottomExclusive; y++)
+                TileFrame(x, y);
     }
 
     /// <summary>Source Check4x2 for beds, bathtubs and picnic tables.</summary>
@@ -974,13 +982,13 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         destroyingObject = true;
         for (int x = left; x < left + 4; x++)
-        for (int y = top; y < top + 3; y++)
-            if (At(x, y).IsActive && At(x, y).Type == type)
-                KillTile(x, y);
+            for (int y = top; y < top + 3; y++)
+                if (At(x, y).IsActive && At(x, y).Type == type)
+                    KillTile(x, y);
         destroyingObject = false;
         for (int x = left - 1; x < left + 4; x++)
-        for (int y = top - 1; y < top + 4; y++)
-            TileFrame(x, y);
+            for (int y = top - 1; y < top + 4; y++)
+                TileFrame(x, y);
     }
 
     /// <summary>
@@ -1044,17 +1052,17 @@ internal sealed partial class GenerationTileFraming1458(
         destroyingObject = true;
         int removalHeight = type is 35 or 139 ? 3 : objectHeight;
         for (int x = left; x < left + objectWidth; x++)
-        for (int y = top; y < top + removalHeight; y++)
-            if (At(x, y).IsActive && At(x, y).Type == type)
-                KillTile(x, y);
+            for (int y = top; y < top + removalHeight; y++)
+                if (At(x, y).IsActive && At(x, y).Type == type)
+                    KillTile(x, y);
         // CheckMB reframes while destroyObject is still raised; its neighbours cannot recurse.
         if (type is not (35 or 139))
             destroyingObject = false;
         int halo = type == 209 ? 0 : 1;
         int bottomExclusive = type is 35 or 139 ? top + 3 : top + objectHeight + halo;
         for (int x = left - halo; x < left + objectWidth + halo; x++)
-        for (int y = top - halo; y < bottomExclusive; y++)
-            TileFrame(x, y);
+            for (int y = top - halo; y < bottomExclusive; y++)
+                TileFrame(x, y);
         destroyingObject = false;
     }
 
@@ -1220,8 +1228,8 @@ internal sealed partial class GenerationTileFraming1458(
 
         destroyingObject = false;
         for (int x = left - 1; x < left + 4; x++)
-        for (int y = j - 1; y < j + 2; y++)
-            TileFrame(x, y);
+            for (int y = j - 1; y < j + 2; y++)
+                TileFrame(x, y);
     }
 
     /// <summary>
@@ -1303,9 +1311,9 @@ internal sealed partial class GenerationTileFraming1458(
 
         destroyingObject = true;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 3; y++)
-            if (At(x, y).IsActive && At(x, y).Type == type)
-                KillTile(x, y);
+            for (int y = top; y < top + 3; y++)
+                if (At(x, y).IsActive && At(x, y).Type == type)
+                    KillTile(x, y);
         destroyingObject = false;
     }
 
@@ -1522,16 +1530,16 @@ internal sealed partial class GenerationTileFraming1458(
 
         destroyingObject = true;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 2; y++)
-            if (At(x, y).IsActive && At(x, y).Type == type)
-                KillTile(x, y);
+            for (int y = top; y < top + 2; y++)
+                if (At(x, y).IsActive && At(x, y).Type == type)
+                    KillTile(x, y);
         destroyingObject = false;
 
         // Check2x2 re-frames its four-by-four halo after leaving destroyObject. This matters when
         // the deleted fragments were supporting another important object in the same FinalCleanup scan.
         for (int x = left - 1; x < left + 3; x++)
-        for (int y = top - 1; y < top + 3; y++)
-            TileFrame(x, y);
+            for (int y = top - 1; y < top + 3; y++)
+                TileFrame(x, y);
     }
 
     private static bool IsBoulderContainer(ushort type) =>
@@ -1579,13 +1587,13 @@ internal sealed partial class GenerationTileFraming1458(
 
         destroyingObject = true;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 2; y++)
-            if (At(x, y).IsActive && At(x, y).Type == type)
-                KillTile(x, y);
+            for (int y = top; y < top + 2; y++)
+                if (At(x, y).IsActive && At(x, y).Type == type)
+                    KillTile(x, y);
         destroyingObject = false;
         for (int x = left - 1; x < left + 3; x++)
-        for (int y = top - 1; y < top + 3; y++)
-            TileFrame(x, y);
+            for (int y = top - 1; y < top + 3; y++)
+                TileFrame(x, y);
     }
 
     /// <summary>WorldGen.Check2x2's type132 wall fallback and two style bands.</summary>
@@ -1609,14 +1617,14 @@ internal sealed partial class GenerationTileFraming1458(
 
         bool broken = false;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 2; y++)
-        {
-            WorldTile part = At(x, y);
-            if (!part.IsActive || part.Type != 132 ||
-                part.FrameX != (x - left) * 18 + styleX ||
-                part.FrameY != (y - top) * 18)
-                broken = true;
-        }
+            for (int y = top; y < top + 2; y++)
+            {
+                WorldTile part = At(x, y);
+                if (!part.IsActive || part.Type != 132 ||
+                    part.FrameX != (x - left) * 18 + styleX ||
+                    part.FrameY != (y - top) * 18)
+                    broken = true;
+            }
 
         bool supported = true;
         for (int x = left; x < left + 2; x++)
@@ -1644,20 +1652,20 @@ internal sealed partial class GenerationTileFraming1458(
 
         destroyingObject = true;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 2; y++)
-            if (At(x, y).IsActive && At(x, y).Type == 132)
-                KillTile(x, y);
+            for (int y = top; y < top + 2; y++)
+                if (At(x, y).IsActive && At(x, y).Type == 132)
+                    KillTile(x, y);
         destroyingObject = false;
         for (int x = left - 1; x < left + 3; x++)
-        for (int y = top - 1; y < top + 3; y++)
-            TileFrame(x, y);
+            for (int y = top - 1; y < top + 3; y++)
+                TileFrame(x, y);
     }
 
     private void ShiftFrameX(int left, int top, int amount)
     {
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 2; y++)
-            At(x, y).FrameX = checked((short)(At(x, y).FrameX + amount));
+            for (int y = top; y < top + 2; y++)
+                At(x, y).FrameX = checked((short)(At(x, y).FrameX + amount));
     }
 
     private bool IsTwoByOneTableSupport(int x, int y)
@@ -2308,6 +2316,11 @@ internal sealed partial class GenerationTileFraming1458(
         tile.FrameY = -1;
         tile.TileColor = 0;
         tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        if (tile.Type == 58 && j > height - 200)
+        {
+            tile.LiquidAmount = 128;
+            tile.LiquidKind = WorldLiquidKind.Lava;
+        }
         tile.Type = 0;
         tile.Flags &= ~WorldTileFlags.Inactive;
         SquareTileFrame(i, j);
@@ -2610,9 +2623,9 @@ internal sealed partial class GenerationTileFraming1458(
 
         destroyingObject = true;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 2; y++)
-            if (Contains(x, y) && At(x, y).Type == type)
-                KillTile(x, y);
+            for (int y = top; y < top + 2; y++)
+                if (Contains(x, y) && At(x, y).Type == type)
+                    KillTile(x, y);
         destroyingObject = false;
     }
 

@@ -12,7 +12,11 @@ public sealed class WorldLiquidUpdateQueue
     private readonly WorldDimensions _dimensions;
     private readonly int _tileCount;
     private Queue<WorldLiquidUpdateEntry> _active = new();
-    private Queue<int> _buffered = new();
+    private List<int> _buffered = new();
+    private int _bufferedHead;
+    internal int GenerationWetCounter { get; set; }
+    internal int GenerationStuckCount { get; set; }
+    internal int GenerationStuckAmount { get; set; }
     private BitArray? _activeMembership;
     private BitArray? _bufferMembership;
     private BitArray? _skipNextUpdate;
@@ -37,9 +41,9 @@ public sealed class WorldLiquidUpdateQueue
 
     public int ActiveCount => _active.Count;
 
-    public int BufferedCount => _buffered.Count;
+    public int BufferedCount => _buffered.Count - _bufferedHead;
 
-    public bool HasPendingWork => _active.Count != 0 || _buffered.Count != 0;
+    public bool HasPendingWork => _active.Count != 0 || BufferedCount != 0;
 
     /// <summary>Source Tile.checkingLiquid: both active Liquid and deferred LiquidBuffer entries own the flag.</summary>
     public bool IsCheckingLiquid(int x, int y) => TryGetIndex(x, y, out int index) &&
@@ -70,7 +74,7 @@ public sealed class WorldLiquidUpdateQueue
             return false;
 
         _bufferMembership[index] = true;
-        _buffered.Enqueue(index);
+        _buffered.Add(index);
         return true;
     }
 
@@ -159,6 +163,11 @@ public sealed class WorldLiquidUpdateQueue
         return true;
     }
 
+    internal void ReleaseLoadingMembership(int x, int y)
+    {
+        if (_activeMembership is not null && TryGetIndex(x, y, out int index)) _activeMembership[index] = false;
+    }
+
     internal void RestoreLoadingSlots(ReadOnlySpan<WorldLiquidUpdate> slots)
     {
         _active.Clear();
@@ -170,30 +179,51 @@ public sealed class WorldLiquidUpdateQueue
 
     public bool TryDequeueBuffered(out int x, out int y)
     {
-        if (!_buffered.TryDequeue(out int index))
+        if (BufferedCount == 0)
         {
             x = 0;
             y = 0;
             return false;
         }
 
+        int index = _buffered[_bufferedHead++];
         _bufferMembership![index] = false;
         DecodeIndex(index, out x, out y);
+        if (BufferedCount == 0) { _buffered.Clear(); _bufferedHead = 0; }
+        else if (_bufferedHead >= 4096 && _bufferedHead >= _buffered.Count / 2) { _buffered.RemoveRange(0, _bufferedHead); _bufferedHead = 0; }
         return true;
     }
 
-    public void Clear()
+    internal bool TryPeekBuffered(out int x, out int y)
+    {
+        if (BufferedCount == 0) { x = y = 0; return false; }
+        DecodeIndex(_buffered[_bufferedHead], out x, out y); return true;
+    }
+    internal void ReleaseBufferedMembership(int x, int y)
+    {
+        if (_bufferMembership is not null && TryGetIndex(x, y, out int index)) _bufferMembership[index] = false;
+    }
+    internal void DeleteBufferedFrontSwapLast()
+    {
+        _buffered[_bufferedHead] = _buffered[^1]; _buffered.RemoveAt(_buffered.Count - 1);
+        if (BufferedCount == 0) { _buffered.Clear(); _bufferedHead = 0; }
+    }
+
+    public void Clear() => Clear(preserveSkip: false);
+
+    internal void Clear(bool preserveSkip)
     {
         _active.Clear();
         _buffered.Clear();
+        _bufferedHead = 0;
         _activeMembership?.SetAll(false);
         _bufferMembership?.SetAll(false);
-        _skipNextUpdate?.SetAll(false);
+        if (!preserveSkip) _skipNextUpdate?.SetAll(false);
     }
 
     internal WorldLiquidUpdateEntry[] CaptureActiveSnapshot() => _active.ToArray();
 
-    internal int[] CaptureBufferSnapshot() => _buffered.ToArray();
+    internal int[] CaptureBufferSnapshot() => System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_buffered)[_bufferedHead..].ToArray();
 
     internal bool TryRestoreSnapshot(
         ReadOnlySpan<WorldLiquidUpdateEntry> active,
@@ -203,7 +233,7 @@ public sealed class WorldLiquidUpdateQueue
             return false;
 
         var restoredActive = new Queue<WorldLiquidUpdateEntry>(active.Length);
-        var restoredBuffered = new Queue<int>(buffered.Length);
+        var restoredBuffered = new List<int>(buffered.Length);
         BitArray? activeMembership = active.Length == 0 ? null : new BitArray(_tileCount);
         BitArray? bufferMembership = buffered.Length == 0 ? null : new BitArray(_tileCount);
 
@@ -222,11 +252,12 @@ public sealed class WorldLiquidUpdateQueue
                 return false;
 
             bufferMembership[index] = true;
-            restoredBuffered.Enqueue(index);
+            restoredBuffered.Add(index);
         }
 
         _active = restoredActive;
         _buffered = restoredBuffered;
+        _bufferedHead = 0;
         _activeMembership = activeMembership;
         _bufferMembership = bufferMembership;
         return true;

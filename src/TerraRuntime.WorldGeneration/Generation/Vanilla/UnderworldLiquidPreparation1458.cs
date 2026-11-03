@@ -21,13 +21,13 @@ internal static class UnderworldLiquidPreparation1458
     internal static void ClearBeforeAether(WorldTileStore store)
     {
         for (int y = 0; y <= ShimmerClearRadius / 2 && y < store.Dimensions.HeightTiles; y++)
-        for (int x = 0; x < ShimmerClearRadius && x < store.Dimensions.WidthTiles; x++)
-        {
-            if (x * x + y * y >= ShimmerClearRadius * ShimmerClearRadius) continue;
-            ref WorldTile tile = ref UnderworldTerrain1458.At(store, x, y);
-            if (tile.LiquidKind != WorldLiquidKind.Shimmer) tile.LiquidAmount = 0;
-            if (tile.Type == BreakableIce) tile.Flags &= ~WorldTileFlags.Active;
-        }
+            for (int x = 0; x < ShimmerClearRadius && x < store.Dimensions.WidthTiles; x++)
+            {
+                if (x * x + y * y >= ShimmerClearRadius * ShimmerClearRadius) continue;
+                ref WorldTile tile = ref UnderworldTerrain1458.At(store, x, y);
+                if (tile.LiquidKind != WorldLiquidKind.Shimmer) tile.LiquidAmount = 0;
+                if (tile.Type == BreakableIce) tile.Flags &= ~WorldTileFlags.Active;
+            }
     }
 
     internal static void CleanupInteractions(WorldTileStore store, CancellationToken cancellationToken)
@@ -63,5 +63,31 @@ internal static class UnderworldLiquidPreparation1458
         if (tile.IsActive || tile.LiquidAmount == 0) return 0;
         // Pinned 1.4.5.8 counts shimmer ABOVE as water. Preserve that asymmetry, do not silently fix vanilla.
         return above && tile.LiquidKind == WorldLiquidKind.Shimmer ? 1 : 1 << (int)tile.LiquidKind;
+    }
+    internal static void NormalizeOceanLiquids(WorldTileStore store, double worldSurface, double rockLayer, CancellationToken cancellationToken)
+    {
+        double oceanLevel = (worldSurface + rockLayer) / 2d + 40d;
+        for (int x = 0; x < store.Dimensions.WidthTiles; x++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (x >= 380 && x <= store.Dimensions.WidthTiles - 380) continue;
+            for (int y = 0; y < store.Dimensions.HeightTiles && y <= oceanLevel; y++)
+            {
+                ref WorldTile tile = ref UnderworldTerrain1458.At(store, x, y);
+                if (tile.LiquidAmount > 0 && tile.LiquidKind != WorldLiquidKind.Water) tile.LiquidKind = WorldLiquidKind.Water;
+            }
+        }
+    }
+    internal static void RemoveWaterAroundShimmer(WorldTileStore store, int centerX, int centerY)
+    {
+        for (int y = centerY - 150; y <= centerY + 75; y++)
+            for (int x = centerX - 150; x <= centerX + 150; x++)
+            {
+                if ((uint)x >= (uint)store.Dimensions.WidthTiles || (uint)y >= (uint)store.Dimensions.HeightTiles) continue;
+                int dx = x - centerX, dy = y - centerY; if (dx * dx + dy * dy >= 150 * 150) continue;
+                ref WorldTile tile = ref UnderworldTerrain1458.At(store, x, y);
+                if (tile.LiquidKind != WorldLiquidKind.Shimmer) tile.LiquidAmount = 0;
+                if (tile.Type == 162) tile.Flags &= ~WorldTileFlags.Active;
+            }
     }
 }

@@ -41,7 +41,7 @@ internal readonly record struct VanillaLihzahrdAltarState1458(int X, int Y);
 /// Generated object/NPC metadata is accumulated beside the tile store so fresh .wld composition can publish tiles
 /// and their side tables atomically instead of manufacturing orphan frame-important objects or transient NPCs.
 /// </summary>
-public sealed class Workspace :
+public sealed partial class Workspace :
     IWorldGenerationWorkspace,
     IWorldGenerationMetadataWorkspace,
     IWorldGenerationChestWorkspace
@@ -80,9 +80,9 @@ public sealed class Workspace :
     private WorldGenerationPoint[] vanillaOceanCaveTreasure = [];
     private WorldGenerationPoint[]? vanillaJungleShrineChestAnchors;
     // Source Ice pass publishes temporary Main.tileSolid[162/226]=false for later generation passes.
-    internal bool VanillaPostIceNonSolidTiles { get; private set; }
     private WorldTileRegion? vanillaShimmerStructure;
     private WorldTileRegion[] vanillaHiveProtectedAreas = [];
+    private WorldGenerationPoint[] vanillaHiveLarvaAnchors = [];
     private WorldTileRegion[] vanillaJungleShrineProtectedAreas = [];
     private WorldGenerationPoint[] vanillaPyramidAnchors = [];
     private Vanilla.VanillaOasisAnchor1458[] vanillaOasisAnchors = [];
@@ -122,6 +122,7 @@ public sealed class Workspace :
     internal VanillaLiquidLines1458? VanillaLiquidLines => vanillaLiquidLines;
     internal VanillaFallenLogAnchor1458? VanillaFallenLogAnchor => vanillaFallenLogAnchor;
     internal WorldGenerationPoint? VanillaShimmerPosition { get; set; }
+    internal ReadOnlySpan<WorldGenerationPoint> VanillaHiveLarvaAnchors => vanillaHiveLarvaAnchors;
     internal ReadOnlySpan<WorldGenerationPoint> VanillaMushroomCenters => vanillaMushroomCenters;
     // GenVars.structures retains these unpadded Marble rectangles with padding 8.
     internal ReadOnlySpan<WorldTileRegion> VanillaMarbleRegions => vanillaMarbleRegions;
@@ -164,7 +165,7 @@ public sealed class Workspace :
         for (int y = 0; y < rows.Length; y++)
         {
             if (left[y] < 0 || right[y] < left[y] || right[y] > WidthTiles) throw new ArgumentOutOfRangeException(nameof(left));
-            rows[y] = new(left[y],right[y]);
+            rows[y] = new(left[y], right[y]);
         }
         vanillaSnowRows = rows; VanillaSnowTop = top; VanillaSnowBottom = bottom;
     }
@@ -243,9 +244,20 @@ public sealed class Workspace :
             throw new ArgumentOutOfRangeException(nameof(region));
         vanillaShimmerStructure = region;
     }
+    internal void SetVanillaHiveLarvaAnchors(ReadOnlySpan<WorldGenerationPoint> anchors)
+    {
+        // GenVars.larvaX/Y have one hundred slots; the last slot is an overflow sentinel.
+        if (anchors.Length > 99) throw new ArgumentOutOfRangeException(nameof(anchors));
+        var copy = anchors.ToArray();
+        foreach (WorldGenerationPoint point in copy)
+            if (point.X < 5 || point.X > WidthTiles - 5 || point.Y < 5 || point.Y > HeightTiles - 5)
+                throw new ArgumentOutOfRangeException(nameof(anchors));
+        vanillaHiveLarvaAnchors = copy;
+    }
     internal void SetVanillaHiveProtectedAreas(ReadOnlySpan<WorldTileRegion> regions)
     {
-        if (regions.Length > 64)
+        // An ordinary large world offers at most sixteen hives and four honey patches per hive.
+        if (regions.Length > 80)
             throw new ArgumentOutOfRangeException(nameof(regions));
         var copy = regions.ToArray();
         foreach (WorldTileRegion region in copy)
@@ -291,7 +303,6 @@ public sealed class Workspace :
         }
         vanillaJungleShrineChestAnchors = copy;
     }
-    internal void SetVanillaPostIceNonSolidTiles() => VanillaPostIceNonSolidTiles = true;
     internal void SetVanillaMountainCaves(ReadOnlySpan<WorldGenerationPoint> caves)
     {
         if (caves.Length > 8) throw new ArgumentOutOfRangeException(nameof(caves));

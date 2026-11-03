@@ -155,8 +155,8 @@ internal sealed class ChestPlacementState1458
             // Source SavedOreTiers.Silver == 168 is the Tungsten Ore tile, which decides whether the
             // underworld's ammo stack is Cursed Bullets or Silver ones.
             TungstenIsSilverTier = Bootstrap.SilverOre == 168,
-            DesertHiveLow = workspace.VanillaUndergroundDesertRegion?.Y ?? 0,
-            DesertHiveHigh = workspace.VanillaUndergroundDesertRegion?.Bottom ?? 0,
+            DesertHiveLow = workspace.VanillaDesertGenerationState?.DensityBounds.ExclusiveBottom - 1 ?? 0,
+            DesertHiveHigh = workspace.VanillaDesertGenerationState?.DensityBounds.Y ?? 0,
             HellChestItem = Bootstrap.HellChestItems
         };
         workspace.SetVanillaBuriedChestContext(ChestContext);
@@ -232,6 +232,13 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         RuntimeGrid grid,
         IWorldGenerationVanillaRandom random)
     {
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(162), true);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(225), true);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(226), true);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(190), true);
+        }
         // Source pass, in order: cave chests, underworld chests, cave houses, extra desert houses. The two
         // chest loops are ported; the two house loops are the cave-house row's and still use the runtime's
         // own placement, so their counts come from the ported pass rather than being invented here.
@@ -244,10 +251,29 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         int houseTarget = pass.CaveHouseCount;
         int additionalDesertTarget = pass.AdditionalDesertHouseCount;
 
+        (int housePlaced, int additionalDesertPlaced) = PlaceHouseOffers(context, workspace, random, houseTarget, additionalDesertTarget);
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(162), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(225), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(226), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(190), false);
+        }
+
+        context.ReportProgress(
+            1d,
+            $"Placing underground houses and buried chests (chests {chestsPlaced}, " +
+            $"houses {housePlaced}/{houseTarget}, additional desert {additionalDesertPlaced}/{additionalDesertTarget})");
+    }
+
+    private (int Houses, int Desert) PlaceHouseOffers(IWorldGenerationContext context, Workspace workspace,
+        IWorldGenerationVanillaRandom random, int houseTarget, int additionalDesertTarget)
+    {
+        var grid = new RuntimeGrid(workspace);
         int housePlaced = 0;
         int houseMinimumY = Math.Clamp((int)(state.WorldSurfaceHigh + 20d), 30, grid.Height - 231);
         int houseMaximumY = Math.Max(houseMinimumY + 1, grid.Height - 230);
-        for (int attempt = 0; attempt < 10_000 && housePlaced < houseTarget; attempt++)
+        for (int attempt = 0; attempt - housePlaced < 10_000 && housePlaced < houseTarget; attempt++)
         {
             if ((attempt & 63) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
@@ -264,29 +290,26 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         }
 
         int additionalDesertPlaced = 0;
-        if (workspace.VanillaUndergroundDesertRegion is VanillaUndergroundDesertRegion1458 desert)
+        if (workspace.VanillaDesertGenerationState is { } retainedDesert)
         {
+            WorldTileRegion desert = retainedDesert.Hive;
             (int desertTop, int desertBottom) = GetAdditionalDesertHouseVerticalRange1458(
-                desert.Y, desert.Bottom, state.WorldSurface);
+                desert.Y, desert.ExclusiveBottom, state.WorldSurface);
             for (int attempt = 0;
-                 attempt < 10_000 && additionalDesertPlaced < additionalDesertTarget && desertBottom > desertTop;
+                 attempt - additionalDesertPlaced < 10_000 && additionalDesertPlaced < additionalDesertTarget && desertBottom > desertTop;
                  attempt++)
             {
                 if ((attempt & 63) == 0)
                     context.CancellationToken.ThrowIfCancellationRequested();
 
-                int x = random.Next(desert.X, desert.Right);
+                int x = random.Next(desert.X, desert.ExclusiveRight);
                 int y = random.Next(desertTop, desertBottom);
                 if (CaveHousePlacement1458.TryPlace(workspace, state, random, x, y, out _))
                     additionalDesertPlaced++;
             }
         }
         workspace.SetVanillaCaveHouseCounts(housePlaced, additionalDesertPlaced);
-
-        context.ReportProgress(
-            1d,
-            $"Placing underground houses and buried chests (chests {chestsPlaced}, " +
-            $"houses {housePlaced}/{houseTarget}, additional desert {additionalDesertPlaced}/{additionalDesertTarget})");
+        return (housePlaced, additionalDesertPlaced);
     }
 
     internal static bool IsOrdinaryHouseOceanOffer1458(
@@ -336,12 +359,12 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             // Failed first offer: the source kills the 3x3 obstruction, flattens
             // the 3x4 repair region, then retries at the unshifted anchor.
             for (int x = anchor.X - 1; x <= anchor.X + 1; x++)
-            for (int y = anchor.Y; y <= anchor.Y + 2; y++)
-                framer.KillTile(x, y);
+                for (int y = anchor.Y; y <= anchor.Y + 2; y++)
+                    framer.KillTile(x, y);
             for (int x = anchor.X - 1; x <= anchor.X + 1; x++)
-            for (int y = anchor.Y; y <= anchor.Y + 3 && y < grid.Height; y++)
-                if ((uint)x < (uint)grid.Width && (uint)y < (uint)grid.Height)
-                    grid.At(x, y).Shape = 0;
+                for (int y = anchor.Y; y <= anchor.Y + 3 && y < grid.Height; y++)
+                    if ((uint)x < (uint)grid.Width && (uint)y < (uint)grid.Height)
+                        grid.At(x, y).Shape = 0;
             _ = placer.TryAdd(anchor.X, anchor.Y, out _, out _,
                 primary, notNearOtherChests: false, chestStyle: IvyChestStyle,
                 trySlope: false, chestTileType: 0);
@@ -387,15 +410,15 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         int top = Math.Max(1, centerY - radiusY);
         int bottom = Math.Min(grid.Height - 2, centerY + radiusY);
         for (int x = left; x <= right; x += 4)
-        for (int y = top; y <= bottom; y += 4)
-        {
-            WorldTile tile = grid.At(x, y);
-            if (!tile.IsActive)
-                continue;
-            samples++;
-            if (tile.Type is 59 or 60 or 225 or 226)
-                matches++;
-        }
+            for (int y = top; y <= bottom; y += 4)
+            {
+                WorldTile tile = grid.At(x, y);
+                if (!tile.IsActive)
+                    continue;
+                samples++;
+                if (tile.Type is 59 or 60 or 225 or 226)
+                    matches++;
+            }
         return samples > 0 && matches * 100 / samples >= 20;
     }
 
@@ -410,12 +433,12 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             return false;
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile tile = grid.At(left + dx, top + dy);
-            if (tile.IsActive || (!allowLiquid && tile.LiquidAmount > 0))
-                return false;
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile tile = grid.At(left + dx, top + dy);
+                if (tile.IsActive || (!allowLiquid && tile.LiquidAmount > 0))
+                    return false;
+            }
 
         if (!grid.At(left, top + 2).IsActive || !grid.At(left + 1, top + 2).IsActive)
             return false;
@@ -438,17 +461,17 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         WorldTile d = grid.At(left + 1, top + 1);
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            tile.Type = Containers;
-            tile.Flags |= WorldTileFlags.Active;
-            tile.FrameX = checked((short)(style * 36 + dx * 18));
-            tile.FrameY = checked((short)(dy * 18));
-            tile.Shape = 0;
-            tile.LiquidAmount = 0;
-            tile.LiquidKind = WorldLiquidKind.Water;
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile tile = ref grid.At(left + dx, top + dy);
+                tile.Type = Containers;
+                tile.Flags |= WorldTileFlags.Active;
+                tile.FrameX = checked((short)(style * 36 + dx * 18));
+                tile.FrameY = checked((short)(dy * 18));
+                tile.Shape = 0;
+                tile.LiquidAmount = 0;
+                tile.LiquidKind = WorldLiquidKind.Water;
+            }
 
         if (workspace.TryAddChest(left, top, string.Empty, loot))
             return true;
@@ -509,12 +532,12 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             int top = Math.Max(0, centerY - radiusY);
             int bottom = Math.Min(Height - 1, centerY + radiusY);
             for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottom; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                    return true;
-            }
+                for (int y = top; y <= bottom; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
+                        return true;
+                }
             return false;
         }
     }

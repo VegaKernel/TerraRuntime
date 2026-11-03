@@ -305,6 +305,11 @@ internal sealed class MidPass1458 : IWorldGenerationPass
 
     private void ApplyFullDesert(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(484), false);
+        }
+
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         IWorldGenerationVanillaRandom vanilla = context.VanillaRandom ??
             throw new InvalidOperationException("Full Desert requires the pass-local vanilla RNG.");
@@ -406,15 +411,15 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             // Source consumes both samples even for retained mountain-cave locations.
             int x = random.Next(20, width - 20), y = random.Next((int)terrain.WorldSurfaceHigh, height - 20);
             if (i < caves.Length) { x = caves[i].X; y = caves[i].Y; }
-            if (workspace.TileStore.Get(x,y).IsActive ||
-                (y <= state.WorldSurface && workspace.TileStore.Get(x,y).Wall == 0)) continue;
-            while (!workspace.TileStore.Get(x,y).IsActive && y > (int)terrain.WorldSurfaceLow) y--;
+            if (workspace.TileStore.Get(x, y).IsActive ||
+                (y <= state.WorldSurface && workspace.TileStore.Get(x, y).Wall == 0)) continue;
+            while (!workspace.TileStore.Get(x, y).IsActive && y > (int)terrain.WorldSurfaceLow) y--;
             y++;
             int direction = random.Next(2) == 0 ? -1 : 1;
-            while (!workspace.TileStore.Get(x,y).IsActive && x > 10 && x < width - 10) x += direction;
+            while (!workspace.TileStore.Get(x, y).IsActive && x > 10 && x < width - 10) x += direction;
             x -= direction;
-            if (y > state.WorldSurface || workspace.TileStore.Get(x,y).Wall > 0)
-                runner.Run(x, y, random.Next(4,11), random.Next(2,4), Cobweb, addTile: true,
+            if (y > state.WorldSurface || workspace.TileStore.Get(x, y).Wall > 0)
+                runner.Run(x, y, random.Next(4, 11), random.Next(2, 4), Cobweb, addTile: true,
                     speedX: direction, speedY: -1, overRide: false);
         }
         context.ReportProgress(1d, "Generating cave cobweb patches");
@@ -448,10 +453,10 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             {
                 var surface = new EvilBiomeSurface1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurfaceLow,
                     state.WorldSurface, context.CancellationToken);
-                for (int x = left; x < right; x++) surface.ConvertJungleColumn(x,left,right,true);
-                surface.ConvertRegion(left,right,true);
+                for (int x = left; x < right; x++) surface.ConvertJungleColumn(x, left, right, true);
+                surface.ConvertRegion(left, right, true);
                 new EvilAltarPlacement1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
-                    state.RockLayer, context.CancellationToken).GenerateCrimsonRegion(left,right);
+                    state.RockLayer, context.CancellationToken).GenerateCrimsonRegion(left, right);
                 continue;
             }
 

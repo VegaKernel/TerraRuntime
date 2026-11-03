@@ -51,7 +51,8 @@ internal sealed class CaveWallVarietyPass1458(
     double rockLayer,
     int lavaLine,
     WorldGenerationPoint shimmerPosition,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Func<TileTypeId, bool>? solidity = null)
 {
     /// <summary>Source <c>ShapeFloodFill</c>'s default maximum action count as this pass asks for it.</summary>
     private const int FloodBudget = 1000;
@@ -282,7 +283,7 @@ internal sealed class CaveWallVarietyPass1458(
             return false;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && (solidity?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && !tile.IsActuated;
     }
 

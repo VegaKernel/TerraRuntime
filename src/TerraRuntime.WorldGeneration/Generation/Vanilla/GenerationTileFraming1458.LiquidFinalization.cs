@@ -5,20 +5,6 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 internal sealed partial class GenerationTileFraming1458
 {
-    internal VanillaWaterCheckDiagnostic1458 SettleLiquidsDuringGeneration(CancellationToken cancellationToken)
-    {
-        bool previous = useGenerationSolidity, previousIgnore = ignoreWaterSolidity;
-        useGenerationSolidity = true;
-        ignoreWaterSolidity = true;
-        try
-        {
-            var sink = new GenerationLiquidMergeSink(this);
-            return new VanillaWorldLiquidSimulator1458(store, sideEffects: sink,
-                random: new GenerationLiquidRandom(random)).SettleDuringWorldGeneration(sink, cancellationToken);
-        }
-        finally { useGenerationSolidity = previous; ignoreWaterSolidity = previousIgnore; }
-    }
-
     internal VanillaWaterCheckDiagnostic1458 WaterCheckLiquidsDuringGeneration()
     {
         bool previous = useGenerationSolidity, previousIgnore = ignoreWaterSolidity;
@@ -80,14 +66,14 @@ internal sealed partial class GenerationTileFraming1458
 
         public bool TryCutTile(int x, int y)
         {
-            EnsureTargetOwned(framing.At(x, y));
+            EnsureTargetOwned(x, y);
             framing.KillTile(x, y);
             return true;
         }
 
         public bool TryKillLiquidSensitiveObject(int x, int y)
         {
-            EnsureTargetOwned(framing.At(x, y));
+            EnsureTargetOwned(x, y, allowWetHive: true);
             framing.KillTile(x, y);
             return true; // Handled includes CheckTileBreakability refusing a protected platform.
         }
@@ -99,7 +85,7 @@ internal sealed partial class GenerationTileFraming1458
             if (request.MergeTileType.Value is not (56 or 229 or 230 or 659))
                 throw new InvalidOperationException("Unknown generation liquid merge material.");
             WorldTile target = framing.At(request.X, request.Y);
-            EnsureTargetOwned(target);
+            EnsureTargetOwned(request.X, request.Y);
             if (target.IsActive && framing.CanReplaceLiquidTarget(request.X, request.Y, request.MergeTileType.Value) &&
                 VanillaTileDefinitionCatalog.TryGet(target.TileType, out VanillaTileDefinition definition) &&
                 definition.DropRule.Kind == VanillaTileDropRuleKind.Contextual && target.Type != 19)
@@ -112,8 +98,10 @@ internal sealed partial class GenerationTileFraming1458
             return true;
         }
 
-        private static void EnsureTargetOwned(WorldTile target)
+        private void EnsureTargetOwned(int x, int y, bool allowWetHive = false)
         {
+            WorldTile target = framing.At(x, y);
+            if (allowWetHive && target.IsActive && target.Type == 444 && framing.HasWetBeeHiveFootprint(x, y)) return;
             if (target.IsActive && target.Type is 85 or 231 or 334 or 378 or 395 or 404 or 444 or
                 470 or 471 or 475 or 520 or 597 or 698)
                 throw new NotSupportedException("Generation liquid mutation needs this target's retained entity or fossil owner.");

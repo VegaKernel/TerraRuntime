@@ -9,6 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/GenerationDecorationPhaseHelpers1458.json.gz" LogicalName="GenerationDecorationPhaseHelpers1458" />
+    <EmbeddedResource Include="Fixtures/GenerationVines1458.json.gz" LogicalName="GenerationVines1458" />
+    <EmbeddedResource Include="Fixtures/GenerationSolidity1458.json.gz" LogicalName="GenerationSolidity1458" />
+    <EmbeddedResource Include="Fixtures/GenerationHouseOfferBoundaries1458.json.gz" LogicalName="GenerationHouseOfferBoundaries1458" />
+    <EmbeddedResource Include="Fixtures/GenerationDesertChestBounds1458.json.gz" LogicalName="GenerationDesertChestBounds1458" />
     <EmbeddedResource Include="Fixtures/ScalarDebuffPlayerLinux1458.v8.json.gz" LogicalName="ScalarDebuffPlayerLinux1458" />
     <EmbeddedResource Include="Fixtures/ScalarDebuffControlsLinux1458.json.gz" LogicalName="ScalarDebuffControlsLinux1458" />
     <EmbeddedResource Include="Fixtures/AnkhEquipmentLinux1458.json.gz" LogicalName="AnkhEquipmentLinux1458" />

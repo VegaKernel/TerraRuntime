@@ -75,8 +75,12 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         var wet = new WorldTile { Type = 0, Flags = WorldTileFlags.Active, LiquidAmount = amount };
         workspace.TileStore.Set(x, y, in wet);
-        var neighbour = new WorldTile { Type = neighbourType, LiquidAmount = neighbourAmount,
-            Flags = neighbourActive ? WorldTileFlags.Active : WorldTileFlags.None };
+        var neighbour = new WorldTile
+        {
+            Type = neighbourType,
+            LiquidAmount = neighbourAmount,
+            Flags = neighbourActive ? WorldTileFlags.Active : WorldTileFlags.None
+        };
         workspace.TileStore.Set(x, y + 1, in neighbour);
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500),
@@ -176,8 +180,14 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         void SetTile(int x, int y, ushort type, short frameX = 0, ushort wall = 0)
         {
-            var tile = new WorldTile { Type = type, Wall = wall, FrameX = frameX,
-                FrameY = type == 4 ? (short)154 : (short)0, Flags = WorldTileFlags.Active };
+            var tile = new WorldTile
+            {
+                Type = type,
+                Wall = wall,
+                FrameX = frameX,
+                FrameY = type == 4 ? (short)154 : (short)0,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
 
@@ -330,8 +340,12 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         foreach (int x in new[] { 500, 510, 520, 530, 540, 550 })
         {
-            var dye = new WorldTile { Type = 227, Flags = WorldTileFlags.Active,
-                FrameX = (short)(x is 510 or 540 ? 238 : x is 520 or 550 ? 204 : 0) };
+            var dye = new WorldTile
+            {
+                Type = 227,
+                Flags = WorldTileFlags.Active,
+                FrameX = (short)(x is 510 or 540 ? 238 : x is 520 or 550 ? 204 : 0)
+            };
             workspace.TileStore.Set(x, 100, in dye);
         }
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
@@ -442,46 +456,46 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         ushort[] types = [12, 31, 639, 696];
         for (int typeIndex = 0; typeIndex < types.Length; typeIndex++)
-        for (int broken = 0; broken < 2; broken++)
-        {
-            int left = 500 + typeIndex * 40 + broken * 20;
-            ushort type = types[typeIndex];
-            for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
+            for (int broken = 0; broken < 2; broken++)
             {
-                if (broken != 0 && dx == 1 && dy == 1)
-                    continue;
-                var orb = new WorldTile
+                int left = 500 + typeIndex * 40 + broken * 20;
+                ushort type = types[typeIndex];
+                for (int dx = 0; dx < 2; dx++)
+                    for (int dy = 0; dy < 2; dy++)
+                    {
+                        if (broken != 0 && dx == 1 && dy == 1)
+                            continue;
+                        var orb = new WorldTile
+                        {
+                            Type = type,
+                            Flags = WorldTileFlags.Active,
+                            FrameX = (short)(dx * 18),
+                            FrameY = (short)(dy * 18)
+                        };
+                        workspace.TileStore.Set(left + dx, 100 + dy, in orb);
+                    }
+                if (type is 12 or 639)
                 {
-                    Type = type,
-                    Flags = WorldTileFlags.Active,
-                    FrameX = (short)(dx * 18),
-                    FrameY = (short)(dy * 18)
-                };
-                workspace.TileStore.Set(left + dx, 100 + dy, in orb);
+                    var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                    workspace.TileStore.Set(left, 102, in stone);
+                    workspace.TileStore.Set(left + 1, 102, in stone);
+                }
             }
-            if (type is 12 or 639)
-            {
-                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-                workspace.TileStore.Set(left, 102, in stone);
-                workspace.TileStore.Set(left + 1, 102, in stone);
-            }
-        }
         foreach (int left in new[] { 660, 680 })
         {
             ushort type = left == 660 ? (ushort)12 : (ushort)639;
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
-            {
-                var orb = new WorldTile
+                for (int dy = 0; dy < 2; dy++)
                 {
-                    Type = type,
-                    Flags = WorldTileFlags.Active,
-                    FrameX = (short)(dx * 18),
-                    FrameY = (short)(dy * 18)
-                };
-                workspace.TileStore.Set(left + dx, 100 + dy, in orb);
-            }
+                    var orb = new WorldTile
+                    {
+                        Type = type,
+                        Flags = WorldTileFlags.Active,
+                        FrameX = (short)(dx * 18),
+                        FrameY = (short)(dy * 18)
+                    };
+                    workspace.TileStore.Set(left + dx, 100 + dy, in orb);
+                }
         }
 
         Assert.True(workspace.TileStore.Get(520, 101).IsActive);
@@ -503,14 +517,14 @@ public sealed class SourceBackedFinal1458Tests
             Assert.False(workspace.TileStore.Get(broken, 101).IsActive);
         }
         foreach (int left in new[] { 660, 680 })
-        for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile removed = workspace.TileStore.Get(left + dx, 100 + dy);
-            Assert.False(removed.IsActive);
-            Assert.Equal((short)-1, removed.FrameX);
-            Assert.Equal((short)-1, removed.FrameY);
-        }
+            for (int dx = 0; dx < 2; dx++)
+                for (int dy = 0; dy < 2; dy++)
+                {
+                    WorldTile removed = workspace.TileStore.Get(left + dx, 100 + dy);
+                    Assert.False(removed.IsActive);
+                    Assert.Equal((short)-1, removed.FrameX);
+                    Assert.Equal((short)-1, removed.FrameY);
+                }
     }
 
     [Fact]
@@ -531,8 +545,12 @@ public sealed class SourceBackedFinal1458Tests
             int frameBand = hanging ? 0 : length * 18;
             for (int dy = 0; dy < length; dy++)
             {
-                var echo = new WorldTile { Type = type, Flags = WorldTileFlags.Active,
-                    FrameY = (short)(frameBand + dy * 18) };
+                var echo = new WorldTile
+                {
+                    Type = type,
+                    Flags = WorldTileFlags.Active,
+                    FrameY = (short)(frameBand + dy * 18)
+                };
                 workspace.TileStore.Set(x, 100 + dy, in echo);
             }
             if (supported)
@@ -571,11 +589,11 @@ public sealed class SourceBackedFinal1458Tests
         Assert.True(workspace.TrySetLayers(140, 200));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         foreach (int x in new[] { 500, 520, 540, 560 })
-        for (int y = 298; y <= 301; y++)
-        {
-            var water = new WorldTile { LiquidAmount = 255, LiquidKind = WorldLiquidKind.Water };
-            workspace.TileStore.Set(x, y, in water);
-        }
+            for (int y = 298; y <= 301; y++)
+            {
+                var water = new WorldTile { LiquidAmount = 255, LiquidKind = WorldLiquidKind.Water };
+                workspace.TileStore.Set(x, y, in water);
+            }
         void Set(int x, int y, ushort type, short frameX = 0, ushort wall = 0)
         {
             var tile = workspace.TileStore.Get(x, y);
@@ -609,8 +627,12 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         foreach (int x in new[] { 500, 520, 540, 560, 580, 600, 620 })
         {
-            var pad = new WorldTile { Type = 442, Flags = WorldTileFlags.Active,
-                FrameX = (short)(x switch { 500 or 520 => 0, 540 => 22, 560 or 600 => 44, _ => 66 }) };
+            var pad = new WorldTile
+            {
+                Type = 442,
+                Flags = WorldTileFlags.Active,
+                FrameX = (short)(x switch { 500 or 520 => 0, 540 => 22, 560 or 600 => 44, _ => 66 })
+            };
             workspace.TileStore.Set(x, 100, in pad);
         }
         foreach ((int x, int y) in new[]
@@ -645,8 +667,13 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         void Set(int x, int y, ushort type, short frameX = 0, short frameY = 0)
         {
-            var tile = new WorldTile { Type = type, Flags = WorldTileFlags.Active,
-                FrameX = frameX, FrameY = frameY };
+            var tile = new WorldTile
+            {
+                Type = type,
+                Flags = WorldTileFlags.Active,
+                FrameX = frameX,
+                FrameY = frameY
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         Set(500, 300, 571, frameX: 72, frameY: 36); Set(500, 301, 60);
@@ -687,8 +714,12 @@ public sealed class SourceBackedFinal1458Tests
         }
         void Set(int x, int y, ushort type, bool active = true, byte liquid = 0)
         {
-            var tile = new WorldTile { Type = type,
-                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None, LiquidAmount = liquid };
+            var tile = new WorldTile
+            {
+                Type = type,
+                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None,
+                LiquidAmount = liquid
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         Set(500, 301, 0, active: false, liquid: 255); Set(500, 305, 2);
@@ -725,12 +756,19 @@ public sealed class SourceBackedFinal1458Tests
         {
             for (int y = 300; y <= 302; y++)
             {
-                var stalk = new WorldTile { Type = 519, Flags = WorldTileFlags.Active,
-                    LiquidAmount = (byte)(x == 540 && y == 302 ? 100 : 255) };
+                var stalk = new WorldTile
+                {
+                    Type = 519,
+                    Flags = WorldTileFlags.Active,
+                    LiquidAmount = (byte)(x == 540 && y == 302 ? 100 : 255)
+                };
                 workspace.TileStore.Set(x, y, in stalk);
             }
-            var floor = new WorldTile { Type = x == 520 ? (ushort)1 : x == 560 ? (ushort)23 : (ushort)2,
-                Flags = WorldTileFlags.Active };
+            var floor = new WorldTile
+            {
+                Type = x == 520 ? (ushort)1 : x == 560 ? (ushort)23 : (ushort)2,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(x, 303, in floor);
         }
 
@@ -757,8 +795,13 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         void Set(int x, int y, ushort type, short frameX = 0, short frameY = 0)
         {
-            var tile = new WorldTile { Type = type, Flags = WorldTileFlags.Active,
-                FrameX = frameX, FrameY = frameY };
+            var tile = new WorldTile
+            {
+                Type = type,
+                Flags = WorldTileFlags.Active,
+                FrameX = frameX,
+                FrameY = frameY
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
 
@@ -824,8 +867,12 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         void Set(int x, int y, ushort type, bool active = true, short frameX = 0)
         {
-            var tile = new WorldTile { Type = type,
-                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None, FrameX = frameX };
+            var tile = new WorldTile
+            {
+                Type = type,
+                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None,
+                FrameX = frameX
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         foreach (int left in new[] { 500, 540, 580 })
@@ -872,8 +919,12 @@ public sealed class SourceBackedFinal1458Tests
             workspace.TileStore.Set(left, 100, in first);
             if (rightMember)
             {
-                var second = new WorldTile { Type = type,
-                    FrameX = (short)(frameX + (left == 700 ? 36 : 18)), Flags = WorldTileFlags.Active };
+                var second = new WorldTile
+                {
+                    Type = type,
+                    FrameX = (short)(frameX + (left == 700 ? 36 : 18)),
+                    Flags = WorldTileFlags.Active
+                };
                 workspace.TileStore.Set(left + 1, 100, in second);
             }
             var support = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
@@ -886,8 +937,11 @@ public sealed class SourceBackedFinal1458Tests
         {
             var first = new WorldTile { Type = type, Flags = WorldTileFlags.Active };
             var second = new WorldTile { Type = type, FrameX = 18, Flags = WorldTileFlags.Active };
-            var support = new WorldTile { Type = tableSupport ? (ushort)19 : (ushort)1,
-                Flags = WorldTileFlags.Active };
+            var support = new WorldTile
+            {
+                Type = tableSupport ? (ushort)19 : (ushort)1,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(left, 100, in first);
             workspace.TileStore.Set(left + 1, 100, in second);
             workspace.TileStore.Set(left, 101, in support);
@@ -900,11 +954,20 @@ public sealed class SourceBackedFinal1458Tests
         {
             var first = new WorldTile { Type = 103, Flags = WorldTileFlags.Active };
             var second = new WorldTile { Type = 103, FrameX = 18, Flags = WorldTileFlags.Active };
-            var leftSupport = new WorldTile { Type = 19, FrameX = platformFrame,
-                Shape = left >= 940 ? (byte)3 : (byte)2, Flags = WorldTileFlags.Active };
-            var rightSupport = new WorldTile { Type = 19, FrameX = platformFrame,
+            var leftSupport = new WorldTile
+            {
+                Type = 19,
+                FrameX = platformFrame,
+                Shape = left >= 940 ? (byte)3 : (byte)2,
+                Flags = WorldTileFlags.Active
+            };
+            var rightSupport = new WorldTile
+            {
+                Type = 19,
+                FrameX = platformFrame,
                 Shape = left is 900 or 940 ? (byte)0 : left >= 940 ? (byte)3 : (byte)2,
-                Flags = WorldTileFlags.Active };
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(left, 100, in first);
             workspace.TileStore.Set(left + 1, 100, in second);
             workspace.TileStore.Set(left, 101, in leftSupport);
@@ -940,14 +1003,19 @@ public sealed class SourceBackedFinal1458Tests
         })
         {
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
-            {
-                if (!complete && dx == 1 && dy == 1)
-                    continue;
-                var part = new WorldTile { Type = type, FrameX = (short)(baseFrame + dx * 18),
-                    FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active };
-                workspace.TileStore.Set(left + dx, 100 + dy, in part);
-            }
+                for (int dy = 0; dy < 2; dy++)
+                {
+                    if (!complete && dx == 1 && dy == 1)
+                        continue;
+                    var part = new WorldTile
+                    {
+                        Type = type,
+                        FrameX = (short)(baseFrame + dx * 18),
+                        FrameY = (short)(dy * 18),
+                        Flags = WorldTileFlags.Active
+                    };
+                    workspace.TileStore.Set(left + dx, 100 + dy, in part);
+                }
             var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
             for (int dx = 0; dx < (support ? 2 : 1); dx++)
                 workspace.TileStore.Set(left + dx, 102, in floor);
@@ -974,12 +1042,17 @@ public sealed class SourceBackedFinal1458Tests
         foreach (int left in new[] { 200, 240, 280 })
         {
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
-            {
-                var part = new WorldTile { Type = 21, FrameX = (short)(dx * 18),
-                    FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active };
-                workspace.TileStore.Set(left + dx, 100 + dy, in part);
-            }
+                for (int dy = 0; dy < 2; dy++)
+                {
+                    var part = new WorldTile
+                    {
+                        Type = 21,
+                        FrameX = (short)(dx * 18),
+                        FrameY = (short)(dy * 18),
+                        Flags = WorldTileFlags.Active
+                    };
+                    workspace.TileStore.Set(left + dx, 100 + dy, in part);
+                }
             var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
             workspace.TileStore.Set(left, 102, in floor);
             workspace.TileStore.Set(left + 1, 102, in floor);
@@ -1018,8 +1091,11 @@ public sealed class SourceBackedFinal1458Tests
         {
             int x = 100 + n * 25;
             var objectTile = new WorldTile { Type = ordinary[n], Flags = WorldTileFlags.Active };
-            var floor = new WorldTile { Type = ordinary[n] == 624 ? (ushort)2 : (ushort)1,
-                Flags = WorldTileFlags.Active };
+            var floor = new WorldTile
+            {
+                Type = ordinary[n] == 624 ? (ushort)2 : (ushort)1,
+                Flags = WorldTileFlags.Active
+            };
             var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
             workspace.TileStore.Set(x, 100, in objectTile);
             workspace.TileStore.Set(x, 101, in floor);
@@ -1205,14 +1281,19 @@ public sealed class SourceBackedFinal1458Tests
                 { (100, true, true), (140, false, true), (180, true, false) })
             {
                 for (int dx = 0; dx < 2; dx++)
-                for (int dy = 0; dy < 2; dy++)
-                {
-                    if (!complete && dx == 1 && dy == 1)
-                        continue;
-                    var part = new WorldTile { Type = identities[n], FrameX = (short)(style + dx * 18),
-                        FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active };
-                    workspace.TileStore.Set(x + dx, y + dy, in part);
-                }
+                    for (int dy = 0; dy < 2; dy++)
+                    {
+                        if (!complete && dx == 1 && dy == 1)
+                            continue;
+                        var part = new WorldTile
+                        {
+                            Type = identities[n],
+                            FrameX = (short)(style + dx * 18),
+                            FrameY = (short)(dy * 18),
+                            Flags = WorldTileFlags.Active
+                        };
+                        workspace.TileStore.Set(x + dx, y + dy, in part);
+                    }
                 var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
                 workspace.TileStore.Set(x, y + 2, in floor);
                 if (supported)
@@ -1247,17 +1328,23 @@ public sealed class SourceBackedFinal1458Tests
 
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall,
-                Flags = WorldTileFlags.Active };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         void PutSquare(int x, int y, ushort type, short fx = 0, short fy = 0,
             bool complete = true, ushort wall = 0)
         {
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
-                if (complete || dx != 1 || dy != 1)
-                    Put(x + dx, y + dy, type, (short)(fx + dx * 18), (short)(fy + dy * 18), wall);
+                for (int dy = 0; dy < 2; dy++)
+                    if (complete || dx != 1 || dy != 1)
+                        Put(x + dx, y + dy, type, (short)(fx + dx * 18), (short)(fy + dy * 18), wall);
         }
         foreach ((int x, ushort type) in new[] { (100, (ushort)95), (150, (ushort)126) })
         {
@@ -1323,16 +1410,21 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, bool active = true)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
-                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Flags = active ? WorldTileFlags.Active : WorldTileFlags.None
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         void PutSquare(int x, int y, ushort type, bool complete = true)
         {
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
-                if (complete || dx != 1 || dy != 1)
-                    Put(x + dx, y + dy, type, (short)(dx * 18), (short)(dy * 18));
+                for (int dy = 0; dy < 2; dy++)
+                    if (complete || dx != 1 || dy != 1)
+                        Put(x + dx, y + dy, type, (short)(dx * 18), (short)(dy * 18));
         }
         ushort[] ordinary = [142, 143, 288, 289, 290, 291, 292, 293, 294, 295, 316, 317, 318];
         for (int n = 0; n < ordinary.Length; n++)
@@ -1389,16 +1481,23 @@ public sealed class SourceBackedFinal1458Tests
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0,
             byte amount = 0, WorldLiquidKind kind = WorldLiquidKind.Water)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
-                LiquidAmount = amount, LiquidKind = kind, Flags = WorldTileFlags.Active };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                LiquidAmount = amount,
+                LiquidKind = kind,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         void PutSunflower(int x, int y, bool complete, bool rightSupport, ushort support)
         {
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 4; dy++)
-                if (complete || dx != 1 || dy != 3)
-                    Put(x + dx, y + dy, 27, (short)(dx * 18), (short)(dy * 18));
+                for (int dy = 0; dy < 4; dy++)
+                    if (complete || dx != 1 || dy != 3)
+                        Put(x + dx, y + dy, 27, (short)(dx * 18), (short)(dy * 18));
             Put(x, y + 4, support);
             if (rightSupport) Put(x + 1, y + 4, support);
         }
@@ -1457,17 +1556,22 @@ public sealed class SourceBackedFinal1458Tests
             465, 480, 489, 506, 509, 531, 545, 560, 591, 592, 657, 658, 663, 720, 721, 725];
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
-                Flags = WorldTileFlags.Active };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         void PutObject(int x, int y, ushort type, bool complete = true, short styleY = 0)
         {
             int height = type == 104 ? 5 : type == 207 ? 4 : 3;
             for (int dy = 0; dy < height; dy++)
-            for (int dx = 0; dx < 2; dx++)
-                if (complete || dx != 1 || dy != height - 1)
-                    Put(x + dx, y + dy, type, (short)(dx * 18), (short)(styleY + dy * 18));
+                for (int dx = 0; dx < 2; dx++)
+                    if (complete || dx != 1 || dy != height - 1)
+                        Put(x + dx, y + dy, type, (short)(dx * 18), (short)(styleY + dy * 18));
         }
         for (int n = 0; n < identities.Length; n++)
         {
@@ -1529,8 +1633,13 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
-                Flags = WorldTileFlags.Active };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         foreach ((int x, ushort type) in new[]
@@ -1581,8 +1690,13 @@ public sealed class SourceBackedFinal1458Tests
             613, 548, 614, 79, 90, 487];
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy,
-                Flags = WorldTileFlags.Active };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Flags = WorldTileFlags.Active
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
         for (int n = 0; n < identities.Length; n++)
@@ -1601,9 +1715,9 @@ public sealed class SourceBackedFinal1458Tests
                 int baseFy = styled && (type is 101 or 102 or 463 or 617 or 699 || type is 79 or 90)
                     ? height * 18 : 0;
                 for (int dx = 0; dx < width; dx++)
-                for (int dy = 0; dy < height; dy++)
-                    if (complete || dx != width - 1 || dy != height - 1)
-                        Put(x + dx, y + dy, type, (short)(baseFx + dx * 18), (short)(baseFy + dy * 18));
+                    for (int dy = 0; dy < height; dy++)
+                        if (complete || dx != width - 1 || dy != height - 1)
+                            Put(x + dx, y + dy, type, (short)(baseFx + dx * 18), (short)(baseFy + dy * 18));
                 for (int dx = 0; dx < (support ? width : width - 1); dx++)
                     Put(x + dx, y + height, 1);
             }
@@ -1652,9 +1766,9 @@ public sealed class SourceBackedFinal1458Tests
                 int baseFx = scenario == 3 ? width * 18 : 0;
                 int baseFy = scenario == 3 ? height * 18 : 0;
                 for (int dx = 0; dx < width; dx++)
-                for (int dy = 0; dy < height; dy++)
-                    if (scenario != 1 || dx != width - 1 || dy != height - 1)
-                        Put(x + dx, y + dy, type, (short)(baseFx + dx * 18), (short)(baseFy + dy * 18));
+                    for (int dy = 0; dy < height; dy++)
+                        if (scenario != 1 || dx != width - 1 || dy != height - 1)
+                            Put(x + dx, y + dy, type, (short)(baseFx + dx * 18), (short)(baseFy + dy * 18));
                 if (type == 34)
                 {
                     if (scenario != 2)
@@ -1851,15 +1965,15 @@ public sealed class SourceBackedFinal1458Tests
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, new RandomAdapter(1458)));
 
         for (int x = 50; x <= 51; x++)
-        for (int y = 50; y <= 51; y++)
-        {
-            WorldTile repaired = workspace.TileStore.Get(x, y);
-            Assert.False(repaired.IsActive);
-            Assert.Equal((ushort)0, repaired.Type);
-            short frame = x == 51 && y == 51 ? (short)-1 : (short)0;
-            Assert.Equal(frame, repaired.FrameX);
-            Assert.Equal(frame, repaired.FrameY);
-        }
+            for (int y = 50; y <= 51; y++)
+            {
+                WorldTile repaired = workspace.TileStore.Get(x, y);
+                Assert.False(repaired.IsActive);
+                Assert.Equal((ushort)0, repaired.Type);
+                short frame = x == 51 && y == 51 ? (short)-1 : (short)0;
+                Assert.Equal(frame, repaired.FrameX);
+                Assert.Equal(frame, repaired.FrameY);
+            }
         Assert.False(workspace.TileStore.Get(50, 49).IsActive);
     }
 
@@ -1872,13 +1986,13 @@ public sealed class SourceBackedFinal1458Tests
         Assert.True(workspace.TrySetLayers(60, 80));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         for (int x = 49; x <= 52; x++)
-        for (int y = 49; y <= 51; y++)
-        {
-            if (x is 50 or 51 && y == 50)
-                continue;
-            var solid = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Wall = 4 };
-            workspace.TileStore.Set(x, y, in solid);
-        }
+            for (int y = 49; y <= 51; y++)
+            {
+                if (x is 50 or 51 && y == 50)
+                    continue;
+                var solid = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Wall = 4 };
+                workspace.TileStore.Set(x, y, in solid);
+            }
 
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
@@ -1915,19 +2029,19 @@ public sealed class SourceBackedFinal1458Tests
         Assert.True(workspace.TrySetLayers(180, 250));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         for (int x = 0; x < 420; x++)
-        for (int y = 0; y < 400; y++)
-        {
-            var dirt = new WorldTile { Type = 0, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in dirt);
-        }
+            for (int y = 0; y < 400; y++)
+            {
+                var dirt = new WorldTile { Type = 0, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in dirt);
+            }
 
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 420, 400), workspace, new RandomAdapter(1458)));
 
         int offers = 0;
         for (int x = 0; x < 420; x++)
-        for (int y = 0; y < 400; y++)
-            offers += workspace.TileStore.Get(x, y).Type == 668 ? 1 : 0;
+            for (int y = 0; y < 400; y++)
+                offers += workspace.TileStore.Get(x, y).Type == 668 ? 1 : 0;
         Assert.Equal(3, offers);
     }
 
@@ -2006,11 +2120,11 @@ public sealed class SourceBackedFinal1458Tests
         Assert.Equal((ushort)7, workspace.TileStore.Get(340, 120).Wall);
         // Source Check2x2 removes the malformed boulder after the adjacent altar is framed.
         for (int x = 379; x <= 380; x++)
-        for (int y = 119; y <= 120; y++)
-        {
-            Assert.False(workspace.TileStore.Get(x, y).IsActive);
-            Assert.Equal((ushort)0, workspace.TileStore.Get(x, y).Type);
-        }
+            for (int y = 119; y <= 120; y++)
+            {
+                Assert.False(workspace.TileStore.Get(x, y).IsActive);
+                Assert.Equal((ushort)0, workspace.TileStore.Get(x, y).Type);
+            }
         Assert.False(workspace.TileStore.Get(420, 120).IsActive);
         Assert.Equal((short)-1, workspace.TileStore.Get(420, 120).FrameX);
     }
@@ -2032,8 +2146,12 @@ public sealed class SourceBackedFinal1458Tests
         {
             var tile = new WorldTile
             {
-                Type = type, Wall = wall, FrameX = frameX, FrameY = frameY,
-                LiquidAmount = liquidAmount, Shape = shape,
+                Type = type,
+                Wall = wall,
+                FrameX = frameX,
+                FrameY = frameY,
+                LiquidAmount = liquidAmount,
+                Shape = shape,
                 Flags = active ? WorldTileFlags.Active : WorldTileFlags.None
             };
             workspace.TileStore.Set(x, y, in tile);
@@ -2090,10 +2208,12 @@ public sealed class SourceBackedFinal1458Tests
         var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
         workspace.TileStore.Set(300, 200, in water);
 
+        GenerationLiquidFixture1458.Configure(workspace, laterPass: true);
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
 
+        GenerationLiquidFixture1458.AssertState(workspace, random, "CE840A7D9F0D52C08F9C004E3A11F37C7B1D42BC30CEE784BC79A44F90FC168F", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
         Assert.Equal(906992634, random.Next());
         Assert.Equal("0B0F5A4265C269D93B40FC4D9E026134B1FA0B42CFD92FAC304E105515D6D6F4", HashFixture(workspace));
     }
@@ -2104,25 +2224,29 @@ public sealed class SourceBackedFinal1458Tests
         var workspace = CreateCanonicalLiquidBasins();
         const int width = 4200;
         const int height = 1200;
+        GenerationLiquidFixture1458.Configure(workspace, laterPass: true);
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalLiquids", 1458, width, height), workspace, random));
 
+        GenerationLiquidFixture1458.AssertState(workspace, random, "99FA96C9D2012F1CE6ABBD8F7147D599EEA3C1452C852EB8EC946D8348EAFB5A", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
         Assert.Equal(906992634, random.Next());
-        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+        Assert.Equal("74293D58DA2A8462EE374449ED0ED372EA459249F86906706AA4E433FB3548EB", HashFixture(workspace));
     }
 
     [Fact]
     public void First_settle_liquids_canonical_multi_basin_matches_official_passlegacy()
     {
         var workspace = CreateCanonicalLiquidBasins();
+        GenerationLiquidFixture1458.Configure(workspace, laterPass: false);
         var firstPassRandom = new RandomAdapter(1458);
         JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+        GenerationLiquidFixture1458.AssertState(workspace, firstPassRandom, "99FA96C9D2012F1CE6ABBD8F7147D599EEA3C1452C852EB8EC946D8348EAFB5A", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
         Assert.Equal(906992634, firstPassRandom.Next());
 
         // The two registered ordinary-world passes share the source's settlement sequence on this
         // no-special-seed terrain. The first pass has its own independently run official PassLegacy oracle.
-        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
+        Assert.Equal("74293D58DA2A8462EE374449ED0ED372EA459249F86906706AA4E433FB3548EB", HashFixture(workspace));
     }
 
     [Theory]
@@ -2131,17 +2255,20 @@ public sealed class SourceBackedFinal1458Tests
     public void Settle_liquids_canonical_four_kinds_match_official_passlegacy(bool laterPass)
     {
         var workspace = CreateCanonicalMixedLiquidBasins();
+        GenerationLiquidFixture1458.Configure(workspace, laterPass);
         if (laterPass)
         {
             var random = new RandomAdapter(1458);
             new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
                 .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalMixedLiquids", 1458, 4200, 1200), workspace, random));
+            GenerationLiquidFixture1458.AssertState(workspace, random, "A18A169B6AD83EFDDB211B4E9291D5679104A9D3F4C4CE7D55053BAB37BDF55F", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
             Assert.Equal(906992634, random.Next());
         }
         else
         {
             var firstPassRandom = new RandomAdapter(1458);
             JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+            GenerationLiquidFixture1458.AssertState(workspace, firstPassRandom, "A18A169B6AD83EFDDB211B4E9291D5679104A9D3F4C4CE7D55053BAB37BDF55F", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
             Assert.Equal(906992634, firstPassRandom.Next());
         }
 
@@ -2154,21 +2281,24 @@ public sealed class SourceBackedFinal1458Tests
     public void Settle_liquids_canonical_interacting_kinds_match_official_passlegacy(bool laterPass)
     {
         var workspace = CreateCanonicalMixedLiquidBasins(interacting: true);
+        GenerationLiquidFixture1458.Configure(workspace, laterPass);
         if (laterPass)
         {
             var random = new RandomAdapter(1458);
             new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
                 .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "InteractingLiquids", 1458, 4200, 1200), workspace, random));
+            GenerationLiquidFixture1458.AssertState(workspace, random, "FD12905461D998FF50C34C010BE0AAC25312B503300F887ED6C2532EB71D51B8", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
             Assert.Equal(906992634, random.Next());
         }
         else
         {
             var firstPassRandom = new RandomAdapter(1458);
             JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+            GenerationLiquidFixture1458.AssertState(workspace, firstPassRandom, "FD12905461D998FF50C34C010BE0AAC25312B503300F887ED6C2532EB71D51B8", "5CCC3069036C6D54F3CA441FD8C36C6A4491F8CE77EAEB20E42DF6C870ED87C7");
             Assert.Equal(906992634, firstPassRandom.Next());
         }
 
-        Assert.Equal("3132D18ED04FBEE14B3D1701398843FBE8C0727484040D6C68DF7E5D3E344251", HashLiquidKindFixture(workspace));
+        Assert.Equal("368B191F7824D85A42C5191A8B917A772BBE6EB115CD24838807D6E736D50C9A", HashLiquidKindFixture(workspace));
     }
 
     private static Workspace CreateCanonicalLiquidBasins()
@@ -2188,11 +2318,11 @@ public sealed class SourceBackedFinal1458Tests
                 workspace.TileStore.Set(x, floorY, in floor);
             }
             for (int y = sourceY - 5; y <= floorY; y++)
-            foreach (int x in new[] { centerX - 12, centerX + 12 })
-            {
-                var wall = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-                workspace.TileStore.Set(x, y, in wall);
-            }
+                foreach (int x in new[] { centerX - 12, centerX + 12 })
+                {
+                    var wall = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                    workspace.TileStore.Set(x, y, in wall);
+                }
             var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
             workspace.TileStore.Set(centerX, sourceY, in water);
         }
@@ -2219,11 +2349,11 @@ public sealed class SourceBackedFinal1458Tests
                 workspace.TileStore.Set(x, floorY, in floor);
             }
             for (int y = sourceY - 5; y <= floorY; y++)
-            foreach (int x in new[] { centerX - 12, centerX + 12 })
-            {
-                var wall = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-                workspace.TileStore.Set(x, y, in wall);
-            }
+                foreach (int x in new[] { centerX - 12, centerX + 12 })
+                {
+                    var wall = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                    workspace.TileStore.Set(x, y, in wall);
+                }
             var liquid = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = kind };
             workspace.TileStore.Set(interacting ? centerX + 4 : centerX, sourceY, in liquid);
             if (interacting)
@@ -2371,8 +2501,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
 
         var inactiveWater = new WorldTile { LiquidAmount = 128, LiquidKind = WorldLiquidKind.Water };
         var bubble = new WorldTile { Type = 379, Flags = WorldTileFlags.Active };
@@ -2418,15 +2548,15 @@ public sealed class SourceBackedFinal1458Tests
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
-            Assert.True(repaired.IsActive);
-            Assert.Equal((ushort)31, repaired.Type);
-            Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
-            Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
-            Assert.Equal((byte)0, repaired.Shape);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+                Assert.True(repaired.IsActive);
+                Assert.Equal((ushort)31, repaired.Type);
+                Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
+                Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
+                Assert.Equal((byte)0, repaired.Shape);
+            }
     }
 
     [Theory]
@@ -2459,15 +2589,15 @@ public sealed class SourceBackedFinal1458Tests
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
-            Assert.True(repaired.IsActive);
-            Assert.Equal(type, repaired.Type);
-            Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
-            Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
-            Assert.Equal((byte)0, repaired.Shape);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+                Assert.True(repaired.IsActive);
+                Assert.Equal(type, repaired.Type);
+                Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
+                Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
+                Assert.Equal((byte)0, repaired.Shape);
+            }
 
         WorldTile snowSupport = workspace.TileStore.Get(50, 52);
         WorldTile dirtSupport = workspace.TileStore.Get(51, 52);
@@ -2509,15 +2639,15 @@ public sealed class SourceBackedFinal1458Tests
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
         for (int dx = 0; dx < 3; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
-            Assert.True(repaired.IsActive);
-            Assert.Equal((ushort)26, repaired.Type);
-            Assert.Equal((short)(54 + dx * 18), repaired.FrameX);
-            Assert.Equal((short)(dy * 18), repaired.FrameY);
-            Assert.Equal((byte)0, repaired.Shape);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+                Assert.True(repaired.IsActive);
+                Assert.Equal((ushort)26, repaired.Type);
+                Assert.Equal((short)(54 + dx * 18), repaired.FrameX);
+                Assert.Equal((short)(dy * 18), repaired.FrameY);
+                Assert.Equal((byte)0, repaired.Shape);
+            }
 
         for (int x = 50; x <= 52; x++)
         {
@@ -2581,11 +2711,11 @@ public sealed class SourceBackedFinal1458Tests
         Assert.True(workspace.TrySetLayers(10, 20));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            var piece = new WorldTile { Type = 21, Flags = WorldTileFlags.Active, FrameX = (short)(dx * 18), FrameY = (short)(dy * 18) };
-            workspace.TileStore.Set(50 + dx, 50 + dy, in piece);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                var piece = new WorldTile { Type = 21, Flags = WorldTileFlags.Active, FrameX = (short)(dx * 18), FrameY = (short)(dy * 18) };
+                workspace.TileStore.Set(50 + dx, 50 + dy, in piece);
+            }
         Assert.True(workspace.TryAddGeneratedChest(50, 50, string.Empty, [new WorldChestItem(1, 1156, 0)]));
         var survivor = new WorldTile { Type = 21, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18, Shape = 3 };
         workspace.TileStore.Set(51, 51, in survivor);
@@ -2598,14 +2728,14 @@ public sealed class SourceBackedFinal1458Tests
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
-            Assert.True(repaired.IsActive);
-            Assert.Equal((ushort)21, repaired.Type);
-            Assert.Equal((short)(828 + dx * 18), repaired.FrameX);
-            Assert.Equal((short)(dy * 18), repaired.FrameY);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+                Assert.True(repaired.IsActive);
+                Assert.Equal((ushort)21, repaired.Type);
+                Assert.Equal((short)(828 + dx * 18), repaired.FrameX);
+                Assert.Equal((short)(dy * 18), repaired.FrameY);
+            }
     }
 
     [Fact]
@@ -2621,8 +2751,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
 
         var chestPiece = new WorldTile { Type = 21, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18 };
         workspace.TileStore.Set(300, 200, in chestPiece);
@@ -2635,14 +2765,14 @@ public sealed class SourceBackedFinal1458Tests
                 random));
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile chest = workspace.TileStore.Get(299 + dx, 199 + dy);
-            Assert.True(chest.IsActive);
-            Assert.Equal((ushort)21, chest.Type);
-            Assert.Equal((short)(dx * 18), chest.FrameX);
-            Assert.Equal((short)(dy * 18), chest.FrameY);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile chest = workspace.TileStore.Get(299 + dx, 199 + dy);
+                Assert.True(chest.IsActive);
+                Assert.Equal((ushort)21, chest.Type);
+                Assert.Equal((short)(dx * 18), chest.FrameX);
+                Assert.Equal((short)(dy * 18), chest.FrameY);
+            }
 
         Assert.Equal(906992634, random.Next());
     }
@@ -2659,8 +2789,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
 
         var trap = new WorldTile { Type = 137, Flags = WorldTileFlags.Active, FrameX = 0, FrameY = 0 };
         var halfBrick = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Shape = 1 };
@@ -2694,8 +2824,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
         var target = new WorldTile { Wall = 13, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
         workspace.TileStore.Set(300, 200, in target);
 
@@ -2723,8 +2853,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
         var spikeBall = new WorldTile { Type = 237, Flags = WorldTileFlags.Active };
         var support = new WorldTile { Type = 232, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(300, 200, in spikeBall);
@@ -2752,8 +2882,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
         var target = new WorldTile { Type = 162, Flags = WorldTileFlags.Active };
         var empty = new WorldTile();
         workspace.TileStore.Set(300, 200, in target);
@@ -2783,8 +2913,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
 
         var crystalPiece = new WorldTile { Type = 12, Flags = WorldTileFlags.Active, FrameX = 54, FrameY = 54 };
         workspace.TileStore.Set(300, 200, in crystalPiece);
@@ -2797,14 +2927,14 @@ public sealed class SourceBackedFinal1458Tests
                 random));
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile crystal = workspace.TileStore.Get(299 + dx, 199 + dy);
-            Assert.True(crystal.IsActive);
-            Assert.Equal((ushort)12, crystal.Type);
-            Assert.Equal((short)(36 + dx * 18), crystal.FrameX);
-            Assert.Equal((short)(36 + dy * 18), crystal.FrameY);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile crystal = workspace.TileStore.Get(299 + dx, 199 + dy);
+                Assert.True(crystal.IsActive);
+                Assert.Equal((ushort)12, crystal.Type);
+                Assert.Equal((short)(36 + dx * 18), crystal.FrameX);
+                Assert.Equal((short)(36 + dy * 18), crystal.FrameY);
+            }
 
         Assert.Equal(906992634, random.Next());
     }
@@ -2822,8 +2952,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
 
         var orbPiece = new WorldTile { Type = 31, Flags = WorldTileFlags.Active, FrameX = 54, FrameY = 18 };
         workspace.TileStore.Set(300, 200, in orbPiece);
@@ -2836,14 +2966,14 @@ public sealed class SourceBackedFinal1458Tests
                 random));
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile orb = workspace.TileStore.Get(299 + dx, 199 + dy);
-            Assert.True(orb.IsActive);
-            Assert.Equal((ushort)31, orb.Type);
-            Assert.Equal((short)(dx * 18), orb.FrameX);
-            Assert.Equal((short)(dy * 18), orb.FrameY);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile orb = workspace.TileStore.Get(299 + dx, 199 + dy);
+                Assert.True(orb.IsActive);
+                Assert.Equal((ushort)31, orb.Type);
+                Assert.Equal((short)(dx * 18), orb.FrameX);
+                Assert.Equal((short)(dy * 18), orb.FrameY);
+            }
         Assert.Equal(906992634, random.Next());
     }
 
@@ -2861,8 +2991,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
 
         var piece = new WorldTile { Type = type, Flags = WorldTileFlags.Active, FrameX = 54, FrameY = 54 };
         workspace.TileStore.Set(300, 200, in piece);
@@ -2875,14 +3005,14 @@ public sealed class SourceBackedFinal1458Tests
                 random));
 
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile repaired = workspace.TileStore.Get(299 + dx, 199 + dy);
-            Assert.True(repaired.IsActive);
-            Assert.Equal(type, repaired.Type);
-            Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
-            Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile repaired = workspace.TileStore.Get(299 + dx, 199 + dy);
+                Assert.True(repaired.IsActive);
+                Assert.Equal(type, repaired.Type);
+                Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
+                Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
+            }
         Assert.Equal(906992634, random.Next());
     }
 
@@ -2899,8 +3029,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
 
         var heartPiece = new WorldTile { Type = 26, Flags = WorldTileFlags.Active, FrameX = 36, FrameY = 18 };
         workspace.TileStore.Set(302, 200, in heartPiece);
@@ -2913,14 +3043,14 @@ public sealed class SourceBackedFinal1458Tests
                 random));
 
         for (int dx = 0; dx < 3; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile heart = workspace.TileStore.Get(300 + dx, 199 + dy);
-            Assert.True(heart.IsActive);
-            Assert.Equal((ushort)26, heart.Type);
-            Assert.Equal((short)(dx * 18), heart.FrameX);
-            Assert.Equal((short)(dy * 18), heart.FrameY);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile heart = workspace.TileStore.Get(300 + dx, 199 + dy);
+                Assert.True(heart.IsActive);
+                Assert.Equal((ushort)26, heart.Type);
+                Assert.Equal((short)(dx * 18), heart.FrameX);
+                Assert.Equal((short)(dy * 18), heart.FrameY);
+            }
 
         Assert.Equal(906992634, random.Next());
     }
@@ -2934,20 +3064,20 @@ public sealed class SourceBackedFinal1458Tests
         var workspace = CreateFinalWorkspace();
         workspace.SetVanillaLihzahrdAltarState(new VanillaLihzahrdAltarState1458(50, 50));
         for (int dx = 0; dx < 3; dx++)
-        for (int dy = 0; dy < 3; dy++)
-        {
-            var stale = new WorldTile
+            for (int dy = 0; dy < 3; dy++)
             {
-                Type = 1,
-                FrameX = 72,
-                FrameY = 54,
-                Flags = WorldTileFlags.Active | WorldTileFlags.Actuator,
-                Shape = 3,
-                LiquidAmount = 87,
-                LiquidKind = WorldLiquidKind.Honey
-            };
-            workspace.TileStore.Set(50 + dx, 50 + dy, in stale);
-        }
+                var stale = new WorldTile
+                {
+                    Type = 1,
+                    FrameX = 72,
+                    FrameY = 54,
+                    Flags = WorldTileFlags.Active | WorldTileFlags.Actuator,
+                    Shape = 3,
+                    LiquidAmount = 87,
+                    LiquidKind = WorldLiquidKind.Honey
+                };
+                workspace.TileStore.Set(50 + dx, 50 + dy, in stale);
+            }
 
         new FinalPass1458(FinalStage1458.LihzahrdAltars, new FinalState1458())
             .Execute(new Context(
@@ -2984,13 +3114,13 @@ public sealed class SourceBackedFinal1458Tests
         var workspace = CreateStoneWorkspace(width, height);
         workspace.SetVanillaLihzahrdAltarState(new VanillaLihzahrdAltarState1458(300, 200));
         for (int dx = 0; dx < 3; dx++)
-        for (int dy = 0; dy < 3; dy++)
-        {
-            var tile = workspace.TileStore.Get(300 + dx, 200 + dy);
-            tile.FrameX = 72;
-            tile.FrameY = 54;
-            workspace.TileStore.Set(300 + dx, 200 + dy, in tile);
-        }
+            for (int dy = 0; dy < 3; dy++)
+            {
+                var tile = workspace.TileStore.Get(300 + dx, 200 + dy);
+                tile.FrameX = 72;
+                tile.FrameY = 54;
+                workspace.TileStore.Set(300 + dx, 200 + dy, in tile);
+            }
 
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.LihzahrdAltars, new FinalState1458())
@@ -3373,12 +3503,12 @@ public sealed class SourceBackedFinal1458Tests
     {
         var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 
@@ -3386,13 +3516,13 @@ public sealed class SourceBackedFinal1458Tests
     {
         var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 22);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
-                .Append((byte)tile.LiquidKind).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
+                    .Append((byte)tile.LiquidKind).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 
@@ -3411,8 +3541,8 @@ public sealed class SourceBackedFinal1458Tests
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-            workspace.TileStore.Set(x, y, in stone);
+            for (int y = 0; y < height; y++)
+                workspace.TileStore.Set(x, y, in stone);
         return workspace;
     }
 

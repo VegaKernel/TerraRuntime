@@ -246,6 +246,8 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     {
         // TerrariaServer 1.4.5.8 GenPassNameID.SpiderCaves: choose enclosed empty regions with countTiles,
         // then let Spread.Spider visit their real frontier. This is deliberately not a carving pass.
+        if (workspace.HasVanillaGenerationSolidity)
+            workspace.SetVanillaGenerationSolid(new TileTypeId(379), false);
         int attempts = (int)(grid.Width * 0.005d);
         int retryCap = grid.Width / 2;
         int minSize = 500;
@@ -296,10 +298,12 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 chests,
                 state.WorldSurface,
                 x,
-                y);
+                y, workspace);
             accepted++;
         }
 
+        if (workspace.HasVanillaGenerationSolidity)
+            workspace.SetVanillaGenerationSolid(new TileTypeId(162), true);
         context.ReportProgress(1d, $"Adding source-backed Spider Caves ({accepted}/{attempts} regions)");
     }
 
@@ -355,7 +359,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 // `WorldGen.SolidTile` deliberately treats the six loose gem tile identities as non-solid
                 // during this spread. A gem converted at the cave edge can therefore become frontier on a
                 // later wave and receive the cave wall behind it.
-                if (IsGemCaveSolid(in tile) || tile.Wall != 0)
+                if (IsGemCaveSolid(grid, in tile) || tile.Wall != 0)
                 {
                     if (!tile.IsActive) continue;
                     ReplaceGem(ref tile, random, gems);
@@ -391,12 +395,12 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
 
     private static bool HasGemObjectAnchor(RuntimeGrid grid, int x, int y)
     {
-        return IsCaveWallSolid(in grid.At(x, y + 1)) || IsCaveWallSolid(in grid.At(x - 1, y)) ||
-               IsCaveWallSolid(in grid.At(x + 1, y)) || IsCaveWallSolid(in grid.At(x, y - 1));
+        return IsCaveWallSolid(grid, in grid.At(x, y + 1)) || IsCaveWallSolid(grid, in grid.At(x - 1, y)) ||
+               IsCaveWallSolid(grid, in grid.At(x + 1, y)) || IsCaveWallSolid(grid, in grid.At(x, y - 1));
     }
 
-    private static bool IsGemCaveSolid(in WorldTile tile) =>
-        tile.Type is not (63 or 64 or 65 or 66 or 67 or 68) && IsCaveWallSolid(in tile);
+    private static bool IsGemCaveSolid(RuntimeGrid grid, in WorldTile tile) =>
+        tile.Type is not (63 or 64 or 65 or 66 or 67 or 68) && IsCaveWallSolid(grid, in tile);
 
     private static void ReplaceGem(ref WorldTile tile, IRandom random, ReadOnlySpan<bool> gems)
     {
@@ -518,8 +522,8 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         if (grid.At(x, floor).LiquidAmount > 0 && grid.At(x, floor).LiquidKind == WorldLiquidKind.Lava) return false;
 
         for (int dx = -1; dx <= 1; dx++)
-        for (int dy = 0; dy >= -2; dy--)
-            if ((grid.At(x + dx, floor + dy).Flags & WorldTileFlags.Inactive) != 0) return false;
+            for (int dy = 0; dy >= -2; dy--)
+                if ((grid.At(x + dx, floor + dy).Flags & WorldTileFlags.Inactive) != 0) return false;
 
         if (grid.At(x, floor + 1).Type is 10 or 48 or 232) return false;
         if (direction != 0)
@@ -700,13 +704,13 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     private static bool HasTemplePaintingOrDoor(RuntimeGrid grid, int x, int y)
     {
         for (int dx = -70; dx <= 70; dx++)
-        for (int dy = -70; dy <= 70; dy++)
-        {
-            int px = x + dx, py = y + dy;
-            if (px < 5 || px >= grid.Width - 5 || py < 5 || py >= grid.Height - 5) continue;
-            WorldTile tile = grid.At(px, py);
-            if (tile.IsActive && (tile.Type == 240 || (dx is >= -4 and <= 4 && dy is >= -4 and <= 4 && tile.Type == 226))) return true;
-        }
+            for (int dy = -70; dy <= 70; dy++)
+            {
+                int px = x + dx, py = y + dy;
+                if (px < 5 || px >= grid.Width - 5 || py < 5 || py >= grid.Height - 5) continue;
+                WorldTile tile = grid.At(px, py);
+                if (tile.IsActive && (tile.Type == 240 || (dx is >= -4 and <= 4 && dy is >= -4 and <= 4 && tile.Type == 226))) return true;
+            }
         return false;
     }
 
@@ -715,15 +719,15 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         int top = bottom - height + 1;
         if (left < 1 || top < 1 || left + width >= grid.Width || bottom + 1 >= grid.Height) return false;
         for (int dx = 0; dx < width; dx++)
-        for (int dy = 0; dy < height; dy++) if (grid.At(left + dx, top + dy).IsActive) return false;
+            for (int dy = 0; dy < height; dy++) if (grid.At(left + dx, top + dy).IsActive) return false;
         for (int dx = 0; dx < width; dx++) if (!IsSolidOrSloped(in grid.At(left + dx, bottom + 1))) return false;
         for (int dx = 0; dx < width; dx++)
-        for (int dy = 0; dy < height; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            tile.Type = type; tile.Flags |= WorldTileFlags.Active; tile.FrameX = checked((short)(frameX + dx * 18));
-            tile.FrameY = checked((short)(frameY + dy * 18)); tile.Shape = 0; tile.LiquidAmount = 0;
-        }
+            for (int dy = 0; dy < height; dy++)
+            {
+                ref WorldTile tile = ref grid.At(left + dx, top + dy);
+                tile.Type = type; tile.Flags |= WorldTileFlags.Active; tile.FrameX = checked((short)(frameX + dx * 18));
+                tile.FrameY = checked((short)(frameY + dy * 18)); tile.Shape = 0; tile.LiquidAmount = 0;
+            }
         return true;
     }
 
@@ -733,18 +737,18 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         int top = centerY - height / 2;
         if (left < 1 || top < 1 || left + width >= grid.Width || top + height >= grid.Height) return false;
         for (int dx = 0; dx < width; dx++)
-        for (int dy = 0; dy < height; dy++)
-        {
-            WorldTile tile = grid.At(left + dx, top + dy);
-            if (tile.IsActive || tile.Wall == 0) return false;
-        }
+            for (int dy = 0; dy < height; dy++)
+            {
+                WorldTile tile = grid.At(left + dx, top + dy);
+                if (tile.IsActive || tile.Wall == 0) return false;
+            }
         for (int dx = 0; dx < width; dx++)
-        for (int dy = 0; dy < height; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            tile.Type = type; tile.Flags |= WorldTileFlags.Active; tile.FrameX = checked((short)(frameX + dx * 18));
-            tile.FrameY = checked((short)(frameY + dy * 18)); tile.Shape = 0; tile.LiquidAmount = 0;
-        }
+            for (int dy = 0; dy < height; dy++)
+            {
+                ref WorldTile tile = ref grid.At(left + dx, top + dy);
+                tile.Type = type; tile.Flags |= WorldTileFlags.Active; tile.FrameX = checked((short)(frameX + dx * 18));
+                tile.FrameY = checked((short)(frameY + dy * 18)); tile.Shape = 0; tile.LiquidAmount = 0;
+            }
         return true;
     }
 
@@ -1025,7 +1029,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 }
             }
 
-            if (IsCaveWallSolid(in tile, spiderSolidity))
+            if (IsCaveWallSolid(grid, in tile, spiderSolidity))
                 continue;
 
             countedOpenTiles.Add(key);
@@ -1048,7 +1052,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         BuriedChest1458 chests,
         double worldSurface,
         int startX,
-        int startY)
+        int startY, Workspace? workspace = null)
     {
         var visited = new HashSet<int>();
         var next = new List<(int X, int Y)> { (startX, startY) };
@@ -1064,7 +1068,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 int key = x * grid.Height + y;
                 visited.Add(key);
                 ref WorldTile tile = ref grid.At(x, y);
-                if (IsCaveWallSolid(in tile, spiderSolidity: true) || tile.Wall != 0)
+                if (IsCaveWallSolid(grid, in tile, spiderSolidity: true) || tile.Wall != 0)
                 {
                     if (tile.IsActive && tile.Wall == 0) tile.Wall = SpiderUnsafeWall;
                     continue;
@@ -1076,22 +1080,22 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 if (!tile.IsActive)
                 {
                     tile.LiquidAmount = 0; UnderworldTerrain1458.ClearLavaFlag(ref tile);
-                    if (IsCaveWallSolid(in grid.At(x, y + 1), spiderSolidity: true) && random.Next(3) == 0)
+                    if (IsCaveWallSolid(grid, in grid.At(x, y + 1), spiderSolidity: true) && random.Next(3) == 0)
                     {
                         if (random.Next(15) == 0) chests.TryAdd(x, y, out _, out _, 939, true, 15);
-                        else GenerationDecorationPlacement1458.TryPlacePot(store, random, x, y, random.Next(19, 21));
+                        else GenerationDecorationPlacement1458.TryPlacePot(store, random, x, y, random.Next(19, 21), workspace);
                     }
                     if (!tile.IsActive)
                     {
-                        if (IsCaveWallSolid(in grid.At(x, y - 1), spiderSolidity: true) && random.Next(3) == 0)
+                        if (IsCaveWallSolid(grid, in grid.At(x, y - 1), spiderSolidity: true) && random.Next(3) == 0)
                             speleothems.PlaceTight(x, y, spiders: true);
-                        else if (IsCaveWallSolid(in grid.At(x, y + 1), spiderSolidity: true))
+                        else if (IsCaveWallSolid(grid, in grid.At(x, y + 1), spiderSolidity: true))
                         {
-                            GenerationDecorationPlacement1458.TryPlaceTile3x2(store, random, x, y, 187, 9 + random.Next(5));
+                            GenerationDecorationPlacement1458.TryPlaceTile3x2(store, random, x, y, 187, 9 + random.Next(5), workspace: workspace);
                             if (random.Next(3) == 0 && !tile.IsActive)
                             {
-                                GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, 34 + random.Next(4));
-                                if (!tile.IsActive) GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, 48 + random.Next(6), 0);
+                                GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, 34 + random.Next(4), workspace: workspace);
+                                if (!tile.IsActive) GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, 48 + random.Next(6), 0, workspace: workspace);
                             }
                         }
                     }
@@ -1123,7 +1127,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 continue;
 
             ref WorldTile tile = ref grid.At(x, y);
-            if (IsCaveWallSolid(in tile) || tile.Wall != 0)
+            if (IsCaveWallSolid(grid, in tile) || tile.Wall != 0)
             {
                 if (tile.IsActive && tile.Wall == 0)
                 {
@@ -1173,7 +1177,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             if (tile.Wall == wall || CannotBeReplacedByWallSpread(tile.Wall))
                 continue;
 
-            if (!IsCaveWallSolid(in tile))
+            if (!IsCaveWallSolid(grid, in tile))
             {
                 wallOut++;
                 if (wallOut >= JungleWallSpreadLimit)
@@ -1196,21 +1200,13 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         return painted;
     }
 
-    private static bool IsCaveWallSolid(in WorldTile tile, bool spiderSolidity = false)
+    private static bool IsCaveWallSolid(RuntimeGrid grid, in WorldTile tile, bool spiderSolidity = false)
     {
         if (!tile.IsActive || tile.IsActuated || tile.Shape != 0)
             return false;
 
-        bool solid = tile.Type switch
-        {
-            // Spider Caves temporarily executes `Main.tileSolid[379] = false` before both countTiles and
-            // Spread.Spider. Keeping this source-scoped avoids changing cave-wall or runtime collision rules.
-            379 when spiderSolidity => false,
-            162 => false,
-            LihzahrdBrick => true,
-            232 => false,
-            _ => VanillaTileCollisionCatalog.IsSolid(tile.TileType)
-        };
+        bool solid = grid.GenerationSolid?.Invoke(tile.TileType) ??
+            (!(spiderSolidity && tile.Type == 379) && VanillaTileCollisionCatalog.IsSolid(tile.TileType));
         return solid && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
     }
 
@@ -1259,14 +1255,14 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 SetBlock(ref grid.At(x, y), LivingMahogany);
             int crownY = floor - height;
             for (int dx = -3; dx <= 3; dx++)
-            for (int dy = -2; dy <= 2; dy++)
-            {
-                if (dx * dx + dy * dy > 10)
-                    continue;
-                ref WorldTile leaf = ref grid.At(x + dx, crownY + dy);
-                if (!leaf.IsActive)
-                    SetBlock(ref leaf, LivingMahoganyLeaves);
-            }
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    if (dx * dx + dy * dy > 10)
+                        continue;
+                    ref WorldTile leaf = ref grid.At(x + dx, crownY + dy);
+                    if (!leaf.IsActive)
+                        SetBlock(ref leaf, LivingMahoganyLeaves);
+                }
             placed++;
         }
 
@@ -1369,18 +1365,18 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             SetBlock(ref grid.At(left + width - 1, y), Sunplate);
         }
         for (int x = left + 1; x < left + width - 1; x++)
-        for (int y = top + 1; y < floorY; y++)
-        {
-            ref WorldTile tile = ref grid.At(x, y);
-            if (tile.IsActive && !VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
+            for (int y = top + 1; y < floorY; y++)
             {
-                tile.Flags &= ~WorldTileFlags.Active;
-                tile.Shape = 0;
-                tile.LiquidAmount = 0;
+                ref WorldTile tile = ref grid.At(x, y);
+                if (tile.IsActive && !VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
+                {
+                    tile.Flags &= ~WorldTileFlags.Active;
+                    tile.Shape = 0;
+                    tile.LiquidAmount = 0;
+                }
+                if (!tile.IsActive)
+                    tile.Wall = DiscWall;
             }
-            if (!tile.IsActive)
-                tile.Wall = DiscWall;
-        }
     }
 
     private static bool PlaceGeneratedChest(
@@ -1404,17 +1400,17 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         WorldTile c = grid.At(left, top + 1);
         WorldTile d = grid.At(left + 1, top + 1);
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            tile.Type = Containers;
-            tile.Flags |= WorldTileFlags.Active;
-            tile.FrameX = checked((short)(style * 36 + dx * 18));
-            tile.FrameY = checked((short)(dy * 18));
-            tile.Shape = 0;
-            tile.LiquidAmount = 0;
-            tile.LiquidKind = WorldLiquidKind.Water;
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile tile = ref grid.At(left + dx, top + dy);
+                tile.Type = Containers;
+                tile.Flags |= WorldTileFlags.Active;
+                tile.FrameX = checked((short)(style * 36 + dx * 18));
+                tile.FrameY = checked((short)(dy * 18));
+                tile.Shape = 0;
+                tile.LiquidAmount = 0;
+                tile.LiquidKind = WorldLiquidKind.Water;
+            }
 
         if (workspace.TryAddGeneratedChest(left, top, string.Empty, ReadOnlySpan<WorldChestItem>.Empty))
             return true;
@@ -1464,7 +1460,14 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     {
         private readonly WorldTileStore store;
 
-        public RuntimeGrid(Workspace workspace) => store = workspace.TileStore;
+        public RuntimeGrid(Workspace workspace)
+        {
+            store = workspace.TileStore;
+            if (workspace.HasVanillaGenerationSolidity)
+                GenerationSolid = workspace.IsVanillaGenerationSolid;
+        }
+
+        public Func<TileTypeId, bool>? GenerationSolid { get; }
 
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;
@@ -1496,11 +1499,11 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             if (left < 1 || top < 1 || left + width >= Width - 1 || top + height >= Height - 1)
                 return false;
             for (int x = left; x < left + width; x++)
-            for (int y = top; y < top + height; y++)
-            {
-                if (At(x, y).IsActive)
-                    return false;
-            }
+                for (int y = top; y < top + height; y++)
+                {
+                    if (At(x, y).IsActive)
+                        return false;
+                }
             return true;
         }
 
@@ -1511,15 +1514,15 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             int top = Math.Max(1, centerY - radiusY);
             int bottom = Math.Min(Height - 2, centerY + radiusY);
             for (int x = left; x <= right; x += 3)
-            for (int y = top; y <= bottom; y += 3)
-            {
-                WorldTile tile = At(x, y);
-                if (!tile.IsActive)
-                    continue;
-                ushort type = tile.Type;
-                if (type is 225 or LihzahrdBrick or 367 or 368)
-                    return true;
-            }
+                for (int y = top; y <= bottom; y += 3)
+                {
+                    WorldTile tile = At(x, y);
+                    if (!tile.IsActive)
+                        continue;
+                    ushort type = tile.Type;
+                    if (type is 225 or LihzahrdBrick or 367 or 368)
+                        return true;
+                }
             return false;
         }
 
@@ -1530,16 +1533,16 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             int top = Height;
             int bottom = -1;
             for (int x = 1; x < Width - 1; x++)
-            for (int y = 1; y < Height - 1; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (!tile.IsActive || tile.Type != type)
-                    continue;
-                left = Math.Min(left, x);
-                right = Math.Max(right, x);
-                top = Math.Min(top, y);
-                bottom = Math.Max(bottom, y);
-            }
+                for (int y = 1; y < Height - 1; y++)
+                {
+                    WorldTile tile = At(x, y);
+                    if (!tile.IsActive || tile.Type != type)
+                        continue;
+                    left = Math.Min(left, x);
+                    right = Math.Max(right, x);
+                    top = Math.Min(top, y);
+                    bottom = Math.Max(bottom, y);
+                }
 
             if (right < left || bottom < top)
             {
