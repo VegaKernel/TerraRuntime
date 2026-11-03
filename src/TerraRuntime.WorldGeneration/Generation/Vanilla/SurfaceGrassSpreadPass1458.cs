@@ -47,7 +47,7 @@ internal sealed class SurfaceGrassSpreadPass1458(
     double worldSurfaceHigh,
     int jungleMinX,
     int jungleMaxX,
-    CancellationToken cancellation)
+    CancellationToken cancellation, Workspace? workspace = null)
 {
     private const ushort Dirt = 0;
     private const ushort Stone = 1;
@@ -72,9 +72,10 @@ internal sealed class SurfaceGrassSpreadPass1458(
 
     public void Apply()
     {
-        var framing = new GenerationTileFraming1458(store, random);
+        var framing = new GenerationTileFraming1458(store, random, workspace,
+            useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true);
         var grass = new GenerationGrass1458(
-            store, random, cancellation, worldSurface, (x, y) => framing.SquareTileFrame(x, y));
+            store, random, cancellation, worldSurface, (x, y) => framing.SquareTileFrame(x, y), workspace);
 
         for (int x = 50; x < width - 50; x++)
         {

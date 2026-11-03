@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -60,7 +61,7 @@ public sealed class SourceBackedStartingNpc1458Tests
 
         Assert.True(workspace.TryAddGeneratedTownNpc(
             StartingGuidePass1458.GuideNetId,
-            StartingGuidePass1458.StableGuideName,
+            "Andrew",
             64 * 16f,
             40 * 16f,
             homeless: true,
@@ -87,7 +88,7 @@ public sealed class SourceBackedStartingNpc1458Tests
     }
 
     [Fact]
-    public void Guide_pass_registers_town_npc_at_source_backed_spawn_without_consuming_rng()
+    public void Guide_pass_registers_source_bottom_anchor_and_consumes_two_identity_draws()
     {
         var workspace = new Workspace(128, 96);
         Assert.True(workspace.TrySetSpawn(64, 40));
@@ -103,10 +104,12 @@ public sealed class SourceBackedStartingNpc1458Tests
 
         WorldTownNpc guide = Assert.Single(workspace.CaptureGeneratedNpcs().TownNpcs);
         Assert.Equal(22, guide.NetId);
-        Assert.Equal(64 * 16f, guide.X);
-        Assert.Equal(40 * 16f, guide.Y);
+        Assert.Equal(64 * 16f - 9f, guide.X);
+        Assert.Equal(40 * 16f - 40f, guide.Y);
         Assert.Equal((64, 40), (guide.HomeTileX, guide.HomeTileY));
         Assert.True(guide.Homeless);
+        Assert.Equal(0, guide.TownNpcVariationIndex);
+        Assert.Equal(1916656655, context.VanillaRandom.Next());
     }
 
     [Fact]
@@ -123,14 +126,14 @@ public sealed class SourceBackedStartingNpc1458Tests
             worldId: 1458);
         var tiles = new WorldTileStore(header.Dimensions);
         for (int x = 0; x < width; x++)
-        for (int y = 48; y < height; y++)
-        {
-            tiles.SetInitialPopulationTile(x, y, new WorldTile
+            for (int y = 48; y < height; y++)
             {
-                Type = y < 64 ? (ushort)0 : (ushort)1,
-                Flags = WorldTileFlags.Active
-            });
-        }
+                tiles.SetInitialPopulationTile(x, y, new WorldTile
+                {
+                    Type = y < 64 ? (ushort)0 : (ushort)1,
+                    Flags = WorldTileFlags.Active
+                });
+            }
 
         var generation = new RuntimeWorldGenerationMetadataSnapshot(
             new WorldGenerationPoint(64, 40),
@@ -229,11 +232,21 @@ public sealed class SourceBackedStartingNpc1458Tests
         public IWorldGenerationWorkspace Workspace { get; }
         public IWorldGenerationMetadataWorkspace? Metadata { get; }
         public IWorldGenerationRandom Random { get; } = new StubRandom();
-        public IWorldGenerationVanillaRandom? VanillaRandom => null;
+        public IWorldGenerationVanillaRandom VanillaRandom { get; } = new VanillaRandom(1458);
         public CancellationToken CancellationToken => CancellationToken.None;
         public void ReportProgress(double fraction, string? message = null)
         {
         }
+    }
+
+    private sealed class VanillaRandom(int seed) : IWorldGenerationVanillaRandom
+    {
+        private readonly VanillaUnifiedRandom1458 random = new(seed);
+        public int Next() => random.Next();
+        public int Next(int maximum) => random.Next(maximum);
+        public int Next(int minimum, int maximum) => random.Next(minimum, maximum);
+        public double NextDouble() => random.NextDouble();
+        public void NextBytes(byte[] bytes) => random.NextBytes(bytes);
     }
 
     private sealed class StubRandom : IWorldGenerationRandom

@@ -4,6 +4,18 @@
 
 `terraruntime:vanilla` is TerraRuntime's runtime-owned clean-room TerrariaServer 1.4.5.8 generator. The public generator ID is stable while the runtime owns the exact generation plan behind it.
 
+## Continuous ordinary prefix through native pass 76
+
+Reset through native pass `76` is independently qualified for ordinary Classic Corruption, seeds `1458` and `42`, at $4200\times1200$ tiles. The executor imports no original checkpoint. It compares every cell's 21 canonical fields, the complete physical RNG and report draw, 175/171 ordered chests with all 40 items, 99/94 protected rectangles, three sky houses, and nine checkpoints of all 754 generation solidity values. This covers the existing prefix plus underground trees, floating houses, Quick Cleanup, pots, hellforges and the following surface passes. It does not establish complete-world equality or every retained GenVars field.
+
+Cold generation effects use the existing canonical NPC, projectile and tile-entity owners. Source-backed continuations include larva, tombstone and hive effects; town allocation before identity draws; held-item clearing and six further tile-entity footprints; cold logic-sensor pulses through the existing wiring circuit; and the existing furniture owner's derived pylon index. Arbitrary live leashes, unsupported circuit devices, nondefault island-house styles and grass tree conversion remain separate boundaries.
+
+All 37 original extra seed aliases now have qualified Reset/Terrain prefixes, including rain and dual-dungeon state and two rain/lightning combinations. Unsupported combinations refuse at Reset before mutation. These prefix qualifications do not admit their later special-world generation pipelines.
+
+Flowers now passes the canonical workspace into every plant-framing path. Filled and empty containers follow the original destruction order; their metadata remains available to later generation callbacks. Only explicit fresh vanilla finalization applies the actual SaveChests predicate: four active cells whose identities belong to the five source container identities. Invalid records are excluded at that late boundary without rewriting tiles. The matching source save/load evidence admits valid-atlas unregistered remnants of `21/467`; surviving records still require complete anchors and footprints. Other validation modes keep their existing contract. The older non-container Flowers destruction frontier remains explicit.
+
+The [combined managed acceptance](../verification/worldgen-continuous76-managed-20261103.json) records the final qualification and its limits. Detached native liquid `50/99` and final `105→106` checkpoint evidence remains separate from continuous-prefix evidence. NativeAOT remains deferred by the user's managed-only instruction.
+
 ## Continuous ordinary prefix through spider caves
 
 The source-backed ordinary executor is independently qualified from Reset through native pass `64` (Spider Caves) for Classic Corruption, seeds `1458` and `42`, at $4200\times1200\,\text{tiles}$. These runs import no original tiles, random state or metadata. They compare every cell's canonical 21 fields, all 56 physical RNG slots and the report draw, ordered chest contents and protected rectangles, and all 754 generation solidity entries. The two worlds retain 168/164 chests and 99/94 protected rectangles respectively. This projection does not establish whole `.wld` byte identity.

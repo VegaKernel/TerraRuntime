@@ -231,14 +231,14 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 ApplyPots(context, workspace);
                 break;
             case SurfaceFinishStage1458.Hellforge:
-                int forges = HellforgePlacement1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                int forges = HellforgePlacement1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken,workspace);
                 context.ReportProgress(1d, $"Placing Hellforges ({forges}/{workspace.WidthTiles / 200})");
                 break;
             case SurfaceFinishStage1458.SpreadingGrass:
                 ApplySpreadingGrass(context, workspace);
                 break;
             case SurfaceFinishStage1458.SurfaceOreAndStone:
-                ApplySurfaceOreAndStone(context, grid, random);
+                ApplySurfaceOreAndStone(context, workspace, grid, random);
                 break;
             case SurfaceFinishStage1458.PlaceFallenLog:
                 ApplyFallenLog(context, workspace);
@@ -265,10 +265,13 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         IWorldGenerationVanillaRandom random = context.VanillaRandom ??
             throw new InvalidOperationException("Quick cleanup requires shared UnifiedRandom semantics.");
 
+        if(workspace.HasVanillaGenerationSolidity){workspace.SetVanillaGenerationSolid(new TileTypeId(137),false);workspace.SetVanillaGenerationSolid(new TileTypeId(130),false);}
         var pass = new QuickCleanupPass1458(
             workspace.TileStore, random, state.WorldSurface, state.RockLayer,
-            DungeonGenerationCatalog1458.BeachDistance, context.CancellationToken);
+            DungeonGenerationCatalog1458.BeachDistance, context.CancellationToken,
+            workspace.HasVanillaGenerationSolidity?workspace.IsVanillaGenerationSolid:null);
         pass.Apply();
+        if(workspace.HasVanillaGenerationSolidity){workspace.SetVanillaGenerationSolid(new TileTypeId(137),true);workspace.SetVanillaGenerationSolid(new TileTypeId(130),true);}
         context.ReportProgress(1d,
             $"Quick cleanup ({pass.Dropped} dropped, {pass.Retyped} retyped, {pass.SandFill} sand fill, " +
             $"{pass.Freshened} freshened)");
@@ -283,7 +286,8 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         double surfaceLow = workspace.VanillaTerrainState?.WorldSurfaceLow ?? state.WorldSurface;
         var pass = new PotScatterPass1458(
             workspace.TileStore, random, state.WorldSurface, surfaceHigh, surfaceLow, state.RockLayer,
-            DungeonGenerationCatalog1458.BeachDistance, context.CancellationToken);
+            DungeonGenerationCatalog1458.BeachDistance, context.CancellationToken,
+            workspace.HasVanillaGenerationSolidity?workspace.IsVanillaGenerationSolid:null);
         pass.Apply();
         context.ReportProgress(1d, $"Placing Pots ({pass.Placed})");
     }
@@ -299,13 +303,13 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         // actually holds rather than a later one that would change its answer.
         var pass = new SurfaceGrassSpreadPass1458(
             workspace.TileStore, random, state.WorldSurface, state.WorldSurfaceHigh,
-            -1, -1, context.CancellationToken);
+            -1, -1, context.CancellationToken, workspace);
         pass.Apply();
         context.ReportProgress(1d,
             $"Spreading surface grass ({pass.Grown} grown, {pass.Reskinned} re-skinned)");
     }
 
-    private void ApplySurfaceOreAndStone(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplySurfaceOreAndStone(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         WorldGenerationRequest request = context.Request;
         if (WorldSeedResolver1458.Resolve(in request).Has(VanillaSpecialWorldSeed1458.Skyblock))
@@ -318,7 +322,9 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
             state.WorldSurface,
             bootstrap.CopperOre,
             bootstrap.IronOre,
-            context.CancellationToken);
+            context.CancellationToken,
+            workspace.VanillaTerrainState?.CurrentWorldSurface ?? state.WorldSurface,
+            workspace);
         pass.Apply();
         context.ReportProgress(1d, $"Adding surface ore and stone ({pass.Changed} blocks)");
     }
@@ -474,7 +480,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Surface grass walls require shared UnifiedRandom semantics.");
 
         var pass = new GrassWallPass1458(
-            workspace.TileStore, random, state.WorldSurface, context.CancellationToken);
+            workspace.TileStore, random, state.WorldSurface, context.CancellationToken, workspace);
         pass.Apply();
         context.ReportProgress(1d,
             $"Adding Grass Walls ({pass.Painted} cells in {pass.Pockets} pockets, {pass.Grown} grown)");

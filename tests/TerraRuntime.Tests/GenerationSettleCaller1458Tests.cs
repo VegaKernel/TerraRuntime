@@ -24,7 +24,7 @@ public sealed class GenerationSettleCaller1458Tests
         // Source Liquid.Update averages 254,254,255 to254 and calls genRand.Next(30).
         var workspace = new Workspace(600, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         GenerationLiquidFixture1458.Configure(workspace, laterPass);
         void Place(int x, int y, ushort type)
         {

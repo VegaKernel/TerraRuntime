@@ -10,43 +10,43 @@ public static class WorldSeedResolver1458
     private static readonly Dictionary<string, VanillaSecretWorldSeed1458> SecretSeeds =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["abandoned manors"] = VanillaSecretWorldSeed1458.AbandonedManors,
+            ["abandonedmanors"] = VanillaSecretWorldSeed1458.AbandonedManors,
             ["arachnophobia"] = VanillaSecretWorldSeed1458.Arachnophobia,
-            ["beam me up"] = VanillaSecretWorldSeed1458.BeamMeUp,
-            ["bring a towel"] = VanillaSecretWorldSeed1458.BringATowel,
-            ["calm before the storm"] = VanillaSecretWorldSeed1458.CalmBeforeTheStorm,
-            ["double daring dangers"] = VanillaSecretWorldSeed1458.DoubleDaringDangers,
-            ["electric boogaloo"] = VanillaSecretWorldSeed1458.ElectricBoogaloo,
-            ["fish mox"] = VanillaSecretWorldSeed1458.FishMox,
-            ["hocus pocus"] = VanillaSecretWorldSeed1458.HocusPocus,
-            ["how did i get here"] = VanillaSecretWorldSeed1458.HowDidIGetHere,
-            ["i am error"] = VanillaSecretWorldSeed1458.IAmError,
-            ["invisible plane"] = VanillaSecretWorldSeed1458.InvisiblePlane,
-            ["jagged rocks"] = VanillaSecretWorldSeed1458.JaggedRocks,
-            ["jingle all the way"] = VanillaSecretWorldSeed1458.JingleAllTheWay,
-            ["mole people"] = VanillaSecretWorldSeed1458.MolePeople,
+            ["beammeup"] = VanillaSecretWorldSeed1458.BeamMeUp,
+            ["bringatowel"] = VanillaSecretWorldSeed1458.BringATowel,
+            ["calmbeforethestorm"] = VanillaSecretWorldSeed1458.CalmBeforeTheStorm,
+            ["doubledaringdangers"] = VanillaSecretWorldSeed1458.DoubleDaringDangers,
+            ["electricboogaloo"] = VanillaSecretWorldSeed1458.ElectricBoogaloo,
+            ["fishmox"] = VanillaSecretWorldSeed1458.FishMox,
+            ["hocuspocus"] = VanillaSecretWorldSeed1458.HocusPocus,
+            ["howdidigethere"] = VanillaSecretWorldSeed1458.HowDidIGetHere,
+            ["iamerror"] = VanillaSecretWorldSeed1458.IAmError,
+            ["invisibleplane"] = VanillaSecretWorldSeed1458.InvisiblePlane,
+            ["jaggedrocks"] = VanillaSecretWorldSeed1458.JaggedRocks,
+            ["jinglealltheway"] = VanillaSecretWorldSeed1458.JingleAllTheWay,
+            ["molepeople"] = VanillaSecretWorldSeed1458.MolePeople,
             ["monochrome"] = VanillaSecretWorldSeed1458.Monochrome,
-            ["more traps please"] = VanillaSecretWorldSeed1458.MoreTrapsPlease,
-            ["negative infinity"] = VanillaSecretWorldSeed1458.NegativeInfinity,
-            ["night of the living dead"] = VanillaSecretWorldSeed1458.NightOfTheLivingDead,
+            ["moretrapsplease"] = VanillaSecretWorldSeed1458.MoreTrapsPlease,
+            ["negativeinfinity"] = VanillaSecretWorldSeed1458.NegativeInfinity,
+            ["nightofthelivingdead"] = VanillaSecretWorldSeed1458.NightOfTheLivingDead,
             ["planetoids"] = VanillaSecretWorldSeed1458.Planetoids,
-            ["pumpkin season"] = VanillaSecretWorldSeed1458.PumpkinSeason,
-            ["purify this"] = VanillaSecretWorldSeed1458.PurifyThis,
-            ["rainbow road"] = VanillaSecretWorldSeed1458.RainbowRoad,
-            ["royale with cheese"] = VanillaSecretWorldSeed1458.RoyaleWithCheese,
-            ["does that sparkle"] = VanillaSecretWorldSeed1458.DoesThatSparkle,
-            ["too easy"] = VanillaSecretWorldSeed1458.TooEasy,
+            ["pumpkinseason"] = VanillaSecretWorldSeed1458.PumpkinSeason,
+            ["purifythis"] = VanillaSecretWorldSeed1458.PurifyThis,
+            ["rainbowroad"] = VanillaSecretWorldSeed1458.RainbowRoad,
+            ["royalewithcheese"] = VanillaSecretWorldSeed1458.RoyaleWithCheese,
+            ["doesthatsparkle"] = VanillaSecretWorldSeed1458.DoesThatSparkle,
+            ["tooeasy"] = VanillaSecretWorldSeed1458.TooEasy,
             ["waterpark"] = VanillaSecretWorldSeed1458.Waterpark,
-            ["what a horrible night to have a curse"] = VanillaSecretWorldSeed1458.WhatAHorribleNightToHaveACurse,
-            ["winter is coming"] = VanillaSecretWorldSeed1458.WinterIsComing,
-            ["x-ray vision"] = VanillaSecretWorldSeed1458.XRayVision,
-            ["truck stop"] = VanillaSecretWorldSeed1458.TruckStop,
-            ["sandy britches"] = VanillaSecretWorldSeed1458.SandyBritches,
-            ["save the rainforest"] = VanillaSecretWorldSeed1458.SaveTheRainforest,
-            ["such great heights"] = VanillaSecretWorldSeed1458.SuchGreatHeights,
-            ["the care bears movie"] = VanillaSecretWorldSeed1458.TheCareBearsMovie,
+            ["whatahorriblenighttohaveacurse"] = VanillaSecretWorldSeed1458.WhatAHorribleNightToHaveACurse,
+            ["winteriscoming"] = VanillaSecretWorldSeed1458.WinterIsComing,
+            ["xrayvision"] = VanillaSecretWorldSeed1458.XRayVision,
+            ["truckstop"] = VanillaSecretWorldSeed1458.TruckStop,
+            ["sandybritches"] = VanillaSecretWorldSeed1458.SandyBritches,
+            ["savetherainforest"] = VanillaSecretWorldSeed1458.SaveTheRainforest,
+            ["suchgreatheights"] = VanillaSecretWorldSeed1458.SuchGreatHeights,
+            ["thecarebearsmovie"] = VanillaSecretWorldSeed1458.TheCareBearsMovie,
             ["toadstool"] = VanillaSecretWorldSeed1458.Toadstool,
-            ["we don't even test for that"] = VanillaSecretWorldSeed1458.WeDontEvenTestForThat
+            ["wedonteventestforthat"] = VanillaSecretWorldSeed1458.WeDontEvenTestForThat
         };
 
     public static VanillaWorldSeedProfile1458 Resolve(in WorldGenerationRequest request)
@@ -98,7 +98,8 @@ public static class WorldSeedResolver1458
             if (prefix >= 0 && prefix + 1 < part.Length)
                 part = part[(prefix + 1)..];
 
-            if (SecretSeeds.TryGetValue(part.Trim(), out VanillaSecretWorldSeed1458 value))
+            if (SecretSeeds.TryGetValue(NormalizeSecret(rawPart), out VanillaSecretWorldSeed1458 value) ||
+                SecretSeeds.TryGetValue(NormalizeSecret(part), out value))
                 result |= value;
         }
 
@@ -118,6 +119,19 @@ public static class WorldSeedResolver1458
         "skyblock" => VanillaSpecialWorldSeed1458.Skyblock,
         _ => VanillaSpecialWorldSeed1458.None
     };
+
+    // The source secret matcher retains ASCII letters and digits after case folding.
+    private static string NormalizeSecret(string value)
+    {
+        var normalized = new StringBuilder(value.Length);
+        foreach (char character in value)
+        {
+            char lower = char.ToLowerInvariant(character);
+            if (lower is >= 'a' and <= 'z' or >= '0' and <= '9')
+                normalized.Append(lower);
+        }
+        return normalized.ToString();
+    }
 
     private static string NormalizeSpecial(string value)
     {

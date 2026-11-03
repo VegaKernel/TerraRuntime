@@ -165,7 +165,7 @@ internal sealed partial class WorldTileAuthority
         {
             if (!item.TryGetItemType(out var type) ||
                 !clientRole && !TryFurnitureItem(type, item.Prefix, x * 16, y * 16, 32, 32)) return false;
-            return furnitureImage!.TryStageWeaponsRackItemClear(x, y, in item);
+            return furnitureImage!.TryStageItemHolderClear(x, y, WorldTileEntityKind.WeaponsRack, in item);
         }
 
         private bool TryFurnitureItem(ItemTypeId item, byte prefix, int x, int y, int width, int height)

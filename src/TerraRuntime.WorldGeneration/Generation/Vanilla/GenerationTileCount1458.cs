@@ -21,7 +21,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// only ever measures unpapered space.
 /// </para>
 /// </remarks>
-internal sealed class GenerationTileCount1458(WorldTileStore store)
+internal sealed class GenerationTileCount1458(WorldTileStore store, Func<TileTypeId, bool>? solidity = null)
 {
     private const ushort DungeonProofWall = 244;
 
@@ -139,7 +139,7 @@ internal sealed class GenerationTileCount1458(WorldTileStore store)
     private bool IsSolid(int x, int y)
     {
         WorldTile cell = At(x, y);
-        return cell.IsActive && VanillaTileCollisionCatalog.IsSolid(cell.TileType) &&
+        return cell.IsActive && (solidity?.Invoke(cell.TileType) ?? VanillaTileCollisionCatalog.IsSolid(cell.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(cell.TileType) && cell.Shape == 0 && !cell.IsActuated;
     }
 

@@ -11,7 +11,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// The source catalog has 109 registrations, including two conditional Skyblock entries; ordinary coverage is 107.
 /// Registration coverage is not proof of pass geometry or complete-world equality.
 /// </summary>
-public sealed class SourceBackedFinal1458 : IWorldGenerationProvider
+public sealed partial class SourceBackedFinal1458 : IWorldGenerationProvider
 {
     internal static readonly WorldGenerationPassId SettleLiquidsAgainId = new("terraria:1.4.5.8/SettleLiquidsAgain");
     internal static readonly WorldGenerationPassId CactusPalmTreesCoralId = new("terraria:1.4.5.8/CactusPalmTreesCoral");
@@ -37,7 +37,12 @@ public sealed class SourceBackedFinal1458 : IWorldGenerationProvider
         VanillaWorldSeedProfile1458 profile = WorldSeedResolver1458.Resolve(in requestCopy);
         if (!profile.IsDefault || !TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
         {
-            capture.Replay(builder);
+            if (profile.SupportsSourceBackedResetAndTerrain &&
+                (profile.Special != VanillaSpecialWorldSeed1458.Remix || profile.Secret != VanillaSecretWorldSeed1458.None) &&
+                TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
+                ReplayQualifiedPrefixOnly(capture, builder);
+            else
+                capture.Replay(builder);
             return;
         }
 
@@ -1119,11 +1124,6 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                     normalized++;
                 }
 
-                if (tile.IsActive && y + 1 < grid.Height && IsUnsupportedSingleTilePlant(in tile, in grid.At(x, y + 1)))
-                {
-                    ClearTile(ref tile, preserveLiquid: true);
-                    normalized++;
-                }
                 // FinalCleanup removes isolated partial surface fluid after TileCleanup may have restored
                 // terrain supports into it. Do not clear full pools, coastal fluid or cloud-supported fluid.
                 if (x > FinalCleanupBeachMargin && x < grid.Width - FinalCleanupBeachMargin &&
@@ -1152,10 +1152,26 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             }
         }
         PlaceFinalCleanupGrassOffers(grid, random);
+        if(context.Workspace is Workspace teamWorkspace && teamWorkspace.VanillaSeedProfile.Has(TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese)) {
+            if(teamWorkspace.VanillaSeedProfile.Special != TerraRuntime.World.VanillaSpecialWorldSeed1458.None || teamWorkspace.VanillaSeedProfile.Secret != TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese)
+                throw new NotSupportedException("Team spawn selection for combined seed profiles requires the source landmass and seed owners.");
+            GenerationTeamSpawns1458.Generate(teamWorkspace,random,framing,true);
+        }
         framing.FinalSeedCleanup();
         if (context.Workspace is Workspace finalWorkspace)
             CleanupShimmer(finalWorkspace, random, framing, context.CancellationToken);
         framing.FinalizeLiquidsDuringGeneration(context.CancellationToken);
+        if (context.Workspace is Workspace cleanupWorkspace)
+        {
+            bool hasSpawn = cleanupWorkspace.TryGetSpawn(out WorldGenerationPoint cleanupSpawn);
+            if (!hasSpawn && cleanupWorkspace.GeneratedTownNpcCount != 0)
+                throw new InvalidOperationException("Final town cleanup requires source spawn.");
+            GenerationExtraSpawnPreparation1458.Prepare(cleanupWorkspace, random, framing, false, false);
+            // The original town loop does not consult spawn coordinates when no town actor exists.
+            if (hasSpawn)
+                cleanupWorkspace.CleanupGeneratedTownNpcPositions(framing, cleanupSpawn);
+        }
+        ApplyFinalAnglerQuest(context, random);
         context.ReportProgress(1d, $"Final Cleanup complete; normalized={normalized}");
     }
 
@@ -1387,20 +1403,6 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
     // TileID.Sets.Clouds, including the six 1.4.5.8 identities (not MergesWithClouds).
     private static bool IsActiveCloud(in WorldTile tile) =>
         tile.IsActive && tile.Type is 189 or 196 or 460 or 717 or 718 or 719;
-
-    private static bool IsUnsupportedSingleTilePlant(in WorldTile plant, in WorldTile support)
-    {
-        if (!support.IsActive || support.IsActuated)
-            return plant.Type is Plants or Plants2 or JunglePlants or JunglePlants2 or MushroomPlants;
-
-        return plant.Type switch
-        {
-            Plants or Plants2 => support.Type != Grass,
-            JunglePlants or JunglePlants2 => support.Type != JungleGrass,
-            MushroomPlants => support.Type != MushroomGrass,
-            _ => false
-        };
-    }
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Final vanilla world generation is not initialized.");

@@ -11,24 +11,33 @@ namespace TerraRuntime.Tests;
 public sealed class GenerationSpecialFurniture1458Tests
 {
     [Theory]
-    [InlineData(1, "B35831D97EE78A56293052DCFE9907BF310B3C6EB71C1141EDE806D41776165E", 1376255771)]
-    [InlineData(42, "B35831D97EE78A56293052DCFE9907BF310B3C6EB71C1141EDE806D41776165E", 31239240)]
-    [InlineData(1458, "B35831D97EE78A56293052DCFE9907BF310B3C6EB71C1141EDE806D41776165E", 233147420)]
+    [InlineData(1, "B35831D97EE78A56293052DCFE9907BF310B3C6EB71C1141EDE806D41776165E", 284750318)]
+    [InlineData(42, "B35831D97EE78A56293052DCFE9907BF310B3C6EB71C1141EDE806D41776165E", 574434532)]
+    [InlineData(1458, "B35831D97EE78A56293052DCFE9907BF310B3C6EB71C1141EDE806D41776165E", 1105659209)]
     public void Special_furniture_matches_registered_official_FinalCleanup(int seed, string expectedHash, int expectedNext)
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         Populate((x, y, type, fx, fy, shape, actuated) =>
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Shape = shape,
-                Flags = WorldTileFlags.Active | (actuated ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Shape = shape,
+                Flags = WorldTileFlags.Active | (actuated ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             workspace.TileStore.Set(x, y, in tile);
         });
         var random = new RandomAdapter(seed);
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(new Context(workspace, random, seed));
+        Assert.Equal(seed switch { 1 => "6036546AFB9A509EE1027DAB557BC5CF91E38F24B5A6FC8415069F7295F389E3", 42 => "6036546AFB9A509EE1027DAB557BC5CF91E38F24B5A6FC8415069F7295F389E3", 1458 => "6036546AFB9A509EE1027DAB557BC5CF91E38F24B5A6FC8415069F7295F389E3", _ => throw new InvalidOperationException() }, GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal(seed switch { 1 => "59B839C349AA4754363E7CFF0D78D566BEEF90B52ADB6B0981306C143B168015", 42 => "62F5F8AB6A9F2B9C911DEB63031EF3AE56774B86448767BF79BCAF3425AA86FF", 1458 => "B0F03AA92ACDA9EE67976F481CED788E3B10C1FD830D1D0E8C6F9D954B055AF4", _ => throw new InvalidOperationException() }, GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(seed switch { 1 => 17, 42 => 0, 1458 => 37, _ => throw new InvalidOperationException() }, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal(expectedHash, Hash(workspace));
-        // Official netMode1 skips the separate AnglerQuestSwap epilogue.
+        // Official mode0 includes the AnglerQuestSwap epilogue.
         Assert.Equal(expectedNext, random.Next());
     }
 
@@ -50,12 +59,17 @@ public sealed class GenerationSpecialFurniture1458Tests
         // original KillTile control verifies the dust prelude's complete state.
         var workspace = new Workspace(80, 80);
         for (int column = 0; column < 4; column++)
-        for (int row = 0; row < 3; row++)
-        {
-            var tile = new WorldTile { Type = 454, FrameX = (short)(column * 18),
-                FrameY = (short)(row * 18), Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(30 + column, 30 + row, in tile);
-        }
+            for (int row = 0; row < 3; row++)
+            {
+                var tile = new WorldTile
+                {
+                    Type = 454,
+                    FrameX = (short)(column * 18),
+                    FrameY = (short)(row * 18),
+                    Flags = WorldTileFlags.Active
+                };
+                workspace.TileStore.Set(30 + column, 30 + row, in tile);
+            }
         var random = new RandomAdapter(seed);
         new GenerationTileFraming1458(workspace.TileStore, random).TileFrame(30, 30);
         Assert.Equal("D4A8F3D9D1E34D0A7CE847EF0FDDE1EA43013DF175156FB4123757FFBBB148E7", Hash(workspace));
@@ -76,7 +90,10 @@ public sealed class GenerationSpecialFurniture1458Tests
     }
 
     [Theory]
-    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(4)]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
     public void Banner_rejects_nonplatform_solid_top_ceiling_even_when_shaped(byte shape)
     {
         // Actual original CheckBanner91 with solid/solidTop14 at each shape rejects all four.
@@ -94,7 +111,9 @@ public sealed class GenerationSpecialFurniture1458Tests
     }
 
     [Theory]
-    [InlineData(0, false)] [InlineData(216, true)] [InlineData(450, true)]
+    [InlineData(0, false)]
+    [InlineData(216, true)]
+    [InlineData(450, true)]
     public void Geyser_halfbrick_platform_anchor_retains_source_frame_band_precedence(short frame, bool survives)
     {
         // Actual original CheckSuper443 accepts halfbrick in bands12..16/25..26,
@@ -126,10 +145,10 @@ public sealed class GenerationSpecialFurniture1458Tests
                 int baseFx = scenario == 3 ? width * 18 : 0;
                 int baseFy = scenario == 3 && type is 91 or 454 ? 54 : 0;
                 for (int dx = 0; dx < width; dx++)
-                for (int dy = 0; dy < height; dy++)
-                    if (scenario != 1 || dx != width - 1 || dy != height - 1)
-                        put(x + dx, y + dy, type, (short)(baseFx + dx * 18),
-                            (short)(baseFy + dy * 18 + (scenario == 11 && dx == 0 && dy == 0 ? 1 : 0)), 0, false);
+                    for (int dy = 0; dy < height; dy++)
+                        if (scenario != 1 || dx != width - 1 || dy != height - 1)
+                            put(x + dx, y + dy, type, (short)(baseFx + dx * 18),
+                                (short)(baseFy + dy * 18 + (scenario == 11 && dx == 0 && dy == 0 ? 1 : 0)), 0, false);
                 byte shape = scenario switch { 5 => 1, 6 => 2, 7 => 4, _ => 0 };
                 ushort support = scenario == 8 ? (ushort)19 : (ushort)1;
                 if (type is 91 or 454)
@@ -154,12 +173,12 @@ public sealed class GenerationSpecialFurniture1458Tests
     {
         var text = new StringBuilder();
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            text.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                text.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 

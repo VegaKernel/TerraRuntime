@@ -19,8 +19,15 @@ public sealed class GenerationThreeByThree1458Tests
 
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0, byte shape = 0, bool inactive = false)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall, Shape = shape,
-                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Shape = shape,
+                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
 
@@ -36,9 +43,9 @@ public sealed class GenerationThreeByThree1458Tests
                 int y = bandY + scenario * 10;
                 int style = scenario == 3 ? 54 : 0;
                 for (int dx = 0; dx < 3; dx++)
-                for (int dy = 0; dy < 3; dy++)
-                    if (scenario != 1 || dx != 2 || dy != 2)
-                        Put(x + dx, y + dy, type, (short)(style + dx * 18), (short)(style + dy * 18), wall: wallObject ? (ushort)1 : (ushort)0);
+                    for (int dy = 0; dy < 3; dy++)
+                        if (scenario != 1 || dx != 2 || dy != 2)
+                            Put(x + dx, y + dy, type, (short)(style + dx * 18), (short)(style + dy * 18), wall: wallObject ? (ushort)1 : (ushort)0);
                 if (wallObject)
                 {
                     if (scenario == 2)
@@ -53,8 +60,8 @@ public sealed class GenerationThreeByThree1458Tests
                         Put(x + 2, y + 2, 1, wall: 1);
                     if (scenario == 9)
                         for (int dx = 0; dx < 3; dx++)
-                        for (int dy = 0; dy < 3; dy++)
-                            Put(x + dx, y + dy, type, (short)(dx * 18), (short)(dy * 18));
+                            for (int dy = 0; dy < 3; dy++)
+                                Put(x + dx, y + dy, type, (short)(dx * 18), (short)(dy * 18));
                 }
                 else
                 {
@@ -71,9 +78,9 @@ public sealed class GenerationThreeByThree1458Tests
             {
                 int y = bandY + 100;
                 for (int objectRow = 0; objectRow < 2; objectRow++)
-                for (int dx = 0; dx < 3; dx++)
-                for (int dy = 0; dy < 3; dy++)
-                    Put(x + dx, y + objectRow * 3 + dy, type, (short)(dx * 18), (short)(dy * 18));
+                    for (int dx = 0; dx < 3; dx++)
+                        for (int dy = 0; dy < 3; dy++)
+                            Put(x + dx, y + objectRow * 3 + dy, type, (short)(dx * 18), (short)(dy * 18));
                 for (int dx = 0; dx < 3; dx++)
                     Put(x + dx, y + 6, 1);
             }
@@ -82,15 +89,18 @@ public sealed class GenerationThreeByThree1458Tests
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+        Assert.Equal("A8F9047C9017718FA104E91515377B6B7B6A629CEA6AD6AA49C55B6ADFBA1276", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("AA43DFAD50C569337F57E4CE3DD1056A9830E78D18B08B807C344739F5AC0005", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(6, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("44059F86228733793E1F1B390B8CA68B9A7C89EC19AAA6D4BF1A264B69459001", HashFixture(workspace));
-        Assert.Equal(320683462, random.Next());
+        Assert.Equal(246129131, random.Next());
         for (int n = 0; n < identities.Length; n++)
-        for (int scenario = 0; scenario < 10; scenario++)
-        {
-            bool wallObject = identities[n] is 240 or 440;
-            bool survives = wallObject ? scenario is 0 or 3 or 5 or 6 or 7 : scenario is 0 or 3 or 6;
-            Assert.Equal(survives, workspace.TileStore.Get(60 + n % 8 * 112, 55 + n / 8 * 110 + scenario * 10).IsActive);
-        }
+            for (int scenario = 0; scenario < 10; scenario++)
+            {
+                bool wallObject = identities[n] is 240 or 440;
+                bool survives = wallObject ? scenario is 0 or 3 or 5 or 6 or 7 : scenario is 0 or 3 or 6;
+                Assert.Equal(survives, workspace.TileStore.Get(60 + n % 8 * 112, 55 + n / 8 * 110 + scenario * 10).IsActive);
+            }
         Assert.Equal((ushort)753, workspace.TileStore.Get(396, 485).Type);
         Assert.True(workspace.TileStore.Get(396, 485).IsActive);
         Assert.True(workspace.TileStore.Get(396, 488).IsActive);
@@ -108,8 +118,15 @@ public sealed class GenerationThreeByThree1458Tests
 
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0, byte shape = 0, bool inactive = false)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall, Shape = shape,
-                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Shape = shape,
+                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             workspace.TileStore.Set(x, y, in tile);
         }
 
@@ -118,9 +135,9 @@ public sealed class GenerationThreeByThree1458Tests
             int x = objectIndex == 0 ? 903 : 900;
             ushort type = (objectIndex == 0) == floorTrigger ? (ushort)243 : (ushort)240;
             for (int dx = 0; dx < 3; dx++)
-            for (int dy = 0; dy < 3; dy++)
-                if (dy != 2 || dx != (objectIndex == 0 ? 2 : 0))
-                    Put(x + dx, 330 + dy, type, (short)(dx * 18), (short)(dy * 18), wall: type == 240 ? (ushort)1 : (ushort)0);
+                for (int dy = 0; dy < 3; dy++)
+                    if (dy != 2 || dx != (objectIndex == 0 ? 2 : 0))
+                        Put(x + dx, 330 + dy, type, (short)(dx * 18), (short)(dy * 18), wall: type == 240 ? (ushort)1 : (ushort)0);
             if (type == 243)
                 for (int dx = 0; dx < 3; dx++)
                     Put(x + dx, 333, 1);
@@ -132,9 +149,9 @@ public sealed class GenerationThreeByThree1458Tests
         Assert.Equal(nextRandom, random.Next());
         int remainingNeighbours = 0;
         for (int x = 900; x < 903; x++)
-        for (int y = 330; y < 333; y++)
-            if (workspace.TileStore.Get(x, y).IsActive)
-                remainingNeighbours++;
+            for (int y = 330; y < 333; y++)
+                if (workspace.TileStore.Get(x, y).IsActive)
+                    remainingNeighbours++;
         Assert.Equal(floorTrigger ? 0 : 8, remainingNeighbours);
     }
 
@@ -173,7 +190,7 @@ public sealed class GenerationThreeByThree1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         return workspace;
     }
 
@@ -181,12 +198,12 @@ public sealed class GenerationThreeByThree1458Tests
     {
         var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 

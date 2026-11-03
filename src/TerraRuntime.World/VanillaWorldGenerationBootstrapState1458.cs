@@ -9,6 +9,25 @@ namespace TerraRuntime.World;
 /// </summary>
 internal sealed class VanillaWorldGenerationBootstrapState1458
 {
+    public int RainTime { get; init; }
+    public bool Raining { get; init; }
+    public float MaxRaining { get; init; }
+    public float CloudAlpha { get; init; }
+    public float WindSpeedTarget { get; init; }
+    public int[] DungeonSides { get; init; } = [];
+    public int[] DungeonLocations { get; init; } = [];
+    public int CurrentDungeon { get; init; }
+    public double DualDungeonNormalizedDistanceSafeFromDither { get; init; }
+    public bool DayTime { get; init; } = true;
+    public double Time { get; init; } = WorldFileFreshRuntimeMetadata326Encoder.InitialTime;
+    public bool GenuineParty { get; init; }
+    public int PartyDaysOnCooldown { get; init; }
+    public bool AfterPartyOfDoom { get; init; }
+    // Main.starGame affects generation but has no vanilla .wld field.
+    public bool StarGame { get; init; }
+    public bool NotTheBeesAndForTheWorthyNoCelebration { get; init; }
+    public bool NoTrapsAndForTheWorthyNoCelebration { get; init; }
+    public bool FlipInfections { get; init; }
     public int JungleHut { get; init; }
     public bool CrimsonLeft { get; init; }
     public int NumClouds { get; init; }

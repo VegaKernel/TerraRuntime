@@ -4,9 +4,8 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>
-/// Clean-room WorldGen.Reset RNG/bootstrap port for TerrariaServer 1.4.5.8. This pass is enabled for the three
-/// canonical vanilla dimensions and either an ordinary profile or the pure Don't Dig Up/Remix profile. Other special
-/// seeds and synthetic test dimensions intentionally consume no extra RNG until their own Reset branches are ported.
+/// Clean-room fresh-world WorldGen.Reset bootstrap for the three canonical dimensions and the qualified
+/// classic profiles. This metadata and RNG prefix does not admit their later generation passes.
 /// </summary>
 internal sealed class BootstrapPass1458 : IWorldGenerationPass
 {
@@ -29,21 +28,29 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
         ArgumentNullException.ThrowIfNull(context);
         WorldGenerationRequest request = context.Request;
         VanillaWorldSeedProfile1458 seedProfile = WorldSeedResolver1458.Resolve(in request);
-        if (!seedProfile.SupportsSourceBackedResetAndTerrain ||
-            !TerrainPass1458.IsCanonicalWorldSize(context.Workspace.WidthTiles, context.Workspace.HeightTiles))
-        {
+        if (!TerrainPass1458.IsCanonicalWorldSize(context.Workspace.WidthTiles, context.Workspace.HeightTiles))
             return;
-        }
+        if (!seedProfile.SupportsSourceBackedResetAndTerrain)
+            throw new NotSupportedException(
+                "This seed combination has no qualified source Reset/Terrain prefix. Generation cannot use an ordinary fallback.");
 
         IWorldGenerationVanillaRandom random = context.VanillaRandom ??
             throw new InvalidOperationException("The source-backed Terraria bootstrap requires shared UnifiedRandom semantics.");
         if (context.Workspace is Workspace workspace)
+        {
             workspace.InitializeVanillaGenerationSolidity();
+            workspace.VanillaSkyIslandHouseCount=0;
+        }
         state.Bootstrap = Run(
             random,
             context.Workspace.WidthTiles,
             request.Options.Evil == WorldGenerationEvil.Crimson,
-            seedProfile.Special == VanillaSpecialWorldSeed1458.Remix);
+            seedProfile.Special, secret: seedProfile.Secret);
+        if (context.Workspace is Workspace retainedWorkspace)
+        {
+            retainedWorkspace.SetVanillaBootstrapState(state.Bootstrap);
+            retainedWorkspace.SetVanillaSeedProfile(seedProfile);
+        }
         context.ReportProgress(1d, "Applying source-backed Terraria WorldGen.Reset bootstrap");
     }
 
@@ -51,11 +58,23 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
         IWorldGenerationVanillaRandom random,
         int width,
         bool effectiveCrimson,
-        bool isRemix = false)
+        VanillaSpecialWorldSeed1458 special = VanillaSpecialWorldSeed1458.None,
+        bool dayTime = true, double time = WorldFileFreshRuntimeMetadata326Encoder.InitialTime,
+        VanillaSecretWorldSeed1458 secret = VanillaSecretWorldSeed1458.None)
     {
         ArgumentNullException.ThrowIfNull(random);
         if (width is not (4200 or 6400 or 8400))
             throw new ArgumentOutOfRangeException(nameof(width));
+
+        if ((special & VanillaSpecialWorldSeed1458.Zenith) != 0)
+            special |= VanillaSpecialWorldSeed1458.DrunkWorld | VanillaSpecialWorldSeed1458.ForTheWorthy |
+                VanillaSpecialWorldSeed1458.CelebrationMk10 | VanillaSpecialWorldSeed1458.TheConstant |
+                VanillaSpecialWorldSeed1458.NotTheBees | VanillaSpecialWorldSeed1458.Remix | VanillaSpecialWorldSeed1458.NoTraps;
+        bool isRemix = (special & VanillaSpecialWorldSeed1458.Remix) != 0;
+        bool isDrunk = (special & VanillaSpecialWorldSeed1458.DrunkWorld) != 0;
+        bool isAnniversary = (special & VanillaSpecialWorldSeed1458.CelebrationMk10) != 0;
+        bool isConstant = (special & VanillaSpecialWorldSeed1458.TheConstant) != 0;
+        bool isSkyblock = (special & VanillaSpecialWorldSeed1458.Skyblock) != 0;
 
         int jungleHut = random.Next(5);
         bool crimsonLeft = random.Next(2) != 0;
@@ -67,8 +86,33 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
             windSpeedCurrent = (float)random.NextDouble() * 0.35f * (random.Next(2) * 2 - 1);
         }
 
+        float windSpeedTarget = windSpeedCurrent;
+        bool raining = (secret & VanillaSecretWorldSeed1458.BringATowel) != 0;
+        int rainTime = raining ? 1892160000 : 0;
+        float maxRaining = 0f, cloudAlpha = 0f;
+        if (raining)
+        {
+            if ((secret & VanillaSecretWorldSeed1458.ElectricBoogaloo) != 0)
+            {
+                numClouds = 200;
+                maxRaining = 1f;
+                cloudAlpha = 0.9f;
+                windSpeedTarget = 0.8f * (random.Next(2) != 0 ? 1 : -1);
+            }
+            else
+            {
+                bool usual = random.Next(3) != 0;
+                maxRaining = Math.Max(0.1f, numClouds > 150 ? random.Next(usual ? 40 : 20, 91) * 0.01f :
+                    numClouds > 100 ? random.Next(usual ? 20 : 10, usual ? 61 : 71) * 0.01f :
+                    random.Next(5, usual ? 31 : 41) * 0.01f);
+                cloudAlpha = maxRaining;
+                numClouds = 200;
+            }
+        }
         int[] hellChestItems = ShuffleHellChestItems(random, isRemix);
         int slimeRainTime = -random.Next(86400 * 2, 86400 * 3);
+        if (isSkyblock)
+            slimeRainTime = 0;
         int cloudBackgroundActive = -random.Next(8640, 86400);
 
         int copperOre = 7;
@@ -84,7 +128,7 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
             copperOre = 166;
             copperBar = 703;
         }
-        if (random.Next(2) == 0)
+        if ((!isConstant || isDrunk) && random.Next(2) == 0)
         {
             ironOre = 167;
             ironBar = 704;
@@ -94,7 +138,7 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
             silverOre = 168;
             silverBar = 705;
         }
-        if (random.Next(2) == 0)
+        if ((!isConstant || isDrunk) && random.Next(2) == 0)
         {
             goldOre = 169;
             goldBar = 706;
@@ -131,14 +175,16 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
 
         int dungeonSide = random.Next(2) == 0 ? DungeonSideLeft : DungeonSideRight;
         int jungleOriginX;
-        int jungleDistanceMin = isRemix ? 20 : 15;
-        int jungleDistanceMax = isRemix ? 35 : 30;
+        int jungleDistanceMin = isRemix ? 20 : isAnniversary ? 25 : 15;
+        int jungleDistanceMax = isRemix || isAnniversary ? 35 : 30;
         if (dungeonSide <= DungeonSideLeft)
             jungleOriginX = (int)(width * (1d - random.Next(jungleDistanceMin, jungleDistanceMax) * 0.01d));
         else
             jungleOriginX = (int)(width * (random.Next(jungleDistanceMin, jungleDistanceMax) * 0.01d));
 
         int snowCenter = random.Next(width);
+        if (isDrunk && (!isConstant || isRemix))
+            dungeonSide = -dungeonSide;
         if (dungeonSide == DungeonSideRight)
         {
             while (snowCenter < width * 0.6d || snowCenter > width * 0.75d)
@@ -149,6 +195,9 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
             while (snowCenter < width * 0.25d || snowCenter > width * 0.4d)
                 snowCenter = random.Next(width);
         }
+
+        if (isDrunk && (!isConstant || isAnniversary))
+            dungeonSide = -dungeonSide;
 
         double widthScale = width / 4200d;
         int snowHalfWidth = random.Next(50, 90);
@@ -164,6 +213,8 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
         int leftBeachEnd = random.Next(
             BeachSandRandomCenter - BeachSandRandomWidthRange,
             BeachSandRandomCenter + BeachSandRandomWidthRange);
+        if (isAnniversary && !isRemix)
+            leftBeachEnd = BeachSandRandomCenter + BeachSandRandomWidthRange;
         leftBeachEnd += dungeonSide == DungeonSideRight
             ? BeachSandDungeonExtraWidth
             : BeachSandJungleExtraWidth;
@@ -171,6 +222,8 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
         int rightBeachStart = width - random.Next(
             BeachSandRandomCenter - BeachSandRandomWidthRange,
             BeachSandRandomCenter + BeachSandRandomWidthRange);
+        if (isAnniversary && !isRemix)
+            rightBeachStart = width - (BeachSandRandomCenter + BeachSandRandomWidthRange);
         rightBeachStart -= dungeonSide == DungeonSideLeft
             ? BeachSandDungeonExtraWidth
             : BeachSandJungleExtraWidth;
@@ -179,11 +232,34 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
             ? random.Next(leftBeachEnd + DungeonBeachPadding, (int)(width * 0.2d))
             : random.Next((int)(width * 0.8d), rightBeachStart - DungeonBeachPadding);
 
+        int[] dungeonSides = [dungeonSide];
+        int[] dungeonLocations = [dungeonLocation];
+        bool dualDungeon = (secret & VanillaSecretWorldSeed1458.DoubleDaringDangers) != 0;
+        if (dualDungeon)
+        {
+            int secondSide = -dungeonSide;
+            int secondLocation = secondSide < 0 ? random.Next(leftBeachEnd + DungeonBeachPadding, (int)(width * 0.2d)) :
+                random.Next((int)(width * 0.8d), rightBeachStart - DungeonBeachPadding);
+            dungeonSides = [dungeonSide, secondSide];
+            dungeonLocations = [dungeonLocation, secondLocation];
+        }
         int skyLakes = 1 + (width > 8000 ? 1 : 0) + (width > 6000 ? 1 : 0);
         int extraBastStatueCountMax = width >= 8400 ? 4 : width >= 6400 ? 3 : 2;
 
         return new VanillaWorldGenerationBootstrapState1458
         {
+            RainTime = rainTime, Raining = raining, MaxRaining = maxRaining, CloudAlpha = cloudAlpha,
+            WindSpeedTarget = windSpeedTarget, DungeonSides = dungeonSides, DungeonLocations = dungeonLocations,
+            DualDungeonNormalizedDistanceSafeFromDither = dualDungeon ? 1d - 0.075d * ((width == 4200 ? 1200 : width == 6400 ? 1800 : 2400) / 1200d) : 0d,
+            DayTime = dayTime,
+            Time = isDrunk && !dayTime ? 0d : time,
+            GenuineParty = isAnniversary && !isSkyblock,
+            PartyDaysOnCooldown = isAnniversary && !isSkyblock ? 5 : 0,
+            AfterPartyOfDoom = isAnniversary && !isSkyblock && (special & VanillaSpecialWorldSeed1458.ForTheWorthy) != 0,
+            StarGame = (special & VanillaSpecialWorldSeed1458.Zenith) != 0,
+            NotTheBeesAndForTheWorthyNoCelebration = (special & (VanillaSpecialWorldSeed1458.NotTheBees | VanillaSpecialWorldSeed1458.ForTheWorthy)) == (VanillaSpecialWorldSeed1458.NotTheBees | VanillaSpecialWorldSeed1458.ForTheWorthy) && !isAnniversary,
+            NoTrapsAndForTheWorthyNoCelebration = (special & (VanillaSpecialWorldSeed1458.NoTraps | VanillaSpecialWorldSeed1458.ForTheWorthy)) == (VanillaSpecialWorldSeed1458.NoTraps | VanillaSpecialWorldSeed1458.ForTheWorthy) && !isAnniversary,
+            FlipInfections = isDrunk && (special & VanillaSpecialWorldSeed1458.ForTheWorthy) != 0 && !isRemix,
             JungleHut = jungleHut,
             CrimsonLeft = crimsonLeft,
             NumClouds = numClouds,
@@ -382,4 +458,5 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
             value = 51 + random.Next(5) / 2;
         return value;
     }
+
 }

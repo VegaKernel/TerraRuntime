@@ -11,9 +11,10 @@ public sealed class WorldStartupPreparationTests
     [InlineData(8364953747496893878UL, 4200, 1200)]
     [InlineData(3679097605675226385UL, 4200, 1200)]
     [InlineData(8675309UL, 8400, 2400)]
+    [InlineData(1UL, 6400, 1800)]
     public async Task Generated_vanilla_world_reaches_actual_primary_startup_after_liquid_preparation(ulong seed, int width, int height)
     {
-        // Regression seeds from two real Small startup failures and an independent NativeAOT Large repro.
+        // Regression seeds cover real Small startup failures, a Large repro and the CI medium Flowers chest failure.
         // A generator/finalizer or official load alone does not exercise TerraRuntime's post-load boundary.
         string directory = Path.Combine(Path.GetTempPath(), $"TerraRuntime-Generated-Startup-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -21,7 +22,7 @@ public sealed class WorldStartupPreparationTests
         {
             string worldPath = Path.Combine(directory, "generated.wld");
             var request = new WorldGenerationRequest(new("terraruntime:vanilla"), "Loading regression", seed, width, height)
-                { SeedText = seed.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+            { SeedText = seed.ToString(System.Globalization.CultureInfo.InvariantCulture) };
             var pipeline = new RuntimeWorldCreationPersistencePipeline(BuiltInWorldGeneratorSource.Instance, ServerWorldLoadPolicy.CreateLimits().MaxTileCount);
             long timestamp = DateTime.UtcNow.ToBinary();
             var generated = pipeline.TryCreateAndPersist(request, worldPath, Guid.NewGuid(), 1458, timestamp, timestamp,
@@ -32,7 +33,8 @@ public sealed class WorldStartupPreparationTests
             var logs = new RuntimeLogBuffer();
             using var errors = new StringWriter();
             var options = new ServerHostOptions(worldPath, ServerHostOptions.DefaultPort, MaxPlayers: 1,
-                InterestManagementEnabled: false, TerminalUiEnabled: false) { ImportInitialWorldCustody = true };
+                InterestManagementEnabled: false, TerminalUiEnabled: false)
+            { ImportInitialWorldCustody = true };
             WorldStartupPreparationResult result;
             await using (var hostLog = new RuntimeHostLog(logs, TextWriter.Null, errors,
                 new RuntimeHostLoggingOptions { ConsoleEnabled = true, JsonLinesEnabled = false }))
@@ -52,22 +54,22 @@ public sealed class WorldStartupPreparationTests
     private static void AssertCompleteJungleDetritus(WorldTileStore tiles)
     {
         for (int x = 0; x < tiles.Dimensions.WidthTiles; x++)
-        for (int y = 0; y < tiles.Dimensions.HeightTiles; y++)
-        {
-            WorldTile tile = tiles.Get(x, y);
-            if (!tile.IsActive || tile.Type != 233) continue;
-            bool twoWide = tile.FrameY >= 36;
-            int width = twoWide ? 2 : 3, stride = width * 18, topRow = twoWide ? 36 : 0;
-            int left = x - tile.FrameX / 18 % width, top = y - (tile.FrameY - topRow) / 18;
-            for (int dx = 0; dx < width; dx++)
-            for (int dy = 0; dy < 2; dy++)
+            for (int y = 0; y < tiles.Dimensions.HeightTiles; y++)
             {
-                WorldTile cell = tiles.Get(left + dx, top + dy);
-                Assert.True(cell.IsActive && cell.Type == 233, $"Incomplete detritus at {x},{y}");
-                Assert.Equal(tile.FrameX / stride * stride + dx * 18, cell.FrameX);
-                Assert.Equal(topRow + dy * 18, cell.FrameY);
+                WorldTile tile = tiles.Get(x, y);
+                if (!tile.IsActive || tile.Type != 233) continue;
+                bool twoWide = tile.FrameY >= 36;
+                int width = twoWide ? 2 : 3, stride = width * 18, topRow = twoWide ? 36 : 0;
+                int left = x - tile.FrameX / 18 % width, top = y - (tile.FrameY - topRow) / 18;
+                for (int dx = 0; dx < width; dx++)
+                    for (int dy = 0; dy < 2; dy++)
+                    {
+                        WorldTile cell = tiles.Get(left + dx, top + dy);
+                        Assert.True(cell.IsActive && cell.Type == 233, $"Incomplete detritus at {x},{y}");
+                        Assert.Equal(tile.FrameX / stride * stride + dx * 18, cell.FrameX);
+                        Assert.Equal(topRow + dy * 18, cell.FrameY);
+                    }
             }
-        }
     }
 
     [Fact]

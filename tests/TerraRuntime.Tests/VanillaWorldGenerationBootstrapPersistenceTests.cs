@@ -94,7 +94,7 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
             MaxStringBytes: 4096,
             MaxTotalStringBytes: 16384,
             MaxAnglerNames: 0,
-            MaxBannerEntries: 0,
+            MaxBannerEntries: WorldBannerData1458.MaximumEntries,
             MaxPartyNpcEntries: 0,
             MaxManifestBytes: 16384);
 

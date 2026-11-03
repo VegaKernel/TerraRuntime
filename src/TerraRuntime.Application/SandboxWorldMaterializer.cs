@@ -118,7 +118,7 @@ internal sealed class SandboxWorldMaterializer
             created.Candidate.CaptureGeneratedChests(),
             [],
             created.Candidate.CaptureGeneratedNpcs(),
-            [],
+            created.Candidate.CaptureGeneratedTileEntities(),
             [],
             [],
             new WorldBestiaryData([], [], []),

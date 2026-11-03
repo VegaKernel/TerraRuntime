@@ -190,7 +190,7 @@ public static class WorldFileRuntimeMetadataParser
             !reader.TryReadByte(out _) ||
             !reader.TryReadInt32(out _) ||
             !ReadBool(ref reader, out bool hardMode) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool afterPartyOfDoom) ||
             !reader.TryReadInt32(out int invasionDelay) ||
             !reader.TryReadInt32(out int invasionSize))
         {
@@ -286,7 +286,7 @@ public static class WorldFileRuntimeMetadataParser
             !ReadBool(ref reader, out bool lunarApocalypseIsUp) ||
             !ReadBool(ref reader, out bool partyManual) ||
             !ReadBool(ref reader, out bool partyGenuine) ||
-            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out int partyDaysOnCooldown) ||
             !reader.TryReadInt32(out int partyNpcCount))
         {
             return Finish(WorldFileRuntimeMetadataParseResult.Truncated, ref reader, out bytesConsumed);
@@ -471,6 +471,7 @@ public static class WorldFileRuntimeMetadataParser
             DownedPirates = downedPirates,
             ShadowOrbSmashed = shadowOrbSmashed,
             HardMode = hardMode,
+            AfterPartyOfDoom = afterPartyOfDoom,
             SlimeRainTime = slimeRainTime,
             SundialCooldown = sundialCooldown,
             Raining = raining,
@@ -523,6 +524,7 @@ public static class WorldFileRuntimeMetadataParser
 
             PartyManual = partyManual,
             PartyGenuine = partyGenuine,
+            PartyDaysOnCooldown = partyDaysOnCooldown,
             SandstormHappening = sandstormHappening,
             SandstormIntendedSeverity = sandstormIntendedSeverity,
             DownedDd2InvasionT1 = downedDd2T1,

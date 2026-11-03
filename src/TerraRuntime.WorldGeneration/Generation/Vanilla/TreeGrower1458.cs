@@ -7,7 +7,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// Clean-room ordinary-tree growth port pinned to TerrariaServer 1.4.5.8 <c>WorldGen.GrowTree</c>.
 /// The caller owns placement density; this type owns the source growth gate, RNG ordering and tile frames.
 /// </summary>
-internal static class TreeGrower1458
+internal static partial class TreeGrower1458
 {
     private const int MinimumTreeHeightTiles = 5;
     private const int MaximumTreeHeightTilesExclusive = 17;

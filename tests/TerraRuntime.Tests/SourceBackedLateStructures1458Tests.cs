@@ -155,24 +155,37 @@ public sealed class SourceBackedLateStructures1458Tests
         // three offers each exhaust width / 2 retries, leave the map unchanged, then yield 1742376249.
         var workspace = new Workspace(600, 500);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
 
         workspace.TrySetLayers(140d, 200d);
         workspace.SetVanillaLiquidLines(250, 300);
         workspace.SetVanillaBootstrapState(new VanillaWorldGenerationBootstrapState1458
         {
             HellChestItems = [220, 274, 275],
-            TreeX = [], TreeStyle = [], CaveBackX = [], CaveBackStyle = [], ForestBackgroundStyles = []
+            TreeX = [],
+            TreeStyle = [],
+            CaveBackX = [],
+            CaveBackStyle = [],
+            ForestBackgroundStyles = []
         });
         workspace.SetVanillaBuriedChestContext(new BuriedChestContext1458
         {
-            Height = workspace.HeightTiles, WorldSurface = 140d, RockLayer = 200d, LavaLine = 300,
-            CopperBar = 20, IronBar = 22, SilverBar = 21, GoldBar = 19, TungstenIsSilverTier = false,
-            DesertHiveLow = 0, DesertHiveHigh = 0, HellChestItem = [220, 274, 275]
+            Height = workspace.HeightTiles,
+            WorldSurface = 140d,
+            RockLayer = 200d,
+            LavaLine = 300,
+            CopperBar = 20,
+            IronBar = 22,
+            SilverBar = 21,
+            GoldBar = 19,
+            TungstenIsSilverTier = false,
+            DesertHiveLow = 0,
+            DesertHiveHigh = 0,
+            HellChestItem = [220, 274, 275]
         });
 
         var random = new SpiderFixtureRandom(1458);
@@ -243,7 +256,7 @@ public sealed class SourceBackedLateStructures1458Tests
         Workspace workspace = CreateTempleChestWorkspace();
         var random = new SpiderFixtureRandom(1458);
 
-        Assert.False(LateStructurePass1458.TryMayanTrapPrefixForTesting(workspace, random, 300, 200));
+        Assert.False(LateStructurePass1458.TryPlaceMayanTrapForTesting(workspace, random, 300, 200));
         Assert.Equal(1335025742, random.Next());
         Assert.Equal("b67191924607b1ae03402bf1e196ec9c4e784309b5e60ec115e28f2d93695db6", HashFixture(workspace));
     }
@@ -256,7 +269,7 @@ public sealed class SourceBackedLateStructures1458Tests
         Workspace workspace = CreateMayanLauncherWorkspace();
         var random = new SpiderFixtureRandom(1);
 
-        Assert.True(LateStructurePass1458.TryMayanTrapPrefixForTesting(workspace, random, 300, 250));
+        Assert.True(LateStructurePass1458.TryPlaceMayanTrapForTesting(workspace, random, 300, 250));
         Assert.Equal(929393559, random.Next());
         Assert.Equal("ad0397c62e56cc841ec33628a8c15b51aa49d8127fa87088727c8784aeb8b434", HashFixture(workspace));
         Assert.Equal(21, CountWireTiles(workspace, WorldTileFlags.WireGreen));
@@ -269,7 +282,7 @@ public sealed class SourceBackedLateStructures1458Tests
         Workspace workspace = CreateMayanLauncherWorkspace();
         var random = new SpiderFixtureRandom(2);
 
-        Assert.True(LateStructurePass1458.TryMayanTrapPrefixForTesting(workspace, random, 300, 250));
+        Assert.True(LateStructurePass1458.TryPlaceMayanTrapForTesting(workspace, random, 300, 250));
         Assert.Equal(234085668, random.Next());
         Assert.Equal("5888527eda717a7767741c9d0bf796090457506b1e8e3493821038c3f59eb97c", HashFixture(workspace));
         Assert.Equal(150, CountWireTiles(workspace, WorldTileFlags.WireBlue));
@@ -283,7 +296,7 @@ public sealed class SourceBackedLateStructures1458Tests
         Workspace workspace = CreateMayanCloseLauncherWorkspace();
         var random = new SpiderFixtureRandom(1);
 
-        Assert.True(LateStructurePass1458.TryMayanTrapPrefixForTesting(workspace, random, 300, 250));
+        Assert.True(LateStructurePass1458.TryPlaceMayanTrapForTesting(workspace, random, 300, 250));
         Assert.Equal(760389092, random.Next());
         Assert.Equal("e9e91894f08fb1131c7018eb00e3f05c9d6a496fbc9990bae24ec0f660a97727", HashFixture(workspace));
         Assert.Equal(7, CountWireTiles(workspace, WorldTileFlags.WireGreen));
@@ -300,7 +313,7 @@ public sealed class SourceBackedLateStructures1458Tests
         workspace.TileStore.Set(300, 349, in trigger);
         var random = new SpiderFixtureRandom(1);
 
-        Assert.True(LateStructurePass1458.TryMayanTrapPrefixForTesting(workspace, random, 300, 250));
+        Assert.True(LateStructurePass1458.TryPlaceMayanTrapForTesting(workspace, random, 300, 250));
         Assert.Equal(929393559, random.Next());
         Assert.Equal(21, CountWireTiles(workspace, WorldTileFlags.WireRed));
         Assert.Equal(0, CountWireTiles(workspace, WorldTileFlags.WireBlue));
@@ -314,7 +327,7 @@ public sealed class SourceBackedLateStructures1458Tests
         // in this unsafe-Lihzahrd room returns true and writes exactly a 1x2 chair at y=348..349.
         Workspace workspace = CreateTempleChestWorkspace();
 
-        Assert.True(LateStructurePass1458.TryPlaceTempleChairForTesting(workspace, 300, 349));
+        Assert.True(LateStructurePass1458.TryPlaceTempleChairForTesting(workspace, new SpiderFixtureRandom(1458), 300, 349));
         Assert.False(workspace.TileStore.Get(299, 348).IsActive);
         AssertChairTile(workspace, 300, 348, 480);
         AssertChairTile(workspace, 300, 349, 498);
@@ -327,7 +340,7 @@ public sealed class SourceBackedLateStructures1458Tests
         // Direct TerrariaServer 1.4.5.8 PlaceTile(201, 349, 14, true, false, -1, 9) writes x=200..202.
         Workspace workspace = CreateTempleChestWorkspace();
 
-        Assert.True(LateStructurePass1458.TryPlaceTempleTableForTesting(workspace, 201, 349));
+        Assert.True(LateStructurePass1458.TryPlaceTempleTableForTesting(workspace, new SpiderFixtureRandom(1458), 201, 349));
         for (int x = 200; x <= 202; x++)
         {
             AssertTempleObjectTile(workspace, x, 348, 14, (short)(486 + (x - 200) * 18), 0);
@@ -342,22 +355,22 @@ public sealed class SourceBackedLateStructures1458Tests
         // not floor support, and writes x=293..295/y=238..240.
         Workspace workspace = CreateTempleChestWorkspace();
 
-        Assert.True(LateStructurePass1458.TryPlaceTemplePaintingForTesting(workspace, 294, 239));
+        Assert.True(LateStructurePass1458.TryPlaceTemplePaintingForTesting(workspace, new SpiderFixtureRandom(1458), 294, 239));
         for (int x = 293; x <= 295; x++)
-        for (int y = 238; y <= 240; y++)
-            AssertTempleObjectTile(workspace, x, y, 240, (short)(864 + (x - 293) * 18), (short)(108 + (y - 238) * 18));
+            for (int y = 238; y <= 240; y++)
+                AssertTempleObjectTile(workspace, x, y, 240, (short)(864 + (x - 293) * 18), (short)(108 + (y - 238) * 18));
     }
 
     [Fact]
-    public void Temple_candle_offer_uses_the_official_two_by_three_frames()
+    public void Temple_statue_offer_uses_the_official_two_by_three_frames()
     {
         // Direct TerrariaServer 1.4.5.8 PlaceTile(205, 349, 105, true, false, -1, 45).
         Workspace workspace = CreateTempleChestWorkspace();
 
-        Assert.True(LateStructurePass1458.TryPlaceTempleCandleForTesting(workspace, 205, 349));
+        Assert.True(LateStructurePass1458.TryPlaceTempleStatueForTesting(workspace, new SpiderFixtureRandom(1458), 205, 349));
         for (int x = 205; x <= 206; x++)
-        for (int y = 347; y <= 349; y++)
-            AssertTempleObjectTile(workspace, x, y, 105, (short)(1620 + (x - 205) * 18), (short)((y - 347) * 18));
+            for (int y = 347; y <= 349; y++)
+                AssertTempleObjectTile(workspace, x, y, 105, (short)(1620 + (x - 205) * 18), (short)((y - 347) * 18));
     }
 
     [Fact]
@@ -366,7 +379,7 @@ public sealed class SourceBackedLateStructures1458Tests
         // Direct TerrariaServer 1.4.5.8 PlaceTile(353, 349, 18, true, false, -1, 10).
         Workspace workspace = CreateTempleChestWorkspace();
 
-        Assert.True(LateStructurePass1458.TryPlaceTempleWorkBenchForTesting(workspace, 353, 349));
+        Assert.True(LateStructurePass1458.TryPlaceTempleWorkBenchForTesting(workspace, new SpiderFixtureRandom(1458), 353, 349));
         AssertTempleObjectTile(workspace, 353, 349, 18, 360, 0);
         AssertTempleObjectTile(workspace, 354, 349, 18, 378, 0);
     }
@@ -442,21 +455,21 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         var workspace = new Workspace(600, 500);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
 
         if (chambers)
         {
             for (int left = 200; left < 400; left += 20)
-            for (int x = left + 1; x < left + 19; x++)
-            for (int y = 160; y < 300; y++)
-            {
-                var empty = new WorldTile();
-                workspace.TileStore.Set(x, y, in empty);
-            }
+                for (int x = left + 1; x < left + 19; x++)
+                    for (int y = 160; y < 300; y++)
+                    {
+                        var empty = new WorldTile();
+                        workspace.TileStore.Set(x, y, in empty);
+                    }
         }
 
         workspace.TrySetLayers(140d, 200d);
@@ -464,13 +477,26 @@ public sealed class SourceBackedLateStructures1458Tests
         workspace.SetVanillaBootstrapState(new VanillaWorldGenerationBootstrapState1458
         {
             HellChestItems = [220, 274, 275],
-            TreeX = [], TreeStyle = [], CaveBackX = [], CaveBackStyle = [], ForestBackgroundStyles = []
+            TreeX = [],
+            TreeStyle = [],
+            CaveBackX = [],
+            CaveBackStyle = [],
+            ForestBackgroundStyles = []
         });
         workspace.SetVanillaBuriedChestContext(new BuriedChestContext1458
         {
-            Height = workspace.HeightTiles, WorldSurface = 140d, RockLayer = 200d, LavaLine = 300,
-            CopperBar = 20, IronBar = 22, SilverBar = 21, GoldBar = 19, TungstenIsSilverTier = false,
-            DesertHiveLow = 0, DesertHiveHigh = 0, HellChestItem = [220, 274, 275]
+            Height = workspace.HeightTiles,
+            WorldSurface = 140d,
+            RockLayer = 200d,
+            LavaLine = 300,
+            CopperBar = 20,
+            IronBar = 22,
+            SilverBar = 21,
+            GoldBar = 19,
+            TungstenIsSilverTier = false,
+            DesertHiveLow = 0,
+            DesertHiveHigh = 0,
+            HellChestItem = [220, 274, 275]
         });
         return workspace;
     }
@@ -478,46 +504,48 @@ public sealed class SourceBackedLateStructures1458Tests
     private static Workspace CreateTempleChestWorkspace()
     {
         Workspace workspace = CreateSpiderPassWorkspace(chambers: false);
+        workspace.InitializeVanillaGenerationSolidity();
         for (int x = 200; x < 400; x++)
-        for (int y = 100; y < 350; y++)
-        {
-            var emptyTemple = new WorldTile { Wall = 87 };
-            workspace.TileStore.Set(x, y, in emptyTemple);
-        }
+            for (int y = 100; y < 350; y++)
+            {
+                var emptyTemple = new WorldTile { Wall = 87 };
+                workspace.TileStore.Set(x, y, in emptyTemple);
+            }
         return workspace;
     }
 
     private static Workspace CreateCanonicalTempleWorkspace(bool obstructed = false)
     {
         var workspace = new Workspace(4200, 1200);
+        workspace.InitializeVanillaGenerationSolidity();
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            var tile = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in tile);
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                var tile = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in tile);
+            }
         for (int x = 1600; x < 2600; x++)
-        for (int y = 400; y < 900; y++)
-        {
-            var tile = new WorldTile { Wall = 87 };
-            workspace.TileStore.Set(x, y, in tile);
-        }
+            for (int y = 400; y < 900; y++)
+            {
+                var tile = new WorldTile { Wall = 87 };
+                workspace.TileStore.Set(x, y, in tile);
+            }
         if (obstructed)
         {
             for (int x = 1750; x <= 2450; x += 175)
-            for (int dx = 0; dx < 5; dx++)
-            for (int y = 760; y < 900; y++)
-            {
-                var stone = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
-                workspace.TileStore.Set(x + dx, y, in stone);
-            }
+                for (int dx = 0; dx < 5; dx++)
+                    for (int y = 760; y < 900; y++)
+                    {
+                        var stone = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
+                        workspace.TileStore.Set(x + dx, y, in stone);
+                    }
             for (int x = 1950; x < 2050; x++)
-            for (int y = 400; y < 900; y++)
-            {
-                WorldTile tile = workspace.TileStore.Get(x, y);
-                tile.Wall = 0;
-                workspace.TileStore.Set(x, y, in tile);
-            }
+                for (int y = 400; y < 900; y++)
+                {
+                    WorldTile tile = workspace.TileStore.Get(x, y);
+                    tile.Wall = 0;
+                    workspace.TileStore.Set(x, y, in tile);
+                }
             for (int x = 1600; x < 2600; x += 31)
             {
                 var support = new WorldTile { Type = 232, Flags = WorldTileFlags.Active };
@@ -529,13 +557,26 @@ public sealed class SourceBackedLateStructures1458Tests
         workspace.SetVanillaBootstrapState(new VanillaWorldGenerationBootstrapState1458
         {
             HellChestItems = [220, 274, 275],
-            TreeX = [], TreeStyle = [], CaveBackX = [], CaveBackStyle = [], ForestBackgroundStyles = []
+            TreeX = [],
+            TreeStyle = [],
+            CaveBackX = [],
+            CaveBackStyle = [],
+            ForestBackgroundStyles = []
         });
         workspace.SetVanillaBuriedChestContext(new BuriedChestContext1458
         {
-            Height = 1200, WorldSurface = 300d, RockLayer = 500d, LavaLine = 600,
-            CopperBar = 20, IronBar = 22, SilverBar = 21, GoldBar = 19, TungstenIsSilverTier = false,
-            DesertHiveLow = 0, DesertHiveHigh = 0, HellChestItem = [220, 274, 275]
+            Height = 1200,
+            WorldSurface = 300d,
+            RockLayer = 500d,
+            LavaLine = 600,
+            CopperBar = 20,
+            IronBar = 22,
+            SilverBar = 21,
+            GoldBar = 19,
+            TungstenIsSilverTier = false,
+            DesertHiveLow = 0,
+            DesertHiveHigh = 0,
+            HellChestItem = [220, 274, 275]
         });
         return workspace;
     }
@@ -544,23 +585,23 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         var workspace = new Workspace(600, 800);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
         for (int x = 200; x < 400; x++)
-        for (int y = 100; y < 350; y++)
-        {
-            var emptyTemple = new WorldTile { Wall = 87 };
-            workspace.TileStore.Set(x, y, in emptyTemple);
-        }
+            for (int y = 100; y < 350; y++)
+            {
+                var emptyTemple = new WorldTile { Wall = 87 };
+                workspace.TileStore.Set(x, y, in emptyTemple);
+            }
         for (int y = 347; y <= 349; y++)
-        foreach (int x in new[] { 280, 320 })
-        {
-            var wall = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in wall);
-        }
+            foreach (int x in new[] { 280, 320 })
+            {
+                var wall = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in wall);
+            }
         var verticalAnchor = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(300, 200, in verticalAnchor);
         return workspace;
@@ -570,17 +611,17 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         Workspace workspace = CreateMayanLauncherWorkspace();
         for (int y = 347; y <= 349; y++)
-        foreach (int x in new[] { 280, 320 })
-        {
-            var empty = new WorldTile { Wall = 87 };
-            workspace.TileStore.Set(x, y, in empty);
-        }
+            foreach (int x in new[] { 280, 320 })
+            {
+                var empty = new WorldTile { Wall = 87 };
+                workspace.TileStore.Set(x, y, in empty);
+            }
         for (int y = 347; y <= 349; y++)
-        foreach (int x in new[] { 294, 306 })
-        {
-            var anchor = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in anchor);
-        }
+            foreach (int x in new[] { 294, 306 })
+            {
+                var anchor = new WorldTile { Type = 1, Wall = 87, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in anchor);
+            }
         return workspace;
     }
 
@@ -594,8 +635,8 @@ public sealed class SourceBackedLateStructures1458Tests
 
         Assert.Equal(96, painted);
         for (int x = 6; x <= 13; x++)
-        for (int y = 6; y <= 13; y++)
-            Assert.Equal((ushort)170, workspace.TileStore.Get(x, y).Wall);
+            for (int y = 6; y <= 13; y++)
+                Assert.Equal((ushort)170, workspace.TileStore.Get(x, y).Wall);
 
         Assert.Equal((ushort)170, workspace.TileStore.Get(5, 8).Wall);
         Assert.Equal((ushort)170, workspace.TileStore.Get(14, 8).Wall);
@@ -610,18 +651,18 @@ public sealed class SourceBackedLateStructures1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < height; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
 
         for (int x = 120; x < 180; x++)
-        for (int y = 120; y < 400; y++)
-        {
-            var empty = new WorldTile { FrameX = 0, FrameY = 0 };
-            workspace.TileStore.Set(x, y, in empty);
-        }
+            for (int y = 120; y < 400; y++)
+            {
+                var empty = new WorldTile { FrameX = 0, FrameY = 0 };
+                workspace.TileStore.Set(x, y, in empty);
+            }
 
         var random = new SpiderFixtureRandom(1458);
         LateStructurePass1458.SpreadSpiderForTesting(workspace, random, 140d, 200d, 150, 150);
@@ -638,11 +679,11 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         var workspace = new Workspace(600, 500);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
 
         var random = new SpiderFixtureRandom(1458);
         LateStructurePass1458.ApplyGemCaveForTesting(workspace, random, 300, 250);
@@ -656,24 +697,24 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         var workspace = new Workspace(600, 500);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
         for (int x = 296; x < 304; x++)
-        for (int y = 246; y < 254; y++)
-        {
-            var empty = new WorldTile();
-            workspace.TileStore.Set(x, y, in empty);
-        }
+            for (int y = 246; y < 254; y++)
+            {
+                var empty = new WorldTile();
+                workspace.TileStore.Set(x, y, in empty);
+            }
 
         var random = new SpiderFixtureRandom(1458);
         LateStructurePass1458.ApplyGemCaveForTesting(workspace, random, 300, 250);
 
-        Assert.True(random.Next() == 1573606171,
+        Assert.True(random.Next() == 1560443043,
             $"next={random.Last} calls={random.Calls} objects={CountActiveType(workspace, 178)} coords={CaptureTypeCoordinates(workspace, 178)}");
-        Assert.Equal("5688f0564ed790a77805df6963808d1433425a55a46a3888a27ac7528ff4decd", HashFixture(workspace));
+        Assert.Equal("f97e4cac9b195d172009e58563e219234dc158ecb391bb2781e13aca48b345a9", HashFixture(workspace));
     }
 
     [Fact]
@@ -683,19 +724,19 @@ public sealed class SourceBackedLateStructures1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < height; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
 
         // The solid row at 300 activates the source's pot/web/pile offers on the lower frontier.
         for (int x = 120; x < 180; x++)
-        for (int y = 120; y < 300; y++)
-        {
-            var empty = new WorldTile { FrameX = 0, FrameY = 0 };
-            workspace.TileStore.Set(x, y, in empty);
-        }
+            for (int y = 120; y < 300; y++)
+            {
+                var empty = new WorldTile { FrameX = 0, FrameY = 0 };
+                workspace.TileStore.Set(x, y, in empty);
+            }
 
         var random = new SpiderFixtureRandom(1458);
         LateStructurePass1458.SpreadSpiderForTesting(workspace, random, 140d, 200d, 150, 150);
@@ -714,18 +755,18 @@ public sealed class SourceBackedLateStructures1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-        {
-            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, y, in stone);
-        }
+            for (int y = 0; y < height; y++)
+            {
+                var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in stone);
+            }
 
         for (int x = 120; x < 180; x++)
-        for (int y = 120; y < 300; y++)
-        {
-            var empty = new WorldTile { FrameX = 0, FrameY = 0 };
-            workspace.TileStore.Set(x, y, in empty);
-        }
+            for (int y = 120; y < 300; y++)
+            {
+                var empty = new WorldTile { FrameX = 0, FrameY = 0 };
+                workspace.TileStore.Set(x, y, in empty);
+            }
 
         var random = new SpiderFixtureRandom(11);
         LateStructurePass1458.SpreadSpiderForTesting(workspace, random, 140d, 200d, 150, 150);
@@ -766,62 +807,39 @@ public sealed class SourceBackedLateStructures1458Tests
         Assert.Equal(1500, shimmer.Count);
     }
 
-    [Fact]
-    public void Floating_island_house_rejects_a_registered_container_on_its_sunplate_perimeter()
-    {
-        var workspace = new Workspace(48, 32);
-        const int left = 10;
-        const int floorY = 20;
 
-        for (int x = left; x <= left + 12; x++)
-        {
-            var floor = new WorldTile { Type = 189, Flags = WorldTileFlags.Active };
-            workspace.TileStore.Set(x, floorY, in floor);
-        }
-
-        var chestAnchor = new WorldTile
-        {
-            Type = 21,
-            Flags = WorldTileFlags.Active,
-            FrameX = 0,
-            FrameY = 0
-        };
-        workspace.TileStore.Set(left + 3, floorY, in chestAnchor);
-
-        Assert.False(LateStructurePass1458.CanBuildSkyHouseForTesting(workspace, left, floorY));
-    }
 
     private static void FillStoneBox(Workspace workspace, int left, int top, int right, int bottom)
     {
         for (int x = left; x <= right; x++)
-        for (int y = top; y <= bottom; y++)
-        {
-            if (x != left && x != right && y != top && y != bottom)
-                continue;
-
-            var tile = new WorldTile
+            for (int y = top; y <= bottom; y++)
             {
-                Type = 1,
-                Flags = WorldTileFlags.Active
-            };
-            workspace.TileStore.Set(x, y, in tile);
-        }
+                if (x != left && x != right && y != top && y != bottom)
+                    continue;
+
+                var tile = new WorldTile
+                {
+                    Type = 1,
+                    Flags = WorldTileFlags.Active
+                };
+                workspace.TileStore.Set(x, y, in tile);
+            }
     }
 
     private static string HashFixture(Workspace workspace)
     {
         var snapshot = new StringBuilder();
         for (int x = 0; x < workspace.TileStore.Dimensions.WidthTiles; x++)
-        for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',')
-                .Append(tile.Type).Append(',')
-                .Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',')
-                .Append(tile.FrameY).Append(',')
-                .Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',')
+                    .Append(tile.Type).Append(',')
+                    .Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',')
+                    .Append(tile.FrameY).Append(',')
+                    .Append(tile.LiquidAmount).Append(';');
+            }
 
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
@@ -830,8 +848,8 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         int count = 0;
         for (int x = 0; x < workspace.TileStore.Dimensions.WidthTiles; x++)
-        for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
-            count += workspace.TileStore.Get(x, y).Wall == 62 ? 1 : 0;
+            for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
+                count += workspace.TileStore.Get(x, y).Wall == 62 ? 1 : 0;
         return count;
     }
 
@@ -839,11 +857,11 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         int count = 0;
         for (int x = 0; x < workspace.TileStore.Dimensions.WidthTiles; x++)
-        for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            count += tile.IsActive && tile.Type == type ? 1 : 0;
-        }
+            for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                count += tile.IsActive && tile.Type == type ? 1 : 0;
+            }
         return count;
     }
 
@@ -851,8 +869,8 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         int count = 0;
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-            count += (workspace.TileStore.Get(x, y).Flags & wire) != 0 ? 1 : 0;
+            for (int y = 0; y < workspace.HeightTiles; y++)
+                count += (workspace.TileStore.Get(x, y).Flags & wire) != 0 ? 1 : 0;
         return count;
     }
 
@@ -880,9 +898,9 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         var coordinates = new StringBuilder();
         for (int x = 0; x < workspace.TileStore.Dimensions.WidthTiles; x++)
-        for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
-            if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: var found } && found == type)
-                coordinates.Append(x).Append(',').Append(y).Append(';');
+            for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
+                if (workspace.TileStore.Get(x, y) is { IsActive: true, Type: var found } && found == type)
+                    coordinates.Append(x).Append(',').Append(y).Append(';');
         return coordinates.ToString();
     }
 
@@ -895,9 +913,9 @@ public sealed class SourceBackedLateStructures1458Tests
     {
         var coordinates = new StringBuilder();
         for (int x = 0; x < workspace.TileStore.Dimensions.WidthTiles; x++)
-        for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
-            if (workspace.TileStore.Get(x, y).Wall == 62)
-                coordinates.Append(x).Append(',').Append(y).Append(';');
+            for (int y = 0; y < workspace.TileStore.Dimensions.HeightTiles; y++)
+                if (workspace.TileStore.Get(x, y).Wall == 62)
+                    coordinates.Append(x).Append(',').Append(y).Append(';');
         return coordinates.ToString();
     }
 

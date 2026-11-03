@@ -36,6 +36,8 @@ public sealed class WorldWiringCircuit1458
 
     public int RegisteredMechanismCount => _mechanisms.Count;
 
+    internal bool OwnsTiles(WorldTileStore tiles) => ReferenceEquals(_tiles, tiles);
+
     /// <summary>Activates only admitted source trigger types; no client-provided output state is accepted.</summary>
     public bool HitSwitch(int x, int y) => HitSwitchCore(x, y, fromWire: false);
 

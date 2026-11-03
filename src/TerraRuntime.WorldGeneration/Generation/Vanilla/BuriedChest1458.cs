@@ -309,26 +309,26 @@ internal sealed class BuriedChest1458(
         // TileObject.Place clears the whole footprint before it writes any chest fragments.
         // KillTile can remove neighbouring pile fragments and advances the shared generation RNG.
         for (int column = 0; column < 2; column++)
-            for (int row = 0; row < 2; row++)
-            {
-                WorldTile cell = At(x + column, top + row);
-                if (cell.IsActive && cell.Type != 484 &&
-                    (VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) ||
-                     GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type)))
-                    framing.KillTile(x + column, top + row);
-            }
+        for (int row = 0; row < 2; row++)
+        {
+            WorldTile cell = At(x + column, top + row);
+            if (cell.IsActive && cell.Type != 484 &&
+                (VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) ||
+                 GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type)))
+                framing.KillTile(x + column, top + row);
+        }
 
         for (int column = 0; column < 2; column++)
-            for (int row = 0; row < 2; row++)
-            {
-                ref WorldTile cell = ref AtRef(x + column, top + row);
-                if (cell.IsActive)
-                    continue;
-                cell.Flags |= WorldTileFlags.Active;
-                cell.Type = type;
-                cell.FrameX = checked((short)(style * 36 + column * 18));
-                cell.FrameY = checked((short)(row * 18));
-            }
+        for (int row = 0; row < 2; row++)
+        {
+            ref WorldTile cell = ref AtRef(x + column, top + row);
+            if (cell.IsActive)
+                continue;
+            cell.Flags |= WorldTileFlags.Active;
+            cell.Type = type;
+            cell.FrameX = checked((short)(style * 36 + column * 18));
+            cell.FrameY = checked((short)(row * 18));
+        }
 
         // Source Chest.CreateChest runs AFTER the object is written, so a refused slot leaves a chest-shaped
         // hole in the world and still reports failure. Nothing in generation reaches that, but the order is
@@ -437,7 +437,7 @@ internal sealed class BuriedChest1458(
     // AddBuriedChest offers run, so Spiky Lihzahrd Brick cannot become a chest's floor in that source scope.
     private bool IsSolidForChest(in WorldTile tile) =>
         tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick && tile.SourceSlope == 0 &&
-        (tile.Type != 232 || !spikyLihzahrdIsNonSolid) &&
+        (workspace is { HasVanillaGenerationSolidity: true } || tile.Type != 232 || !spikyLihzahrdIsNonSolid) &&
         ChestSolidIdentity(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
 
     private bool ChestSolidIdentity(TileTypeId type) =>

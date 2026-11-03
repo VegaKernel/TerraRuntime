@@ -44,7 +44,8 @@ internal sealed class PotScatterPass1458(
     double worldSurfaceLow,
     double rockLayer,
     int beachDistance,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Func<TileTypeId,bool>? solidity = null)
 {
     private const ushort Pot = 28;
     private const int AttemptCap = 10000;
@@ -102,7 +103,7 @@ internal sealed class PotScatterPass1458(
                 // The block that starts the walk is refused if what sits on it is lava or shimmer, and the
                 // walk then keeps looking further down for another one.
                 WorldTile here = At(x, y);
-                if (here.IsActive && VanillaTileCollisionCatalog.IsSolid(here.TileType) &&
+                if (here.IsActive && (solidity?.Invoke(here.TileType) ?? VanillaTileCollisionCatalog.IsSolid(here.TileType)) &&
                     !AnyLava(x, y - 1) && !AnyShimmer(x, y - 1))
                 {
                     onFloor = true;
@@ -173,44 +174,8 @@ internal sealed class PotScatterPass1458(
     /// clear, standing on the row below it, which must be an unactuated flat solid block. The horizontal
     /// variant is drawn only once that has been accepted.
     /// </summary>
-    private bool PlacePot(int x, int y, int style)
-    {
-        for (int column = x; column < x + 2; column++)
-        {
-            for (int row = y - 1; row < y + 1; row++)
-            {
-                if (!Contains(column, row) || At(column, row).IsActive)
-                    return false;
-            }
-
-            if (!Contains(column, y + 1))
-                return false;
-
-            WorldTile support = At(column, y + 1);
-            if (!support.IsActive || support.IsActuated || support.Shape != 0 ||
-                !VanillaTileCollisionCatalog.IsSolid(support.TileType))
-            {
-                return false;
-            }
-        }
-
-        int variant = random.Next(3) * 36;
-        for (int k = 0; k < 2; k++)
-        for (int l = -1; l < 1; l++)
-        {
-            ref WorldTile cell = ref At(x + k, y + l);
-            cell.Flags |= WorldTileFlags.Active;
-            cell.FrameX = (short)(k * 18 + variant);
-            cell.FrameY = (short)((l + 1) * 18 + style * 36);
-            cell.Type = Pot;
-            // Source clears the half brick alone and leaves a slope where it is; an accepted footprint is
-            // inactive anyway, so neither can be set.
-            if (cell.Shape == 1)
-                cell.Shape = 0;
-        }
-
-        return true;
-    }
+    private bool PlacePot(int x,int y,int style)=>
+        GenerationDecorationPlacement1458.TryPlacePot(store,random,x,y,style,solidity:solidity);
 
     /// <summary>Source <c>WorldGen.IsDungeonPlatformOrShelf</c>: a platform in one of the dungeon frames.</summary>
     private static bool IsDungeonPlatformOrShelf(WorldTile tile)

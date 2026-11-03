@@ -57,7 +57,7 @@ public sealed class CaveHouseFurniture1458Tests
     [Theory]
     [InlineData(1, 1002897798, "CD6EC9EEFACC2CCDAAEA5782A60AA9D8F00148AD3A05140AFFC170F3E4E3869A")]
     [InlineData(1458, 1916656655, "EF6185E9B46F4D296E85CE86B6D7EE6C25D5C6FD66FF3D736272B53D7697F55F")]
-    public void Shared_three_by_two_refusal_keeps_original_common_tail_reset_rng(int seed, int next, string physicalState)
+    public void Shared_three_by_two_branch_refusal_returns_retained_anchor_and_keeps_original_tail_rng(int seed, int next, string physicalState)
     {
         var workspace = new Workspace(80, 80);
         var shard = new WorldTile { Type = 178, Flags = WorldTileFlags.Active };
@@ -65,9 +65,12 @@ public sealed class CaveHouseFurniture1458Tests
         workspace.TileStore.Set(40, 40, in shard);
         workspace.TileStore.Set(40, 41, in floor);
         var random = new RandomAdapter(seed);
-        Assert.False(GenerationDecorationPlacement1458.TryPlaceTile3x2(workspace.TileStore, random, 40, 40, 186, 22));
+        // Raw Place3x2 refuses the occupied footprint, but source PlaceTile returns whether its
+        // anchor remains active after framing. The retained crystal still consumes the common tail.
+        Assert.True(GenerationDecorationPlacement1458.TryPlaceTile3x2(workspace.TileStore, random, 40, 40, 186, 22));
         Assert.Equal((ushort)178, workspace.TileStore.Get(40, 40).Type);
         Assert.True(workspace.TileStore.Get(40, 40).IsActive);
+        Assert.Equal("B055627A75183C7F6C91A9582E88FBFE7F35252C4613FD92F535AF41F16A6709", GenerationNaturalPrefix49Tests.GridHash(workspace));
         Assert.Equal(physicalState, Digest(new StringBuilder(random.PhysicalState())));
         Assert.Equal(next, random.Next());
     }

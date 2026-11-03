@@ -1,0 +1,823 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "goalStatus": "active",
+  "base": "6e09a27e78084d6f353cf058eca4294a022c077c",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "nativeAot": {
+    "accepted": false,
+    "status": "Explicit user-managed-only exception; no toolchain installation"
+  },
+  "scope": {
+    "continuousNativePasses": "Reset through76 Place Fallen Log",
+    "dimensions": [
+      4200,
+      1200
+    ],
+    "seeds": [
+      1458,
+      42
+    ],
+    "difficulty": "Classic",
+    "evil": "Corruption",
+    "originalImports": false,
+    "canonicalTileFields": 21,
+    "bytesPerWorld": 85680000,
+    "physicalRngSlots": 56,
+    "reportDraw": true,
+    "orderedChestCounts": [
+      175,
+      171
+    ],
+    "chestItemSlots": 40,
+    "orderedProtectedRectangleCounts": [
+      99,
+      94
+    ],
+    "skyHouses": 3,
+    "mutableSolidityEntries": 754,
+    "phaseCheckpoints": 9
+  },
+  "continuousGridSha256": [
+    "C6162956D6C7FAE70F759524DF1557A4AEB00299A4DBF53E24F9FB6B88AE1C52",
+    "9613B2DEDDA2B6534BE64F34D00CDB23CF3BF57F018000B12DA2349C1AB19630"
+  ],
+  "coldEffects": "Existing canonical NPC/projectile/TE owners, town allocation ordering, held-item lifecycle, TE footprints, cold sensor circuit, derived pylon image",
+  "extraSeeds": "All37 original extra aliases qualified only at Reset/Terrain; rain/dual state and two rain combinations; unsupported combinations refuse before mutation",
+  "sourceChestPersistence": "After callbacks, explicit VanillaComplete plus bootstrap only: exact four-active-cells/five-container-ID SaveChests predicate. No tile writes. Valid-atlas21/467 remnants admitted only without surviving record; default/custom validation strict.",
+  "releaseBuild": {
+    "warnings": 0,
+    "errors": 0,
+    "fresh": true
+  },
+  "focused": {
+    "total": 18048,
+    "passed": 18048,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "pythonCiChecks": 300,
+  "domainAudit": true,
+  "documentationCheck": true,
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 481.82160450000083,
+    "tests": {
+      "total": "73550",
+      "passed": "73550",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "479.713",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1572.3315334999934,
+    "tests": {
+      "total": "1618865",
+      "passed": "1618865",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1555.282",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredFullMethods": 5777,
+  "ordinaryManagedSmokes": [
+    "loop",
+    "protocol",
+    "network",
+    "world",
+    "tui"
+  ],
+  "publishedCoreClr": {
+    "accepted": true,
+    "managedOnly": true,
+    "executableSha256": "e520e37f9a1bbbadc6a623ca9bfd8efc207a8b67c7b5b8adfbda0a773e17f64c",
+    "smokes": [
+      "loop",
+      "protocol",
+      "network",
+      "world",
+      "tui"
+    ]
+  },
+  "detachedLiquidMacros": [
+    {
+      "context": "first1458",
+      "accepted": true,
+      "grid": "D2D01C4E3F363FE5A2A4DB9FDDE094BCE32EA4C329C1C7343C42A31BC62C3BF3",
+      "loadedRuntime": {
+        "TerraRuntime.Contracts.dll": "baa8c58478b86756efaa4b0ec0b49b2fdf85a475cca268d85f7d64594e1b0c07",
+        "TerraRuntime.Gameplay.dll": "41cfd6b650ff3b8273d7c5041333647a0dbf1aab7de04520c0c9d76c826d34c0",
+        "TerraRuntime.Core.dll": "7d8d14f3505946bf4efaf0617f1fd8b03e337361fe623814987ad794c3ec59ca",
+        "TerraRuntime.World.dll": "ed9f522fd7c106b8388cde91392b217c7bb0eaf1e737b25c67b1da490f83d861",
+        "TerraRuntime.WorldGeneration.dll": "80354f4c4a27b484ca91f19474cf93dad974b844878c9928431ca46ee6822878"
+      },
+      "oracleImports": true
+    },
+    {
+      "context": "first42",
+      "accepted": true,
+      "grid": "69DEA17AAD735390393AAF979C1EE3FB7C3CF2FAF11ADCAFC9072D0B66527186",
+      "loadedRuntime": {
+        "TerraRuntime.Contracts.dll": "baa8c58478b86756efaa4b0ec0b49b2fdf85a475cca268d85f7d64594e1b0c07",
+        "TerraRuntime.Gameplay.dll": "41cfd6b650ff3b8273d7c5041333647a0dbf1aab7de04520c0c9d76c826d34c0",
+        "TerraRuntime.Core.dll": "7d8d14f3505946bf4efaf0617f1fd8b03e337361fe623814987ad794c3ec59ca",
+        "TerraRuntime.World.dll": "ed9f522fd7c106b8388cde91392b217c7bb0eaf1e737b25c67b1da490f83d861",
+        "TerraRuntime.WorldGeneration.dll": "80354f4c4a27b484ca91f19474cf93dad974b844878c9928431ca46ee6822878"
+      },
+      "oracleImports": true
+    },
+    {
+      "context": "later1458",
+      "accepted": true,
+      "grid": "A5F32F1B2F0A6131730BE8263C63107F988ECE5CE93AAAE86D00FFA4BB4C2E67",
+      "loadedRuntime": {
+        "TerraRuntime.Contracts.dll": "baa8c58478b86756efaa4b0ec0b49b2fdf85a475cca268d85f7d64594e1b0c07",
+        "TerraRuntime.Gameplay.dll": "41cfd6b650ff3b8273d7c5041333647a0dbf1aab7de04520c0c9d76c826d34c0",
+        "TerraRuntime.Core.dll": "7d8d14f3505946bf4efaf0617f1fd8b03e337361fe623814987ad794c3ec59ca",
+        "TerraRuntime.World.dll": "ed9f522fd7c106b8388cde91392b217c7bb0eaf1e737b25c67b1da490f83d861",
+        "TerraRuntime.WorldGeneration.dll": "80354f4c4a27b484ca91f19474cf93dad974b844878c9928431ca46ee6822878"
+      },
+      "oracleImports": true
+    },
+    {
+      "context": "later42",
+      "accepted": true,
+      "grid": "52BE6C487405D9DCD5996783BEA1910C23EBF8651F69B63F56948AF947460D5F",
+      "loadedRuntime": {
+        "TerraRuntime.Contracts.dll": "baa8c58478b86756efaa4b0ec0b49b2fdf85a475cca268d85f7d64594e1b0c07",
+        "TerraRuntime.Gameplay.dll": "41cfd6b650ff3b8273d7c5041333647a0dbf1aab7de04520c0c9d76c826d34c0",
+        "TerraRuntime.Core.dll": "7d8d14f3505946bf4efaf0617f1fd8b03e337361fe623814987ad794c3ec59ca",
+        "TerraRuntime.World.dll": "ed9f522fd7c106b8388cde91392b217c7bb0eaf1e737b25c67b1da490f83d861",
+        "TerraRuntime.WorldGeneration.dll": "80354f4c4a27b484ca91f19474cf93dad974b844878c9928431ca46ee6822878"
+      },
+      "oracleImports": true
+    }
+  ],
+  "detachedFinal106": {
+    "acceptedWithinDeclaredScope": true,
+    "scope": "Detached original105 incoming checkpoint -> actual Final106, seed1458 4200x1200 Classic Corruption; imports tiles/town NPC/layers/spawn/Shimmer, not continuous prefix or full phase/chest parity.",
+    "runs": [
+      {
+        "accepted": true,
+        "run": 1,
+        "gridSha256": "b1bf15aa106f12335f18cfda1f28f6c4baa1a12ebf1461b0df191fc79ddf1dc7",
+        "all56RngAfterReportExact": true,
+        "npcSectionExact": true,
+        "extraSpawnSectionExact": true,
+        "anglerQuest": 40,
+        "loaded": [
+          {
+            "Location": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-continuous76-managed-v4-20261103\\final106-observer\\bin\\Release\\net11.0\\TerraRuntime.WorldGeneration.dll",
+            "sha256": "80354F4C4A27B484CA91F19474CF93DAD974B844878C9928431CA46EE6822878"
+          },
+          {
+            "Location": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-continuous76-managed-v4-20261103\\final106-observer\\bin\\Release\\net11.0\\TerraRuntime.World.dll",
+            "sha256": "ED9F522FD7C106B8388CDE91392B217C7BB0EAF1E737B25C67B1DA490F83D861"
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "run": 2,
+        "gridSha256": "b1bf15aa106f12335f18cfda1f28f6c4baa1a12ebf1461b0df191fc79ddf1dc7",
+        "all56RngAfterReportExact": true,
+        "npcSectionExact": true,
+        "extraSpawnSectionExact": true,
+        "anglerQuest": 40,
+        "loaded": [
+          {
+            "Location": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-continuous76-managed-v4-20261103\\final106-observer\\bin\\Release\\net11.0\\TerraRuntime.WorldGeneration.dll",
+            "sha256": "80354F4C4A27B484CA91F19474CF93DAD974B844878C9928431CA46EE6822878"
+          },
+          {
+            "Location": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-continuous76-managed-v4-20261103\\final106-observer\\bin\\Release\\net11.0\\TerraRuntime.World.dll",
+            "sha256": "ED9F522FD7C106B8388CDE91392B217C7BB0EAF1E737B25C67B1DA490F83D861"
+          }
+        ]
+      }
+    ],
+    "immutableSourceGuard": true
+  },
+  "mergedCausalControls": [
+    {
+      "mutation": "shrine-halo",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "24976e11fcfbd871b2da59473b3811d494e55919a3c393c8c9cc172343b300de",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "vine-dispatch",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "be9554a135370feb57ac2c598bae36a20179f9ebef23ab8864971edd982feb07",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 8064,
+        "passed": 250,
+        "failed": 7814,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "static-solidity",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "e579e97066cd491bd4fce9058e561bec874b7826a9082ea389de3d0413e10d57",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 4,
+        "passed": 0,
+        "failed": 4,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "later-waterline",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "ce10228dae181ec63aff7e06c785e9372e3b2a9ae78297f92c662ea888a8ba08",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 14,
+        "passed": 11,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-dispatch",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "5e9f32b47c9b9ff9ea7c5d493440219e060676db86deb2492d927b74b6f4d2bd",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 37,
+        "failed": 7,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-guard",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "accafe6da27d4884ac99b89a456c6a6235304916e3b4d82371e865570d6386ae",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 38,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-default-wide",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "b855e1c6dbef13a5efb34effd552cf51691c645d5bd42051348d59dc1ce577b1",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 32,
+        "failed": 12,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-cut-wide",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "149cfa6eb1a0e59b849a6e8e25147ced67ec725c70e7d9dfb3a65abe624e690d",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 38,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "wet-prepare-wide",
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "8761d3176440e66a4c3a90c597b04bea0b74eac2677111854505840102bcfa0f",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "tests": {
+        "total": 44,
+        "passed": 38,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "omit-late-projection",
+      "tests": {
+        "total": 15,
+        "passed": 13,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "db45e5c615f2e3eefa5d813f8794743a538e59d4cdec8e443f45edbd2fc878a2",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "automatic-mode-projection",
+      "tests": {
+        "total": 15,
+        "passed": 13,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "94de5bee07d9b5ddee5f02680e2ad0c40439a10bc953547146c7d455451690a0",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "custom-without-bootstrap",
+      "tests": {
+        "total": 15,
+        "passed": 13,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "7797f4c60acc527a65a131cee3a5750211fea14a3bda2c0044fcc34ba8fde90a",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "default-orphan-admission",
+      "tests": {
+        "total": 15,
+        "passed": 13,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "41285d962e87583c70e348d96f0e58e2cb4e66128949a43eff03abdffeb47ab9",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "malformed-atlas-admission",
+      "tests": {
+        "total": 15,
+        "passed": 13,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "b4429120c658d6b6a9e97a826fd16909b25f5392812a5cba8a82ee952486d8b3",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "three-not-five-container-identities",
+      "tests": {
+        "total": 500,
+        "passed": 360,
+        "failed": 140,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "947ec268ca2d4d9f29a928f7d7efad936f036dfd9186a5f144081aadcb6b71da",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "runnerErrors": 0
+    },
+    {
+      "mutation": "flower-owner-omission",
+      "tests": {
+        "total": 15,
+        "passed": 3,
+        "failed": 12,
+        "errors": 0,
+        "skipped": 0
+      },
+      "adjacent": {
+        "total": 50,
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "testDllSha256": "f874e20ea7b5c817e92683c54b340f953c401c230104f3c85a9e6781f29202c9",
+      "mutantSha256": "92158ddbd5d7a2bb5a6f68bb4d6d5ef044fee2613188c384d1dfd0ea2dc40fdb",
+      "changedDlls": [
+        "TerraRuntime.WorldGeneration.dll"
+      ],
+      "runnerErrors": 0
+    }
+  ],
+  "causalTotals": {
+    "assertionOrExpectedGuardFailures": 8022,
+    "passingControls": 1672,
+    "runnerErrors": 0
+  },
+  "sourceGuard": {
+    "sourceInputs": 4631,
+    "recursiveRuntimeDlls": 158,
+    "pairedScopeDocuments": 2,
+    "drift": [],
+    "manifestSha256": "3834c7c9f253fdb4c1b95b08d516bd65b98a621c2d6156f43a90f1d75261caf3",
+    "afterFullSha256": "18b5ee5526cdcee32d21c800fabec61a2759e256ed2d1ebf75ce08fa86f7f5a3",
+    "afterPublicationSha256": "18b5ee5526cdcee32d21c800fabec61a2759e256ed2d1ebf75ce08fa86f7f5a3"
+  },
+  "selectedShippingInputs": {
+    "docs/en/vanilla-world-generation.md": "05c0657854083f5b8afed7e831472c8169e4d8d3ce29dd4180d4df1709844d3e",
+    "docs/ru/vanilla-world-generation.md": "d149e7bd6e36ec0e3c2578f5435e22b8e5b335c7e2428044555347b0770a40af",
+    "src/TerraRuntime.Application/RuntimeBossSummonSpawn.Larva.cs": "37f22acc8734b0c670857f7e6fb99fccc58a8fd25e0ce06297d69b520a6af610",
+    "src/TerraRuntime.Application/RuntimeWorldCreationPersistencePipeline.cs": "5090f7c7a2f01f0b2632360ca817946de58106998f299f63ba713630482c5998",
+    "src/TerraRuntime.Application/SandboxWorldMaterializer.cs": "7e32a81c10f9898420acd53679676f5fc3c40a522f0c096699f2a1baf807b090",
+    "src/TerraRuntime.Application/WorldGenerationCandidateRunner.cs": "4cf13229b9b2db995134e345728893a939756d1bcff7704592ea8e3875e0277b",
+    "src/TerraRuntime.Application/WorldTileAuthority.ToolSourcePass.Furniture.cs": "7657b00626cf50a58a9b252086b68726b8bc9b56a5b90f1b17eb58b363fdce42",
+    "src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs": "2d7074ce5b761bc4b3805dd0468629a22fa61588c4ee58e243d7db6610096b3d",
+    "src/TerraRuntime.Contracts/Gameplay/WorldGenerationEntityEffects1458.cs": "3a0f3d418e4a6d39368fdd41f5f4cb2762f1b93d2e962d1b79fc4a514cdd8030",
+    "src/TerraRuntime.Core/Npcs/RuntimeNpcStore.Generation.cs": "cdf743d80f5e78da8cbdfcf72f3e82f0194351859e585315b2c071695987e8ce",
+    "src/TerraRuntime.Core/Worlds/Generation/WorldGenerationEntityEffects1458.cs": "e36c6ce978aaf4d1d4e4ee569c689f37010cfb59645b9e30081112d9e1be242d",
+    "src/TerraRuntime.Gameplay/Npcs/VanillaNpcPersistenceFacts1458.cs": "9c4f59746e485e7a8079a8ff65af18d8eae13f0763b1863ded1b3a53e14db0e7",
+    "src/TerraRuntime.Gameplay/Npcs/VanillaPlayerBossSpawnSearch1458.cs": "820c4478b6448593b61039fa516c613dcf3a14ac0aca4f39bbfce986ff5378d6",
+    "src/TerraRuntime.World/RuntimeWorldFurnitureStore1458.Pylons.cs": "13b245e538b59e4667e8129fbec3a625a06ea97bd374965e94c2f8be222ecb96",
+    "src/TerraRuntime.World/RuntimeWorldFurnitureStore1458.cs": "f400e84410d4049b1c38de62604533dd88fe1aa3b0d613b059258b1bb9e2bcd2",
+    "src/TerraRuntime.World/RuntimeWorldGenerationMetadataSnapshot.cs": "7380f2dd26ab2ce5e9c62bdcc605d3663ef10d169f2a70c9f5b1472937bc3d34",
+    "src/TerraRuntime.World/RuntimeWorldPreparedStateCodec.cs": "b6cd619e065113cede5aa6a34eaa9c242cc5a7b01623ee3cfca79388eadcaf83",
+    "src/TerraRuntime.World/RuntimeWorldSnapshotCache.cs": "b963c6d9c2cba3b5ccbfe1cf817b9f0a02f40fb053555309a613721882bcd350",
+    "src/TerraRuntime.World/VanillaWorldCollision.cs": "b5b099bd6b8a6a81cbc46af15b72ffc8f708295744e0e34321f4e530dea57a2d",
+    "src/TerraRuntime.World/VanillaWorldGenerationBootstrapState1458.cs": "52b4b0f9f36068609aec4b9836899f5b108d22c8ee5a00a45eb3dff88758922d",
+    "src/TerraRuntime.World/VanillaWorldSeedProfile1458.cs": "bd558c1620dc5e8c58f016290c14ef46de66437274f590b04b6d3be2e1f19543",
+    "src/TerraRuntime.World/VanillaWorldSolidCollision.cs": "f2c85016353a3ea093db79400e15b7b825de49d490d6ed9e2c440e4fe4e2457d",
+    "src/TerraRuntime.World/WorldFileFreshComposer326.cs": "322426f0aa87fe18510b3c2361ba7aca46ac14141d407a0a81ca335ea21b89a8",
+    "src/TerraRuntime.World/WorldFileFreshRuntimeMetadata326Encoder.cs": "cb533efcc4c6c58868c3cd4a7d1c5f1ca84a761ae43626730305076c5e7a60cd",
+    "src/TerraRuntime.World/WorldFileRuntimeMetadata.cs": "60ecdecbdf43a5f93d61c892dd5e6ae4da580be9176e8d296f3fe07e935f8ac2",
+    "src/TerraRuntime.World/WorldFileRuntimeMetadataParser.cs": "5d294872cc2761f47cb7f2ed6f88e124bc4b32ef73905aea5247196c042c58c3",
+    "src/TerraRuntime.World/WorldWiringCircuit1458.cs": "70093c4e29e1cd26c04668d87564540991bdf6d72035c60902632e02b59c0a41",
+    "src/TerraRuntime.WorldGeneration/Finalizer.cs": "ff36e70130ea415ef9f2fe6d7dbd679b8457f093a6714fdfcec77bf79e2b6b88",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/Bootstrap1458.cs": "1ffd262c9a65c594dd70bf09e110a94badc0586fa42b69a586d3045e7152ab0a",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/BuriedChest1458.cs": "ee5c9ddd484b9b7d64128839489f3efee4975dfc67d5af4b398416cf58f6aaec",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.Furniture.cs": "0594898a42a9b74fa476484bb1145c68a08b44154527365c92c1a264eb4c7366",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/CaveHousePlacement1458.cs": "24a4ca12456565632a09863cec54c96f33c484408a73361d1acf974232223a42",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonPipeline1458.cs": "8b07190541ce0ad1efebcf25d4c4f6f241fa9305f737452e0bc3166d794e811f",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/FinalPipeline1458.Angler.cs": "57be9d6d1a8cb080f90fa1fde6b3a6169c6f02c1fe3248f6fb570cee05c7a63b",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/FinalPipeline1458.cs": "78d85dbcd5ef20778c1ea91e21858b885b225a5bc2a9cd823a20ba44c5dd1a32",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/FlowerAndMushroomPatchPass1458.cs": "fa2d12e719048cb281e697873d6f52348b9e272340d7af9a53989f78615ad0a1",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationDecorationPlacement1458.cs": "44fe1fb2d0ec9d3ab43d5391e899e6e77500ff93603587407325a49d486a71e3",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationExtraSpawnPreparation1458.cs": "293ce3af28c13815d070f92b56d91c82c6c9ca68d2ecbca22b43a64687e67f8d",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationFurniturePlacement1458.cs": "5efca671efeac71a72ccea25e357d6818c7c52a2b1c4e052f8f210c6b086ff4a",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationGrass1458.cs": "d112e4ec3906d932255858b60f2757a1da4beef78c33c3ef367ec54d3f49ca41",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationMossSpread1458.cs": "ab7f5af3dafb2fafde146d9e89104255c97882b8aa6cda878e32a745a326b3fd",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTeamSpawns1458.cs": "1bf326b3c5501b2a1aff8325b5c125cc3a28eb3de0234bda3def9c280e8593a7",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileCount1458.cs": "c5b6803c201d0e9b9c885d115a41f727d42d4c1df2cf4237eaeabc94639d9a55",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.BeeHive.cs": "03aaffc47ea9ce715f818c078e123d5226b6cb502fd13c57154c8277fa56f1f8",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.Entities.cs": "6b3b0d66aeff95d1df9a2b2193e15c41daaf61e9c2caf5f0c2d6c2120a59f35f",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.EntityMetadata.cs": "b2c676e466434de4afc69b81af01826c780e58f7e6d4893bd08b3d94b125790d",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.GemPlacement.cs": "6c2e253a1c63fb61631f84d4d434c1bb8ec9df5e84183011e859889b2bc9f376",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.ItemHolders.cs": "a2bc1e5304905e3af1825bc6bfdb4728e446c37fd11741f56b4151020e76b956",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.LogicGate.cs": "67c0aa8bc1a476d3efa3e742176dfe49c1a0ce1190a9e3e1b2cef4889f82699e",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.Signs.cs": "61040c4ac3bdc0455610a5074bb69951f2c1a734225023786f1ef95a4a49b020",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.SpecialTileEntities.cs": "e37e3286cf60139f5bd1500347b375a631b9960c1fd7bf461cb9baa8d398bbb8",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.TemplePlacement.cs": "31cdbc655e7ad58d894a2ddcdd156f756a705f4fa9a95e03db7aa42ce51ef4bf",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.TileEntityStands.cs": "f4d446d257e8cb875a28546c379a32c1f7113715b8a7de8b4bb848dc0e7f3b3f",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.WeaponsRack.cs": "eecc1d28ed8e177b2f4600cc4e143e2b7d39de3678a5795ae6ff8c6eab6e5a27",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationTileFraming1458.cs": "bca28172dcc7f165e613ffaefe4287142470dff85f36cb849a79f884dd981d5d",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationWallFraming1458.cs": "1413ca71ca5926e61f89d3f2cf736a5460bd75690fd360548e9b84b910bee2ac",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/GrassWallPass1458.cs": "6541e92ddbcd14beeaab51c4cc7122a6b35221f2c27c225532a1b1c9243250d5",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/HellforgePlacement1458.cs": "3cdf3489444b8559145da874c6a8205ce06781510eaeef76012f6408c0d28b29",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/LateStructurePipeline1458.cs": "9a7f5cc620348b4425da3be36e9cc6a9597dd64085c2fca7b4847bb50d43891c",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/MossPass1458.cs": "35bf4809e525bd0b1b5c1001639c1a468afc5b4ec8e5116da30ce4c0e6ce1307",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/PotScatterPass1458.cs": "7e3717ec56f90e631df13674cef5a72e16ed86a2b76fb8c7d30da585e18f9aaa",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/QuickCleanupPass1458.cs": "58b2737e971833ef29463d9009c15fe469c033bb0a02157e9be5f6587ac4fdc3",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/SourceBackedFinal1458.SpecialPrefixBoundary.cs": "9fb44cf25294b4ccc9a5ce577633656b50b8c85244ab1da053e75ac003977a45",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/SourceBackedProvider1458.cs": "fb6325b94a3c1dde54525f5b1f88554aca88ef6b079f34ed6fcc4bfbfcf64b53",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/SpeleothemPass1458.cs": "19ff94149849163a2b92f6ef1c0dc017e22c0e9f402c5852addc84759aa7a4ab",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/StartingNpcPipeline1458.cs": "0ddb1474d708c3d2dd0a451554e09b8cb9ebd8468666f8f3fc8ffe5fcf670b46",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/SurfaceFinishPipeline1458.cs": "7a29f9f4802726bb65cff54771c3feb42ad196c7cecd20a2347a2d8eb6acd5a2",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/SurfaceGrassSpreadPass1458.cs": "979900e5dea14f3fa116c979df8a11df779ded1f142f4fef6af06bdfef45cc94",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/SurfaceOreStone1458.cs": "3d579ea843f2ec8c1c19b58efaf661498c622a8e1d3b59dbbba33a4c6f7b6ceb",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/SurfacePlantPass1458.cs": "268ec3e34ce6b6f64db7f2e76256428f6803414109ecc69e39ae9a93e4e66bc4",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/TreeGrower1458.Underground.cs": "aa6be937f22404f5717a3ae98b148f52a553a0b1596bfb2c28cd41af71a81d23",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/TreeGrower1458.cs": "f8800a84dc45a9c841c6561f7f9db409cd35d1b0c4bca3eb6bac7cdbde340b11",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/Validator1458.cs": "256c80cb114aad9a4248389f2600ff4463ce1ffaaeda3de2a87c6c731808b06c",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/VegetationPipeline1458.cs": "a38dced4afacaf2ca174d50d60f9aad7371c6753e9c53569291915dc13274e3b",
+    "src/TerraRuntime.WorldGeneration/Generation/Vanilla/WorldSeedProfile1458.cs": "c157ab6f04e8bd21d518be37a2ebc4d0810002ed12bcee190db7ecc51bbd1081",
+    "src/TerraRuntime.WorldGeneration/Workspace.EntityEffects.cs": "144a6a5fb0f55faa2ccd5ec6faf0d7ac6d134896a3447fb77218bbbf0221f224",
+    "src/TerraRuntime.WorldGeneration/Workspace.GenerationFinalCleanup.cs": "5e4885529dcbba46c682000a984ed1dcd615e658ae30501248ec97fe6e80e262",
+    "src/TerraRuntime.WorldGeneration/Workspace.SkyHouses.cs": "aa6f8a2dc946011a05041fcdb7ca228f633daeafac0326f8f75b8efd6fc5d7fa",
+    "src/TerraRuntime.WorldGeneration/Workspace.TownBirth.cs": "a8f49a01006254b713d9b00e3c0809b0580876e6593b2ed48201d86281c2e4bd",
+    "src/TerraRuntime.WorldGeneration/Workspace.cs": "8cee6329accef77294368d95723eda3408f7a164960f201354cc23ea98c9adc4",
+    "tests/TerraRuntime.Tests/CaveHouseFurniture1458Tests.cs": "0126ca181a6111cf019d3c06a89f3bad497d6dd577219fe177cae44a03df584a",
+    "tests/TerraRuntime.Tests/CaveHousePriorProtection1458Tests.cs": "ac09958b62564f469d4571970cbe6852dbeae835bbe1ccf199d1f2d0191fbfcd",
+    "tests/TerraRuntime.Tests/Fixtures/DirectionalAnchorPredicates1458.json.gz": "e6f422f6f6e5cb9fb614a97f6f9f5ac48d6d09a24b690c1e79fe8f148a4cb7d5",
+    "tests/TerraRuntime.Tests/Fixtures/GemCaveProperMain1458.json.gz": "7ecc72e4c829071c9407f60a26484131cb748bf82b7c431f68f4fb96fd3cc6d7",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationExtraCombinationAdmission1458.json.gz": "c9185cdc721f7fc2a60abe28791146fde8e998df1f2441e477f050c46165c5b6",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationExtraSecretResetTerrain1458.json.gz": "3fc0ff6513e7b8f81a694b4551b61165262d83e92ddd941244cbfb8af2272b3d",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationExtraSurfaceResetTerrain1458.json.gz": "bd0796bd5c3907f21c962577b1cecf3372398fefa2edf913ff1920242833f8ed",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationFlowerChestOwner1458.json.gz": "bfa2756e896e91ad52e9caa3f10fa3e57c0f3082edd60edb81658100c1393d7b",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationSaveChestFilter1458.json.gz": "e10004999cc15720f4c8625cd31d9583e480d074c2293443fd3420749f65eed2",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationSpecialResetTerrain1458.json.gz": "742863e6b053c218c5003acb9c94ac7933c032bd44c61548d5e208cffd730716",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationSpeleothemContinuation1458.json.gz": "b8dd6c95509384b40399df1eeefd4daada4aec28c1bf37136953873fc561a960",
+    "tests/TerraRuntime.Tests/Fixtures/GenerationUnwiredLogicGate1458.json.gz": "6440bc805d80ace72c0c06d5a62c793baa89e3628e7176358fe04ad1c8bd69c6",
+    "tests/TerraRuntime.Tests/Fixtures/GrassOwner1458.json.gz": "32f2fca9639d371dc943dc3dbf240706375b20ccd8a9caabfdf2cc0484425a2d",
+    "tests/TerraRuntime.Tests/Fixtures/IslandHouse1458.json.gz": "82dca5304cd2c8b9beb1cf6bb505fbb7fc6e2fba311e66a27311e5d24bae7d45",
+    "tests/TerraRuntime.Tests/Fixtures/SurfaceFinishOwners1458.json.gz": "f376b9ba32b2951512ed5b17861cc6512ab9698cfbc12388946956574e27f584",
+    "tests/TerraRuntime.Tests/Fixtures/UndergroundTree1458.json.gz": "d35798a67f49a5c223f91ed2cf94bccb3832211395685aa72d6f22a9c4adb4d7",
+    "tests/TerraRuntime.Tests/GenerationCanonicalEntityEffects1458Tests.cs": "273538fd77e3be2c4dd0e3b1ec97853e23899b0d396450ebfc3fc7b66b7c3d43",
+    "tests/TerraRuntime.Tests/GenerationChestPersistenceValidation1458Tests.cs": "6f7e243993c78647493d805bf71ea54d94b48d274f3ea0e787fbd79c90eca749",
+    "tests/TerraRuntime.Tests/GenerationDirectionalAnchorPredicates1458Tests.cs": "b915a03836786ca28439800efbcbe916738296ad623726609544d707b236a28a",
+    "tests/TerraRuntime.Tests/GenerationExtraCombinationAdmission1458Tests.cs": "d0d90cd3ea8de616c77a9ce28ba1d5f86a865339e6811a699b4968a862dd7469",
+    "tests/TerraRuntime.Tests/GenerationExtraSecretResetTerrain1458Tests.cs": "d164cdcddf6218a5eb5e3f17fbb65cf29db8f1cd1938da4f2f2ff74794b3c43b",
+    "tests/TerraRuntime.Tests/GenerationExtraSurfaceResetTerrain1458Tests.cs": "b78b51960668ed91ee2c3ce83347a22e53aaa9199ffd1f4f7e9c7d3ae8bac9e3",
+    "tests/TerraRuntime.Tests/GenerationFinalLiquid1458Tests.cs": "b9aa0272383b9aba6bdd317901b2ad2b410a189664a3b7fa9f750a2b1f16064f",
+    "tests/TerraRuntime.Tests/GenerationFinalSeedCleanup1458Tests.cs": "f351c83a3d16f597d4de848baa0ccd574e33209b241232fde06e53c3f6c0f0e0",
+    "tests/TerraRuntime.Tests/GenerationFlowerChestOwner1458Tests.cs": "25e2e5048b31ce9e1b5a539b236d0fe1bca16c60c1ed3463531078f815c70bec",
+    "tests/TerraRuntime.Tests/GenerationGates1458Tests.cs": "f0863f9fd1bf46f6e58ffea40497684091587c24ea434689d81909e2b61de0e8",
+    "tests/TerraRuntime.Tests/GenerationGemCaveProperMain1458Tests.cs": "6405ba31f01591cf5c0e77d51fe6091df33d8307cefbb935a41838766b7f5935",
+    "tests/TerraRuntime.Tests/GenerationGrassOwner1458Tests.cs": "9de6142fd684434ef79b4e6383ba073fd2c9feb84396d37fc11fd0e5e0596350",
+    "tests/TerraRuntime.Tests/GenerationIslandHouse1458Tests.cs": "e316d088edf64a61e3195cdf39c7c1fd120ed1cdd66c2d2670e09d422292aa92",
+    "tests/TerraRuntime.Tests/GenerationItemHolderEffects1458Tests.cs": "6bf233650ae6e46db29a215c8aaedccafe467e9ecf0fd9127e46228bda12ab10",
+    "tests/TerraRuntime.Tests/GenerationLargeObjects1458Tests.cs": "4f805f6800feb2e2ce902c8eff9bcd27ae95cf53265ee742e5569d0bdb2f52b3",
+    "tests/TerraRuntime.Tests/GenerationLegacyFurniture1458Tests.cs": "db8e6da273db0bdf3059262b8b807767cc407c3be95410baaf88bbc50b66c5f6",
+    "tests/TerraRuntime.Tests/GenerationLivingTreeCaveFilter1458Tests.cs": "38af0d038fc9cbc2b31958aa0672c30e3e001692f4a4a2ff14522d591904fceb",
+    "tests/TerraRuntime.Tests/GenerationNaturalPrefix66Tests.cs": "3bdc1b33fa73aeb929b5379c3fcf8fb982860ba2d3dfe0136d9c89459d5bbb8d",
+    "tests/TerraRuntime.Tests/GenerationNaturalPrefix69Tests.cs": "f766582396e21873e8b0af850737eff0a3b3e4e26bb060a3f05edc3b7bbfe1b0",
+    "tests/TerraRuntime.Tests/GenerationNaturalPrefix76Tests.cs": "471456d282434c53434b265724cb2a7e6483c81c746285bbe0dc92e1634e8053",
+    "tests/TerraRuntime.Tests/GenerationOrdinaryThreeByTwo1458Tests.cs": "3b082dc9ab30b4e2b87ae41f4744ae89e65d2d04bae1323a01ff3e9cafce4514",
+    "tests/TerraRuntime.Tests/GenerationPotsAndPlants1458Tests.cs": "81934d9f8fd74ecfd722cdfba4c1bf8aac3cb940f1ffa322f7e12c8aa2512e46",
+    "tests/TerraRuntime.Tests/GenerationSaveChestFilter1458Tests.cs": "840c3067f41fcd68cfab9d72d09a70e3a53270c03d5976ed6514919e9b5e826a",
+    "tests/TerraRuntime.Tests/GenerationSettleCaller1458Tests.cs": "3e6959de8d4e86ada3e5df491971eb233b9507a8b4cb27721aae62936484cb08",
+    "tests/TerraRuntime.Tests/GenerationSign1458Tests.cs": "65d732c6fe93274d8baf9b5bc60ae59eacd9e92e3155bcc26a6f048c91c7e769",
+    "tests/TerraRuntime.Tests/GenerationSpecialFurniture1458Tests.cs": "fc61b1a0a106b4dbc3e56e6742792e9a4ba716741703a8e4b5c6a54790dd6bfe",
+    "tests/TerraRuntime.Tests/GenerationSpecialResetTerrain1458Tests.cs": "9caf9404fc56c18f68be6d7df5ddfec8155ea4aa58e357ee70d45b160e12e0fb",
+    "tests/TerraRuntime.Tests/GenerationSpecialTileEntityLifecycle1458Tests.cs": "3beb7a3d3692e36b6c65a2e19a2b7b10110c4704ba9286301f89f71956bdf8af",
+    "tests/TerraRuntime.Tests/GenerationSpeleothemContinuation1458Tests.cs": "fde4d6972b6ba02ae8877f67ccc2fed11ca3a7f8e56d5890107af899722fc5f8",
+    "tests/TerraRuntime.Tests/GenerationStartingGuide1458Tests.cs": "19310d795e6c494c2d6898a1cf17821ade05ac2f04f95c9f12a9131ce3ccb349",
+    "tests/TerraRuntime.Tests/GenerationSurfaceFinishOwners1458Tests.cs": "b27d0493b213a0395d8d4e698692ebddeb8a5c8617a0ceaaaf0be9217081f2d6",
+    "tests/TerraRuntime.Tests/GenerationThreeByThree1458Tests.cs": "1b1d1155416564b3f1a6dd0d6cc17c7d1896ddab51f0d6896c465ef85ccfdfa2",
+    "tests/TerraRuntime.Tests/GenerationTileEntityFootprints1458Tests.cs": "44cd56990c43a6ba8829b8129620300f00b4f7cfe05030dc3290322784bc7c55",
+    "tests/TerraRuntime.Tests/GenerationTreeFraming1458Tests.cs": "63089a6508605b0b2807543ec09bd2f14036e0a0a16463826d623dd114dfa4f4",
+    "tests/TerraRuntime.Tests/GenerationUndergroundTree1458Tests.cs": "4ebd30d281ac9044dbc97a979b9f6de600e9e508cf82de6a5d318932f2dbb802",
+    "tests/TerraRuntime.Tests/GenerationUnwiredLogicGate1458Tests.cs": "507b4bd6b91f7dfa44f000e65ea3c91b9f2c019a2b04865877384462d4067664",
+    "tests/TerraRuntime.Tests/GenerationWaterCheckPlatforms1458Tests.cs": "f1f77c23b2967847fc4937d3c7d59c9a23b811509aa2bd325adf7ef12b96d547",
+    "tests/TerraRuntime.Tests/GenerationWaterCheckTables1458Tests.cs": "5c8b452153d8b652c40ed3aae912b983aa4d60abe7ff2adbef56d12e7bc736cd",
+    "tests/TerraRuntime.Tests/HellFortGeneration1458Tests.cs": "895239f0f4f280c3a91d503839a16a42f422c47a40350a02510f1816f983ad08",
+    "tests/TerraRuntime.Tests/InvasionPersistence1458Tests.cs": "edca79d5afa3d81e6c147fb8fef74896f47fffb01140c50edb74c6172e4df809",
+    "tests/TerraRuntime.Tests/RuntimeWorldSnapshotCacheValidityTests.cs": "6473e5fd38164f848f1597648040d8c15050621e82fb133e67f310054b34bb76",
+    "tests/TerraRuntime.Tests/SourceBackedChestPlacement1458Tests.cs": "d89ec71ea040be301934482365e3fa1981944a9a274606d39d406f06ca50cc5b",
+    "tests/TerraRuntime.Tests/SourceBackedFinal1458Tests.cs": "b49552f3923d64bad27587acaf2ebd7858ee8840c91270aad23762002c6aeb72",
+    "tests/TerraRuntime.Tests/SourceBackedJungleStructures1458Tests.cs": "9d38f7f96afb8324c7ed914e6c0a108d0d02a33c19a5065c03791fdcf1d9533f",
+    "tests/TerraRuntime.Tests/SourceBackedLateStructures1458Tests.cs": "be8652932f1fa11094c24899d2889bb84542b33a40d727df43a2202aa8a30aa8",
+    "tests/TerraRuntime.Tests/SourceBackedPostSettle1458Tests.cs": "7329d647453308f13a7f5aafed1890c6aebc4a504c77f530f41d2af01e5c8acd",
+    "tests/TerraRuntime.Tests/SourceBackedStartingNpc1458Tests.cs": "b89857153bcdfad4289e6c5f98651a6018a4c3302becb9e0848bac7c9799e56a",
+    "tests/TerraRuntime.Tests/SourceBackedUndergroundFinish1458Tests.cs": "f6478a3987e90aef312617aa9edfc9f80d285c8cf9180e0bdd10aa2cad3ccdb2",
+    "tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj": "a299d19f385c40b61d580c1c91813ac5cc0a32cb2f9a1524feeecc47169b8e33",
+    "tests/TerraRuntime.Tests/VanillaWorldGenerationBootstrapPersistenceTests.cs": "bc997fc18fb230f0f9884239c289eb7a65614ced0694c38c4e8f5ccd4f63822d",
+    "tests/TerraRuntime.Tests/WorldSeedResolver1458Tests.cs": "c60181d432d3b729d2b7a8f9a48ebc5aa4d166492f19df62bf78afeb01012cd4",
+    "tests/TerraRuntime.Tests/WorldStartupPreparationTests.cs": "9110da6497540dcd2dfa0e3148d33ba7f2a9a8ec82c1b8ccc559f130db42e0e0"
+  },
+  "componentQualificationSha256": {
+    ".cache/worldgen-starting-guide-20261103/qualification.json": "eab271ec3deb71b68ba9e4c1e762ad97e72f0d92d371f8861b87c08b87c8922c",
+    ".cache/worldgen-final-angler-20261103/qualification.json": "c3fce15fbfeb3fea0a54ebc4a4326224adfad2fa485ed0f01985d46eee93c665",
+    ".cache/worldgen-final-town-extra-20261103/qualification.json": "e4c8039e0f3280e064a151b2590048cf01ff891c2626971d250781d945efe57f",
+    ".cache/worldgen-team-spawn-producer-20261103/qualification.json": "d21db9ca92bc6d334f1e821cf1e8aa12613b0a07087d8a210d1ca13671d07c9d",
+    ".cache/worldgen-entity-effects-20261103/qualification.json": "4c6ca39593ba25128f5d8df692b10134d20469efd4a125963ca5f38f12faaab2",
+    ".cache/worldgen-town-allocation-20261103/qualification.json": "963b60d0a3895662b1b58d55335e021fc821ea04096e7fab1cc1533adb7d2b13",
+    ".cache/worldgen-special-prefix-owner-20261103/qualification.json": "69294b2656baecf59fd6ce292e628340134358dc59c0dbf91964bfb8256b42d8",
+    ".cache/worldgen-extra-surface-prefix-20261103/qualification.json": "99c98966a4a962cdd8eec260484249ae0422effde49b871ae6ed91e19817ea14",
+    ".cache/worldgen-extra-reset-prefix-20261103/qualification.json": "c9dd085ad4dd9aa66624f863637c0e1323b4cd11ea611dc36b8f4fd21634e203",
+    ".cache/worldgen-extra-combination-admission-20261103/qualification.json": "94854287be8fa0ef17e45828233c102f16ff50b267e6203d5cc611c126d83fdb",
+    ".cache/worldgen-unwired-logic-20261103/qualification.json": "87089b924b0e058072dc66d589a52a1680e53455cb65f862bbdd9c031dba1a80",
+    ".cache/worldgen-speleothem-owner-20261103/qualification.json": "7a006adf2560cc7b8010fc49582f0363c32a1836f0cfde5aa56f47273880e745",
+    ".cache/worldgen-canonical-effects-tests-20261103/qualification.json": "1188ee5797fa2044027fe43d5d7d4bcd8189d700b6afd9e7c13853adf34fbe26",
+    ".cache/worldgen-item-holder-effects-20261103/qualification.json": "6dc92324c99ccd10eaea3d38cd2462cd6db8d294638a7ce35c72fd8abb803b8c",
+    ".cache/worldgen-item-holder-footprints-20261103/qualification.json": "3258789dbe60a619764fe59a8d2da97ae090a0d017775669976a2119abf926a5",
+    ".cache/worldgen-special-tile-entities-20261103/qualification.json": "917e5d0ff52e0c4c06558db7d46cdc1c852fe64326aef79f32104fc9308b0328",
+    ".cache/worldgen-final-server-fixtures-20261103/qualification.json": "15a5ce3e756ccd574424ef9f876a608768fab980460c6041a01b3456c6d3df69",
+    ".cache/worldgen-flower-chest-lifecycle-20261103/qualification.json": "953d9c7a6557fac905454023fb77568a3e83ec50ebedc3c233683629bb7e1bdb",
+    ".cache/worldgen-save-chest-filter-20261103/qualification.json": "e3a0450b0ec6edeb56d0fbae0a3cc6e5ff9e8e544544454764ba43c045a24610",
+    ".cache/worldgen-runtime-natural-prefix-20261103/private-late69/qualified69/qualification.json": "4e1b8c195cc1aeea79776c24cd1ccc0be020e2a9ae9045a71dfea5f8661c549b",
+    ".cache/worldgen-runtime-natural-prefix-20261103/private-late69/qualified76/qualification.json": "387b7195a03035a5106559c051548d4ceadca781a4e13361a5e542444c8c4e5d",
+    ".cache/worldgen-flower-owner-20261103/qualification-component.json": "70de0e06d8bc36bfc800d1f21f212c9f58e1ad618df9ede13ce47990164ff1a8"
+  },
+  "evidenceFilesSha256": {
+    "build01-fresh.log": "37a0887da4ec9199e8dc31c2e402141de97bc45d7621dffe05674754dfc90310",
+    "python-ci.log": "ea8e575b29d8c4e94c9ff9259758a597746fbe26542041d55ee6a199cb21b21d",
+    "domain-audit.log": "81d2b2ed7a7eba194afe0bc4570c77c3990d458ebfd728e6dcd1df2d767f6208",
+    "documentation.log": "bb313e2fe9df077598db474ed1abfa9cddca3099ce820f5e100d57536c5b8e20",
+    "focused.xml": "6cc38432f901aed514ce2d021fccb77a8373970d20bce1f56deb655861f62340",
+    "fast/result.json": "84a1f09db4cee6bfe0f0ce343568ae7cdbb713a169031897e35337d320863344",
+    "full/result.json": "da697990fe5812c5672ad808e0012e0cd0c04d26f00e5b9f685133a088e83144",
+    "macro-result.json": "569ab3893afe2544661ff974ebb8d9d99128823554e717a1a943f74e69b79ae1",
+    "final106-result.json": "d2a4dfa5b852ee00f30b002dbd0fa06647058e91015d715b4de0f2d0aecef6a2",
+    "causals-final-result.json": "af5e8d17830a300cb3491e55c6f7f755459d96bd7d1549221a896fed335ffe9d",
+    "causals-persistence-result.json": "e03dd5e3ee437f3eb079946ef9e3f4083c1d3189ae37a23334a0890642abd6b4",
+    "fixture-only-delta.json": "468b60556ff4cef4112da0bc07371f4f499a72c717df673bfb0c91cbf0da492e",
+    "test-only-delta.json": "95ad8330d04e1eb41f4f2146c01a7a08ad3a45154abe315207ca774ba48193b1",
+    "v3-v4-identity.json": "f03e9827e304595824397f437be262455220105fe04b34ec8d24a7cce149f59c"
+  },
+  "rejectedCandidates": [
+    {
+      "path": ".cache/worldgen-continuous76-managed-20261103",
+      "reason": "Raw pylon ID/frame-period domain audit; no broad acceptance"
+    },
+    {
+      "path": ".cache/worldgen-continuous76-managed-v2-20261103",
+      "reason": "Focused18048 had1 legacy fixture missing source-initialized empty TE owner; production guards and golden values unchanged inV3"
+    },
+    {
+      "path": ".cache/worldgen-continuous76-managed-v3-20261103",
+      "reason": "Fast73550 had4 obsolete assertions: cache revision6 versus7 and PlaceTile bool for retained178; original178 two seeds twice confirmsTRUE and unchanged priorRNG; V4 changes tests only"
+    }
+  ],
+  "openScope": [
+    "No complete-world or .wld byte identity",
+    "Continuous77..106 not yet accepted",
+    "All GenVars StructureMap lists not yet merged",
+    "Other sizes/seeds not covered by continuous parity",
+    "Full special-seed pipelines open",
+    "Non-container Flowers destruction frontier",
+    "Live leashes/unsupported wire devices/nondefault island styles/grass-tree conversion",
+    "NativeAOT user-deferred"
+  ],
+  "remoteCi": {
+    "status": "Pending fresh main push; local acceptance is managed only"
+  },
+  "gitIndexBridge": {
+    "accepted": true,
+    "sourceInputs": 4631,
+    "scopeDocuments": 2,
+    "checkedGitIndexEntries": 4633,
+    "byteExact": true,
+    "manifestSha256": "9d0aac03951ebea4216af8e1e77cb16f1e152434f0b88563e10e42cb73c58fac"
+  }
+}

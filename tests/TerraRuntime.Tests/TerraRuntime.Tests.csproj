@@ -9,6 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/GenerationUnwiredLogicGate1458.json.gz" LogicalName="GenerationUnwiredLogicGate1458" />
+    <EmbeddedResource Include="Fixtures/UndergroundTree1458.json.gz" LogicalName="UndergroundTree1458" />
+    <EmbeddedResource Include="Fixtures/GemCaveProperMain1458.json.gz" LogicalName="GemCaveProperMain1458" />
+    <EmbeddedResource Include="Fixtures/GenerationSpecialResetTerrain1458.json.gz" LogicalName="GenerationSpecialResetTerrain1458" />
+    <EmbeddedResource Include="Fixtures/DirectionalAnchorPredicates1458.json.gz" LogicalName="DirectionalAnchorPredicates1458" />
     <EmbeddedResource Include="Fixtures/GenerationDecorationPhaseHelpers1458.json.gz" LogicalName="GenerationDecorationPhaseHelpers1458" />
     <EmbeddedResource Include="Fixtures/GenerationVines1458.json.gz" LogicalName="GenerationVines1458" />
     <EmbeddedResource Include="Fixtures/GenerationSolidity1458.json.gz" LogicalName="GenerationSolidity1458" />
@@ -1117,5 +1122,14 @@
     <EmbeddedResource Include="Fixtures/RangedCohortDeathLootOriginal1458.v2.json.gz" LogicalName="RangedCohortDeathLootOriginal1458.v2" />
     <EmbeddedResource Include="Fixtures/NpcSourceProjectileBirthLinux1458.v1.json.gz" LogicalName="NpcSourceProjectileBirthLinux1458.v1" />
     <EmbeddedResource Include="Fixtures/MartianChildFramesLinux1458.json.gz" LogicalName="MartianChildFramesLinux1458" />
+    <EmbeddedResource Include="Fixtures/GenerationExtraSurfaceResetTerrain1458.json.gz" LogicalName="GenerationExtraSurfaceResetTerrain1458" />
+    <EmbeddedResource Include="Fixtures/GenerationSpeleothemContinuation1458.json.gz" LogicalName="GenerationSpeleothemContinuation1458" />
+    <EmbeddedResource Include="Fixtures/GenerationExtraSecretResetTerrain1458.json.gz" LogicalName="GenerationExtraSecretResetTerrain1458" />
+    <EmbeddedResource Include="Fixtures/GenerationExtraCombinationAdmission1458.json.gz" LogicalName="GenerationExtraCombinationAdmission1458" />
+    <EmbeddedResource Include="Fixtures/IslandHouse1458.json.gz" LogicalName="IslandHouse1458" />
+    <EmbeddedResource Include="Fixtures/SurfaceFinishOwners1458.json.gz" LogicalName="SurfaceFinishOwners1458" />
+    <EmbeddedResource Include="Fixtures/GrassOwner1458.json.gz" LogicalName="GrassOwner1458" />
+    <EmbeddedResource Include="Fixtures/GenerationFlowerChestOwner1458.json.gz" LogicalName="GenerationFlowerChestOwner1458" />
+    <EmbeddedResource Include="Fixtures/GenerationSaveChestFilter1458.json.gz" LogicalName="GenerationSaveChestFilter1458" />
   </ItemGroup>
 </Project>

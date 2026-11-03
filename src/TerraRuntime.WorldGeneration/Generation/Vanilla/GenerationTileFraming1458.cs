@@ -141,7 +141,11 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type == 444) { FrameBeeHive(i, j); return; }
+        if (tile.Type == 597) { FramePylon(i, j); return; }
+        if (tile.Type is 470 or 475) { FrameTileEntityStand(i, j, tile.Type); return; }
+        if (tile.Type == 471) { FrameWeaponsRack(i, j); return; }
+        if (tile.Type == 520) { FrameFoodPlatter(i, j); return; }
+        if (tile.Type is 85 or 231 or 444) { FrameEntityObject(i, j, tile.Type); return; }
 
         if (tile.Type is LargePiles or LargePiles2 or FallenLog)
         {
@@ -241,7 +245,7 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type is 42 or 270 or 271 or 572 or 581 or 660)
+        if (tile.Type is 42 or 270 or 271 or 572 or 581 or 660 or 698)
         {
             CheckOneByTwoTop(i, j, tile.Type);
             return;
@@ -288,7 +292,7 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type is 104 or 105 or 207 or 320 or 337 or 349 or 356 or 410 or 456 or
+        if (tile.Type is 104 or 105 or 207 or 320 or 337 or 349 or 356 or 378 or 410 or 456 or
             465 or 480 or 489 or 506 or 509 or 531 or 545 or 560 or 591 or 592 or 657 or
             658 or 663 or 720 or 721 or 725)
         {
@@ -350,7 +354,7 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type is 55 or 425 or 510 or 511 or 573)
+        if (tile.Type is 55 or 395 or 425 or 510 or 511 or 573)
         {
             SignCheckFraming(i, j, tile.Type);
             return;
@@ -539,7 +543,7 @@ internal sealed partial class GenerationTileFraming1458(
         if (tile.Type == 165)
         {
             (speleothemFramer ??= new SpeleothemPass1458(store, random, 0, 0, 0,
-                CancellationToken.None)).FrameExistingStalactite(i, j);
+                CancellationToken.None, KillSpeleothemWithFraming)).FrameExistingStalactite(i, j);
             return;
         }
 
@@ -558,6 +562,14 @@ internal sealed partial class GenerationTileFraming1458(
 
         if (VanillaTileIds.IsPlatform(tile.TileType))
             FramePlatform(i, j);
+    }
+
+    private void KillSpeleothemWithFraming(int x, int y)
+    {
+        // Source nested stalactite validation clears the shared flag when it returns.
+        destroyingObject = true;
+        try { KillTile(x, y); }
+        finally { destroyingObject = false; }
     }
 
     /// <summary>
@@ -831,9 +843,11 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         destroyingObject = true;
         for (int row = 0; row < height; row++)
-            for (int column = 0; column < 2; column++)
-                if (At(left + column, top + row).Type == type)
-                    KillTile(left + column, top + row);
+        for (int column = 0; column < 2; column++)
+            if (At(left + column, top + row).Type == type)
+                KillTile(left + column, top + row);
+        if (type == 378)
+            RemoveOwnedTileEntity(left, top, WorldTileEntityKind.TrainingDummy);
         destroyingObject = false;
     }
 
@@ -1442,14 +1456,19 @@ internal sealed partial class GenerationTileFraming1458(
         bool ordinaryAnchor = ceiling.IsActive && !ceiling.IsActuated &&
             IsFramingSolid(ceiling.TileType) &&
             !VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType);
-        if (intact && (platformAnchor || ordinaryAnchor))
+        bool ropeAnchor = type == 698 && ceiling.IsActive && IsGenerationRope(ceiling.Type);
+        if (intact && (platformAnchor || ordinaryAnchor || ropeAnchor))
             return;
 
         destroyingObject = true;
+        if (type == 698)
+            TryEmptyGenerationItemHolderAt(x, top, WorldTileEntityKind.DeadCellsDisplayJar);
         if (At(x, top).Type == type)
             KillTile(x, top);
         if (At(x, top + 1).Type == type)
             KillTile(x, top + 1);
+        if (type == 698)
+            RemoveOwnedTileEntity(x, top, WorldTileEntityKind.DeadCellsDisplayJar);
         destroyingObject = false;
     }
 
@@ -2294,12 +2313,22 @@ internal sealed partial class GenerationTileFraming1458(
         int breakability = TileBreakability(i, j);
         if (breakability == 2)
             return;
+        if (TryEmptyGenerationItemHolder(i, j, tile))
+            return;
+        if (tile.Type is 470 or 475 && TileEntityStandContainsItems(i, j, tile))
+            return;
+
         if (breakability == 1)
         {
             ConsumeTileDust(i, j, tile);
             SquareTileFrame(i, j);
             return;
         }
+
+        if (tile.Type is 723 or 724)
+            ClearColdLeashedItem(i, j, tile.Type);
+        if (tile.Type == 423)
+            RequireColdSensorCircuit(i, j);
 
         if (tile.Type is 21 or 467)
         {
@@ -2309,7 +2338,15 @@ internal sealed partial class GenerationTileFraming1458(
                 return;
         }
 
+        if (tile.Type == 419) EnsureUnwiredLogicGate(i, j + 1);
+
         ConsumeTileDust(i, j, tile);
+        if (tile.Type == 423)
+            KillColdLogicSensor(i, j);
+        if (tile.Type is 723 or 724)
+            RemoveOwnedTileEntity(i, j, tile.Type == 723 ? WorldTileEntityKind.KiteAnchor : WorldTileEntityKind.CritterAnchor);
+        if (tile.Type == 520)
+            RemoveOwnedTileEntity(i, j, WorldTileEntityKind.FoodPlatter);
         tile.Flags &= ~WorldTileFlags.Active;
         tile.ClearSourceShape();
         tile.FrameX = -1;
@@ -2321,6 +2358,7 @@ internal sealed partial class GenerationTileFraming1458(
             tile.LiquidAmount = 128;
             tile.LiquidKind = WorldLiquidKind.Lava;
         }
+        if (tile.Type == 419) RefreshUnwiredLogicGate(i, j + 1);
         tile.Type = 0;
         tile.Flags &= ~WorldTileFlags.Inactive;
         SquareTileFrame(i, j);
@@ -2524,15 +2562,11 @@ internal sealed partial class GenerationTileFraming1458(
             return false;
         return direction switch
         {
-            0 => (anchor.Type == 380 || !VanillaTileIds.IsPlatform(anchor.TileType) &&
-                anchor.Shape is not (4 or 5)) ||
-                VanillaTileIds.IsPlatform(anchor.TileType) && anchor.Shape == 1,
-            1 => anchor.Shape != 1 &&
-                (anchor.Shape is not (2 or 3) ||
-                 VanillaTileIds.IsPlatform(anchor.TileType) && PlatformProperTopFrame(anchor.FrameX)),
-            2 => anchor.Shape != 1 && anchor.Shape is not (3 or 5) &&
+            0 => SolidTileAllowTopSlope(x, y),
+            1 => SolidTileAllowBottomSlope(x, y),
+            2 => !anchor.IsHalfBrick && anchor.SourceSlope is not (1 or 3) &&
                 !VanillaTileIds.IsPlatform(anchor.TileType),
-            3 => anchor.Shape != 1 && anchor.Shape is not (2 or 4) &&
+            3 => !anchor.IsHalfBrick && anchor.SourceSlope is not (2 or 4) &&
                 !VanillaTileIds.IsPlatform(anchor.TileType),
             _ => false
         };
@@ -3069,7 +3103,7 @@ internal sealed partial class GenerationTileFraming1458(
             return false;
 
         WorldTile tile = At(i, j);
-        return tile.IsActive && tile.Type is 138 or 664;
+        return tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type);
     }
 
     private bool Contains(int x, int y) => (uint)x < (uint)width && (uint)y < (uint)height;

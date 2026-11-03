@@ -383,7 +383,7 @@ public sealed class SourceBackedJungleStructures1458Tests
         }
 
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, VanillaSpecialWorldSeed1458.None));
         GenerationLiquidFixture1458.Configure(workspace, laterPass: false);
         var firstPassRandom = new RandomAdapter(1458);
         JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);

@@ -88,6 +88,11 @@ public static class VanillaWorldCollision
         return TileCollision(tiles, positionX, positionY, velocityX, velocityY, width, height, fallThrough, fall2, tiles.Get, gravDir);
     }
 
+    public static VanillaTileCollisionResult TileCollision(WorldTileStore tiles,float positionX,float positionY,
+        float velocityX,float velocityY,int width,int height,bool fallThrough,bool fall2,
+        Func<int,int,WorldTile> readTile,int gravDir=1)
+        => TileCollision(tiles,positionX,positionY,velocityX,velocityY,width,height,fallThrough,fall2,readTile,gravDir,null);
+
     public static VanillaTileCollisionResult TileCollision(
         WorldTileStore tiles,
         float positionX,
@@ -99,7 +104,7 @@ public static class VanillaWorldCollision
         bool fallThrough,
         bool fall2,
         Func<int, int, WorldTile> readTile,
-        int gravDir = 1)
+        int gravDir, Func<TileTypeId,bool>? solidPredicate)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentNullException.ThrowIfNull(readTile);
@@ -142,7 +147,7 @@ public static class VanillaWorldCollision
 
                 TileTypeId tileType = tile.TileType;
                 bool solidTop = VanillaTileCollisionCatalog.IsSolidTop(tileType) && tile.FrameY == 0;
-                bool solid = VanillaTileCollisionCatalog.IsSolid(tileType) || solidTop;
+                bool solid = (solidPredicate?.Invoke(tileType) ?? VanillaTileCollisionCatalog.IsSolid(tileType)) || solidTop;
                 if (!solid)
                     continue;
 

@@ -13,48 +13,57 @@ public sealed class GenerationOrdinaryThreeByTwo1458Tests
     public void Registered_final_cleanup_matches_thirty_one_furniture_and_small_cage_identities()
     {
         // Untouched official1.4.5.8 registered FinalCleanup, synthetic1000x500 predecessor,
-        //31identities x12variants. Participating Main flags are source-initialized; netMode1.
+        //31identities x12variants. Participating Main flags are source-initialized; netMode0 with proper source Main/engine initialization.
         var workspace = CreateWorkspace();
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0, byte shape = 0, bool inactive = false, bool independentHalf = false)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall,
-                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             Assert.True(tile.TrySetSourceShape(shape == 1 || independentHalf, (byte)(shape > 1 ? shape - 1 : 0)));
             workspace.TileStore.Set(x, y, in tile);
         }
         ushort[] identities = [14, 17, 26, 77, 86, 87, 89, 114, 133, 215, 217, 218, 237, 244, 285, 286, 298, 299, 310, 339, 361, 362, 363, 364, 377, 391, 392, 393, 394, 469, 538];
         for (int n = 0; n < identities.Length; n++)
-        for (int scenario = 0; scenario < 12; scenario++)
-        {
-            ushort type = identities[n];
-            int x = 60 + n % 8 * 112;
-            int y = 45 + n / 8 * 105 + scenario * 7;
-            int styleX = scenario == 3 ? 54 : 0;
-            int styleY = scenario == 3 ? 36 : 0;
-            for (int dx = 0; dx < 3; dx++)
-            for (int dy = 0; dy < 2; dy++)
-                if (scenario != 1 || dx != 2 || dy != 1)
-                    Put(x + dx, y + dy, type, (short)(styleX + dx * 18), (short)(styleY + dy * 18), inactive: scenario == 10 && dx == 1 && dy == 1);
-            for (int dx = 0; dx < 3; dx++)
-                if (scenario != 2 || dx != 2)
-                    Put(x + dx, y + 2, 1, shape: (byte)(scenario is 7 or 9 ? 4 : scenario == 8 ? 1 : scenario == 11 ? 2 : 0),
-                        inactive: scenario == 6 && dx == 2, independentHalf: scenario == 9);
-            if (scenario == 4)
-                Put(x + 2, y + 1, type, 18, 18);
-            if (scenario == 5)
-                Put(x + 2, y + 1, 1);
-        }
+            for (int scenario = 0; scenario < 12; scenario++)
+            {
+                ushort type = identities[n];
+                int x = 60 + n % 8 * 112;
+                int y = 45 + n / 8 * 105 + scenario * 7;
+                int styleX = scenario == 3 ? 54 : 0;
+                int styleY = scenario == 3 ? 36 : 0;
+                for (int dx = 0; dx < 3; dx++)
+                    for (int dy = 0; dy < 2; dy++)
+                        if (scenario != 1 || dx != 2 || dy != 1)
+                            Put(x + dx, y + dy, type, (short)(styleX + dx * 18), (short)(styleY + dy * 18), inactive: scenario == 10 && dx == 1 && dy == 1);
+                for (int dx = 0; dx < 3; dx++)
+                    if (scenario != 2 || dx != 2)
+                        Put(x + dx, y + 2, 1, shape: (byte)(scenario is 7 or 9 ? 4 : scenario == 8 ? 1 : scenario == 11 ? 2 : 0),
+                            inactive: scenario == 6 && dx == 2, independentHalf: scenario == 9);
+                if (scenario == 4)
+                    Put(x + 2, y + 1, type, 18, 18);
+                if (scenario == 5)
+                    Put(x + 2, y + 1, 1);
+            }
 
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+        Assert.Equal("5630251AFB7FC8F85AD87091B10F9C947F817FA0E93E747882E4F17CD0887390", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("E91D1672104409562EF398B1E5647ECE0C1066ECFC93B0291072F07A16277FB3", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(36, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("515B1A1E29D497DC858365CC839CC6087FC5B373FE53091E3371FAB8143BA159", HashFixture(workspace));
-        Assert.Equal("79842388BD36D8E5891C3EE3CFF65C6919DA23EA6A2F683ABD7C469F260E80D1", random.Fingerprint());
-        Assert.Equal(732734428, random.Next());
+        Assert.Equal("F6D33588D9E60C639FF41FAC13F164D39932E54093B7F3A36D9A78A4148212FF", random.Fingerprint());
+        Assert.Equal(662296535, random.Next());
         for (int n = 0; n < identities.Length; n++)
-        for (int scenario = 0; scenario < 12; scenario++)
-            Assert.Equal(scenario is 0 or 3 or 7 or 10,
-                workspace.TileStore.Get(60 + n % 8 * 112, 45 + n / 8 * 105 + scenario * 7).IsActive);
+            for (int scenario = 0; scenario < 12; scenario++)
+                Assert.Equal(scenario is 0 or 3 or 7 or 10,
+                    workspace.TileStore.Get(60 + n % 8 * 112, 45 + n / 8 * 105 + scenario * 7).IsActive);
     }
 
     [Theory]
@@ -103,8 +112,14 @@ public sealed class GenerationOrdinaryThreeByTwo1458Tests
         var workspace = CreateWorkspace();
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0, byte shape = 0, bool inactive = false, bool independentHalf = false)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall,
-                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             Assert.True(tile.TrySetSourceShape(shape == 1 || independentHalf, (byte)(shape > 1 ? shape - 1 : 0)));
             workspace.TileStore.Set(x, y, in tile);
         }
@@ -121,8 +136,8 @@ public sealed class GenerationOrdinaryThreeByTwo1458Tests
             // Complete stable2x2 boulder under the first two columns, grounded on stone. No unsupported
             // single-cell boulder is introduced by the altar's post-destruction halo.
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
-                Put(903 + dx, 330 + objectHeight + dy, support, (short)(dx * 18), (short)(dy * 18));
+                for (int dy = 0; dy < 2; dy++)
+                    Put(903 + dx, 330 + objectHeight + dy, support, (short)(dx * 18), (short)(dy * 18));
             Put(905, 330 + objectHeight, 1);
             for (int dx = 0; dx < 2; dx++)
                 Put(903 + dx, 332 + objectHeight, 1);
@@ -130,9 +145,9 @@ public sealed class GenerationOrdinaryThreeByTwo1458Tests
         if (neighbour)
         {
             for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 3; dy++)
-                if (dx != 0 || dy != 2)
-                    Put(901 + dx, (type == 14 && style == 25 ? 333 : 330) + dy, 245, (short)(dx * 18), (short)(dy * 18), wall: 1);
+                for (int dy = 0; dy < 3; dy++)
+                    if (dx != 0 || dy != 2)
+                        Put(901 + dx, (type == 14 && style == 25 ? 333 : 330) + dy, 245, (short)(dx * 18), (short)(dy * 18), wall: 1);
         }
         var random = new RandomAdapter(1458);
         new GenerationTileFraming1458(workspace.TileStore, random).TileFrame(903, 330);
@@ -148,7 +163,7 @@ public sealed class GenerationOrdinaryThreeByTwo1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         return workspace;
     }
 
@@ -156,12 +171,12 @@ public sealed class GenerationOrdinaryThreeByTwo1458Tests
     {
         var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 

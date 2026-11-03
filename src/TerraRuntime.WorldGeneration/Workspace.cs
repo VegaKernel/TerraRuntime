@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
@@ -61,7 +63,8 @@ public sealed partial class Workspace :
 
     private const int VanillaChestItemSlots = 40;
     private readonly List<WorldChest> generatedChests = [];
-    private readonly List<WorldTownNpc> generatedTownNpcs = [];
+    private sealed record GeneratedTownNpcProjection(WorldTownNpc Projection,NpcHandle? Handle);
+    private readonly List<GeneratedTownNpcProjection> generatedTownNpcs = [];
     private WorldGenerationPoint? spawn;
     private WorldGenerationPoint? dungeon;
     private WorldGenerationLayers? layers;
@@ -106,6 +109,8 @@ public sealed partial class Workspace :
         Dimensions = new WorldDimensions(widthTiles, heightTiles);
         TileStore = new WorldTileStore(Dimensions);
     }
+
+    internal WorldAnglerQuestData1458? VanillaAnglerQuest { get; set; }
 
     public WorldDimensions Dimensions { get; }
     public WorldTileStore TileStore { get; }
@@ -507,6 +512,39 @@ public sealed partial class Workspace :
         return true;
     }
 
+    /// <summary>WorldFile.SaveChests runs this projection after all generation callbacks.</summary>
+    internal int PrepareVanillaChestPersistence()
+    {
+        int removed = 0;
+        for (int index = generatedChests.Count - 1; index >= 0; index--)
+        {
+            WorldChest chest = generatedChests[index];
+            bool retained = (uint)chest.X < (uint)(WidthTiles - 1) &&
+                (uint)chest.Y < (uint)(HeightTiles - 1);
+            if (retained)
+            {
+                // Source checks only this 2x2 area, including for dressers. Main.tileContainer
+                // contains these five identities; frames, style, coatings and item contents do not gate it.
+                for (int x = chest.X; x <= chest.X + 1; x++)
+                for (int y = chest.Y; y <= chest.Y + 1; y++)
+                {
+                    WorldTile tile = TileStore.Get(x, y);
+                    retained &= tile.IsActive && tile.Type is 21 or 467 or 88 or 470 or 475;
+                }
+            }
+            if (!retained)
+            {
+                generatedChests.RemoveAt(index);
+                removed++;
+            }
+        }
+        // Slot identities at this boundary follow the encoded file and its subsequent dense load order.
+        // No generation callback observes this projection; CaptureGeneratedChests itself stays read-only.
+        for (int index = 0; index < generatedChests.Count; index++)
+            generatedChests[index] = generatedChests[index] with { SlotId = checked((short)index) };
+        return removed;
+    }
+
     /// <summary>Returns a detached dense chest snapshot suitable for persistence.</summary>
     public WorldChest[] CaptureGeneratedChests()
     {
@@ -603,13 +641,15 @@ public sealed partial class Workspace :
             return false;
         }
 
-        foreach (WorldTownNpc npc in generatedTownNpcs)
+        foreach (WorldTownNpc npc in generatedTownNpcs.Select(entry=>entry.Projection))
         {
             if (npc.NetId == netId)
                 return false;
         }
 
-        generatedTownNpcs.Add(new WorldTownNpc(
+        NpcHandle? handle=null;
+        if(EntityEffects is not null){if(!EntityEffects.RetainTownNpc(new(netId),x,y,homeless,homeTileX,homeTileY,out var born))throw new NotSupportedException("Town allocation exhausted before the qualified name projection; source requires allocation before identity draws.");handle=born;}
+        generatedTownNpcs.Add(new(new WorldTownNpc(
             netId,
             givenName,
             x,
@@ -618,15 +658,24 @@ public sealed partial class Workspace :
             homeTileX,
             homeTileY,
             townNpcVariationIndex,
-            homelessDespawn));
+            homelessDespawn),handle));
         return true;
     }
 
     /// <summary>Returns a detached NPC persistence snapshot suitable for fresh-world composition.</summary>
     public WorldNpcPersistence CaptureGeneratedNpcs()
     {
-        WorldTownNpc[] townNpcs = generatedTownNpcs.ToArray();
-        return new WorldNpcPersistence([], townNpcs, []);
+        if(EntityEffects is null)return new([],generatedTownNpcs.Select(entry=>entry.Projection).ToArray(),[]);
+        var towns=new List<WorldTownNpc>();var persistent=new List<WorldPersistentNpc>();
+        for(int slot=0;slot<200;slot++)if(EntityEffects.TryCaptureNpc((byte)slot,out var npc)){
+            if(npc.Simulation.TownNpc==true && npc.Type!=368){
+                var entry=generatedTownNpcs.SingleOrDefault(row=>row.Handle==npc.Handle)??throw new NotSupportedException("Unprojected source town occupation.");
+                if(entry.Projection.X!=npc.PositionX||entry.Projection.Y!=npc.PositionY)throw new InvalidOperationException("Town pose/projection diverged.");
+                towns.Add(entry.Projection);
+            }
+            if(VanillaNpcPersistenceFacts1458.SavesOutsideTown(npc.TypeIdentity))persistent.Add(new(npc.NetId,npc.PositionX,npc.PositionY));
+        }
+        return new([],towns.ToArray(),persistent.ToArray());
     }
 
     public bool TryGetTile(int x, int y, out WorldGenerationTile tile)

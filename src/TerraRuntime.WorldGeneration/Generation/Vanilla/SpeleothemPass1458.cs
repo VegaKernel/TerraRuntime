@@ -30,7 +30,8 @@ internal sealed class SpeleothemPass1458(
     double worldSurface,
     double rockLayer,
     int beachDistance,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Action<int, int>? killWithFraming = null)
 {
     private const ushort Speleothem = 165;
     private const ushort Stone = 1;
@@ -481,6 +482,13 @@ internal sealed class SpeleothemPass1458(
         if (!Contains(x, y) || !IsActive(x, y) || TypeAt(x, y) != Speleothem)
             return;
 
+        if (killWithFraming is not null)
+        {
+            killWithFraming(x, y);
+            Speleothems--;
+            return;
+        }
+
         // The dust a broken tile makes is paid for out of the shared stream. A speleothem's costs nothing -
         // its dust identity is not one of the randomised ones - but the cost is asked for rather than assumed.
         GenerationKillTileDust1458.Consume(random, At(x, y).Type);
@@ -513,7 +521,7 @@ internal sealed class SpeleothemPass1458(
 
     /// <summary>Source <c>InvalidTileForPilesOrSpeleothems</c>, the boulder set.</summary>
     private bool IsBoulder(int x, int y) =>
-        Contains(x, y) && At(x, y).IsActive && At(x, y).Type is 138 or 664;
+        Contains(x, y) && At(x, y).IsActive && GenerationObjectSupport1458.IsBoulder(At(x, y).Type);
 
     private bool IsSolid(int x, int y)
     {

@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration.Runtime;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
@@ -29,7 +30,8 @@ internal sealed class FlowerAndMushroomPatchPass1458(
     IWorldGenerationVanillaRandom random,
     double worldSurface,
     CancellationToken cancellation,
-    (int X, int Y)? fallenLogAnchor = null)
+    (int X, int Y)? fallenLogAnchor = null,
+    Workspace? workspace = null)
 {
     private const ushort Grass = 2;
     private const ushort Plants = 3;
@@ -140,18 +142,12 @@ internal sealed class FlowerAndMushroomPatchPass1458(
         if (random.Next(2) == 0)
             At(x, y + 1).Shape = 0;
 
-        // Bounded divergence, and the reason for it. The source's last eligibility clause is
-        // `x > maxTilesX * 0.52` standing alone, so on the right half of the world ANY active cell passes -
-        // including a chest whose loot made WorldGen.KillTile refuse to remove it. The source's PlaceTile does
-        // not care: type 3 is not solid, so the placement gate lets it through, IsFitToPlaceFlowerIn looks only
-        // at the cell BELOW, and the plant is written straight over one cell of that chest. That leaves a
-        // four-cell object three cells wide in the world file, which this runtime refuses to load. So the write
-        // is withheld - and only the write. Every draw the source makes here is still made, in order, which is
-        // what keeps the shared stream in step whether or not the cell survived.
+        // Source placement can overwrite one member even when a filled chest resisted KillTile.
+        // Keep its metadata through subsequent framing; SaveChests projects it only after generation.
+        // The older non-container destruction frontier remains bounded separately from this chest admission.
         WorldTile occupant = At(x, y);
-        bool withhold = occupant.IsActive;
-
-        SurfacePlantPass1458.TryPlacePlant(store, random, x, y, Plants);
+        bool withhold = occupant.IsActive && occupant.Type is not (21 or 467);
+        SurfacePlantPass1458.TryPlacePlant(store, random, x, y, Plants, workspace);
         if (IsActive(x, y) && At(x, y).Type == Plants)
             Restyle(x, y, style);
         if (withhold)
@@ -224,6 +220,14 @@ internal sealed class FlowerAndMushroomPatchPass1458(
         if (!Contains(x, y) || !At(x, y).IsActive)
             return;
 
+        if (At(x, y).Type is 21 or 467)
+        {
+            // Empty and filled containers take distinct source breakability paths before dust.
+            new GenerationTileFraming1458(store, random, workspace,
+                useWorldGenerationSolidity: workspace is not null).KillTile(x, y);
+            return;
+        }
+
         // The dust is spent before the source decides whether the tile survives, so a cell this runtime
         // declines still costs the shared stream exactly what the source would have spent on it.
         GenerationKillTileDust1458.Consume(random, At(x, y).Type);
@@ -239,7 +243,7 @@ internal sealed class FlowerAndMushroomPatchPass1458(
         cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         cell.Type = 0;
         cell.Flags &= ~WorldTileFlags.Inactive;
-        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
+        new GenerationTileFraming1458(store, random, workspace, useWorldGenerationSolidity: workspace is not null).SquareTileFrame(x, y);
     }
 
     /// <summary>

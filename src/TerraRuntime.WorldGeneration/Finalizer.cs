@@ -69,8 +69,17 @@ public static class Finalizer
             layers,
             candidate.VanillaSeedProfile)
         {
-            VanillaBootstrapState = candidate.VanillaBootstrapState
+            VanillaBootstrapState = candidate.VanillaBootstrapState,
+            AnglerQuest = candidate.VanillaAnglerQuest,
+            ExtraSpawnPoints = candidate.CaptureVanillaExtraSpawnPoints()
         };
+
+        // SaveChests filters after generation and tile serialization in the original. Keep every
+        // callback's original chest protection, then project only at this fresh vanilla save boundary.
+        bool sourceChestPersistence = validationMode == ValidationMode.VanillaComplete &&
+            candidate.VanillaBootstrapState is not null;
+        if (sourceChestPersistence)
+            candidate.PrepareVanillaChestPersistence();
 
         WorldValidationResult validation = validationMode switch
         {
@@ -78,7 +87,8 @@ public static class Finalizer
                 StructuralValidator.Validate(candidate, metadata),
             ValidationMode.Automatic or
             ValidationMode.VanillaComplete =>
-                Validator1458.Validate(candidate, metadata),
+                Validator1458.Validate(candidate, metadata,
+                    allowUnregisteredContainerFragments: sourceChestPersistence),
             _ => throw new ArgumentOutOfRangeException(nameof(validationMode), validationMode, "Unknown world-generation validation mode.")
         };
         if (!validation.IsValid)

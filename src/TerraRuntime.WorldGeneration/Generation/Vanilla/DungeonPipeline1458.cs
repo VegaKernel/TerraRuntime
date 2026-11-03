@@ -327,7 +327,13 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         state.DungeonGenerationX = finalHall.End.X;
         if (context.Metadata is not null && !context.Metadata.TrySetDungeon(graph.Anchor.X, graph.Anchor.Y))
             throw new InvalidOperationException("Source-backed Dungeon produced an invalid dungeon anchor.");
-        if (!workspace.TryAddGeneratedTownNpc(
+        bool retainedOldMan = workspace.EntityEffects is not null
+            ? workspace.TrySpawnGeneratedTownNpc(VanillaNpcIds.OldMan,
+                checked(graph.Anchor.X * 16 + 8), checked(graph.Anchor.Y * 16),
+                false, graph.Anchor.X, graph.Anchor.Y,
+                context.VanillaRandom ?? throw new InvalidOperationException("Old Man birth requires shared RNG."),
+                static () => new(string.Empty, 0))
+            : workspace.TryAddGeneratedTownNpc(
                 VanillaNpcIds.OldMan.Value,
                 string.Empty,
                 checked(graph.Anchor.X * 16f + 8f - DungeonGenerationCatalog1458.OldManWidth * .5f),
@@ -335,8 +341,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 homeless: false,
                 homeTileX: graph.Anchor.X,
                 homeTileY: graph.Anchor.Y,
-                townNpcVariationIndex: null,
-                homelessDespawn: false))
+                townNpcVariationIndex: 0,
+                homelessDespawn: false);
+        if (!retainedOldMan)
         {
             throw new InvalidOperationException("Could not register the source-generated dungeon Old Man.");
         }

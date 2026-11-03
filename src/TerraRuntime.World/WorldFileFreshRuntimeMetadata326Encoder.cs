@@ -60,6 +60,8 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
         VanillaSpecialWorldSeed1458 special = seeds.Special;
         VanillaSecretWorldSeed1458 secret = seeds.Secret;
         bool rainingForever = seeds.Has(VanillaSecretWorldSeed1458.BringATowel);
+        if (rainingForever && bootstrap is null)
+            return WorldFileFreshRuntimeMetadata326EncodeResult.InvalidMetadata;
         bool startsBloodMoon = seeds.Has(VanillaSecretWorldSeed1458.NightOfTheLivingDead);
         bool startsHardmode = seeds.Has(VanillaSecretWorldSeed1458.TooEasy);
         bool teamSpawns = seeds.Has(VanillaSecretWorldSeed1458.RoyaleWithCheese);
@@ -87,8 +89,8 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(source.Generation.Spawn.Y);
                 writer.Write(source.Generation.Layers.WorldSurface);
                 writer.Write(source.Generation.Layers.RockLayer);
-                writer.Write(InitialTime);
-                writer.Write(true);
+                writer.Write(startsBloodMoon ? 1d : InitialTime);
+                writer.Write(!startsBloodMoon);
                 writer.Write(0);
                 writer.Write(startsBloodMoon);
                 writer.Write(false);
@@ -104,16 +106,16 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write((byte)0);
                 writer.Write(0);
                 writer.Write(startsHardmode);
-                writer.Write(false);
+                writer.Write(bootstrap?.AfterPartyOfDoom ?? false);
                 writer.Write(0);
                 writer.Write(0);
                 writer.Write(0);
                 writer.Write(0d);
                 writer.Write(bootstrap is null ? -1d : bootstrap.SlimeRainTime);
                 writer.Write((byte)0);
-                writer.Write(rainingForever);
-                writer.Write(rainingForever ? int.MaxValue : 0);
-                writer.Write(rainingForever ? 1f : 0f);
+                writer.Write(bootstrap?.Raining ?? false);
+                writer.Write(bootstrap?.RainTime ?? 0);
+                writer.Write(bootstrap?.MaxRaining ?? 0f);
                 writer.Write(-1);
                 writer.Write(-1);
                 writer.Write(-1);
@@ -121,24 +123,34 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 WritePrimaryBackgroundState(writer, bootstrap);
                 writer.Write(bootstrap?.CloudBackgroundActive ?? 0);
                 writer.Write((short)(bootstrap?.NumClouds ?? 0));
-                writer.Write(bootstrap?.WindSpeedCurrent ?? 0f);
-                writer.Write(0);
+                writer.Write(bootstrap?.WindSpeedTarget ?? 0f);
+                WorldAnglerQuestData1458 angler = source.Generation.AnglerQuest ?? WorldAnglerQuestData1458.Empty;
+                writer.Write(angler.CompletedNames.Count);
+                foreach (string name in angler.CompletedNames) writer.Write(name);
                 writer.Write(false);
-                writer.Write(0);
+                writer.Write(angler.Quest);
                 writer.Write(false);
                 writer.Write(false);
                 writer.Write(false);
                 writer.Write(0);
                 writer.Write(InitialCultistDelay);
 
-                writer.Write((short)0);
-                writer.Write((short)0);
+                if (bootstrap is null)
+                {
+                    writer.Write((short)0);
+                    writer.Write((short)0);
+                }
+                else
+                {
+                    writer.Write(new WorldBannerData1458(new int[WorldBannerData1458.MaximumEntries],
+                        new ushort[WorldBannerData1458.MaximumEntries]).Encode());
+                }
 
                 writer.Write(false);
                 WriteBools(writer, 13, false);
                 WriteBools(writer, 5, false);
                 writer.Write(false);
-                writer.Write(false);
+                writer.Write(seeds.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) && !seeds.Has(VanillaSpecialWorldSeed1458.Skyblock));
                 writer.Write(0);
                 writer.Write(0);
 
@@ -154,7 +166,16 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 WriteBools(writer, 3, false);
 
                 writer.Write(13);
-                WriteInts(writer, 13, 0);
+                if (bootstrap is null)
+                    WriteInts(writer, 13, 0);
+                else
+                {
+                    WriteInts(writer, bootstrap.TreeStyle);
+                    WriteInts(writer, [bootstrap.CorruptBackground, bootstrap.JungleBackground,
+                        bootstrap.SnowBackground, bootstrap.HallowBackground, bootstrap.CrimsonBackground,
+                        bootstrap.DesertBackground, bootstrap.OceanBackground, bootstrap.MushroomBackground,
+                        bootstrap.UnderworldBackground]);
+                }
                 writer.Write(false);
                 writer.Write(false);
                 writer.Write(bootstrap?.CopperOre ?? CopperOre);
@@ -267,33 +288,21 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
         WorldDimensions dimensions,
         bool enabled)
     {
-        if (!enabled)
-        {
-            writer.Write((byte)0);
-            return;
-        }
-
-        int margin = Math.Max(4, dimensions.WidthTiles / 12);
-        int y = Math.Clamp(generation.Spawn.Y, 0, dimensions.HeightTiles - 1);
-        int[] xs =
-        [
-            margin,
-            dimensions.WidthTiles / 3,
-            dimensions.WidthTiles * 2 / 3,
-            Math.Max(0, dimensions.WidthTiles - 1 - margin)
-        ];
-        writer.Write((byte)xs.Length);
-        foreach (int x in xs)
-        {
-            writer.Write((short)Math.Clamp(x, short.MinValue, short.MaxValue));
-            writer.Write((short)y);
-        }
+        WorldSpawnPoint[] points = generation.ExtraSpawnPoints ?? Array.Empty<WorldSpawnPoint>();
+        writer.Write(checked((byte)points.Length));
+        foreach (WorldSpawnPoint point in points) { writer.Write(point.X); writer.Write(point.Y); }
     }
 
     private static bool IsValidGenerationMetadata(
         WorldDimensions dimensions,
         in RuntimeWorldGenerationMetadataSnapshot metadata)
     {
+        WorldSpawnPoint[]? points = metadata.ExtraSpawnPoints;
+        if (metadata.VanillaSeedProfile.Has(VanillaSecretWorldSeed1458.RoyaleWithCheese) && points?.Length != 6)
+            return false; // Source PlayerTeamID.Count; no fabricated fallback points.
+        if (points is not null && (points.Length > byte.MaxValue || points.Any(point =>
+                (uint)point.X >= (uint)dimensions.WidthTiles || (uint)point.Y >= (uint)dimensions.HeightTiles)))
+            return false;
         if ((uint)metadata.Spawn.X >= (uint)dimensions.WidthTiles ||
             (uint)metadata.Spawn.Y >= (uint)dimensions.HeightTiles ||
             (uint)metadata.Dungeon.X >= (uint)dimensions.WidthTiles ||

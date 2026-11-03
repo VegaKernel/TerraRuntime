@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.World;
 
 /// <summary>
@@ -8,12 +9,15 @@ public static class VanillaWorldSolidCollision
 {
     private const float TileSize = 16f;
 
+    public static bool Intersects(WorldTileStore tiles,float positionX,float positionY,int width,int height)
+        => Intersects(tiles,positionX,positionY,width,height,null);
+
     public static bool Intersects(
         WorldTileStore tiles,
         float positionX,
         float positionY,
         int width,
-        int height)
+        int height, Func<TileTypeId,bool>? solidPredicate)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
@@ -35,7 +39,7 @@ public static class VanillaWorldSolidCollision
                 WorldTile tile = tiles.Get(x, y);
                 if (!tile.IsActive ||
                     (tile.Flags & WorldTileFlags.Inactive) != 0 ||
-                    !VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||
+                    !(solidPredicate?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) ||
                     VanillaTileCollisionCatalog.IsSolidTop(tile.TileType))
                 {
                     continue;

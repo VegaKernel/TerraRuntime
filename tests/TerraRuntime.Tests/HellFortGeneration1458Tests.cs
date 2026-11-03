@@ -1,3 +1,4 @@
+using TerraRuntime.WorldGeneration.Vanilla;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.World;
@@ -22,22 +23,22 @@ public sealed class HellFortGeneration1458Tests
         Assert.True(random.PrefixConsumed);
         int doors = 0, platforms = 0;
         for (int y = 0; y < 400; y++)
-        for (int x = 0; x < 600; x++)
-        {
-            WorldTile tile = store.Get(x, y);
-            if (tile.Wall == wall) { Assert.InRange(x, 295, 305); Assert.InRange(y, 289, 367); }
-            if (!tile.IsActive) continue;
-            Assert.InRange(x, 294, 306); Assert.InRange(y, 288, 368);
-            Assert.Equal(0, tile.LiquidAmount);
-            Assert.Contains(tile.Type, new ushort[] { brick, 10, 19 });
-            if (tile.Type == 10)
+            for (int x = 0; x < 600; x++)
             {
-                Assert.Contains(tile.FrameX, new short[] { 0, 18, 36 });
-                Assert.InRange(tile.FrameY, 19 * 54, 19 * 54 + 36);
-                if (tile.FrameY == 19 * 54) doors++;
+                WorldTile tile = store.Get(x, y);
+                if (tile.Wall == wall) { Assert.InRange(x, 295, 305); Assert.InRange(y, 289, 367); }
+                if (!tile.IsActive) continue;
+                Assert.InRange(x, 294, 306); Assert.InRange(y, 288, 368);
+                Assert.Equal(0, tile.LiquidAmount);
+                Assert.Contains(tile.Type, new ushort[] { brick, 10, 19 });
+                if (tile.Type == 10)
+                {
+                    Assert.Contains(tile.FrameX, new short[] { 0, 18, 36 });
+                    Assert.InRange(tile.FrameY, 19 * 54, 19 * 54 + 36);
+                    if (tile.FrameY == 19 * 54) doors++;
+                }
+                if (tile.Type == 19) { Assert.Equal(13 * 18, tile.FrameY); platforms++; }
             }
-            if (tile.Type == 19) { Assert.Equal(13 * 18, tile.FrameY); platforms++; }
-        }
         Assert.Equal(2, doors);
         Assert.InRange(platforms, 30, 60); // Nine floor links and one dry roof exit, each 3..6 cells.
     }
@@ -53,22 +54,22 @@ public sealed class HellFortGeneration1458Tests
         Assert.True(HellFortGenerator1458.Generate(store, new SourceRandom(seed), TestContext.Current.CancellationToken) > 0);
         int doors = 0, platforms = 0, walls = 0;
         for (int y = 0; y < 400; y++)
-        for (int x = 0; x < 600; x++)
-        {
-            WorldTile tile = store.Get(x, y);
-            if (tile.Wall is 13 or 14) { walls++; Assert.InRange(y, 200, 380); }
-            if (!tile.IsActive) continue;
-            if (tile.Type == 19) { platforms++; Assert.Equal(234, tile.FrameY); }
-            if (tile.Type != 10 || tile.FrameY != 1026) continue;
-            doors++;
-            for (int dy = 0; dy < 3; dy++)
+            for (int x = 0; x < 600; x++)
             {
-                WorldTile cell = store.Get(x, y + dy);
-                Assert.True(cell.IsActive); Assert.Equal(10, cell.Type); Assert.Equal(1026 + dy * 18, cell.FrameY);
+                WorldTile tile = store.Get(x, y);
+                if (tile.Wall is 13 or 14) { walls++; Assert.InRange(y, 200, 380); }
+                if (!tile.IsActive) continue;
+                if (tile.Type == 19) { platforms++; Assert.Equal(234, tile.FrameY); }
+                if (tile.Type != 10 || tile.FrameY != 1026) continue;
+                doors++;
+                for (int dy = 0; dy < 3; dy++)
+                {
+                    WorldTile cell = store.Get(x, y + dy);
+                    Assert.True(cell.IsActive); Assert.Equal(10, cell.Type); Assert.Equal(1026 + dy * 18, cell.FrameY);
+                }
+                Assert.True(HellFortGenerator1458.Solid(store.Get(x, y - 1)));
+                Assert.True(HellFortGenerator1458.Solid(store.Get(x, y + 3)));
             }
-            Assert.True(HellFortGenerator1458.Solid(store.Get(x, y - 1)));
-            Assert.True(HellFortGenerator1458.Solid(store.Get(x, y + 3)));
-        }
         Assert.True(walls > 100); Assert.True(doors > 0); Assert.True(platforms > 0);
     }
 
@@ -91,20 +92,26 @@ public sealed class HellFortGeneration1458Tests
     {
         WorldTileStore store = Ground();
         for (int x = 299; x <= 301; x++)
-        for (int y = 348; y <= 349; y++)
-            At(store, x, y) = new WorldTile { Wall = 14, TileColor = 6, LiquidAmount = 255,
-                LiquidKind = (WorldLiquidKind)liquidKind, Flags = WorldTileFlags.WireRed };
+            for (int y = 348; y <= 349; y++)
+                At(store, x, y) = new WorldTile
+                {
+                    Wall = 14,
+                    TileColor = 6,
+                    LiquidAmount = 255,
+                    LiquidKind = (WorldLiquidKind)liquidKind,
+                    Flags = WorldTileFlags.WireRed
+                };
         Assert.True(HellforgePlacement1458.TryPlace(store, 300, 349));
         for (int dx = 0; dx < 3; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile tile = store.Get(299 + dx, 348 + dy);
-            Assert.True(tile.IsActive); Assert.Equal(77, tile.Type);
-            Assert.Equal(dx * 18, tile.FrameX); Assert.Equal(dy * 18, tile.FrameY);
-            Assert.Equal(14, tile.Wall); Assert.Equal(6, tile.TileColor);
-            Assert.Equal(255, tile.LiquidAmount); Assert.Equal((WorldLiquidKind)liquidKind, tile.LiquidKind);
-            Assert.True((tile.Flags & WorldTileFlags.WireRed) != 0);
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile tile = store.Get(299 + dx, 348 + dy);
+                Assert.True(tile.IsActive); Assert.Equal(77, tile.Type);
+                Assert.Equal(dx * 18, tile.FrameX); Assert.Equal(dy * 18, tile.FrameY);
+                Assert.Equal(14, tile.Wall); Assert.Equal(6, tile.TileColor);
+                Assert.Equal(255, tile.LiquidAmount); Assert.Equal((WorldLiquidKind)liquidKind, tile.LiquidKind);
+                Assert.True((tile.Flags & WorldTileFlags.WireRed) != 0);
+            }
     }
 
     [Theory]
@@ -163,29 +170,45 @@ public sealed class HellFortGeneration1458Tests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void PlaceTile_wrapper_clears_only_inactive_anchor_paint_even_when_object_is_rejected(bool blocked)
+    public void PlaceTile_wrapper_matches_source_prologue_and_inactive_neighbor_halo(bool blocked)
     {
-        WorldTileStore store = Ground();
+        var workspace = new Workspace(600, 400);
+        WorldTileStore store = workspace.TileStore;
+        for (int x = 0; x < 600; x++)
+            for (int y = 350; y < 400; y++) At(store, x, y) = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
         for (int x = 299; x <= 301; x++)
-        for (int y = 348; y <= 349; y++)
-            At(store, x, y) = new WorldTile { TileColor = 6, Wall = 14, Shape = 2, LiquidAmount = 90,
-                Flags = WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock | WorldTileFlags.WireRed };
+            for (int y = 348; y <= 349; y++)
+                At(store, x, y) = new WorldTile
+                {
+                    TileColor = 6,
+                    Wall = 14,
+                    Shape = 2,
+                    LiquidAmount = 90,
+                    Flags = WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock | WorldTileFlags.WireRed
+                };
         if (blocked) At(store, 299, 348).Flags |= WorldTileFlags.Active;
-        Assert.Equal(!blocked, HellforgePlacement1458.TryPlaceTile(store, 300, 349));
+        var random = new SourceRandom(42);
+        Assert.Equal(!blocked, HellforgePlacement1458.TryPlaceTile(store, random, 300, 349));
         WorldTile anchor = store.Get(300, 349);
         Assert.Equal(0, anchor.TileColor); Assert.Equal(0, anchor.Shape);
         Assert.False(anchor.IsBlockInvisible); Assert.False(anchor.IsBlockFullbright);
         Assert.Equal(14, anchor.Wall); Assert.Equal(90, anchor.LiquidAmount);
         Assert.True((anchor.Flags & WorldTileFlags.WireRed) != 0);
-        Assert.Equal(6, store.Get(299, 349).TileColor);
-        Assert.True(store.Get(299, 349).IsBlockInvisible);
+        Assert.Equal(blocked ? 0 : 6, store.Get(299, 349).TileColor);
+        Assert.Equal(!blocked, store.Get(299, 349).IsBlockInvisible);
+        // Two untouched original PlaceTile(77) calls, each repeated independently: full600x400 grid and56 RNG slots.
+        Assert.Equal(blocked ? "27C1B7B549DAB4996107B98B32B62A49A13EF0CA0C88602EF389DAA38D146775" :
+            "6AC029AADEE525229978A790C0F1224EAD03CF0F48A77A02610D81ADFF145DB1", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("FA244F107DFF1CAAED5F36CB9F3249BD46439F31C309C40C53F3590C213928BA", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(1434747710, random.Next());
+
     }
 
     private static WorldTileStore Ground()
     {
         var store = new WorldTileStore(new WorldDimensions(600, 400));
         for (int x = 0; x < 600; x++)
-        for (int y = 350; y < 400; y++) At(store, x, y) = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
+            for (int y = 350; y < 400; y++) At(store, x, y) = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
         return store;
     }
     private static ref WorldTile At(WorldTileStore store, int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];

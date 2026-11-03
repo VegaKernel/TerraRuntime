@@ -38,7 +38,7 @@ internal sealed class GrassWallPass1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
     double worldSurface,
-    CancellationToken cancellation)
+    CancellationToken cancellation, Workspace? workspace = null)
 {
     /// <summary>Source <c>WorldGen.maxTileCount</c> as this pass sets it.</summary>
     private const int MaxTileCount = 3500;
@@ -69,9 +69,10 @@ internal sealed class GrassWallPass1458(
 
     public void Apply()
     {
-        var framing = new GenerationTileFraming1458(store, random);
+        var framing = new GenerationTileFraming1458(store, random, workspace,
+            useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true);
         var grass = new GenerationGrass1458(
-            store, random, cancellation, worldSurface, (x, y) => framing.SquareTileFrame(x, y));
+            store, random, cancellation, worldSurface, (x, y) => framing.SquareTileFrame(x, y), workspace);
 
         for (int x = 50; x < width - 50; x++)
         {

@@ -116,13 +116,22 @@ public sealed class GenerationWaterCheckPlatforms1458Tests
         _ = profile;
         var workspace = new Workspace(80, 80);
         workspace.TrySetLayers(40, 60);
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (string member in encoded.Split(';'))
         {
             int[] a = member.Split(',').Select(int.Parse).ToArray();
-            var t = new WorldTile { Type = (ushort)a[3], Wall = (ushort)a[4], FrameX = (short)a[5], FrameY = (short)a[6],
-                LiquidAmount = (byte)a[7], LiquidKind = (WorldLiquidKind)a[8], TileColor = (byte)a[11], WallColor = (byte)a[12],
-                Flags = a[2] != 0 ? WorldTileFlags.Active : WorldTileFlags.None };
+            var t = new WorldTile
+            {
+                Type = (ushort)a[3],
+                Wall = (ushort)a[4],
+                FrameX = (short)a[5],
+                FrameY = (short)a[6],
+                LiquidAmount = (byte)a[7],
+                LiquidKind = (WorldLiquidKind)a[8],
+                TileColor = (byte)a[11],
+                WallColor = (byte)a[12],
+                Flags = a[2] != 0 ? WorldTileFlags.Active : WorldTileFlags.None
+            };
             Assert.True(t.TrySetSourceShape(a[9] != 0, (byte)a[10]));
             WorldTileFlags[] flags = [WorldTileFlags.WireRed, WorldTileFlags.WireBlue, WorldTileFlags.WireGreen,
                 WorldTileFlags.WireYellow, WorldTileFlags.Actuator, WorldTileFlags.Inactive, WorldTileFlags.InvisibleBlock,
@@ -148,19 +157,19 @@ public sealed class GenerationWaterCheckPlatforms1458Tests
     {
         var b = new StringBuilder();
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile t = workspace.TileStore.Get(x, y);
-            b.Append(t.IsActive ? 1 : 0).Append(',').Append(t.Type).Append(',').Append(t.Wall).Append(',')
-                .Append(t.FrameX).Append(',').Append(t.FrameY).Append(',').Append(t.LiquidAmount).Append(',')
-                .Append((int)t.LiquidKind).Append(',').Append(t.IsHalfBrick ? 1 : 0).Append(',').Append(t.SourceSlope).Append(',')
-                .Append(t.TileColor).Append(',').Append(t.WallColor);
-            WorldTileFlags[] flags = [WorldTileFlags.WireRed, WorldTileFlags.WireBlue, WorldTileFlags.WireGreen,
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile t = workspace.TileStore.Get(x, y);
+                b.Append(t.IsActive ? 1 : 0).Append(',').Append(t.Type).Append(',').Append(t.Wall).Append(',')
+                    .Append(t.FrameX).Append(',').Append(t.FrameY).Append(',').Append(t.LiquidAmount).Append(',')
+                    .Append((int)t.LiquidKind).Append(',').Append(t.IsHalfBrick ? 1 : 0).Append(',').Append(t.SourceSlope).Append(',')
+                    .Append(t.TileColor).Append(',').Append(t.WallColor);
+                WorldTileFlags[] flags = [WorldTileFlags.WireRed, WorldTileFlags.WireBlue, WorldTileFlags.WireGreen,
                 WorldTileFlags.WireYellow, WorldTileFlags.Actuator, WorldTileFlags.Inactive, WorldTileFlags.InvisibleBlock,
                 WorldTileFlags.FullbrightBlock, WorldTileFlags.InvisibleWall, WorldTileFlags.FullbrightWall];
-            foreach (WorldTileFlags flag in flags) b.Append(',').Append((t.Flags & flag) != 0 ? 1 : 0);
-            b.Append(';');
-        }
+                foreach (WorldTileFlags flag in flags) b.Append(',').Append((t.Flags & flag) != 0 ? 1 : 0);
+                b.Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(b.ToString())));
     }
 

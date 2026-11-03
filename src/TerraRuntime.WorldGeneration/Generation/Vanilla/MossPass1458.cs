@@ -42,7 +42,8 @@ internal sealed class MossPass1458(
     int lavaLine,
     double shimmerX,
     double shimmerY,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Func<TileTypeId,bool>? solidity = null)
 {
     private const int ShimmerSafetyDistance = 150;
     private const int CaveTileCeiling = 2500;
@@ -56,8 +57,8 @@ internal sealed class MossPass1458(
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
     private readonly int underworldLayer = store.Dimensions.HeightTiles - 200;
-    private readonly GenerationTileCount1458 counter = new(store);
-    private readonly GenerationMossSpread1458 spread = new(store);
+    private readonly GenerationTileCount1458 counter = new(store,solidity);
+    private readonly GenerationMossSpread1458 spread = new(store,solidity);
     private readonly int[] mossType = new int[3];
     private ushort neonMossType;
     private ushort mossWall;

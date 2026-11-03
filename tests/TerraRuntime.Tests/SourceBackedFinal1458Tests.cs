@@ -72,7 +72,7 @@ public sealed class SourceBackedFinal1458Tests
         // three neighbours, partial liquid and TileID.Sets.Clouds; terrain activity is not a gate.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var wet = new WorldTile { Type = 0, Flags = WorldTileFlags.Active, LiquidAmount = amount };
         workspace.TileStore.Set(x, y, in wet);
         var neighbour = new WorldTile
@@ -99,7 +99,7 @@ public sealed class SourceBackedFinal1458Tests
         // a clean supporting cell. These operations precede the existing partial-surface-liquid cleanup.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var sand = new WorldTile { Type = 53, Flags = WorldTileFlags.Active, Shape = 2 };
         workspace.TileStore.Set(500, 100, in sand);
         var unsafeLiquid = new WorldTile { Wall = 187, LiquidAmount = 20, LiquidKind = WorldLiquidKind.Water };
@@ -149,7 +149,7 @@ public sealed class SourceBackedFinal1458Tests
         // descending sand brush. A rail five rows down still suppresses the first extension.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var sand = new WorldTile { Type = 53, Flags = WorldTileFlags.Active };
         var rail = new WorldTile { Type = 314, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(500, 100, in sand);
@@ -160,8 +160,11 @@ public sealed class SourceBackedFinal1458Tests
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
         // Direct registered TerrariaServer 1.4.5.8 PassLegacy on the identical 1000x500 grid.
+        Assert.Equal("4052C03F3E72439A0CA0333D277E8DDABEF5DFC8585C89798B21E752295074E4", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("E2E8DB08292C3FB35BEB32E2B3A718A7D23B7D36101F8192EE36C8678AFEF353", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.Equal((ushort)53, workspace.TileStore.Get(500, 100).Type);
         Assert.Equal((ushort)397, workspace.TileStore.Get(500, 101).Type);
         Assert.True(workspace.TileStore.Get(500, 101).IsActive);
@@ -177,7 +180,7 @@ public sealed class SourceBackedFinal1458Tests
         // resolves floor, left, right, wall, unsupported and floor-over-side priorities.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void SetTile(int x, int y, ushort type, short frameX = 0, ushort wall = 0)
         {
             var tile = new WorldTile
@@ -207,8 +210,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("23D0A651BF097B84049874548A0DF01AD59731CFAA095F7564850435936381A0", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("0547C9ED463256E5A5622EE27021741B9E189B32BCB1706EFE2E669FE9A3C234", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.Equal((short)0, workspace.TileStore.Get(500, 100).FrameX);
         Assert.Equal((short)22, workspace.TileStore.Get(511, 100).FrameX);
         Assert.Equal((short)44, workspace.TileStore.Get(520, 100).FrameX);
@@ -225,7 +231,7 @@ public sealed class SourceBackedFinal1458Tests
         // keeps each under stone and kills each unattached peer.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] dripTypes = [373, 374, 375, 461, 709];
         for (int index = 0; index < dripTypes.Length; index++)
         {
@@ -241,8 +247,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("6140BA92D313BEB00F5DA8EB6CA918AC8E6374F4F0B18409213FFDE31CD182C2", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("2C74BF1F65E71D4A4225087F19ACE93F7A3140FD71D2D05CD1358247E67B10C2", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         for (int index = 0; index < dripTypes.Length; index++)
         {
             int x = 500 + index * 20;
@@ -259,7 +268,7 @@ public sealed class SourceBackedFinal1458Tests
         // left, right, wall, unsupported and competing floor/left supports.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int x in new[] { 500, 510, 520, 530, 540, 550 })
         {
             var trap = new WorldTile { Type = 136, Flags = WorldTileFlags.Active };
@@ -279,8 +288,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("28A56352ADC19C13B4D616E6B7C969FBC9629BABEF0CAF897D1F7541ED7A61EF", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("9667408382F4F095F7E4EA0BA291875AC952C699A592DBD36AFC93B4F70FFB0B", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.Equal((short)0, workspace.TileStore.Get(500, 100).FrameX);
         Assert.Equal((short)18, workspace.TileStore.Get(510, 100).FrameX);
         Assert.Equal((short)36, workspace.TileStore.Get(520, 100).FrameX);
@@ -296,7 +308,7 @@ public sealed class SourceBackedFinal1458Tests
         // below/left/right/above priority and kill their unsupported peers.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] types = [129, 149];
         for (int typeIndex = 0; typeIndex < types.Length; typeIndex++)
         {
@@ -319,8 +331,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("8D5D80952AF9ECD06CC3C341B2862CF63CF74BA41C2389C434876498D3A04966", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("33606BEB599BD8BA69AE55DE007A7686E030AA1B476F272E2B67D7E47A0C98BF", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         foreach (int start in new[] { 500, 600 })
         {
             Assert.Equal((short)0, workspace.TileStore.Get(start, 100).FrameY);
@@ -337,7 +352,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int x in new[] { 500, 510, 520, 530, 540, 550 })
         {
             var dye = new WorldTile
@@ -360,8 +375,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("0C81024B8D8CF65ABA7BDA05D04205497385996A9BD54DAA24A26A2FB3A52067", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("77F73ED87EFD803542E97F8F01D398BBAE324BECFA70B73B1649B9916DFD0549", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.True(workspace.TileStore.Get(500, 100).IsActive);
         Assert.True(workspace.TileStore.Get(510, 100).IsActive);
         Assert.True(workspace.TileStore.Get(560, 100).IsActive);
@@ -376,7 +394,7 @@ public sealed class SourceBackedFinal1458Tests
         // when PlatformProperTopFrame accepts their horizontal frame.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int site = 0; site < 5; site++)
         {
             int x = 500 + site * 10;
@@ -400,8 +418,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("CDB7443D10288E38FB2FBA21F8115269106F5DD785A78BE67C390ACEBD144486", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("D8C861CB22E42C86E6673C514F90417202469C9421EF1C146D80938240B07D1D", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         foreach (int x in new[] { 500, 520, 540 })
             Assert.True(workspace.TileStore.Get(x, 100).IsActive);
         foreach (int x in new[] { 510, 530 })
@@ -415,7 +436,7 @@ public sealed class SourceBackedFinal1458Tests
         // type 80 to a sand-family root; losing the cactus re-frames the dye.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var dye = new WorldTile { Type = 227, Flags = WorldTileFlags.Active, FrameX = 204 };
         var cactus = new WorldTile { Type = 80, Flags = WorldTileFlags.Active };
         var sand = new WorldTile { Type = 53, Flags = WorldTileFlags.Active };
@@ -437,8 +458,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("D42034B2D167D89946E805B7B76A5DD74DAEB5557F7C9FBD6007BEEBDD088451", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("49CB8669B20A46219A6783E7AD5DBECCA2DB42D14D15D07FCB741D39D4A70330", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.True(workspace.TileStore.Get(500, 100).IsActive);
         Assert.True(workspace.TileStore.Get(500, 101).IsActive);
         Assert.False(workspace.TileStore.Get(520, 100).IsActive);
@@ -453,7 +477,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] types = [12, 31, 639, 696];
         for (int typeIndex = 0; typeIndex < types.Length; typeIndex++)
             for (int broken = 0; broken < 2; broken++)
@@ -504,8 +528,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("01B8746DF0445719CFF98CD5F4A4873029A91C0E1A3F2257861704D144FB7F21", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("D7A5DA0D3ADDB742A4C45DDFB447E78ABAC55D7BD87AB3591CD1A46446E3D338", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(35, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("D55B089E908603B2563CB2DE137B6B796FA801F8A76997D2AA63FA0E9D58F214", HashFixture(workspace));
-        Assert.Equal(1839885534, random.Next());
+        Assert.Equal(167918423, random.Next());
         for (int index = 0; index < types.Length; index++)
         {
             int intact = 500 + index * 40;
@@ -534,7 +561,7 @@ public sealed class SourceBackedFinal1458Tests
         // Both echo sizes are tested hanging and standing, with and without support.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int echoIndex = 0; echoIndex < 8; echoIndex++)
         {
             int x = 500 + echoIndex * 20;
@@ -564,8 +591,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("2153E4FBA37FBAFAFB3FA31103FC9BBB69AA70BD66102D34A30BF0E9406B416C", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("AF940B01F97B1A61F44F8F119980BDFFA978A946F25F92624263071A86E70B87", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         for (int echoIndex = 0; echoIndex < 8; echoIndex++)
         {
             int x = 500 + echoIndex * 20;
@@ -587,7 +617,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int x in new[] { 500, 520, 540, 560 })
             for (int y = 298; y <= 301; y++)
             {
@@ -610,8 +640,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("00967EB37CC9D909A39C3F5C9900FFC0354B4C8D51ED6F1776CD61D082753635", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("9887C6AFEFF32C4DAD94EE8FF9E3B3C9A5C8AE53B6C545893E50A26282485F2E", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(2, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("3CF7AB56C62FEE5051DD04CAADD3A912EB962E6FC3A5F299F96636350CB72DF4", HashFixture(workspace));
-        Assert.Equal(147300460, random.Next());
+        Assert.Equal(1371412765, random.Next());
         Assert.Equal((short)0, workspace.TileStore.Get(500, 300).FrameX);
         Assert.Equal((short)162, workspace.TileStore.Get(520, 300).FrameX);
         Assert.Equal((short)90, workspace.TileStore.Get(520, 301).FrameX);
@@ -624,7 +657,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int x in new[] { 500, 520, 540, 560, 580, 600, 620 })
         {
             var pad = new WorldTile
@@ -648,8 +681,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("24F69DBA570518DDF4D9906A7B9238FC4FFCF30DD5AD39DE1FCD99D812622F2C", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("7B18BFECAA4E35DA5B30C367760BEDD10DF3450396C1FA2AED351C3E7E417E66", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.Equal((short)0, workspace.TileStore.Get(500, 100).FrameX);
         Assert.Equal((short)22, workspace.TileStore.Get(520, 100).FrameX);
         Assert.Equal((short)44, workspace.TileStore.Get(540, 100).FrameX);
@@ -664,7 +700,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Set(int x, int y, ushort type, short frameX = 0, short frameY = 0)
         {
             var tile = new WorldTile
@@ -687,8 +723,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("000AA970B15158838B2E1D5B24653DA36BD93A073E00211781897B5D245D613B", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("28FEA3648519CE7C3FE1FB2CFB2295DF16DFC4547F908706272D93259F349337", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(6, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("30D596660465534D0BA0452D69BC0D9A964FFA44A77C65BAA279007EACDD6DA1", HashFixture(workspace));
-        Assert.Equal(1461024880, random.Next());
+        Assert.Equal(1726686659, random.Next());
         Assert.Equal((short)0, workspace.TileStore.Get(500, 300).FrameX);
         Assert.Equal((short)306, workspace.TileStore.Get(520, 298).FrameX);
         Assert.Equal((short)198, workspace.TileStore.Get(520, 299).FrameX);
@@ -702,11 +741,10 @@ public sealed class SourceBackedFinal1458Tests
     [Fact]
     public void Final_cleanup_lily_pad_matches_official_generation_surface_motion()
     {
-        // Original PassLegacy in generation netMode=0; client mode skips CheckLilyPad and
-        // dedicated-server mode introduces networking that is absent during generation.
+        // Actual registered mode0 source, crosschecked in mode2 on the same fresh generation inputs.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int x in new[] { 500, 520, 540, 560, 580 })
         {
             var pad = new WorldTile { Type = 518, Flags = WorldTileFlags.Active, FrameX = 18 };
@@ -735,9 +773,12 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("DCAE8A62EA862479B01524952F53716A006AE96D3231258225B4EB5AF6117AB6", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("1E894D45285F7C0B921A3DFE1A664DC3D6DD9E5BC7C5DDC177743669C48D5034", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
         Assert.Equal(261937618, random.Next());
+        Assert.Equal(147300460, random.Next());
         Assert.False(workspace.TileStore.Get(500, 300).IsActive);
         Assert.Equal((ushort)518, workspace.TileStore.Get(500, 301).Type);
         Assert.Equal((ushort)518, workspace.TileStore.Get(520, 299).Type);
@@ -751,7 +792,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int x in new[] { 500, 520, 540, 560 })
         {
             for (int y = 300; y <= 302; y++)
@@ -776,8 +817,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("5D1CD5E1576D4DBD98554D678A4EB3D2624E70472168F86DDC9621F89228F631", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("DAC08B94F17FBA63AB94C95DFC24D55C4AA78DDCA013EDF0CD1C6ED6FA8ECE54", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         for (int y = 300; y <= 302; y++)
         {
             Assert.Equal((ushort)519, workspace.TileStore.Get(500, y).Type);
@@ -792,7 +836,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Set(int x, int y, ushort type, short frameX = 0, short frameY = 0)
         {
             var tile = new WorldTile
@@ -817,9 +861,12 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("4B06D7D7310236B0FD5D7265E0B48164E0550BD4249F4937FA4D9C0CBC2E6DEE", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("D7D24DFF1064350F2E1CA9FC8C4D7B339948F7784051B135D03FEF4EC64FEBDA", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(5, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("36F4F7E2A11459A9177E2FFC20BB515644D7450DB2026B08872A6BFA7963A443", HashFixture(workspace));
-        Assert.Equal(261937618, random.Next());
         Assert.Equal(147300460, random.Next());
+        Assert.Equal(1371412765, random.Next());
         Assert.False(workspace.TileStore.Get(580, 100).IsActive);
         Assert.Equal((short)18, workspace.TileStore.Get(600, 100).FrameX);
         Assert.False(workspace.TileStore.Get(620, 100).IsActive);
@@ -830,7 +877,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Set(int x, int y, ushort type, short frameY = 0)
         {
             var tile = new WorldTile { Type = type, Flags = WorldTileFlags.Active, FrameY = frameY };
@@ -850,8 +897,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("1E58C83A608F25472953D90C4AC33ED7AA5EE13E05666E4B2CF5219D193967C5", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("C46BFD206579D1A5C0412063A000603F4E1B657F3769880767AAD9FB28AE97BE", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.Equal((short)126, workspace.TileStore.Get(520, 100).FrameY);
         Assert.Equal((short)180, workspace.TileStore.Get(540, 100).FrameY);
         Assert.Equal((short)72, workspace.TileStore.Get(560, 100).FrameY);
@@ -864,7 +914,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Set(int x, int y, ushort type, bool active = true, short frameX = 0)
         {
             var tile = new WorldTile
@@ -889,8 +939,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("E3E03B1B8DA7D344AEEB551BBDAE4AF547F0DC600BE362F97E38F1B9014058A0", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("030CDC39A9040158B123EFFCC68818D8F3F8B290C5A798091FE68ED9A3565881", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.True(workspace.TileStore.Get(500, 100).IsActive);
         Assert.False(workspace.TileStore.Get(540, 100).IsActive);
         Assert.False(workspace.TileStore.Get(582, 100).IsActive);
@@ -906,7 +959,7 @@ public sealed class SourceBackedFinal1458Tests
         // digest and next RNG are pinned.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach ((int left, ushort type, short frameX, bool rightMember, bool rightSupport) in new[]
         {
             (500, (ushort)16, (short)0, true, true), (540, (ushort)16, (short)0, true, false),
@@ -978,8 +1031,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("CAF51287E28A2801FF0C55BA1ED539F37126379C69EB9C92F5C02F7929A26A8D", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("54540A1918E846F23F2328043DCC0F8F73B1D92764254CC8E5278948C79503ED", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.True(workspace.TileStore.Get(900, 100).IsActive);
         Assert.False(workspace.TileStore.Get(920, 100).IsActive);
         Assert.True(workspace.TileStore.Get(940, 100).IsActive);
@@ -994,7 +1050,7 @@ public sealed class SourceBackedFinal1458Tests
         // every cell and the next shared RNG draw are pinned, not just the local object footprint.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach ((int left, ushort type, short baseFrame, bool complete, bool support) in new[]
         {
             (500, (ushort)21, (short)0, true, true), (540, (ushort)21, (short)36, true, false),
@@ -1025,8 +1081,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("845966E3848A97878DB1E4468C26B4E72B0A9F0AB4F4EE8286543F45B775D53C", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("FD1B611258105C3069982838AD3F9621F2E79A1A973FDFF2F9FA39EE418C07ED", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.True(workspace.TileStore.Get(500, 100).IsActive);
         Assert.True(workspace.TileStore.Get(620, 100).IsActive);
         foreach (int left in new[] { 540, 580, 660, 700 })
@@ -1038,7 +1097,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(600, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int left in new[] { 200, 240, 280 })
         {
             for (int dx = 0; dx < 2; dx++)
@@ -1084,8 +1143,10 @@ public sealed class SourceBackedFinal1458Tests
         // dispatched by Check1x1/CheckGolf1x1/CheckLogicTiles. The oracle covers every
         // cell and the next shared RNG state, including Abigail's special grass gate.
         var workspace = new Workspace(1000, 500);
+        // Main.Initialize provides the empty canonical TE registry before the source pass.
+        Assert.True(workspace.TileStore.TryAttachTileEntities([], 1000));
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] ordinary = [36, 135, 141, 210, 239, 428, 593, 624, 650, 656, 700, 701];
         for (int n = 0; n < ordinary.Length; n++)
         {
@@ -1143,8 +1204,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
-        Assert.Equal("B8119A7EA9BA6C43D5A10C2CC1C3F55D916B1035D5CB3E77DB92329E255552E0", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal("AF601FE619C3DA015B635956FB7DA57FABB9661FA1205C7DF4C3A1FE9AB2860D", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
+        Assert.Equal("6E63C33AEC17F2991D6982C08A64D19B334C9D6D790EC67DB9A26EFC18FA9428", HashFixture(workspace));
+        Assert.Equal(261937618, random.Next());
         Assert.True(workspace.TileStore.Get(275, 100).IsActive); // Abigail's flower on grass.
         Assert.False(workspace.TileStore.Get(275, 160).IsActive); // Stone is invalid for this identity.
         Assert.False(workspace.TileStore.Get(625, 100).IsActive); // Chain cannot hang from stone.
@@ -1158,7 +1222,7 @@ public sealed class SourceBackedFinal1458Tests
         // styles and an inactive platform anchor. The digest covers every cell after sand settling.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] objects = [15, 20, 216, 338, 390, 493, 497, 590, 595, 615];
         for (int n = 0; n < objects.Length; n++)
         {
@@ -1203,8 +1267,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("76BAE652622A139FF8065BF1A91B6B3DAF2A379D9ED8DB6EDBD13D9600769A94", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("DFEFB18D297262A0873CCAC0A50D6D005181721E30AE2C2182A3AC8A7B147419", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(25, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("552D053093D246CE0221C52BD3E543446DFB1AC68256C8C190A060DE61C7E845", HashFixture(workspace));
-        Assert.Equal(798503781, random.Next());
+        Assert.Equal(273729266, random.Next());
         Assert.True(workspace.TileStore.Get(750, 200).IsActive);
         Assert.False(workspace.TileStore.Get(200, 130).IsActive);
         Assert.False(workspace.TileStore.Get(200, 160).IsActive);
@@ -1219,7 +1286,7 @@ public sealed class SourceBackedFinal1458Tests
         // missing ceiling/member and wrong second-row frame. Type698's tile entity is separate debt.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] objects = [42, 270, 271, 572, 581, 660];
         for (int n = 0; n < objects.Length; n++)
         {
@@ -1248,8 +1315,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("DFA9DF3D385390F54BADE5481E43A59B7586A74CC04B62E3DC98211775B0687E", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("FF408747049004D3440201968AC9D2C7115E5EA75FD5C12E9DA544B9B9083CC0", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(10, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("027D71FF3E2581DEB50E05B71627A69927922ABAF5B6CE5CBE10834E2BF4B334", HashFixture(workspace));
-        Assert.Equal(526643438, random.Next());
+        Assert.Equal(1518629508, random.Next());
         foreach (int x in new[] { 200, 280, 360, 440, 520, 600 })
         {
             Assert.True(workspace.TileStore.Get(x, 100).IsActive);
@@ -1269,7 +1339,7 @@ public sealed class SourceBackedFinal1458Tests
         // horizontal style bands; the hash covers every six-field cell and shared RNG state.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] identities = [94, 97, 98, 99, 100, 125, 173, 282, 287, 319,
             335, 360, 411, 490, 505, 521, 522, 523, 524, 525, 526, 527,
             543, 564, 565, 568, 569, 570, 580, 594, 598, 620, 621, 622, 654, 751, 752];
@@ -1305,8 +1375,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("A2AB0261CEFEEBF3FB5AC709A70C3F2042F265DD1018A2F96B3BE402E3314711", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("4527B7CD40F5248A4C46E419B94DAA842740294F552289F8925BCF78C7B86B25", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(14, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("532DEE852B10D6FFF82333233E512118084864B1DAB56C0F58F294ECD7C6B99B", HashFixture(workspace));
-        Assert.Equal(755242424, random.Next());
+        Assert.Equal(1531426688, random.Next());
         for (int n = 0; n < identities.Length; n++)
         {
             int x = 100 + n * 21;
@@ -1324,7 +1397,7 @@ public sealed class SourceBackedFinal1458Tests
         // Check2x2Style share this whole-grid/RNG oracle. Boulders and 254 remain separate.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0)
         {
@@ -1389,8 +1462,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("53108C60C211098D2CCCB0C2C54393E4BE8D2FDFB8FBA70F815725338E2E27A8", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("EEBFD9498C6D89AE4D86DE182033C8F7F5ABF2CF416D35200BD2D99FE7EA1631", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         Assert.Equal((short)72, workspace.TileStore.Get(550, 140).FrameX);
         Assert.Equal((short)0, workspace.TileStore.Get(550, 180).FrameX);
         Assert.False(workspace.TileStore.Get(550, 220).IsActive);
@@ -1407,7 +1483,7 @@ public sealed class SourceBackedFinal1458Tests
         // The boulders exercise two, one, zero and container-protected support columns.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, bool active = true)
         {
             var tile = new WorldTile
@@ -1450,8 +1526,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("8BE4A65AC03F6D6A77F6FBB582B18EF91C85F521AA8185748FC151DC5672F0D8", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("5C06FF7EEF60B8F6B1B77B8234C893564A54DB3762985830A38C23D186EB3436", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(5, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("4573C78BD6A10E4D963F4F85C7554CBD9724B47BE67E02E40ABCA463012CE7C5", HashFixture(workspace));
-        Assert.Equal(1616844330, random.Next());
+        Assert.Equal(1382242069, random.Next());
         foreach (int n in Enumerable.Range(0, ordinary.Length))
         {
             int x = 100 + n * 30;
@@ -1477,7 +1556,7 @@ public sealed class SourceBackedFinal1458Tests
         // CheckAlch style substrates plus lava death / 83-to-84 and 84-to-83 transitions.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0,
             byte amount = 0, WorldLiquidKind kind = WorldLiquidKind.Water)
         {
@@ -1529,6 +1608,9 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("D7CCACB9B2C1C4AB6A850284BFCFEB5B8303137E988E752EB0AB152182E6F219", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("C7E882B327A7A7D33B283B0C7982A12A1126CB19B1D190ECE0C8877D0B22B0BD", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(0, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("40A0E74A7EF0B01DE43B2DFB053A7ABB166FB09F490422CC4B26C8158C2D6D8A", HashFixture(workspace));
         Assert.Equal((short)54, workspace.TileStore.Get(100, 100).FrameX);
         Assert.True(workspace.TileStore.Get(200, 101).IsActive);
@@ -1536,11 +1618,9 @@ public sealed class SourceBackedFinal1458Tests
         Assert.False(workspace.TileStore.Get(340, 100).IsActive);
         Assert.Equal((ushort)84, workspace.TileStore.Get(700, 100).Type);
         Assert.Equal((ushort)83, workspace.TileStore.Get(720, 100).Type);
-        // The registered source pass's netMode=0 AnglerQuestSwap epilogue draws once from
-        // its aliased Main.rand/genRand in this headless harness. The runtime tile pass does
-        // not own Angler quests, so first pin its pre-epilogue state, then that one-draw bridge.
-        Assert.Equal(36698868, random.Next());
+        // The registered mode0 source pass includes AnglerQuestSwap on the same generation stream.
         Assert.Equal(1211352691, random.Next());
+        Assert.Equal(1098398725, random.Next());
     }
 
     [Fact]
@@ -1551,7 +1631,7 @@ public sealed class SourceBackedFinal1458Tests
         // style stride, and ceiling stone/PlanterBox/platform anchors for hanging variants.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] identities = [104, 105, 207, 320, 337, 349, 356, 410, 456,
             465, 480, 489, 506, 509, 531, 545, 560, 591, 592, 657, 658, 663, 720, 721, 725];
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
@@ -1608,8 +1688,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("97E7EE328D8886A5A7EAEAEF2579EA8D40B17C293BB0B281EA30EDCFED380BCB", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("B82AB9B49FB3CD5E298FA7650A3943B265218DF803F19C3B39406B8020B0F0BE", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         for (int n = 0; n < identities.Length; n++)
         {
             int x = 100 + n * 30;
@@ -1630,7 +1713,7 @@ public sealed class SourceBackedFinal1458Tests
         // missing member/support and one inconsistent horizontal frame.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
         {
             var tile = new WorldTile
@@ -1665,8 +1748,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("81A503845EA388C1442CF8ADAFD32D87F13CE8CF7DE71C0EE5157B9F0525EB56", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("ED7074ED1066505908FAAAE68E9D0D6B0BAC4D65084F9027EC4F642EDB24FE65", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         foreach (int x in new[] { 300, 400, 500 })
         {
             Assert.True(workspace.TileStore.Get(x, 100).IsActive);
@@ -1685,7 +1771,7 @@ public sealed class SourceBackedFinal1458Tests
         // intact, missing-member, missing-support and second-style instances.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         ushort[] identities = [101, 102, 463, 617, 464, 466, 699, 547, 623,
             613, 548, 614, 79, 90, 487];
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
@@ -1727,8 +1813,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("A7FB8ACC69AF40799649C0713A05A2AB99A5A3A3D4EA50B28557C77306197166", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("0B9462B68EA9BA1FAD0EED82AE6EEE763CF1163387ED1461844D53ED245B303C", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
         for (int n = 0; n < identities.Length; n++)
         {
             int x = 100 + n * 55;
@@ -1747,7 +1836,7 @@ public sealed class SourceBackedFinal1458Tests
         // inner-only support, and actuated-anchor predecessors.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0)
         {
             var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Flags = WorldTileFlags.Active };
@@ -1793,10 +1882,13 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("3820B3912C65E6D09D93ACFD0313AB123EB6BF7565756DC886F9A46B02BC11C8", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("3A1618B7F012530AAB8FF737CC0614E987DA03CFDFB9655F50B1151C3584D2BE", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(17, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("655A1DA3AAA0E01E391D2812198AC7ECBEF206ACEBF979B0927EDBFAA87DAAA1", HashFixture(workspace));
         // Official netMode0 and netMode1 give the same entire grid. The latter skips the
         // unrelated AnglerQuestSwap epilogue and exposes this generation owner's RNG boundary.
-        Assert.Equal(822212472, random.Next());
+        Assert.Equal(332119727, random.Next());
         for (int n = 0; n < identities.Length; n++)
         {
             int x = 100 + n * 180;
@@ -1814,7 +1906,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Set(int x, int y, ushort type, short frameX = 0)
         {
             var tile = new WorldTile { Type = type, Flags = WorldTileFlags.Active, FrameX = frameX };
@@ -1845,6 +1937,9 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
+        Assert.Equal("1A24D09FDD2C474847753A9417DE9B737B8303FDEADA446F7EE312F20BE32FED", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal((ushort)185, workspace.TileStore.Get(500, 100).Type);
         Assert.False(workspace.TileStore.Get(520, 100).IsActive);
         Assert.Equal((ushort)185, workspace.TileStore.Get(540, 100).Type);
@@ -1862,7 +1957,7 @@ public sealed class SourceBackedFinal1458Tests
         for (int y = 101; y <= 112; y++)
             Assert.Equal(y <= 111 ? (ushort)53 : (ushort)397, workspace.TileStore.Get(540, y).Type);
         Assert.Equal("D954C20684F75C4613C670C8971995C2FA7DA89EFD28D63FDD52D2BBA525DB75", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
     }
 
     [Fact]
@@ -1870,7 +1965,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Set(int x, int y, ushort type)
         {
             var tile = new WorldTile { Type = type, Flags = WorldTileFlags.Active };
@@ -1901,8 +1996,11 @@ public sealed class SourceBackedFinal1458Tests
         }
         Assert.True(workspace.TileStore.Get(900, 100).IsActive);
         Assert.False(workspace.TileStore.Get(920, 100).IsActive);
+        Assert.Equal("FFEBF95049BBCFB92970465227716A5A770458971EEC40FED5838AE8F2053807", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("23EA178B7446B1A87F45002C6A727BF1BED999E96A5FDB2359570C39670C07E2", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(20, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("3DEA150113D7E656D82D0B17377350553F94AF2DDA60FC13476867196146996D", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(261937618, random.Next());
     }
 
     [Fact]
@@ -1912,7 +2010,7 @@ public sealed class SourceBackedFinal1458Tests
         // The independent registered FinalCleanup seed1458 first offers these sites.
         var workspace = new Workspace(600, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         (int x, int y)[] candidates = [(261, 205), (496, 239), (286, 225)];
         for (int n = 0; n < candidates.Length; n++)
         {
@@ -1936,6 +2034,9 @@ public sealed class SourceBackedFinal1458Tests
         {
             (int x, int y) = candidates[n];
             WorldTile tile = workspace.TileStore.Get(x, y);
+            Assert.Equal("1CB154BD6630BC90EEEC750E5E1CAE28B8090D15D97EEE2CF78F198DD30ECCA4", GenerationNaturalPrefix49Tests.GridHash(workspace));
+            Assert.Equal("612E1C9C9DBC6D8373DB9ECE1B4132116B202CE10A013D98364428841F378D5C", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+            Assert.Equal(7, workspace.VanillaAnglerQuest!.Quest);
             Assert.Equal((ushort)668, tile.Type);
             Assert.True(tile.IsActive);
             Assert.Equal(WorldTileFlags.WireRed, tile.Flags & WorldTileFlags.WireRed);
@@ -1944,7 +2045,7 @@ public sealed class SourceBackedFinal1458Tests
             Assert.Equal((byte)(80 + n), tile.LiquidAmount);
         }
         Assert.Equal("8A59CE7099EE4244061B74E617A11F6CD193D35F1E5D2B32E08E864D0F05A04A", HashFixture(workspace));
-        Assert.Equal(370853568, random.Next());
+        Assert.Equal(1928520153, random.Next());
     }
 
     [Fact]
@@ -1955,7 +2056,7 @@ public sealed class SourceBackedFinal1458Tests
         // captures agree; disabling only important26 reproduces the former stale expectation.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var fragment = new WorldTile { Type = 484, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18 };
         workspace.TileStore.Set(51, 51, in fragment);
         var heart = new WorldTile { Type = 26, Flags = WorldTileFlags.Active };
@@ -1984,7 +2085,7 @@ public sealed class SourceBackedFinal1458Tests
         // Final Cleanup scan; a sealed singleton is deliberately left alone.
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(60, 80));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int x = 49; x <= 52; x++)
             for (int y = 49; y <= 51; y++)
             {
@@ -2008,7 +2109,7 @@ public sealed class SourceBackedFinal1458Tests
         // generated painting has lost its own wall.
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(60, 80));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var painting = new WorldTile { Type = 240, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(50, 50, in painting);
         var left = new WorldTile { Wall = 7 };
@@ -2027,7 +2128,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(420, 400);
         Assert.True(workspace.TrySetLayers(180, 250));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int x = 0; x < 420; x++)
             for (int y = 0; y < 400; y++)
             {
@@ -2057,7 +2158,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         void SetTile(int x, int y, ushort type, bool active, short frameX = 0, short frameY = 0,
             byte liquidAmount = 0, ushort wall = 0, WorldTileFlags extraFlags = WorldTileFlags.None)
@@ -2105,8 +2206,11 @@ public sealed class SourceBackedFinal1458Tests
         // Fresh actual-original replay uses all participating Main metadata, including
         // trees5/323, altar26, boulder484 and track314. Historical partial contexts reproduce
         // the previous goldens; the final independent replay matches every cell and RNG slot.
+        Assert.Equal("316F4F81FE889C32D01E73FBBF71A94F2CF99503810F9B9B7B04FD5836DDAA4B", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("DFEFB18D297262A0873CCAC0A50D6D005181721E30AE2C2182A3AC8A7B147419", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(25, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("B72CB17ABD039E39867B53877C52E6DEEC80363988B1E4251030DEB28D6B9BB1", HashFixture(workspace));
-        Assert.Equal(1318390983, random.Next());
+        Assert.Equal(273729266, random.Next());
         Assert.Equal(WorldLiquidKind.Lava, workspace.TileStore.Get(140, 120).LiquidKind);
         Assert.Equal(byte.MaxValue, workspace.TileStore.Get(140, 120).LiquidAmount);
         Assert.Equal((byte)0, workspace.TileStore.Get(180, 120).Shape);
@@ -2139,7 +2243,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 1200;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(300, 500));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         void SetTile(int x, int y, ushort type, bool active, short frameX = 0, short frameY = 0,
             byte liquidAmount = 0, ushort wall = 0, byte shape = 0)
@@ -2187,8 +2291,11 @@ public sealed class SourceBackedFinal1458Tests
 
         // The independent source replay's painting240 metadata toggle removes the two
         // incomplete paintings while preserving all other cells and the generation RNG.
+        Assert.Equal("C07959C080129717BA83857C2EAA0B551875062585B94F27375A4DE2D5C5E82E", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("DFEFB18D297262A0873CCAC0A50D6D005181721E30AE2C2182A3AC8A7B147419", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(25, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("6C4C0B4A5EEB9270DB00BCB339901CE30C3BADEBAF74AEB9EE49A5449C94E57F", HashFixture(workspace));
-        Assert.Equal(1117332225, random.Next());
+        Assert.Equal(273729266, random.Next());
     }
 
     [Fact]
@@ -2198,7 +2305,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         for (int x = 296; x <= 304; x++)
         {
@@ -2308,7 +2415,7 @@ public sealed class SourceBackedFinal1458Tests
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(300, 500));
         workspace.SetVanillaLiquidLines(600, 1000);
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach ((int centerX, int sourceY, int floorY) in new[]
             { (1000, 450, 600), (2000, 650, 800), (3000, 900, 1050) })
         {
@@ -2336,7 +2443,7 @@ public sealed class SourceBackedFinal1458Tests
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(300, 500));
         workspace.SetVanillaLiquidLines(600, 1000);
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach ((int centerX, int sourceY, int floorY, WorldLiquidKind kind) in interacting
             ? new[] { (1000, 450, 600, WorldLiquidKind.Lava), (2000, 650, 800, WorldLiquidKind.Honey),
                       (3000, 900, 1050, WorldLiquidKind.Shimmer) }
@@ -2370,7 +2477,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         var unsupported = new WorldTile { Type = 51, Flags = WorldTileFlags.Active, Shape = 5 };
         var retainedException = new WorldTile { Type = 131, Flags = WorldTileFlags.Active, Shape = 4 };
@@ -2438,7 +2545,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         var ceiling = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         var water = new WorldTile { LiquidAmount = 128, LiquidKind = WorldLiquidKind.Water };
@@ -2498,7 +2605,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2526,7 +2633,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: true, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: true, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         // Only the lower-right piece remains. TerrariaServer TileCleanup derives the 2x2 origin from
         // frame coordinates and restores all four cells with the Crimson style offset.
@@ -2567,7 +2674,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         var survivor = new WorldTile
         {
@@ -2614,7 +2721,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: true, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: true, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
 
         var survivor = new WorldTile { Type = 26, Flags = WorldTileFlags.Active, FrameX = 90, FrameY = 18, Shape = 3 };
         workspace.TileStore.Set(52, 51, in survivor);
@@ -2667,7 +2774,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var spikeBall = new WorldTile { Type = 237, Flags = WorldTileFlags.Active };
         var lihzahrdBrick = new WorldTile { Type = 232, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(50, 50, in spikeBall);
@@ -2685,7 +2792,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var loose = new WorldTile { Type = 162, Flags = WorldTileFlags.Active };
         var wallBlocked = new WorldTile { Type = 162, Wall = 350, Flags = WorldTileFlags.Active };
         var chestBlocked = new WorldTile { Type = 162, Flags = WorldTileFlags.Active };
@@ -2709,7 +2816,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int dx = 0; dx < 2; dx++)
             for (int dy = 0; dy < 2; dy++)
             {
@@ -2748,7 +2855,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2786,7 +2893,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2821,7 +2928,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2850,7 +2957,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2879,7 +2986,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2910,7 +3017,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2949,7 +3056,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -2988,7 +3095,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -3026,7 +3133,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -3143,7 +3250,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int y = 100; y <= 104; y++)
         {
             var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
@@ -3181,7 +3288,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int y = 100; y <= 104; y++)
         {
             var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
@@ -3217,7 +3324,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int y = 98; y <= 100; y++)
         {
             var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
@@ -3260,7 +3367,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         for (int y = 197; y <= 200; y++)
         {
             var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
@@ -3299,7 +3406,7 @@ public sealed class SourceBackedFinal1458Tests
         const int height = 500;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (int x in new[] { 100, 200 })
         {
             for (int y = 100; y <= 104; y++)
@@ -3530,7 +3637,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         return workspace;
     }
 
@@ -3538,7 +3645,7 @@ public sealed class SourceBackedFinal1458Tests
     {
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, special: TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)

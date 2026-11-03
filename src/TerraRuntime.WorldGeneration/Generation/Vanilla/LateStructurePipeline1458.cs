@@ -216,7 +216,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 ApplySpiderCaves(context, workspace, grid, random);
                 break;
             case LateStructureStage1458.GemCaves:
-                ApplyGemCaves(context, grid, random);
+                ApplyGemCaves(context, workspace, grid, random);
                 break;
             case LateStructureStage1458.Moss:
                 ApplyMoss(context, workspace);
@@ -225,10 +225,10 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 ApplyTemplePart2(context, workspace, grid, random, state.WorldSurface);
                 break;
             case LateStructureStage1458.CaveWalls:
-                ApplyCaveWalls(context, grid, random);
+                ApplyCaveWalls(context, workspace, grid, random);
                 break;
             case LateStructureStage1458.JungleTrees:
-                ApplyJungleTrees(context, grid, random);
+                ApplyJungleTrees(context, workspace, grid, random);
                 break;
             case LateStructureStage1458.FloatingIslandHouses:
                 ApplyFloatingIslandHouses(context, workspace, grid, random);
@@ -307,11 +307,13 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Adding source-backed Spider Caves ({accepted}/{attempts} regions)");
     }
 
-    private void ApplyGemCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyGemCaves(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         // TerrariaServer 1.4.5.8 Gem Caves: candidates are bounded connected caves, not radial ore clusters.
         int accepted = 0;
-        int target = (int)(grid.Width * .003d);
+        int target = (int)Math.Ceiling(grid.Width * .003d);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, context.VanillaRandom!, workspace,
+            useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
         for (int attempt = 0; attempt < target; attempt++)
         {
             int retries = 0;
@@ -329,14 +331,14 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             if (retries >= 1000)
                 continue;
 
-            ApplyGemCave(grid, random, x, y);
+            ApplyGemCave(grid, random, x, y, framing);
             accepted++;
         }
 
         context.ReportProgress(1d, $"Adding source-backed Gem Caves ({accepted}/{target} regions)");
     }
 
-    private static void ApplyGemCave(RuntimeGrid grid, IRandom random, int startX, int startY)
+    private static void ApplyGemCave(RuntimeGrid grid, IRandom random, int startX, int startY, GenerationTileFraming1458 framing)
     {
         Span<bool> gems = stackalloc bool[6];
         gems[random.Next(6)] = true;
@@ -356,10 +358,8 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 int key = x * grid.Height + y;
                 visited.Add(key);
                 ref WorldTile tile = ref grid.At(x, y);
-                // `WorldGen.SolidTile` deliberately treats the six loose gem tile identities as non-solid
-                // during this spread. A gem converted at the cave edge can therefore become frontier on a
-                // later wave and receive the cave wall behind it.
-                if (IsGemCaveSolid(grid, in tile) || tile.Wall != 0)
+                // Converted ore reads the same live solidity table as the surrounding cave.
+                if (IsCaveWallSolid(grid, in tile) || tile.Wall != 0)
                 {
                     if (!tile.IsActive) continue;
                     ReplaceGem(ref tile, random, gems);
@@ -376,31 +376,14 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 // merely paints the wall; consuming another roll here desynchronizes every later cave.
                 if (!tile.IsActive && random.Next(2) == 0)
                 {
-                    // Terraria 1.4.5.8 WorldGen.PlaceTile(178) validates that one cardinal anchor exists.
-                    // Its immediately following framing pass preserves the initial 0..36 decoration row.
                     int style = PickGem(random, gems);
-                    if (HasGemObjectAnchor(grid, x, y))
-                    {
-                        tile.Type = 178;
-                        tile.Flags |= WorldTileFlags.Active;
-                        tile.FrameX = (short)(style * 18);
-                        tile.FrameY = (short)(random.Next(3) * 18);
-                    }
+                    framing.PlaceGemInEmptyCell(x, y, style);
                 }
                 foreach ((int nx, int ny) in new[] { (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1) })
                     if (!visited.Contains(nx * grid.Height + ny)) next.Add((nx, ny));
             }
         }
     }
-
-    private static bool HasGemObjectAnchor(RuntimeGrid grid, int x, int y)
-    {
-        return IsCaveWallSolid(grid, in grid.At(x, y + 1)) || IsCaveWallSolid(grid, in grid.At(x - 1, y)) ||
-               IsCaveWallSolid(grid, in grid.At(x + 1, y)) || IsCaveWallSolid(grid, in grid.At(x, y - 1));
-    }
-
-    private static bool IsGemCaveSolid(RuntimeGrid grid, in WorldTile tile) =>
-        tile.Type is not (63 or 64 or 65 or 66 or 67 or 68) && IsCaveWallSolid(grid, in tile);
 
     private static void ReplaceGem(ref WorldTile tile, IRandom random, ReadOnlySpan<bool> gems)
     {
@@ -424,20 +407,22 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         int lavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(state.RockLayer));
         // Source reads GenVars.shimmerPosition, which is the zero vector until the Shimmer pass sets it.
         WorldGenerationPoint shimmer = workspace.VanillaShimmerPosition ?? new WorldGenerationPoint(0, 0);
-        double rockLayer = workspace.VanillaTerrainState?.CurrentRockLayer ?? state.RockLayer;
+        double rockLayer = state.RockLayer;
 
         // The spreader re-frames every square it converts, and source does that through the ordinary
         // SquareTileFrame rather than through any biome-specific framer. It matters that this is the real one:
         // a moss conversion changes a block's identity while leaving it solid, so every object check the
         // framing triggers finds its own footprint intact and spends nothing - but a framer that threw on
         // identities it had not modelled would refuse a statue standing beside a cave that takes moss.
-        var framing = new GenerationTileFraming1458(workspace.TileStore, random);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace,
+            useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
         var grass = new GenerationGrass1458(
             workspace.TileStore, random, context.CancellationToken, state.WorldSurface,
-            (x, y) => framing.SquareTileFrame(x, y));
+            (x, y) => framing.SquareTileFrame(x, y), workspace);
         var pass = new MossPass1458(
             workspace.TileStore, random, state.WorldSurface, rockLayer, waterLine, lavaLine,
-            shimmer.X, shimmer.Y, context.CancellationToken);
+            shimmer.X, shimmer.Y, context.CancellationToken,
+            workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
         pass.Apply(grass);
         context.ReportProgress(1d, $"Spreading Moss ({pass.Placed} seeded, {grass.Converted} spread)");
     }
@@ -447,6 +432,11 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     // the complete shared-RNG decoration sequence.
     private static void ApplyTemplePart2(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random, double worldSurface)
     {
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(162), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(226), true);
+        }
         VanillaTemplePart2State1458? sourceState = workspace.VanillaTemplePart2State;
         if (sourceState is not { } temple)
         {
@@ -470,6 +460,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
 
         // TerrariaServer 1.4.5.8 WorldGen.templePart2. Each loop deliberately owns its source draw order;
         // placement helpers below are deterministic equivalents of the TileObjectData layouts used by these styles.
+        var mechanismFramer = new GenerationTileFraming1458(workspace.TileStore, vanillaRandom, workspace, workspace.HasVanillaGenerationSolidity);
         double traps = temple.Rooms * 1.9d * (1d + random.Next(-15, 16) * .01d);
         int retries = 0;
         while (traps > 0d)
@@ -477,7 +468,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             context.CancellationToken.ThrowIfCancellationRequested();
             int x = random.Next(temple.Left, temple.Right);
             int y = random.Next(temple.Top, temple.Bottom);
-            if (IsTempleAir(grid, x, y) && TryMayanTrap(grid, random, x, y, grid.Height - 300, worldSurface))
+            if (IsTempleAir(grid, x, y) && TryMayanTrap(workspace, mechanismFramer, grid, random, x, y, grid.Height - 300, worldSurface))
             {
                 traps -= 1d;
                 retries = 0;
@@ -486,6 +477,9 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 retries++;
             if (retries > 100) { retries = 0; traps -= 1d; }
         }
+
+        if (workspace.HasVanillaGenerationSolidity)
+            workspace.SetVanillaGenerationSolid(new TileTypeId(232), false);
 
         double chestBudget = temple.Rooms * .35d * (1d + random.Next(-15, 16) * .01d);
         retries = 0;
@@ -502,34 +496,43 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             if (retries > 10000) break;
         }
 
-        PlaceTempleSpikes(grid, random, temple, context.CancellationToken);
-        PlaceTempleFurniture(grid, random, temple, context.CancellationToken);
-        PlaceTemplePaintings(grid, random, temple, context.CancellationToken);
+        PlaceTempleStatues(workspace, vanillaRandom, grid, random, temple, context.CancellationToken);
+        PlaceTempleFurniture(workspace, vanillaRandom, grid, random, temple, context.CancellationToken);
+        PlaceTemplePaintings(workspace, vanillaRandom, grid, random, temple, context.CancellationToken);
+        // The native helper restores232, then its enclosing pass immediately makes it non-solid again.
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(232), true);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(232), false);
+        }
         context.ReportProgress(1d, $"Finishing Jungle Temple ({chests.Chests.Count} chest offers accepted)");
     }
 
     private static bool IsTempleAir(RuntimeGrid grid, int x, int y) => !grid.At(x, y).IsActive && grid.At(x, y).Wall == 87;
 
-    private static bool TryMayanTrap(RuntimeGrid grid, IRandom random, int x, int y, int floorLimit, double worldSurface)
+    private static bool TryMayanTrap(Workspace workspace, GenerationTileFraming1458 framing, RuntimeGrid grid, IRandom random, int x, int y, int floorLimit, double worldSurface)
     {
+        bool Solid(in WorldTile tile) => tile.IsActive && !tile.IsActuated &&
+            (workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid(tile.TileType) : VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
+            !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
         // TerrariaServer 1.4.5.8 WorldGen.mayanTrap. The first roll selects the horizontal (0) or vertical (1)
         // arm before any rejection, so it must remain above the floor search.
         int direction = random.Next(3) == 0 ? 0 : 1;
         int floor = y;
-        while (floor < floorLimit && !IsSolidOrSloped(in grid.At(x, floor))) floor++;
+        while (floor < floorLimit && !Solid(in grid.At(x, floor))) floor++;
         if (floor >= floorLimit || grid.At(x, floor).Type is 232 or 10) return false;
         floor--;
         if (grid.At(x, floor).LiquidAmount > 0 && grid.At(x, floor).LiquidKind == WorldLiquidKind.Lava) return false;
 
         for (int dx = -1; dx <= 1; dx++)
             for (int dy = 0; dy >= -2; dy--)
-                if ((grid.At(x + dx, floor + dy).Flags & WorldTileFlags.Inactive) != 0) return false;
+                if (grid.At(x + dx, floor + dy).IsActive && !grid.At(x + dx, floor + dy).IsActuated) return false;
 
         if (grid.At(x, floor + 1).Type is 10 or 48 or 232) return false;
         if (direction != 0)
         {
             int roof = floor;
-            while (!IsSolidOrSloped(in grid.At(x, roof)))
+            while (!Solid(in grid.At(x, roof)))
             {
                 if (--roof < worldSurface) return false;
             }
@@ -542,10 +545,10 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             int launcherStyle = height < 16 && random.Next(3) != 0 ? 4 : 3;
             WorldTile anchor = grid.At(x, roof);
             if (anchor.Type is 135 or 137 or 232 or 237 or 10 || anchor.Wall != 87 ||
-                !IsSolidOrSloped(in grid.At(x, floor + 1)) || grid.At(x, floor).IsActive) return false;
+                !framing.PrepareTempleTrigger(x, floor)) return false;
 
-            PlaceSingleTile(grid, x, floor, 135, 0, 108);
-            PlaceSingleTile(grid, x, roof, 137, 0, checked((short)(launcherStyle * 18)));
+            framing.PlaceTempleMechanism(x, floor, 135, 6);
+            framing.PlaceTempleMechanism(x, roof, 137, launcherStyle);
             for (int side = 0; side < 2; side++)
             {
                 int length = random.Next(1, 5);
@@ -554,8 +557,8 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 while (length-- > 0)
                 {
                     wireX += sideStep;
-                    if (!IsSolidOrSloped(in grid.At(wireX, roof - 1)) || IsSolidOrSloped(in grid.At(wireX, roof + 1))) break;
-                    PlaceSingleTile(grid, wireX, roof, 137, 0, checked((short)(launcherStyle * 18)));
+                    if (!Solid(in grid.At(wireX, roof - 1)) || Solid(in grid.At(wireX, roof + 1))) break;
+                    framing.PlaceTempleMechanism(wireX, roof, 137, launcherStyle);
                     AddWire(ref grid.At(wireX, roof), verticalWireColor);
                 }
             }
@@ -565,11 +568,11 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
 
         int corridorY = floor - random.Next(3);
         int left = x;
-        while (left >= 5 && !IsSolidOrSloped(in grid.At(left, corridorY))) left--;
+        while (left >= 5 && !Solid(in grid.At(left, corridorY))) left--;
         int right = x;
-        while (right < grid.Width - 5 && !IsSolidOrSloped(in grid.At(right, corridorY))) right++;
-        bool canLeft = x - left is > 5 and < 50 && IsSolidOrSloped(in grid.At(left, corridorY + 1));
-        bool canRight = right - x is > 5 and < 50 && IsSolidOrSloped(in grid.At(right, corridorY + 1));
+        while (right < grid.Width - 5 && !Solid(in grid.At(right, corridorY))) right++;
+        bool canLeft = x - left is > 5 and < 50 && Solid(in grid.At(left, corridorY + 1));
+        bool canRight = right - x is > 5 and < 50 && Solid(in grid.At(right, corridorY + 1));
         if (!canLeft && !canRight) return false;
 
         int launcherX;
@@ -584,18 +587,18 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
 
         WorldTile launcherAnchor = grid.At(launcherX, corridorY);
         if (launcherAnchor.Wall != 87 || launcherAnchor.Type is 190 or 135 or 137 or 232 or 237 or 10) return false;
-        if (!IsSolidOrSloped(in grid.At(x, floor + 1))) return false;
-        if (grid.At(x, floor).IsActive) return false;
+        if (!framing.PrepareTempleTrigger(x, floor)) return false;
 
-        PlaceSingleTile(grid, x, floor, 135, 0, 108);
+        framing.PlaceTempleMechanism(x, floor, 135, 6);
         // WorldGen.KillTile clears the solid launcher anchor but keeps its unsafe wall; PlaceTile immediately
         // occupies that same cell, so preserve the backing tile's wall rather than assigning a default tile.
+        framing.KillTile(launcherX, corridorY);
         int wireColor = random.Next(3);
         if ((grid.At(x, floor).Flags & WorldTileFlags.WireRed) != 0) wireColor = 0;
         if ((grid.At(x, floor).Flags & WorldTileFlags.WireBlue) != 0) wireColor = 1;
         if ((grid.At(x, floor).Flags & WorldTileFlags.WireGreen) != 0) wireColor = 2;
         int horizontalLauncherStyle = Math.Abs(launcherX - x) < 10 && random.Next(3) != 0 ? 2 : 1;
-        PlaceSingleTile(grid, launcherX, corridorY, 137, 0, checked((short)(horizontalLauncherStyle * 18)));
+        framing.PlaceTempleMechanism(launcherX, corridorY, 137, horizontalLauncherStyle);
         if (step == 1) grid.At(launcherX, corridorY).FrameX += 18;
 
         int wireLength = random.Next(5);
@@ -603,22 +606,15 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         while (wireLength-- > 0)
         {
             wireY--;
-            if (!IsSolidOrSloped(in grid.At(launcherX, wireY)) ||
-                !IsSolidOrSloped(in grid.At(launcherX - step, wireY)) ||
-                IsSolidOrSloped(in grid.At(launcherX + step, wireY))) break;
-            PlaceSingleTile(grid, launcherX, wireY, 137, 0, checked((short)(horizontalLauncherStyle * 18)));
+            if (!Solid(in grid.At(launcherX, wireY)) ||
+                !Solid(in grid.At(launcherX - step, wireY)) ||
+                Solid(in grid.At(launcherX + step, wireY))) break;
+            framing.PlaceTempleMechanism(launcherX, wireY, 137, horizontalLauncherStyle);
             if (step == 1) grid.At(launcherX, wireY).FrameX += 18;
             AddWire(ref grid.At(launcherX, wireY), wireColor);
         }
         AddWirePath(grid, x, floor, launcherX, corridorY, wireColor);
         return true;
-    }
-
-    private static void PlaceSingleTile(RuntimeGrid grid, int x, int y, ushort type, short frameX, short frameY)
-    {
-        ref WorldTile tile = ref grid.At(x, y);
-        tile.Type = type; tile.Flags |= WorldTileFlags.Active; tile.FrameX = frameX; tile.FrameY = frameY;
-        tile.Shape = 0; tile.LiquidAmount = 0;
     }
 
     private static void AddWire(ref WorldTile tile, int color) => tile.Flags |= color switch
@@ -642,10 +638,10 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         }
     }
 
-    private static void PlaceTempleSpikes(RuntimeGrid grid, IRandom random, VanillaTemplePart2State1458 temple, CancellationToken cancellationToken)
+    private static void PlaceTempleStatues(Workspace workspace, IWorldGenerationVanillaRandom vanillaRandom, RuntimeGrid grid, IRandom random, VanillaTemplePart2State1458 temple, CancellationToken cancellationToken)
     {
         double budget = temple.Rooms * 1.25d * (1d + random.Next(-25, 36) * .01d);
-        for (int attempts = 1; budget > 0d && attempts <= 10000; attempts++)
+        for (int attempts = 1; budget > 0d && attempts <= 10001; attempts++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             int x = random.Next(temple.Left, temple.Right); int y = random.Next(temple.Top, temple.Bottom);
@@ -653,14 +649,15 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             int floor = FindTempleFloor(grid, x, y, temple.Bottom);
             if (floor > temple.Bottom) continue;
             int style = random.Next(43, 46);
-            if (TryPlaceObject(grid, x, floor, 2, 3, 105, style * 36, 0)) budget -= 1d;
+            CaveHousePlacement1458.PlaceHouseObject(workspace, vanillaRandom, x, floor, 105, style);
+            if (grid.At(x, floor).Type == 105) budget -= 1d;
         }
     }
 
-    private static void PlaceTempleFurniture(RuntimeGrid grid, IRandom random, VanillaTemplePart2State1458 temple, CancellationToken cancellationToken)
+    private static void PlaceTempleFurniture(Workspace workspace, IWorldGenerationVanillaRandom vanillaRandom, RuntimeGrid grid, IRandom random, VanillaTemplePart2State1458 temple, CancellationToken cancellationToken)
     {
         double budget = temple.Rooms * 1.35d * (1d + random.Next(-15, 26) * .01d);
-        for (int attempts = 1; budget > 0d && attempts <= 10000; attempts++)
+        for (int attempts = 1; budget > 0d && attempts <= 10001; attempts++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             int x = random.Next(temple.Left, temple.Right); int y = random.Next(temple.Top, temple.Bottom);
@@ -669,30 +666,40 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             if (floor > temple.Bottom) continue;
             switch (random.Next(3))
             {
-                case 0: if (TryPlaceObject(grid, x, floor, 2, 1, 18, 360, 0)) budget -= 1d; break;
+                case 0: CaveHousePlacement1458.PlaceHouseObject(workspace, vanillaRandom, x, floor, 18, 10); if (grid.At(x, floor).Type == 18) budget -= 1d; break;
                 // WorldGen.Place3x2 takes the centre bottom cell for tables; the visual footprint starts at x - 1.
-                case 1: if (TryPlaceObject(grid, x - 1, floor, 3, 2, 14, 486, 0)) budget -= 1d; break;
+                case 1: CaveHousePlacement1458.PlaceHouseObject(workspace, vanillaRandom, x, floor, 14, 9); if (grid.At(x, floor).Type == 14) budget -= 1d; break;
                 // PlaceTile(15) takes the Place1x2 chair arm. Its style stride is 40 pixels in FrameY,
                 // not the 3x2 furniture stride used by tables and work benches.
-                case 2: if (TryPlaceObject(grid, x, floor, 1, 2, 15, 0, 480)) budget -= 1d; break;
+                case 2: PlaceFloorChair(workspace, vanillaRandom, x, floor,12); if (grid.At(x, floor).Type == 15) budget -= 1d; break;
             }
         }
     }
 
-    private static void PlaceTemplePaintings(RuntimeGrid grid, IRandom random, VanillaTemplePart2State1458 temple, CancellationToken cancellationToken)
+    private static void PlaceTemplePaintings(Workspace workspace, IWorldGenerationVanillaRandom vanillaRandom, RuntimeGrid grid, IRandom random, VanillaTemplePart2State1458 temple, CancellationToken cancellationToken)
     {
         int budget = 1;
         if (grid.Width > 4200) budget++;
         if (grid.Width > 6400) budget += random.Next(2);
-        for (int attempts = 1; budget > 0 && attempts <= 10000; attempts++)
+        for (int attempts = 1; budget > 0 && attempts <= 10001; attempts++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             int x = random.Next(temple.Left, temple.Right); int y = random.Next(temple.Top, temple.Bottom);
             if (!IsTempleAir(grid, x, y) || HasTemplePaintingOrDoor(grid, x, y)) continue;
             // TileObjectData for painting style 88 maps to this fixed 3x3 frame origin.
             // WorldGen.Place3x3Wall centres the painting on the sampled cell and requires wall, not floor support.
-            if (TryPlaceWallObject(grid, x, y, 3, 3, 240, 864, 108)) budget--;
+            if (CaveHousePlacement1458.PlaceHouseObject(workspace, vanillaRandom, x, y, 240, 88)) budget--;
         }
+    }
+
+    private static void PlaceFloorChair(Workspace workspace, IWorldGenerationVanillaRandom random, int x, int y,int style)
+    {
+        ref WorldTile anchor = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(x, y)];
+        if (!anchor.IsActive) HellFortGenerator1458.ClearPlacementAnchor(ref anchor);
+        GenerationFurniturePlacement1458.Place(workspace, x, y, 15, style, solidity: workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, workspace.HasVanillaGenerationSolidity);
+        framing.SquareTileFrame(x, y);
+        if (workspace.TileStore.Get(x, y).IsActive) framing.SquareTileFrame(x, y);
     }
 
     private static int FindTempleFloor(RuntimeGrid grid, int x, int y, int bottom)
@@ -714,51 +721,14 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         return false;
     }
 
-    private static bool TryPlaceObject(RuntimeGrid grid, int left, int bottom, int width, int height, ushort type, int frameX, int frameY)
+    private void ApplyCaveWalls(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
-        int top = bottom - height + 1;
-        if (left < 1 || top < 1 || left + width >= grid.Width || bottom + 1 >= grid.Height) return false;
-        for (int dx = 0; dx < width; dx++)
-            for (int dy = 0; dy < height; dy++) if (grid.At(left + dx, top + dy).IsActive) return false;
-        for (int dx = 0; dx < width; dx++) if (!IsSolidOrSloped(in grid.At(left + dx, bottom + 1))) return false;
-        for (int dx = 0; dx < width; dx++)
-            for (int dy = 0; dy < height; dy++)
-            {
-                ref WorldTile tile = ref grid.At(left + dx, top + dy);
-                tile.Type = type; tile.Flags |= WorldTileFlags.Active; tile.FrameX = checked((short)(frameX + dx * 18));
-                tile.FrameY = checked((short)(frameY + dy * 18)); tile.Shape = 0; tile.LiquidAmount = 0;
-            }
-        return true;
-    }
-
-    private static bool TryPlaceWallObject(RuntimeGrid grid, int centerX, int centerY, int width, int height, ushort type, int frameX, int frameY)
-    {
-        int left = centerX - width / 2;
-        int top = centerY - height / 2;
-        if (left < 1 || top < 1 || left + width >= grid.Width || top + height >= grid.Height) return false;
-        for (int dx = 0; dx < width; dx++)
-            for (int dy = 0; dy < height; dy++)
-            {
-                WorldTile tile = grid.At(left + dx, top + dy);
-                if (tile.IsActive || tile.Wall == 0) return false;
-            }
-        for (int dx = 0; dx < width; dx++)
-            for (int dy = 0; dy < height; dy++)
-            {
-                ref WorldTile tile = ref grid.At(left + dx, top + dy);
-                tile.Type = type; tile.Flags |= WorldTileFlags.Active; tile.FrameX = checked((short)(frameX + dx * 18));
-                tile.FrameY = checked((short)(frameY + dy * 18)); tile.Shape = 0; tile.LiquidAmount = 0;
-            }
-        return true;
-    }
-
-    // WorldGen.templePart2 keeps Main.tileSolid[232] false from its chest loop through spikes and furniture.
-    // Floor search still stops on an active 232, but support and mayanTrap predicates must not treat it as solid.
-    private static bool IsSolidOrSloped(in WorldTile tile) =>
-        tile.IsActive && tile.Type != 232 && VanillaTileCollisionCatalog.IsSolid(tile.TileType);
-
-    private void ApplyCaveWalls(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
+        if (workspace.HasVanillaGenerationSolidity)
+        {
+            workspace.SetVanillaGenerationSolid(new TileTypeId(162), false);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(226), true);
+            workspace.SetVanillaGenerationSolid(new TileTypeId(232), false);
+        }
         // TerrariaServer 1.4.5.8 WorldGen "Cave Walls" ordinary-world path. The old clean-room
         // implementation painted fixed ellipses, which produced detached artificial wall blobs and did not
         // preserve the shared-RNG contract. Vanilla instead searches for a bounded connected cave, derives the
@@ -920,32 +890,23 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         IWorldGenerationVanillaRandom random,
         int startX,
         int startY) =>
-        ApplyGemCave(new RuntimeGrid(workspace), new VanillaRandom(random), startX, startY);
+        ApplyGemCave(new RuntimeGrid(workspace), new VanillaRandom(random), startX, startY,
+            new GenerationTileFraming1458(workspace.TileStore, random, workspace,
+                useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity));
 
-    internal static bool TryMayanTrapPrefixForTesting(
+    internal static bool TryPlaceMayanTrapForTesting(
         Workspace workspace,
         IWorldGenerationVanillaRandom random,
         int x,
         int y) =>
-        TryMayanTrap(new RuntimeGrid(workspace), new VanillaRandom(random), x, y, workspace.HeightTiles - 300, 140d);
+        TryMayanTrap(workspace, new GenerationTileFraming1458(workspace.TileStore, random, workspace, workspace.HasVanillaGenerationSolidity), new RuntimeGrid(workspace), new VanillaRandom(random), x, y, workspace.HeightTiles - 300, 140d);
 
-    // TerrariaServer 1.4.5.8 WorldGen.PlaceTile dispatches tile 15 to its 1x2 object path.
-    // Keep the narrow fixture seam so the Temple furniture call site cannot silently regress to
-    // a generic 3x2 placement while the broader TileObjectData implementation is still pending.
-    internal static bool TryPlaceTempleChairForTesting(Workspace workspace, int x, int floor) =>
-        TryPlaceObject(new RuntimeGrid(workspace), x, floor, 1, 2, 15, 0, 480);
-
-    internal static bool TryPlaceTempleTableForTesting(Workspace workspace, int centerX, int floor) =>
-        TryPlaceObject(new RuntimeGrid(workspace), centerX - 1, floor, 3, 2, 14, 486, 0);
-
-    internal static bool TryPlaceTemplePaintingForTesting(Workspace workspace, int centerX, int centerY) =>
-        TryPlaceWallObject(new RuntimeGrid(workspace), centerX, centerY, 3, 3, 240, 864, 108);
-
-    internal static bool TryPlaceTempleCandleForTesting(Workspace workspace, int x, int floor) =>
-        TryPlaceObject(new RuntimeGrid(workspace), x, floor, 2, 3, 105, 1620, 0);
-
-    internal static bool TryPlaceTempleWorkBenchForTesting(Workspace workspace, int x, int floor) =>
-        TryPlaceObject(new RuntimeGrid(workspace), x, floor, 2, 1, 18, 360, 0);
+    internal static bool TryPlaceTempleChairForTesting(Workspace workspace, IWorldGenerationVanillaRandom random, int x, int floor)
+    { PlaceFloorChair(workspace, random, x, floor,12); return workspace.TileStore.Get(x, floor).IsActive; }
+    internal static bool TryPlaceTempleTableForTesting(Workspace workspace, IWorldGenerationVanillaRandom random, int centerX, int floor) => CaveHousePlacement1458.PlaceHouseObject(workspace, random, centerX, floor, 14, 9);
+    internal static bool TryPlaceTemplePaintingForTesting(Workspace workspace, IWorldGenerationVanillaRandom random, int centerX, int centerY) => CaveHousePlacement1458.PlaceHouseObject(workspace, random, centerX, centerY, 240, 88);
+    internal static bool TryPlaceTempleStatueForTesting(Workspace workspace, IWorldGenerationVanillaRandom random, int x, int floor) => CaveHousePlacement1458.PlaceHouseObject(workspace, random, x, floor, 105, 45);
+    internal static bool TryPlaceTempleWorkBenchForTesting(Workspace workspace, IWorldGenerationVanillaRandom random, int x, int floor) => CaveHousePlacement1458.PlaceHouseObject(workspace, random, x, floor, 18, 10);
 
     internal static void ApplyTemplePart2ForTesting(IWorldGenerationContext context, Workspace workspace, double worldSurface) =>
         ApplyTemplePart2(
@@ -1217,209 +1178,88 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         VanillaWallDefinitionCatalog.TryGet(new WallTypeId(wall), out VanillaWallDefinition definition) &&
         definition.IsHousingWall;
 
-    private void ApplyJungleTrees(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyJungleTrees(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
+        if (workspace.HasVanillaGenerationSolidity) workspace.SetVanillaGenerationSolid(new TileTypeId(379), true);
+        IWorldGenerationVanillaRandom physical = context.VanillaRandom!;
+        var framing = new GenerationTileFraming1458(workspace.TileStore, physical, workspace, workspace.HasVanillaGenerationSolidity);
+        var walls = new GenerationWallFraming1458(workspace.TileStore, physical);
+        int grown = 0;
+        for (int x = 0; x < grid.Width; x++)
         {
-            <= 4200 => 10,
-            <= 6400 => 15,
-            _ => 20
-        };
-        int halfWidth = Math.Max(260, grid.Width / 9);
-        int left = Math.Max(25, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 25, bootstrap.JungleOriginX + halfWidth);
-        int minY = Math.Clamp((int)state.RockLayer + 20, 25, state.UnderworldTop - 120);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 55);
-        int placed = 0;
-
-        for (int attempt = 0; attempt < target * 160 && placed < target; attempt++)
-        {
-            if ((attempt & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int x = random.Next(left, right);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probe, Math.Min(grid.Height - 1, probe + 45));
-            if (floor < 10 || floor >= grid.Height - 5)
-                continue;
-            ushort floorType = grid.At(x, floor).Type;
-            if (floorType is not (Mud or JungleGrass))
-                continue;
-
-            int height = random.Next(7, 14);
-            if (!grid.IsEmptyRectangle(x - 2, floor - height - 3, 5, height + 3))
-                continue;
-
-            for (int y = floor - 1; y >= floor - height; y--)
-                SetBlock(ref grid.At(x, y), LivingMahogany);
-            int crownY = floor - height;
-            for (int dx = -3; dx <= 3; dx++)
-                for (int dy = -2; dy <= 2; dy++)
-                {
-                    if (dx * dx + dy * dy > 10)
-                        continue;
-                    ref WorldTile leaf = ref grid.At(x + dx, crownY + dy);
-                    if (!leaf.IsActive)
-                        SetBlock(ref leaf, LivingMahoganyLeaves);
-                }
-            placed++;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for (int y = (int)state.WorldSurface - 1; y < grid.Height - 350; y++)
+                if (random.Next(10) == 0 && TreeGrower1458.TryGrowUnderground(workspace.TileStore, x, y, physical, framing, walls)) grown++;
         }
-
-        context.ReportProgress(1d, $"Growing Living Mahogany structures ({placed}/{target})");
+        context.ReportProgress(1d, $"Growing underground jungle trees ({grown})");
     }
 
-    private void ApplyFloatingIslandHouses(
-        IWorldGenerationContext context,
-        Workspace workspace,
-        RuntimeGrid grid,
-        IRandom random)
+    private void ApplyFloatingIslandHouses(IWorldGenerationContext context,Workspace workspace,RuntimeGrid grid,IRandom random)
     {
-        int target = grid.Width switch
+        foreach(VanillaSkyIsland1458 island in workspace.VanillaSkyIslands)
         {
-            <= 4200 => 3,
-            <= 6400 => 5,
-            _ => 6
-        };
-        int skyBottom = Math.Clamp((int)state.WorldSurface - 35, 80, grid.Height - 50);
-        var candidates = new List<WorldGenerationPoint>();
-
-        for (int x = 40; x < grid.Width - 40; x += 12)
-        {
-            if ((x & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            for (int y = 45; y < skyBottom; y++)
-            {
-                if (grid.At(x, y).IsActive && grid.At(x, y).Type == Cloud && !grid.At(x, y - 1).IsActive)
-                {
-                    if (candidates.Count == 0 || Math.Abs(x - candidates[^1].X) >= 180)
-                        candidates.Add(new WorldGenerationPoint(x, y));
-                    break;
-                }
-            }
+            context.CancellationToken.ThrowIfCancellationRequested();
+            if(!island.IsLake)PlaceIslandHouse(workspace,context.VanillaRandom!,island.X,island.Y,island.Style,state.WorldSurface);
         }
-
-        int placed = 0;
-        foreach (WorldGenerationPoint candidate in candidates)
-        {
-            if (placed >= target)
-                break;
-            int floorY = candidate.Y;
-            int left = Math.Clamp(candidate.X - random.Next(5, 8), 4, grid.Width - 18);
-            if (!CanBuildSkyHouse(grid, left, floorY))
-                continue;
-
-            BuildSkyHouse(grid, left, floorY);
-            int chestLeft = left + 3;
-            int chestTop = floorY - 2;
-            if (!PlaceGeneratedChest(workspace, grid, chestLeft, chestTop, style: 13))
-                continue;
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Building Floating Island Houses ({placed}/{target})");
+        context.ReportProgress(1d,$"Building Floating Island Houses ({workspace.VanillaSkyIslandHouseCount})");
     }
 
-    private static bool CanBuildSkyHouse(RuntimeGrid grid, int left, int floorY)
+    private static void PlaceIslandHouse(Workspace workspace,IWorldGenerationVanillaRandom random,int x,int y,int style,double surface)
     {
-        if (floorY < 10 || floorY + 1 >= grid.Height || left < 2 || left + 13 >= grid.Width - 2)
-            return false;
-
-        // A house owns both its interior and its Sunplate perimeter.  Checking only the interior let a
-        // pre-existing registered chest on the floor or an outer wall be overwritten, leaving a stale
-        // chest side-table entry for validation and serialization.
-        for (int x = left; x <= left + 12; x++)
+        if(style!=0)throw new InvalidOperationException("Island House fountain/tree palettes require an owned generation placement path.");
+        WorldTileStore store=workspace.TileStore;int width=workspace.WidthTiles,height=workspace.HeightTiles;
+        ref WorldTile At(int a,int b)=>ref store.Tiles[store.GetUncheckedIndex(a,b)];
+        for(int a=x-30;a<=x+30;a++)for(int b=y-30;b<=y+30;b++)
+            if(a>=10&&b>=10&&a<width-10&&b<height-10&&(DungeonGenerationTiles1458.IsDungeonWall(At(a,b).Wall)||At(a,b).Wall is 87 or 3 or 83))return;
+        int direction=random.Next(2)==0?-1:1,halfWidth=random.Next(7,12),roomHeight=random.Next(5,7);
+        int floor=y;
+        int probe=x+(halfWidth+2)*direction;
+        if(y>surface)floor=y-5;
+        else for(int row=y-15;row<y+30;row++)
         {
-            if (!grid.At(x, floorY).IsActive)
-                return false;
-            for (int y = floorY - 7; y <= floorY; y++)
-            {
-                WorldTile tile = grid.At(x, y);
-                if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                    return false;
-            }
+            WorldTile tile=At(probe,row);
+            if(tile.Wall!=0&&tile.IsActive&&!tile.IsActuated&&!tile.IsHalfBrick&&tile.SourceSlope==0&&
+                (workspace.HasVanillaGenerationSolidity?workspace.IsVanillaGenerationSolid(tile.TileType):VanillaTileCollisionCatalog.IsSolid(tile.TileType))&&
+                !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)&&tile.Type is not(192 or 191 or 384)){floor=row-1;break;}
         }
-        return true;
+        int left=Math.Max(0,x-halfWidth-1),right=Math.Min(width,x+halfWidth+1),top=Math.Max(0,floor-roomHeight-1),bottom=Math.Min(height,floor+2);
+        for(int a=left;a<=right;a++)for(int b=top-1;b<=bottom;b++)
+            if(b!=top-1||a!=left&&a!=right){ref WorldTile tile=ref At(a,b);tile.Flags|=WorldTileFlags.Active;tile.LiquidAmount=0;tile.Type=202;tile.Wall=0;tile.ClearSourceShape();}
+        left=Math.Max(0,x-halfWidth);right=Math.Min(width,x+halfWidth);top=Math.Max(0,floor-roomHeight);bottom=Math.Min(height,floor+1);
+        for(int a=left;a<=right;a++)for(int b=top;b<bottom;b++)
+            if((b!=top||a!=left&&a!=right)&&At(a,b).Wall==0){At(a,b).Flags&=~WorldTileFlags.Active;At(a,b).Wall=82;}
+        int doorX=x+(halfWidth+1)*direction;
+        for(int a=doorX-2;a<=doorX+2;a++)for(int b=floor-2;b<=floor;b++)At(a,b).Flags&=~WorldTileFlags.Active;
+        CaveHousePlacement1458.PlaceHouseDoor(workspace,random,doorX,floor,9);
+        int backX=x+(halfWidth+1)*-direction-direction;
+        for(int b=top;b<=bottom+1;b++){ref WorldTile tile=ref At(backX,b);tile.Flags|=WorldTileFlags.Active;tile.LiquidAmount=0;tile.Type=202;tile.Wall=0;tile.ClearSourceShape();}
+        int itemChoice=workspace.VanillaSkyIslandHouseCount;if(itemChoice>3)itemChoice=random.Next(4);
+        int mainItem=itemChoice switch{0=>159,1=>65,2=>158,_=>2219};
+        BuriedChestContext1458 chestContext=workspace.VanillaBuriedChestContext??throw new InvalidOperationException("Island House requires retained chest loot context.");
+        var chests=new BuriedChest1458(store,random,chestContext,workspace.CanRegisterGeneratedChest,c=>{if(!workspace.TryAddChest(c.Left,c.Top,string.Empty,c.Items))throw new InvalidOperationException("Island chest could not enter retained side table.");},workspace:workspace);
+        chests.TryAdd(x,floor-3,out _,out _,mainItem,notNearOtherChests:false,chestStyle:13);
+        workspace.VanillaSkyIslandHouseCount++;
+        int windowLeft=x-halfWidth/2+1,windowRight=x+halfWidth/2-1,windowRadius=halfWidth>10?2:1,windowY=(top+bottom)/2-1;
+        for(int a=windowLeft-windowRadius;a<=windowLeft+windowRadius;a++)for(int b=windowY-1;b<=windowY+1;b++)At(a,b).Wall=21;
+        for(int a=windowRight-windowRadius;a<=windowRight+windowRadius;a++)for(int b=windowY-1;b<=windowY+1;b++)At(a,b).Wall=21;
+        int tableX=x+(halfWidth/2+1)*-direction;
+        CaveHousePlacement1458.PlaceHouseObject(workspace,random,tableX,bottom-1,14,7);
+        PlaceFloorChair(workspace,random,tableX-2,bottom-1,10);PlaceFloorChair(workspace,random,tableX+2,bottom-1,10);
+        At(tableX-2,bottom-1).FrameX+=18;At(tableX-2,bottom-2).FrameX+=18;
+        CaveHousePlacement1458.PlaceHouseObject(workspace,random,left+1,top,91,random.Next(7,10));
+        CaveHousePlacement1458.PlaceHouseObject(workspace,random,right-1,top,91,random.Next(7,10));
+        CaveHousePlacement1458.PlaceHouseObject(workspace,random,direction>0?left:right,top+1,91,random.Next(7,10));
     }
 
-    internal static bool CanBuildSkyHouseForTesting(Workspace workspace, int left, int floorY)
-    {
-        ArgumentNullException.ThrowIfNull(workspace);
-        return CanBuildSkyHouse(new RuntimeGrid(workspace), left, floorY);
-    }
+    internal static void PlaceIslandHouseForTesting(Workspace workspace,IWorldGenerationVanillaRandom random,int x,int y,int style,double surface)=>PlaceIslandHouse(workspace,random,x,y,style,surface);
 
-    private static void BuildSkyHouse(RuntimeGrid grid, int left, int floorY)
-    {
-        const int width = 13;
-        const int height = 7;
-        int top = floorY - height;
 
-        for (int x = left; x < left + width; x++)
-        {
-            SetBlock(ref grid.At(x, floorY), Sunplate);
-            SetBlock(ref grid.At(x, top), Sunplate);
-        }
-        for (int y = top; y <= floorY; y++)
-        {
-            SetBlock(ref grid.At(left, y), Sunplate);
-            SetBlock(ref grid.At(left + width - 1, y), Sunplate);
-        }
-        for (int x = left + 1; x < left + width - 1; x++)
-            for (int y = top + 1; y < floorY; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive && !VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                {
-                    tile.Flags &= ~WorldTileFlags.Active;
-                    tile.Shape = 0;
-                    tile.LiquidAmount = 0;
-                }
-                if (!tile.IsActive)
-                    tile.Wall = DiscWall;
-            }
-    }
 
-    private static bool PlaceGeneratedChest(
-        Workspace workspace,
-        RuntimeGrid grid,
-        int left,
-        int top,
-        int style)
-    {
-        if (left < 1 || top < 1 || left + 1 >= grid.Width - 1 || top + 2 >= grid.Height - 1)
-            return false;
-        if (grid.At(left, top).IsActive || grid.At(left + 1, top).IsActive ||
-            grid.At(left, top + 1).IsActive || grid.At(left + 1, top + 1).IsActive ||
-            !grid.At(left, top + 2).IsActive || !grid.At(left + 1, top + 2).IsActive)
-        {
-            return false;
-        }
 
-        WorldTile a = grid.At(left, top);
-        WorldTile b = grid.At(left + 1, top);
-        WorldTile c = grid.At(left, top + 1);
-        WorldTile d = grid.At(left + 1, top + 1);
-        for (int dx = 0; dx < 2; dx++)
-            for (int dy = 0; dy < 2; dy++)
-            {
-                ref WorldTile tile = ref grid.At(left + dx, top + dy);
-                tile.Type = Containers;
-                tile.Flags |= WorldTileFlags.Active;
-                tile.FrameX = checked((short)(style * 36 + dx * 18));
-                tile.FrameY = checked((short)(dy * 18));
-                tile.Shape = 0;
-                tile.LiquidAmount = 0;
-                tile.LiquidKind = WorldLiquidKind.Water;
-            }
 
-        if (workspace.TryAddGeneratedChest(left, top, string.Empty, ReadOnlySpan<WorldChestItem>.Empty))
-            return true;
-        grid.At(left, top) = a;
-        grid.At(left + 1, top) = b;
-        grid.At(left, top + 1) = c;
-        grid.At(left + 1, top + 1) = d;
-        return false;
-    }
+
+
+
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Late-structure pass executed before bootstrap initialization.");
@@ -1427,16 +1267,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     private static bool IsNaturalCarvable(ushort type) =>
         type is Dirt or Stone or Mud or JungleGrass or 123 or 147 or 161 or 179 or 180 or 181 or 182 or 183;
 
-    private static void SetBlock(ref WorldTile tile, ushort type)
-    {
-        tile.Type = type;
-        tile.Flags |= WorldTileFlags.Active;
-        tile.FrameX = 0;
-        tile.FrameY = 0;
-        tile.Shape = 0;
-        tile.LiquidAmount = 0;
-        tile.LiquidKind = WorldLiquidKind.Water;
-    }
+
 
     private interface IRandom
     {
@@ -1448,6 +1279,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
 
     private sealed class VanillaRandom(IWorldGenerationVanillaRandom inner) : IRandom
     {
+
         public int Next() => inner.Next();
         public int Next(int max) => inner.Next(max);
         public int Next(int min, int max) => inner.Next(min, max);

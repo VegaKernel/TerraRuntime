@@ -19,7 +19,7 @@ internal sealed partial class GenerationTileFraming1458
     }
 
     // Source CheckSuper444 scans liquid even on an inactive member already cleared by KillTile.
-    // The dry invalid arm needs its canonical projectile owner and remains outside this wet admission.
+    // Dry invalid footprints publish through the composed canonical projectile owner.
     private void FrameBeeHive(int i, int j)
     {
         if (destroyingObject)
@@ -45,13 +45,16 @@ internal sealed partial class GenerationTileFraming1458
         }
         if (!broken && !wet)
             return;
-        if (!wet)
+        if (!wet && !SourceClient && workspace?.EntityEffects is null)
             throw new NotSupportedException("Dry bee hive destruction requires the canonical generation projectile owner.");
         destroyingObject = true;
         for (int x = left; x < left + 2; x++)
         for (int y = top; y < top + 2; y++)
             if (At(x, y).IsActive && At(x, y).Type == 444)
                 KillTile(x, y);
+        if (!SourceClient && !wet)
+            workspace!.EntityEffects!.SpawnProjectile(new(655), workspace.GenerationMyPlayer,
+                left * 16 + .5f, top * 16 + .5f, 0, 0, 0, 0, default);
         destroyingObject = false;
         for (int x = left - 1; x < left + 3; x++)
         for (int y = top - 1; y < top + 3; y++)

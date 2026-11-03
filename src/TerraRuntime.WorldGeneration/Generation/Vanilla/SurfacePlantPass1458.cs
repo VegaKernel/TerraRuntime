@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration.Runtime;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
@@ -46,7 +47,8 @@ internal static class SurfacePlantPass1458
     public static long Apply(
         WorldTileStore store,
         IWorldGenerationVanillaRandom random,
-        CancellationToken cancellation)
+        CancellationToken cancellation,
+        Workspace? workspace = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(random);
@@ -78,7 +80,7 @@ internal static class SurfacePlantPass1458
                 if (At(store, x, y - 1).IsActive)
                     continue;
 
-                if (TryPlacePlant(store, random, x, y - 1, plant))
+                if (TryPlacePlant(store, random, x, y - 1, plant, workspace))
                     planted++;
 
                 // Only the ordinary-grass branch copies paint and coating upward, and the source does it
@@ -106,7 +108,8 @@ internal static class SurfacePlantPass1458
         IWorldGenerationVanillaRandom random,
         int x,
         int y,
-        ushort plant)
+        ushort plant,
+        Workspace? workspace = null)
     {
         ref WorldTile cell = ref At(store, x, y);
 
@@ -129,7 +132,7 @@ internal static class SurfacePlantPass1458
         }
 
         if (!IsFitToPlaceFlowerIn(store, x, y, plant))
-            return Frame(store, random, x, y);
+            return Frame(store, random, x, y, workspace);
 
         WorldTile floor = At(store, x, y + 1);
 
@@ -137,16 +140,16 @@ internal static class SurfacePlantPass1458
         {
             cell.Flags |= WorldTileFlags.Active;
             cell.Type = CorruptThornyBush;
-            new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
-            return Frame(store, random, x, y);
+            new GenerationTileFraming1458(store, random, workspace, useWorldGenerationSolidity: workspace is not null).SquareTileFrame(x, y);
+            return Frame(store, random, x, y, workspace);
         }
 
         if (plant == CrimsonPlants && random.Next(13) == 0)
         {
             cell.Flags |= WorldTileFlags.Active;
             cell.Type = CrimsonThornyBush;
-            new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
-            return Frame(store, random, x, y);
+            new GenerationTileFraming1458(store, random, workspace, useWorldGenerationSolidity: workspace is not null).SquareTileFrame(x, y);
+            return Frame(store, random, x, y, workspace);
         }
 
         if (IsSpecialPlantFloor(floor.Type))
@@ -159,13 +162,13 @@ internal static class SurfacePlantPass1458
             if (frame is 21 or 24 or 27 or 30 or 33 or 36 or 39 or 42)
                 frame += random.Next(3);
             cell.FrameX = checked((short)(frame * 18));
-            return Frame(store, random, x, y);
+            return Frame(store, random, x, y, workspace);
         }
 
         if (!TreeGrowthCatalog1458.AllowsPlantGrowth(new WallTypeId(cell.Wall)) ||
             !TreeGrowthCatalog1458.AllowsPlantGrowth(new WallTypeId(floor.Wall)))
         {
-            return Frame(store, random, x, y);
+            return Frame(store, random, x, y, workspace);
         }
 
         if (random.Next(50) == 0 ||
@@ -174,7 +177,7 @@ internal static class SurfacePlantPass1458
             cell.Flags |= WorldTileFlags.Active;
             cell.Type = plant;
             cell.FrameX = plant == CrimsonPlants ? (short)270 : (short)144;
-            return Frame(store, random, x, y);
+            return Frame(store, random, x, y, workspace);
         }
 
         if (random.Next(35) == 0 || cell.Wall is >= 63 and <= 70)
@@ -189,13 +192,13 @@ internal static class SurfacePlantPass1458
                 _ => NextFromList(random, [6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
             };
             cell.FrameX = checked((short)(frame * 18));
-            return Frame(store, random, x, y);
+            return Frame(store, random, x, y, workspace);
         }
 
         cell.Flags |= WorldTileFlags.Active;
         cell.Type = plant;
         cell.FrameX = checked((short)(random.Next(6) * 18));
-        return Frame(store, random, x, y);
+        return Frame(store, random, x, y, workspace);
     }
 
     /// <summary>
@@ -205,12 +208,12 @@ internal static class SurfacePlantPass1458
     /// not cosmetic - it is what runs <c>PlantCheck</c> and <c>CheckJunglePlant</c> over the square, and a
     /// plant put down beside a multi-cell plant on the wrong ground destroys it.
     /// </summary>
-    private static bool Frame(WorldTileStore store, IWorldGenerationVanillaRandom random, int x, int y)
+    private static bool Frame(WorldTileStore store, IWorldGenerationVanillaRandom random, int x, int y, Workspace? workspace)
     {
         if (!At(store, x, y).IsActive)
             return false;
 
-        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
+        new GenerationTileFraming1458(store, random, workspace, useWorldGenerationSolidity: workspace is not null).SquareTileFrame(x, y);
         return true;
     }
 

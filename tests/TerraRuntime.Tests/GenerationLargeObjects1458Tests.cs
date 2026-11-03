@@ -18,8 +18,14 @@ public sealed class GenerationLargeObjects1458Tests
         var workspace = CreateWorkspace();
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0, byte shape = 0, bool inactive = false, bool independentHalf = false)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall,
-                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             Assert.True(tile.TrySetSourceShape(shape == 1 || independentHalf, (byte)(shape > 1 ? shape - 1 : 0)));
             workspace.TileStore.Set(x, y, in tile);
         }
@@ -39,9 +45,9 @@ public sealed class GenerationLargeObjects1458Tests
                 int styleY = !wallObject ? 0 : type == 242 ? scenario == 3 ? 26 * 72 : scenario == 9 ? 27 * 72 : 0 :
                     type is 246 or 241 && scenario is 3 or 9 ? (scenario == 3 ? 2 : 1) * objectHeight * 18 : 0;
                 for (int dx = 0; dx < objectWidth; dx++)
-                for (int dy = 0; dy < objectHeight; dy++)
-                    if (scenario != 1 || dx != objectWidth - 1 || dy != objectHeight - 1)
-                        Put(x + dx, y + dy, type, (short)(styleX + dx * 18), (short)(styleY + dy * 18), wall: wallObject && scenario != 8 ? (ushort)1 : (ushort)0);
+                    for (int dy = 0; dy < objectHeight; dy++)
+                        if (scenario != 1 || dx != objectWidth - 1 || dy != objectHeight - 1)
+                            Put(x + dx, y + dy, type, (short)(styleX + dx * 18), (short)(styleY + dy * 18), wall: wallObject && scenario != 8 ? (ushort)1 : (ushort)0);
                 if (wallObject)
                 {
                     if (scenario == 2)
@@ -74,16 +80,19 @@ public sealed class GenerationLargeObjects1458Tests
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
+        Assert.Equal("E8FC26AC6307236C207A12E1C4A3B0813B2B0CAD0F4A4890D2AD1D5CF4699B0B", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("A677D8F1541D2E54F76EB9DE57D22F269A7315A6F9EE7D1DA7ADF425DA2A06A6", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(22, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal("A3E8EAA2CFFEBF11BF004ED84242ADF2C4D1EA104DEFD8C9B0D6A10D5A977D7C", HashFixture(workspace));
-        Assert.Equal("5465461D92F04705A620CC2F7D380153C73F960D043F48929A42BC8CC2AD9EA1", random.Fingerprint());
-        Assert.Equal(229004103, random.Next());
+        Assert.Equal("6F65899CC95AB141610712F489F06EB18469C3D30B5186DEC0832AE0A3C7E93A", random.Fingerprint());
+        Assert.Equal(914015982, random.Next());
         for (int n = 0; n < identities.Length; n++)
-        for (int scenario = 0; scenario < 10; scenario++)
-        {
-            bool survives = n < 41 ? scenario is 0 or 6 or 9 :
-                scenario is 0 or 3 or 5 or 6 || scenario == 9 && identities[n] != 242;
-            Assert.Equal(survives, workspace.TileStore.Get(60 + n % 8 * 112, 45 + n / 8 * 76 + scenario * 6).IsActive);
-        }
+            for (int scenario = 0; scenario < 10; scenario++)
+            {
+                bool survives = n < 41 ? scenario is 0 or 6 or 9 :
+                    scenario is 0 or 3 or 5 or 6 || scenario == 9 && identities[n] != 242;
+                Assert.Equal(survives, workspace.TileStore.Get(60 + n % 8 * 112, 45 + n / 8 * 76 + scenario * 6).IsActive);
+            }
     }
 
     [Theory]
@@ -94,8 +103,14 @@ public sealed class GenerationLargeObjects1458Tests
         var workspace = CreateWorkspace();
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0, byte shape = 0, bool inactive = false, bool independentHalf = false)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall,
-                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             Assert.True(tile.TrySetSourceShape(shape == 1 || independentHalf, (byte)(shape > 1 ? shape - 1 : 0)));
             workspace.TileStore.Set(x, y, in tile);
         }
@@ -109,9 +124,9 @@ public sealed class GenerationLargeObjects1458Tests
             Put(cageX + dx, 333, 1);
         }
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 3; dy++)
-            if (dy != 2 || dx != (cageTrigger ? 0 : 1))
-                Put(wallX + dx, 330 + dy, 245, (short)(dx * 18), (short)(dy * 18), wall: 1);
+            for (int dy = 0; dy < 3; dy++)
+                if (dy != 2 || dx != (cageTrigger ? 0 : 1))
+                    Put(wallX + dx, 330 + dy, 245, (short)(dx * 18), (short)(dy * 18), wall: 1);
         var random = new RandomAdapter(1458);
         new GenerationTileFraming1458(workspace.TileStore, random).TileFrame(903, 330);
         Assert.Equal(digest, HashFixture(workspace));
@@ -119,9 +134,9 @@ public sealed class GenerationLargeObjects1458Tests
         Assert.Equal(nextRandom, random.Next());
         int neighbours = 0;
         for (int x = cageTrigger ? 901 : 897; x < 903; x++)
-        for (int y = 330; y < 333; y++)
-            if (workspace.TileStore.Get(x, y).IsActive)
-                neighbours++;
+            for (int y = 330; y < 333; y++)
+                if (workspace.TileStore.Get(x, y).IsActive)
+                    neighbours++;
         Assert.Equal(cageTrigger ? 0 : 17, neighbours);
     }
 
@@ -143,8 +158,14 @@ public sealed class GenerationLargeObjects1458Tests
         var workspace = CreateWorkspace();
         void Put(int x, int y, ushort type, short fx = 0, short fy = 0, ushort wall = 0, byte shape = 0, bool inactive = false, bool independentHalf = false)
         {
-            var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Wall = wall,
-                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+            var tile = new WorldTile
+            {
+                Type = type,
+                FrameX = fx,
+                FrameY = fy,
+                Wall = wall,
+                Flags = WorldTileFlags.Active | (inactive ? WorldTileFlags.Inactive : WorldTileFlags.None)
+            };
             Assert.True(tile.TrySetSourceShape(shape == 1 || independentHalf, (byte)(shape > 1 ? shape - 1 : 0)));
             workspace.TileStore.Set(x, y, in tile);
         }
@@ -166,7 +187,7 @@ public sealed class GenerationLargeObjects1458Tests
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         return workspace;
     }
 
@@ -174,12 +195,12 @@ public sealed class GenerationLargeObjects1458Tests
     {
         var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 

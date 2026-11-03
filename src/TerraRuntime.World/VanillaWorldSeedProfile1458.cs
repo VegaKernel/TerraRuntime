@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 
@@ -76,15 +77,17 @@ public readonly record struct VanillaWorldSeedProfile1458(
     public bool IsDefault => Special == VanillaSpecialWorldSeed1458.None && Secret == VanillaSecretWorldSeed1458.None;
 
     /// <summary>
-    /// True when the source-backed <c>WorldGen.Reset</c> and <c>TerrainPass</c> slice can run.
-    /// TerrariaServer 1.4.5.8 gives the pure Don't Dig Up/Remix profile distinct Reset and
-    /// Terrain branches, both of which are ported here. Zenith implies Remix but also enables
-    /// several other special-seed branches, so it is deliberately excluded until those branches
-    /// have independent source-backed evidence. Secret switches are excluded for the same reason.
-    /// This is intentionally narrower than complete source-backed pipeline support: all later
-    /// source-shaped overlays remain ordinary-world only.
+    /// Qualified canonical Reset/Terrain prefix for the captured classic/surface profiles and individual extras.
+    /// Rain, dual-dungeon, and the two rain/lightning pairs share this prefix. Other combinations remain excluded. This does not indicate
+    /// full special-world support; later generation has an independent capability boundary.
     /// </summary>
     public bool SupportsSourceBackedResetAndTerrain =>
-        IsDefault ||
-        (Special == VanillaSpecialWorldSeed1458.Remix && Secret == VanillaSecretWorldSeed1458.None);
+        ((Secret & ~(VanillaSecretWorldSeed1458.MolePeople | VanillaSecretWorldSeed1458.SuchGreatHeights)) == 0 ||
+         (Special == VanillaSpecialWorldSeed1458.None && Secret is (VanillaSecretWorldSeed1458.BringATowel | VanillaSecretWorldSeed1458.ElectricBoogaloo) or (VanillaSecretWorldSeed1458.BringATowel | VanillaSecretWorldSeed1458.CalmBeforeTheStorm)) ||
+         (Special == VanillaSpecialWorldSeed1458.None && Enum.IsDefined(Secret) && BitOperations.IsPow2((ulong)Secret))) &&
+        Special is VanillaSpecialWorldSeed1458.None or VanillaSpecialWorldSeed1458.DrunkWorld or
+        VanillaSpecialWorldSeed1458.ForTheWorthy or VanillaSpecialWorldSeed1458.CelebrationMk10 or
+        VanillaSpecialWorldSeed1458.TheConstant or VanillaSpecialWorldSeed1458.NotTheBees or
+        VanillaSpecialWorldSeed1458.Remix or VanillaSpecialWorldSeed1458.NoTraps or
+        VanillaSpecialWorldSeed1458.Skyblock or (VanillaSpecialWorldSeed1458)255;
 }

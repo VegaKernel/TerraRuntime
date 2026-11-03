@@ -534,6 +534,15 @@ internal static partial class CaveHousePlacement1458
         return true;
     }
 
+    internal static bool PlaceHouseDoor(Workspace workspace,IWorldGenerationVanillaRandom random,int x,int y,int style)
+    {
+        var grid=new Grid(workspace.TileStore,workspace.HasVanillaGenerationSolidity?workspace.IsVanillaGenerationSolid:null);
+        if(grid.At(x,y).IsActive)return false;
+        var framing=new GenerationTileFraming1458(workspace.TileStore,random,workspace,workspace.HasVanillaGenerationSolidity);
+        PlaceDoor(grid,framing,x,y,style,random);
+        return grid.At(x,y).IsActive;
+    }
+
     private static void PlaceDoor(Grid grid, GenerationTileFraming1458 framing,
         int x, int anchorY, int style, IWorldGenerationVanillaRandom random)
     {

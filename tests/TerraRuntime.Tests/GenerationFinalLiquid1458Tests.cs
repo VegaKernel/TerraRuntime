@@ -108,8 +108,8 @@ public sealed class GenerationFinalLiquid1458Tests
         yield return ["container-3-24-19", "direct", "40,40,1,21,1,18,36,24,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,41,1,19,1,18,36,32,0,1,3,5,7,1,1,1,1,1,1,1,1,1,1", "5768503251759BD790D30EBD8842BC575C3CB56AA0A7FF7B6D4FDF2680D011F3", "930D585EE27D9B35CCC88DA8D192E433428F9864F81F8B4F9F3EF35CB6213679", "511931AF068F0673225AD8F7DE74437E97374E2890E34F8E887387CFFB6CDA29", 906992634];
         yield return ["solid-water-skip-3", "direct", "40,40,1,1,1,18,36,32,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;39,40,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "BF37DB7E44C65C0FB573B71E560334130F45A671933AE752A1B708409CC6738C", "BF37DB7E44C65C0FB573B71E560334130F45A671933AE752A1B708409CC6738C", "511931AF068F0673225AD8F7DE74437E97374E2890E34F8E887387CFFB6CDA29", 906992634];
         yield return ["ordered-scan", "scan", "40,40,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,40,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,41,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,41,0,0,1,18,36,32,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "DB26E90177DF13A3A301D5423F825F832200A3575EAAC596A311BC42DB273586", "4177CB3CEA6F611C7E2A6729024B5F578C5486E9229B1004A4674A6441970A0A", "511931AF068F0673225AD8F7DE74437E97374E2890E34F8E887387CFFB6CDA29", 906992634];
-        yield return ["ordered-registered", "registered", "40,40,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,40,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,41,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,41,0,0,1,18,36,32,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "E90180065B0811FCC6C63416DD38E164C0BABA9DE12E7B8FC9CD5C06EE62D720", "B0071F1096BD49BE956B99EFD8154F0DA4C2B18D4FC8FC4672F08208F7CC2038", "80DE3010F3621209CFFB6264028F49DAE5F8887D06D4F974520C42A6E06BF287", 1056314798];
-        yield return ["registered-pairs", "registered", "60,330,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;61,330,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;100,330,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;100,331,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;140,330,0,0,1,18,36,32,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;141,330,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "132B9B83306186CA41FF277B4DF82413CEC4845412D9B699295330BA231457E5", "CD691FB1D3084288E5E7770AA445E380D8E0ECE46D612C1E5DDDC0A6AA5F3C3C", "80DE3010F3621209CFFB6264028F49DAE5F8887D06D4F974520C42A6E06BF287", 1056314798];
+        yield return ["ordered-registered", "registered", "40,40,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,40,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,41,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,41,0,0,1,18,36,32,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "E90180065B0811FCC6C63416DD38E164C0BABA9DE12E7B8FC9CD5C06EE62D720", "B0071F1096BD49BE956B99EFD8154F0DA4C2B18D4FC8FC4672F08208F7CC2038", "85434761181DE05E613C73C3DFBC38E3E3D053E832F6DDD6C6A203EED70A0B2C", 261937618];
+        yield return ["registered-pairs", "registered", "60,330,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;61,330,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;100,330,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;100,331,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;140,330,0,0,1,18,36,32,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;141,330,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "132B9B83306186CA41FF277B4DF82413CEC4845412D9B699295330BA231457E5", "CD691FB1D3084288E5E7770AA445E380D8E0ECE46D612C1E5DDDC0A6AA5F3C3C", "85434761181DE05E613C73C3DFBC38E3E3D053E832F6DDD6C6A203EED70A0B2C", 261937618];
         yield return ["cut-corrupt-23", "direct", "40,40,0,0,1,18,36,23,1,0,0,5,7,1,1,1,1,1,1,1,1,1,1;40,41,1,24,1,18,36,32,0,0,0,5,7,1,1,1,1,1,1,1,1,1,1", "FBF51920DE8D2D87494844D649554F8236DEDBDBBD68A1BFD8EEF87B74F312F0", "D78976AA113F97A4E573EDFF2844CA8490FC680C815621CE3AF3480468A4C852", "0B24B80C0FCAF64E6F4299D5BFB54A9D8775D27CA73D0C0A18D3D494F62A3405", 955664633];
         yield return ["cut-corrupt-24", "direct", "40,40,0,0,1,18,36,24,1,0,0,5,7,1,1,1,1,1,1,1,1,1,1;40,41,1,24,1,18,36,32,0,0,0,5,7,1,1,1,1,1,1,1,1,1,1", "6F2487A41F9755E1599804CF887CABF7DAD6BFA1476EF09472BC27093843AF3E", "1665FE64405EAC7F861A1A7BB805002BE06F33B3F462296ED30054070041D023", "0B24B80C0FCAF64E6F4299D5BFB54A9D8775D27CA73D0C0A18D3D494F62A3405", 955664633];
         yield return ["active-corrupt-side", "direct", "40,40,1,24,1,18,36,32,1,0,0,5,7,1,1,1,1,1,1,1,1,1,1;39,40,0,0,1,18,36,32,0,0,0,5,7,1,1,1,1,1,1,1,1,1,1", "8B7C6C99BD29F717B51DE121A96C73DB00D128DF02626E582866A5EA4DA10A63", "4D744A38FF35045ABFEFE7F636E212FFFEDACFB5FF7E4412FF3760F486759AE2", "0B24B80C0FCAF64E6F4299D5BFB54A9D8775D27CA73D0C0A18D3D494F62A3405", 955664633];
@@ -117,7 +117,7 @@ public sealed class GenerationFinalLiquid1458Tests
         yield return ["proper-container-1", "direct", "40,39,1,21,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,40,1,21,1,0,18,24,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,39,1,21,1,18,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,40,1,21,1,18,18,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,41,1,1,1,18,36,32,0,1,3,5,7,1,1,1,1,1,0,1,1,1,1;41,41,1,1,1,18,36,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "6E1E9900F1B881259628EA203191B037FC8BEFA336613034A7BA73749CE165FF", "FBAE754953CEA900114410C65DCB77BB49669EC69E77AF19AE8B5A7FDAEC49D1", "511931AF068F0673225AD8F7DE74437E97374E2890E34F8E887387CFFB6CDA29", 906992634];
         yield return ["proper-container-3", "direct", "40,39,1,21,1,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,40,1,21,1,0,18,24,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,39,1,21,1,18,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,40,1,21,1,18,18,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0;40,41,1,1,1,18,36,32,0,1,3,5,7,1,1,1,1,1,0,1,1,1,1;41,41,1,1,1,18,36,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "42338B192ECCC436576DA57218401931CBDCB584EA957CF65F70026FEF093661", "D93B9E55A275685E35CEE6A8098EC63C03D2F17175D70E84C02EC6315E8B68A8", "511931AF068F0673225AD8F7DE74437E97374E2890E34F8E887387CFFB6CDA29", 906992634];
         yield return ["diagonal-order-scan", "scan", "40,41,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,40,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;41,41,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "D9C9FA5F97DEF267938FADBCD43E7B4B96270FB4F0A517DD514D76DDA884B4A4", "F6070422BFFA5B6C9090B17FF54030C5EE8468E639174E94EAE3BDAD224E595C", "511931AF068F0673225AD8F7DE74437E97374E2890E34F8E887387CFFB6CDA29", 906992634];
-        yield return ["diagonal-order-registered", "registered", "60,331,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;61,330,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;61,331,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "505D4B39A405B8B88BAB87F9B5269F0FE530F9F42CBE26B751C5BF8EC8EA3FCA", "2EE1A676C68FE3548F70449D6AA138CC8BED93F45AED9858BE274229A01466D5", "80DE3010F3621209CFFB6264028F49DAE5F8887D06D4F974520C42A6E06BF287", 1056314798];
+        yield return ["diagonal-order-registered", "registered", "60,331,0,0,1,18,36,32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0;61,330,0,0,1,18,36,32,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0;61,331,0,0,1,18,36,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0", "505D4B39A405B8B88BAB87F9B5269F0FE530F9F42CBE26B751C5BF8EC8EA3FCA", "2EE1A676C68FE3548F70449D6AA138CC8BED93F45AED9858BE274229A01466D5", "85434761181DE05E613C73C3DFBC38E3E3D053E832F6DDD6C6A203EED70A0B2C", 261937618];
     }
 
     [Theory]
@@ -132,13 +132,22 @@ public sealed class GenerationFinalLiquid1458Tests
         int width = registered ? 1000 : 80, height = registered ? 500 : 80;
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(registered ? 140 : 40, registered ? 200 : 60));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         foreach (string member in encoded.Split(';'))
         {
             int[] a = member.Split(',').Select(int.Parse).ToArray();
-            var t = new WorldTile { Type = (ushort)a[3], Wall = (ushort)a[4], FrameX = (short)a[5], FrameY = (short)a[6],
-                LiquidAmount = (byte)a[7], LiquidKind = (WorldLiquidKind)a[8], TileColor = (byte)a[11], WallColor = (byte)a[12],
-                Flags = a[2] != 0 ? WorldTileFlags.Active : WorldTileFlags.None };
+            var t = new WorldTile
+            {
+                Type = (ushort)a[3],
+                Wall = (ushort)a[4],
+                FrameX = (short)a[5],
+                FrameY = (short)a[6],
+                LiquidAmount = (byte)a[7],
+                LiquidKind = (WorldLiquidKind)a[8],
+                TileColor = (byte)a[11],
+                WallColor = (byte)a[12],
+                Flags = a[2] != 0 ? WorldTileFlags.Active : WorldTileFlags.None
+            };
             Assert.True(t.TrySetSourceShape(a[9] != 0, (byte)a[10]));
             WorldTileFlags[] flags = [WorldTileFlags.WireRed, WorldTileFlags.WireBlue, WorldTileFlags.WireGreen,
                 WorldTileFlags.WireYellow, WorldTileFlags.Actuator, WorldTileFlags.Inactive, WorldTileFlags.InvisibleBlock,
@@ -157,6 +166,8 @@ public sealed class GenerationFinalLiquid1458Tests
             framing.FinalizeLiquidsDuringGeneration(CancellationToken.None);
         else
             framing.CheckLiquidDuringGeneration(40, 40);
+        if (registered) Assert.Equal(profile switch { "diagonal-order-registered" => "E4697DA7C93BEB5E585CBE496A39FD108E32E1054653ABD89302FA7783E66965", "ordered-registered" => "2B13970141C0E0B12C2F691FF91E80C78B6032467A44E1715494EED858BDF08A", "registered-pairs" => "7B155BB19F87996944F49FAB9EF8B24C2FBE707B5A826E125530786EDA381B58", _ => throw new InvalidOperationException() }, GenerationNaturalPrefix49Tests.GridHash(workspace));
+        if (registered) Assert.Equal(profile switch { "diagonal-order-registered" => 20, "ordered-registered" => 20, "registered-pairs" => 20, _ => throw new InvalidOperationException() }, workspace.VanillaAnglerQuest!.Quest);
         Assert.Equal(after, FullState(workspace));
         Assert.Equal(randomState, random.Fingerprint());
         Assert.Equal(nextRandom, random.Next());
@@ -166,19 +177,19 @@ public sealed class GenerationFinalLiquid1458Tests
     {
         var b = new StringBuilder();
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile t = workspace.TileStore.Get(x, y);
-            b.Append(t.IsActive ? 1 : 0).Append(',').Append(t.Type).Append(',').Append(t.Wall).Append(',')
-                .Append(t.FrameX).Append(',').Append(t.FrameY).Append(',').Append(t.LiquidAmount).Append(',')
-                .Append((int)t.LiquidKind).Append(',').Append(t.IsHalfBrick ? 1 : 0).Append(',').Append(t.SourceSlope).Append(',')
-                .Append(t.TileColor).Append(',').Append(t.WallColor);
-            WorldTileFlags[] flags = [WorldTileFlags.WireRed, WorldTileFlags.WireBlue, WorldTileFlags.WireGreen,
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile t = workspace.TileStore.Get(x, y);
+                b.Append(t.IsActive ? 1 : 0).Append(',').Append(t.Type).Append(',').Append(t.Wall).Append(',')
+                    .Append(t.FrameX).Append(',').Append(t.FrameY).Append(',').Append(t.LiquidAmount).Append(',')
+                    .Append((int)t.LiquidKind).Append(',').Append(t.IsHalfBrick ? 1 : 0).Append(',').Append(t.SourceSlope).Append(',')
+                    .Append(t.TileColor).Append(',').Append(t.WallColor);
+                WorldTileFlags[] flags = [WorldTileFlags.WireRed, WorldTileFlags.WireBlue, WorldTileFlags.WireGreen,
                 WorldTileFlags.WireYellow, WorldTileFlags.Actuator, WorldTileFlags.Inactive, WorldTileFlags.InvisibleBlock,
                 WorldTileFlags.FullbrightBlock, WorldTileFlags.InvisibleWall, WorldTileFlags.FullbrightWall];
-            foreach (WorldTileFlags flag in flags) b.Append(',').Append((t.Flags & flag) != 0 ? 1 : 0);
-            b.Append(';');
-        }
+                foreach (WorldTileFlags flag in flags) b.Append(',').Append((t.Flags & flag) != 0 ? 1 : 0);
+                b.Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(b.ToString())));
     }
 

@@ -1,4 +1,5 @@
 using TerraRuntime.World;
+using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
@@ -6,7 +7,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 internal static class GenerationFurniturePlacement1458
 {
     internal static bool Place(Workspace workspace, int x, int bottom, ushort type, int style, bool faceRight = false,
-        bool crackedBricksSolid = true)
+        bool crackedBricksSolid = true, Func<TileTypeId,bool>? solidity = null)
     {
         (int offset, int width, int height, int frameX, int frameY) = type switch
         {
@@ -66,7 +67,7 @@ internal static class GenerationFurniturePlacement1458
             return false;
         }
         return true;
-        bool IsSolid(WorldTile tile) => (crackedBricksSolid || tile.Type is not (481 or 482 or 483)) && VanillaTileCollisionCatalog.IsSolid(tile.TileType);
+        bool IsSolid(WorldTile tile) => (crackedBricksSolid || tile.Type is not (481 or 482 or 483)) && (solidity?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType));
     }
     private static ref WorldTile At(WorldTileStore store, int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
 }

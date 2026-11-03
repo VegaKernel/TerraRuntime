@@ -7,7 +7,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 internal sealed class SurfaceOreStone1458(
     WorldTileStore store, IWorldGenerationVanillaRandom random,
     double worldSurfaceLow, double worldSurface, int copperOre, int ironOre,
-    CancellationToken cancellation)
+    CancellationToken cancellation, double? worldSurfaceOffers = null, Workspace? workspace = null)
 {
     private const int BeachDistance = 380;
     private readonly List<int> oreAnchors = [];
@@ -25,7 +25,7 @@ internal sealed class SurfaceOreStone1458(
                 int x = random.Next(BeachDistance, width - BeachDistance);
                 while (x >= width * .48 && x <= width * .52)
                     x = random.Next(BeachDistance, width - BeachDistance);
-                int y = random.Next((int)worldSurfaceLow, (int)worldSurface);
+                int y = random.Next((int)worldSurfaceLow, (int)(worldSurfaceOffers ?? worldSurface));
                 if (oreAnchors.Any(anchor => Math.Abs(x - anchor) < 200) || !OrePatch(x, y))
                     continue;
                 oreAnchors.Add(x);
@@ -42,7 +42,7 @@ internal sealed class SurfaceOreStone1458(
                 int x = random.Next(BeachDistance, width - BeachDistance);
                 while (x >= width * .47 && x <= width * .53)
                     x = random.Next(BeachDistance, width - BeachDistance);
-                int y = random.Next((int)worldSurfaceLow, (int)worldSurface);
+                int y = random.Next((int)worldSurfaceLow, (int)(worldSurfaceOffers ?? worldSurface));
                 if (!oreAnchors.Any(anchor => Math.Abs(x - anchor) < 100) && StonePatch(x, y))
                     break;
             }
@@ -90,14 +90,14 @@ internal sealed class SurfaceOreStone1458(
             !Grass(At(x + 1, y).Type) || At(x, y).Wall != 0)
             return false;
         for (int tx = x - 10; tx <= x + 10; tx++)
-        for (int ty = y + 7; ty <= y + 30; ty++)
-        {
-            WorldTile tile = At(tx, ty);
-            if (!tile.IsActive || DungeonGenerationTiles1458.IsDungeonTile(tile.Type) ||
-                Cloud(tile.Type) || Sand(tile.Type) || tile.Wall == 0 ||
-                (rejectEvil && tile.Type is 199 or 23))
-                return false;
-        }
+            for (int ty = y + 7; ty <= y + 30; ty++)
+            {
+                WorldTile tile = At(tx, ty);
+                if (!tile.IsActive || DungeonGenerationTiles1458.IsDungeonTile(tile.Type) ||
+                    Cloud(tile.Type) || Sand(tile.Type) || tile.Wall == 0 ||
+                    (rejectEvil && tile.Type is 199 or 23))
+                    return false;
+            }
         return true;
     }
 
@@ -113,27 +113,27 @@ internal sealed class SurfaceOreStone1458(
         while (steps-- > 0)
         {
             for (int x = anchorX - (int)strength * 4; x <= anchorX + strength * 4; x++)
-            for (int y = anchorY - (int)strength * 4; y <= anchorY + strength * 4; y++)
-            {
-                double hollowRadius = strength * (.5 + random.NextDouble() * .5) * .1;
-                double oreRadius = strength * (.7 + random.NextDouble() * .6) * .3;
-                if (random.Next(8) == 0) oreRadius *= 2;
-                double distance = Math.Sqrt((positionX - x) * (positionX - x) +
-                                            (positionY - y) * (positionY - y));
-                if (distance < hollowRadius)
+                for (int y = anchorY - (int)strength * 4; y <= anchorY + strength * 4; y++)
                 {
-                    At(x, y).Flags &= ~WorldTileFlags.Active;
-                    Changed++;
+                    double hollowRadius = strength * (.5 + random.NextDouble() * .5) * .1;
+                    double oreRadius = strength * (.7 + random.NextDouble() * .6) * .3;
+                    if (random.Next(8) == 0) oreRadius *= 2;
+                    double distance = Math.Sqrt((positionX - x) * (positionX - x) +
+                                                (positionY - y) * (positionY - y));
+                    if (distance < hollowRadius)
+                    {
+                        At(x, y).Flags &= ~WorldTileFlags.Active;
+                        Changed++;
+                    }
+                    else if (distance < oreRadius)
+                    {
+                        ref WorldTile tile = ref At(x, y);
+                        tile.Type = ore;
+                        if (random.Next(4) == 0) tile.Flags |= WorldTileFlags.Active;
+                        OreHelper(x, y);
+                        Changed++;
+                    }
                 }
-                else if (distance < oreRadius)
-                {
-                    ref WorldTile tile = ref At(x, y);
-                    tile.Type = ore;
-                    if (random.Next(4) == 0) tile.Flags |= WorldTileFlags.Active;
-                    OreHelper(x, y);
-                    Changed++;
-                }
-            }
             positionX += velocityX;
             positionY += velocityY;
             velocityX += random.NextDouble() * .2 - .1;
@@ -149,22 +149,22 @@ internal sealed class SurfaceOreStone1458(
         while (steps-- > 0)
         {
             for (int x = anchorX - (int)strength * 4; x <= anchorX + strength * 4; x++)
-            for (int y = anchorY - (int)strength * 4; y <= anchorY + strength * 4; y++)
-            {
-                double radius = strength * (.7 + random.NextDouble() * .6) * .3;
-                if (random.Next(8) == 0) radius *= 2;
-                double distance = Math.Sqrt((positionX - x) * (positionX - x) +
-                                            (positionY - y) * (positionY - y));
-                if (distance < radius * 2 && !At(x, y).IsActive &&
-                    At(x, y + 1) is { IsActive: true, Type: 1 } && random.Next(7) == 0 &&
-                    Solid(x - 1, y + 1) && Solid(x + 1, y + 1))
-                    PlaceStoneDecoration(x, y);
-                if (distance < radius && VanillaTileCollisionCatalog.IsSolid(At(x, y).TileType))
+                for (int y = anchorY - (int)strength * 4; y <= anchorY + strength * 4; y++)
                 {
-                    At(x, y).Type = 1;
-                    Changed++;
+                    double radius = strength * (.7 + random.NextDouble() * .6) * .3;
+                    if (random.Next(8) == 0) radius *= 2;
+                    double distance = Math.Sqrt((positionX - x) * (positionX - x) +
+                                                (positionY - y) * (positionY - y));
+                    if (distance < radius * 2 && !At(x, y).IsActive &&
+                        At(x, y + 1) is { IsActive: true, Type: 1 } && random.Next(7) == 0 &&
+                        Solid(x - 1, y + 1) && Solid(x + 1, y + 1))
+                        PlaceStoneDecoration(x, y);
+                    if (distance < radius && (workspace is { HasVanillaGenerationSolidity: true } ? workspace.IsVanillaGenerationSolid(At(x, y).TileType) : VanillaTileCollisionCatalog.IsSolid(At(x, y).TileType)))
+                    {
+                        At(x, y).Type = 1;
+                        Changed++;
+                    }
                 }
-            }
             positionX += velocityX;
             positionY += velocityY;
             velocityX += random.NextDouble() * .2 - .1;
@@ -176,10 +176,10 @@ internal sealed class SurfaceOreStone1458(
     {
         if (random.Next(3) != 0)
             GenerationDecorationPlacement1458.TryPlaceTile3x2(
-                store, random, x, y, 186, random.Next(7, 13));
+                store, random, x, y, 186, random.Next(7, 13), workspace: workspace);
         if (random.Next(3) != 0)
-            GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, random.Next(6), 1);
-        GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, random.Next(6), 0);
+            GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, random.Next(6), 1, workspace: workspace);
+        GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, random.Next(6), 0, workspace: workspace);
     }
 
     private void SetOre(int x, int y, ushort ore)
@@ -194,15 +194,15 @@ internal sealed class SurfaceOreStone1458(
     private void OreHelper(int x, int y)
     {
         for (int tx = x - 1; tx <= x + 1; tx++)
-        for (int ty = y - 1; ty <= y + 1; ty++)
-            if (At(tx, ty).Type is 1 or 40) At(tx, ty).Type = 0;
+            for (int ty = y - 1; ty <= y + 1; ty++)
+                if (At(tx, ty).Type is 1 or 40) At(tx, ty).Type = 0;
     }
 
     private bool Solid(int x, int y)
     {
         WorldTile tile = At(x, y);
         return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
-               VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+               (workspace is { HasVanillaGenerationSolidity: true } ? workspace.IsVanillaGenerationSolid(tile.TileType) : VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
                !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
     }
 

@@ -58,7 +58,8 @@ public static class Validator1458
 
     public static WorldValidationResult Validate(
         Workspace workspace,
-        RuntimeWorldGenerationMetadataSnapshot metadata)
+        RuntimeWorldGenerationMetadataSnapshot metadata,
+        bool allowUnregisteredContainerFragments = false)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         int width = workspace.WidthTiles;
@@ -193,7 +194,9 @@ public static class Validator1458
                     // Frame-important object footprint check: if tile is frame-important, verify its object footprint is intact
                     if (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
                     {
-                        if (!IsValidFrameImportantFootprint(store, x, y, width, height))
+                        bool sourceRemnant = allowUnregisteredContainerFragments &&
+                            IsUnregisteredContainerFragment(in tile, x, y, width, height, chestPositions);
+                        if (!sourceRemnant && !IsValidFrameImportantFootprint(store, x, y, width, height))
                             return new(WorldValidationStatus.OrphanFrameImportantObject,
                                 $"Orphan frame-important tile type {tile.Type} at ({x},{y}) frame ({tile.FrameX},{tile.FrameY}).");
                     }
@@ -332,6 +335,21 @@ public static class Validator1458
 
     private static bool IsValidChestFootprint(WorldTileStore store, int left, int top, int width, int height)
         => GeneratedContainerFootprint.IsValid(store, left, top);
+
+    private static bool IsUnregisteredContainerFragment(in WorldTile tile, int x, int y,
+        int width, int height, HashSet<int> chestPositions)
+    {
+        // Actual original SaveNewWorld/LoadWorld preserves these remaining tiles after SaveChests
+        // discards their record. Surviving records still pass the complete anchor/footprint checks above.
+        // Keep malformed atlases and other object families outside this source-backed admission.
+        if (tile.Type is not (21 or 467) || tile.FrameX < 0 || tile.FrameX % 18 != 0 ||
+            tile.FrameY is not (0 or 18))
+            return false;
+        int left = x - tile.FrameX / 18 % 2;
+        int top = y - tile.FrameY / 18;
+        return (uint)left < (uint)(width - 1) && (uint)top < (uint)(height - 1) &&
+            !chestPositions.Contains(left * 100000 + top);
+    }
 
     private static bool IsValidFrameImportantFootprint(WorldTileStore store, int x, int y, int width, int height)
     {

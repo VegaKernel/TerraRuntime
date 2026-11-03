@@ -92,10 +92,14 @@ internal readonly record struct TerrainGenerationState1458(
     double WorldSurfaceLow,
     double WorldSurfaceHigh,
     double RockLayerLow,
-    double RockLayerHigh);
+    double RockLayerHigh,
+    int RemixMushroomLayerLow = 0,
+    int RemixMushroomLayerHigh = 0,
+    int RemixSurfaceLayerLow = 0,
+    int RemixSurfaceLayerHigh = 0);
 
 /// <summary>
-/// Clean-room port of the ordinary-world and pure Don't Dig Up TerrainPass branches from TerrariaServer 1.4.5.8.
+/// Clean-room TerrainPass for captured classic profiles and the qualified surface modifiers in TerrariaServer 1.4.5.8.
 /// The source-backed slice is used only for Terraria's three canonical dimensions. Its pre-Terrain WorldGen.Reset
 /// RNG state and beach bounds are supplied by <see cref="BootstrapPass1458"/>.
 /// </summary>
@@ -138,8 +142,12 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
 
         TerrainFeatureType feature = TerrainFeatureType.Plateau;
         int featureRemaining = leftBeachEnd + FlatBeachPadding;
-        // The profile admission gate above admits only the pure Remix profile, never Zenith.
-        bool isRemix = seedProfile.Special == VanillaSpecialWorldSeed1458.Remix;
+        // These classic profiles use the same retained source-backed Reset metadata owner.
+        bool isRemix = seedProfile.Has(VanillaSpecialWorldSeed1458.Remix);
+        bool isDrunk = seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld);
+        bool noSurface = seedProfile.Has(VanillaSecretWorldSeed1458.MolePeople);
+        bool surfaceIsInSpace = seedProfile.Has(VanillaSecretWorldSeed1458.SuchGreatHeights);
+        bool alternativeOffsets = isRemix || isDrunk || seedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy);
 
         double surface = height * 0.3d;
         surface *= random.Next(90, 110) * 0.005d;
@@ -157,6 +165,12 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
         double surfaceHigh = surface;
         double rockLow = rock;
         double rockHigh = rock;
+        if (noSurface)
+        {
+            surface = 25d;
+            rock = height * 0.4d;
+            rock *= random.Next(90, 110) * 0.01d;
+        }
         double beachSurfaceLimit = height * 0.23d;
         var history = new SurfaceHistory(SurfaceHistoryLength);
         int progressStride = Math.Max(1, width / 1000);
@@ -189,23 +203,24 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
             if (x > width * 0.48d && x < width * 0.52d)
                 feature = TerrainFeatureType.Plateau;
 
-            surface += GenerateWorldSurfaceOffset(random, feature, isRemix);
+            if (!noSurface)
+                surface += GenerateWorldSurfaceOffset(random, feature, alternativeOffsets);
 
-            double minimumSurfacePercent = 0.17d;
-            const double maximumSurfacePercent = 0.26d;
+            double minimumSurfacePercent = isDrunk && !surfaceIsInSpace ? 0.15d : 0.17d;
+            double maximumSurfacePercent = surfaceIsInSpace ? 0.2199999988079071d : isDrunk ? 0.28d : 0.26d;
             if (width == 4200)
                 minimumSurfacePercent += 0.02d;
 
-            if (x < leftBeachEnd + FlatBeachPadding || x > rightBeachStart - FlatBeachPadding)
+            if (!noSurface && (x < leftBeachEnd + FlatBeachPadding || x > rightBeachStart - FlatBeachPadding))
             {
                 surface = Math.Clamp(surface, height * minimumSurfacePercent, beachSurfaceLimit);
             }
-            else if (surface < height * minimumSurfacePercent)
+            else if (!noSurface && surface < height * minimumSurfacePercent)
             {
                 surface = height * minimumSurfacePercent;
                 featureRemaining = 0;
             }
-            else if (surface > height * maximumSurfacePercent)
+            else if (!noSurface && surface > height * maximumSurfacePercent)
             {
                 surface = height * maximumSurfacePercent;
                 featureRemaining = 0;
@@ -214,7 +229,12 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
             while (random.Next(0, 3) == 0)
                 rock += random.Next(-2, 3);
 
-            if (isRemix)
+            if (noSurface)
+            {
+                if (rock < surface + height * 0.35d) rock++;
+                if (rock > surface + height * 0.45d) rock--;
+            }
+            else if (isRemix)
             {
                 if (width > 2500)
                 {
@@ -235,6 +255,11 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
             }
 
             history.Record(surface);
+            if (surfaceIsInSpace && !noSurface)
+            {
+                FillColumn(context.Workspace, x, surface - height * 0.08d, rock);
+                continue;
+            }
             FillColumn(context.Workspace, x, surface, rock);
 
             if (x == rightBeachStart - FlatBeachPadding)
@@ -249,7 +274,7 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
                 context.ReportProgress((x + 1d) / width, "Generating source-backed Terraria terrain");
         }
 
-        double worldSurface = (int)(surfaceHigh + 25d);
+        double worldSurface = noSurface ? 25d : (int)(surfaceHigh + 25d);
         double rockLayer = rockHigh;
         double sixTileBand = (int)((rockLayer - worldSurface) / 6d) * 6d;
         rockLayer = (int)(worldSurface + sixTileBand);
@@ -287,7 +312,11 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
                 surfaceLow,
                 surfaceHigh,
                 rockLow,
-                rockHigh));
+                rockHigh,
+                height - 350,
+                height - 200,
+                (int)rockLow,
+                height - 350));
         }
     }
 
@@ -516,6 +545,7 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
         }
     }
 }
+
 
 internal sealed class MetadataParityPass1458 : IWorldGenerationPass
 {

@@ -62,7 +62,7 @@ internal sealed class GenerationWallFraming1458(WorldTileStore store, IWorldGene
     /// wall paint cleanup, and the one draw that picks a frame variant. The frame itself is not stored - see
     /// the type remarks.
     /// </summary>
-    private void WallFrame(int i, int j, bool resetFrame)
+    internal void WallFrame(int i, int j, bool resetFrame)
     {
         if (i <= 0 || j <= 0 || i >= width - 1 || j >= height - 1)
             return;

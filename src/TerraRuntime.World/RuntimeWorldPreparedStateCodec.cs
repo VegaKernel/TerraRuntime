@@ -275,6 +275,8 @@ internal static class RuntimeWorldPreparedStateCodec
             writer.Write(spawn.X);
             writer.Write(spawn.Y);
         }
+        writer.Write(m.AfterPartyOfDoom);
+        writer.Write(m.PartyDaysOnCooldown);
     }
 
     private static WorldFileRuntimeMetadata ReadMetadata(BinaryReader reader)
@@ -359,6 +361,9 @@ internal static class RuntimeWorldPreparedStateCodec
         for (int i = 0; i < spawnCount; i++)
             extraSpawnPoints[i] = new WorldSpawnPoint(reader.ReadInt16(), reader.ReadInt16());
 
+        bool afterPartyOfDoom = reader.ReadBoolean();
+        int partyDaysOnCooldown = reader.ReadInt32();
+
         return new WorldFileRuntimeMetadata
         {
             Banners = new(bannerKills, bannerClaims), BannerSectionOffset = bannerOffset, BannerSectionLength = bannerLength,
@@ -418,6 +423,7 @@ internal static class RuntimeWorldPreparedStateCodec
             DownedPirates = progression[18],
             ShadowOrbSmashed = progression[19],
             HardMode = progression[20],
+            AfterPartyOfDoom = afterPartyOfDoom,
             SlimeRainTime = slimeRainTime,
             SundialCooldown = sundialCooldown,
             Raining = raining,
@@ -459,6 +465,7 @@ internal static class RuntimeWorldPreparedStateCodec
             DownedTowerStardust = eventFlags[13],
             PartyManual = eventFlags[14],
             PartyGenuine = eventFlags[15],
+            PartyDaysOnCooldown = partyDaysOnCooldown,
             SandstormHappening = eventFlags[16],
             SavedAngler = eventFlags[17],
             SavedStylist = eventFlags[18],

@@ -352,6 +352,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId MossHornet = new(176);
     public static readonly NpcTypeId PigronCrimson = new(180);
     public static readonly NpcTypeId Moth = new(205);
+    public static readonly NpcTypeId Ghost = new(316);
     public static readonly NpcTypeId Bee = new(210);
     public static readonly NpcTypeId SmallBee = new(211);
     public static readonly NpcTypeId QueenBee = new(222);

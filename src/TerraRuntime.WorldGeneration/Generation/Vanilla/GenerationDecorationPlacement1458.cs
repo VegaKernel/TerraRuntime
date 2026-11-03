@@ -35,7 +35,7 @@ internal static class GenerationDecorationPlacement1458
         short frameY = checked((short)(size * 18));
         if (size == 1)
         {
-            if (!IsFlatSolidFloor(store, x, y + 1, notSolid, workspace) || !IsFlatSolidFloor(store, x + 1, y + 1, notSolid, workspace))
+            if (!IsFlatSolidFloor(store, x, y + 1, notSolid, workspace, allowPlatformTopSlope: true) || !IsFlatSolidFloor(store, x + 1, y + 1, notSolid, workspace, allowPlatformTopSlope: true))
                 return false;
             if (store.Get(x, y).IsActive || store.Get(x + 1, y).IsActive)
                 return false;
@@ -48,7 +48,7 @@ internal static class GenerationDecorationPlacement1458
             return true;
         }
 
-        if (!IsFlatSolidFloor(store, x, y + 1, notSolid, workspace) || store.Get(x, y).IsActive)
+        if (!IsFlatSolidFloor(store, x, y + 1, notSolid, workspace, allowPlatformTopSlope: true) || store.Get(x, y).IsActive)
             return false;
 
         Write(store, x, y, SmallPiles, checked((short)(style * 18)), frameY);
@@ -85,21 +85,33 @@ internal static class GenerationDecorationPlacement1458
             anchor.Type = 0;
             anchor.FrameX = 0;
             anchor.FrameY = 0;
-            anchor.Shape = 0;
+            anchor.ClearSourceShape();
             anchor.TileColor = 0;
             anchor.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         }
 
-        bool placed = TryPlace3x2(store, x, y, type, style, notSolid, workspace);
+        else if (!VanillaWorldFrameImportance326.IsFrameImportant(anchor.Type))
+        {
+            // Every supported3x2 target belongs to the reset-halfbrick placement set.
+            anchor.TrySetSourceShape(false, anchor.SourceSlope);
+            anchor.FrameX = 0; anchor.FrameY = 0;
+        }
+
+        TryPlace3x2(store, x, y, type, style, notSolid, workspace);
         var framing = new GenerationTileFraming1458(store, random, workspace,
             useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true);
         framing.SquareTileFrame(x, y);
 
         // PlaceTile's common tail tests the anchor after branch framing, even when raw
         // placement refused. A retained crystal shard, for example, spends another reset draw.
-        if (At(store, x, y).IsActive)
+        bool activeAfterBranch = At(store, x, y).IsActive;
+        if (activeAfterBranch)
+        {
+            if (At(store, x, y).Type is 54 or 328 or 459 or 748)
+                new GenerationWallFraming1458(store, random).SquareWallFrame(x, y);
             framing.SquareTileFrame(x, y);
-        return placed;
+        }
+        return activeAfterBranch;
     }
 
     /// <summary>
@@ -125,7 +137,7 @@ internal static class GenerationDecorationPlacement1458
 
             if (type is PlantDetritus or 186 && IsBoulder(store, column, y + 1))
                 return false;
-            if (!IsFlatSolidFloor(store, column, y + 1, notSolid, workspace))
+            if (!IsFlatSolidFloor(store, column, y + 1, notSolid, workspace, allowPlatformTopSlope: true))
                 return false;
         }
 
@@ -154,7 +166,7 @@ internal static class GenerationDecorationPlacement1458
         IWorldGenerationVanillaRandom random,
         int x,
         int y,
-        int style, Workspace? workspace = null)
+        int style, Workspace? workspace = null, Func<TileTypeId, bool>? solidity = null)
     {
         bool valid = Contains(store, x, y - 1) && Contains(store, x + 1, y + 1);
         for (int column = x; valid && column < x + 2; column++)
@@ -165,7 +177,7 @@ internal static class GenerationDecorationPlacement1458
                     valid = false;
             }
 
-            if (!IsFlatSolidFloor(store, column, y + 1, workspace: workspace))
+            if (!IsFlatSolidFloor(store, column, y + 1, workspace: workspace, solidity: solidity))
                 valid = false;
         }
 
@@ -182,8 +194,7 @@ internal static class GenerationDecorationPlacement1458
                 cell.Type = Pots;
                 cell.FrameX = checked((short)(dx * 18 + frame));
                 cell.FrameY = checked((short)((dy + 1) * 18 + style * 36));
-                if (cell.Shape == 1)
-                    cell.Shape = 0;
+                cell.TrySetSourceShape(false, cell.SourceSlope);
             }
         }
 
@@ -192,7 +203,7 @@ internal static class GenerationDecorationPlacement1458
 
     /// <summary>Source <c>SolidTile2</c>: active, solid, unsloped, not a half brick and not actuated.</summary>
     private static bool IsFlatSolidFloor(
-        WorldTileStore store, int x, int y, IReadOnlySet<ushort>? notSolid = null, Workspace? workspace = null)
+        WorldTileStore store, int x, int y, IReadOnlySet<ushort>? notSolid = null, Workspace? workspace = null, bool allowPlatformTopSlope = false, Func<TileTypeId, bool>? solidity = null)
     {
         if (!Contains(store, x, y))
             return true;
@@ -203,10 +214,11 @@ internal static class GenerationDecorationPlacement1458
         if (notSolid is not null && notSolid.Contains(tile.Type))
             return false;
 
-        return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
+        return tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick &&
+            (tile.SourceSlope == 0 || allowPlatformTopSlope && VanillaTileIds.IsPlatform(tile.TileType) && tile.SourceSlope is 1 or 2) &&
             (workspace is { HasVanillaGenerationSolidity: true }
                 ? workspace.IsVanillaGenerationSolid(tile.TileType)
-                : VanillaTileCollisionCatalog.IsSolid(tile.TileType));
+                : solidity?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType));
     }
 
     /// <summary>Source <c>InvalidTileForPilesOrSpeleothems</c>, which is the boulder set alone.</summary>

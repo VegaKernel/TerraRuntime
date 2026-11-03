@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
@@ -77,16 +78,10 @@ public sealed class SourceBackedStartingNpc1458 : IWorldGenerationProvider
     }
 }
 
-/// <summary>
-/// Source-verified ordinary-world starting NPC identity. Terraria's internal NPC ID for Guide is 22. Given-name
-/// randomization is intentionally not synthesized from the shared worldgen RNG because vanilla NPC naming is outside
-/// that stream; a stable vanilla Guide name keeps worldgen RNG consumption correct until that independent RNG surface
-/// is modeled explicitly.
-/// </summary>
+/// <summary>Ordinary source Guide creation, sharing the pass RNG and existing NPC identity/body facts.</summary>
 internal sealed class StartingGuidePass1458 : IWorldGenerationPass
 {
     internal const int GuideNetId = 22;
-    internal const string StableGuideName = "Andrew";
 
     public static StartingGuidePass1458 Instance { get; } = new();
 
@@ -104,22 +99,43 @@ internal sealed class StartingGuidePass1458 : IWorldGenerationPass
         if (!metadata.TryGetSpawn(out WorldGenerationPoint spawn))
             throw new InvalidOperationException("Guide generation executed before Spawn Point published a world spawn.");
 
-        float x = checked(spawn.X * 16f);
-        float y = checked(spawn.Y * 16f);
+        if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(GuideNetId), out var definition))
+            throw new InvalidOperationException("Starting Guide requires the retained vanilla NPC body definition.");
+        var shared = new GenerationTownRandom(context.VanillaRandom ??
+            throw new InvalidOperationException("Starting Guide requires the shared generation RNG."));
+        if (workspace.EntityEffects is not null)
+        {
+            if (!workspace.TrySpawnGeneratedTownNpc(new(GuideNetId), checked(spawn.X * 16), checked(spawn.Y * 16),
+                    true, spawn.X, spawn.Y, context.VanillaRandom!, () => new VanillaTownNpcIdentityResolver1458(
+                        mainRandom: shared, worldGenRandom: shared).Resolve(new NpcTypeId(GuideNetId), false)))
+                throw new InvalidOperationException("Could not create the source starting Guide.");
+            context.ReportProgress(1d, "Spawning and persisting the starting Guide");
+            return;
+        }
+        VanillaTownNpcSpawnIdentity1458 identity = new VanillaTownNpcIdentityResolver1458(
+            mainRandom: shared, worldGenRandom: shared).Resolve(new NpcTypeId(GuideNetId), shimmeredTownNpc: false);
+        // NPC.NewNPC sets Bottom, while persisted NPC coordinates store the top left.
+        float x = checked(spawn.X * 16f) - definition.Width / 2f;
+        float y = checked(spawn.Y * 16f) - definition.Height;
         if (!workspace.TryAddGeneratedTownNpc(
                 GuideNetId,
-                StableGuideName,
+                identity.GivenName,
                 x,
                 y,
                 homeless: true,
                 homeTileX: spawn.X,
                 homeTileY: spawn.Y,
-                townNpcVariationIndex: null,
+                townNpcVariationIndex: identity.VariationIndex,
                 homelessDespawn: false))
         {
             throw new InvalidOperationException("Could not register the generated starting Guide for persistence.");
         }
 
         context.ReportProgress(1d, "Spawning and persisting the starting Guide");
+    }
+
+    private sealed class GenerationTownRandom(IWorldGenerationVanillaRandom random) : IVanillaTownNpcRandom1458
+    {
+        public int Next(int exclusiveMax) => random.Next(exclusiveMax);
     }
 }

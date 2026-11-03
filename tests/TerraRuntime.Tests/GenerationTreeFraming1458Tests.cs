@@ -73,18 +73,19 @@ public sealed class GenerationTreeFraming1458Tests
     }
 
     [Theory]
-    [InlineData(1, false, "CEBB5577FDFD4DE7E2F24AD22211FAC3537804F98A370703297B1B351AF860D8", "08AF15EE72979B88A205208735CC96DCC5D8A392B23F435283D725AFE5EADE64", 2145363508)]
-    [InlineData(1, true, "43FA5B820F939F30F9EEED5B2ED677D8CA55BB27D39E664FEBA575B4E0647A1D", "89CC5E1254111718A2E5D8622ACAF90D20D84B6B77E64BE451BE80ADC91CA669", 1575227698)]
-    [InlineData(42, false, "C5188C1F51A4F7E7D68D7811287EAF1FD6407E120F1D1B2B6C297835A9978231", "B18F275D6830B827C5371B4D8CECC7E9B32F7747F025E036FD200605C0D6A984", 1917535421)]
-    [InlineData(42, true, "A3BBDF0452D774649705081C15AB2A69028A18385509F47BCE31AC1EBCDC83BF", "B013A493E6F6CA60CD32ADC0D97E698F331885CCDEB3399D73E9C789EA6DDF85", 1185727363)]
-    [InlineData(1458, false, "ECFA8B6252DA5A30688BAEFA119FFFCBD22947FB36CFB93F419A089BE4FA6C44", "F87526BE5133EDE185FECDC63CF938B128AA5A6E04A858562675F5A026E42E38", 910603386)]
-    [InlineData(1458, true, "27EEF9FF537EAA21CEF8370A70F71BC98B0FFC20E12125FC0D96C644BC863B58", "61D181D714E1C9312611BC2B9080FF4DCD23FEA9175BF8EF92FCCD408DB91C90", 1474362817)]
+    [InlineData(1, false, "CEBB5577FDFD4DE7E2F24AD22211FAC3537804F98A370703297B1B351AF860D8", "608A9A641FB45711BF0F638A1FEAB4AE7B6D7C49D5131DA8A184812EF551BE8F", 1444933476, 40)]
+    [InlineData(1, true, "43FA5B820F939F30F9EEED5B2ED677D8CA55BB27D39E664FEBA575B4E0647A1D", "948363FA8824DFCC609FAF52A09D8942FEC45DC9598A78630BB9668707D51F4B", 338090868, 11)]
+    [InlineData(42, false, "C5188C1F51A4F7E7D68D7811287EAF1FD6407E120F1D1B2B6C297835A9978231", "B896094D68F8B57D281428BAFACEDCF638B2349CC4502104BF6A790BE4748C3F", 425999661, 36)]
+    [InlineData(42, true, "A3BBDF0452D774649705081C15AB2A69028A18385509F47BCE31AC1EBCDC83BF", "690E7CF8D049392461C2A111DEE12CE1E649CECAD90014A266F30143C0BAFF25", 1772209500, 22)]
+    [InlineData(1458, false, "ECFA8B6252DA5A30688BAEFA119FFFCBD22947FB36CFB93F419A089BE4FA6C44", "5DDDA984D5543C33EED98EB15AD2F06E336C27FE752E537F4723C4F2B17ABCFE", 380908078, 17)]
+    [InlineData(1458, true, "27EEF9FF537EAA21CEF8370A70F71BC98B0FFC20E12125FC0D96C644BC863B58", "4C46E82746169D80886F5E5D05F5203B33F143D99BCC145064729E4AD1317A1E", 1245578474, 28)]
     public void Woody_validators_match_actual_registered_FinalCleanup(int seed, bool terrain, string expectedGrid,
-        string expectedRandom, int expectedNext)
+        string expectedRandom, int expectedNext, int expectedQuest)
     {
+        // Actual server-mode source pass includes AnglerQuestSwap; old client-mode goldens skipped it.
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         PopulatePass((x, y, type, fx, fy, active, actuated, shape) =>
             Put(workspace, x, y, type, fx, fy, active, actuated, shape), terrain);
         var random = new RandomAdapter(seed);
@@ -92,14 +93,21 @@ public sealed class GenerationTreeFraming1458Tests
         Assert.Equal(expectedGrid, Hash(workspace));
         Assert.Equal(expectedRandom, random.CapturePhysicalRandomHash());
         Assert.Equal(expectedNext, random.Next());
+        Assert.Equal(expectedQuest, workspace.VanillaAnglerQuest!.Quest);
     }
 
     private static void Put(Workspace workspace, int x, int y, ushort type, short fx, short fy,
         bool active, bool actuated, byte shape)
     {
-        var tile = new WorldTile { Type = type, FrameX = fx, FrameY = fy, Shape = shape,
+        var tile = new WorldTile
+        {
+            Type = type,
+            FrameX = fx,
+            FrameY = fy,
+            Shape = shape,
             Flags = (active ? WorldTileFlags.Active : WorldTileFlags.None) |
-                    (actuated ? WorldTileFlags.Inactive : WorldTileFlags.None) };
+                    (actuated ? WorldTileFlags.Inactive : WorldTileFlags.None)
+        };
         workspace.TileStore.Set(x, y, in tile);
     }
 
@@ -123,8 +131,14 @@ public sealed class GenerationTreeFraming1458Tests
         // Original tree dust scans down the trunk/branch column without a world-edge check.
         // A bounded solid strip supplies the terrain that real generated trees grow above.
         if (terrain) for (int dx = -4; dx <= 4; dx++) Put(dx, 8, 1);
-        ushort ground = identity switch { 323 => 53, 72 => 70, >= 583 and <= 589 => 1,
-            634 => 633, _ => 2 };
+        ushort ground = identity switch
+        {
+            323 => 53,
+            72 => 70,
+            >= 583 and <= 589 => 1,
+            634 => 633,
+            _ => 2
+        };
         if (profile >= 64)
         {
             // Conversion sets and near misses, with independent active, actuation and shape probes.
@@ -162,20 +176,20 @@ public sealed class GenerationTreeFraming1458Tests
     {
         ushort[] identities = [5, 323, 583, 584, 585, 586, 587, 588, 589, 596, 616, 634, 72];
         for (int n = 0; n < identities.Length; n++)
-        for (int profile = 0; profile < 32; profile++)
-            PopulateSite(write, identities[n], profile * 3, 80 + n * 65, 50 + profile * 12, terrain);
+            for (int profile = 0; profile < 32; profile++)
+                PopulateSite(write, identities[n], profile * 3, 80 + n * 65, 50 + profile * 12, terrain);
     }
 
     private static string Hash(Workspace workspace)
     {
         var text = new StringBuilder();
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            text.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                text.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+            }
         return Digest(text.ToString());
     }
 

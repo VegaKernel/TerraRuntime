@@ -7,10 +7,10 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldSnapshotCacheValidityTests
 {
     [Fact]
-    public void Runtime_cache_layout_revision_tracks_lunar_banner_invasion_and_angler_metadata()
+    public void Runtime_cache_layout_revision_tracks_angler_and_party_metadata()
     {
-        // Angler section offsets and the variable completed-name list change the disposable payload layout.
-        Assert.Equal(6, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
+        // Source AfterPartyOfDoom and PartyDaysOnCooldown extend the disposable payload after Angler metadata.
+        Assert.Equal(7, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
     }
 
     [Fact]

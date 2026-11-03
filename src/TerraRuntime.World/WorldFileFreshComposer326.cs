@@ -459,7 +459,7 @@ public static class WorldFileFreshComposer326
                 HeaderStringBudget,
                 HeaderStringBudget * 3L,
                 MaxAnglerNames: 0,
-                MaxBannerEntries: 0,
+                MaxBannerEntries: WorldBannerData1458.MaximumEntries,
                 MaxPartyNpcEntries: 0,
                 MaxManifestBytes: 0));
     }

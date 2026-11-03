@@ -152,6 +152,7 @@ internal static partial class CaveHousePlacement1458
             349 or 506 => (0, -2, 2, 3, style * 36, 0),
             219 => (-1, -2, 3, 3, style * 54, 0),
             135 => (0, 0, 1, 1, 0, style * 18),
+            91 => (0, 0, 1, 3, style % 111 * 18, style / 111 * 54),
             34 => (-1, 0, 3, 3, style / 36 * 108, style * 54 - style / 36 * 1998),
             240 => (-1, -1, 3, 3, style % 36 * 54, style / 36 * 54),
             245 => (0, -1, 2, 3, style * 36, 0),
@@ -168,7 +169,7 @@ internal static partial class CaveHousePlacement1458
                 WorldTile tile = grid.At(column, row);
                 available &= !tile.IsActive && (!picture || tile.Wall != 0);
             }
-            if (!picture && type != 34)
+            if (!picture && type is not (34 or 91))
             {
                 WorldTile floor = grid.At(column, top + height);
                 available &= type == 94
@@ -180,6 +181,7 @@ internal static partial class CaveHousePlacement1458
         }
         if (type == 34)
             available &= grid.IsSolid(x, y - 1);
+        if(type==91){WorldTile ceiling=grid.At(x,y-1);available &= ceiling.IsActive&&!ceiling.IsActuated&&grid.IsSolidType(ceiling.TileType)&&!VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType);}
         if (available)
             FurnitureWrite(grid, left, top, width, height, type, frameX, frameY);
         var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);

@@ -19,7 +19,7 @@ public sealed class SourceBackedPostSettle1458Tests
         var workspace = new Workspace(width, height);
         workspace.InitializeVanillaGenerationSolidity();
         Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         int firstX = height == 1200 ? 1000 : 100;
         int top = height == 1200 ? 420 : 190;
         ushort[] floors = [147, 161, 200, 163, 164, 1, 147, 147, 147, 147];
@@ -91,7 +91,7 @@ public sealed class SourceBackedPostSettle1458Tests
         // second water-adjacent edge in the source's anchor search rectangle.
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         int leftX = height == 1200 ? 1000 : 160;
         int rightX = height == 1200 ? 3200 : 440;
         int floorY = height == 1200 ? 280 : 130;
@@ -145,7 +145,7 @@ public sealed class SourceBackedPostSettle1458Tests
         var workspace = new Workspace(width, height);
         workspace.InitializeVanillaGenerationSolidity();
         Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         void Put(int x, int y, ushort type = 0, bool active = false, byte liquid = 0,
             ushort wall = 0, bool half = false)
         {

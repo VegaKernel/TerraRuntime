@@ -135,12 +135,12 @@ internal sealed class RuntimeWorldCreationPersistencePipeline
 
         WorldChest[] generatedChests = created.Candidate.CaptureGeneratedChests();
         WorldNpcPersistence generatedNpcs = created.Candidate.CaptureGeneratedNpcs();
+        var generatedSections=new WorldFileFreshSections326(generatedChests,[],generatedNpcs,created.Candidate.CaptureGeneratedTileEntities(),[],[],new WorldBestiaryData([],[],[]),new WorldCreativePowersData(false,0,false,false,0,false));
         WorldFileFreshCompose326Diagnostic composition = WorldFileFreshComposer326.TryCompose(
             header,
             created.Metadata,
             created.Candidate.TileStore,
-            generatedChests,
-            generatedNpcs,
+            generatedSections,
             gameMode: (byte)request.Options.GameMode,
             crimson: request.Options.Evil == WorldGenerationEvil.Crimson,
             creationTimeBinary,

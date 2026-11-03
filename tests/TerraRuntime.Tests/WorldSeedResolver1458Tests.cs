@@ -65,8 +65,8 @@ public sealed class VanillaWorldSeedResolver1458Tests
     [InlineData("1458", true)]
     [InlineData("Don't Dig Up", true)]
     [InlineData("Don't Dig Up|planetoids", false)]
-    [InlineData("get fixed boi", false)]
-    [InlineData("05162020", false)]
+    [InlineData("get fixed boi", true)]
+    [InlineData("05162020", true)]
     public void Source_backed_reset_and_terrain_admission_is_limited_to_profiles_with_ported_branches(
         string seedText,
         bool expected)

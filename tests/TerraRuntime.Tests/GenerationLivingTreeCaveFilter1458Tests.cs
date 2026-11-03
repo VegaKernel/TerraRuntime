@@ -25,7 +25,7 @@ public sealed class GenerationLivingTreeCaveFilter1458Tests
         // admission and RNG consumption without growing a tree, opening a room or invoking loot.
         var workspace = new Workspace(4200, 600);
         Assert.True(workspace.TrySetLayers(240, 260));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, VanillaSpecialWorldSeed1458.None));
         workspace.SetVanillaMountainCaves([new WorldGenerationPoint(2518 + caveOffset, 200)]);
         for (int x = 0; x < 4200; x++)
         {

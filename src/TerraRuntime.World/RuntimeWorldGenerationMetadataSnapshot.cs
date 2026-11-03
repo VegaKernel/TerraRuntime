@@ -16,5 +16,7 @@ public readonly record struct RuntimeWorldGenerationMetadataSnapshot(
     /// Runtime-internal Terraria 1.4.5.8 fresh-world state captured by the source-backed Reset bootstrap. Generic
     /// custom generators leave this null and retain the conservative canonical fresh-world defaults.
     /// </summary>
+    internal WorldSpawnPoint[]? ExtraSpawnPoints { get; init; }
+    internal WorldAnglerQuestData1458? AnglerQuest { get; init; }
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState { get; init; }
 }

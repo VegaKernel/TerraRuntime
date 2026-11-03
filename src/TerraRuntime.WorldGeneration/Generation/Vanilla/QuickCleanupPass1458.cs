@@ -47,7 +47,8 @@ internal sealed class QuickCleanupPass1458(
     double worldSurface,
     double rockLayer,
     int beachDistance,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    Func<TileTypeId,bool>? solidity = null)
 {
     private const ushort Dirt = 0;
     private const ushort Sand = 53;
@@ -287,10 +288,10 @@ internal sealed class QuickCleanupPass1458(
             return true;
 
         WorldTile tile = At(x, y);
-        if (!tile.IsActive || tile.Type is Trap or ActiveStoneBlock)
+        if (!tile.IsActive || (solidity is null && tile.Type is (Trap or ActiveStoneBlock)))
             return false;
 
-        return VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return (solidity?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && tile.Shape == 0 && !tile.IsActuated;
     }
 

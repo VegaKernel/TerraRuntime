@@ -5,13 +5,13 @@ namespace TerraRuntime.World;
 /// This is world metadata, not another item balance or a client report history.
 /// Source-qualified participants own insertion, pose changes and removal in this same store.
 /// </summary>
-public sealed class RuntimeWorldFurnitureStore1458
+public sealed partial class RuntimeWorldFurnitureStore1458
 {
     // TileEntity.ByID uses dictionary entry-slot enumeration and LIFO deleted
     // slots. Those slots affect source save order and therefore restart IDs.
     // They are bounded allocation metadata in this same canonical owner.
     private sealed record Image(WorldTileEntity?[] Slots, Dictionary<int, int> Indices,
-        Dictionary<(short X, short Y), int> Positions, int NextId, int[] FreeSlots);
+        Dictionary<(short X, short Y), int> Positions, int NextId, int[] FreeSlots, WorldPylonInfo1458[] Pylons, int PylonCooldown);
 
     private Image image;
     private readonly int maximumEntities;
@@ -27,7 +27,7 @@ public sealed class RuntimeWorldFurnitureStore1458
         image = CreateImage(rows, rows.Length == 0 ? 0 : rows.Max(row => row.PersistedId) + 1);
     }
 
-    private static Image CreateImage(WorldTileEntity?[] rows, int nextId, int[]? freeSlots = null)
+    private static Image CreateImage(WorldTileEntity?[] rows, int nextId, int[]? freeSlots = null, WorldPylonInfo1458[]? pylons = null, int pylonCooldown = 0)
     {
         var ids = new Dictionary<int, int>(rows.Length);
         var positions = new Dictionary<(short, short), int>(rows.Length);
@@ -37,7 +37,7 @@ public sealed class RuntimeWorldFurnitureStore1458
             ids.Add(row.PersistedId, index);
             positions.Add((row.X, row.Y), row.PersistedId);
         }
-        return new(rows, ids, positions, nextId, freeSlots ?? []);
+        return new(rows, ids, positions, nextId, freeSlots ?? [], pylons ?? [], pylonCooldown);
     }
 
     internal static bool TryImport(WorldTileStore tiles, ReadOnlySpan<WorldTileEntity> source,
@@ -164,7 +164,7 @@ public sealed class RuntimeWorldFurnitureStore1458
             {
                 EnsureWorkingImage();
                 if (workingSlots!.Count - workingFreeSlots!.Count > owner.maximumEntities) return Fail();
-                prepared = CreateImage(workingSlots.ToArray(), nextId, workingFreeSlots.ToArray());
+                prepared = CreateImage(workingSlots.ToArray(), nextId, workingFreeSlots.ToArray(), original.Pylons, original.PylonCooldown);
             }
             sealedPreparation = true; return true;
         }
@@ -205,10 +205,19 @@ public sealed class RuntimeWorldFurnitureStore1458
             SetWorkingRow(changes[id]!);
             return IsCurrentOwned;
         }
-        internal bool TryStageWeaponsRackItemClear(int x, int y, in WorldTileEntityItem expected)
+        internal bool TryStageLeashedAnchorItemClear(int x, int y, WorldTileEntityKind kind, short expected)
+        {
+            if (sealedPreparation || !TryGetAt(x, y, out var row) || row is null || row.Kind != kind ||
+                kind is not (WorldTileEntityKind.KiteAnchor or WorldTileEntityKind.CritterAnchor) ||
+                row.Payload is not WorldLeashedAnchorPayload leash || leash.ItemType != expected ||
+                changes.Count == maximumChanges && !changes.ContainsKey(row.PersistedId)) return Fail();
+            changes[row.PersistedId] = row with { Payload = new WorldLeashedAnchorPayload(0) };
+            SetWorkingRow(changes[row.PersistedId]!); return IsCurrentOwned;
+        }
+        internal bool TryStageItemHolderClear(int x, int y, WorldTileEntityKind expectedKind, in WorldTileEntityItem expected)
         {
             if (sealedPreparation || !TryGetAt(x, y, out var row) || row is null ||
-                row.Kind != WorldTileEntityKind.WeaponsRack || row.Payload is not WorldItemTileEntityPayload rack ||
+                row.Kind != expectedKind || expectedKind is not (WorldTileEntityKind.ItemFrame or WorldTileEntityKind.WeaponsRack or WorldTileEntityKind.FoodPlatter or WorldTileEntityKind.DeadCellsDisplayJar) || row.Payload is not WorldItemTileEntityPayload rack ||
                 rack.Item != expected || changes.Count == maximumChanges && !changes.ContainsKey(row.PersistedId)) return Fail();
             changes[row.PersistedId] = row with { Payload = new WorldItemTileEntityPayload(default) };
             SetWorkingRow(changes[row.PersistedId]!);

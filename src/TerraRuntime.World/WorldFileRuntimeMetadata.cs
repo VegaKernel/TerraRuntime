@@ -80,6 +80,7 @@ public sealed class WorldFileRuntimeMetadata
     public bool DownedPirates { get; init; }
     public bool ShadowOrbSmashed { get; init; }
     public bool HardMode { get; init; }
+    public bool AfterPartyOfDoom { get; init; }
 
     public double SlimeRainTime { get; init; }
     public byte SundialCooldown { get; init; }
@@ -135,6 +136,7 @@ public sealed class WorldFileRuntimeMetadata
 
     public bool PartyManual { get; init; }
     public bool PartyGenuine { get; init; }
+    public int PartyDaysOnCooldown { get; init; }
     public bool SandstormHappening { get; init; }
     public float SandstormIntendedSeverity { get; init; }
     public bool DownedDd2InvasionT1 { get; init; }

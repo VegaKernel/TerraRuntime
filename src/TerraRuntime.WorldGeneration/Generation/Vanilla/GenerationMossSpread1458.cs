@@ -17,7 +17,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// an ordinary wall placement it costs nothing from the stream.
 /// </para>
 /// </remarks>
-internal sealed class GenerationMossSpread1458(WorldTileStore store)
+internal sealed class GenerationMossSpread1458(WorldTileStore store, Func<TileTypeId, bool>? solidity = null)
 {
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
@@ -77,7 +77,7 @@ internal sealed class GenerationMossSpread1458(WorldTileStore store)
     private bool IsSolid(int x, int y)
     {
         WorldTile cell = At(x, y);
-        return cell.IsActive && VanillaTileCollisionCatalog.IsSolid(cell.TileType) &&
+        return cell.IsActive && (solidity?.Invoke(cell.TileType) ?? VanillaTileCollisionCatalog.IsSolid(cell.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(cell.TileType) && cell.Shape == 0 && !cell.IsActuated;
     }
 

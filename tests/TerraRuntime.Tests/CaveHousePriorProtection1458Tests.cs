@@ -121,7 +121,7 @@ public sealed class CaveHousePriorProtection1458Tests
     {
         var workspace = new Workspace(600, 500);
         Assert.True(workspace.TrySetLayers(140d, 200d));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new CountingRandom(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new CountingRandom(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int x = 100; x <= 500; x++) workspace.TileStore.Set(x, 200, in stone);
         var random = new CountingRandom(1458);

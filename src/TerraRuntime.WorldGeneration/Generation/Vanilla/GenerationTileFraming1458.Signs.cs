@@ -16,6 +16,8 @@ internal sealed partial class GenerationTileFraming1458
     {
         if (destroyingObject)
             return;
+        if (!Contains(i - 2, j - 2) || !Contains(i + 2, j + 2))
+            return;
         WorldTile observed = At(i, j);
         int left = i - observed.FrameX / 18 % 2;
         int top = j - observed.FrameY / 18 % 2;
@@ -48,11 +50,15 @@ internal sealed partial class GenerationTileFraming1458
         }
         if (broken)
         {
+            if (type == 395)
+                TryEmptyGenerationItemHolderAt(left, top, WorldTileEntityKind.ItemFrame);
             destroyingObject = true;
             for (int x = left; x < left + 2; x++)
             for (int y = top; y < top + 2; y++)
                 if (At(x, y).Type == type)
                     KillTile(x, y);
+            if (type == 395)
+                RemoveOwnedTileEntity(left, top, WorldTileEntityKind.ItemFrame);
             destroyingObject = false;
             // Source CheckSign adds no separate halo after the matching-member KillTile calls.
             return;

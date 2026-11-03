@@ -25,13 +25,13 @@ public sealed class SourceBackedChestPlacement1458Tests
         // has no floor and fails after its cleanup/retry.
         var workspace = new Workspace(width, height);
         Assert.True(workspace.TrySetLayers(height == 1200 ? 300 : 140, height == 1200 ? 500 : 200));
-        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, TerraRuntime.World.VanillaSpecialWorldSeed1458.None));
         int[] anchors = height == 1200 ? [1000, 2000, 3000] : [200, 300, 400];
         int row = height == 1200 ? 600 : 200;
         var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
         for (int index = 0; index < 2; index++)
-        for (int x = anchors[index] - 2; x <= anchors[index] + 2; x++)
-            workspace.TileStore.Set(x, row + 3, in stone);
+            for (int x = anchors[index] - 2; x <= anchors[index] + 2; x++)
+                workspace.TileStore.Set(x, row + 3, in stone);
         var platform = new WorldTile { Type = 19, Flags = WorldTileFlags.Active };
         foreach (int x in new[] { anchors[1], anchors[2] })
             workspace.TileStore.Set(x, row + 1, in platform);
@@ -188,18 +188,18 @@ public sealed class SourceBackedChestPlacement1458Tests
     private static void PlaceChestTiles(WorldTileStore tiles, int left, int top, int style)
     {
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            var tile = new WorldTile
+            for (int dy = 0; dy < 2; dy++)
             {
-                Type = checked((ushort)VanillaTileIds.Containers.Value),
-                Flags = WorldTileFlags.Active,
-                FrameX = checked((short)(style * 36 + dx * 18)),
-                FrameY = checked((short)(dy * 18)),
-                LiquidKind = WorldLiquidKind.Water
-            };
-            tiles.SetInitialPopulationTile(left + dx, top + dy, tile);
-        }
+                var tile = new WorldTile
+                {
+                    Type = checked((ushort)VanillaTileIds.Containers.Value),
+                    Flags = WorldTileFlags.Active,
+                    FrameX = checked((short)(style * 36 + dx * 18)),
+                    FrameY = checked((short)(dy * 18)),
+                    LiquidKind = WorldLiquidKind.Water
+                };
+                tiles.SetInitialPopulationTile(left + dx, top + dy, tile);
+            }
     }
 
     private static CaptureEntry Find(CaptureBuilder builder, string id) =>
@@ -211,13 +211,13 @@ public sealed class SourceBackedChestPlacement1458Tests
     {
         var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
         for (int x = 0; x < workspace.WidthTiles; x++)
-        for (int y = 0; y < workspace.HeightTiles; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
-                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
-                .Append(tile.Shape).Append(';');
-        }
+            for (int y = 0; y < workspace.HeightTiles; y++)
+            {
+                WorldTile tile = workspace.TileStore.Get(x, y);
+                snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                    .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(',')
+                    .Append(tile.Shape).Append(';');
+            }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 

@@ -405,7 +405,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         long planted = SurfacePlantPass1458.Apply(
             workspace.TileStore,
             random,
-            context.CancellationToken);
+            context.CancellationToken, workspace);
 
         context.ReportProgress(1d, $"Planting surface and evil plants ({planted} cells)");
     }
@@ -538,7 +538,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
             random,
             state.WorldSurface,
             context.CancellationToken,
-            workspace.VanillaFallenLogAnchor is { } anchor ? (anchor.X, anchor.Y) : null);
+            workspace.VanillaFallenLogAnchor is { } anchor ? (anchor.X, anchor.Y) : null, workspace);
         pass.ApplyFlowers();
         context.ReportProgress(1d, $"Flowers complete; patches={pass.FlowerPatches}");
     }
@@ -553,7 +553,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Mushrooms require shared UnifiedRandom semantics.");
 
         var pass = new FlowerAndMushroomPatchPass1458(
-            workspace.TileStore, random, state.WorldSurface, context.CancellationToken);
+            workspace.TileStore, random, state.WorldSurface, context.CancellationToken, workspace: workspace);
         pass.ApplyMushrooms();
         context.ReportProgress(1d, $"Mushrooms complete; patches={pass.MushroomPatches}");
     }
