@@ -12,7 +12,8 @@ internal static class VanillaLiquidQuickWaterFacts1458
 {
     // Liquid.worldGenTilesIgnoreWater(true), distinct from the boulder override shared with loading.
     // JungleShrines changes Main.tileSolid[137] to false immediately before the first Settle Liquids pass.
-    public static bool IgnoresSolidDuringWorldGenerationSettle(TileTypeId type) => type.Value is 10 or 137 or 190 or 191 or 192;
+    // Reset keeps ShimmerBlock659 non-solid throughout world generation; loading retains its normal solidity.
+    public static bool IgnoresSolidDuringWorldGenerationSettle(TileTypeId type) => type.Value is 10 or 137 or 190 or 191 or 192 or 659;
 
     private static ReadOnlySpan<ushort> IgnoredSolidTypes =>
     [

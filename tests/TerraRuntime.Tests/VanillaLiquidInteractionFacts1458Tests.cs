@@ -6,6 +6,17 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaLiquidInteractionFacts1458Tests
 {
     [Fact]
+    public void Obsidian_kill_bitmap_matches_actual_official_main_initialization()
+    {
+        // Untouched official1.4.5.8 Initialize_TileAndNPCData1+2 readback: all754 entries,
+        // including lava-death-derived membership that the old276-entry table omitted.
+        Span<byte> bitmap = stackalloc byte[VanillaTileIds.Count];
+        for (int i = 0; i < bitmap.Length; i++)
+            bitmap[i] = VanillaLiquidInteractionFacts1458.IsObsidianKill(new TileTypeId(i)) ? (byte)1 : (byte)0;
+        Assert.Equal("2765FC09844620108BC762DC40AA9886C4565FC80E73C989F76D2D8F8B2C4FF9", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bitmap)));
+    }
+
+    [Fact]
     public void Final_obsidian_kill_table_has_source_pinned_count_and_overrides()
     {
         int found = 0;

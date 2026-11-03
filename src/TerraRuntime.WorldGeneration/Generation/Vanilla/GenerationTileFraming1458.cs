@@ -64,7 +64,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 internal sealed partial class GenerationTileFraming1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
-    Workspace? workspace = null)
+    Workspace? workspace = null,
+    bool useWorldGenerationSolidity = false)
 {
     private const ushort LargePiles = 186;
     private const ushort LargePiles2 = 187;
@@ -109,13 +110,26 @@ internal sealed partial class GenerationTileFraming1458(
     /// </summary>
     public void TileFrame(int i, int j, bool resetFrame = false)
     {
+        try
+        {
+            FrameTile(i, j, resetFrame);
+        }
+        catch (FramingAbortException)
+        {
+            // The original TileFrame swallows a failed tree-dust ground lookup. Keep the
+            // nearest framing-call boundary: a nested neighbour failure does not abort its caller.
+        }
+    }
+
+    private void FrameTile(int i, int j, bool resetFrame)
+    {
         if (i <= 5 || j <= 5 || i >= width - 5 || j >= height - 5)
             return;
 
         ref WorldTile tile = ref At(i, j);
         if (!tile.IsActive)
         {
-            tile.Shape = 0;
+            tile.ClearSourceShape();
             tile.TileColor = 0;
             tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
             return;
@@ -124,6 +138,56 @@ internal sealed partial class GenerationTileFraming1458(
         if (tile.Type is LargePiles or LargePiles2 or FallenLog)
         {
             Check3x2(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 14 or 17 or 26 or 77 or 86 or 87 or 89 or 114 or 133 or 215 or 217 or 218 or
+            237 or 244 or 285 or 286 or 298 or 299 or 310 or 339 or 361 or 362 or 363 or 364 or
+            377 or 391 or 392 or 393 or 394 or 469 or 538)
+        {
+            CheckOrdinaryThreeByTwo(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 28 or 653)
+        {
+            PotCheckFraming(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type == 530)
+        {
+            OasisCheckFraming(i, j);
+            return;
+        }
+
+        if (tile.Type == 81)
+        {
+            CoralCheckFraming(i, j);
+            return;
+        }
+
+        if (tile.Type == 72)
+        {
+            FrameMushroomTrunk(i, j);
+            return;
+        }
+
+        if (tile.Type == 314)
+        {
+            FrameTrack(i, j);
+            return;
+        }
+
+        if (tile.Type == 323)
+        {
+            FramePalmTrunk(i, j);
+            return;
+        }
+
+        if (tile.Type is 5 or 583 or 584 or 585 or 586 or 587 or 588 or 589 or 596 or 616 or 634)
+        {
+            FrameWoodyTrunk(i, j);
             return;
         }
 
@@ -510,10 +574,7 @@ internal sealed partial class GenerationTileFraming1458(
     /// frame wrongly.
     /// </para>
     /// <para>
-    /// The source's trailing <c>HandleRopeEndFraming</c> is absent. It re-frames the ends of a rope running
-    /// through the platform's column, and it is measured inert here: a platform with empty space above it
-    /// resolves to an inactive cell that framing does nothing with, and a platform with solid cells above it
-    /// finds no rope end within the five-row reach.
+    /// Its trailing <c>HandleRopeEndFraming</c> shares the retained recursion guard with tracks and planters.
     /// </para>
     /// </remarks>
     private void FramePlatform(int i, int j)
@@ -542,9 +603,9 @@ internal sealed partial class GenerationTileFraming1458(
             rightIdentity = -1;
         if (leftIdentity >= 0 && cullLeft)
             leftIdentity = -1;
-        if (rightIdentity >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(rightIdentity)))
+        if (rightIdentity >= 0 && !IsFramingSolid(new TileTypeId(rightIdentity)))
             rightIdentity = -1;
-        if (leftIdentity >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(leftIdentity)))
+        if (leftIdentity >= 0 && !IsFramingSolid(new TileTypeId(leftIdentity)))
             leftIdentity = -1;
 
         bool hammered = cell.Shape == 1;
@@ -580,6 +641,7 @@ internal sealed partial class GenerationTileFraming1458(
                 cullLeft, cullRight, cullUpperRight, cullLowerLeft, forbidsSloping),
             _ => Flat(type, left, right, leftIdentity, rightIdentity)
         }));
+        FrameRopeEnds(i, j);
     }
 
     /// <summary>WorldGen.TileFrameImportant's PlanterBox380 side-merging frame table.</summary>
@@ -592,16 +654,15 @@ internal sealed partial class GenerationTileFraming1458(
         int rightType = right.IsActive ? IsStoneMerging(right.Type) ? 1 : right.Type : -1;
         bool coating = Coated(planter);
         if (leftType >= 0 && Coated(left) != coating ||
-            leftType >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(leftType)))
+            leftType >= 0 && !IsFramingSolid(new TileTypeId(leftType)))
             leftType = -1;
         if (rightType >= 0 && Coated(right) != coating ||
-            rightType >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(rightType)))
+            rightType >= 0 && !IsFramingSolid(new TileTypeId(rightType)))
             rightType = -1;
         planter.FrameX = (short)(leftType == 380
             ? rightType == 380 ? 18 : 36
             : rightType == 380 ? 0 : 54);
-        // Source HandleRopeEndFraming is inert when no rope occupies this column's edge; rope
-        // continuation remains outside the generation framer's admitted object slice.
+        FrameRopeEnds(i, j);
     }
 
     /// <summary>WorldGen.CheckSunflower's exact 2×4 footprint and grass support.</summary>
@@ -964,7 +1025,7 @@ internal sealed partial class GenerationTileFraming1458(
                 WorldTile anchor = At(x, top + 2);
                 // CheckMB accepts shaped solid/table tops, but requires nactive (not actuated).
                 if (!anchor.IsActive || anchor.IsActuated ||
-                    !VanillaTileCollisionCatalog.IsSolid(anchor.TileType) &&
+                    !IsFramingSolid(anchor.TileType) &&
                     !GenerationFurnitureTiles1458.IsTable(anchor.Type))
                     broken = true;
             }
@@ -973,7 +1034,7 @@ internal sealed partial class GenerationTileFraming1458(
         {
             WorldTile ceiling = At(left + 1, top - 1);
             if (!ceiling.IsActive || ceiling.IsActuated ||
-                !VanillaTileCollisionCatalog.IsSolid(ceiling.TileType) ||
+                !IsFramingSolid(ceiling.TileType) ||
                 VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType))
                 broken = true;
         }
@@ -1234,7 +1295,7 @@ internal sealed partial class GenerationTileFraming1458(
             }
 
             WorldTile support = At(x, top + 2);
-            if ((!support.IsActive || !VanillaTileCollisionCatalog.IsSolid(support.TileType)) && canDestroy)
+            if ((!support.IsActive || !IsFramingSolid(support.TileType)) && canDestroy)
                 broken = true;
         }
         if (!broken || !canDestroy)
@@ -1371,7 +1432,7 @@ internal sealed partial class GenerationTileFraming1458(
         bool platformAnchor = ceiling.IsActive &&
             (VanillaTileIds.IsPlatform(ceiling.TileType) || ceiling.Type == 380);
         bool ordinaryAnchor = ceiling.IsActive && !ceiling.IsActuated &&
-            VanillaTileCollisionCatalog.IsSolid(ceiling.TileType) &&
+            IsFramingSolid(ceiling.TileType) &&
             !VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType);
         if (intact && (platformAnchor || ordinaryAnchor))
             return;
@@ -1434,7 +1495,7 @@ internal sealed partial class GenerationTileFraming1458(
             if (type is 95 or 126)
             {
                 WorldTile ceiling = At(x, top - 1);
-                if (!ceiling.IsActive || !VanillaTileCollisionCatalog.IsSolid(ceiling.TileType) ||
+                if (!ceiling.IsActive || !IsFramingSolid(ceiling.TileType) ||
                     VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType))
                     broken = true;
             }
@@ -1442,7 +1503,7 @@ internal sealed partial class GenerationTileFraming1458(
             {
                 WorldTile floor = At(x, top + 2);
                 if (!floor.IsActive ||
-                    !VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                    !IsFramingSolid(floor.TileType) &&
                     !GenerationFurnitureTiles1458.IsTable(floor.Type) || floor.Shape == 1)
                     broken = true;
             }
@@ -1562,7 +1623,7 @@ internal sealed partial class GenerationTileFraming1458(
         {
             WorldTile floor = At(x, top + 2);
             if (!floor.IsActive ||
-                !VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                !IsFramingSolid(floor.TileType) &&
                 !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType) ||
                 floor.Shape is 1 or 2 or 3)
                 supported = false;
@@ -1623,7 +1684,7 @@ internal sealed partial class GenerationTileFraming1458(
             return (tile.Shape != 1 && band is >= 0 and <= 7) ||
                 band is >= 12 and <= 16 or >= 25 and <= 26;
         }
-        return VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return IsFramingSolid(tile.TileType) &&
                    VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) ||
                GenerationFurnitureTiles1458.IsTable(tile.Type) && tile.Shape == 0;
     }
@@ -1671,7 +1732,7 @@ internal sealed partial class GenerationTileFraming1458(
 
         bool table = support.IsActive && GenerationFurnitureTiles1458.IsTable(support.Type);
         bool solidTop = support.IsActive && !support.IsActuated &&
-            VanillaTileCollisionCatalog.IsSolid(support.TileType) &&
+            IsFramingSolid(support.TileType) &&
             VanillaTileCollisionCatalog.IsSolidTop(support.TileType);
         if (table || solidTop || type == 78 && SolidTileAllowBottomSlope(i, j + 1))
             return;
@@ -2220,15 +2281,14 @@ internal sealed partial class GenerationTileFraming1458(
         if (!tile.IsActive)
             return;
 
-        // CheckTileBreakability's locked-door portion precedes all destruction and dust.
-        // Its fail=1 lane leaves the door intact but still frames its neighbours; door dust
-        // has no random choices. Other breakability contexts remain outside this slice.
-        int doorBreakability = DoorBreakability(i, j);
-        if (doorBreakability == 2)
+        // Source breakability precedes dust. Failure still spends the identity's dust
+        // and reframes neighbours, while refusal returns without either effect.
+        int breakability = TileBreakability(i, j);
+        if (breakability == 2)
             return;
-        if (doorBreakability == 1)
+        if (breakability == 1)
         {
-            GenerationKillTileDust1458.Consume(random, tile.Type);
+            ConsumeTileDust(i, j, tile);
             SquareTileFrame(i, j);
             return;
         }
@@ -2241,9 +2301,9 @@ internal sealed partial class GenerationTileFraming1458(
                 return;
         }
 
-        GenerationKillTileDust1458.Consume(random, tile.Type);
+        ConsumeTileDust(i, j, tile);
         tile.Flags &= ~WorldTileFlags.Active;
-        tile.Shape = 0;
+        tile.ClearSourceShape();
         tile.FrameX = -1;
         tile.FrameY = -1;
         tile.TileColor = 0;
@@ -2266,7 +2326,7 @@ internal sealed partial class GenerationTileFraming1458(
         bool belowTop = below.IsActive && below.Shape != 1 &&
             (below.Shape is not (2 or 3) ||
              belowPlatform && PlatformProperTopFrame(below.FrameX));
-        if (belowTop && VanillaTileCollisionCatalog.IsSolid(below.TileType) &&
+        if (belowTop && IsFramingSolid(below.TileType) &&
             (!GenerationObjectSupport1458.DisallowsAttachment(below.Type) || belowPlatform))
         {
             torch.FrameX = styleBand;
@@ -2297,7 +2357,7 @@ internal sealed partial class GenerationTileFraming1458(
             (isLeft && side.Shape is 2 or 4) ||
             (!isLeft && side.Shape is 3 or 5))
             return false;
-        if (VanillaTileCollisionCatalog.IsSolid(side.TileType) &&
+        if (IsFramingSolid(side.TileType) &&
             !GenerationObjectSupport1458.DisallowsAttachment(side.Type))
             return true;
         if (side.Type is 124 or 561 or 574 or 575 or 576 or 577 or 578)
@@ -2322,7 +2382,7 @@ internal sealed partial class GenerationTileFraming1458(
         WorldTile below = At(i, j + 1);
         if (below.IsActive && !below.IsActuated && below.Shape != 1 &&
             below.Shape is not (2 or 3) &&
-            VanillaTileCollisionCatalog.IsSolid(below.TileType) &&
+            IsFramingSolid(below.TileType) &&
             !GenerationObjectSupport1458.DisallowsAttachment(below.Type))
         {
             trap.FrameX = 0;
@@ -2355,7 +2415,7 @@ internal sealed partial class GenerationTileFraming1458(
             return false;
         bool solidSide = side.Shape != 1 &&
             (isLeft ? side.Shape is not (2 or 4) : side.Shape is not (3 or 5)) &&
-            VanillaTileCollisionCatalog.IsSolid(side.TileType) &&
+            IsFramingSolid(side.TileType) &&
             !GenerationObjectSupport1458.DisallowsAttachment(side.Type);
         bool beam = side.Type is 124 or 561 or 574 or 575 or 576 or 577 or 578;
         bool tree = IsTorchTree(side.Type) &&
@@ -2371,11 +2431,11 @@ internal sealed partial class GenerationTileFraming1458(
         WorldTile below = At(i, j + 1);
         WorldTile above = At(i, j - 1);
         bool down = below.IsActive && !below.IsActuated && below.Shape is 0 or 4 or 5 &&
-            VanillaTileCollisionCatalog.IsSolid(below.TileType) &&
+            IsFramingSolid(below.TileType) &&
             (!GenerationObjectSupport1458.DisallowsAttachment(below.Type) ||
              VanillaTileIds.IsPlatform(below.TileType));
         bool up = above.IsActive && !above.IsActuated && above.Shape is 0 or 1 or 2 or 3 &&
-            VanillaTileCollisionCatalog.IsSolid(above.TileType) &&
+            IsFramingSolid(above.TileType) &&
             (!GenerationObjectSupport1458.DisallowsAttachment(above.Type) ||
              VanillaTileIds.IsPlatform(above.TileType) && above.Shape == 1);
         WorldTile leftTile = At(i - 1, j);
@@ -2446,7 +2506,7 @@ internal sealed partial class GenerationTileFraming1458(
         WorldTile anchor = At(x, y);
         if (GenerationObjectSupport1458.IsBoulder(anchor.Type) || anchor.Type == 10 ||
             !anchor.IsActive || anchor.IsActuated ||
-            !VanillaTileCollisionCatalog.IsSolid(anchor.TileType) ||
+            !IsFramingSolid(anchor.TileType) ||
             VanillaTileCollisionCatalog.IsSolidTop(anchor.TileType))
             return false;
         return direction switch
@@ -2597,7 +2657,7 @@ internal sealed partial class GenerationTileFraming1458(
         WorldTile support = At(i, j);
         bool platform = VanillaTileIds.IsPlatform(support.TileType);
         return support.IsActive && !support.IsActuated &&
-            (VanillaTileCollisionCatalog.IsSolid(support.TileType) || support.Type == 380) &&
+            (IsFramingSolid(support.TileType) || support.Type == 380) &&
             (platform ? support.IsHalfBrick : support.Shape is not (4 or 5));
     }
 
@@ -2647,7 +2707,7 @@ internal sealed partial class GenerationTileFraming1458(
         if (!WorldSmoothingCatalog1458.IsSandConversion(support.TileType) ||
             support.Shape == 1 || support.Shape is 2 or 3)
             return false;
-        return VanillaTileCollisionCatalog.IsSolid(support.TileType) ||
+        return IsFramingSolid(support.TileType) ||
             VanillaTileCollisionCatalog.IsSolidTop(support.TileType);
     }
 
@@ -2698,7 +2758,7 @@ internal sealed partial class GenerationTileFraming1458(
         while (supportY < height - 50)
         {
             WorldTile candidate = At(i, supportY);
-            if (candidate.IsActive && VanillaTileCollisionCatalog.IsSolid(candidate.TileType) &&
+            if (candidate.IsActive && IsFramingSolid(candidate.TileType) &&
                 !VanillaTileCollisionCatalog.IsSolidTop(candidate.TileType))
                 break;
             supportY++;
@@ -2730,7 +2790,7 @@ internal sealed partial class GenerationTileFraming1458(
         if (!below.IsActive)
             MoveLilyPad(i, j, j + 1);
         else if (!VanillaTileIds.IsPlatform(below.TileType) &&
-                 (!VanillaTileCollisionCatalog.IsSolid(below.TileType) ||
+                 (!IsFramingSolid(below.TileType) ||
                   VanillaTileCollisionCatalog.IsSolidTop(below.TileType)))
             KillTile(i, j);
     }
@@ -2759,7 +2819,7 @@ internal sealed partial class GenerationTileFraming1458(
         while (floor < height - 50)
         {
             WorldTile cell = At(i, floor);
-            if (cell.IsActive && VanillaTileCollisionCatalog.IsSolid(cell.TileType) &&
+            if (cell.IsActive && IsFramingSolid(cell.TileType) &&
                 !VanillaTileCollisionCatalog.IsSolidTop(cell.TileType))
                 break;
             if (cell.IsActive && cell.Type != 519)
@@ -2848,7 +2908,7 @@ internal sealed partial class GenerationTileFraming1458(
     {
         WorldTile above = At(i, j - 1);
         if (!above.IsActive || above.Shape is 4 or 5 ||
-            !VanillaTileCollisionCatalog.IsSolid(above.TileType) ||
+            !IsFramingSolid(above.TileType) ||
             VanillaTileCollisionCatalog.IsSolidTop(above.TileType))
             KillTile(i, j);
     }
@@ -2965,7 +3025,7 @@ internal sealed partial class GenerationTileFraming1458(
         // Vanilla's halfBrick bit can coexist with a bottom slope. Shape alone does not
         // establish a usable anchor; the independent halfbrick bit still disqualifies it.
         return tile.IsActive &&
-            (VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||
+            (IsFramingSolid(tile.TileType) ||
              VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) &&
             (tile.Shape is not (2 or 3) ||
              VanillaTileIds.IsPlatform(tile.TileType) && PlatformProperTopFrame(tile.FrameX)) &&
@@ -2983,7 +3043,7 @@ internal sealed partial class GenerationTileFraming1458(
             return true;
 
         WorldTile tile = At(i, j);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && IsFramingSolid(tile.TileType) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && tile.Shape == 0 && !tile.IsActuated;
     }
 

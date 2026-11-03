@@ -1,0 +1,790 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "acceptedManaged": true,
+  "goalStatus": "active",
+  "allGenerationComplete": false,
+  "checkpoint": "49 generation dispatch identities, ordinary house construction/decor/aging/chests, final seed/Shimmer/cold-liquid tail, generation WaterCheck and source inactive-frame validator contracts",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "nativeAot": {
+    "accepted": false,
+    "status": "Explicitly deferred by user; managed-only RC3 checkpoint"
+  },
+  "identityCount": 49,
+  "identities": {
+    "ordinaryThreeByTwo": [
+      14,
+      17,
+      26,
+      77,
+      86,
+      87,
+      89,
+      114,
+      133,
+      215,
+      217,
+      218,
+      237,
+      244,
+      285,
+      286,
+      298,
+      299,
+      310,
+      339,
+      361,
+      362,
+      363,
+      364,
+      377,
+      391,
+      392,
+      393,
+      394,
+      469,
+      538
+    ],
+    "potsPlants": [
+      28,
+      653,
+      530,
+      81
+    ],
+    "trees": [
+      5,
+      583,
+      584,
+      585,
+      586,
+      587,
+      588,
+      589,
+      596,
+      616,
+      634,
+      72,
+      323
+    ],
+    "track": [
+      314
+    ]
+  },
+  "productionGraph": {
+    "shippingProjects": 15,
+    "references": 29,
+    "newDependencies": 0,
+    "newStateOwners": 0
+  },
+  "validation": {
+    "releaseWarningsAsErrors": {
+      "warnings": 0,
+      "errors": 0,
+      "evidence": {
+        "path": ".cache/worldgen-closure-20261103/diagnostic11-build.log",
+        "sha256": "cd9fea80485dbb21e691a5083d0af08638c07fa66f613ee3cf2c4e0d7ebd9497"
+      }
+    },
+    "focused": {
+      "total": 1164,
+      "passed": 1164,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "evidence": {
+        "path": ".cache/worldgen-closure-20261103/diagnostic11-tests.xml",
+        "sha256": "4243a2cada1404991e9d81af66b347aa322a9dfe0386587b6ea494c79b715fd5"
+      }
+    },
+    "python": {
+      "passed": 283,
+      "evidence": {
+        "path": ".cache/worldgen-closure-20261103/python-ci.log",
+        "sha256": "045ab081fe51951d7154fb0baa8523798b5f213faba3234f686ead7e3dee7ac8"
+      }
+    },
+    "roslynSynthetic": {
+      "passed": 115,
+      "analysis": 20,
+      "scalar": 18,
+      "value": 27,
+      "state": 50,
+      "evidence": {
+        "path": ".cache/worldgen-closure-20261103/synthetic-summary.json",
+        "sha256": "85a6ebb1d4d359bddce4e5e884f73dd980e94d779c307a681386eedb8e2e5515"
+      }
+    },
+    "rejectedFull08": {
+      "accepted": false,
+      "tests": {
+        "total": "1602156",
+        "passed": "1602150",
+        "failed": "6",
+        "errors": "0",
+        "skipped": "0",
+        "time": "1245.825",
+        "skipped_tests": []
+      },
+      "evidence": {
+        "path": ".cache/worldgen-closure-20261103/full/result.json",
+        "sha256": "9c5eebee84cf349f36db54a508990c21fa8e6236bcf24c2655cbee9d99edf7e3"
+      },
+      "failureEvidence": {
+        "path": ".cache/worldgen-closure-20261103/full-failures.json",
+        "sha256": "bb80e667555501b9a5c209ec8caaf21a2c38e898b1c822d7badb649d536e731e"
+      },
+      "failures": [
+        {
+          "name": "TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_accepts_canonical_generated_world(width: 8400, height: 2400, seed: 8675309)",
+          "reason": "System.InvalidOperationException: Settle Liquids Again WaterCheck cannot resolve tile 19 at 2306,1866."
+        },
+        {
+          "name": "TerraRuntime.Tests.WorldStartupPreparationTests.Generated_vanilla_world_reaches_actual_primary_startup_after_liquid_preparation(seed: 8675309, width: 8400, height: 2400)",
+          "reason": "System.InvalidOperationException: Settle Liquids Again WaterCheck cannot resolve tile 19 at 2306,1866."
+        },
+        {
+          "name": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_underworld_retains_forts_connections_and_house_hellforges(width: 6400, height: 1800)",
+          "reason": "Inactive tile at (5771,321) has non-zero frame/shape 110,-1 shape 0."
+        },
+        {
+          "name": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_regression_seeds_finalize_without_world_corruption(seed: 14419291354518832569)",
+          "reason": "System.InvalidOperationException: Settle Liquids Again WaterCheck cannot resolve tile 19 at 462,916."
+        },
+        {
+          "name": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_world_retains_connected_rideable_rail_frames(width: 6400, height: 1800)",
+          "reason": "Inactive tile at (5771,321) has non-zero frame/shape 110,-1 shape 0."
+        },
+        {
+          "name": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Ordinary_crimson_runs_placement_and_downstream_passes_without_coordinate_fallback(width: 8400, height: 2400)",
+          "reason": "System.InvalidOperationException: Settle Liquids Again WaterCheck cannot resolve tile 19 at 2751,2024."
+        }
+      ],
+      "supersededBy": "current11 after source-proven WaterCheck, shared RNG/deferred254 ordering and inactive-frame validator fixes; original failures and goldens preserved"
+    },
+    "causal": {
+      "accepted": true,
+      "controls": 46,
+      "expectedTestFailures": 660,
+      "assertionFailures": 658,
+      "expectedNotSupportedRefusals": 2,
+      "passingControls": 2594,
+      "runnerErrors": 0,
+      "expectedRefusalContexts": [
+        {
+          "control": "platform19-admission-omitted",
+          "test": "TerraRuntime.Tests.GenerationFinalLiquid1458Tests.Final_generation_liquid_checks_match_actual_original_twenty_one_field_grid_and_complete_rng(profile: \\\"container-0-24-19\\\", mode: \\\"direct\\\", encoded: \\\"40,40,1,21,1,18,36,24,0,0,0,0,0,0,0,0,0,0,0,0,0,0,\\\"···, before: \\\"58DAA101A71234AF1FE5DCDAD991499F448FC5E9FB1BBEF630\\\"···, after: \\\"5FF65FA409C9ACA8171900A61BEBE5D438BD06D181D90C9250\\\"···, randomState: \\\"511931AF068F0673225AD8F7DE74437E97374E2890E34F8E88\\\"···, nextRandom: 906992634)"
+        },
+        {
+          "control": "platform19-admission-omitted",
+          "test": "TerraRuntime.Tests.GenerationFinalLiquid1458Tests.Final_generation_liquid_checks_match_actual_original_twenty_one_field_grid_and_complete_rng(profile: \\\"container-1-24-19\\\", mode: \\\"direct\\\", encoded: \\\"40,40,1,21,1,18,36,24,1,0,0,0,0,0,0,0,0,0,0,0,0,0,\\\"···, before: \\\"29DF3913F36DAD20244D0AE127C53D2D1D55815246A2609181\\\"···, after: \\\"9763AA375F2BF4BCA5DE91D710D31BDA4520C4A4BDBE7F1939\\\"···, randomState: \\\"511931AF068F0673225AD8F7DE74437E97374E2890E34F8E88\\\"···, nextRandom: 906992634)"
+        }
+      ],
+      "rows": [
+        {
+          "group": "objects",
+          "name": "ordinary-dispatch",
+          "expectedTestFailures": 19,
+          "assertionFailures": 19,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 18,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "pot-dispatch",
+          "expectedTestFailures": 5,
+          "assertionFailures": 5,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 2,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "oasis-dispatch",
+          "expectedTestFailures": 3,
+          "assertionFailures": 3,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 4,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "coral-dispatch",
+          "expectedTestFailures": 2,
+          "assertionFailures": 2,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 5,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "woody-dispatch",
+          "expectedTestFailures": 32,
+          "assertionFailures": 32,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 4,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "palm-dispatch",
+          "expectedTestFailures": 8,
+          "assertionFailures": 8,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 28,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "mushroom-dispatch",
+          "expectedTestFailures": 8,
+          "assertionFailures": 8,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 28,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "tree-propagation-and",
+          "expectedTestFailures": 2,
+          "assertionFailures": 2,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 34,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "tree-ground-abort",
+          "expectedTestFailures": 5,
+          "assertionFailures": 5,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 31,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "track-dispatch",
+          "expectedTestFailures": 77,
+          "assertionFailures": 77,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 51,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "rope-end-hooks",
+          "expectedTestFailures": 71,
+          "assertionFailures": 71,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 57,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "short-table-halo",
+          "expectedTestFailures": 1,
+          "assertionFailures": 1,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 36,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "protected-upper-guard",
+          "expectedTestFailures": 164,
+          "assertionFailures": 164,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 161,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "structural-inactive-frames",
+          "expectedTestFailures": 12,
+          "assertionFailures": 12,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 47,
+          "runnerErrors": 0
+        },
+        {
+          "group": "objects",
+          "name": "vanilla-inactive-frames",
+          "expectedTestFailures": 7,
+          "assertionFailures": 7,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 52,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "omit-shell-wall-callbacks",
+          "expectedTestFailures": 6,
+          "assertionFailures": 6,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 97,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "omit-stair-caps",
+          "expectedTestFailures": 7,
+          "assertionFailures": 7,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 96,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "old-one-door-frame-draw",
+          "expectedTestFailures": 7,
+          "assertionFailures": 7,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 96,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "old-centered-platform-scan",
+          "expectedTestFailures": 7,
+          "assertionFailures": 7,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 96,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "old-below-floor-platform-clearance",
+          "expectedTestFailures": 7,
+          "assertionFailures": 7,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 96,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "old-cuttable-only-chest-gate",
+          "expectedTestFailures": 17,
+          "assertionFailures": 17,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 86,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "omit-chest-removable-kills",
+          "expectedTestFailures": 21,
+          "assertionFailures": 21,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 82,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "interleave-chest-kills-and-writes",
+          "expectedTestFailures": 9,
+          "assertionFailures": 9,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 94,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "old-one-cell-beam-admission",
+          "expectedTestFailures": 1,
+          "assertionFailures": 1,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 102,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "old-physical-only-beam-search",
+          "expectedTestFailures": 1,
+          "assertionFailures": 1,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 102,
+          "runnerErrors": 0
+        },
+        {
+          "group": "houses",
+          "name": "require-active-platform-beam-veto",
+          "expectedTestFailures": 1,
+          "assertionFailures": 1,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 102,
+          "runnerErrors": 0
+        },
+        {
+          "group": "shimmer",
+          "name": "omit-shimmer-brush",
+          "expectedTestFailures": 6,
+          "assertionFailures": 6,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 6,
+          "runnerErrors": 0
+        },
+        {
+          "group": "shimmer",
+          "name": "omit-purification-wall-framing",
+          "expectedTestFailures": 9,
+          "assertionFailures": 9,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 3,
+          "runnerErrors": 0
+        },
+        {
+          "group": "shimmer",
+          "name": "omit-purification-tree-conversion",
+          "expectedTestFailures": 3,
+          "assertionFailures": 3,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 9,
+          "runnerErrors": 0
+        },
+        {
+          "group": "shimmer",
+          "name": "restore-old-loose-solid-guard",
+          "expectedTestFailures": 3,
+          "assertionFailures": 3,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 3,
+          "runnerErrors": 0
+        },
+        {
+          "group": "shimmer",
+          "name": "restore-old-halfbrick-reset",
+          "expectedTestFailures": 3,
+          "assertionFailures": 3,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 3,
+          "runnerErrors": 0
+        },
+        {
+          "group": "shimmer",
+          "name": "omit-final-seed-call",
+          "expectedTestFailures": 3,
+          "assertionFailures": 3,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 3,
+          "runnerErrors": 0
+        },
+        {
+          "group": "shimmer",
+          "name": "dust352-zero",
+          "expectedTestFailures": 9,
+          "assertionFailures": 9,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 3,
+          "runnerErrors": 0
+        },
+        {
+          "group": "metadata",
+          "name": "accepted old276entry Contracts only",
+          "expectedTestFailures": 2,
+          "assertionFailures": 2,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 8,
+          "runnerErrors": 0
+        },
+        {
+          "group": "settle",
+          "name": "rngOmission",
+          "expectedTestFailures": 6,
+          "assertionFailures": 6,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 2,
+          "runnerErrors": 0
+        },
+        {
+          "group": "settle",
+          "name": "premature254",
+          "expectedTestFailures": 2,
+          "assertionFailures": 2,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 51,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "omit-cold-tail",
+          "expectedTestFailures": 5,
+          "assertionFailures": 5,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 102,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "create-merge-flag-false",
+          "expectedTestFailures": 53,
+          "assertionFailures": 53,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 54,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "x-major-scan",
+          "expectedTestFailures": 2,
+          "assertionFailures": 2,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 105,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "platform19-admission-omitted",
+          "expectedTestFailures": 2,
+          "assertionFailures": 0,
+          "expectedNotSupportedRefusals": 2,
+          "passingControls": 105,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "659-solid-in-generation",
+          "expectedTestFailures": 1,
+          "assertionFailures": 1,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 106,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "side-kind-normalized",
+          "expectedTestFailures": 19,
+          "assertionFailures": 19,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 88,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "generation-owned-kill-omitted",
+          "expectedTestFailures": 18,
+          "assertionFailures": 18,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 74,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "watercheck-boulder-phase-omitted",
+          "expectedTestFailures": 9,
+          "assertionFailures": 9,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 83,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "watercheck659-old-barrier",
+          "expectedTestFailures": 2,
+          "assertionFailures": 2,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 90,
+          "runnerErrors": 0
+        },
+        {
+          "group": "liquids",
+          "name": "watercheck-handled-as-removed",
+          "expectedTestFailures": 3,
+          "assertionFailures": 3,
+          "expectedNotSupportedRefusals": 0,
+          "passingControls": 89,
+          "runnerErrors": 0
+        }
+      ],
+      "receipts": {
+        "objects": {
+          "path": ".cache/worldgen-closure-20261103/object-controls11/qualified11-result.json",
+          "sha256": "f9d0eea5e00c4af4d552b0c371ea9e61f95e912a0b7d94e09770e3ffca72d401"
+        },
+        "metadata": {
+          "path": ".cache/worldgen-closure-20261103/metadata-controls11/result.json",
+          "sha256": "a90128f785e5224afd21af1b3fa7ea124557c9da18275d10c99a8a7f68622475"
+        },
+        "houses": {
+          "path": ".cache/cavehouse-builder-controls11-20261103/results.json",
+          "sha256": "316ce75cafcacda02a814c3e28599473fb0a6fb41c8fdb9003a4c4302316273d"
+        },
+        "shimmer": {
+          "path": ".cache/worldgen-shimmer-cleanup-20261103/controls11/result.json",
+          "sha256": "efdc5096e26c859f2ee8d47b517a3f8c167643676591bf1690ff06936755aa6c"
+        },
+        "settle": {
+          "path": ".cache/worldgen-settle-callers-20261103/final11-qualification.json",
+          "sha256": "49fe669766432104e3269e4710b169fd20e5a884a122c4c88b8a0a423be8768d"
+        },
+        "liquids": {
+          "path": ".cache/worldgen-final-liquids-20261103/controls11/result.json",
+          "sha256": "11c01db93db6cc7b8391077f05072b92b2d3b6a3bc641fa982b1304b8208f4c8"
+        }
+      },
+      "deduplication": "Settle shimmer7 is the same seven controls as shimmer receipt and is counted once. The two NotSupported refusal witnesses are expected test failures, not assertions or runner errors."
+    },
+    "fast": {
+      "total": 56941,
+      "passed": 56941,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "full": {
+      "total": 1602255,
+      "passed": 1602255,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "discoveredMethods": 5711,
+      "selectedMethods": 5711,
+      "excludedMethods": 0
+    },
+    "ordinaryManagedSmokes": {
+      "accepted": true,
+      "smokes": [
+        "loop",
+        "protocol",
+        "network",
+        "world",
+        "tui"
+      ]
+    },
+    "publishedCoreClr": {
+      "accepted": true,
+      "smokes": [
+        {
+          "name": "loop",
+          "exitCode": 0
+        },
+        {
+          "name": "protocol",
+          "exitCode": 0
+        },
+        {
+          "name": "network",
+          "exitCode": 0
+        },
+        {
+          "name": "world",
+          "exitCode": 0
+        },
+        {
+          "name": "tui",
+          "exitCode": 0
+        }
+      ],
+      "executableSha256": "4f24aab641495a9658a7bfb6c56ad4691a61749591dd7b9a071ff932fabd87a7",
+      "evidence": {
+        "path": ".cache/worldgen-closure-20261103/frozen11/coreclr-result.json",
+        "sha256": "893fd108b9f151a6a5b2913b58e07e8c2c76aec74af62d9ca13a160507884f20"
+      }
+    }
+  },
+  "inputGuard": {
+    "accepted": true,
+    "sourceInputs": 4464,
+    "recursiveRuntimeDlls": 158,
+    "manifest": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/inputs-recursive.json",
+      "sha256": "974d9ab3cbccee05e04763e973a029ef781252b329e043c8e27a94a9417c3f22"
+    }
+  },
+  "guardAfterPublication": true,
+  "components": [
+    {
+      "path": ".cache/worldgen-three-by-two-20261103/qualification.json",
+      "sha256": "a1e8437faa0d06cc4dc38513ed40b5388cd115e181de54063ae608098c7a1d1f"
+    },
+    {
+      "path": ".cache/worldgen-tree-framing-20261103/component-inputs.json",
+      "sha256": "cabb04879c56fe50b8389ced8ee9ee5bfdc63ac38168cd2d9a30655f52b4eb9e"
+    },
+    {
+      "path": ".cache/worldgen-pots-plants-20261103/qualification.json",
+      "sha256": "7caf5516c86a7109e62a5b72bf0fb2632bbce8f9d0a4b5b528a31f394793b6f2"
+    },
+    {
+      "path": ".cache/cavehouse-builder-20261103/qualification.json",
+      "sha256": "db163842c5e4d4d73a5681e420b04ed831102e782ff97465b9f04215a9c57446"
+    },
+    {
+      "path": ".cache/cavehouse-furniture-20261103/qualification.json",
+      "sha256": "4b7add3db1a70b5878eca100380d4be33103b6c50b1b8a48bca591d50cccbab6"
+    },
+    {
+      "path": ".cache/worldgen-house-aging-20261103/component-inputs.json",
+      "sha256": "05aecf926d5c033b3eb8494b45d309970246b34dc49ec143bf83aa24d2fced35"
+    },
+    {
+      "path": ".cache/worldgen-final-seed-cleanup-20261103/component-inputs.json",
+      "sha256": "4ad479f0404d16da90d77720201151e3f7d5f1793a3db67082b3102f415ef823"
+    },
+    {
+      "path": ".cache/worldgen-shimmer-cleanup-20261103/component-inputs.json",
+      "sha256": "1af7fea13651fc3c6846778264c4e302cc56220e7737d7bb87fd195cf5316a6b"
+    },
+    {
+      "path": ".cache/worldgen-final-liquids-20261103/qualification.json",
+      "sha256": "2a0b78b2e84796756ed5248a70afa73d94eb42b981f1e2f9e8bd6c844c02d12f"
+    },
+    {
+      "path": ".cache/worldgen-inactive-frame-contract-20261103/qualification.json",
+      "sha256": "19e2b65007a69ca7e167f2bb9d55c606f79fce720d78e784bc4aec2d5e530cc3"
+    }
+  ],
+  "componentScope": "Scoped independent source reference/fixture evidence. Any previous final08 broad-pending markers are superseded only by this current11 aggregate acceptance and freshly rebuilt current11 controls; old private closure acceptance is not promoted.",
+  "originalFullReference": {
+    "evidence": {
+      "path": ".cache/worldgen-natural-prefix-20261103/qualification.json",
+      "sha256": "5e4dafb0890d44b8e121d8edc2feec1511481817eb0e9221aa64f5fd1dc81eb3"
+    },
+    "acceptedOriginalReference": true,
+    "registeredEnabledNativePasses": 106,
+    "runtimeWorldParityAccepted": false,
+    "scope": "Actual untouched official GenerateWorld is an original-only reference. All106nativepasses successful does not establish retained runtime full-world parity. Earlier actual runtime worlds differ from the source; current complete-world parity remains unqualified."
+  },
+  "remainingScope": [
+    "full retained runtime/original prefix and complete-world equality",
+    "CaveHouseBiome outer offers: non-red wires/inactive BasicChest prechecks",
+    "unported NPC/projectile/TE effects and ownership",
+    "special Reset prototype is cache-only; broader special Terrain/later passes and additional37secret switches",
+    "rows63/109 remain partial"
+  ],
+  "prior58ObjectReceipt": {
+    "preserved": true,
+    "path": "docs/verification/worldgen-object-cohort-20261103.json",
+    "sha256": "6359db7c92092dd9dd8ec0fb1ea3d9c731c31dc18038eb70974624577d96f421"
+  },
+  "gatesEvidence": {
+    "fast/result.json": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/fast/result.json",
+      "sha256": "7fed1a3933e0fd269f8193d8cb748e3d482745249a746895dfa16680841a35c7"
+    },
+    "full/result.json": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/full/result.json",
+      "sha256": "66ac8619b00a06ad67efc0edaac7a77a45bd81078b2747f5977a2861c866afbf"
+    },
+    "full/plan.json": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/full/plan.json",
+      "sha256": "d2ee3b34e9ff6f957e29c3da2c5e0c76cfe79eaf683cf4662d218e28a1d95d4f"
+    },
+    "after-gates-guard.json": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/after-gates-guard.json",
+      "sha256": "fcc3b029bab6a9193523063f1282eedfa2e4b64dfa1d5f1eee70c57ff2503637"
+    },
+    "after-full-guard.json": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/after-full-guard.json",
+      "sha256": "24dd88a7856ceda4d16452fbbc1bbf7947eaee09391c429306d4d33e4c7f39fe"
+    },
+    "managed-smokes.json": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/managed-smokes.json",
+      "sha256": "751045ebc17dd2f945f1ae9157847227b786202222e6873442af8db3def4cb2f"
+    },
+    "coreclr-result.json": {
+      "path": ".cache/worldgen-closure-20261103/frozen11/coreclr-result.json",
+      "sha256": "893fd108b9f151a6a5b2913b58e07e8c2c76aec74af62d9ca13a160507884f20"
+    }
+  },
+  "createdAtUtc": "2026-11-03T03:03:33.044330+00:00"
+}

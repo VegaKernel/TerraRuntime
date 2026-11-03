@@ -34,11 +34,14 @@ internal sealed class BuriedChest1458(
     BuriedChestContext1458 context,
     Func<int, int, bool>? chestSlotAvailable = null,
     Action<BuriedChestResult1458>? onPlaced = null,
-    bool spikyLihzahrdIsNonSolid = false)
+    bool spikyLihzahrdIsNonSolid = false,
+    Workspace? workspace = null)
 {
     private const ushort Containers = 21;
     private const ushort Containers2 = 467;
     private const ushort MagicStorage = 231;
+
+    private readonly GenerationTileFraming1458 framing = new(store, random, workspace);
 
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
@@ -284,14 +287,14 @@ internal sealed class BuriedChest1458(
 
     /// <summary>
     /// Source <c>WorldGen.PlaceChest</c> for the two-by-two containers, which is <c>TileObject.CanPlace</c>
-    /// followed by <c>TileObject.Place</c>. Chests carry no random style range, so none of it draws.
+    /// followed by <c>TileObject.Place</c>. Chests carry no random style range; removing existing cuttable decorations still consumes KillTile RNG.
     /// </summary>
     /// <remarks>
     /// The coordinates are the source's, and they are not the footprint. A chest's object origin is its
     /// BOTTOM-left cell, so the caller's <paramref name="y"/> is the chest's lower row: the two-by-two occupies
     /// rows <c>y - 1</c> and <c>y</c>, and the ground it stands on is row <c>y + 1</c>.
     /// </remarks>
-    private bool TryPlaceChest(int x, int y, ushort type, bool notNearOtherChests, int style)
+    internal bool TryPlaceChest(int x, int y, ushort type, bool notNearOtherChests, int style)
     {
         if (GenerationObjectSupport1458.IsBoulder(At(x, y + 1).Type) ||
             GenerationObjectSupport1458.IsBoulder(At(x + 1, y + 1).Type))
@@ -302,17 +305,28 @@ internal sealed class BuriedChest1458(
             return false;
 
         int top = y - 1;
+        // TileObject.Place clears the whole footprint before it writes any chest fragments.
+        // KillTile can remove neighbouring pile fragments and advances the shared generation RNG.
         for (int column = 0; column < 2; column++)
+        for (int row = 0; row < 2; row++)
         {
-            for (int row = 0; row < 2; row++)
-            {
-                ref WorldTile cell = ref AtRef(x + column, top + row);
-                cell.Flags |= WorldTileFlags.Active;
-                cell.Type = type;
-                cell.FrameX = checked((short)(style * 36 + column * 18));
-                cell.FrameY = checked((short)(row * 18));
-                cell.Shape = 0;
-            }
+            WorldTile cell = At(x + column, top + row);
+            if (cell.IsActive && cell.Type != 484 &&
+                (VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) ||
+                 GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type)))
+                framing.KillTile(x + column, top + row);
+        }
+
+        for (int column = 0; column < 2; column++)
+        for (int row = 0; row < 2; row++)
+        {
+            ref WorldTile cell = ref AtRef(x + column, top + row);
+            if (cell.IsActive)
+                continue;
+            cell.Flags |= WorldTileFlags.Active;
+            cell.Type = type;
+            cell.FrameX = checked((short)(style * 36 + column * 18));
+            cell.FrameY = checked((short)(row * 18));
         }
 
         // Source Chest.CreateChest runs AFTER the object is written, so a refused slot leaves a chest-shaped
@@ -323,7 +337,7 @@ internal sealed class BuriedChest1458(
 
     /// <summary>
     /// Source <c>TileObject.CanPlace</c> reduced to a two-by-two chest: every footprint cell must be free or
-    /// cuttable, no cell may hold lava, and both columns must stand on ground that accepts a chest.
+    /// cuttable or breakable during placement, no cell may hold lava, and both columns must stand on ground that accepts a chest.
     /// </summary>
     private bool CanPlace(int x, int y)
     {
@@ -348,7 +362,8 @@ internal sealed class BuriedChest1458(
                 // Grass, plants and cobwebs are cut by the placement rather than refusing it. The two
                 // exceptions are gem trees and the ore boulder, which count as occupied even though the rest
                 // of the cut set does not.
-                if (!VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) || cell.Type is 484 or 654)
+                if ((!VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) || cell.Type is 484 or 654) &&
+                    !GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type))
                     return false;
             }
         }

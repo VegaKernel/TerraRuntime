@@ -123,13 +123,12 @@ internal static class StructuralValidator
                             $"Orphan frame-important tile type {tile.Type} at ({x},{y}) frame ({tile.FrameX},{tile.FrameY}).");
                     }
                 }
-                // Source generation KillTile retains paired unset frames after clearing the physical tile.
-                // This is a normalized candidate contract, not a universal world-file frame restriction.
-                else if (tile.Shape != 0 || !((tile.FrameX == 0 && tile.FrameY == 0) ||
-                        (tile.FrameX == -1 && tile.FrameY == -1)))
+                // CheckTree continues writing crown frames after KillTile, including mixed
+                // sentinel pairs. Inactive frames are omitted by source SaveWorldTiles.
+                else if (tile.Shape != 0)
                 {
                     return new(WorldValidationStatus.InvalidFlags,
-                        $"Inactive tile at ({x},{y}) has non-zero frame/shape {tile.FrameX},{tile.FrameY} shape {tile.Shape}.");
+                        $"Inactive tile at ({x},{y}) has non-zero shape {tile.Shape}.");
                 }
             }
         }

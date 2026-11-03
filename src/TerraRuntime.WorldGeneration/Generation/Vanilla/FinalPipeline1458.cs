@@ -134,7 +134,7 @@ internal sealed class FinalState1458
     }
 }
 
-internal sealed class FinalPass1458 : IWorldGenerationPass
+internal sealed partial class FinalPass1458 : IWorldGenerationPass
 {
     private const ushort Grass = 2;
     private const ushort Plants = 3;
@@ -182,7 +182,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         switch (stage)
         {
             case FinalStage1458.SettleLiquidsAgain:
-                ApplySettleLiquidsAgain(context, grid);
+                ApplySettleLiquidsAgain(context, workspace, random);
                 break;
             case FinalStage1458.CactusPalmTreesCoral:
                 ApplyCactusPalmTreesCoral(context, grid, random);
@@ -210,14 +210,16 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         }
     }
 
-    private static void ApplySettleLiquidsAgain(IWorldGenerationContext context, RuntimeGrid grid)
+    private static void ApplySettleLiquidsAgain(IWorldGenerationContext context, Workspace workspace,
+        IWorldGenerationVanillaRandom random)
     {
         // TerrariaServer 1.4.5.8 GenPassNameID.SettleLiquidsPart2AndNotTheBees repeats the ordinary
         // world-generation QuickWater -> WaterCheck -> ten bounded quick-settle rounds -> WaterCheck
         // sequence. Column compaction is not equivalent: it skips reactions, WaterCheck destruction and
         // the source queue ordering that controls downstream liquid state.
-        VanillaWaterCheckDiagnostic1458 waterCheck = new VanillaWorldLiquidSimulator1458(grid.Store)
-            .SettleDuringWorldGeneration(context.CancellationToken);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace,
+            useWorldGenerationSolidity: true);
+        VanillaWaterCheckDiagnostic1458 waterCheck = framing.SettleLiquidsDuringGeneration(context.CancellationToken);
         if (!waterCheck.IsApplied)
         {
             throw new InvalidOperationException(
@@ -1003,7 +1005,8 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
         long normalized = FillWallHolesAboveSurface(grid, (int)state.Layers.WorldSurface);
-        var framing = new GenerationTileFraming1458(grid.Store, random, context.Workspace as Workspace);
+        var framing = new GenerationTileFraming1458(grid.Store, random, context.Workspace as Workspace,
+            useWorldGenerationSolidity: true);
         for (int x = 0; x < grid.Width; x++)
         {
             if ((x & 31) == 0)
@@ -1022,17 +1025,19 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 // cells before its per-cell framing tail.  This deliberately changes only identity/activity/
                 // shape; it does not normalize unrelated packed tile state.
                 if (tile.IsActive && y + 1 < grid.Height && IsLooseSurfaceMaterial(tile.Type) &&
-                    !IsOrdinarySolid(grid.At(x, y + 1)))
+                    !IsFinalCleanupFlatSolid(grid.At(x, y + 1), framing))
                 {
                     ref WorldTile below = ref grid.At(x, y + 1);
                     if (y < state.Layers.WorldSurface + 10 && (!below.IsActive || VanillaProjectileTileCutFacts.IsCuttable(below.TileType)) &&
                         below.Wall != 191 && !IsOceanDepth(x, y, grid.Width))
                     {
-                        StabilizeLooseSurfaceMaterial(grid, x, y);
+                        StabilizeLooseSurfaceMaterial(grid, x, y, framing);
                     }
-                    else if (below.IsActive && IsOrdinarySolid(below))
+                    else if (framing.GenerationSolid(below.Type) &&
+                        !VanillaTileCollisionCatalog.IsSolidTop(below.TileType) &&
+                        (below.IsHalfBrick || below.SourceSlope is 1 or 2))
                     {
-                        below.Shape = 0;
+                        below.ClearSourceShape();
                     }
                     else
                     {
@@ -1052,9 +1057,9 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     tile.LiquidKind = WorldLiquidKind.Lava;
                     normalized++;
                 }
-                if (tile.Type == Trap && tile.Shape != 0)
+                if (tile.Type == Trap)
                 {
-                    tile.Shape = 0;
+                    tile.ClearSourceShape();
                     normalized++;
                 }
                 // WorldGen.FinalCleanup repairs boulder footprints after loose-material, lava-wall and
@@ -1066,7 +1071,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 }
                 if (tile.IsActive && tile.Type == 323 && tile.LiquidAmount > 0)
                 {
-                    KillSingleTileDuringCleanup(ref tile);
+                    framing.KillTile(x, y);
                     normalized++;
                 }
                 if (DungeonGenerationTiles1458.IsDungeonWall(tile.Wall))
@@ -1075,7 +1080,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     if (tile.Type == 374) tile.Type = 373;
                     if (tile.IsActive && tile.Type == 56)
                     {
-                        KillSingleTileDuringCleanup(ref tile);
+                        framing.KillTile(x, y);
                         tile.LiquidAmount = byte.MaxValue;
                     }
                     normalized++;
@@ -1092,10 +1097,9 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 {
                     ref WorldTile support = ref grid.At(x, y + 1);
                     support = default;
-                    // The source first assigns 332, then its complete FinalCleanup tail (including the
-                    // generation queue finalization) leaves the freshly filled support as plain stone.
-                    // Keep the observable post-pass state rather than retaining the transient sandfall ID.
-                    support.Type = 1;
+                    // Keep the transient identity until its own per-cell framing and the later
+                    // FinalSeedCleanup scan. The five-cell border can retain this source332.
+                    support.Type = 332;
                     support.Flags = WorldTileFlags.Active;
                     normalized++;
                 }
@@ -1103,11 +1107,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 if (tile.IsActive && y + 1 < grid.Height && IsUnsupportedSingleTilePlant(in tile, in grid.At(x, y + 1)))
                 {
                     ClearTile(ref tile, preserveLiquid: true);
-                    normalized++;
-                }
-                if (tile.LiquidAmount == 0 && tile.LiquidKind != WorldLiquidKind.Water)
-                {
-                    tile.LiquidKind = WorldLiquidKind.Water;
                     normalized++;
                 }
                 // FinalCleanup removes isolated partial surface fluid after TileCleanup may have restored
@@ -1121,7 +1120,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     !IsActiveCloud(grid.At(x, y + 1)))
                 {
                     tile.LiquidAmount = 0;
-                    tile.LiquidKind = WorldLiquidKind.Water;
                     normalized++;
                 }
                 if (tile.IsActive && IsPainting(tile.Type) && tile.Wall == 0 &&
@@ -1139,11 +1137,19 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
             }
         }
         PlaceFinalCleanupGrassOffers(grid, random);
+        framing.FinalSeedCleanup();
+        if (context.Workspace is Workspace finalWorkspace)
+            CleanupShimmer(finalWorkspace, random, framing, context.CancellationToken);
+        framing.FinalizeLiquidsDuringGeneration(context.CancellationToken);
         context.ReportProgress(1d, $"Final Cleanup complete; normalized={normalized}");
     }
 
 
     private const int FinalCleanupBeachMargin = 380; // WorldGen.beachDistance, TerrariaServer 1.4.5.8.
+
+    private static bool IsFinalCleanupFlatSolid(in WorldTile tile, GenerationTileFraming1458 framing) =>
+        tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick && tile.SourceSlope == 0 &&
+        framing.GenerationSolid(tile.Type) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
 
     // WorldGen.oceanDepths uses the generation ocean line, derived from the retained terrain layers.
     // FinalCleanup must leave unsupported surface material alone inside the pre-ocean band.
@@ -1286,7 +1292,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         53 => 397, 112 => 398, 234 => 399, 224 => 147, 123 => 1, _ => type
     };
 
-    private static void StabilizeLooseSurfaceMaterial(RuntimeGrid grid, int x, int y)
+    private static void StabilizeLooseSurfaceMaterial(RuntimeGrid grid, int x, int y, GenerationTileFraming1458 framing)
     {
         ref WorldTile source = ref grid.At(x, y);
         int destinationY = y + 1;
@@ -1305,11 +1311,11 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         while (destinationY < grid.Height - 50 && remaining > 0 &&
                (!grid.At(x, destinationY).IsActive || VanillaProjectileTileCutFacts.IsCuttable(grid.At(x, destinationY).TileType)))
         {
-            source.Shape = 0;
+            grid.At(x, destinationY - 1).ClearSourceShape();
             ref WorldTile destination = ref grid.At(x, destinationY);
             destination.Flags |= WorldTileFlags.Active;
             destination.Type = source.Type;
-            destination.Shape = 0;
+            destination.ClearSourceShape();
             destinationY++;
             remaining--;
         }
@@ -1319,8 +1325,9 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
             fallback.Type = LooseMaterialFallback(source.Type);
             fallback.Flags |= WorldTileFlags.Active;
         }
-        else if (grid.At(x, destinationY).IsActive && IsOrdinarySolid(grid.At(x, destinationY)))
-            grid.At(x, destinationY).Shape = 0;
+        else if (grid.At(x, destinationY).IsActive && framing.GenerationSolid(grid.At(x, destinationY).Type) &&
+            !VanillaTileCollisionCatalog.IsSolidTop(grid.At(x, destinationY).TileType))
+            grid.At(x, destinationY).ClearSourceShape();
     }
 
     private static void RepairFinalCleanupBoulder(RuntimeGrid grid, int x, int y, ushort type, short frameX, short frameY)

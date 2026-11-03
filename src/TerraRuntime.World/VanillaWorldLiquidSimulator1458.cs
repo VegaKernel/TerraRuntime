@@ -56,6 +56,7 @@ public sealed class VanillaWorldLiquidSimulator1458
     private bool discoveryComplete;
     private bool useInitialPopulationWrites;
     private bool worldGenerationTilesIgnoreWater;
+    private IVanillaLiquidTileSideEffectSink1458? generationDeathSideEffects;
 
     public VanillaWorldLiquidSimulator1458(
         WorldTileStore tiles,
@@ -82,6 +83,62 @@ public sealed class VanillaWorldLiquidSimulator1458
     public int WorkBudgetPerTick => workBudget;
     public int DiscoveryBudgetPerTick => discoveryBudget;
     public bool DiscoveryComplete => discoveryComplete;
+
+    /// <summary>
+    /// Runs FinalCleanup's single y-major LiquidCheck scan with generation merge placement enabled.
+    /// The explicit sink must own generation-time KillTile, replacement and framing on this tile store.
+    /// This cold operation does not enter the live/loading liquid scheduler or publish replication changes.
+    /// </summary>
+    public void FinalizeDuringWorldGeneration(
+        IVanillaLiquidTileSideEffectSink1458 generationSideEffects,
+        bool rollingCactusSolid,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(generationSideEffects);
+        bool previous = useInitialPopulationWrites;
+        useInitialPopulationWrites = true;
+        try
+        {
+            for (int y = 0; y < tiles.Dimensions.HeightTiles; y++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                for (int x = 0; x < tiles.Dimensions.WidthTiles; x++)
+                {
+                    WorldTile tile = tiles.Get(x, y);
+                    if (tile.LiquidAmount == 0)
+                        continue;
+                    CheckLiquidDuringWorldGeneration(x, y, generationSideEffects, rollingCactusSolid);
+                }
+            }
+        }
+        finally
+        {
+            useInitialPopulationWrites = previous;
+        }
+    }
+
+    internal void CheckLiquidDuringWorldGeneration(int x, int y, IVanillaLiquidTileSideEffectSink1458 generationSideEffects,
+        bool rollingCactusSolid = true)
+    {
+        if (!Contains(x, y))
+            return;
+        WorldTile tile = tiles.Get(x, y);
+        if (tile.LiquidAmount == 0)
+            return;
+        bool previous = useInitialPopulationWrites;
+        useInitialPopulationWrites = true;
+        try
+        {
+            Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[MaximumChangesPerProcessedCell];
+            int changed = 0;
+            ApplyForeignLiquidReaction1458(x, y, tile.LiquidKind, VanillaLiquidUpdateMode1458.Ordinary,
+                changes, ref changed, createMergeTilesDuringGeneration: true, generationSideEffects, rollingCactusSolid);
+        }
+        finally
+        {
+            useInitialPopulationWrites = previous;
+        }
+    }
 
     /// <summary>
     /// Advances at most one bounded slice. Each processed cell may mutate at most
@@ -166,6 +223,17 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// iteration guard. SecretSeed.extraLiquid changes the round counter and remains outside this ordinary
     /// world-generation slice.
     /// </summary>
+    /// <summary>Runs generation settling with the retained generation KillTile/framing owner.</summary>
+    public VanillaWaterCheckDiagnostic1458 SettleDuringWorldGeneration(
+        IVanillaLiquidTileSideEffectSink1458 generationSideEffects, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(generationSideEffects);
+        IVanillaLiquidTileSideEffectSink1458? previous = generationDeathSideEffects;
+        generationDeathSideEffects = generationSideEffects;
+        try { return SettleDuringWorldGeneration(cancellationToken); }
+        finally { generationDeathSideEffects = previous; }
+    }
+
     public VanillaWaterCheckDiagnostic1458 SettleDuringWorldGeneration(CancellationToken cancellationToken)
     {
         bool previous = worldGenerationTilesIgnoreWater;
@@ -508,6 +576,17 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// transient state; applying the loading object's eager whole-footprint cleanup here made
     /// canonical generation reject a valid tile 484 at this stage.
     /// </summary>
+    /// <summary>Runs one generation WaterCheck with source-owned object destruction and framing.</summary>
+    public VanillaWaterCheckDiagnostic1458 WaterCheckDuringWorldGeneration(
+        IVanillaLiquidTileSideEffectSink1458 generationSideEffects)
+    {
+        ArgumentNullException.ThrowIfNull(generationSideEffects);
+        IVanillaLiquidTileSideEffectSink1458? previous = generationDeathSideEffects;
+        generationDeathSideEffects = generationSideEffects;
+        try { return WaterCheckDuringWorldGeneration(); }
+        finally { generationDeathSideEffects = previous; }
+    }
+
     public VanillaWaterCheckDiagnostic1458 WaterCheckDuringWorldGeneration()
     {
         bool previous = worldGenerationTilesIgnoreWater;
@@ -561,8 +640,19 @@ public sealed class VanillaWorldLiquidSimulator1458
                     TileTypeId? onlyActiveType = tile.TileType == VanillaTileIds.Pots || (generatingWorld &&
                         (tile.TileType == VanillaTileIds.AntlionLarva || tile.TileType == VanillaTileIds.ClosedDoor))
                         ? tile.TileType : null;
-                    KillRegionDuringLoading1458(in death, onlyActiveType);
-                    KillRegionDuringLoading1458(in cascade, onlyActiveType);
+                    if (generatingWorld && generationDeathSideEffects is not null)
+                    {
+                        // Source calls void KillTile then continues even when a container protects the tile.
+                        // The retained framer owns dust, breakability and every resulting framing callback.
+                        if (!generationDeathSideEffects.TryKillLiquidSensitiveObject(x, y))
+                            return new VanillaWaterCheckDiagnostic1458(
+                                VanillaWaterCheckResult1458.UnsupportedLiquidDeathTile, x, y, tile.TileType);
+                    }
+                    else
+                    {
+                        KillRegionDuringLoading1458(in death, onlyActiveType);
+                        KillRegionDuringLoading1458(in cascade, onlyActiveType);
+                    }
                     tile = tiles.Get(x, y);
                 }
 
@@ -637,6 +727,15 @@ public sealed class VanillaWorldLiquidSimulator1458
     private bool TryResolveWaterCheckDeath1458(
         int x, int y, in WorldTile tile, bool generatingWorld, out WorldTileRegion region, out WorldTileRegion cascade)
     {
+        // Loading's fixed cascade proof cannot represent arbitrary furniture above a platform.
+        // An explicit generation owner already owns those callbacks. Style metadata still must resolve.
+        if (generatingWorld && generationDeathSideEffects is not null && tile.Type == 19 &&
+            VanillaTileObjectLiquidDeath1458.TryGet(in tile, out _, out _))
+        {
+            region = new WorldTileRegion(x, y, 1, 1);
+            cascade = default;
+            return true;
+        }
         if (tile.TileType == VanillaTileIds.Pots)
         {
             // CheckPot destroys remaining active type-28 cells even when a sibling is missing or foreign.
@@ -1095,6 +1194,15 @@ public sealed class VanillaWorldLiquidSimulator1458
                 for (int i = loadingSlotCount - 1; i >= 0; i--)
                     if (loadingSlots[i].Kill >= GeneratingOrLoadingKillUpdates1458)
                     {
+                        // Source UpdateLiquid promotes 254 only after every slot has updated,
+                        // immediately before its reverse-order DelWater removal.
+                        WorldTile retiring = tiles.Get(loadingSlots[i].X, loadingSlots[i].Y);
+                        if (retiring.LiquidAmount == 254)
+                        {
+                            retiring.LiquidAmount = byte.MaxValue;
+                            SetTile(loadingSlots[i].X, loadingSlots[i].Y, in retiring);
+                            Record(loadingSlots[i].X, loadingSlots[i].Y, in retiring, changes, ref changed);
+                        }
                         ApplyLoadingRetirementLowVolumeTail1458(loadingSlots[i].X, loadingSlots[i].Y,
                             changes, ref changed);
                         loadingSlots[i] = loadingSlots[--loadingSlotCount];
@@ -1319,14 +1427,17 @@ public sealed class VanillaWorldLiquidSimulator1458
 
         if (nextKill >= stableKillUpdates)
         {
+            if (executingLoadingSlots)
+            {
+                loadingSlotResult = update with { Kill = nextKill };
+                return;
+            }
             if (current.LiquidAmount == 254)
             {
                 current.LiquidAmount = byte.MaxValue;
                 SetTile(update.X, update.Y, in current);
                 Record(update.X, update.Y, in current, changes, ref changed);
             }
-            if (executingLoadingSlots)
-                loadingSlotResult = update with { Kill = nextKill };
             return;
         }
 
@@ -1400,9 +1511,12 @@ public sealed class VanillaWorldLiquidSimulator1458
         WorldLiquidKind sourceKind,
         VanillaLiquidUpdateMode1458 mode,
         Span<WorldLiquidSimulationChange> changes,
-        ref int changed)
+        ref int changed,
+        bool createMergeTilesDuringGeneration = false,
+        IVanillaLiquidTileSideEffectSink1458? generationSideEffects = null,
+        bool rollingCactusSolid = true)
     {
-        if (sourceKind == WorldLiquidKind.Water ||
+        if ((!createMergeTilesDuringGeneration && sourceKind == WorldLiquidKind.Water) ||
             x <= 0 || y <= 0 ||
             x + 1 >= tiles.Dimensions.WidthTiles ||
             y + 1 >= tiles.Dimensions.HeightTiles)
@@ -1411,6 +1525,26 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
 
         WorldTile source = tiles.Get(x, y);
+        if (createMergeTilesDuringGeneration && source.Type != 659 && (source.Type != 484 || rollingCactusSolid) &&
+            source.IsActive && !source.IsActuated &&
+            !source.IsHalfBrick && source.SourceSlope == 0 &&
+            VanillaTileCollisionCatalog.IsSolid(source.TileType) &&
+            !VanillaTileCollisionCatalog.IsSolidTop(source.TileType))
+            return;
+        IVanillaLiquidTileSideEffectSink1458 effects = generationSideEffects ?? sideEffects;
+
+        void ClearMergeParticipant(int cellX, int cellY)
+        {
+            if (!createMergeTilesDuringGeneration)
+            {
+                ClearLiquidCellRaw(cellX, cellY);
+                return;
+            }
+            // LiquidCheck assigns liquid=0; only the sub24 downward branch also clears kind bits.
+            WorldTile cleared = tiles.Get(cellX, cellY);
+            cleared.LiquidAmount = 0;
+            SetTile(cellX, cellY, in cleared);
+        }
         WorldTile left = tiles.Get(x - 1, y);
         WorldTile right = tiles.Get(x + 1, y);
         WorldTile above = tiles.Get(x, y - 1);
@@ -1469,8 +1603,8 @@ public sealed class VanillaWorldLiquidSimulator1458
                     mergeKind,
                     source,
                     ContainerOverride: false);
-                if (!CanRepresentMergeTileSquare1458(x, y) ||
-                    !sideEffects.TryPrepareMergeTile(in request))
+                if ((!createMergeTilesDuringGeneration && !CanRepresentMergeTileSquare1458(x, y)) ||
+                    !effects.TryPrepareMergeTile(in request))
                 {
                     return;
                 }
@@ -1478,18 +1612,18 @@ public sealed class VanillaWorldLiquidSimulator1458
                 try
                 {
                     if (foreignLeft)
-                        ClearLiquidCellRaw(x - 1, y);
+                        ClearMergeParticipant(x - 1, y);
                     if (foreignRight)
-                        ClearLiquidCellRaw(x + 1, y);
+                        ClearMergeParticipant(x + 1, y);
                     if (foreignAbove)
-                        ClearLiquidCellRaw(x, y - 1);
-                    ClearLiquidCellRaw(x, y);
+                        ClearMergeParticipant(x, y - 1);
+                    ClearMergeParticipant(x, y);
 
-                    sideEffects.CommitPreparedMergeTile(in request);
+                    effects.CommitPreparedMergeTile(in request);
                 }
                 catch
                 {
-                    sideEffects.AbortPreparedMergeTile();
+                    effects.AbortPreparedMergeTile();
                     RestoreReactionCells(x, y, in source, in left, in right, in above);
                     throw;
                 }
@@ -1536,7 +1670,7 @@ public sealed class VanillaWorldLiquidSimulator1458
             belowBefore.IsActive &&
             VanillaProjectileTileCutFacts.IsCuttable(belowBefore.TileType))
         {
-            if (!sideEffects.TryCutTile(x, y + 1))
+            if (!effects.TryCutTile(x, y + 1))
                 return;
         }
 
@@ -1549,7 +1683,7 @@ public sealed class VanillaWorldLiquidSimulator1458
 
         if (source.LiquidAmount < 24)
         {
-            if (!CanRepresentSub24LowerSquare1458(x, y))
+            if (!createMergeTilesDuringGeneration && !CanRepresentSub24LowerSquare1458(x, y))
                 return;
 
             ClearLiquidCellRaw(x, y);
@@ -1576,7 +1710,7 @@ public sealed class VanillaWorldLiquidSimulator1458
                 IsLiquidKind(in below, WorldLiquidKind.Shimmer),
                 out TileTypeId belowMergeTile,
                 out WorldLiquidKind belowMergeKind) ||
-            !CanRepresentMergeTileSquare1458(x, y + 1))
+            (!createMergeTilesDuringGeneration && !CanRepresentMergeTileSquare1458(x, y + 1)))
         {
             return;
         }
@@ -1589,18 +1723,18 @@ public sealed class VanillaWorldLiquidSimulator1458
             belowMergeKind,
             below,
             containerOverride);
-        if (!sideEffects.TryPrepareMergeTile(in lowerRequest))
+        if (!effects.TryPrepareMergeTile(in lowerRequest))
             return;
 
         try
         {
-            ClearLiquidCellRaw(x, y);
-            ClearLiquidCellRaw(x, y + 1);
-            sideEffects.CommitPreparedMergeTile(in lowerRequest);
+            ClearMergeParticipant(x, y);
+            ClearMergeParticipant(x, y + 1);
+            effects.CommitPreparedMergeTile(in lowerRequest);
         }
         catch
         {
-            sideEffects.AbortPreparedMergeTile();
+            effects.AbortPreparedMergeTile();
             SetTile(x, y, in source);
             SetTile(x, y + 1, in below);
             throw;
@@ -2173,13 +2307,14 @@ public sealed class VanillaWorldLiquidSimulator1458
         return IsForeignLiquid(in tile, sourceKind);
     }
 
-    private static bool CanAccept(in WorldTile tile, WorldLiquidKind kind) =>
+    private bool CanAccept(in WorldTile tile, WorldLiquidKind kind) =>
         !IsLiquidBarrier(in tile) &&
         (tile.LiquidAmount == 0 || tile.LiquidKind == kind);
 
-    private static bool IsLiquidBarrier(in WorldTile tile) =>
+    private bool IsLiquidBarrier(in WorldTile tile) =>
         tile.IsActive &&
         !tile.IsActuated &&
+        !(worldGenerationTilesIgnoreWater && tile.Type == 659) &&
         VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
         !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
 

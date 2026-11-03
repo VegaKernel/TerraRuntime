@@ -117,6 +117,9 @@ internal sealed class ChestPlacementState1458
     public int LavaLine { get; private set; }
     public int JungleItemCount { get; set; }
     public bool LivingMahoganyWandsGenerated { get; set; }
+    public int CaveHouseSharpenerCount { get; set; }
+    public int CaveHouseExtractinatorCount { get; set; }
+    public int CaveHouseBastStatueCount { get; set; }
     public List<CaveHouseRoom1458> ProtectedHouseRooms { get; } = [];
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
@@ -161,6 +164,16 @@ internal sealed class ChestPlacementState1458
 
     /// <summary>The run-wide chest state every chest pass shares.</summary>
     public BuriedChestContext1458 ChestContext { get; private set; } = null!;
+
+    internal BuriedChest1458 CreatePlacer(Workspace workspace, IWorldGenerationVanillaRandom random) =>
+        new(workspace.TileStore, random, ChestContext,
+            workspace.CanRegisterGeneratedChest,
+            chest =>
+            {
+                if (!workspace.TryAddChest(chest.Left, chest.Top, string.Empty, chest.Items))
+                    throw new InvalidOperationException(
+                        $"Buried chest at {chest.Left},{chest.Top} passed placement but failed side-table registration.");
+            }, workspace: workspace);
 }
 
 internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
@@ -222,7 +235,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         // Source pass, in order: cave chests, underworld chests, cave houses, extra desert houses. The two
         // chest loops are ported; the two house loops are the cave-house row's and still use the runtime's
         // own placement, so their counts come from the ported pass rather than being invented here.
-        var placer = CreatePlacer(workspace, random);
+        var placer = state.CreatePlacer(workspace, random);
         var pass = new BuriedChestsPass1458(placer, workspace.TileStore, random, state.WorldSurfaceHigh,
             state.RockLayer, (state.WorldSurface + state.RockLayer) / 2d + 40d, BeachDistance,
             context.CancellationToken);
@@ -291,7 +304,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         RuntimeGrid grid,
         IWorldGenerationVanillaRandom random)
     {
-        var placer = CreatePlacer(workspace, random);
+        var placer = state.CreatePlacer(workspace, random);
         new SurfaceChestsPass1458(placer, workspace.TileStore, random, state.WorldSurface,
             state.WorldSurfaceLow, (state.WorldSurface + state.RockLayer) / 2d + 40d, BeachDistance,
             context.CancellationToken).Apply();
@@ -309,7 +322,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         // only the ordered GenVars.JChestX/Y entries published by JungleShrines.
         // It never searches a random area around JungleOriginX.
         ReadOnlySpan<WorldGenerationPoint> anchors = workspace.VanillaJungleShrineChestAnchors;
-        var placer = CreatePlacer(workspace, random);
+        var placer = state.CreatePlacer(workspace, random);
         var framer = new GenerationTileFraming1458(workspace.TileStore, random);
         foreach (WorldGenerationPoint anchor in anchors)
         {
@@ -349,7 +362,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         for (int index = 0; index < anchors.Length; index++)
             treasure[index] = (anchors[index].X, anchors[index].Y);
 
-        var placer = CreatePlacer(workspace, random);
+        var placer = state.CreatePlacer(workspace, random);
         new UnderwaterChestsPass1458(placer, workspace.TileStore, random, state.WorldSurface, BeachDistance,
             treasure, context.CancellationToken).Apply();
 
@@ -360,16 +373,6 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
     /// One <c>AddBuriedChest</c> placer bound to this run's shared chest state and to the workspace's chest
     /// side table, so a placement reserves a slot the way the source's <c>Chest.CreateChest</c> does.
     /// </summary>
-    private BuriedChest1458 CreatePlacer(Workspace workspace, IWorldGenerationVanillaRandom random) =>
-        new(workspace.TileStore, random, state.ChestContext,
-            workspace.CanRegisterGeneratedChest,
-            chest =>
-            {
-                if (!workspace.TryAddChest(chest.Left, chest.Top, string.Empty, chest.Items))
-                    throw new InvalidOperationException(
-                        $"Buried chest at {chest.Left},{chest.Top} passed placement but failed side-table registration.");
-            });
-
     private static bool HasJungleMaterialNearby(
         RuntimeGrid grid,
         int centerX,

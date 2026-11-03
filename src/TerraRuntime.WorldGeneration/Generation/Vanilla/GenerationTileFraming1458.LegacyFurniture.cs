@@ -70,8 +70,8 @@ internal sealed partial class GenerationTileFraming1458
         destroyingObject = false;
     }
 
-    private static bool LegacyChristmasFloor(WorldTile tile) => tile.IsActive && !tile.IsActuated &&
-        VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !tile.IsHalfBrick &&
+    private bool LegacyChristmasFloor(WorldTile tile) => tile.IsActive && !tile.IsActuated &&
+        IsFramingSolid(tile.TileType) && !tile.IsHalfBrick &&
         (tile.SourceSlope == 0 || VanillaTileIds.IsPlatform(tile.TileType) && tile.Shape is 2 or 3);
 
     /// <summary>CheckGnome567 validates types and frameY0/20, deliberately not active or matching frameX.</summary>
@@ -141,7 +141,7 @@ internal sealed partial class GenerationTileFraming1458
         WorldTile tile = At(x, y);
         bool forbiddenSlope = leftSupport ? tile.Shape is 2 or 4 : tile.Shape is 3 or 5;
         return tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !VanillaTileIds.IsPlatform(tile.TileType) && !forbiddenSlope;
+            IsFramingSolid(tile.TileType) && !VanillaTileIds.IsPlatform(tile.TileType) && !forbiddenSlope;
     }
 
     private bool LegacyTreeAnchor(int x, int y)

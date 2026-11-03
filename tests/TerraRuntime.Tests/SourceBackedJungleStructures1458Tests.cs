@@ -375,7 +375,9 @@ public sealed class SourceBackedJungleStructures1458Tests
             SetActive(workspace, 310, y, type: 1);
         }
 
-        JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+        var firstPassRandom = new RandomAdapter(1458);
+        JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+        Assert.Equal(906992634, firstPassRandom.Next());
 
         Assert.Equal((byte)0, workspace.TileStore.Get(300, 100).LiquidAmount);
         Assert.Equal((byte)0, workspace.TileStore.Get(300, 115).LiquidAmount);

@@ -82,7 +82,7 @@ internal sealed partial class GenerationTileFraming1458
     {
         WorldTile tile = At(x, y);
         return tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick &&
-            (VanillaTileCollisionCatalog.IsSolid(tile.TileType) || VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) &&
+            (IsFramingSolid(tile.TileType) || VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) &&
             (tile.SourceSlope is not (1 or 2) ||
                 VanillaTileIds.IsPlatform(tile.TileType) && PlatformProperTopFrame(tile.FrameX));
     }
@@ -92,7 +92,7 @@ internal sealed partial class GenerationTileFraming1458
         WorldTile tile = At(x, y);
         // BottomEdgeCanBeAttachedTo intentionally permits a half-brick ceiling.
         return tile.IsActive && !tile.IsActuated && tile.SourceSlope is not (3 or 4) &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+            IsFramingSolid(tile.TileType) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) &&
             !GenerationObjectSupport1458.DisallowsAttachment(tile.Type);
     }
@@ -102,7 +102,7 @@ internal sealed partial class GenerationTileFraming1458
         WorldTile tile = At(x, y);
         bool blockedSlope = leftOfSign ? tile.SourceSlope is 1 or 3 : tile.SourceSlope is 2 or 4;
         return tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick && !blockedSlope &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+            IsFramingSolid(tile.TileType) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) &&
             !GenerationObjectSupport1458.DisallowsAttachment(tile.Type);
     }

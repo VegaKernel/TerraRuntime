@@ -94,8 +94,10 @@ internal static class GenerationDecorationPlacement1458
         var framing = new GenerationTileFraming1458(store, random);
         framing.SquareTileFrame(x, y);
 
-        // TerrariaServer 1.4.5.8 PlaceTile's type-187 branch calls Place3x2 then SquareTileFrame exactly
-        // once. The common method tail does not frame this branch a second time.
+        // PlaceTile's common tail tests the anchor after branch framing, even when raw
+        // placement refused. A retained crystal shard, for example, spends another reset draw.
+        if (At(store, x, y).IsActive)
+            framing.SquareTileFrame(x, y);
         return placed;
     }
 

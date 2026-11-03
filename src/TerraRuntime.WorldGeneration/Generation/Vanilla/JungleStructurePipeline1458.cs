@@ -266,7 +266,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 ApplyJungleChests(context, workspace, grid, random);
                 break;
             case JungleStructureStage1458.SettleLiquids:
-                ApplySettleLiquids(context, grid);
+                ApplySettleLiquids(context, workspace);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -904,22 +904,26 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         tile.Flags |= WorldTileFlags.Active;
     }
 
-    private void ApplySettleLiquids(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplySettleLiquids(IWorldGenerationContext context, Workspace workspace)
     {
-        ApplySettleLiquidsCore(grid.Store, context.CancellationToken);
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Generation liquid settling requires shared UnifiedRandom semantics.");
+        ApplySettleLiquidsCore(workspace, random, context.CancellationToken);
         // TerrariaServer 1.4.5.8 GenPassNameID.SettleLiquids runs QuickWater, WaterCheck and ten bounded
         // quick-settle rounds. Keep this owner at that source boundary; a fixed gravity sweep changes both
         // barriers and flow ordering.
         context.ReportProgress(1d, "Applied source-backed QuickWater/WaterCheck liquid settle");
     }
 
-    internal static void ApplySettleLiquidsForTesting(Workspace workspace) =>
-        ApplySettleLiquidsCore(workspace.TileStore, default);
+    internal static void ApplySettleLiquidsForTesting(Workspace workspace, IWorldGenerationVanillaRandom random) =>
+        ApplySettleLiquidsCore(workspace, random, default);
 
-    private static void ApplySettleLiquidsCore(WorldTileStore store, CancellationToken cancellationToken)
+    private static void ApplySettleLiquidsCore(Workspace workspace, IWorldGenerationVanillaRandom random,
+        CancellationToken cancellationToken)
     {
-        var simulator = new VanillaWorldLiquidSimulator1458(store);
-        VanillaWaterCheckDiagnostic1458 waterCheck = simulator.SettleDuringWorldGeneration(cancellationToken);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace,
+            useWorldGenerationSolidity: true);
+        VanillaWaterCheckDiagnostic1458 waterCheck = framing.SettleLiquidsDuringGeneration(cancellationToken);
         if (!waterCheck.IsApplied)
         {
             throw new InvalidOperationException(

@@ -1038,7 +1038,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             {
                 if (!workspace.TryAddChest(chest.Left, chest.Top, string.Empty, chest.Items))
                     throw new InvalidOperationException("Pyramid chest could not enter the generation side table.");
-            });
+            }, workspace: workspace);
 
         for (int i = 0; i < candidates.Length; i++)
         {

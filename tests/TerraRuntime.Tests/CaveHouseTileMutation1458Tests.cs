@@ -42,7 +42,8 @@ public sealed class CaveHouseTileMutation1458Tests
         workspace.TileStore.Set(4, 20, landing);
         workspace.TileStore.Set(4, 22, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         CaveHousePlacement1458.PlaceSupportBeamsForTesting(workspace,
-            [new(4, 10, 1, 2), new(4, 20, 1, 2)], 124);
+            [new(4, 10, 1, 2), new(4, 20, 1, 2)], 124,
+            GenerationCaveHouseBuilder1458Tests.CreateRandomForTesting(1458));
         WorldTile expectedLanding = landing;
         expectedLanding.Shape = 0;
         expectedLanding.Flags &= ~WorldTileFlags.HalfBrickWithSlope;

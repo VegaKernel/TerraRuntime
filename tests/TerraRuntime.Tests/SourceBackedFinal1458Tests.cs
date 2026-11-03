@@ -156,7 +156,7 @@ public sealed class SourceBackedFinal1458Tests
             new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, random));
 
         // Direct registered TerrariaServer 1.4.5.8 PassLegacy on the identical 1000x500 grid.
-        Assert.Equal("3A8F2A2E4BDA0E36CC4FF5ECC7D43147ECF4D4098F5556ACB648F8F51DF7B32A", HashFixture(workspace));
+        Assert.Equal("E2E8DB08292C3FB35BEB32E2B3A718A7D23B7D36101F8192EE36C8678AFEF353", HashFixture(workspace));
         Assert.Equal(1056314798, random.Next());
         Assert.Equal((ushort)53, workspace.TileStore.Get(500, 100).Type);
         Assert.Equal((ushort)397, workspace.TileStore.Get(500, 101).Type);
@@ -1834,12 +1834,13 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
-    public void Final_cleanup_repairs_boulder_frames_then_replaces_boulders_blocked_by_a_heart()
+    public void Final_cleanup_validates_altar_then_boulder_fragments_in_scan_order()
     {
-        // TerrariaServer 1.4.5.8 FinalCleanup first restores the frame-derived 2x2 boulder footprint;
-        // a Crimson Heart directly above then converts it to empty active cells (or Sand for tile 484).
-        var workspace = new Workspace(100, 100);
-        Assert.True(workspace.TrySetLayers(40, 60));
+        // Source-important26 is a Demon Altar, not a Crimson Heart. Its invalid footprint is
+        // removed before the later boulder column. Actual registered1000x500 and direct100x100
+        // captures agree; disabling only important26 reproduces the former stale expectation.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
         var fragment = new WorldTile { Type = 484, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18 };
         workspace.TileStore.Set(51, 51, in fragment);
@@ -1847,17 +1848,19 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(50, 49, in heart);
 
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
-            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, new RandomAdapter(1458)));
 
         for (int x = 50; x <= 51; x++)
         for (int y = 50; y <= 51; y++)
         {
             WorldTile repaired = workspace.TileStore.Get(x, y);
-            Assert.True(repaired.IsActive);
-            Assert.Equal((ushort)397, repaired.Type);
-            Assert.Equal((short)0, repaired.FrameX);
-            Assert.Equal((short)0, repaired.FrameY);
+            Assert.False(repaired.IsActive);
+            Assert.Equal((ushort)0, repaired.Type);
+            short frame = x == 51 && y == 51 ? (short)-1 : (short)0;
+            Assert.Equal(frame, repaired.FrameX);
+            Assert.Equal(frame, repaired.FrameY);
         }
+        Assert.False(workspace.TileStore.Get(50, 49).IsActive);
     }
 
     [Fact]
@@ -1985,11 +1988,11 @@ public sealed class SourceBackedFinal1458Tests
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
 
-        // Fresh official replay initializes painting240 as frame-important, as Main requires.
-        // The old headless profile left that flag false and retained an invalid one-cell painting.
-        // Replaying that single metadata toggle reproduces both old and corrected goldens.
-        Assert.Equal("383CC8243B5F34C937E67E72F9EF709763522EBB38F05CF248B75198629B91AB", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        // Fresh actual-original replay uses all participating Main metadata, including
+        // trees5/323, altar26, boulder484 and track314. Historical partial contexts reproduce
+        // the previous goldens; the final independent replay matches every cell and RNG slot.
+        Assert.Equal("B72CB17ABD039E39867B53877C52E6DEEC80363988B1E4251030DEB28D6B9BB1", HashFixture(workspace));
+        Assert.Equal(1318390983, random.Next());
         Assert.Equal(WorldLiquidKind.Lava, workspace.TileStore.Get(140, 120).LiquidKind);
         Assert.Equal(byte.MaxValue, workspace.TileStore.Get(140, 120).LiquidAmount);
         Assert.Equal((byte)0, workspace.TileStore.Get(180, 120).Shape);
@@ -2001,9 +2004,13 @@ public sealed class SourceBackedFinal1458Tests
         Assert.True(workspace.TileStore.Get(260, 121).IsActive);
         Assert.Equal((byte)100, workspace.TileStore.Get(450, 120).LiquidAmount);
         Assert.Equal((ushort)7, workspace.TileStore.Get(340, 120).Wall);
+        // Source Check2x2 removes the malformed boulder after the adjacent altar is framed.
         for (int x = 379; x <= 380; x++)
         for (int y = 119; y <= 120; y++)
-            Assert.Equal((ushort)397, workspace.TileStore.Get(x, y).Type);
+        {
+            Assert.False(workspace.TileStore.Get(x, y).IsActive);
+            Assert.Equal((ushort)0, workspace.TileStore.Get(x, y).Type);
+        }
         Assert.False(workspace.TileStore.Get(420, 120).IsActive);
         Assert.Equal((short)-1, workspace.TileStore.Get(420, 120).FrameX);
     }
@@ -2062,8 +2069,8 @@ public sealed class SourceBackedFinal1458Tests
 
         // The independent source replay's painting240 metadata toggle removes the two
         // incomplete paintings while preserving all other cells and the generation RNG.
-        Assert.Equal("A6A57516C9D04FA548426DF76BFE3DE2CD3EA4F0D36A8768B909EFD29E834BC3", HashFixture(workspace));
-        Assert.Equal(1056314798, random.Next());
+        Assert.Equal("6C4C0B4A5EEB9270DB00BCB339901CE30C3BADEBAF74AEB9EE49A5449C94E57F", HashFixture(workspace));
+        Assert.Equal(1117332225, random.Next());
     }
 
     [Fact]
@@ -2109,7 +2116,9 @@ public sealed class SourceBackedFinal1458Tests
     public void First_settle_liquids_canonical_multi_basin_matches_official_passlegacy()
     {
         var workspace = CreateCanonicalLiquidBasins();
-        JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+        var firstPassRandom = new RandomAdapter(1458);
+        JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+        Assert.Equal(906992634, firstPassRandom.Next());
 
         // The two registered ordinary-world passes share the source's settlement sequence on this
         // no-special-seed terrain. The first pass has its own independently run official PassLegacy oracle.
@@ -2131,7 +2140,9 @@ public sealed class SourceBackedFinal1458Tests
         }
         else
         {
-            JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+            var firstPassRandom = new RandomAdapter(1458);
+            JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+            Assert.Equal(906992634, firstPassRandom.Next());
         }
 
         Assert.Equal("953EE58D1120E82E52F00182E8FE3AFE4869456F095F87007128687695BDB6C8", HashLiquidKindFixture(workspace));
@@ -2152,7 +2163,9 @@ public sealed class SourceBackedFinal1458Tests
         }
         else
         {
-            JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
+            var firstPassRandom = new RandomAdapter(1458);
+            JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace, firstPassRandom);
+            Assert.Equal(906992634, firstPassRandom.Next());
         }
 
         Assert.Equal("3132D18ED04FBEE14B3D1701398843FBE8C0727484040D6C68DF7E5D3E344251", HashLiquidKindFixture(workspace));

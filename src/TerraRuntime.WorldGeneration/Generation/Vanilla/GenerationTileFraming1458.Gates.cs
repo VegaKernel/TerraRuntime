@@ -125,29 +125,6 @@ internal sealed partial class GenerationTileFraming1458
     private bool GateAnchor(int x, int y) =>
         SolidTile(x, y) && !GenerationObjectSupport1458.DisallowsAttachment(At(x, y).Type);
 
-    /// <summary>
-    /// The locked-door contribution to source CheckTileBreakability:2 returns before dust;
-    ///1 keeps a locked door but still reaches its zero-choice dust and SquareTileFrame failure tail.
-    /// Other source breakability families retain their existing owners.
-    /// </summary>
-    private int DoorBreakability(int x, int y)
-    {
-        if (Contains(x, y + 1) && At(x, y + 1).IsActive && DoorIsLocked(At(x, y + 1)))
-            return 2;
-        WorldTile target = At(x, y);
-        if (!VanillaTileCollisionCatalog.IsSolid(target.TileType) &&
-            !VanillaTileCollisionCatalog.IsSolidTop(target.TileType))
-            return 0;
-        if (Contains(x, y - 1) && At(x, y - 1).IsActive)
-        {
-            if (DoorIsLocked(At(x, y - 1)))
-                return 2;
-            if (DoorIsLocked(target))
-                return 1;
-        }
-        return 0;
-    }
-
     private static bool DoorIsLocked(in WorldTile tile) =>
         tile.Type == 10 && tile.FrameY is >= 594 and <= 646 && tile.FrameX < 54;
 }

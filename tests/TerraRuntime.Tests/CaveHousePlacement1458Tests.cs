@@ -37,7 +37,8 @@ public sealed class CaveHousePlacement1458Tests
         workspace.TileStore.Set(104, 115, in preexistingObject);
         CaveHouseRoom1458[] rooms = [new(100, 100, 20, 10), new(100, 125, 20, 10)];
 
-        CaveHousePlacement1458.PlaceSupportBeamsForTesting(workspace, rooms, beamType: 124);
+        CaveHousePlacement1458.PlaceSupportBeamsForTesting(workspace, rooms, beamType: 124,
+            GenerationCaveHouseBuilder1458Tests.CreateRandomForTesting(1458));
 
         foreach (int y in new[] { 110, 115, 124 })
         {

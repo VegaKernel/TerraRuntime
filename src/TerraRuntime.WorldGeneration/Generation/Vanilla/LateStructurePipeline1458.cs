@@ -263,7 +263,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             {
                 if (!workspace.TryAddChest(chest.Left, chest.Top, string.Empty, chest.Items))
                     throw new InvalidOperationException("Spider Caves chest could not enter the generation side table.");
-            });
+            }, workspace: workspace);
 
         for (int attempt = 0; attempt < attempts; attempt++)
         {
@@ -462,7 +462,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             {
                 if (!workspace.TryAddChest(chest.Left, chest.Top, string.Empty, chest.Items))
                     throw new InvalidOperationException("Temple chest could not enter the generation side table.");
-            }, spikyLihzahrdIsNonSolid: true);
+            }, spikyLihzahrdIsNonSolid: true, workspace: workspace);
 
         // TerrariaServer 1.4.5.8 WorldGen.templePart2. Each loop deliberately owns its source draw order;
         // placement helpers below are deterministic equivalents of the TileObjectData layouts used by these styles.

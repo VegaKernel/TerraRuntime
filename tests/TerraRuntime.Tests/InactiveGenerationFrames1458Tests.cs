@@ -9,23 +9,22 @@ public sealed class InactiveGenerationFrames1458Tests
     [Theory]
     [InlineData(0, 0, 0, true)]
     [InlineData(-1, -1, 0, true)]
-    [InlineData(-1, 0, 0, false)]
-    [InlineData(0, -1, 0, false)]
-    [InlineData(18, 18, 0, false)]
-    [InlineData(18, 0, 0, false)]
-    [InlineData(36, 18, 0, false)]
-    [InlineData(-2, -2, 0, false)]
+    [InlineData(-1, 0, 0, true)]
+    [InlineData(0, -1, 0, true)]
+    [InlineData(18, 18, 0, true)]
+    [InlineData(18, 0, 0, true)]
+    [InlineData(36, 18, 0, true)]
+    [InlineData(-2, -2, 0, true)]
     [InlineData(-1, -1, 1, false)]
     [InlineData(0, 0, 1, false)]
-    public void Vanilla_validator_preserves_source_stale_inactive_frames_while_structural_validator_stays_normalized(
+    public void Validators_preserve_inactive_frames_omitted_by_source_world_file_serialization(
         short frameX, short frameY, byte shape, bool admitted)
     {
         var workspace = new Workspace(600, 500);
         ref var tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(300, 200)];
         tile.FrameX = frameX; tile.FrameY = frameY; tile.Shape = shape;
         var metadata = Metadata();
-        bool vanillaAdmitted = admitted || frameX >= 0 && frameY >= 0 && shape == 0;
-        Assert.Equal(vanillaAdmitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
+        Assert.Equal(admitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
             Validator1458.Validate(workspace, metadata).Status);
         Assert.Equal(admitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
             StructuralValidator.Validate(workspace, metadata).Status);
@@ -46,16 +45,16 @@ public sealed class InactiveGenerationFrames1458Tests
         }
 
         Assert.Equal(WorldValidationStatus.Valid, Validator1458.Validate(workspace, Metadata()).Status);
-        Assert.Equal(WorldValidationStatus.InvalidFlags, StructuralValidator.Validate(workspace, Metadata()).Status);
+        Assert.Equal(WorldValidationStatus.Valid, StructuralValidator.Validate(workspace, Metadata()).Status);
     }
 
     [Theory]
     [InlineData(0, 154, -1, 0, true)]
     [InlineData(0, 154, -1, 1, false)]
-    [InlineData(1, 154, -1, 0, false)]
-    [InlineData(0, 153, -1, 0, false)]
-    [InlineData(0, 154, -2, 0, false)]
-    public void Vanilla_validator_admits_only_the_source_tree_root_mixed_frame(
+    [InlineData(1, 154, -1, 0, true)]
+    [InlineData(0, 153, -1, 0, true)]
+    [InlineData(0, 154, -2, 0, true)]
+    public void Validators_keep_inactive_frame_sentinels_separate_from_active_geometry(
         ushort type, short frameX, short frameY, byte shape, bool admitted)
     {
         // WorldGen.CheckTreeWithSettings may write (154,-1) after KillTile
@@ -65,8 +64,28 @@ public sealed class InactiveGenerationFrames1458Tests
         tile.Type = type; tile.FrameX = frameX; tile.FrameY = frameY; tile.Shape = shape;
         Assert.Equal(admitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
             Validator1458.Validate(workspace, Metadata()).Status);
-        Assert.Equal(WorldValidationStatus.InvalidFlags,
+        Assert.Equal(admitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
             StructuralValidator.Validate(workspace, Metadata()).Status);
+    }
+
+    [Fact]
+    public void Original_tree_continuation_after_kill_is_valid_in_both_candidate_validators()
+    {
+        // Actual1.4.5.8 TileFrame, seed1458: stone is solid for the dust ground scan,
+        // but is not ordinary tree substrate. CheckTree writes (110,-1) after KillTile.
+        var workspace = new Workspace(600, 500);
+        var trunk = new WorldTile { Type = 5, Flags = WorldTileFlags.Active };
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 200, in trunk);
+        workspace.TileStore.Set(300, 201, in stone);
+        var sourceRandom = new VanillaUnifiedRandom1458(1458);
+        new GenerationTileFraming1458(workspace.TileStore, new RandomAdapter(sourceRandom)).TileFrame(300, 200);
+        var actual = workspace.TileStore.Get(300, 200);
+        Assert.False(actual.IsActive);
+        Assert.Equal((0, 110, -1, 0), ((int)actual.Type, (int)actual.FrameX, (int)actual.FrameY, (int)actual.Shape));
+        Assert.Equal(906992634, sourceRandom.Next());
+        Assert.Equal(WorldValidationStatus.Valid, Validator1458.Validate(workspace, Metadata()).Status);
+        Assert.Equal(WorldValidationStatus.Valid, StructuralValidator.Validate(workspace, Metadata()).Status);
     }
 
     [Fact]

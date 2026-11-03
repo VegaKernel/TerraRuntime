@@ -38,7 +38,7 @@ internal sealed partial class GenerationTileFraming1458
             {
                 // CheckSuper's crate arm reads active, not nactive, and rejects halfbrick only.
                 broken |= !below.IsActive || below.IsHalfBrick ||
-                    !VanillaTileCollisionCatalog.IsSolid(below.TileType) && !GenerationFurnitureTiles1458.IsTable(below.Type);
+                    !IsFramingSolid(below.TileType) && !GenerationFurnitureTiles1458.IsTable(below.Type);
             }
             else if (type == 485)
                 broken |= !SpecialFlatAnchor(below);
@@ -74,21 +74,21 @@ internal sealed partial class GenerationTileFraming1458
             TileFrame(x, y);
     }
 
-    private static bool SpecialFlatAnchor(WorldTile tile) => tile.IsActive && !tile.IsActuated &&
-        VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) &&
+    private bool SpecialFlatAnchor(WorldTile tile) => tile.IsActive && !tile.IsActuated &&
+        IsFramingSolid(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) &&
         !GenerationObjectSupport1458.DisallowsAttachment(tile.Type) && tile.Shape == 0 && !tile.IsHalfBrick;
 
-    private static bool SpecialSolidBottom(WorldTile tile)
+    private bool SpecialSolidBottom(WorldTile tile)
     {
         if (!tile.IsActive || tile.IsActuated || tile.Type is 10 or 387 or 388 || tile.Shape is 4 or 5)
             return false;
         bool topSlope = tile.Shape is 2 or 3;
-        return tile.IsHalfBrick || topSlope || VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsHalfBrick || topSlope || IsFramingSolid(tile.TileType) &&
             (!VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) ||
              VanillaTileIds.IsPlatform(tile.TileType) && (tile.IsHalfBrick || topSlope));
     }
 
-    private static bool SpecialGeyserFloor(WorldTile tile)
+    private bool SpecialGeyserFloor(WorldTile tile)
     {
         if (!tile.IsActive || tile.IsActuated)
             return false;
@@ -101,9 +101,9 @@ internal sealed partial class GenerationTileFraming1458
             if ((!tile.IsHalfBrick && frame is >= 0 and <= 7) || frame is >= 12 and <= 16 or >= 25 and <= 26)
                 return true;
         }
-        else if (VanillaTileCollisionCatalog.IsSolid(tile.TileType) && VanillaTileCollisionCatalog.IsSolidTop(tile.TileType))
+        else if (IsFramingSolid(tile.TileType) && VanillaTileCollisionCatalog.IsSolidTop(tile.TileType))
             return true;
-        return !tile.IsHalfBrick && tile.Shape is 4 or 5 && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return !tile.IsHalfBrick && tile.Shape is 4 or 5 && IsFramingSolid(tile.TileType) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
     }
 
@@ -128,7 +128,7 @@ internal sealed partial class GenerationTileFraming1458
         bool shape = ceiling.IsHalfBrick || ceiling.Shape is 2 or 3;
         // CheckBanner differs from AnchorValid(SolidBottom): solid-top filtering
         // also applies to the independent halfbrick/top-slope acceptance here.
-        bool normalAnchor = (shape || VanillaTileCollisionCatalog.IsSolid(ceiling.TileType)) &&
+        bool normalAnchor = (shape || IsFramingSolid(ceiling.TileType)) &&
             (!VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType) || VanillaTileIds.IsPlatform(ceiling.TileType) && shape) &&
             ceiling.Type is not (10 or 387 or 388) && ceiling.Shape is not (4 or 5);
         bool anchored = ceiling.IsActive && !ceiling.IsActuated &&
@@ -163,7 +163,7 @@ internal sealed partial class GenerationTileFraming1458
                 member.FrameY != styleY + row * 18;
         }
         WorldTile ceiling = At(left + 1, top - 1);
-        broken |= !ceiling.IsActive || ceiling.IsActuated || !VanillaTileCollisionCatalog.IsSolid(ceiling.TileType) ||
+        broken |= !ceiling.IsActive || ceiling.IsActuated || !IsFramingSolid(ceiling.TileType) ||
             VanillaTileCollisionCatalog.IsSolidTop(ceiling.TileType);
         if (!broken)
             return;

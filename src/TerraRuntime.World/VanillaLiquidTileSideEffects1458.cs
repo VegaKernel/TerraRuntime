@@ -32,6 +32,13 @@ public interface IVanillaLiquidTileSideEffectSink1458
     bool TryCutTile(int x, int y);
 
     /// <summary>
+    /// Executes generation WaterCheck's source KillTile attempt. True means handled, including a
+    /// source breakability refusal that leaves the tile active; false means this owner cannot handle it.
+    /// The default preserves the existing live/loading sink boundary.
+    /// </summary>
+    bool TryKillLiquidSensitiveObject(int x, int y) => false;
+
+    /// <summary>
     /// Prepares one merge-tile replacement. Implementations may reserve item slots or other bounded resources, but
     /// must not mutate world tiles. At most one preparation is outstanding per simulator/sink pair.
     /// </summary>
