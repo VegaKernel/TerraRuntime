@@ -198,11 +198,11 @@ def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_st
     return items
 
 
-def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
+def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id, spawn_tile=None):
     owner = None
     replacement = None
     try:
-        owner, owner_sections, owner_bootstrap_frames = join_client(host, port, 0)
+        owner, owner_sections, owner_bootstrap_frames = join_client(host, port, 0, spawn_tile=spawn_tile)
 
         # PlayerSpawned is committed on the game loop after packet 129 is queued. Give the
         # authoritative player/chest replication registries one tick to observe Playing.
@@ -310,7 +310,7 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         owner = None
         time.sleep(0.5)
 
-        replacement, replacement_sections, replacement_bootstrap_frames = join_client(host, port, 0)
+        replacement, replacement_sections, replacement_bootstrap_frames = join_client(host, port, 0, spawn_tile=spawn_tile)
         time.sleep(0.25)
         send_open(replacement, tile_x, tile_y)
         receive_snapshot(
@@ -357,7 +357,14 @@ def main():
     parser.add_argument("--item-stack", type=int, required=True)
     parser.add_argument("--item-prefix", type=int, required=True)
     parser.add_argument("--item-net-id", type=int, required=True)
+    parser.add_argument("--spawn-x", type=int)
+    parser.add_argument("--spawn-y", type=int)
     args = parser.parse_args()
+    if (args.spawn_x is None) != (args.spawn_y is None):
+        parser.error("--spawn-x and --spawn-y must be supplied together")
+    spawn_tile = None if args.spawn_x is None else (args.spawn_x, args.spawn_y)
+    if spawn_tile is not None and any(value < 0 or value > 32767 for value in spawn_tile):
+        parser.error("spawn coordinates must fit non-negative packet12 Int16 fields")
     run(
         args.host,
         args.port,
@@ -369,6 +376,7 @@ def main():
         args.item_stack,
         args.item_prefix,
         args.item_net_id,
+        spawn_tile=spawn_tile,
     )
 
 

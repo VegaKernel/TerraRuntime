@@ -93,12 +93,12 @@ def assert_no_open_baseline(client, duration=0.5):
                 )
 
 
-def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
+def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id, spawn_tile=None):
     owner = None
     observer = None
     try:
-        owner, owner_sections, owner_bootstrap_frames = join_client(host, port, 0)
-        observer, observer_sections, observer_bootstrap_frames = join_client(host, port, 1)
+        owner, owner_sections, owner_bootstrap_frames = join_client(host, port, 0, spawn_tile=spawn_tile)
+        observer, observer_sections, observer_bootstrap_frames = join_client(host, port, 1, spawn_tile=spawn_tile)
 
         # Both PlayerSpawned commits happen after packet129 is queued. Give the authoritative chest
         # registry one tick before testing inter-player ownership and packet80 visibility.
@@ -236,7 +236,14 @@ def main():
     parser.add_argument("--item-stack", type=int, required=True)
     parser.add_argument("--item-prefix", type=int, required=True)
     parser.add_argument("--item-net-id", type=int, required=True)
+    parser.add_argument("--spawn-x", type=int)
+    parser.add_argument("--spawn-y", type=int)
     args = parser.parse_args()
+    if (args.spawn_x is None) != (args.spawn_y is None):
+        parser.error("--spawn-x and --spawn-y must be supplied together")
+    spawn_tile = None if args.spawn_x is None else (args.spawn_x, args.spawn_y)
+    if spawn_tile is not None and any(value < 0 or value > 32767 for value in spawn_tile):
+        parser.error("spawn coordinates must fit non-negative packet12 Int16 fields")
 
     run(
         args.host,
@@ -249,6 +256,7 @@ def main():
         args.item_stack,
         args.item_prefix,
         args.item_net_id,
+        spawn_tile=spawn_tile,
     )
 
 

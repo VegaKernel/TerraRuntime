@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "acceptedManaged": true,
+  "fastPending": false,
+  "remoteCiAccepted": false,
+  "allGenerationComplete": false,
+  "goalStatus": "active",
+  "parentCommit": "36f85c8bb3bae449e88800a0f9f501364c5be39c",
+  "scope": "Read-only supported actor pose selection for live WorldLoad chest probes",
+  "productionCodeChanged": false,
+  "sdk": "11.0.100-rc.3.26522.148",
+  "managedOnly": true,
+  "componentEvidence": {
+    "path": "C:/Users/Xekep/Documents/GitHub/TerraRuntime/.cache/worldgen-ci-chest-observer-20261103/qualification.json",
+    "sha256": "a818b7dc48954bb59cfe810e2a1b0670586f2caf901d22341ac38986dd991594"
+  },
+  "priorFull": {
+    "receipt": "docs/verification/worldgen-live-custody-followup-20261103.json",
+    "passed": 1602311,
+    "methods": 5717,
+    "fresh": false,
+    "testDllSha256": "74a2e71dc16983bbc24b04ce60be020f89f1c8261f5a53e38979ea6402ca3d66"
+  },
+  "remainingGameplayFrontier": "Wet, plant/solid overlap and other unrepresented remote-health actors retire global UpdatePlayers RNG provenance; strict boundary retained, no custody recovery or RNG discard introduced.",
+  "remoteCiStatus": "Awaiting selected follow-up push and fresh WorldLoad/Documentation workflows; parent36f85 WorldLoad failed, Dungeon graph cancelled, all other7 observed workflows succeeded",
+  "validation": {
+    "python": {
+      "passed": 299,
+      "evidence": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/gates-python.log",
+        "sha256": "bab5cf45910b15439a94dd2f08d4a3cd59aa7e503fcfd0e43491d1e4c09ae3d2"
+      }
+    },
+    "fast": {
+      "total": "56997",
+      "passed": "56997",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "471.243",
+      "skipped_tests": [],
+      "evidence": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/fast/result.json",
+        "sha256": "ec488d1dc267202c685bf0b8755a59297ce1724141df8cfccfc43239bde685fd"
+      }
+    },
+    "readOnlyPicker": {
+      "safeFixtures": 2,
+      "refusedFixtures": 13,
+      "actualWorld": 1,
+      "inputsAndManagedSidecarsByteIdentical": true,
+      "matrix": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/picker-results.json",
+        "sha256": "c336d1db177d32bd3cc8b1c1bac708046225f99cd8aa70f8868bf829566dd0c9",
+        "bytes": 5952
+      },
+      "source": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/picker/Program.cs",
+        "sha256": "8cc1583cb6517e6064c5762ec87e8c3733891914ed21b7fa3809b04231193b86",
+        "bytes": 7362
+      },
+      "project": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/picker/Probe.csproj",
+        "sha256": "faa911388c5840fb0735ec19b13cf7fa4b8c38eb398f8110a226da333afe7836",
+        "bytes": 758
+      },
+      "assembly": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/picker/bin/Release/net11.0/TerraRuntime.TileLocate.dll",
+        "sha256": "ae063d130eb2ab7d1a2815da1446cd09dfe9cea0e8a4a2c98947bfe3ffc38d5c",
+        "bytes": 10752
+      },
+      "build": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/picker-build.log",
+        "sha256": "3c809e64c489c6552c7d384eba93736a381fcb6fb9cd936a549a28dfd0ac53e9",
+        "bytes": 196
+      },
+      "fixtureProducer": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/picker-fixtures/Program.cs",
+        "sha256": "5d9df555bbec8eb2bba5dc860ab0f3f8db25c6ebe7db1e234e7033ad0b3bd6ba",
+        "bytes": 1803
+      },
+      "checker": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/check-picker.py",
+        "sha256": "1f9e9f3a3e66e68ba6a6abb2243e361379cc0e35ce21f70a21d91ee1f4f34397",
+        "bytes": 1485
+      }
+    },
+    "originalSpawnGeometry": {
+      "calls": 8,
+      "profiles": 4,
+      "repeats": 2,
+      "width": 20,
+      "height": 42,
+      "sourceMethod": "Player.Spawn_SetPosition38270 / ordinary hitbox20x42 / BordersMovement24234 edge640",
+      "result": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/spawn-original-result2.json",
+        "sha256": "99f190bfc2a88e2176e821f21a72c40cc77dcd8daff7392d8d7079e00a410b7a",
+        "bytes": 2032
+      },
+      "source": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/spawn-original/Program.cs",
+        "sha256": "ce49dec9795772ea92b096a98e063d807c14684f762d58fc124510261f40a7f0",
+        "bytes": 2155
+      }
+    },
+    "realHost": {
+      "repeats": 3,
+      "probesPassed": 6,
+      "productionAssemblyUnchanged": true,
+      "evidence": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/qualification.json",
+        "sha256": "a818b7dc48954bb59cfe810e2a1b0670586f2caf901d22341ac38986dd991594"
+      }
+    },
+    "oldProbeCausal": {
+      "legacyOpenPassObserverFail": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/legacy-control-results.json",
+        "sha256": "08b26488d12156d4b9c38d94108cebfe38e96fa681e9afe1fbc2f94c138e44d0",
+        "bytes": 663
+      },
+      "legacyProbeSources": [
+        {
+          "path": ".cache/live-custody-followup-20261103/workspace/tools/ci/live_chest_open_probe.py",
+          "sha256": "7c4abdd04a4713dd34683cc6992b260ad3bcd74494cbb1b569d59204820f09d0",
+          "bytes": 14568
+        },
+        {
+          "path": ".cache/live-custody-followup-20261103/workspace/tools/ci/live_chest_observer_probe.py",
+          "sha256": "e1e6a7f7e4adade6be5f76ecaa3c4a1128fcbf54ca0b080f3d58192570947f82",
+          "bytes": 10442
+        },
+        {
+          "path": ".cache/live-custody-followup-20261103/workspace/tools/ci/live_join_relay_probe.py",
+          "sha256": "b4b946cfbc8aeb2b8398b64b5fe3f10da33367bc67f9c957a1622d18318eef7b",
+          "bytes": 16260
+        }
+      ],
+      "logs": [
+        {
+          "path": ".cache/worldgen-ci-chest-observer-20261103/legacy-after-open-live_chest_observer_probe.py.log",
+          "sha256": "9bc4986a9bcfce77467a1bec945244e81c016c91413f88ea4e4839f6e2caca7f",
+          "bytes": 112
+        },
+        {
+          "path": ".cache/worldgen-ci-chest-observer-20261103/legacy-after-open-live_chest_open_probe.py.log",
+          "sha256": "ec05d0f82fab9b171b3b7cbd4c2bcbd63b10f1387e2e91d97d009f76089048a9",
+          "bytes": 302
+        }
+      ],
+      "actualOverlapTrace": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/diagnostic-health-facts.log",
+        "sha256": "06d31dc5145bc7ea81df31ab9fa3c208a3a177a7e1dd18c2caf25e9614f51886",
+        "bytes": 176656
+      },
+      "diagnosticApp": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/diagnostic-app-build/TerraRuntime.Application.dll",
+        "sha256": "6025148e1e7dbd3136219ea784e02af005bcbea6812fa27de8bb827fdae9dfe1",
+        "bytes": 3822592
+      },
+      "diagnosticSources": [
+        {
+          "path": ".cache/worldgen-ci-chest-observer-20261103/diagnostic-app/PlayerAuthority.WorldChestTransfer.cs",
+          "sha256": "c592e64d834d3473eb0c814e32ddd81075652cadbbb72e047e1d6817b2a0b861",
+          "bytes": 6720
+        },
+        {
+          "path": ".cache/worldgen-ci-chest-observer-20261103/diagnostic-app/RuntimeChestStore.OwnedTransfer.cs",
+          "sha256": "784aa2e7f7b3b5959b09c9bc671750aa1379258da315bcd4c406db0a530f557b",
+          "bytes": 5839
+        },
+        {
+          "path": ".cache/worldgen-ci-chest-observer-20261103/diagnostic-app/RuntimePlayerInventoryStore.WorldChestTransfer.cs",
+          "sha256": "8b7db3a366db10c06d9f7201be0e11f2cb71917621d4832c7c120a269ea3ce0e",
+          "bytes": 13181
+        },
+        {
+          "path": ".cache/worldgen-ci-chest-observer-20261103/diagnostic-app/PlayerAuthority.RemoteItemPhase.cs",
+          "sha256": "cf28634e4d80d76fbe88a7d430835328ddd30ce94e74c6649dc1c2987b40a59a",
+          "bytes": 97521
+        },
+        {
+          "path": ".cache/worldgen-ci-chest-observer-20261103/diagnostic-app/PlayerAuthority.NpcHealth.cs",
+          "sha256": "860d43389a9f67cd2a895c27e68761e019c492712739dfcd68478889d3d2b593",
+          "bytes": 10027
+        }
+      ]
+    },
+    "unchangedProductionGuard": {
+      "accepted": true,
+      "sourceInputs": 4547,
+      "testDlls": 158,
+      "productionSourceChanged": false,
+      "drift": [],
+      "evidence": {
+        "path": ".cache/worldgen-ci-chest-observer-20261103/managed-inputs.json",
+        "sha256": "78c6fa89df60578c39bf991ecccca46e6fd60786b4ca472c0e7156b4d89a8f40"
+      }
+    }
+  },
+  "selectedShippingInputs": [
+    {
+      "path": "tools/TerraRuntime.TileLocate/Program.cs",
+      "sha256": "8cc1583cb6517e6064c5762ec87e8c3733891914ed21b7fa3809b04231193b86",
+      "bytes": 7362
+    },
+    {
+      "path": "tools/ci/live_chest_open_probe.py",
+      "sha256": "8c5139861ac0cbc742a2e6464cca21728ef38caf2149904fb8df3ab6d55ff8a9",
+      "bytes": 15144
+    },
+    {
+      "path": "tools/ci/live_chest_observer_probe.py",
+      "sha256": "10d66284632b1cba3ccb7e925664a524ea8d13a7f25c5808ce47ebfec5682935",
+      "bytes": 11018
+    },
+    {
+      "path": "tools/ci/test_live_chest_transfer.py",
+      "sha256": "b21f3521bba20c33e25ebb695ea69a566c7a4f88c8cb70e7f627ea94652305ec",
+      "bytes": 4201
+    },
+    {
+      "path": ".github/workflows/vanilla-world-load.yml",
+      "sha256": "06432f601fb395362baf9b1f1140b57be38e8ecbe28434623b1cd679f60f3597",
+      "bytes": 20387
+    }
+  ],
+  "ciArtifact": {
+    "path": ".cache/worldgen-ci-chest-observer-20261103/world-load.zip",
+    "sha256": "97378a61da509cd11e6e9434ffa745935548e3b0c15929b11c1751eedab700d0",
+    "bytes": 92132
+  },
+  "regeneratedNativeWorld": {
+    "evidence": {
+      "path": ".cache/worldgen-ci-chest-observer-20261103/actual-seed955488940/official.wld",
+      "sha256": "2ad96543f36cb81760b45516430431705d8dc5316e8d6d59981cf83adc4e6e11",
+      "bytes": 2992215
+    },
+    "wholeFileIdentityToCiClaimed": false,
+    "claim": "CI seed955488940 and selected chest/stock reproduced; CI ZIP contains no original world bytes or hash"
+  }
+}

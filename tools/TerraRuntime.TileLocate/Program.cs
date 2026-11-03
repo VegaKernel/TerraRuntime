@@ -1,10 +1,11 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
+bool probeSpawn = args.Length == 2 && args[1] == "--probe-spawn";
 bool seedDirt = args.Length == 2 && args[1] == "--seed-dirt";
-if (args.Length != 1 && !seedDirt)
+if (args.Length != 1 && !seedDirt && !probeSpawn)
 {
-    Console.Error.WriteLine("Usage: TerraRuntime.TileLocate <world.wld> [--seed-dirt]");
+    Console.Error.WriteLine("Usage: TerraRuntime.TileLocate <world.wld> [--seed-dirt | --probe-spawn]");
     return 2;
 }
 
@@ -22,6 +23,47 @@ if (!diagnostic.IsLoaded || world is null)
 // Keep the candidate and the probe player's 20x42 body strictly inside that band.
 const int margin = 45;
 WorldTileStore tiles = world.Tiles;
+// Player.Spawn_SetPosition uses the floor center and the ordinary 20x42 body.
+// Its tile overlap spans x-1..x+1, y-3..y-1. The admitted remote health
+// profile needs every body cell inactive and dry; a flat floor keeps it there.
+// This read-only locator does not claim support for wet or plant-overlap actors.
+if (probeSpawn)
+{
+    for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
+    {
+        for (int x = margin; x < tiles.Dimensions.WidthTiles - margin; x++)
+        {
+            bool supported = true;
+            for (int dx = -1; dx <= 1 && supported; dx++)
+            {
+                WorldTile floor = tiles.Get(x + dx, y);
+                if (!floor.IsActive || (floor.Flags & WorldTileFlagMasks.Actuation) != 0 ||
+                    floor.IsHalfBrick || floor.SourceSlope != 0 ||
+                    floor.LiquidAmount != 0 ||
+                    (floor.TileType != VanillaTileIds.Dirt && floor.TileType != VanillaTileIds.Stone))
+                {
+                    supported = false;
+                    break;
+                }
+                for (int dy = -3; dy < 0; dy++)
+                {
+                    WorldTile body = tiles.Get(x + dx, y + dy);
+                    if (body.IsActive || body.LiquidAmount != 0)
+                    {
+                        supported = false;
+                        break;
+                    }
+                }
+            }
+            if (!supported) continue;
+            Console.WriteLine($"spawnX={x} spawnY={y}");
+            return 0;
+        }
+    }
+    Console.Error.WriteLine("Official world contains no dry, inactive ordinary-player body above a flat solid floor.");
+    return 3;
+}
+
 var mutations = new VanillaWorldTileMutationService(tiles);
 for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
 {
