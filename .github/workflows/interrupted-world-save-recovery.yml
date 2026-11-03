@@ -108,6 +108,36 @@ jobs:
       - name: Build host
         run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
 
+      - name: Explicitly import custody for the official crash fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          world="$GITHUB_WORKSPACE/artifacts/interrupted-original.wld"
+          original="$GITHUB_WORKSPACE/artifacts/interrupted-before-custody.wld"
+          log="$GITHUB_WORKSPACE/artifacts/interrupted-custody-import.log"
+          host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
+          cp "$world" "$original"
+          test ! -e "$world.custody"
+          dotnet "$host" --world "$world" --import-world-custody --port 17826 --max-players 1 --no-tui > "$log" 2>&1 &
+          pid=$!
+          trap 'kill -KILL "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 160); do
+            if ! kill -0 "$pid" 2>/dev/null; then cat "$log" >&2; exit 1; fi
+            grep -q 'TerraRuntime listening on 0.0.0.0:17826' "$log" && break
+            sleep 0.25
+          done
+          grep -q 'TerraRuntime listening on 0.0.0.0:17826' "$log"
+          test -s "$world.custody/managed-v1.anchor"
+          # Preserve the exact imported generation; no shutdown checkpoint is part of this fixture.
+          kill -KILL "$pid"
+          set +e
+          wait "$pid"
+          status=$?
+          set -e
+          trap - EXIT
+          test "$status" -eq 137
+          cmp "$original" "$world"
+
       - name: Prove live lease blocks startup then SIGKILL marker rolls forward
         shell: bash
         run: |
@@ -122,6 +152,8 @@ jobs:
           host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
           rm -f "$world" "$world.bak" "$ready" "$world.runtime-world" "$world.runtime-bootstrap"
+          test ! -e "$world.custody"
+          cp -a "$source.custody" "$world.custody"
           dotnet "$probe" stall-recovery-ready-file "$world" "$source" "$ready" > "$probe_log" 2>&1 &
           writer_pid=$!
           trap 'kill -KILL "$writer_pid" 2>/dev/null || true; wait "$writer_pid" 2>/dev/null || true' EXIT
@@ -231,6 +263,8 @@ jobs:
           host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
           rm -f "$world" "$world.bak" "$ready"
+          test ! -e "$world.custody"
+          cp -a "$source.custody" "$world.custody"
           dotnet "$probe" stall-recovery-ready-file "$world" "$source" "$ready" > "$probe_log" 2>&1 &
           writer_pid=$!
           trap 'kill -KILL "$writer_pid" 2>/dev/null || true; wait "$writer_pid" 2>/dev/null || true' EXIT
@@ -280,6 +314,8 @@ jobs:
           host="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
           rm -f "$world" "$world.bak" "$ready" "$world.runtime-world" "$world.runtime-bootstrap"
+          test ! -e "$world.custody"
+          cp -a "$source.custody" "$world.custody"
           dotnet "$probe" stall-after-publish-file "$world" "$source" "$ready" > "$probe_log" 2>&1 &
           writer_pid=$!
           trap 'kill -KILL "$writer_pid" 2>/dev/null || true; wait "$writer_pid" 2>/dev/null || true' EXIT
@@ -345,6 +381,7 @@ jobs:
           name: interrupted-world-save-recovery-${{ github.sha }}
           path: |
             artifacts/interrupted-worldgen.log
+            artifacts/interrupted-custody-import.log
             artifacts/interrupted-writer.log
             artifacts/interrupted-live-block.log
             artifacts/interrupted-host-recovery.log

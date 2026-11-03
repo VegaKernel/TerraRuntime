@@ -703,8 +703,8 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             npc.TypeIdentity == VanillaNpcIds.LarvaeAntlion) _ = preview.NextInt32(0, 800);
         else if (npc.TypeIdentity == VanillaNpcIds.GraniteGolem && preview.NextInt32(0, 600) == 0) _ = preview.NextInt32(63, 66);
         else if (npc.TypeIdentity == VanillaNpcIds.MartianWalker && preview.NextInt32(0, 800) == 0) _ = preview.NextInt32(69, 73);
-        else if (npc.Type == 389 && preview.NextInt32(0, 800) == 0) _ = preview.NextInt32(59, 61);
-        else if (npc.Type == 391 && preview.NextInt32(0, 700) == 0) _ = preview.NextInt32(86, 87);
+        else if (npc.Type == VanillaNpcIds.GigaZapper.Value && preview.NextInt32(0, 800) == 0) _ = preview.NextInt32(59, 61);
+        else if (npc.Type == VanillaNpcIds.Scutlix.Value && preview.NextInt32(0, 700) == 0) _ = preview.NextInt32(86, 87);
         else if (VanillaNpcTransformation1458.UsesLihzahrdIdleSound(npc.TypeIdentity) &&
                  preview.NextInt32(0, 1000) == 0) _ = preview.NextInt32(36, 38);
         NpcSnapshot source = npc;
@@ -764,7 +764,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
                 Simulation = source.Simulation with { DontTakeDamage = false } };
         }
         if (!TryStepCommon(in source, in workingDefinition, in parameters, context, inner, out next, preview,
-                transaction.TransformCheckpoint.HasValue ? byte.MaxValue : npc.Type == 631 ? npc.Target : null)) return false;
+                transaction.TransformCheckpoint.HasValue ? byte.MaxValue : npc.Type == VanillaNpcIds.RockGolem.Value ? npc.Target : null)) return false;
         if (mermanSync || rangedSync) next = next with { RequiresImmediateSync = true };
         if (VanillaNpcTransformation1458.IsZombieMerman(npc.TypeIdentity) && npc.Simulation.Alpha == 255)
             next = next with { RequiresImmediateSync = true };
@@ -1011,7 +1011,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             ordinaryMelee && VanillaGroundCombatCohort1458.IsDayDespawnCandidate(definition.Type))
         {
             daytimeSurface = context.DayTime && !martianInvasionExemption && !context.EclipseActive && !npc.Simulation.SpawnedFromStatue &&
-                npc.PositionY <= context.WorldSurfacePixels && !(npc.Type == 631 && npc.Ai.Ai2 > 0f);
+                npc.PositionY <= context.WorldSurfacePixels && !(npc.Type == VanillaNpcIds.RockGolem.Value && npc.Ai.Ai2 > 0f);
             if (daytimeSurface)
             {
                 bool graveyard;
@@ -1220,7 +1220,7 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             EncouragedDespawnTime = parameters.EncouragedDespawnTime,
             PursuitAllowed = !daytimeSurface,
             EncourageDespawn = ordinaryMelee
-                ? npc.Type != 631 && context.DayTime && (double)(npc.PositionY / 16f) < context.WorldSurfacePixels / 16d
+                ? npc.Type != VanillaNpcIds.RockGolem.Value && context.DayTime && (double)(npc.PositionY / 16f) < context.WorldSurfacePixels / 16d
                 : daytimeSurface,
             JustHit = simulation.JustHit,
             TimeLeft = simulation.TimeLeft,

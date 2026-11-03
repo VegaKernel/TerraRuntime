@@ -6,6 +6,9 @@ namespace TerraRuntime.Contracts.Gameplay;
 /// </summary>
 public static class VanillaNpcIds
 {
+    public static readonly NpcTypeId CultistArcherBlue = new(379);
+    public static readonly NpcTypeId GigaZapper = new(389);
+    public static readonly NpcTypeId RockGolem = new(631);
     public static readonly NpcTypeId RayGunner = new(382);
     public static readonly NpcTypeId MartianOfficer = new(383);
     public static readonly NpcTypeId ForceBubble = new(384);

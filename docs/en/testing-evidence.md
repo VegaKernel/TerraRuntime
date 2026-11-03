@@ -1,5 +1,7 @@
 # Testing, verification and evidence
 
+CI reference checks bind decompiler-generated locals to their source roles before comparing the Moon Lord contract. Windows/XNA and Linux/missing-XNA spellings must preserve the same offsets, clocks, NPC slots, healing order, projectile identity and interpolation operands. Generated local names carry no semantic meaning; changed values and aliases still fail. Thirteen independent mutations of the pinned original decompilation are rejected. Initial CI startup of a freshly generated official world must explicitly import custody; subsequent startup, crash and recovery checks retain the existing authority boundary.
+
 [Русский](../ru/testing-evidence.md) · [Documentation](README.md) · [Reference policy](../reference-policy.md) · [Roadmap](../roadmap.md)
 
 ## 1. Why this guide exists

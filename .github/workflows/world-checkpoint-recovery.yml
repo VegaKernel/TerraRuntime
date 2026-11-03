@@ -102,6 +102,7 @@ jobs:
           rm -f "${world%.wld}.runtime-world" "${world%.wld}.runtime-bootstrap" "$backup"
           dotnet "$server_dll" \
             --world "$world" \
+            --import-world-custody \
             --port 17801 \
             --max-players 1 \
             --no-tui \

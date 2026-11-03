@@ -204,6 +204,7 @@ jobs:
 
           dotnet "$server_dll" \
             --world "$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld" \
+            --import-world-custody \
             --port 17780 \
             --max-players 2 \
             --no-tui \

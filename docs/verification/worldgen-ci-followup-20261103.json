@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "acceptedManaged": true,
+  "remoteCiAccepted": false,
+  "remoteCiStatus": "Awaiting push and fresh workflow results; prior5c28 has eight failed workflows and a cancelled dungeon workflow",
+  "allGenerationComplete": false,
+  "goalStatus": "active",
+  "parentCommit": "5c28d763a54a7df31e62eb80135522404db8b571",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "nativeAot": {
+    "accepted": false,
+    "status": "Explicit user managed-only restriction"
+  },
+  "scope": [
+    "generation-owned table14 WaterCheck death delegates to existing framing owner; live/loading policy unchanged",
+    "initial official-world CI hosts explicitly import existing custody; recovery and corruption controls retain authority",
+    "Moon Lord reference checks bind local roles across resolved and missing-XNA decompiler spellings",
+    "raw identity decisions use source-verified catalog names; NPC behavior values unchanged"
+  ],
+  "validation": {
+    "releaseWarningsAsErrors": {
+      "warnings": 0,
+      "errors": 0,
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/build-final01.log",
+        "sha256": "023995d41e542d74756263f9015fd5e01454a9699e15212530d527886eaa8f53"
+      }
+    },
+    "focused": {
+      "passed": 142,
+      "total": 142,
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/focused.xml",
+        "sha256": "e199418e35985f4db5520411533d3a9b2fcca887c7b9f3c3bc599c9e14e424b3"
+      }
+    },
+    "python": {
+      "passed": 291,
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/python-ci.log",
+        "sha256": "ab2210ee123b16b373e0190d664348dbdb658eb29a0f3a85bbbf03e361ab2ee7"
+      }
+    },
+    "fast": {
+      "total": "56990",
+      "passed": "56990",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "421.987",
+      "skipped_tests": [],
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/fast/result.json",
+        "sha256": "b5cb1a8ec7a34f59548dcd9a3f3116c3377c792b4d346562f17f4ef6059e5e69"
+      }
+    },
+    "full": {
+      "total": "1602304",
+      "passed": "1602304",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1470.799",
+      "skipped_tests": [],
+      "selectedMethods": 5712,
+      "excludedMethods": 0,
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/full/result.json",
+        "sha256": "89eae27512c176b5db9bf05e0d12708439962e713fd32b593787045ff10c95a4"
+      }
+    },
+    "tableOldOwnerCausal": {
+      "accepted": true,
+      "unchangedTestDllSha256": "1245e4785c4eca1b7a8c8b9f09632e8e5d1489f88cbe52c1a773fd6dd9d26f3b",
+      "failed": 21,
+      "passed": 28,
+      "errors": 0,
+      "mutant": "restoreaccepted11WorldDLL",
+      "worldSha256": "ee13cd17f10a871e2f06e58d1e800f21ff8879ba2240424a3bbb41cb8ae10830",
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/causal.xml",
+        "sha256": "03f4bf0aba0326dd32805e325ba1b825d421242fb318faf3fae4054798f9cb27"
+      },
+      "other157DllsIdentical": true
+    },
+    "sourceContractSemanticMutations": {
+      "rejected": 13,
+      "evidence": {
+        "path": ".cache/moon-source-ci-20261103/causal-controls.json",
+        "sha256": "3ccb1442982007d9eb422caca61cebc3ec90bb9229e737350a3c1279ccbeed51"
+      }
+    },
+    "custodyWorkflowEvidence": {
+      "path": ".cache/runtime-network-ci-20261103/qualification.json",
+      "sha256": "a1bb477cf149f4433ed7b522709cfc57d90255498504929391ce81ad127d4de5"
+    },
+    "ordinaryCliWorlds": {
+      "cases": 9,
+      "allPassed": true,
+      "sourceParityAccepted": false,
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/size-sweep/qualification.json",
+        "sha256": "fdfe708dc16893a4da13093ec21a79cc3cc092653c8ccd0c658a60191b236c94"
+      }
+    },
+    "ordinaryManagedSmokes": {
+      "passed": [
+        "loop",
+        "protocol",
+        "network",
+        "world",
+        "tui"
+      ]
+    },
+    "publishedCoreClr": {
+      "accepted": true,
+      "managedOnly": true,
+      "executableSha256": "110ffd38ed2264bf460e9493db33c406c0338ceee3a785085d1ae1e277588b61",
+      "smokes": [
+        {
+          "name": "loop",
+          "exitCode": 0
+        },
+        {
+          "name": "protocol",
+          "exitCode": 0
+        },
+        {
+          "name": "network",
+          "exitCode": 0
+        },
+        {
+          "name": "world",
+          "exitCode": 0
+        },
+        {
+          "name": "tui",
+          "exitCode": 0
+        }
+      ],
+      "evidence": {
+        "path": ".cache/worldgen-ci-hotfix-20261103/coreclr-result.json",
+        "sha256": "9e601bced6e14246568b409b5cb87d4206bcad38bc8fc08c9fa9108e0ae5e2b8"
+      }
+    }
+  },
+  "inputGuard": {
+    "accepted": true,
+    "sourceInputs": 4545,
+    "recursiveDlls": 158,
+    "includesWorkflowYaml": true,
+    "manifest": {
+      "path": ".cache/worldgen-ci-hotfix-20261103/inputs-recursive.json",
+      "sha256": "d631148e9b7263d4d7948210cdd07ef2fe4e4409836e9ee2e8e65c1fb3b7dc9e"
+    },
+    "afterFull": {
+      "path": ".cache/worldgen-ci-hotfix-20261103/after-full-guard.json",
+      "sha256": "9b346a9ee28ea167e4bd0ddc68cdb87bcaa5548e503b03f6b8c65b9115601c6d"
+    },
+    "afterPublication": {
+      "path": ".cache/worldgen-ci-hotfix-20261103/after-publication-guard.json",
+      "sha256": "9b346a9ee28ea167e4bd0ddc68cdb87bcaa5548e503b03f6b8c65b9115601c6d"
+    }
+  },
+  "shippingSourcePins": {
+    ".github/workflows/vanilla-world-load.yml": "abcc5a4e0b08c39ca9a50d5bc6f514283c83e94f64d6fc8c6afc99b1caea3726",
+    ".github/workflows/live-chest-persistence.yml": "00d5e0734a710102452890aee5caf7afb0ff1f873d23845a6aae50cefc468eb3",
+    ".github/workflows/live-sign-persistence.yml": "af81e7299d5210cfaee7ba06d90d6b432d9c09e67cbe2bbc7475e05d56dfc582",
+    ".github/workflows/world-checkpoint-recovery.yml": "3e6e1633006a1dfc97296a629ab667839cb06d5a6a1ecad4335d548dc4764c35",
+    ".github/workflows/startup-performance-gate.yml": "7e62f4552a8bad08edd462f2a7d738e2fe44d0c991b87de7863ccfc76c40f5f8",
+    ".github/workflows/interrupted-world-save-recovery.yml": "f828290f2b9241e470ec26a131269e09d19e1e5d6d7b875889019b2ef8852404",
+    "src/TerraRuntime.Contracts/Gameplay/VanillaContentIds.cs": "0f91d85ca8af5c1fbb3d49e28c32e82da76cde88aa134d5deaca5bcb70314447",
+    "src/TerraRuntime.Core/Npcs/VanillaNpcBehaviorStrategies.cs": "9d76e192f2e31fa7aca35f9e2e17b148392e78cdc2885b551ffa346aee80ba31",
+    "src/TerraRuntime.Gameplay/Npcs/VanillaRangedNpcDeath1458.cs": "bc2190664214835ec3cac64377fa5a93431fed86ebb303d0e6cf4f959700f54f",
+    "src/TerraRuntime.World/VanillaWorldLiquidSimulator1458.cs": "54fa9b2eb5e87f75edc4417e07040f61f2579e6b219ded1ca3a9ece7303581bc",
+    "tests/TerraRuntime.Tests/GenerationWaterCheckTables1458Tests.cs": "c89ed9280dd4723c23968b14d635fdf614bf64973e842bd002cd76132c436065",
+    "tools/ci/check_moon_lord_death_source.py": "a89225fd4cff427b6a3b3622e849945faf8af48b1bf01823824b2dfbf9496cc5",
+    "tools/ci/test_moon_lord_death_source.py": "d34e72f4f275cba8bafbc627281389db5989518551d82ebef609ce0a365f67e4",
+    "tools/ci/test_workflow_world_custody.py": "e531e624071172d9e5e9b075df2e49e77a563a9b7cb18a6162003daf69b44e34"
+  },
+  "isolation": "Accepted5c28 detached checkout plus only listed CI corrections; unrelated natural49 work in primary workspace excluded.",
+  "remainingScope": [
+    "full natural runtime/original pipeline equality",
+    "pending source-qualified natural49 integration and later Smooth World gaps",
+    "source-qualified first/later Settle and vine prototypes remain cache-only",
+    "special Reset/Terrain prototypes and broader secret flags remain cache-only",
+    "NPC/projectile/tile-entity effect completion"
+  ],
+  "createdAtUtc": "2026-11-03T04:11:34.357886+00:00"
+}

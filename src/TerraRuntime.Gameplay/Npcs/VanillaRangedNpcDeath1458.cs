@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Gameplay.Npcs;
@@ -10,7 +11,7 @@ public static class VanillaRangedNpcDeath1458
     // NPC379's ritual strike writes the separately allocated controller438.
     // Until that owner is represented, every ingress must stop before hit effects
     // or interaction credit; the ordinary ai3>=0 archer remains admitted.
-    public static bool CanOwnStrike(in NpcSnapshot npc) => npc.Type != 379 || npc.Ai.Ai3 >= 0f;
+    public static bool CanOwnStrike(in NpcSnapshot npc) => npc.Type != VanillaNpcIds.CultistArcherBlue.Value || npc.Ai.Ai3 >= 0f;
 
     public static void ConsumeDedicatedLethalChoices(int type, IVanillaNpcRandom random)
     {

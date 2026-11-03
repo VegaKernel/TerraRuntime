@@ -727,9 +727,9 @@ public sealed class VanillaWorldLiquidSimulator1458
     private bool TryResolveWaterCheckDeath1458(
         int x, int y, in WorldTile tile, bool generatingWorld, out WorldTileRegion region, out WorldTileRegion cascade)
     {
-        // Loading's fixed cascade proof cannot represent arbitrary furniture above a platform.
+        // Loading's fixed cascade proof cannot represent tables or arbitrary furniture above a platform.
         // An explicit generation owner already owns those callbacks. Style metadata still must resolve.
-        if (generatingWorld && generationDeathSideEffects is not null && tile.Type == 19 &&
+        if (generatingWorld && generationDeathSideEffects is not null && (tile.TileType == VanillaTileIds.Tables || tile.TileType == VanillaTileIds.Platforms) &&
             VanillaTileObjectLiquidDeath1458.TryGet(in tile, out _, out _))
         {
             region = new WorldTileRegion(x, y, 1, 1);
@@ -2314,7 +2314,7 @@ public sealed class VanillaWorldLiquidSimulator1458
     private bool IsLiquidBarrier(in WorldTile tile) =>
         tile.IsActive &&
         !tile.IsActuated &&
-        !(worldGenerationTilesIgnoreWater && tile.Type == 659) &&
+        !(worldGenerationTilesIgnoreWater && tile.TileType == VanillaTileIds.ShimmerBlock) &&
         VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
         !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
 

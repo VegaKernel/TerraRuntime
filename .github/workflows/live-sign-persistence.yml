@@ -152,6 +152,7 @@ jobs:
           test -n "$SIGN_ID" -a -n "$SIGN_X" -a -n "$SIGN_Y"
           dotnet "$server_dll" \
             --world "$world" \
+            --import-world-custody \
             --port 17791 \
             --max-players 2 \
             --no-tui \

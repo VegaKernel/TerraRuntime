@@ -172,6 +172,7 @@ jobs:
           run_host() {
             local label="$1"
             local port="$2"
+            shift 2
             local log="$GITHUB_WORKSPACE/artifacts/startup-${label}.log"
             local timing="$GITHUB_WORKSPACE/artifacts/startup-${label}-timing.txt"
             local start_ns end_ns elapsed_ms
@@ -179,6 +180,7 @@ jobs:
             start_ns="$(date +%s%N)"
             dotnet "$server_dll" \
               --world "$world" \
+              "$@" \
               --port "$port" \
               --max-players 1 \
               --no-tui \
@@ -235,7 +237,8 @@ jobs:
           }
 
           rm -f "$runtime_cache" "$bootstrap_cache"
-          run_host cold 17831
+          run_host cold 17831 --import-world-custody
+          test -s "$world.custody/managed-v1.anchor"
           test -s "$runtime_cache"
           test ! -e "$bootstrap_cache"
           run_host warm 17832

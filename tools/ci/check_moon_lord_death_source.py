@@ -64,6 +64,65 @@ def require_shell_translation(teleport: str, slot: int) -> None:
     require(teleport, expression, f"translate shell slot {slot}")
 
 
+
+def require_retired_hand_attachment(retired: str) -> None:
+    # Missing XNA metadata changes ILSpy local names and instance-call spelling.
+    # Bind the movement and saved-velocity identities rather than their generated names.
+    target = re.search(
+        r"Vector2 (?P<movement>\w+) = Main\.npc\[\(int\)ai\[3\]\]\.Center "
+        r"\+ new Vector2\(350f \* num, -100f\) - base\.Center;", retired)
+    if target is None:
+        raise SystemExit("Moon Lord reference contract changed: AI78 retired core attachment")
+    movement = re.escape(target.group("movement"))
+    receiver = rf"(?:{movement}|\(\(Vector2\)\(ref {movement}\)\))"
+    expression = (
+        rf"if \({receiver}\.Length\(\) > 20f\) \{{ "
+        rf"{receiver}\.Normalize\(\); {movement} \*= 6f; "
+        rf"Vector2 (?P<previous>\w+) = velocity; "
+        rf"if \({movement} != Vector2\.Zero\) \{{ SimpleFlyMovement\({movement}, 0\.3f\); \}} "
+        rf"velocity = Vector2\.Lerp\((?P=previous), velocity, 0\.5f\); \}}"
+    )
+    require(retired[target.end():], expression, "AI78 retired core attachment")
+
+
+
+def bind_leech_reference_locals(block: str) -> str:
+    """Normalize generated names only after binding their source roles and operands."""
+    names: dict[str, str] = {}
+
+    def bind(pattern: str, canonical: str, label: str) -> str:
+        matches = list(re.finditer(pattern, block))
+        if len(matches) != 1:
+            raise SystemExit(f"Moon Lord reference contract changed: AI82 {label}")
+        original = matches[0].group("name")
+        if original in names:
+            raise SystemExit("Moon Lord reference contract changed: AI82 duplicate local role")
+        names[original] = canonical
+        return re.escape(original)
+
+    bind(r"float (?P<name>\w+) = 90f;", "num1212", "return clock")
+    offset = re.search(r"Vector2 (?P<name>\w+) = new Vector2\(0f, 216f\);", block)
+    if offset is None:
+        offset = re.search(
+            r"Vector2 (?P<name>\w+) = default\(Vector2\); "
+            r"\(\(Vector2\)\(ref (?P=name)\)\)\.\.ctor\(0f, 216f\);", block)
+    if offset is None:
+        raise SystemExit("Moon Lord reference contract changed: AI82 head-mouth offset")
+    names[offset.group("name")] = "vector150"
+    block = block[:offset.start()] + f"Vector2 {offset.group('name')} = new Vector2(0f, 216f);" + block[offset.end():]
+    head = bind(r"int (?P<name>\w+) = \(int\)Math\.Abs\(ai\[0\]\) - 1;", "num1213", "head slot")
+    core = bind(rf"int (?P<name>\w+) = \(int\)Main\.npc\[{head}\]\.ai\[3\];", "num1214", "core slot")
+    # Each side is bound by its actual selection guard and assignment, not declaration order.
+    left = bind(r"if \((?P<name>\w+) == -1 && Main\.npc\[(?P<actor>\w+)\]\.type == 397 && Main\.npc\[(?P=actor)\]\.ai\[2\] == 0f\) \{ (?P=name) = (?P=actor); \}", "num1215", "left hand")
+    right = bind(r"if \((?P<name>\w+) == -1 && Main\.npc\[(?P<actor>\w+)\]\.type == 397 && Main\.npc\[(?P=actor)\]\.ai\[2\] == 1f\) \{ (?P=name) = (?P=actor); \}", "num1216", "right hand")
+    healing_head = bind(rf"int (?P<name>\w+) = {head};", "num1217", "healing head")
+    bind(r"int (?P<name>\w+) = 1000;", "num1219", "healing budget")
+    for slot, canonical in [(core, "num1220"), (left, "num1221"), (right, "num1222"), (healing_head, "num1223")]:
+        bind(rf"int (?P<name>\w+) = Main\.npc\[{slot}\]\.lifeMax - Main\.npc\[{slot}\]\.life;", canonical, "life deficit")
+    pattern = r"\b(?:" + "|".join(map(re.escape, names)) + r")\b"
+    return re.sub(pattern, lambda match: names[match.group()], block)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--assembly", type=Path, required=True)
@@ -133,8 +192,8 @@ def main() -> None:
     require(retired_hand, r"ai\[1\](?: \+= 1f|\+\+)", "AI78 retired clock advances")
     require(retired_hand, r"if \(ai\[1\] >= 32f\).*?ai\[1\] = 0f", "AI78 retired clock wraps at 32")
     require(retired_hand, r"if \(ai\[1\] < 0f\).*?ai\[1\] = 0f", "AI78 retired negative clock resets")
-    require(retired_hand, r"new Vector2\(350f \* num, -100f\).*?SimpleFlyMovement\(vector2, 0\.3f\).*?Vector2\.Lerp", "AI78 retired core attachment")
-    leech = ai_style_branch(source, 82, 83)
+    require_retired_hand_attachment(retired_hand)
+    leech = bind_leech_reference_locals(ai_style_branch(source, 82, 83))
     require(leech, r"float num1212 = 90f", "AI82 ninety-tick return clock")
     require(leech, r"Vector2 vector150 = new Vector2\(0f, 216f\)", "AI82 head-mouth offset")
     require(leech, r"int num1213 = \(int\)Math\.Abs\(ai\[0\]\) - 1", "AI82 signed one-based head slot")

@@ -164,6 +164,7 @@ jobs:
           rm -f "$cache" "$bootstrap_cache"
           dotnet "$server_dll" \
             --world "$world" \
+            --import-world-custody \
             --port 17787 \
             --max-players 2 \
             --no-tui \
