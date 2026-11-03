@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "acceptedWithinDeclaredScope": true,
+  "allGenerationComplete": false,
+  "managedOnly": true,
+  "base": "cedf8d9f13a7bbde5fb0a5a2cab460d7d52b5c95",
+  "scope": "Update CI source-contract markers for already-qualified shared framing/shape APIs. No production/test changes.",
+  "failedWorkflow": {
+    "run": 41626214183,
+    "job": 125884103564,
+    "reason": "Stale ShapeErodedEdge(ref tile, random marker"
+  },
+  "sourceAssemblySha256": "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e",
+  "positiveSourceContract": true,
+  "routeOmissionControls": [
+    {
+      "omitted": "ShapeErodedEdge(grid, x, y, ref tile, random",
+      "exitCode": 1,
+      "detected": true
+    },
+    {
+      "omitted": "tile.TrySetSourceShape(false, checked((byte)sourceSlope))",
+      "exitCode": 1,
+      "detected": true
+    },
+    {
+      "omitted": "tile.TrySetSourceShape(!tile.IsHalfBrick, tile.SourceSlope)",
+      "exitCode": 1,
+      "detected": true
+    },
+    {
+      "omitted": "grid.Framer.KillTile(x, y)",
+      "exitCode": 1,
+      "detected": true
+    },
+    {
+      "omitted": "grid.Framer.CanRemoveTile(x, y)",
+      "exitCode": 1,
+      "detected": true
+    }
+  ],
+  "pythonChecks": {
+    "total": 300,
+    "exitCode": 0
+  },
+  "previousManagedFull": {
+    "total": 1610854,
+    "unchangedProductionAndTestCode": true,
+    "testLibraryClosureCount": 158,
+    "receipt": "worldgen-continuous64-managed-20261103.json"
+  },
+  "changedPreviouslyPinnedSourceInputs": [
+    "tools/ci/probe_worldgen_smooth_world.py"
+  ],
+  "workingTreeCrLfOnlyInputs": [
+    ".github/workflows/gameplay-ai-verify.yml",
+    ".github/workflows/moon-lord-death-source-contract.yml",
+    ".github/workflows/npc-ai-017-020-021-source-contract.yml",
+    ".github/workflows/one-shot-skeletron-vertical-launch.yml",
+    ".github/workflows/player-movement-authority.yml",
+    ".github/workflows/skyblock-runtime-policy-source-contract.yml",
+    ".github/workflows/terraria-worldgen-beaches.yml",
+    ".github/workflows/terraria-worldgen-reset-contract.yml",
+    ".github/workflows/terraria-worldgen-smooth-world.yml",
+    ".github/workflows/town-arrival-identity-source-contract.yml",
+    ".github/workflows/town-movein-schedule-source-contract.yml",
+    ".github/workflows/town-spawn-preselection-source-contract.yml",
+    ".github/workflows/town-spawn-source-contract.yml",
+    "tools/TerraRuntime.SignSeed/Program.cs",
+    "tools/TerraRuntime.WorkerPoolProbe/TerraRuntime.WorkerPoolProbe.csproj"
+  ],
+  "evidence": {
+    "world-gen02.cs": "5296dba1290f32253109102a41572d89c6c9abaebc3bc6c8e79c8cebf9eb7dd1",
+    "tile-id02.cs": "ce26e4f5d5654db5b802d1b0200a9545ccb0a2d263f9c1e0030a0aa7b9e8d5cf",
+    "positive.txt": "9b208193a4ed965668e7b94f5b5a3255aeecd42a4fe6804f1d815d5ba810cd55",
+    "causals.json": "f5bcbdb24e922b025ef3aeb41c0f9d3070a352c01e5d1232b6fe8cf127ea9dec",
+    "python-ci-final02.log": "cc9d39145576cdb878d80813424a18baffd9419c7906b7c08afa62ed77b8c496",
+    "probe_worldgen_smooth_world.py": "3a84a346c3f24052483152bcfc944a07895da7255015a98a04beb2113d8f8bbf"
+  },
+  "remaining": "Medium6400x1800 seed1 InvalidChestAnchor4005,371 is a separate real Flowers defect. Validator remains unchanged; goal stays active."
+}

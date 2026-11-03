@@ -132,9 +132,12 @@ def main() -> int:
     runtime_markers = [
         "ApplyTopologyCell(grid, random, x, y",
         "ApplyFinishCell(grid, random, x, y",
-        "ShapeErodedEdge(ref tile, random",
+        "ShapeErodedEdge(grid, x, y, ref tile, random",
         "SmoothSandSlope(grid, x, y",
-        "checked((byte)(sourceSlope + 1))",
+        "tile.TrySetSourceShape(false, checked((byte)sourceSlope))",
+        "tile.TrySetSourceShape(!tile.IsHalfBrick, tile.SourceSlope)",
+        "grid.Framer.KillTile(x, y)",
+        "grid.Framer.CanRemoveTile(x, y)",
     ]
     for marker in runtime_markers:
         if marker not in runtime_smoother:
