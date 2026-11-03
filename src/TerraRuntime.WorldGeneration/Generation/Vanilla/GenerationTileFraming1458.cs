@@ -153,7 +153,7 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type is 14 or 17 or 26 or 77 or 86 or 87 or 89 or 114 or 133 or 215 or 217 or 218 or
+        if (tile.Type is 14 or 17 or 26 or 77 or 86 or 87 or 88 or 89 or 114 or 133 or 215 or 217 or 218 or
             237 or 244 or 285 or 286 or 298 or 299 or 310 or 339 or 361 or 362 or 363 or 364 or
             377 or 391 or 392 or 393 or 394 or 469 or 538)
         {
@@ -628,10 +628,10 @@ internal sealed partial class GenerationTileFraming1458(
         if (leftIdentity >= 0 && !IsFramingSolid(new TileTypeId(leftIdentity)))
             leftIdentity = -1;
 
-        bool hammered = cell.Shape == 1;
-        if (leftIdentity == type && (left.Shape == 1) != hammered)
+        bool hammered = cell.IsHalfBrick;
+        if (leftIdentity == type && left.IsHalfBrick != hammered)
             leftIdentity = -1;
-        if (rightIdentity == type && (right.Shape == 1) != hammered)
+        if (rightIdentity == type && right.IsHalfBrick != hammered)
             rightIdentity = -1;
         if (leftIdentity != -1 && leftIdentity != type && hammered)
             leftIdentity = -1;
@@ -843,9 +843,9 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         destroyingObject = true;
         for (int row = 0; row < height; row++)
-        for (int column = 0; column < 2; column++)
-            if (At(left + column, top + row).Type == type)
-                KillTile(left + column, top + row);
+            for (int column = 0; column < 2; column++)
+                if (At(left + column, top + row).Type == type)
+                    KillTile(left + column, top + row);
         if (type == 378)
             RemoveOwnedTileEntity(left, top, WorldTileEntityKind.TrainingDummy);
         destroyingObject = false;
@@ -1531,7 +1531,7 @@ internal sealed partial class GenerationTileFraming1458(
                 WorldTile floor = At(x, top + 2);
                 if (!floor.IsActive ||
                     !IsFramingSolid(floor.TileType) &&
-                    !GenerationFurnitureTiles1458.IsTable(floor.Type) || floor.Shape == 1)
+                    !GenerationFurnitureTiles1458.IsTable(floor.Type) || floor.IsHalfBrick)
                     broken = true;
             }
         }
@@ -1767,11 +1767,41 @@ internal sealed partial class GenerationTileFraming1458(
         KillTile(i, j);
     }
 
-    /// <summary>
-    /// The geometry and substrate arm of TerrariaServer 1.4.5.8 <c>WorldGen.Check2x1</c> for type185.
-    /// Rare treasure styles have additional <c>Item.NewItem</c>/<c>genRand</c> effects on destruction; this
-    /// generation-framing slice does not publish those drops yet.
-    /// </summary>
+    /// <summary>Evaluate Check2x1 reward arguments even when generation suppresses item publication.</summary>
+    private void SpendDoublePileRewardArguments(int frame)
+    {
+        if (frame is >= 576 and <= 610)
+        {
+            _ = random.Next(10, 100);
+            _ = random.Next(20, 100);
+            for (int pair = 0; pair < 5; pair++)
+            {
+                int denominator = pair < 2 ? 3 - pair : pair + 1;
+                for (int side = 0; side < 2; side++)
+                {
+                    bool selected = pair == 0
+                        ? random.Next(denominator) != 0
+                        : random.Next(denominator) == 0;
+                    if (selected)
+                        _ = random.Next(side == 0 ? 10 : 20, 100);
+                }
+            }
+        }
+        else if (frame is >= 612 and <= 646 or >= 648 and <= 682)
+        {
+            bool gold = frame >= 648;
+            _ = random.Next(gold ? 1 : 10, gold ? 6 : 100);
+            for (int branch = 2; branch <= 3; branch++)
+                if (random.Next(branch) == 0)
+                    _ = random.Next(gold ? branch : branch * 10, gold ? 6 : 100);
+        }
+        else if (frame is >= 684 and <= 898 && (frame - 684) % 36 <= 34)
+        {
+            // Six adjacent atlas bands have the same gem-stack range.
+            _ = random.Next(1, 4);
+        }
+    }
+
     private void FrameDoublePile(int i, int j)
     {
         if (destroyingObject)
@@ -1815,11 +1845,13 @@ internal sealed partial class GenerationTileFraming1458(
         if (!broken)
             return;
 
+        int rewardFrame = first.IsActive ? first.FrameX : second.FrameX;
         destroyingObject = true;
         if (first.Type == 185)
             KillTile(left, j);
         if (second.Type == 185)
             KillTile(left + 1, j);
+        SpendDoublePileRewardArguments(rewardFrame);
         destroyingObject = false;
         SquareTileFrame(left, j);
         SquareTileFrame(left + 1, j);
@@ -1945,6 +1977,7 @@ internal sealed partial class GenerationTileFraming1458(
         if (!broken)
             return;
 
+        short triggerFrameX = At(i, j).FrameX;
         destroyingObject = true;
         for (int x = left; x < left + 3; x++)
         {
@@ -1955,6 +1988,7 @@ internal sealed partial class GenerationTileFraming1458(
             }
         }
 
+        EvaluateSuppressedPileDrops(type, triggerFrameX);
         destroyingObject = false;
         for (int x = left - 1; x < left + 4; x++)
         {
@@ -2321,6 +2355,7 @@ internal sealed partial class GenerationTileFraming1458(
         if (breakability == 1)
         {
             ConsumeTileDust(i, j, tile);
+            if (tile.Type == 404) ShatterNeighbouringFossils(i, j, failed: true);
             SquareTileFrame(i, j);
             return;
         }
@@ -2330,9 +2365,9 @@ internal sealed partial class GenerationTileFraming1458(
         if (tile.Type == 423)
             RequireColdSensorCircuit(i, j);
 
-        if (tile.Type is 21 or 467)
+        if (tile.Type is 21 or 467 or 88)
         {
-            int left = i - tile.FrameX / 18 % 2;
+            int left = i - tile.FrameX / 18 % (tile.Type == 88 ? 3 : 2);
             int top = j - tile.FrameY / 18;
             if (workspace is not null && !workspace.TryRemoveEmptyGeneratedChest(left, top))
                 return;
@@ -2341,6 +2376,11 @@ internal sealed partial class GenerationTileFraming1458(
         if (tile.Type == 419) EnsureUnwiredLogicGate(i, j + 1);
 
         ConsumeTileDust(i, j, tile);
+        if (tile.Type is >= 481 and <= 483) BreakDungeonDebris(i, j);
+        if (tile.Type == 404) ShatterNeighbouringFossils(i, j, failed: false);
+        BreakSpecialSeedSiltNeighbours(i, j);
+        // The source evaluates its noItem override even when generation already suppressed drops.
+        if (tile.Type == 51 && tile.Wall == 62) _ = random.Next(4);
         if (tile.Type == 423)
             KillColdLogicSensor(i, j);
         if (tile.Type is 723 or 724)
@@ -2357,6 +2397,17 @@ internal sealed partial class GenerationTileFraming1458(
         {
             tile.LiquidAmount = 128;
             tile.LiquidKind = WorldLiquidKind.Lava;
+        }
+        else if (!SourceClient && SpecialSeedWorthy && tile.Type == 230 && random.Next(2) == 0)
+        {
+            tile.LiquidAmount = 128;
+            tile.LiquidKind = WorldLiquidKind.Lava;
+        }
+        else if (!SourceClient && SpecialSeedWorthy && SpecialSeedRemix && !SpecialSeedDrunk &&
+            tile.Type is 147 or 224 or 161 or 200 or 163 or 164 && random.Next(2) == 0)
+        {
+            tile.LiquidAmount = 64;
+            tile.LiquidKind = WorldLiquidKind.Water;
         }
         if (tile.Type == 419) RefreshUnwiredLogicGate(i, j + 1);
         tile.Type = 0;
@@ -3019,7 +3070,7 @@ internal sealed partial class GenerationTileFraming1458(
         }
 
         WorldTile support = At(i, j + 1);
-        if (!support.IsActive || support.Type is not (53 or 112 or 116 or 234 or 396 or 397 or 398 or 399 or 400 or 401 or 402 or 403))
+        if (!support.IsActive || !WorldSmoothingCatalog1458.IsSandConversion(support.TileType))
             KillTile(i, j);
     }
 
@@ -3063,7 +3114,7 @@ internal sealed partial class GenerationTileFraming1458(
     /// source from destroying an object that reaches the border. A top-sloped platform still supports an
     /// object when its horizontal frame belongs to <c>PlatformProperTopFrame</c>.
     /// </summary>
-    private bool SolidTileAllowBottomSlope(int i, int j)
+    internal bool SolidTileAllowBottomSlope(int i, int j)
     {
         if (!Contains(i, j))
             return true;
@@ -3084,7 +3135,7 @@ internal sealed partial class GenerationTileFraming1458(
     /// Source <c>WorldGen.SolidTile</c>: solid, NOT solid-top, unsloped, not a half brick and not actuated. Out
     /// of world reads as solid, which is how the source treats a null tile.
     /// </summary>
-    private bool SolidTile(int i, int j)
+    internal bool SolidTile(int i, int j)
     {
         if (!Contains(i, j))
             return true;

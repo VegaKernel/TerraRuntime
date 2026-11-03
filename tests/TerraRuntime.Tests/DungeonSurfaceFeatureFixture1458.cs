@@ -160,9 +160,9 @@ internal static class DungeonSurfaceFeatureFixture1458
         return workspace;
     }
 
-    public static WorldTileStore TrapTiles(int fixture, int palette)
+    public static WorldTileStore TrapTiles(int fixture, int palette, WorldTileStore? target = null)
     {
-        var tiles = new WorldTileStore(new WorldDimensions(1600, 800));
+        var tiles = target ?? new WorldTileStore(new WorldDimensions(1600, 800));
         for (int x = 0; x < 1600; x++)
         for (int y = 0; y < 800; y++)
         {

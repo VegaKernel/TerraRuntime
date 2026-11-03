@@ -37,7 +37,7 @@ internal static class CatTail1458
         WorldTileStore store,
         IWorldGenerationVanillaRandom random,
         int x,
-        int y)
+        int y, GenerationTileFraming1458? framing = null)
     {
         int width = store.Dimensions.WidthTiles;
         int height = store.Dimensions.HeightTiles;
@@ -138,9 +138,9 @@ internal static class CatTail1458
         if (topSlope && random.Next(3) != 0)
         {
             ref WorldTile flattened = ref At(store, x, floor);
-            flattened.Shape = 0;
+            flattened.TrySetSourceShape(ground.IsHalfBrick, 0);
         }
-        else if (topSlope || ground.Shape == 1)
+        else if (topSlope || ground.IsHalfBrick)
         {
             return null;
         }
@@ -153,6 +153,7 @@ internal static class CatTail1458
         stalk.FrameY = frameY;
         stalk.Shape = 0;
         CopyBlockPaintAndCoating(ref stalk, store.Get(x, baseRow + 1));
+        framing?.SquareTileFrame(x, baseRow);
         return new VanillaCatTailAnchor1458(x, baseRow);
     }
 
@@ -160,7 +161,7 @@ internal static class CatTail1458
     /// Source <c>WorldGen.GrowCatTail</c>: advances one cat tail by a single step. The pass calls it repeatedly,
     /// and most calls are deliberately no-ops once the plant has reached its final shape.
     /// </summary>
-    public static void Grow(WorldTileStore store, IWorldGenerationVanillaRandom random, int x, int y)
+    public static void Grow(WorldTileStore store, IWorldGenerationVanillaRandom random, int x, int y, GenerationTileFraming1458? framing = null)
     {
         int height = store.Dimensions.HeightTiles;
         if (!Contains(store, x, y))
@@ -194,7 +195,7 @@ internal static class CatTail1458
         if (stalk.FrameX == 90 && store.Get(x, row - 1).IsActive &&
             VanillaProjectileTileCutFacts.IsCuttable(store.Get(x, row - 1).TileType))
         {
-            ClearTile(ref At(store, x, row - 1));
+            if (framing is not null) framing.KillTile(x, row - 1); else ClearTile(ref At(store, x, row - 1));
         }
 
         if (store.Get(x, row - 1).IsActive)
@@ -203,6 +204,7 @@ internal static class CatTail1458
         if (stalk.FrameX == 0)
         {
             At(store, x, row).FrameX = 18;
+            framing?.SquareTileFrame(x, row); framing?.SquareTileFrame(x, row - 1, false);
             return;
         }
 
@@ -210,13 +212,15 @@ internal static class CatTail1458
         {
             At(store, x, row).FrameX = (short)(18 * random.Next(2, 5));
             PlaceHead(store, x, row, 90);
+            framing?.SquareTileFrame(x, row); framing?.SquareTileFrame(x, row - 1, false);
             return;
         }
 
         if (stalk.FrameX != 90)
-            return;
+        { framing?.SquareTileFrame(x, row - 1, false); return; }
 
         GrowStalkHead(store, random, x, row);
+        framing?.SquareTileFrame(x, row); framing?.SquareTileFrame(x, row - 1, false);
     }
 
     /// <summary>

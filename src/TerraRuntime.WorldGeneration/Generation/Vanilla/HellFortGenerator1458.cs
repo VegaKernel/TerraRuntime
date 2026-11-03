@@ -293,7 +293,7 @@ internal static class HellFortGenerator1458
     {
         // PlaceTile clears Tile|TilePaint|Slope on its inactive anchor, not all cells of a multi-tile object.
         tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-        tile.Type = 0; tile.FrameX = 0; tile.FrameY = 0; tile.Shape = 0; tile.TileColor = 0;
+        tile.Type = 0; tile.FrameX = 0; tile.FrameY = 0; tile.ClearSourceShape(); tile.TileColor = 0;
     }
     private static bool InWorld(WorldTileStore store, int x, int y, int margin) => x >= margin && y >= margin &&
         x < store.Dimensions.WidthTiles - margin && y < store.Dimensions.HeightTiles - margin;

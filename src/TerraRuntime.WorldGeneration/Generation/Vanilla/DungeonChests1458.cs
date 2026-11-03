@@ -8,7 +8,8 @@ internal sealed class DungeonChests1458(Workspace workspace, IWorldGenerationVan
     VanillaWorldGenerationBootstrapState1458 bootstrap, double worldSurface, double rockLayer, CancellationToken cancellationToken,
     IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null)
 {
-    private readonly DungeonChestLoot1458 loot = new(random, bootstrap);
+    private readonly DungeonChestLoot1458 loot = new(random, bootstrap,
+        BuriedChestContext1458.GetOrCreate(workspace, bootstrap, worldSurface, rockLayer));
     private static ReadOnlySpan<int> BasicLoot => [155, 156, 157, 163, 113, 3317, 327, 164];
     private int lootIndex;
     private int Width => workspace.WidthTiles;

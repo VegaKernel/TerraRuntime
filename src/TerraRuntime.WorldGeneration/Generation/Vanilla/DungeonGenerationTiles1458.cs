@@ -77,7 +77,7 @@ internal static class DungeonGenerationTiles1458
 
     public static void ClearTile(ref WorldTile tile)
     {
-        tile.Shape = 0;
+        tile.ClearSourceShape();
         tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive);
     }
 }

@@ -6,7 +6,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary Corruption chasm geometry, pinned to WorldGen 1.4.5.8.
 /// Mutates only an unpublished candidate; uses the existing ore runner and altar placement.</summary>
 internal sealed class CorruptionCaves1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    double worldSurface, double rockLayer, VanillaLiquidLines1458 liquidLines, CancellationToken cancellationToken)
+    double worldSurface, double rockLayer, VanillaLiquidLines1458 liquidLines, CancellationToken cancellationToken, Func<TileTypeId, bool>? solidity = null)
 {
     private const ushort Stone = 25, Wall = 3;
 
@@ -164,7 +164,7 @@ internal sealed class CorruptionCaves1458(WorldTileStore tiles, IWorldGeneration
             int tx = Math.Clamp(random.Next(x - 25, x + 25), 5, tiles.Dimensions.WidthTiles - 5);
             int ty = Math.Clamp(random.Next(y - 50, y), 5, tiles.Dimensions.HeightTiles - 5);
             if (ty <= worldSurface) return;
-            if (!EvilAltarPlacement1458.IsNearby(tiles, tx, ty)) EvilAltarPlacement1458.TryPlace(tiles, tx, ty, false);
+            if (!EvilAltarPlacement1458.IsNearby(tiles, tx, ty)) EvilAltarPlacement1458.TryPlace(tiles, tx, ty, false, solidity: solidity);
             if (At(tx, ty).Type == 26) return;
         }
     }

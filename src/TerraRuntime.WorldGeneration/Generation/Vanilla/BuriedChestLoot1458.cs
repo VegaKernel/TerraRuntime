@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
@@ -41,18 +42,21 @@ internal static class BuriedChestLoot1458
         int floorY,
         int style,
         int primary,
-        ushort chestTileType)
+        ushort chestTileType,
+        VanillaWorldSeedProfile1458 profile=default)
     {
         var chest = new Slots(random);
+        bool rainbowGlowsticks=profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10);
+        bool remix=profile.Has(VanillaSpecialWorldSeed1458.Remix);
         while (chest.Count == 0)
         {
-            bool aboveSurface = floorY < context.WorldSurface + 25.0;
+            bool aboveSurface = remix?floorY>context.Height-400:floorY < context.WorldSurface + 25.0;
             if ((aboveSurface && (kind.Wooden || kind.LivingWood)) || kind.ForcedSurfaceItem)
-                Surface(random, context, in kind, chest, primary);
-            else if (floorY < context.RockLayer)
+                Surface(random, context, in kind, chest, primary,rainbowGlowsticks);
+            else if (!remix&&floorY<context.RockLayer||remix&&floorY>context.RockLayer&&floorY<context.Height-250)
                 Underground(random, context, in kind, chest, primary);
             else if (floorY < context.Height - 250)
-                Cavern(random, context, in kind, chest, primary, floorY);
+                Cavern(random, context, in kind, chest, primary, floorY,rainbowGlowsticks);
             else
                 Underworld(random, context, in kind, chest, primary);
 
@@ -86,7 +90,7 @@ internal static class BuriedChestLoot1458
         BuriedChestContext1458 context,
         in BuriedChestKind1458 kind,
         Slots chest,
-        int primary)
+        int primary,bool rainbowGlowsticks)
     {
         if (primary > 0)
         {
@@ -120,7 +124,7 @@ internal static class BuriedChestLoot1458
         }
 
         if (random.Next(6) == 0)
-            chest.PutStackAndAdvance(282, random.Next(40, 76));
+            chest.PutStackAndAdvance(rainbowGlowsticks?5643:282, random.Next(40, 76));
         if (random.Next(6) == 0)
             chest.PutStackAndAdvance(279, random.Next(150, 301));
         if (random.Next(6) == 0)
@@ -292,7 +296,7 @@ internal static class BuriedChestLoot1458
         in BuriedChestKind1458 kind,
         Slots chest,
         int primary,
-        int floorY)
+        int floorY,bool rainbowGlowsticks)
     {
         if (primary > 0)
         {
@@ -405,7 +409,7 @@ internal static class BuriedChestLoot1458
         {
             int selector = random.Next(2);
             int stack = random.Next(15, 31);
-            chest.PutStackAndAdvance(selector == 0 ? (kind.Frozen ? 974 : 8) : 282, stack);
+            chest.PutStackAndAdvance(selector == 0 ? (kind.Frozen ? 974 : 8) : rainbowGlowsticks?5643:282, stack);
         }
         if (random.Next(2) == 0)
             chest.PutStackAndAdvance(73, random.Next(1, 3));

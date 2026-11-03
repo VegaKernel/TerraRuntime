@@ -48,6 +48,12 @@ internal static class SettingsTreeGrower1458
             AllowsWall: AllowsGemTreeWall);
     }
 
+    internal static SettingsTreeProfile1458 VanityTree(ushort type) => type is 596 or 616
+        ? new(type, (ushort)(type == 596 ? 595 : 615), 7, 12, 4,
+            ground => ground.Value is 2 or 109 or 477 or 492,
+            TreeGrowthCatalog1458.AllowsPlantGrowth)
+        : throw new ArgumentOutOfRangeException(nameof(type));
+
     internal static bool IsGemTreeGround(TileTypeId type) =>
         Contains(StoneConversion, type) || Contains(MossConversion, type);
 
@@ -63,14 +69,15 @@ internal static class SettingsTreeGrower1458
         SettingsTreeProfile1458 profile,
         int x,
         int checkedY,
-        IWorldGenerationVanillaRandom random)
+        IWorldGenerationVanillaRandom random,
+        GenerationTileFraming1458? framing = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(random);
 
         int height = store.Dimensions.HeightTiles;
-        if (x < 2 || x >= store.Dimensions.WidthTiles - 2 || checkedY < 1 || checkedY >= height) return false;
+        if (x < 1 || x >= store.Dimensions.WidthTiles - 1 || checkedY < 1 || checkedY >= height) return false;
         int floor = checkedY;
         while (floor < height && At(store, x, checkedY).IsActive && At(store, x, floor).Type == profile.SaplingTileType)
             floor++;
@@ -83,11 +90,11 @@ internal static class SettingsTreeGrower1458
              !IsProfileGround(profile, At(store, x + 1, floor)))) return false;
         int treeHeight = random.Next(profile.HeightMinimum, profile.HeightMaximumInclusive + 1);
         int top = floor - treeHeight;
-        if (top - profile.TopPadding < 0) return false;
+        if (top - profile.TopPadding < 0 || x < 2 || x >= store.Dimensions.WidthTiles - 2) return false;
         for (int column = x - 2; column <= x + 2; column++)
-        for (int y = top - profile.TopPadding; y < floor; y++)
-            if (At(store, column, y) is { IsActive: true } tile &&
-                !TreeGrowthCatalog1458.IsReplaceableGrowthTile(tile.TileType)) return false;
+            for (int y = top - profile.TopPadding; y < floor; y++)
+                if (At(store, column, y) is { IsActive: true } tile &&
+                    !TreeGrowthCatalog1458.IsReplaceableGrowthTile(tile.TileType)) return false;
 
         bool previousLeft = false, previousRight = false;
         for (int y = top; y < floor; y++)
@@ -130,7 +137,9 @@ internal static class SettingsTreeGrower1458
                 TreeFrameCatalog1458.SettingsTrunkBase(left, right, baseVariant));
         bool leafy = random.Next(13) != 0;
         Write(ref At(store, x, top), ground, profile.TreeTileType, TreeFrameCatalog1458.Top(leafy, random.Next(3)));
-        FrameFreshRoots(store, profile, x, floor, random);
+        if (framing is null) FrameFreshRoots(store, profile, x, floor, random);
+        else
+            framing.RangeFrame(x - 2, top - 1, x + 2, floor + 1);
         return true;
     }
 
@@ -161,13 +170,13 @@ internal static class SettingsTreeGrower1458
                 WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
             // Generation KillTile's neighbouring inactive-cell TileFrame cleanup.
             for (int dx = -1; dx <= 1; dx++)
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                ref WorldTile neighbour = ref At(store, column + dx, row + dy);
-                if (neighbour.IsActive) continue;
-                neighbour.Shape = neighbour.TileColor = 0;
-                neighbour.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-            }
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    ref WorldTile neighbour = ref At(store, column + dx, row + dy);
+                    if (neighbour.IsActive) continue;
+                    neighbour.Shape = neighbour.TileColor = 0;
+                    neighbour.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+                }
             // CheckTreeWithSettings continues after KillTile using captured neighbour types;
             // its final crown branch writes these frames even though the root is now inactive.
             if (!hasTreeAbove)

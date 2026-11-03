@@ -29,14 +29,14 @@ internal static partial class TreeGrower1458
         int x,
         int checkedY,
         IWorldGenerationVanillaRandom random,
-        bool ignoreWalls = false)
+        bool ignoreWalls = false, GenerationTileFraming1458? framing = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(random);
 
         int width = store.Dimensions.WidthTiles;
         int height = store.Dimensions.HeightTiles;
-        if (x < CanopyClearanceRadiusTiles || x >= width - CanopyClearanceRadiusTiles ||
+        if (x < TrunkClearanceRadiusTiles || x >= width - TrunkClearanceRadiusTiles ||
             checkedY < TrunkClearanceRadiusTiles || checkedY >= height)
             return false;
 
@@ -45,7 +45,7 @@ internal static partial class TreeGrower1458
         int groundY = checkedY;
         while (groundY < height &&
                tiles[Index(stride, x, groundY)].IsActive &&
-               TreeGrowthCatalog1458.IsCommonSapling(tiles[Index(stride, x, groundY)].TileType))
+               tiles[Index(stride, x, groundY)].Type == 20)
             groundY++;
 
         if (groundY < TrunkClearanceRadiusTiles || groundY >= height ||
@@ -166,23 +166,28 @@ internal static partial class TreeGrower1458
         int topVariant = random.Next(SegmentVariantCount);
         ref WorldTile top = ref tiles[Index(stride, x, groundY - treeHeight)];
         SetTreeFrame(ref top, TreeFrameCatalog1458.Top(leafyTop, topVariant));
+        if (framing is not null)
+        {
+            framing.RangeFrame(x - 2, groundY - treeHeight - 1, x + 2, groundY + 1);
+            return true;
+        }
         // GrowTree ends with RangeFrame. During generation ordinary solid tiles keep their frames,
         // but inactive block paint/coatings/slopes and absent-wall paint/coatings are still cleared.
         for (int tx = Math.Max(0, x - 3); tx <= Math.Min(width - 1, x + 3); tx++)
-        for (int ty = Math.Max(0, groundY - treeHeight - 2); ty <= Math.Min(height - 1, groundY + 2); ty++)
-        {
-            ref WorldTile cell = ref tiles[Index(stride, tx, ty)];
-            if (tx > 5 && ty > 5 && tx < width - 5 && ty < height - 5 && !cell.IsActive)
+            for (int ty = Math.Max(0, groundY - treeHeight - 2); ty <= Math.Min(height - 1, groundY + 2); ty++)
             {
-                cell.Shape = cell.TileColor = 0;
-                cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+                ref WorldTile cell = ref tiles[Index(stride, tx, ty)];
+                if (tx > 5 && ty > 5 && tx < width - 5 && ty < height - 5 && !cell.IsActive)
+                {
+                    cell.Shape = cell.TileColor = 0;
+                    cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+                }
+                if (tx > 0 && ty > 0 && tx < width - 1 && ty < height - 1 && cell.Wall == 0)
+                {
+                    cell.WallColor = 0;
+                    cell.Flags &= ~(WorldTileFlags.InvisibleWall | WorldTileFlags.FullbrightWall);
+                }
             }
-            if (tx > 0 && ty > 0 && tx < width - 1 && ty < height - 1 && cell.Wall == 0)
-            {
-                cell.WallColor = 0;
-                cell.Flags &= ~(WorldTileFlags.InvisibleWall | WorldTileFlags.FullbrightWall);
-            }
-        }
         return true;
     }
 

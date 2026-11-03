@@ -10,7 +10,7 @@ internal static class UnderworldTerrain1458
     internal const int Ash = 57, Hellstone = 58, LiquidCavity = -2;
 
     public static void Generate(WorldTileStore store, IWorldGenerationVanillaRandom random,
-        double worldSurface, VanillaLiquidLines1458 lines, CancellationToken cancellationToken)
+        double worldSurface, VanillaLiquidLines1458 lines, CancellationToken cancellationToken, Workspace? workspace = null)
     {
         int width = store.Dimensions.WidthTiles, height = store.Dimensions.HeightTiles;
         if (width <= 40 || height < 300 || !double.IsFinite(worldSurface) || worldSurface < 0 ||
@@ -30,7 +30,7 @@ internal static class UnderworldTerrain1458
                 Ash, true, 0, random.Next(1, 3), true);
         }
 
-        UnderworldLiquidPreparation1458.Settle(store, lines.WaterLine, cancellationToken);
+        UnderworldLiquidPreparation1458.Settle(store, lines.WaterLine, cancellationToken, workspace);
         for (int x = 0; x < width; x++)
         {
             cancellationToken.ThrowIfCancellationRequested();

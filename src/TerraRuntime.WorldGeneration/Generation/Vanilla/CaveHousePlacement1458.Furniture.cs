@@ -144,14 +144,14 @@ internal static partial class CaveHousePlacement1458
         (int dx, int dy, int width, int height, int frameX, int frameY) = type switch
         {
             14 when style == 25 => (-1, 0, 3, 1, style * 54, 0),
-            14 or 86 or 87 or 186 or 377 or 469 => (-1, -1, 3, 2, style * 54, 0),
+            14 or 86 or 87 or 186 or 187 or 215 or 377 or 469 => (-1, -1, 3, 2, style * 54, 0),
             16 or 18 => (0, 0, 2, 1, style * 36, 0),
-            94 => (-1, -1, 2, 2, 0, style * 36),
+            94 or 138 or 411 => (-1, -1, 2, 2, 0, style * 36),
             101 => (-1, -3, 3, 4, style * 54, 0),
             105 => (0, -2, 2, 3, style % 55 * 36, style / 55 * 54),
             349 or 506 => (0, -2, 2, 3, style * 36, 0),
             219 => (-1, -2, 3, 3, style * 54, 0),
-            135 => (0, 0, 1, 1, 0, style * 18),
+            135 or 141 => (0, 0, 1, 1, 0, style * 18),
             91 => (0, 0, 1, 3, style % 111 * 18, style / 111 * 54),
             34 => (-1, 0, 3, 3, style / 36 * 108, style * 54 - style / 36 * 1998),
             240 => (-1, -1, 3, 3, style % 36 * 54, style / 36 * 54),
@@ -172,11 +172,12 @@ internal static partial class CaveHousePlacement1458
             if (!picture && type is not (34 or 91))
             {
                 WorldTile floor = grid.At(column, top + height);
-                available &= type == 94
+                available &= type is 94 or 138 or 411
                     ? floor.IsActive && !floor.IsActuated && (FurnitureSolidFloor(floor, false, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null) || GenerationFurnitureTiles1458.IsTable(floor.Type))
                     : FurnitureSolidFloor(floor, true, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
-                if (type == 186 || type == 135)
+                if (type is 186 or 187 or 135)
                     available &= !floor.IsActive || floor.Type is not (138 or 664);
+                if(type==141)available &= !GenerationObjectSupport1458.IsBoulder(floor.Type);
             }
         }
         if (type == 34)
@@ -185,11 +186,12 @@ internal static partial class CaveHousePlacement1458
         if (available)
             FurnitureWrite(grid, left, top, width, height, type, frameX, frameY);
         var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
-        if (!picture && type != 94)
+        if (!picture && type is not (94 or 138 or 411))
             framing.SquareTileFrame(x, y);
-        if (grid.At(x, y).IsActive)
+        bool result = grid.At(x, y).IsActive;
+        if (result)
             framing.SquareTileFrame(x, y);
-        return grid.At(x, y).IsActive;
+        return result;
     }
 
     private static bool FurnitureSolidFloor(in WorldTile floor, bool platformSlope, Func<TileTypeId, bool>? solidity = null) =>

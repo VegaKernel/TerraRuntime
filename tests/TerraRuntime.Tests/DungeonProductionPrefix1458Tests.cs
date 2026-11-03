@@ -1,3 +1,6 @@
+using TerraRuntime.Core.Worlds.Generation;
+using TerraRuntime.Core.Projectiles;
+using TerraRuntime.Core.Npcs;
 using System.Security.Cryptography;
 using System.Text;
 using TerraRuntime.Contracts.Gameplay;
@@ -30,6 +33,8 @@ public sealed class DungeonProductionPrefix1458Tests
             Options = new(WorldGenerationGameMode.Classic, crimson ? WorldGenerationEvil.Crimson : WorldGenerationEvil.Corruption)
         };
         var workspace = new Workspace(width, height);
+        workspace.AttachEntityEffects(new WorldGenerationEntityEffects1458(
+            new RuntimeNpcStore(), new RuntimeProjectileStore(), sourceServer: true), 0, 1);
         var provider = new PrefixProvider();
         var result = RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace,
             cancellationToken: TestContext.Current.CancellationToken);

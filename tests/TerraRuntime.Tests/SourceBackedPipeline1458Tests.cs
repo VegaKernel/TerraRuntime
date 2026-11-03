@@ -86,7 +86,7 @@ public sealed class SourceBackedPipeline1458Tests
     }
 
     [Fact]
-    public void Pure_remix_stops_at_source_backed_dunes_and_keeps_the_later_compatibility_tail()
+    public void Pure_remix_registers_the_qualified_early_passes_through_jungle()
     {
         var provider = new SourceBackedPipeline1458();
         var request = new WorldGenerationRequest(
@@ -108,6 +108,22 @@ public sealed class SourceBackedPipeline1458Tests
                 "terraria:1.4.5.8/Terrain",
                 "terraria:1.4.5.8/TerrainLayers",
                 "terraria:1.4.5.8/Dunes",
+                "terraria:1.4.5.8/OceanSand",
+                "terraria:1.4.5.8/SandPatches",
+                "terraria:1.4.5.8/Tunnels",
+                "terraria:1.4.5.8/MountCaves",
+                "terraria:1.4.5.8/DirtWallBackgrounds",
+                "terraria:1.4.5.8/RocksInDirt",
+                "terraria:1.4.5.8/DirtInRocks",
+                "terraria:1.4.5.8/Clay",
+                "terraria:1.4.5.8/SmallHoles",
+                "terraria:1.4.5.8/DirtLayerCaves",
+                "terraria:1.4.5.8/RockLayerCaves",
+                "terraria:1.4.5.8/SurfaceCaves",
+                "terraria:1.4.5.8/WavyCaves",
+                "terraria:1.4.5.8/GenerateIceBiome",
+                "terraria:1.4.5.8/Grass",
+                "terraria:1.4.5.8/Jungle",
                 "terraria:1.4.5.8/Biomes",
                 "terraria:1.4.5.8/Caves",
                 "terraria:1.4.5.8/Ores",
@@ -117,14 +133,14 @@ public sealed class SourceBackedPipeline1458Tests
             ],
             builder.Entries.Select(static entry => entry.Descriptor.Id.Value));
         Assert.Contains(
-            new WorldGenerationPassId("terraria:1.4.5.8/Dunes"),
+            new WorldGenerationPassId("terraria:1.4.5.8/Jungle"),
             Find(builder, "terraria:1.4.5.8/Biomes").Descriptor.RequiredAfter.ToArray());
-        Assert.DoesNotContain(builder.Entries, static entry =>
+        Assert.Contains(builder.Entries, static entry =>
             entry.Descriptor.Id.Value == "terraria:1.4.5.8/OceanSand");
     }
 
     [Fact]
-    public void Zenith_still_keeps_the_compatibility_plan_even_though_it_implies_remix()
+    public void Zenith_registers_the_same_qualified_early_pass_family()
     {
         var provider = new SourceBackedPipeline1458();
         var request = new WorldGenerationRequest(
@@ -140,8 +156,8 @@ public sealed class SourceBackedPipeline1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(8, builder.Entries.Count);
-        Assert.DoesNotContain(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/Dunes");
+        Assert.Equal(26, builder.Entries.Count);
+        Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/Dunes");
     }
 
     [Theory]

@@ -22,7 +22,7 @@ public sealed class GenerationSpecialResetTerrain1458Tests
     public static IEnumerable<object[]> MetadataCases => Keys("metadata");
     public static IEnumerable<object[]> OngoingCases => Keys("ongoing");
     public static IEnumerable<object[]> UnsupportedCases => Golden.RootElement.GetProperty("actual").EnumerateArray()
-        .Where(x => x.GetProperty("width").GetInt32() == 4200 && x.GetProperty("profile").GetString() is not ("Normal" or "Remix"))
+        .Where(x => x.GetProperty("width").GetInt32() == 4200 && x.GetProperty("profile").GetString() != "Normal")
         .Select(x => new object[] { x.GetProperty("key").GetString()! });
 
     [Theory, MemberData(nameof(TranslationCases))]
@@ -114,7 +114,7 @@ public sealed class GenerationSpecialResetTerrain1458Tests
     }
 
     [Theory, MemberData(nameof(UnsupportedCases))]
-    public void Uncancelled_new_special_profile_refuses_unqualified_later_generation(string key)
+    public void Uncancelled_basic_special_profile_refuses_generation_after_its_qualified_early_prefix(string key)
     {
         JsonElement row = Row("actual", key);
         var workspace = new Workspace(4200, 1200);
@@ -124,7 +124,7 @@ public sealed class GenerationSpecialResetTerrain1458Tests
         Assert.Equal(WorldGenerationExecutionStatus.PassFailed, result.Status);
         Assert.Equal("terraria:1.4.5.8/Biomes", result.PassId.Value);
         Assert.IsType<NotSupportedException>(result.Error);
-        Assert.Contains("Reset and Terrain only", result.Error!.Message);
+        Assert.Contains("through MudCavesToGrass", result.Error!.Message);
     }
 
     private static Workspace RunPrefix(JsonElement row, bool checkOriginal)

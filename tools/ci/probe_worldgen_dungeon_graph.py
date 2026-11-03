@@ -62,7 +62,7 @@ def require_runtime_features(source: str) -> None:
         "new DungeonBookshelves1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken, pits)",
         "chests.PlaceBasic(graph.Components)",
         "new DungeonLights1458(workspace.TileStore, random, cancellationToken, pits).Place(bounds",
-        "new DungeonTraps1458(workspace.TileStore, random, new(0, 0), cancellationToken).Place(bounds",
+        "new DungeonTraps1458(workspace.TileStore, random, new(0, 0), cancellationToken, workspace).Place(bounds",
         "new DungeonFurniture1458(workspace, random, cancellationToken, pits).Place(bounds",
         "new DungeonPaintings1458(workspace.TileStore, random, cancellationToken)",
         "new DungeonBanners1458(workspace.TileStore, random, cancellationToken, pits).Place(bounds",

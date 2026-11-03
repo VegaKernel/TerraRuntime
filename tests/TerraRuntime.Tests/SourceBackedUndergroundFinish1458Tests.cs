@@ -30,9 +30,10 @@ public sealed class SourceBackedUndergroundFinish1458Tests
         new UndergroundFinishPass1458(UndergroundFinishStage1458.GemsInIceBiome, new UndergroundFinishState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalFixture", 1458, width, height), workspace, random));
 
-        Assert.Equal(2069, CountActiveType(workspace, 178));
-        Assert.Equal(1005057184, random.Next());
-        Assert.Equal("9ABC246C6F1C166A02509A26815D9CD884AC43D805E7D7DC09A3B4C6BFC1845E", HashFixture(workspace));
+        AssertOriginalWholeState(workspace, random, 0);
+        Assert.Equal(2098, CountActiveType(workspace, 178));
+        Assert.Equal(1039441643, random.Next());
+        Assert.Equal("783905483FA281E24AA353F34068CB15270200BCA05B20F70283ABFD3E19BC8E", HashFixture(workspace));
     }
 
     [Fact]
@@ -64,9 +65,10 @@ public sealed class SourceBackedUndergroundFinish1458Tests
         new UndergroundFinishPass1458(UndergroundFinishStage1458.RandomGems, new UndergroundFinishState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalFixture", 1458, width, height), workspace, random));
 
-        Assert.Equal(22630, CountActiveType(workspace, 178));
-        Assert.Equal(400481817, random.Next());
-        Assert.Equal("C9BFE6860E0F157A0395C4A17A7C4F06B8A6757D77437E1359D606D6F49666C7", HashActiveGems(workspace));
+        AssertOriginalWholeState(workspace, random, 1);
+        Assert.Equal(22748, CountActiveType(workspace, 178));
+        Assert.Equal(1888876907, random.Next());
+        Assert.Equal("C93A44A1F5B6C239CF979FDD05A011A8824C10C2A5E198B5199F45A0C8FB6B4D", HashActiveGems(workspace));
     }
 
     [Fact]
@@ -129,9 +131,10 @@ public sealed class SourceBackedUndergroundFinish1458Tests
         new UndergroundFinishPass1458(UndergroundFinishStage1458.GemsInIceBiome, new UndergroundFinishState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
 
-        Assert.Equal(311, CountActiveType(workspace, 178));
-        Assert.Equal(890412130, random.Next());
-        Assert.Equal("9FAD9E80D4214EA33FFB1BF777AECFBF4334114EDB14F384A97C470DEEAF27FC", HashFixture(workspace));
+        AssertOriginalWholeState(workspace, random, 2);
+        Assert.Equal(299, CountActiveType(workspace, 178));
+        Assert.Equal(1502811436, random.Next());
+        Assert.Equal("A70F1AFD96A67A936BBED4E54AC3A08A514C5B9312BE1261A41A9EFBA4AE8BF3", HashFixture(workspace));
     }
 
     [Fact]
@@ -162,9 +165,10 @@ public sealed class SourceBackedUndergroundFinish1458Tests
         new UndergroundFinishPass1458(UndergroundFinishStage1458.RandomGems, new UndergroundFinishState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
 
-        Assert.Equal(3114, CountActiveType(workspace, 178));
-        Assert.Equal(588323533, random.Next());
-        Assert.Equal("2E2BEFD6313F5E14B7F09A9AF2C4077E90C22A6B1D334444A56412E39375908F", HashActiveGems(workspace));
+        AssertOriginalWholeState(workspace, random, 3);
+        Assert.Equal(3087, CountActiveType(workspace, 178));
+        Assert.Equal(158491445, random.Next());
+        Assert.Equal("C12E03B7732AEB8B695E8C71866A59DBB49A3A171EF9DBA19985EF3C759DE686", HashActiveGems(workspace));
     }
 
     [Fact]
@@ -317,7 +321,7 @@ public sealed class SourceBackedUndergroundFinish1458Tests
     }
 
     [Fact]
-    public void Special_seed_profile_keeps_compatibility_plan()
+    public void Special_seed_profile_registers_qualified_early_prefix_without_underground_finish()
     {
         var provider = new SourceBackedUndergroundFinish1458();
         var request = new WorldGenerationRequest(
@@ -333,13 +337,28 @@ public sealed class SourceBackedUndergroundFinish1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(8, builder.Entries.Count);
+        Assert.Equal(27, builder.Entries.Count);
+        Assert.Contains(builder.Entries, static entry =>
+            entry.Descriptor.Id.Value == "terraria:1.4.5.8/MudCavesToGrass");
         Assert.DoesNotContain(builder.Entries, static entry =>
             entry.Descriptor.Id == SourceBackedUndergroundFinish1458.LarvaId);
     }
 
     private static CaptureEntry Find(CaptureBuilder builder, string id) =>
         Assert.Single(builder.Entries, entry => entry.Descriptor.Id.Value == id);
+
+    private static void AssertOriginalWholeState(Workspace workspace, RandomAdapter random, int profile)
+    {
+        using var stream = typeof(SourceBackedUndergroundFinish1458Tests).Assembly.GetManifestResourceStream("GenerationUndergroundFinishLegacy1458")!;
+        using var gzip = new System.IO.Compression.GZipStream(stream, System.IO.Compression.CompressionMode.Decompress);
+        using var data = System.Text.Json.JsonDocument.Parse(gzip);
+        var row = data.RootElement[profile];
+        Assert.Equal(row.GetProperty("grid").GetString(), GenerationNaturalPrefix49Tests.GridHash(workspace));
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var engine = typeof(RandomAdapter).GetField("random", flags)!.GetValue(random)!;
+        Assert.Equal(row.GetProperty("cursor").GetUInt32(), (uint)typeof(VanillaUnifiedRandom1458).GetField("inext", flags)!.GetValue(engine)!);
+        Assert.Equal(row.GetProperty("slots").EnumerateArray().Select(x => x.GetInt32()).ToArray(), (int[])typeof(VanillaUnifiedRandom1458).GetField("seedArray", flags)!.GetValue(engine)!);
+    }
 
     private static int CountActiveType(Workspace workspace, ushort type)
     {

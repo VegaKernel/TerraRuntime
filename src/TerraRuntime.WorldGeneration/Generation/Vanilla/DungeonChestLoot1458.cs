@@ -6,11 +6,9 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Ordinary AddBuriedChest Dungeon loot and its generation-scoped first-key/rune state.</summary>
-internal sealed class DungeonChestLoot1458(IWorldGenerationVanillaRandom random, VanillaWorldGenerationBootstrapState1458 bootstrap)
+internal sealed class DungeonChestLoot1458(IWorldGenerationVanillaRandom random, VanillaWorldGenerationBootstrapState1458 bootstrap, BuriedChestContext1458 context)
 {
     private readonly PrefixRolls prefixRolls = new(random);
-    internal bool GeneratedShadowKey { get; private set; }
-    internal bool GeneratedRamRune { get; private set; }
 
     internal WorldGenerationChestItem[] Build(int primary, ushort tileType, int style, int floorY,
         double worldSurface, double rockLayer, int worldHeight, bool dungeonWall)
@@ -24,14 +22,14 @@ internal sealed class DungeonChestLoot1458(IWorldGenerationVanillaRandom random,
         AddPrefixed(items, primary);
         if (!surface && floorY < worldHeight - 250 && dungeon && !biome)
         {
-            if (!GeneratedShadowKey || random.Next(3) == 0)
+            if (!context.GeneratedShadowKey || random.Next(3) == 0)
             {
-                GeneratedShadowKey = true;
+                context.GeneratedShadowKey = true;
                 ChestLoot1458.Add(items, 329, 1);
             }
-            if (!GeneratedRamRune || random.Next(8) == 0)
+            if (!context.GeneratedRamRune || random.Next(8) == 0)
             {
-                GeneratedRamRune = true;
+                context.GeneratedRamRune = true;
                 AddPrefixed(items, 5465);
             }
             if (random.Next(4) == 0) AddPrefixed(items, 6156);

@@ -512,7 +512,8 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
 
     private static bool TryMayanTrap(Workspace workspace, GenerationTileFraming1458 framing, RuntimeGrid grid, IRandom random, int x, int y, int floorLimit, double worldSurface)
     {
-        bool Solid(in WorldTile tile) => tile.IsActive && !tile.IsActuated &&
+        bool Solid(in WorldTile tile, bool requireFlat = false) => tile.IsActive && !tile.IsActuated &&
+            (!requireFlat || tile.Shape == 0) &&
             (workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid(tile.TileType) : VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
         // TerrariaServer 1.4.5.8 WorldGen.mayanTrap. The first roll selects the horizontal (0) or vertical (1)
@@ -557,7 +558,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 while (length-- > 0)
                 {
                     wireX += sideStep;
-                    if (!Solid(in grid.At(wireX, roof - 1)) || Solid(in grid.At(wireX, roof + 1))) break;
+                    if (!Solid(in grid.At(wireX, roof - 1), requireFlat: true) || Solid(in grid.At(wireX, roof + 1))) break;
                     framing.PlaceTempleMechanism(wireX, roof, 137, launcherStyle);
                     AddWire(ref grid.At(wireX, roof), verticalWireColor);
                 }
@@ -606,8 +607,8 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         while (wireLength-- > 0)
         {
             wireY--;
-            if (!Solid(in grid.At(launcherX, wireY)) ||
-                !Solid(in grid.At(launcherX - step, wireY)) ||
+            if (!Solid(in grid.At(launcherX, wireY), requireFlat: true) ||
+                !Solid(in grid.At(launcherX - step, wireY), requireFlat: true) ||
                 Solid(in grid.At(launcherX + step, wireY))) break;
             framing.PlaceTempleMechanism(launcherX, wireY, 137, horizontalLauncherStyle);
             if (step == 1) grid.At(launcherX, wireY).FrameX += 18;

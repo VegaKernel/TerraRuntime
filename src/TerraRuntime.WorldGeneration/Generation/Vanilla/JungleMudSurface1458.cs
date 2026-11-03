@@ -19,7 +19,7 @@ internal static class JungleMudSurface1458
             {
                 ref WorldTile tile = ref At(store, x, y);
                 if (tile.IsActive && !IsNaturalSolid(tile.Type))
-                    throw new InvalidOperationException("Mud cave grass encountered unsupported terrain semantics.");
+                    throw new InvalidOperationException($"Mud cave grass encountered unsupported terrain type{tile.Type} at{x},{y}.");
             }
         }
 
@@ -38,14 +38,14 @@ internal static class JungleMudSurface1458
                 tile.TileColor = 0;
                 tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
                 for (int tx = x - 1; tx <= x + 1; tx++)
-                for (int ty = y - 1; ty <= y + 1; ty++)
-                {
-                    ref WorldTile neighbour = ref At(store, tx, ty);
-                    if (neighbour.IsActive) continue;
-                    neighbour.Shape = 0;
-                    neighbour.TileColor = 0;
-                    neighbour.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-                }
+                    for (int ty = y - 1; ty <= y + 1; ty++)
+                    {
+                        ref WorldTile neighbour = ref At(store, tx, ty);
+                        if (neighbour.IsActive) continue;
+                        neighbour.Shape = 0;
+                        neighbour.TileColor = 0;
+                        neighbour.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+                    }
             }
         }
 
@@ -76,23 +76,23 @@ internal static class JungleMudSurface1458
     }
 
     private static bool IsNaturalSolid(ushort type) =>
-        type is 0 or 1 or 2 or 40 or 53 or 59 or 60 or >= 63 and <= 68 or 147 or 161;
+        type is 0 or 1 or 2 or 40 or 53 or 59 or 60 or >= 63 and <= 68 or 70 or 147 or 161 or 225 or 229 or 230;
 
     private static bool IsEnclosed(WorldTileStore store, int x, int y)
     {
         bool enclosed = true;
         for (int tx = x - 1; tx <= x + 1; tx++)
-        for (int ty = y - 1; ty <= y + 1; ty++)
-        {
-            ref WorldTile neighbour = ref At(store, tx, ty);
-            if (!neighbour.IsActive) enclosed = false;
-            // Source breaks the inner y loop only. Later columns may change this flag.
-            if (neighbour.LiquidKind == WorldLiquidKind.Lava && neighbour.LiquidAmount > 0)
+            for (int ty = y - 1; ty <= y + 1; ty++)
             {
-                enclosed = true;
-                break;
+                ref WorldTile neighbour = ref At(store, tx, ty);
+                if (!neighbour.IsActive) enclosed = false;
+                // Source breaks the inner y loop only. Later columns may change this flag.
+                if (neighbour.LiquidKind == WorldLiquidKind.Lava && neighbour.LiquidAmount > 0)
+                {
+                    enclosed = true;
+                    break;
+                }
             }
-        }
         return enclosed;
     }
 

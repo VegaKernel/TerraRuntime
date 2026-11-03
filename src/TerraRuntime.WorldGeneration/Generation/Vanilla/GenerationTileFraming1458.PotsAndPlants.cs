@@ -33,7 +33,7 @@ internal sealed partial class GenerationTileFraming1458
                 broken |= !member.IsActive || member.Type != type || memberColumn != x - left ||
                     member.FrameY != (y - top) * 18 + style * 36;
             }
-            broken |= type == 653 ? !SolidTileAllowBottomSlope(x, top + 2) : !PotHasOrdinaryFloor(x, top + 2);
+            broken |= type == 653 ? !SolidTileAllowBottomSlope(x, top + 2) : !SolidTile2(x, top + 2);
         }
         if (!broken)
             return;
@@ -65,7 +65,7 @@ internal sealed partial class GenerationTileFraming1458
     }
 
     // WorldGen.SolidTile2(int,int), including its platform top-slope exception.
-    private bool PotHasOrdinaryFloor(int x, int y)
+    internal bool SolidTile2(int x, int y)
     {
         WorldTile floor = At(x, y);
         return floor.IsActive && !floor.IsActuated && !floor.IsHalfBrick &&

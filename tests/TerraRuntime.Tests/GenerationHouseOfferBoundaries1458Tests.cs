@@ -34,6 +34,14 @@ public sealed class GenerationHouseOfferBoundaries1458Tests
         var random = new RandomAdapter(item.Seed); var state = new ChestPlacementState1458(); state.EnsureInitialized(new Context(workspace, random), workspace);
         if (item.Rectangle.Length == 4) { var r = item.Rectangle; var region = new WorldTileRegion(r[0], r[1], r[2], r[3]); switch (item.Owner) { case "house": state.ProtectedHouseRooms.Add(new(r[0], r[1], r[2], r[3])); break; case "shimmer": workspace.SetVanillaShimmerStructure(region); break; case "hive": workspace.SetVanillaHiveProtectedAreas([region]); break; case "shrine": workspace.SetVanillaJungleShrineProtectedAreas([region]); break; } }
 
+        // The original fixture initializes StructureMap reservations. Legacy geometry projections
+        // remain in the digest, while the canonical owner now supplies every placement decision.
+        if (item.Rectangle.Length == 4 && item.Owner is "house" or "hive" or "shrine")
+        {
+            var r = item.Rectangle;
+            workspace.VanillaStructureMap.AddProtectedStructure(new(r[0], r[1], r[2], r[3]));
+        }
+
         bool accepted;
         if (kind == 2)
         {

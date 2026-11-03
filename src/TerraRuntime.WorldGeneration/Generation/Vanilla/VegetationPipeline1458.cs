@@ -137,7 +137,6 @@ internal sealed class VegetationState1458
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double WorldSurface { get; private set; }
     public double RockLayer { get; private set; }
-    public int UnderworldTop { get; private set; }
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
     {
@@ -151,31 +150,15 @@ internal sealed class VegetationState1458
 
         WorldSurface = layers.WorldSurface;
         RockLayer = layers.RockLayer;
-        UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
     }
 }
 
 internal sealed class VegetationPass1458 : IWorldGenerationPass
 {
     private const ushort Grass = 2;
-    private const ushort Plants = 3;
-    private const ushort Sunflower = 27;
-    private const ushort Cobweb = 51;
-    private const ushort Vines = 52;
-    private const ushort Mud = 59;
     private const ushort JungleGrass = 60;
-    private const ushort JunglePlants = 61;
-    private const ushort JungleVines = 62;
     private const ushort MushroomGrass = 70;
-    private const ushort MushroomPlants = 71;
-    private const ushort Plants2 = 73;
-    private const ushort JunglePlants2 = 74;
-    private const ushort Herbs = 82;
-    private const ushort SnowBlock = 147;
-    private const ushort DyePlants = 227;
     private const ushort LihzahrdBrick = 226;
-
-    private static readonly int[] FlowerStyles = [6, 7, 9, 10, 12, 14, 19];
 
     private readonly VegetationStage1458 stage;
     private readonly VegetationState1458 state;
@@ -194,24 +177,20 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         Workspace workspace = context.Workspace as Workspace ??
             throw new InvalidOperationException("Vegetation generation requires Workspace.");
         state.EnsureInitialized(context, workspace);
-        var grid = new RuntimeGrid(workspace);
-        var random = new VanillaRandom(
-            context.VanillaRandom ??
-            throw new InvalidOperationException("Vegetation generation requires shared UnifiedRandom semantics."));
 
         switch (stage)
         {
             case VegetationStage1458.Sunflowers:
-                ApplySunflowers(context, grid, random);
+                ApplySunflowers(context, workspace);
                 break;
             case VegetationStage1458.PlantingTrees:
-                ApplyPlantingTrees(context, grid, random);
+                ApplyPlantingTrees(context, workspace);
                 break;
             case VegetationStage1458.Herbs:
-                ApplyHerbs(context, grid, random);
+                ApplyHerbs(context, workspace);
                 break;
             case VegetationStage1458.DyePlants:
-                ApplyDyePlants(context, grid, random);
+                ApplyDyePlants(context, workspace);
                 break;
             case VegetationStage1458.WebsAndHoney:
                 ApplyWebsAndHoney(context, workspace);
@@ -239,142 +218,86 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         }
     }
 
-    private void ApplySunflowers(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplySunflowers(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ?? throw new InvalidOperationException("Sunflowers require the shared generation stream.");
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true);
+        int width = workspace.WidthTiles;
+        for (int offer = 0; offer < width * .002; offer++)
         {
-            <= 4200 => 32,
-            <= 6400 => 48,
-            _ => 64
-        };
-        int minX = Math.Max(bootstrap.LeftBeachEnd + 50, 10);
-        int maxX = Math.Min(bootstrap.RightBeachStart - 50, grid.Width - 12);
-        int minY = Math.Max(12, (int)state.WorldSurface - 160);
-        int maxY = Math.Min(grid.Height - 8, (int)state.WorldSurface + 150);
-        int placed = 0;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            int center = random.Next(width);
+            int left = Math.Max(0, center - random.Next(10) - 7), right = Math.Min(width - 1, center + random.Next(10) + 7);
+            for (int x = left; x < right; x++) for (int y = 1; y < state.WorldSurface - 1; y++)
+            {
+                WorldTile cell = workspace.TileStore.Get(x, y);
+                if (cell.IsActive && cell.Type == Grass && !workspace.TileStore.Get(x, y - 1).IsActive)
+                    framing.TryPlaceSunflower(x, y - 1, state.WorldSurface);
+                if (workspace.TileStore.Get(x, y).IsActive) break;
+            }
+        }
+        context.ReportProgress(1d, "Placing sunflowers");
+    }
 
-        for (int attempt = 0; attempt < target * 120 && placed < target; attempt++)
+    private void ApplyPlantingTrees(IWorldGenerationContext context, Workspace workspace)
+    {
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ?? throw new InvalidOperationException("Trees require the shared generation stream.");
+        WorldTileStore store = workspace.TileStore; int width = workspace.WidthTiles;
+        var framing = new GenerationTileFraming1458(store, random, workspace, useWorldGenerationSolidity: true);
+        for (int offer = 0; offer < width * .003; offer++)
         {
-            if ((attempt & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int left = random.Next(minX, maxX - 1);
-            int floor = grid.FindFirstActiveY(left, minY, maxY);
-            if (floor >= maxY || grid.At(left, floor).Type != Grass || grid.At(left + 1, floor).Type != Grass)
-                continue;
-            int top = floor - 4;
-            if (!grid.IsEmptyRectangle(left, top, 2, 4))
-                continue;
-
-            for (int dx = 0; dx < 2; dx++)
-                for (int dy = 0; dy < 4; dy++)
+            context.CancellationToken.ThrowIfCancellationRequested();
+            int center = random.Next(50, width - 50), radius = random.Next(25, 50);
+            for (int x = center - radius; x < center + radius; x++) for (int y = 20; y < state.WorldSurface; y++) TreeGrower1458.TryGrowEpic(store, x, y, random, framing);
+        }
+        double leftDensity = .1 + random.NextDouble() * .35, rightDensity = .1 + random.NextDouble() * .35;
+        for (int x = 1; x < width - 1; x++)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for (int y = 20; y < (int)state.WorldSurface; y++)
+            {
+                if (x < 380)
                 {
-                    ref WorldTile tile = ref grid.At(left + dx, top + dy);
-                    SetPlant(ref tile, Sunflower, dx * 18, dy * 18);
+                    if (random.NextDouble() < leftDensity && store.Get(x, y).LiquidAmount == 0) PalmTreeGrower1458.TryGrow(store, x, y, random, framing);
                 }
-            placed++;
+                else if (x > width - 380 && random.NextDouble() < rightDensity && store.Get(x, y).LiquidAmount == 0) PalmTreeGrower1458.TryGrow(store, x, y, random, framing);
+                WorldTile cell = store.Get(x, y);
+                if (cell.IsActive && cell.Type == Grass && random.Next(20) == 0)
+                {
+                    ushort type = (ushort)(random.Next(2) == 0 ? 616 : 596);
+                    SettingsTreeGrower1458.TryGrow(store, SettingsTreeGrower1458.VanityTree(type), x, y, random, framing);
+                }
+                else TreeGrower1458.TryGrow(store, x, y, random, framing: framing);
+            }
+            if (random.Next(3) == 0) x++;
+            if (random.Next(4) == 0) x++;
         }
-
-        context.ReportProgress(1d, $"Planting sunflowers ({placed}/{target})");
+        context.ReportProgress(1d, "Planting trees");
     }
 
-    private void ApplyPlantingTrees(IWorldGenerationContext context, RuntimeGrid grid, VanillaRandom random)
+    private void ApplyHerbs(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
+        var herbs = new GenerationHerbPlanting1458(workspace.TileStore, context.VanillaRandom ?? throw new InvalidOperationException("Herbs require shared generation RNG."), state.WorldSurface, state.RockLayer, DungeonGenerationCatalog1458.BeachDistance);
+        for (int offer = 0; offer < workspace.WidthTiles * 1.7; offer++)
         {
-            <= 4200 => 120,
-            <= 6400 => 180,
-            _ => 240
-        };
-        int minX = Math.Max(bootstrap.LeftBeachEnd + 25, 8);
-        int maxX = Math.Min(bootstrap.RightBeachStart - 25, grid.Width - 8);
-        int minY = Math.Max(18, (int)state.WorldSurface - 180);
-        int maxY = Math.Min(grid.Height - 10, (int)state.WorldSurface + 175);
-        int placed = 0;
-
-        for (int attempt = 0; attempt < target * 80 && placed < target; attempt++)
-        {
-            if ((attempt & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(minX, maxX);
-            int floor = grid.FindFirstActiveY(x, minY, maxY);
-            if (floor >= maxY || floor < 22)
-                continue;
-
-            ushort ground = grid.At(x, floor).Type;
-            if (ground is not (Grass or JungleGrass or SnowBlock))
-                continue;
-            if (grid.HasFrameImportantNearby(x, floor, 5, 3))
-                continue;
-
-            if (TreeGrower1458.TryGrow(grid.Store, x, floor, random.Source))
-                placed++;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            herbs.Offer();
         }
-
-        context.ReportProgress(1d, $"Planting framed surface trees ({placed}/{target})");
+        context.ReportProgress(1d, "Planting herbs");
     }
 
-    private void ApplyHerbs(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyDyePlants(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = Math.Max(80, grid.Width / 18);
-        int minY = Math.Max(8, (int)state.WorldSurface - 160);
-        int maxY = Math.Min(state.UnderworldTop - 20, grid.Height - 4);
-        int placed = 0;
-
-        for (int attempt = 0; attempt < target * 90 && placed < target; attempt++)
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ?? throw new InvalidOperationException("Dye plants require shared generation RNG.");
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true);
+        var plants = new GenerationDyePlanting1458(workspace, random, state.WorldSurface, state.RockLayer, framing);
+        for (int offer = 0; offer < workspace.WidthTiles; offer++)
         {
-            if ((attempt & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(5, grid.Width - 5);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probe, Math.Min(grid.Height - 2, probe + 80));
-            if (floor >= grid.Height - 2 || !CanPlaceSinglePlant(grid, x, floor - 1))
-                continue;
-
-            ushort ground = grid.At(x, floor).Type;
-            int herbStyle = SelectHerbStyle(ground, random);
-            if (herbStyle < 0)
-                continue;
-
-            SetPlant(ref grid.At(x, floor - 1), Herbs, herbStyle * 18, 0);
-            placed++;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            plants.PlantDye(random.Next(100, workspace.WidthTiles - 100), random.Next(100, workspace.HeightTiles - 200));
         }
-
-        context.ReportProgress(1d, $"Planting herbs ({placed}/{target})");
-    }
-
-    private void ApplyDyePlants(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        int target = grid.Width switch
-        {
-            <= 4200 => 18,
-            <= 6400 => 27,
-            _ => 36
-        };
-        int minY = Math.Max(8, (int)state.WorldSurface - 180);
-        int maxY = Math.Min(state.UnderworldTop - 20, grid.Height - 4);
-        int placed = 0;
-
-        for (int attempt = 0; attempt < target * 220 && placed < target; attempt++)
-        {
-            if ((attempt & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(8, grid.Width - 8);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probe, Math.Min(grid.Height - 2, probe + 90));
-            if (floor >= grid.Height - 2 || !CanPlaceSinglePlant(grid, x, floor - 1))
-                continue;
-            ushort ground = grid.At(x, floor).Type;
-            int style = SelectDyePlantStyle(ground, random);
-            if (style < 0 || grid.HasNearbyType(x, floor - 1, DyePlants, 12, 8))
-                continue;
-
-            SetPlant(ref grid.At(x, floor - 1), DyePlants, VanillaDyePlantFrame1458.ForStyle(style), 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing dye plants ({placed}/{target})");
+        plants.MatureHerbs(); plants.GrowTulips(); plants.PlaceEggs();
+        context.ReportProgress(1d, "Placing dye plants, mature herbs, glow tulips and Chillet eggs");
     }
 
     /// <summary>
@@ -392,7 +315,8 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
             state.WorldSurface,
             state.RockLayer,
             DungeonGenerationCatalog1458.BeachDistance,
-            context.CancellationToken);
+            context.CancellationToken,
+            new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true));
         pass.Apply();
         context.ReportProgress(1d, $"Webs and honey ({pass.Webs} webs, {pass.Speleothems} speleothems)");
     }
@@ -433,6 +357,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         int height = workspace.HeightTiles;
         double worldSurface = state.WorldSurface;
         double rockLayer = state.RockLayer;
+        var framing = new GenerationTileFraming1458(store, random, workspace, useWorldGenerationSolidity: true);
         int mushrooms = 0;
         int jungle = 0;
 
@@ -449,17 +374,17 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 {
                     // Three tree attempts, each re-checked, then the plant. The source nests the checks so a
                     // tree that grew on the first attempt costs exactly one attempt's worth of shared RNG.
-                    TreeGrower1458.TryGrow(store, x, y, random);
+                    TreeGrower1458.TryGrow(store, x, y, random, framing: framing);
                     if (!store.Get(x, y - 1).IsActive)
                     {
-                        TreeGrower1458.TryGrow(store, x, y, random);
+                        TreeGrower1458.TryGrow(store, x, y, random, framing: framing);
                         if (!store.Get(x, y - 1).IsActive)
                         {
-                            TreeGrower1458.TryGrow(store, x, y, random);
+                            TreeGrower1458.TryGrow(store, x, y, random, framing: framing);
                             if (!store.Get(x, y - 1).IsActive)
                             {
                                 GenerationPlantPlacement1458.PlaceMushroomPlants(
-                                    store, random, x, y - 1, worldSurface, cancellation);
+                                    store, random, x, y - 1, worldSurface, cancellation, framing);
                                 mushrooms++;
                             }
                         }
@@ -472,7 +397,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 if (ground == JungleGrass)
                 {
                     GenerationPlantPlacement1458.PlaceJunglePlants(
-                        store, random, x, y - 1, worldSurface, rockLayer);
+                        store, random, x, y - 1, worldSurface, rockLayer, framing);
                     jungle++;
                 }
                 else if (ground == LihzahrdBrick &&
@@ -480,7 +405,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                          !GenerationPlantPlacement1458.TooManyJunglePlantsNearby(store, x, y - 1))
                 {
                     GenerationPlantPlacement1458.PlaceJunglePlants(
-                        store, random, x, y - 1, worldSurface, rockLayer);
+                        store, random, x, y - 1, worldSurface, rockLayer, framing);
                     jungle++;
                 }
             }
@@ -502,7 +427,8 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
             workspace.TileStore,
             random,
             bootstrap.DungeonLocation < workspace.WidthTiles / 2,
-            context.CancellationToken);
+            context.CancellationToken,
+            new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true));
         pass.Apply();
         context.ReportProgress(1d, $"Jungle plants complete; placed={pass.Planted}");
     }
@@ -558,152 +484,6 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Mushrooms complete; patches={pass.MushroomPatches}");
     }
 
-    private static int SelectHerbStyle(ushort ground, IRandom random) =>
-        ground switch
-        {
-            Grass => 0,                  // Daybloom
-            JungleGrass => 1,           // Moonglow
-            Mud => 2,                   // Blinkroot-compatible soil
-            SnowBlock => 6,             // Shiverthorn
-            53 => 4,                    // Sand -> Waterleaf
-            57 => 5,                    // Ash -> Fireblossom
-            25 or 203 or 199 => 3,      // evil stone/grass families -> Deathweed
-            _ => -1
-        };
-
-    private static int SelectDyePlantStyle(ushort ground, IRandom random) =>
-        ground switch
-        {
-            Grass => random.Next(2, 5),
-            JungleGrass => random.Next(0, 2),
-            53 => random.Next(5, 7),
-            57 => 7,
-            _ => -1
-        };
-
-    private static bool CanPlaceSinglePlant(RuntimeGrid grid, int x, int y)
-    {
-        if (!grid.Contains(x, y) || y + 1 >= grid.Height)
-            return false;
-        WorldTile tile = grid.At(x, y);
-        if (tile.IsActive || tile.LiquidAmount != 0)
-            return false;
-        return !VanillaWorldFrameImportance326.IsFrameImportant(grid.At(x, y + 1).Type) || grid.At(x, y + 1).IsActive;
-    }
-
-    private static void SetPlant(ref WorldTile tile, ushort type, int frameX, int frameY)
-    {
-        tile.Type = type;
-        tile.Flags |= WorldTileFlags.Active;
-        tile.FrameX = checked((short)frameX);
-        tile.FrameY = checked((short)frameY);
-        tile.Shape = 0;
-        tile.LiquidAmount = 0;
-        tile.LiquidKind = WorldLiquidKind.Water;
-    }
-
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Vegetation pass executed before bootstrap initialization.");
-
-    private interface IRandom
-    {
-        int Next();
-        int Next(int max);
-        int Next(int min, int max);
-        double NextDouble();
-    }
-
-    private sealed class VanillaRandom(IWorldGenerationVanillaRandom inner) : IRandom
-    {
-        public IWorldGenerationVanillaRandom Source => inner;
-        public int Next() => inner.Next();
-        public int Next(int max) => inner.Next(max);
-        public int Next(int min, int max) => inner.Next(min, max);
-        public double NextDouble() => inner.NextDouble();
-    }
-
-    private sealed class RuntimeGrid
-    {
-        private readonly WorldTileStore store;
-
-        public RuntimeGrid(Workspace workspace) => store = workspace.TileStore;
-
-        public int Width => store.Dimensions.WidthTiles;
-        public int Height => store.Dimensions.HeightTiles;
-        public WorldTileStore Store => store;
-
-        public bool Contains(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
-        public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
-
-        public int FindFirstActiveY(int x, int minY, int maxExclusive)
-        {
-            int max = Math.Min(Height, maxExclusive);
-            for (int y = Math.Max(0, minY); y < max; y++)
-            {
-                if (At(x, y).IsActive)
-                    return y;
-            }
-            return max;
-        }
-
-        public int FindLastActiveYBeforeAir(int x, int minY, int maxExclusive)
-        {
-            int max = Math.Min(Height - 1, maxExclusive);
-            for (int y = Math.Max(1, minY); y < max; y++)
-            {
-                if (At(x, y).IsActive && !At(x, y + 1).IsActive)
-                    return y;
-            }
-            return -1;
-        }
-
-        public bool IsEmptyRectangle(int left, int top, int width, int height)
-        {
-            if (left < 1 || top < 1 || left + width >= Width - 1 || top + height >= Height - 1)
-                return false;
-            for (int x = left; x < left + width; x++)
-                for (int y = top; y < top + height; y++)
-                {
-                    WorldTile tile = At(x, y);
-                    if (tile.IsActive || tile.LiquidAmount != 0)
-                        return false;
-                }
-            return true;
-        }
-
-        public bool HasFrameImportantNearby(int centerX, int centerY, int radiusX, int radiusY)
-        {
-            int left = Math.Max(1, centerX - radiusX);
-            int right = Math.Min(Width - 2, centerX + radiusX);
-            int top = Math.Max(1, centerY - radiusY);
-            int bottom = Math.Min(Height - 2, centerY + radiusY);
-            for (int x = left; x <= right; x++)
-                for (int y = top; y <= bottom; y++)
-                {
-                    WorldTile tile = At(x, y);
-                    if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                        return true;
-                }
-            return false;
-        }
-
-        public bool HasSolidNeighbor(int x, int y) =>
-            At(x - 1, y).IsActive || At(x + 1, y).IsActive || At(x, y - 1).IsActive || At(x, y + 1).IsActive;
-
-        public bool HasNearbyType(int centerX, int centerY, ushort type, int radiusX, int radiusY)
-        {
-            int left = Math.Max(1, centerX - radiusX);
-            int right = Math.Min(Width - 2, centerX + radiusX);
-            int top = Math.Max(1, centerY - radiusY);
-            int bottom = Math.Min(Height - 2, centerY + radiusY);
-            for (int x = left; x <= right; x++)
-                for (int y = top; y <= bottom; y++)
-                {
-                    WorldTile tile = At(x, y);
-                    if (tile.IsActive && tile.Type == type)
-                        return true;
-                }
-            return false;
-        }
-    }
 }

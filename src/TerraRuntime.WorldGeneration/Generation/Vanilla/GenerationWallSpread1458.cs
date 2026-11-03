@@ -32,7 +32,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// exactly the way the source drains it.
 /// </para>
 /// </remarks>
-internal sealed class GenerationWallSpread1458(WorldTileStore store)
+internal sealed class GenerationWallSpread1458(WorldTileStore store, Workspace? workspace = null)
 {
     /// <summary>Source <c>WorldGen.maxWallOut2</c>.</summary>
     private const int MaxWallOut = 5000;
@@ -150,7 +150,9 @@ internal sealed class GenerationWallSpread1458(WorldTileStore store)
             return true;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && (workspace?.HasVanillaGenerationSolidity == true
+                ? workspace.IsVanillaGenerationSolid(tile.TileType)
+                : VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && tile.Shape == 0 && !tile.IsActuated;
     }
 

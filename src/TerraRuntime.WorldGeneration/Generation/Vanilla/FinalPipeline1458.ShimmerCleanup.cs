@@ -55,8 +55,11 @@ internal sealed partial class FinalPass1458
 
         int column = cx, row = cy;
         byte amount = 127;
-        // Liquid.tilesIgnoreWater(true) changes only collision flags during this active-only
-        // fill. Restore its shared framing phase before the subsequent tree destruction scan.
+        // Source Liquid.tilesIgnoreWater writes these existing generation flags at this exact
+        // scope boundary; its false exit assigns literal true rather than restoring old values.
+        ReadOnlySpan<ushort> liquidSolids = [138, 484, 546, 664, 711, 712, 713, 714, 715, 716];
+        if (workspace.HasVanillaGenerationSolidity)
+            foreach (ushort type in liquidSolids) workspace.SetVanillaGenerationSolid(new(type), false);
         while (At(column, row).LiquidAmount <= amount || At(column, row).LiquidKind != WorldLiquidKind.Shimmer)
         {
             while (!At(column, row).IsActive)
@@ -75,6 +78,8 @@ internal sealed partial class FinalPass1458
             amount = byte.MaxValue;
             if (At(column, row).IsActive) break;
         }
+        if (workspace.HasVanillaGenerationSolidity)
+            foreach (ushort type in liquidSolids) workspace.SetVanillaGenerationSolid(new(type), true);
         framing.UsesPostShimmerSolidity = true;
         for (int x = 10; x < width - 10; x++)
         for (int y = 10; y < height - 10; y++)

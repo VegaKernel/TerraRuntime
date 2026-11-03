@@ -4,7 +4,7 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Ordinary CloudIsland/CloudLake geometry on the unpublished generation candidate.</summary>
-internal sealed class SkyIsland1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random)
+internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random)
 {
     private const ushort Cloud = 189, Rain = 196, Dirt = 0, Wall = 73;
     private int left, right, top, bottom;

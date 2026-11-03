@@ -74,7 +74,7 @@ internal static class DungeonFeaturePipeline1458
             setup.Palette.Color, graph.Decoration, graph.Components.Single(static c => c.Kind == DungeonComponentKind1458.Entrance).Bounds);
         // This pass PRECEDES Shimmer. WorldGen.clearWorld sets genVars.shimmerPosition to zero;
         // Workspace's nullable position separately records whether the later Shimmer pass completed.
-        int traps = new DungeonTraps1458(workspace.TileStore, random, new(0, 0), cancellationToken).Place(bounds, worldSurface);
+        int traps = new DungeonTraps1458(workspace.TileStore, random, new(0, 0), cancellationToken, workspace).Place(bounds, worldSurface);
         int furniture = new DungeonFurniture1458(workspace, random, cancellationToken, pits).Place(bounds, setup.Palette.BrickWallType, worldSurface);
         int paintings = new DungeonPaintings1458(workspace.TileStore, random, cancellationToken)
             .Place(bounds, setup.Palette.BrickWallType, worldSurface, protectedEntrance);

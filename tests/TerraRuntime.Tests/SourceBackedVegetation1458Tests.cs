@@ -105,7 +105,7 @@ public sealed class SourceBackedVegetation1458Tests
     }
 
     [Fact]
-    public void Special_seed_profile_does_not_claim_ordinary_vegetation_parity()
+    public void Special_seed_profile_registers_early_prefix_without_vegetation_overlays()
     {
         var provider = new SourceBackedVegetation1458();
         var request = new WorldGenerationRequest(
@@ -121,7 +121,9 @@ public sealed class SourceBackedVegetation1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(8, builder.Entries.Count);
+        Assert.Equal(27, builder.Entries.Count);
+        Assert.Contains(builder.Entries, static entry =>
+            entry.Descriptor.Id.Value == "terraria:1.4.5.8/MudCavesToGrass");
         Assert.DoesNotContain(builder.Entries, static entry =>
             entry.Descriptor.Id == SourceBackedVegetation1458.SunflowersId);
     }

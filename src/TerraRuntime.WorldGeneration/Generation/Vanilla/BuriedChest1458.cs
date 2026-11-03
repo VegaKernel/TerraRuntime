@@ -23,9 +23,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// in the same run are not independent.
 /// </para>
 /// <para>
-/// The ordinary-world path is what is ported. The remix, for-the-worthy, drunk, not-the-bees, tenth-anniversary
-/// and secret-seed arms short-circuit on a world flag before touching the stream, so omitting them costs no
-/// draws.
+/// Ordinary placement retains its established contract. Configured special profiles are qualified here only
+/// for the forced Ivy chest used by Micro Biomes; other special families explicitly refuse before mutation
+/// or random consumption. This admission fence is a runtime scope limit, not vanilla refusal behavior.
 /// </para>
 /// </remarks>
 internal sealed class BuriedChest1458(
@@ -37,6 +37,14 @@ internal sealed class BuriedChest1458(
     bool spikyLihzahrdIsNonSolid = false,
     Workspace? workspace = null)
 {
+    internal static BuriedChest1458 CreateOwned(Workspace workspace,IWorldGenerationVanillaRandom random) =>
+        new(workspace.TileStore,random,workspace.VanillaBuriedChestContext??throw new InvalidOperationException("The source chest context was not initialized."),
+            workspace.CanRegisterGeneratedChest,
+            chest=>
+            {
+                if(!workspace.TryAddChest(chest.Left,chest.Top,string.Empty,chest.Items))
+                    throw new InvalidOperationException($"Buried chest at {chest.Left},{chest.Top} passed placement but failed side-table registration.");
+            },workspace:workspace);
     private const ushort Containers = 21;
     private const ushort Containers2 = 467;
     private const ushort MagicStorage = 231;
@@ -68,6 +76,16 @@ internal sealed class BuriedChest1458(
     {
         chestX = 0;
         chestY = 0;
+        var profile=workspace?.VanillaSeedProfile??default;
+        if (profile.Secret != VanillaSecretWorldSeed1458.None ||
+            profile.Special != VanillaSpecialWorldSeed1458.None &&
+            (chestStyle != 10 || chestTileType is not (0 or Containers) ||
+             profile.Special is not (VanillaSpecialWorldSeed1458.DrunkWorld or VanillaSpecialWorldSeed1458.ForTheWorthy or
+                 VanillaSpecialWorldSeed1458.CelebrationMk10 or VanillaSpecialWorldSeed1458.TheConstant or
+                 VanillaSpecialWorldSeed1458.NotTheBees or VanillaSpecialWorldSeed1458.Remix or
+                 VanillaSpecialWorldSeed1458.NoTraps or (VanillaSpecialWorldSeed1458)255)))
+            throw new NotSupportedException("Special buried chest placement is qualified only for Micro Biomes Ivy chests.");
+        bool remix=profile.Has(VanillaSpecialWorldSeed1458.Remix),worthy=profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy);
         if (chestTileType == 0)
             chestTileType = Containers;
 
@@ -120,6 +138,7 @@ internal sealed class BuriedChest1458(
                 }
             }
 
+            if(remix&&i>width*.37&&i<width*.63&&k>height-250)return false;
             for (int n = i - 2; n <= i + 2; n++)
             {
                 for (int m = k - 2; m <= k + 2; m++)
@@ -140,7 +159,7 @@ internal sealed class BuriedChest1458(
 
             // The source reads mainItemInChest into its primary AFTER this test, so the "or a primary was
             // asked for" half of it is dead: the primary is still zero here for every caller.
-            if (floor >= context.WorldSurface + 25.0)
+            if (remix?floor<height-400:floor>=context.WorldSurface+25.0)
                 style = 1;
             if (chestStyle >= 0)
                 style = chestStyle;
@@ -177,10 +196,16 @@ internal sealed class BuriedChest1458(
                     : SelectRandom(4056, 4055, 4262, 4263);
             }
 
+            bool beeIce=false;
+            if(profile.Has(VanillaSpecialWorldSeed1458.NotTheBees)&&!remix&&!profile.Has(VanillaSpecialWorldSeed1458.TheConstant))
+            {
+                int beeLava=context.LavaLine+random.Next(5),beeSurface=(int)context.WorldSurface+random.Next(-2,3)+35;
+                beeIce=floor>beeSurface&&floor<=beeLava&&(i<380+200-20-random.Next(-2,3)||i>width-380-200+20+random.Next(-2,3));
+            }
             if ((chestTileType == Containers && chestStyle == 11) ||
                 (chestTileType == Containers2 && chestStyle == 24) ||
                 (primary == 0 && floor >= context.WorldSurface + 25.0 && floor <= height - 205 &&
-                 At(i, k).Type is 147 or 161 or 162 or 197))
+                 (At(i, k).Type is 147 or 161 or 162 or 197||beeIce)))
             {
                 frozen = true;
                 if (chestTileType == Containers)
@@ -199,6 +224,7 @@ internal sealed class BuriedChest1458(
                     style = 10;
                     chestTileType = Containers;
                 }
+                if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
             }
 
             if (chestTileType == Containers && (chestStyle == 4 || (floor > height - 205 && primary == 0)))
@@ -276,7 +302,8 @@ internal sealed class BuriedChest1458(
                 wooden, frozen, desertHive, ivy, water, livingWood, style32, hell,
                 dungeon, lockedBiome, forcedSurfaceItem, skyware, lihzahrd);
             WorldGenerationChestItem[] items =
-                BuriedChestLoot1458.Fill(random, context, in kind, floor, style, primary, chestTileType);
+                BuriedChestLoot1458.Fill(random, context, in kind, floor, style, primary, chestTileType,
+                    profile);
             var result = new BuriedChestResult1458(chestX, chestY - 1, chestTileType, style, items);
             Chests.Add(result);
             onPlaced?.Invoke(result);
@@ -300,76 +327,18 @@ internal sealed class BuriedChest1458(
         if (GenerationObjectSupport1458.IsBoulder(At(x, y + 1).Type) ||
             GenerationObjectSupport1458.IsBoulder(At(x + 1, y + 1).Type))
             return false;
-        if (!CanPlace(x, y))
+        if (!GenerationTileObject2x2Placement1458.CanPlace(store, workspace, x, y, type))
             return false;
         if (notNearOtherChests && NearOtherChests(x - 1, y - 1))
             return false;
 
         int top = y - 1;
-        // TileObject.Place clears the whole footprint before it writes any chest fragments.
-        // KillTile can remove neighbouring pile fragments and advances the shared generation RNG.
-        for (int column = 0; column < 2; column++)
-        for (int row = 0; row < 2; row++)
-        {
-            WorldTile cell = At(x + column, top + row);
-            if (cell.IsActive && cell.Type != 484 &&
-                (VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) ||
-                 GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type)))
-                framing.KillTile(x + column, top + row);
-        }
-
-        for (int column = 0; column < 2; column++)
-        for (int row = 0; row < 2; row++)
-        {
-            ref WorldTile cell = ref AtRef(x + column, top + row);
-            if (cell.IsActive)
-                continue;
-            cell.Flags |= WorldTileFlags.Active;
-            cell.Type = type;
-            cell.FrameX = checked((short)(style * 36 + column * 18));
-            cell.FrameY = checked((short)(row * 18));
-        }
+        GenerationTileObject2x2Placement1458.Place(store, framing, x, y, type, style);
 
         // Source Chest.CreateChest runs AFTER the object is written, so a refused slot leaves a chest-shaped
         // hole in the world and still reports failure. Nothing in generation reaches that, but the order is
         // the source's and the tiles stay written either way.
         return chestSlotAvailable is null || chestSlotAvailable(x, top);
-    }
-
-    /// <summary>
-    /// Source <c>TileObject.CanPlace</c> reduced to a two-by-two chest: every footprint cell must be free or
-    /// cuttable or breakable during placement, no cell may hold lava, and both columns must stand on ground that accepts a chest.
-    /// </summary>
-    private bool CanPlace(int x, int y)
-    {
-        int top = y - 1;
-        if (x < 0 || x + 2 >= width || top < 0 || top + 2 >= height)
-            return false;
-        if (x < 5 || x + 2 > width - 5 || top < 5 || top + 2 > height - 5)
-            return false;
-
-        for (int column = 0; column < 2; column++)
-        {
-            if (!GenerationObjectSupport1458.SupportsChest(At(x + column, y + 1), crackedBricksSolid: true))
-                return false;
-
-            for (int row = 0; row < 2; row++)
-            {
-                WorldTile cell = At(x + column, top + row);
-                if (cell.LiquidAmount > 0 && cell.LiquidKind == WorldLiquidKind.Lava)
-                    return false;
-                if (!cell.IsActive)
-                    continue;
-                // Grass, plants and cobwebs are cut by the placement rather than refusing it. The two
-                // exceptions are gem trees and the ore boulder, which count as occupied even though the rest
-                // of the cut set does not.
-                if ((!VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) || cell.Type is 484 or 654) &&
-                    !GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type))
-                    return false;
-            }
-        }
-
-        return true;
     }
 
     /// <summary>Source <c>Chest.NearOtherChests</c>: a fifty-by-sixteen box around the footprint.</summary>
@@ -507,6 +476,42 @@ internal readonly record struct BuriedChestKind1458(
 /// </summary>
 internal sealed class BuriedChestContext1458
 {
+    // Dungeon chests are the first producer of the run-wide key/rune flags. Later chest passes
+    // borrow this same context instead of starting a second set of once-per-world loot decisions.
+    internal static BuriedChestContext1458 GetOrCreate(Workspace workspace,
+        VanillaWorldGenerationBootstrapState1458 bootstrap, double worldSurface, double rockLayer)
+    {
+        if (workspace.VanillaBuriedChestContext is { } existing)
+            return existing;
+        var context = new BuriedChestContext1458
+        {
+            Height = workspace.HeightTiles,
+            WorldSurface = worldSurface,
+            RockLayer = rockLayer,
+            LavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(rockLayer)),
+            CopperBar = bootstrap.CopperBar,
+            IronBar = bootstrap.IronBar,
+            SilverBar = bootstrap.SilverBar,
+            GoldBar = bootstrap.GoldBar,
+            TungstenIsSilverTier = bootstrap.SilverOre == 168,
+            DesertHiveLow = workspace.VanillaDesertGenerationState?.DensityBounds.ExclusiveBottom - 1 ?? 0,
+            DesertHiveHigh = workspace.VanillaDesertGenerationState?.DensityBounds.Y ?? 0,
+            HellChestItem = bootstrap.HellChestItems
+        };
+        workspace.SetVanillaBuriedChestContext(context);
+        return context;
+    }
+
+    public int JungleItemCount {get;set;}
+
+    internal int NextJungleChestPrimary(IWorldGenerationVanillaRandom random)
+    {
+        int primary=(JungleItemCount%4) switch{0=>211,1=>212,2=>213,_=>964};
+        if(random.Next(15)==0)primary=2292;
+        else if(random.Next(20)==0)primary=3017;
+        JungleItemCount++;
+        return primary;
+    }
     public required int Height { get; init; }
     public required double WorldSurface { get; init; }
     public required double RockLayer { get; init; }

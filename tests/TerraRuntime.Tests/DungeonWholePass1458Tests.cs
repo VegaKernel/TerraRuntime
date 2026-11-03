@@ -1,3 +1,6 @@
+using TerraRuntime.Core.Worlds.Generation;
+using TerraRuntime.Core.Projectiles;
+using TerraRuntime.Core.Npcs;
 using System.Security.Cryptography;
 using System.Text;
 using TerraRuntime.Contracts.Gameplay;
@@ -67,6 +70,8 @@ public sealed class DungeonWholePass1458Tests
             _ => throw new InvalidOperationException("Unknown original palette.")
         };
         var workspace = new Workspace(width, height);
+        workspace.AttachEntityEffects(new WorldGenerationEntityEffects1458(
+            new RuntimeNpcStore(), new RuntimeProjectileStore(), sourceServer: true), 0, 1);
         workspace.SetVanillaDungeonSetupProfile(new(palette, kind, entranceSeed));
         workspace.SetVanillaBootstrapState(new()
         {

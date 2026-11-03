@@ -7,7 +7,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 internal static class GenerationFurniturePlacement1458
 {
     internal static bool Place(Workspace workspace, int x, int bottom, ushort type, int style, bool faceRight = false,
-        bool crackedBricksSolid = true, Func<TileTypeId,bool>? solidity = null)
+        bool crackedBricksSolid = true, Func<TileTypeId, bool>? solidity = null)
     {
         (int offset, int width, int height, int frameX, int frameY) = type switch
         {
@@ -24,7 +24,9 @@ internal static class GenerationFurniturePlacement1458
             100 => (-1, 2, 2, 0, style * 36),
             101 => (-1, 3, 4, style * 54, 0),
             104 => (0, 2, 5, style * 36, 0),
-            105 => (0, 2, 3, style * 36, 0),
+            105 or 658 => (0, 2, 3, style * 36, 0),
+            139 => (0, 2, 2, 0, style * 36),
+            220 => (-1, 3, 3, style * 54, 0),
             103 => (0, 2, 1, 0, 0),
             354 or 355 => (-1, 3, 3, 0, 0),
             _ => throw new ArgumentOutOfRangeException(nameof(type))
@@ -41,6 +43,7 @@ internal static class GenerationFurniturePlacement1458
             bool supported = type == 33
                 ? support.IsActive && !support.IsActuated && GenerationFurnitureTiles1458.IsTable(support.Type)
                 : type == 103 ? support.IsActive && GenerationFurnitureTiles1458.IsTable(support.Type)
+                : type == 139 ? support.IsActive && !support.IsHalfBrick && (IsSolid(support) || GenerationFurnitureTiles1458.IsTable(support.Type))
                 : type == 100 ? support.IsActive && !support.IsActuated &&
                     (support.Shape == 0 && IsSolid(support) || GenerationFurnitureTiles1458.IsTable(support.Type))
                 : support.IsActive && !support.IsActuated && (support.Shape == 0 || support.Type == 19 && support.Shape is 2 or 3) && IsSolid(support);
@@ -52,18 +55,18 @@ internal static class GenerationFurniturePlacement1458
         Span<WorldTile> dresserBefore = stackalloc WorldTile[6];
         if (type == 88)
             for (int dy = 0; dy < 2; dy++)
-            for (int dx = 0; dx < 3; dx++) dresserBefore[dy * 3 + dx] = At(store, left + dx, top + dy);
+                for (int dx = 0; dx < 3; dx++) dresserBefore[dy * 3 + dx] = At(store, left + dx, top + dy);
         for (int dy = 0; dy < height; dy++)
-        for (int dx = 0; dx < width; dx++)
-        {
-            ref WorldTile tile = ref At(store, left + dx, top + dy);
-            tile.Flags |= WorldTileFlags.Active; tile.Type = type;
-            tile.FrameX = (short)(frameX + dx * 18); tile.FrameY = (short)(frameY + dy * 18);
-        }
+            for (int dx = 0; dx < width; dx++)
+            {
+                ref WorldTile tile = ref At(store, left + dx, top + dy);
+                tile.Flags |= WorldTileFlags.Active; tile.Type = type;
+                tile.FrameX = (short)(frameX + dx * 18); tile.FrameY = (short)(frameY + dy * 18);
+            }
         if (type == 88 && !workspace.TryAddGeneratedChest(left, top, string.Empty, []))
         {
             for (int dy = 0; dy < 2; dy++)
-            for (int dx = 0; dx < 3; dx++) At(store, left + dx, top + dy) = dresserBefore[dy * 3 + dx];
+                for (int dx = 0; dx < 3; dx++) At(store, left + dx, top + dy) = dresserBefore[dy * 3 + dx];
             return false;
         }
         return true;

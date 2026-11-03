@@ -20,7 +20,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// here as a bounded slice. A one-in-thirteen draw turns a corrupt or crimson plant into a Thorny Bush instead,
 /// which is where a world's thorny bushes come from. Growing on a wall that allows plants opens three further
 /// outcomes whose draws happen in order until one is taken, so the number of values consumed depends on which
-/// gate fires; the fallback is the plain six-frame set. A plant standing on mushroom grass, marble or a
+/// gate fires; the fallback is the plain six-frame set. A plant standing on clay pots, marble or a
 /// similar special floor takes a frame from a twenty-two-entry list instead, with a second draw for the eight
 /// entries that are themselves the head of a run of three.
 /// </para>
@@ -32,7 +32,6 @@ internal static class SurfacePlantPass1458
     private const ushort CorruptGrass = 23;
     private const ushort CorruptPlants = 24;
     private const ushort CorruptThornyBush = 32;
-    private const ushort MushroomGrass = 70;
     private const ushort HallowedGrass = 109;
     private const ushort HallowedPlants = 110;
     private const ushort CrimsonGrass = 199;
@@ -41,8 +40,8 @@ internal static class SurfacePlantPass1458
     private const ushort AshGrass = 633;
     private const ushort AshPlants = 637;
 
-    /// <summary>The floors whose plants are framed from the long list: mushroom grass, marble and lava moss.</summary>
-    private static bool IsSpecialPlantFloor(ushort type) => type is MushroomGrass or 380 or 579;
+    /// <summary>The floors whose plants are framed from the long list: clay pots, marble and lava moss.</summary>
+    private static bool IsSpecialPlantFloor(ushort type) => type is 78 or 380 or 579;
 
     public static long Apply(
         WorldTileStore store,
@@ -113,9 +112,10 @@ internal static class SurfacePlantPass1458
     {
         ref WorldTile cell = ref At(store, x, y);
 
-        // PlaceTile refuses this whole plant family outright in a wet cell, and it does so before the clear,
-        // so a flooded cell keeps whatever identity it already carried.
-        if (cell.LiquidAmount > 0)
+        // These source identities refuse water and queued-liquid cells before clearing. HallowedPlants is
+        // absent from that refusal list and follows the placement branch even when wet.
+        // Refused cells keep their previous identity and shape.
+        if (plant != HallowedPlants && (cell.LiquidAmount > 0 || store.LiquidUpdates.IsCheckingLiquid(x, y)))
             return false;
 
         // The clear is guarded on the cell being inactive, which is always true for the whole-map scan but not
@@ -126,7 +126,7 @@ internal static class SurfacePlantPass1458
             cell.Type = 0;
             cell.FrameX = 0;
             cell.FrameY = 0;
-            cell.Shape = 0;
+            cell.TrySetSourceShape(false, 0);
             cell.TileColor = 0;
             cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         }
@@ -184,13 +184,11 @@ internal static class SurfacePlantPass1458
         {
             cell.Flags |= WorldTileFlags.Active;
             cell.Type = plant;
-            int frame = plant switch
-            {
-                CrimsonPlants => NextFromList(
-                    random, [6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22]),
-                AshPlants => NextFromList(random, [6, 7, 8, 9, 10]),
-                _ => NextFromList(random, [6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-            };
+            int frame = NextFromList(random, [6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+            if (plant == CrimsonPlants)
+                frame = NextFromList(random, [6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22]);
+            if (plant == AshPlants)
+                frame = NextFromList(random, [6, 7, 8, 9, 10]);
             cell.FrameX = checked((short)(frame * 18));
             return Frame(store, random, x, y, workspace);
         }
@@ -220,7 +218,7 @@ internal static class SurfacePlantPass1458
     /// <summary>
     /// Source <c>WorldGen.IsFitToPlaceFlowerIn</c>. The floor must be active, unsloped and not a half brick,
     /// and it must be one of the substrates that this plant identity belongs to - ordinary plants also accept
-    /// mushroom grass, marble, lava moss and hallowed grass, and each evil plant accepts its own grass and the
+    /// clay pots, marble, lava moss and hallowed grass, and each evil plant accepts its own grass and the
     /// shimmered variant of it.
     /// </summary>
     internal static bool IsFitToPlaceFlowerIn(WorldTileStore store, int x, int y, ushort plant)
@@ -233,7 +231,7 @@ internal static class SurfacePlantPass1458
         if (!floor.IsActive || floor.Shape != 0)
             return false;
 
-        if (floor.Type is Grass or MushroomGrass or 380 or 477 or 579 && plant == Plants)
+        if (floor.Type is Grass or 78 or 380 or 477 or 579 && plant == Plants)
             return true;
         if (floor.Type is CorruptGrass or 661 && plant == CorruptPlants)
             return true;

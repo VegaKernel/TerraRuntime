@@ -53,8 +53,8 @@ internal sealed class GrassWallPass1458(
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
 
-    private readonly GenerationDirtWallCount1458 counter = new(store);
-    private readonly GenerationWallSpread1458 spread = new(store);
+    private readonly GenerationDirtWallCount1458 counter = new(store, workspace);
+    private readonly GenerationWallSpread1458 spread = new(store, workspace);
 
     /// <summary>How many pockets were repapered.</summary>
     public long Pockets { get; private set; }
@@ -89,26 +89,26 @@ internal sealed class GrassWallPass1458(
                 if (centre.IsActive && centre.Type == Grass && centre.Wall is DirtWall or GrassWall)
                 {
                     for (int sx = x - 1; sx <= x + 1; sx++)
-                    for (int sy = y - 1; sy <= y + 1; sy++)
-                    {
-                        Require(sx, sy);
-                        if (At(sx, sy).Wall == 0 && !SolidTile(sx, sy))
-                            exposed = true;
-                    }
+                        for (int sy = y - 1; sy <= y + 1; sy++)
+                        {
+                            Require(sx, sy);
+                            if (At(sx, sy).Wall == 0 && !SolidTile(sx, sy))
+                                exposed = true;
+                        }
 
                     // The pocket is entered at the LAST open dirt or dirt-slab wall in the square, in column
                     // then row order, which is the bottom of the rightmost column that has one.
                     if (exposed)
                     {
                         for (int sx = x - 1; sx <= x + 1; sx++)
-                        for (int sy = y - 1; sy <= y + 1; sy++)
-                        {
-                            if (At(sx, sy).Wall is DirtWall or DirtWallSlab && !SolidTile(sx, sy))
+                            for (int sy = y - 1; sy <= y + 1; sy++)
                             {
-                                pocketX = sx;
-                                pocketY = sy;
+                                if (At(sx, sy).Wall is DirtWall or DirtWallSlab && !SolidTile(sx, sy))
+                                {
+                                    pocketX = sx;
+                                    pocketY = sy;
+                                }
                             }
-                        }
                     }
                 }
 
@@ -181,7 +181,9 @@ internal sealed class GrassWallPass1458(
             return true;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && (workspace?.HasVanillaGenerationSolidity == true
+                ? workspace.IsVanillaGenerationSolid(tile.TileType)
+                : VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && tile.Shape == 0 && !tile.IsActuated;
     }
 

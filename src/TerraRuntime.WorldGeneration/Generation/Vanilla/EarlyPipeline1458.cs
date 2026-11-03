@@ -10,6 +10,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// </summary>
 public sealed class SourceBackedPipeline1458 : IWorldGenerationProvider
 {
+    private static readonly WorldGenerationPassId SkyblockId = new("terraria:1.4.5.8/Skyblock");
     private static readonly WorldGenerationPassId TerrainLayersId = new("terraria:1.4.5.8/TerrainLayers");
     private static readonly WorldGenerationPassId DunesId = new("terraria:1.4.5.8/Dunes");
     private static readonly WorldGenerationPassId OceanSandId = new("terraria:1.4.5.8/OceanSand");
@@ -42,9 +43,7 @@ public sealed class SourceBackedPipeline1458 : IWorldGenerationProvider
 
         WorldGenerationRequest requestCopy = request;
         VanillaWorldSeedProfile1458 profile = WorldSeedResolver1458.Resolve(in requestCopy);
-        bool pureRemix = profile.Special == VanillaSpecialWorldSeed1458.Remix &&
-            profile.Secret == VanillaSecretWorldSeed1458.None;
-        if ((!profile.IsDefault && !pureRemix) ||
+        if (!profile.SupportsSourceBackedResetAndTerrain || profile.Secret != VanillaSecretWorldSeed1458.None ||
             !TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
         {
             capture.Replay(builder);
@@ -61,19 +60,10 @@ public sealed class SourceBackedPipeline1458 : IWorldGenerationProvider
         builder.Add(terrain.Descriptor, terrain.Pass);
         Add(builder, TerrainLayersId, WorldGenerationRngMode.VanillaSharedRng, SourceBackedProvider1458.TerrainPassId,
             new EarlyPass1458(EarlyStage1458.TerrainLayers, state, metadata.Pass));
-        Add(builder, DunesId, WorldGenerationRngMode.VanillaSharedRng, TerrainLayersId,
+        if (profile.Has(VanillaSpecialWorldSeed1458.Skyblock))
+            Add(builder, SkyblockId, WorldGenerationRngMode.VanillaSharedRng, TerrainLayersId, new EarlyPass1458(EarlyStage1458.Skyblock, state));
+        Add(builder, DunesId, WorldGenerationRngMode.VanillaSharedRng, profile.Has(VanillaSpecialWorldSeed1458.Skyblock) ? SkyblockId : TerrainLayersId,
             new EarlyPass1458(EarlyStage1458.Dunes, state));
-
-        if (pureRemix)
-        {
-            // WorldGen.AddPasses has no Remix-specific dune placement branch. The only difference in this pass is
-            // SetupDungeonGenVarVariables, which consumes the same roll but pins the dungeon palette from evil type.
-            // Stop immediately afterwards: Ocean Sand and every later early pass still need separate Remix evidence.
-            builder.Add(CloneDescriptor(biomes.Descriptor, biomes.Descriptor.RngMode, [DunesId]), biomes.Pass);
-            ReplayCompatibilityTail(capture, builder);
-            builder.Add(metadata.Descriptor, metadata.Pass);
-            return;
-        }
 
         Add(builder, OceanSandId, WorldGenerationRngMode.VanillaSharedRng, DunesId,
             new EarlyPass1458(EarlyStage1458.OceanSand, state));
@@ -106,11 +96,12 @@ public sealed class SourceBackedPipeline1458 : IWorldGenerationProvider
             new EarlyPass1458(EarlyStage1458.IceBiome, state));
         Add(builder, GrassId, WorldGenerationRngMode.VanillaSharedRng, IceBiomeId,
             new EarlyPass1458(EarlyStage1458.Grass, state));
-        Add(builder, JungleId, WorldGenerationRngMode.VanillaSharedRng, GrassId,
-            new EarlyPass1458(EarlyStage1458.Jungle, state));
+        if (!profile.Has(VanillaSpecialWorldSeed1458.Skyblock))
+            Add(builder, JungleId, WorldGenerationRngMode.VanillaSharedRng, GrassId,
+                new EarlyPass1458(EarlyStage1458.Jungle, state));
 
         builder.Add(
-            CloneDescriptor(biomes.Descriptor, WorldGenerationRngMode.IsolatedDeterministic, [JungleId]),
+            CloneDescriptor(biomes.Descriptor, WorldGenerationRngMode.IsolatedDeterministic, [profile.Has(VanillaSpecialWorldSeed1458.Skyblock) ? GrassId : JungleId]),
             new ResidualCompatibilityBiomesPass1458(biomes.Pass));
 
         ReplayCompatibilityTail(capture, builder);
@@ -200,15 +191,18 @@ internal enum EarlyStage1458 : byte
     WavyCaves,
     IceBiome,
     Grass,
-    Jungle
+    Jungle,
+    Skyblock
 }
 
 internal sealed class EarlyState1458
 {
+    public VanillaWorldSeedProfile1458 Profile { get; set; }
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; set; }
     public double MainWorldSurface { get; set; }
     public double CurrentWorldSurface { get; set; }
     public double MainRockLayer { get; set; }
+    public double CurrentRockLayer { get; set; }
     public double WorldSurfaceLow { get; set; }
     public double WorldSurfaceHigh { get; set; }
     public double RockLayerLow { get; set; }
@@ -235,7 +229,7 @@ internal readonly record struct DungeonPalette1458(
     ushort WindowEdgeWallType,
     int WindowPlatformItemType);
 
-internal sealed class EarlyPass1458 : IWorldGenerationPass
+internal sealed partial class EarlyPass1458 : IWorldGenerationPass
 {
     private const ushort Dirt = 0;
     private const ushort Stone = 1;
@@ -274,10 +268,15 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Source-backed early Terraria generation requires Workspace.");
         var grid = new RuntimeGrid(workspace);
 
+        if (state.Profile.Has(VanillaSpecialWorldSeed1458.Skyblock) && stage is not (EarlyStage1458.TerrainLayers or EarlyStage1458.Skyblock or EarlyStage1458.Dunes)) return;
+
         switch (stage)
         {
             case EarlyStage1458.TerrainLayers:
                 CaptureTerrainState(context, workspace, grid);
+                break;
+            case EarlyStage1458.Skyblock:
+                ApplySkyblock(context, workspace);
                 break;
             case EarlyStage1458.Dunes:
                 ApplyDunes(context, workspace, grid, RequireVanilla(context));
@@ -319,7 +318,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 ApplySurfaceCaves(context, grid, RequireVanilla(context));
                 break;
             case EarlyStage1458.WavyCaves:
-                context.ReportProgress(1d, "Skipping ordinary-world Wavy Caves secret-seed branch");
+                ApplyWavyCaves(context, workspace, grid, RequireVanilla(context));
                 break;
             case EarlyStage1458.IceBiome:
                 ApplyIceBiome(context, workspace, grid, RequireVanilla(context));
@@ -346,6 +345,8 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             vanillaRandom: new CompatibilityVanillaRandom(unchecked((int)context.Request.Seed)),
             suppressProgress: true));
 
+        WorldGenerationRequest seedRequest = context.Request;
+        state.Profile = WorldSeedResolver1458.Resolve(in seedRequest);
         state.Bootstrap = workspace.VanillaBootstrapState ??
             throw new InvalidOperationException("Reset bootstrap state was not published by the baseline parity pass.");
         if (context.Metadata is null || !context.Metadata.TryGetLayers(out WorldGenerationLayers layers))
@@ -356,6 +357,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         state.MainWorldSurface = terrain.WorldSurface;
         state.CurrentWorldSurface = terrain.CurrentWorldSurface;
         state.MainRockLayer = terrain.RockLayer;
+        state.CurrentRockLayer = terrain.CurrentRockLayer;
         state.WorldSurfaceLow = terrain.WorldSurfaceLow;
         state.WorldSurfaceHigh = terrain.WorldSurfaceHigh;
         state.RockLayerLow = terrain.RockLayerLow;
@@ -382,19 +384,21 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         VanillaWorldSeedProfile1458 profile = WorldSeedResolver1458.Resolve(in request);
         DungeonSetupProfile1458 dungeonSetup = SetupDungeonProfile(
             random,
-            profile.Special == VanillaSpecialWorldSeed1458.Remix,
-            b.EffectiveCrimson);
+            (profile.Special & VanillaSpecialWorldSeed1458.Remix) != 0,
+            b.EffectiveCrimson,
+            HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld));
         state.DungeonPalette = dungeonSetup.Palette;
         workspace.SetVanillaDungeonSetupProfile(dungeonSetup);
+        if (profile.Has(VanillaSpecialWorldSeed1458.Skyblock)) return;
 
         (int minimum, int maximum) = GetDuneCountRange(grid.Width);
         int count = random.Next(minimum, maximum + 1);
         for (int i = 0; i < count; i++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            int originX = PickDuneOrigin(grid.Width, b, random);
-            PlaceDunes(grid, random, originX);
-            if (random.NextDouble() <= 0.8d)
+            (int originX, int originY) = PickDuneOrigin(grid.Width, b, random);
+            PlaceDunes(workspace, grid, random, originX, originY);
+            if (random.NextDouble() <= (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) ? 1d : 0.8d))
             {
                 int candidateX = random.Next(originX - 200, originX + 200);
                 int candidateSurface = grid.FindFirstActiveY(candidateX, 0, grid.Height);
@@ -423,9 +427,11 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
     internal static DungeonSetupProfile1458 SetupDungeonProfile(
         IRandom random,
         bool isRemix,
-        bool crimson)
+        bool crimson,
+        bool isDrunk = false)
     {
         DungeonPalette1458 palette = SetupDungeonPalette(random, isRemix, crimson);
+        if (isDrunk) palette = palette with { BrickWallType = (ushort)(7 + random.Next(3)) };
         DungeonEntranceKind1458 entrance = DungeonEntranceKind1458.Legacy;
         if (random.Next(3) == 0)
             entrance = DungeonEntranceKind1458.Dome;
@@ -443,34 +449,36 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         return ((int)scale, (int)(2d * scale));
     }
 
-    private static int PickDuneOrigin(int width, VanillaWorldGenerationBootstrapState1458 b, IRandom random)
+    private static (int X, int Y) PickDuneOrigin(int width, VanillaWorldGenerationBootstrapState1458 b, IRandom random)
     {
         double scale = width / 4200d;
         int attempts = 0;
         while (true)
         {
             int x = random.Next(500, width - 500);
-            _ = random.Next(0, width == 4200 ? 1200 : width == 6400 ? 1800 : 2400);
+            int y = random.Next(0, width == 4200 ? 1200 : width == 6400 ? 1800 : 2400);
             bool jungle = Math.Abs(x - b.JungleOriginX) < (int)(600d * scale);
             bool spawn = Math.Abs(x - width / 2) < 300;
             bool snow = x > b.SnowOriginLeft - 300 && x < b.SnowOriginRight + 300;
             attempts++;
             if (attempts >= width) jungle = false;
             if (attempts >= width * 2) snow = false;
-            if (!(jungle || spawn || snow)) return x;
+            if (!(jungle || spawn || snow)) return (x, y);
         }
     }
 
-    private static void PlaceDunes(RuntimeGrid grid, IRandom random, int originX)
+    private static void PlaceDunes(Workspace workspace, RuntimeGrid grid, IRandom random, int originX, int originY)
     {
-        _ = random.Next(60, 100);
-        _ = random.Next(60, 100);
+        int height1 = random.Next(60, 100);
+        int height2 = random.Next(60, 100);
         int width1 = random.Next(150, 251);
         int width2 = random.Next(150, 251);
         DuneDescription first = DuneDescription.Create(grid, random, originX - width1 / 2 + 30, width1);
         DuneDescription second = DuneDescription.Create(grid, random, originX + width2 / 2 - 30, width2);
         PlaceSingleDune(grid, random, first);
+        workspace.VanillaStructureMap.AddStructure(new(first.Left, originY - height1 / 2, width1, height1), 20);
         PlaceSingleDune(grid, random, second);
+        workspace.VanillaStructureMap.AddStructure(new(second.Left, originY - height2 / 2, width2, height2), 20);
     }
 
     private static void PlaceSingleDune(RuntimeGrid grid, IRandom random, DuneDescription d)
@@ -603,10 +611,12 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
     private void ApplySandPatches(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         int count = (int)(grid.Width * 0.013d);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) count /= 4;
         for (int i = 0; i < count; i++)
         {
             int x = random.Next(0, grid.Width);
             int y = random.Next((int)state.MainWorldSurface, (int)state.MainRockLayer);
+            if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) y = random.Next((int)state.MainRockLayer - 100, grid.Height - 350);
             while (x > grid.Width * 0.46d && x < grid.Width * 0.54d && y < state.MainWorldSurface + 150d)
             {
                 x = random.Next(0, grid.Width);
@@ -621,13 +631,18 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
     private void ApplyTunnels(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         int count = (int)(grid.Width * 0.0015d);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) count = (int)(count * 1.5d);
         var columns = new List<int>(count);
         for (int i = 0; i < count; i++)
         {
             int[] xs = new int[10];
             int[] ys = new int[10];
             int x = random.Next(450, grid.Width - 450);
-            while (x > grid.Width * 0.4d && x < grid.Width * 0.6d) x = random.Next(450, grid.Width - 450);
+            if (!HasSpecial(VanillaSpecialWorldSeed1458.Remix))
+            {
+                if (HasSpecial(VanillaSpecialWorldSeed1458.CelebrationMk10)) x = random.Next((int)(grid.Width * 0.2d), (int)(grid.Width * 0.8d));
+                else while (x > grid.Width * 0.4d && x < grid.Width * 0.6d) x = random.Next(450, grid.Width - 450);
+            }
             int y = 0;
             bool sandTouched;
             do
@@ -659,6 +674,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
     private void ApplyMountCaves(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         int count = (int)(grid.Width * 0.001d);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) count = (int)(count * 1.5d);
         var anchors = new List<WorldGenerationPoint>(count);
         for (int i = 0; i < count; i++)
         {
@@ -666,8 +682,9 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             int x = random.Next((int)(grid.Width * 0.25d), (int)(grid.Width * 0.75d));
             while (true)
             {
-                while (x > grid.Width / 2 - 90 && x < grid.Width / 2 + 90)
-                    x = random.Next((int)(grid.Width * 0.25d), (int)(grid.Width * 0.75d));
+                if (!HasSpecial(VanillaSpecialWorldSeed1458.Remix))
+                    while (x > grid.Width / 2 - 90 && x < grid.Width / 2 + 90)
+                        x = random.Next((int)(grid.Width * 0.25d), (int)(grid.Width * 0.75d));
                 bool close = state.MountainCaveX.Any(existing => Math.Abs(x - existing) < 100);
                 if (!close) break;
                 retries++;
@@ -680,12 +697,12 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             if (surface >= surfaceLimit) continue;
             bool blocked = false;
             for (int sx = x - 50; sx < x + 50 && !blocked; sx++)
-            for (int sy = surface - 25; sy < surface + 25; sy++)
-            {
-                if (!grid.Contains(sx, sy)) continue;
-                ref WorldTile tile = ref grid.At(sx, sy);
-                if (tile.IsActive && tile.Type is Sand or 151 or 274) { blocked = true; break; }
-            }
+                for (int sy = surface - 25; sy < surface + 25; sy++)
+                {
+                    if (!grid.Contains(sx, sy)) continue;
+                    ref WorldTile tile = ref grid.At(sx, sy);
+                    if (tile.IsActive && tile.Type is Sand or 151 or 274) { blocked = true; break; }
+                }
             if (!blocked)
             {
                 Mountinater(grid, random, x, surface);
@@ -697,10 +714,11 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         workspace.SetVanillaMountainCaves(anchors.ToArray());
     }
 
-    private static void Mountinater(RuntimeGrid grid, IRandom random, int x0, int y0)
+    private void Mountinater(RuntimeGrid grid, IRandom random, int x0, int y0)
     {
         double strength = random.Next(80, 120);
         double steps = random.Next(40, 55);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) steps *= 1.5d;
         double x = x0;
         double y = y0 + steps / 2d;
         double vx = random.Next(-10, 11) * 0.1d;
@@ -715,13 +733,16 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             int top = Math.Max(0, (int)(y - strength * 0.5d));
             int bottom = Math.Min(grid.Height, (int)(y + strength * 0.5d));
             for (int tx = left; tx < right; tx++)
-            for (int ty = top; ty < bottom; ty++)
-            {
-                double dx = Math.Abs(tx - x), dy = Math.Abs(ty - y);
-                ref WorldTile tile = ref grid.At(tx, ty);
-                if (Math.Sqrt(dx * dx + dy * dy) < radius * 0.4d && !tile.IsActive)
-                    SetType(ref tile, Dirt, true);
-            }
+                for (int ty = top; ty < bottom; ty++)
+                {
+                    double dx = Math.Abs(tx - x), dy = Math.Abs(ty - y);
+                    ref WorldTile tile = ref grid.At(tx, ty);
+                    if (Math.Sqrt(dx * dx + dy * dy) < radius * 0.4d && !tile.IsActive)
+                    {
+                        tile.Type = Dirt;
+                        tile.Flags |= WorldTileFlags.Active;
+                    }
+                }
             x += vx; y += vy;
             vx = Math.Clamp(vx + random.Next(-10, 11) * 0.05d, -0.5d, 0.5d);
             vy = Math.Clamp(vy + random.Next(-10, 11) * 0.05d, -1.5d, -0.5d);
@@ -797,18 +818,33 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         double count = grid.Width * grid.Height * 0.005d;
         for (int i = 0; i < count; i++)
             RunTileRunner(grid, random, random.Next(grid.Width), random.Next((int)state.RockLayerLow, grid.Height), random.Next(2, 6), random.Next(2, 40), Dirt);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix))
+        {
+            for (int column = 0; column < grid.Width; column++)
+                for (int row = (int)state.MainWorldSurface + random.Next(-1, 3); row < grid.Height; row++)
+                {
+                    ref WorldTile cell = ref grid.At(column, row);
+                    if (cell.IsActive && cell.Type is Dirt or Stone) cell.Type = cell.Type == Dirt ? Stone : Dirt;
+                }
+        }
         context.ReportProgress(1d, "Generating Terraria dirt in rocks");
     }
 
     private void ApplyClay(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         PlaceMaterialRuns(grid, random, Clay, (int)(grid.Width * grid.Height * 0.00002d), 0, (int)state.WorldSurfaceLow, 4, 14, 10, 50);
-        PlaceMaterialRuns(grid, random, Clay, (int)(grid.Width * grid.Height * 0.00005d), (int)state.WorldSurfaceLow, (int)state.WorldSurfaceHigh + 1, 8, 14, 15, 45);
-        PlaceMaterialRuns(grid, random, Clay, (int)(grid.Width * grid.Height * 0.00002d), (int)state.WorldSurfaceHigh, (int)state.RockLayerHigh + 1, 8, 15, 5, 50);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix))
+            PlaceMaterialRuns(grid, random, Clay, (int)(grid.Width * grid.Height * 0.00007d), (int)state.CurrentRockLayer - 25, grid.Height - 350, 8, 15, 5, 50);
+        else
+        {
+            PlaceMaterialRuns(grid, random, Clay, (int)(grid.Width * grid.Height * 0.00005d), (int)state.WorldSurfaceLow, (int)state.WorldSurfaceHigh + 1, 8, 14, 15, 45);
+            PlaceMaterialRuns(grid, random, Clay, (int)(grid.Width * grid.Height * 0.00002d), (int)state.WorldSurfaceHigh, (int)state.RockLayerHigh + 1, 8, 15, 5, 50);
+        }
         for (int x = 5; x < grid.Width - 5; x++)
         {
-            int y = grid.FindFirstActiveY(x, 1, Math.Min(grid.Height, (int)state.MainWorldSurface));
-            if (y >= grid.Height) continue;
+            int stop = Math.Min(grid.Height, (int)Math.Ceiling(state.MainWorldSurface - 1d));
+            int y = grid.FindFirstActiveY(x, 1, stop);
+            if (y >= stop) continue;
             for (int yy = y; yy < y + 5 && yy < grid.Height; yy++)
                 if (grid.At(x, yy).Type == Clay) grid.At(x, yy).Type = Dirt;
         }
@@ -829,29 +865,37 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         for (int i = 0; i < count; i++)
         {
             int type = random.Next(5) == 0 ? -2 : -1;
-            RunSmallHole(grid, random, beachAvoidance, type, 2, 5, 2, 20);
+            RunSmallHole(grid, random, beachAvoidance, type, 2, 5, 2, 20, first: true);
             RunSmallHole(grid, random, beachAvoidance, type, 8, 15, 7, 30);
         }
         context.ReportProgress(1d, "Generating Terraria small holes");
     }
 
-    private void RunSmallHole(RuntimeGrid grid, IRandom random, int beachAvoidance, int type, int s0, int s1, int n0, int n1)
+    private void RunSmallHole(RuntimeGrid grid, IRandom random, int beachAvoidance, int type, int s0, int s1, int n0, int n1, bool first = false)
     {
         int x = random.Next(grid.Width);
         int y = random.Next((int)state.WorldSurfaceHigh, grid.Height);
-        while (((x < beachAvoidance || x > grid.Width - beachAvoidance) && y < state.WorldSurfaceHigh) ||
-               (x > grid.Width * 0.45d && x < grid.Width * 0.55d && y < state.CurrentWorldSurface))
+        while (!(first && !HasSpecial(VanillaSpecialWorldSeed1458.Remix) && HasSpecial(VanillaSpecialWorldSeed1458.CelebrationMk10)) &&
+               (((x < beachAvoidance || x > grid.Width - beachAvoidance) && y < state.WorldSurfaceHigh) ||
+               (x > grid.Width * 0.45d && x < grid.Width * 0.55d && y < state.CurrentWorldSurface)))
         {
             x = random.Next(grid.Width);
             y = random.Next((int)state.WorldSurfaceHigh, grid.Height);
         }
-        RunTileRunner(grid, random, x, y, random.Next(s0, s1), random.Next(n0, n1), type);
+        int strength = random.Next(s0, s1), steps = random.Next(n0, n1);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix) && y > state.MainRockLayer)
+        {
+            strength = (int)(strength * (first ? 0.8d : 0.7d));
+            steps = (int)(steps * 0.9d);
+        }
+        RunTileRunner(grid, random, x, y, strength, steps, type);
     }
 
     private void ApplyDirtLayerCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         int beachAvoidance = 340;
         int count = (int)(grid.Width * grid.Height * 0.00003d);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) count *= 2;
         for (int i = 0; i < count; i++)
         {
             int type = random.Next(6) == 0 ? -2 : -1;
@@ -863,7 +907,9 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 x = random.Next(grid.Width);
                 y = random.Next((int)state.WorldSurfaceLow, (int)state.RockLayerHigh + 1);
             }
-            RunTileRunner(grid, random, x, y, random.Next(5, 15), random.Next(30, 200), type);
+            int strength = random.Next(5, 15), steps = random.Next(30, 200);
+            if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) { strength = (int)(strength * 1.1d); steps = (int)(steps * 1.9d); }
+            RunTileRunner(grid, random, x, y, strength, steps, type);
         }
         context.ReportProgress(1d, "Generating Terraria dirt-layer caves");
     }
@@ -871,23 +917,39 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
     private void ApplyRockLayerCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         int count = (int)(grid.Width * grid.Height * 0.00013d);
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) count = (int)(count * 1.1d);
         for (int i = 0; i < count; i++)
         {
             int type = random.Next(10) == 0 ? -2 : -1;
             // The registered source pass draws brush parameters BEFORE its position.
             int strength = random.Next(6, 20);
             int steps = random.Next(50, 300);
+            if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) { strength = (int)(strength * 0.7d); steps = (int)(steps * 0.7d); }
             RunTileRunner(grid, random, random.Next(grid.Width), random.Next((int)state.RockLayerHigh, grid.Height), strength, steps, type);
+        }
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix))
+        {
+            int horizontal = (int)(grid.Width * grid.Height * 0.00013d * 0.4d);
+            for (int offer = 0; offer < horizontal; offer++)
+            {
+                int type = random.Next(10) == 0 ? -2 : -1;
+                int strength = random.Next(7, 26), steps = random.Next(50, 200);
+                double vx = random.Next(100, 221) * 0.1d, vy = random.Next(-10, 11) * 0.02d;
+                int x = random.Next(grid.Width), y = random.Next((int)state.RockLayerHigh, grid.Height);
+                RunTileRunner(grid, random, x, y, strength, steps, type, false, vx, vy, true);
+                RunTileRunner(grid, random, x, y, strength, steps, type, false, -vx, -vy, true);
+            }
         }
         context.ReportProgress(1d, "Generating Terraria rock-layer caves");
     }
 
     private void ApplySurfaceCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        RunSurfaceCaveFamily(grid, random, (int)(grid.Width * 0.002d), 0.45d, 0.55d, 3, 6, 5, 50, 1d);
-        RunSurfaceCaveFamily(grid, random, (int)(grid.Width * 0.0007d), 0.43d, 1d - 0.43d, 10, 15, 50, 130, 2d);
+        int density = HasSpecial(VanillaSpecialWorldSeed1458.Remix) ? 3 : 1;
+        RunSurfaceCaveFamily(grid, random, (int)(grid.Width * 0.002d) * density, 0.45d, 0.55d, 3, 6, 5, 50, 1d);
+        RunSurfaceCaveFamily(grid, random, (int)(grid.Width * 0.0007d) * density, 0.43d, 1d - 0.43d, 10, 15, 50, 130, 2d);
         int surfaceLimit = Math.Min(grid.Height, (int)Math.Ceiling(state.WorldSurfaceHigh));
-        int large = (int)(grid.Width * 0.0003d);
+        int large = (int)(grid.Width * 0.0003d) * density;
         for (int i = 0; i < large; i++)
         {
             int x = PickSurfaceCaveX(grid.Width, random, 0.4d, 0.6d);
@@ -986,17 +1048,17 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         {
             // Out-of-world brush cells still consume the source random draw.
             for (int tx = (int)(x - radius); tx <= x + radius; tx++)
-            for (int ty = (int)(y - radius); ty <= y + radius; ty++)
-                if (Math.Abs(tx - x) + Math.Abs(ty - y) < radius * (1d + random.Next(-10, 11) * 0.005d) && grid.Contains(tx, ty))
-                {
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    SetActive(ref tile, false);
-                    if (wet)
+                for (int ty = (int)(y - radius); ty <= y + radius; ty++)
+                    if (Math.Abs(tx - x) + Math.Abs(ty - y) < radius * (1d + random.Next(-10, 11) * 0.005d) && grid.Contains(tx, ty))
                     {
-                        tile.LiquidAmount = byte.MaxValue;
-                        tile.LiquidKind = WorldLiquidKind.Water;
+                        ref WorldTile tile = ref grid.At(tx, ty);
+                        SetActive(ref tile, false);
+                        if (wet)
+                        {
+                            tile.LiquidAmount = byte.MaxValue;
+                            tile.LiquidKind = WorldLiquidKind.Water;
+                        }
                     }
-                }
             radius = Math.Clamp(radius + random.Next(-50, 51) * 0.03d, size * 0.6d, size * 2d);
             driftX = Math.Clamp(driftX + random.Next(-20, 21) * 0.01d, -1d, 1d);
             driftY = Math.Clamp(driftY + random.Next(-20, 21) * 0.01d, -1d, 1d);
@@ -1011,10 +1073,16 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         VanillaWorldGenerationBootstrapState1458 b = RequireBootstrap();
         state.SnowTop = (int)state.MainWorldSurface;
         int iceCoreTop = state.LavaLine - random.Next(160, 200);
+        int iceBottom = state.LavaLine;
+        if (HasSpecial(VanillaSpecialWorldSeed1458.Remix))
+        {
+            iceBottom = grid.Height - 250;
+            iceCoreTop = iceBottom - random.Next(160, 200);
+        }
         int left = b.SnowOriginLeft;
         int right = b.SnowOriginRight;
         int thickness = 10;
-        int lastRow = Math.Min(state.LavaLine - 140, grid.Height - 2);
+        int lastRow = Math.Min(iceBottom - 140, grid.Height - 2);
         for (int row = 0; row <= lastRow; row++)
         {
             left += random.Next(-4, 4);
@@ -1050,7 +1118,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             state.SnowBottom = Math.Max(state.SnowBottom, row);
             if ((row & 31) == 0) context.CancellationToken.ThrowIfCancellationRequested();
         }
-        workspace.SetVanillaSnowBounds(state.SnowTop,state.SnowBottom,state.SnowMinX,state.SnowMaxX);
+        workspace.SetVanillaSnowBounds(state.SnowTop, state.SnowBottom, state.SnowMinX, state.SnowMaxX);
         context.ReportProgress(1d, "Generating Terraria ice biome");
     }
 
@@ -1162,7 +1230,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             {
                 int tx = Math.Clamp((int)x, 10, grid.Width - 10);
                 int ty = Math.Clamp((int)y, 10, grid.Height - 10);
-                reachedSurface = IsOpenAirColumn(grid, tx, Math.Max(5, ty));
+                reachedSurface = HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) || IsOpenAirColumn(grid, tx, Math.Max(5, ty));
             }
             state.JungleX = (int)x;
             strength = Math.Clamp(strength + random.Next(-20, 21) * 0.1d, 5d, 10d);
@@ -1171,9 +1239,9 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             int top = Math.Clamp((int)(y - strength * 0.5d), 10, grid.Height - 10);
             int bottom = Math.Clamp((int)(y + strength * 0.5d), 10, grid.Height - 10);
             for (int tx = left; tx < right; tx++)
-            for (int ty = top; ty < bottom; ty++)
-                if (Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d))
-                    KillJungleTunnelTile(grid, random, tx, ty);
+                for (int ty = top; ty < bottom; ty++)
+                    if (Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d))
+                        KillJungleTunnelTile(grid, random, tx, ty);
             branch++;
             if (branch > 10 && random.Next(50) < branch)
             {
@@ -1209,21 +1277,21 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         // This pass precedes objects and vegetation. Do not turn this bounded
         // generation-only KillTile slice into authority over unknown objects.
         for (int tx = x - 1; tx <= x + 1; tx++)
-        for (int ty = y - 1; ty <= y + 1; ty++)
-            if (grid.At(tx, ty).IsActive && !IsJungleTunnelTerrain(grid.At(tx, ty).Type))
-                throw new InvalidOperationException("Jungle tunnel encountered unsupported tile semantics.");
+            for (int ty = y - 1; ty <= y + 1; ty++)
+                if (grid.At(tx, ty).IsActive && !IsJungleTunnelTerrain(grid.At(tx, ty).Type))
+                    throw new InvalidOperationException("Jungle tunnel encountered unsupported tile semantics.");
         ClearJungleTunnelTerrain(ref grid.At(x, y), random);
         // During generation SquareTileFrame skips solid cosmetic framing, but
         // still clears shape and block paint/coating from inactive neighbours.
         for (int tx = x - 1; tx <= x + 1; tx++)
-        for (int ty = y - 1; ty <= y + 1; ty++)
-        {
-            ref WorldTile tile = ref grid.At(tx, ty);
-            if (tile.IsActive) continue;
-            tile.Shape = 0;
-            tile.TileColor = 0;
-            tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-        }
+            for (int ty = y - 1; ty <= y + 1; ty++)
+            {
+                ref WorldTile tile = ref grid.At(tx, ty);
+                if (tile.IsActive) continue;
+                tile.Shape = 0;
+                tile.TileColor = 0;
+                tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+            }
     }
 
     private static bool IsJungleTunnelTerrain(ushort type) =>
@@ -1325,60 +1393,55 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             int top = Math.Clamp((int)(y - current * 0.5d), 0, grid.Height);
             int bottom = Math.Clamp((int)(y + current * 0.5d), 0, grid.Height);
             for (int tx = left; tx < right; tx++)
-            for (int ty = top; ty < bottom; ty++)
-                if (Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d) && ty > state.MainWorldSurface)
-                    grid.At(tx, ty).Wall = 0;
+                for (int ty = top; ty < bottom; ty++)
+                    if (Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d) && ty > state.MainWorldSurface)
+                        grid.At(tx, ty).Wall = 0;
             x += vx; y += vy;
             vx = Math.Clamp(vx + random.Next(-10, 11) * 0.05d, -1d, 1d);
             vy = Math.Clamp(vy + random.Next(-10, 11) * 0.05d, -1d, 1d);
         }
     }
 
-    private void RunSandPatch(RuntimeGrid grid, IRandom random, int i, int j, double strength, int steps)
+    private void RunSandPatch(RuntimeGrid grid, IRandom random, int i, int j, double strength, int steps) =>
+        RunTileRunner(grid, random, i, j, strength, steps, Sand);
+
+    private bool HasSpecial(VanillaSpecialWorldSeed1458 flag) => (state.Profile.Special & flag) != 0;
+
+    private void VaryRunner(IRandom random, ref double strength, ref int steps, int type)
     {
-        double current = strength, remaining = steps, x = i, y = j;
-        double vx = random.Next(-10, 11) * 0.1d, vy = random.Next(-10, 11) * 0.1d;
-        _ = random.Next(4);
-        while (current > 0d && remaining > 0d)
+        if (state.MudWall) return;
+        if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld))
         {
-            current = strength * (remaining / steps); remaining--;
-            int left = Math.Max(1, (int)(x - current * 0.5d));
-            int right = Math.Min(grid.Width - 1, (int)(x + current * 0.5d));
-            int top = Math.Max(1, (int)(y - current * 0.5d));
-            int bottom = Math.Min(grid.Height - 1, (int)(y + current * 0.5d));
-            for (int tx = left; tx < right; tx++)
-            for (int ty = top; ty < bottom; ty++)
-            {
-                double manhattan = Math.Abs(tx - x) + Math.Abs(ty - y);
-                if (manhattan >= strength * 0.575d) { _ = random.Next(-10, 11); continue; }
-                if (manhattan >= strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d)) continue;
-                ref WorldTile tile = ref grid.At(tx, ty);
-                if (tile.IsActive && tile.Type == Sand && ty < state.MainWorldSurface) continue;
-                tile.Type = Sand;
-            }
-            x += vx; y += vy;
-            foreach (double threshold in ExtraStepThresholds)
-            {
-                if (current <= threshold) break;
-                x += vx; y += vy; remaining--;
-                vy += random.Next(-10, 11) * 0.05d;
-                vx += random.Next(-10, 11) * 0.05d;
-            }
-            vx = Math.Clamp(vx + random.Next(-10, 11) * 0.05d, -1d, 1d);
-            vy = Math.Clamp(vy + random.Next(-10, 11) * 0.05d, -1d, 1d);
+            strength *= 1d + random.Next(-80, 81) * 0.01d;
+            steps = (int)(steps * (1d + random.Next(-80, 81) * 0.01d));
+        }
+        else if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) strength *= 1d + random.Next(-50, 51) * 0.01d;
+        else if (HasSpecial(VanillaSpecialWorldSeed1458.ForTheWorthy) && type != 57)
+        {
+            strength *= 1d + random.Next(-80, 81) * 0.015d;
+            steps += random.Next(3);
         }
     }
 
     private void RunTileRunner(RuntimeGrid grid, IRandom random, int i, int j, double strength, int steps, int type,
         bool addTile = false, double speedX = 0d, double speedY = 0d, bool noYChange = false)
     {
+        VaryRunner(random, ref strength, ref steps, type);
         double current = strength, remaining = steps, x = i, y = j;
         double vx = random.Next(-10, 11) * 0.1d, vy = random.Next(-10, 11) * 0.1d;
         if (speedX != 0d || speedY != 0d) { vx = speedX; vy = speedY; }
-        _ = random.Next(4);
-        const WorldLiquidKind ordinaryLiquidKind = WorldLiquidKind.Water;
+        WorldLiquidKind liquidKind = WorldLiquidKind.Water;
+        if (HasSpecial(VanillaSpecialWorldSeed1458.NotTheBees) && HasSpecial(VanillaSpecialWorldSeed1458.TheConstant) && !HasSpecial(VanillaSpecialWorldSeed1458.Remix) && random.Next(3) == 0) liquidKind = WorldLiquidKind.Honey;
+        else if (random.Next(4) == 0)
+        {
+            if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) && HasSpecial(VanillaSpecialWorldSeed1458.CelebrationMk10) && HasSpecial(VanillaSpecialWorldSeed1458.Remix) && !HasSpecial(VanillaSpecialWorldSeed1458.NotTheBees)) liquidKind = WorldLiquidKind.Shimmer;
+            else if (HasSpecial(VanillaSpecialWorldSeed1458.ForTheWorthy)) liquidKind = WorldLiquidKind.Lava;
+        }
         while (current > 0d && remaining > 0d)
         {
+            if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) && random.Next(30) == 0)
+            { x += random.Next(-100, 101) * 0.05d; y += random.Next(-100, 101) * 0.05d; }
+            if (liquidKind == WorldLiquidKind.Lava && HasSpecial(VanillaSpecialWorldSeed1458.CelebrationMk10) && x > grid.Width * 0.45d && y < grid.Width * 0.55d && y < state.MainWorldSurface) liquidKind = WorldLiquidKind.Water;
             if (y < 0d && type == Mud) remaining = 0d;
             current = strength * (remaining / steps); remaining--;
             int left = Math.Max(1, (int)(x - current * 0.5d));
@@ -1386,57 +1449,65 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             int top = Math.Max(1, (int)(y - current * 0.5d));
             int bottom = Math.Min(grid.Height - 1, (int)(y + current * 0.5d));
             for (int tx = left; tx < right; tx++)
-            for (int ty = top; ty < bottom; ty++)
-            {
-                if (Math.Abs(tx - x) + Math.Abs(ty - y) >= strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d)) continue;
-                ref WorldTile tile = ref grid.At(tx, ty);
-                if (state.MudWall && ty > state.MainWorldSurface && grid.At(tx, ty - 1).Wall != DirtWall &&
-                    ty < grid.Height - 210 - random.Next(3) &&
-                    Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.45d * (1d + random.Next(-10, 11) * 0.01d))
+                for (int ty = top; ty < bottom; ty++)
                 {
-                    if (ty > state.LavaLine - random.Next(0, 4) - 50)
+                    if (tx < 430 || tx >= grid.Width - 430) liquidKind = WorldLiquidKind.Water;
+                    if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) && ty < grid.Height - 300 && type == 57) continue;
+                    ref WorldTile tile = ref grid.At(tx, ty);
+                    if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type) && !VanillaProjectileTileCutFacts.IsCuttable(tile.TileType)) continue;
+                    if (Math.Abs(tx - x) + Math.Abs(ty - y) >= strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d)) continue;
+                    if (state.MudWall && ty > state.MainWorldSurface && grid.At(tx, ty - 1).Wall != DirtWall &&
+                        ty < grid.Height - 210 - random.Next(3) &&
+                        Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.45d * (1d + random.Next(-10, 11) * 0.01d))
                     {
-                        if (grid.At(tx, ty - 1).Wall != JungleWall && grid.At(tx, ty + 1).Wall != JungleWall &&
-                            grid.At(tx - 1, ty).Wall != JungleWall && grid.At(tx + 1, ty).Wall != JungleWall)
-                            PlaceJungleRunnerWall(grid, random, tx, ty, MudWall);
+                        if (ty > state.LavaLine - random.Next(0, 4) - 50)
+                        {
+                            if (grid.At(tx, ty - 1).Wall != JungleWall && grid.At(tx, ty + 1).Wall != JungleWall &&
+                                grid.At(tx - 1, ty).Wall != JungleWall && grid.At(tx + 1, ty).Wall != JungleWall)
+                                PlaceJungleRunnerWall(grid, random, tx, ty, MudWall);
+                        }
+                        else if (grid.At(tx, ty - 1).Wall != MudWall && grid.At(tx, ty + 1).Wall != MudWall &&
+                                 grid.At(tx - 1, ty).Wall != MudWall && grid.At(tx + 1, ty).Wall != MudWall)
+                            PlaceJungleRunnerWall(grid, random, tx, ty, JungleWall);
                     }
-                    else if (grid.At(tx, ty - 1).Wall != MudWall && grid.At(tx, ty + 1).Wall != MudWall &&
-                             grid.At(tx - 1, ty).Wall != MudWall && grid.At(tx + 1, ty).Wall != MudWall)
-                        PlaceJungleRunnerWall(grid, random, tx, ty, JungleWall);
-                }
-                if (type < 0)
-                {
-                    if (tile.IsActive && tile.Type == Sand) continue;
-                    if (type == -2 && tile.IsActive && (ty < state.WaterLine || ty > state.LavaLine))
+                    if (type < 0)
                     {
-                        tile.LiquidAmount = byte.MaxValue;
-                        tile.LiquidKind = ty > state.LavaLine ? WorldLiquidKind.Lava : ordinaryLiquidKind;
+                        if (tile.IsActive && tile.Type == Sand) continue;
+                        if (type == -2 && tile.IsActive && (ty < state.WaterLine || ty > state.LavaLine))
+                        {
+                            tile.LiquidAmount = byte.MaxValue;
+                            tile.LiquidKind = liquidKind;
+                            if (!HasSpecial(VanillaSpecialWorldSeed1458.Remix) && ty > state.LavaLine || HasSpecial(VanillaSpecialWorldSeed1458.Remix) && ty > state.LavaLine && (ty < state.MainRockLayer - 80d || ty > grid.Height - 350) && !RunnerOceanDepths(grid, tx, ty)) tile.LiquidKind = WorldLiquidKind.Lava;
+                        }
+                        SetActive(ref tile, false);
+                        continue;
                     }
-                    SetActive(ref tile, false);
-                    continue;
+                    bool skip = false;
+                    if (tile.IsActive)
+                    {
+                        if (type is >= 63 and <= 68 && tile.Type != Stone) skip = true;
+                        if (tile.Type == Sand && (type == Clay || (ty < state.MainWorldSurface && type != Mud))) skip = true;
+                        if (tile.Type == Stone && type == Mud && ty < state.MainWorldSurface + random.Next(-50, 50)) skip = true;
+                        if (tile.Type is 147 or 189 or 190 or 196 or 460 or 717 or 718 or 719) skip = true;
+                    }
+                    if (!skip) tile.Type = checked((ushort)type);
+                    if (addTile) { SetActive(ref tile, true); tile.LiquidAmount = 0; tile.LiquidKind = (WorldLiquidKind)((byte)tile.LiquidKind & ~1); }
+                    if (noYChange && ty < state.MainWorldSurface && type != Mud) tile.Wall = DirtWall;
+                    if (type == Mud && ty > state.WaterLine && tile.LiquidAmount > 0) { tile.LiquidAmount = 0; tile.LiquidKind = (WorldLiquidKind)((byte)tile.LiquidKind & ~1); }
                 }
-                bool skip = false;
-                if (tile.IsActive)
-                {
-                    if (type is >= 63 and <= 68 && tile.Type != Stone) skip = true;
-                    if (tile.Type == Sand && (type == Clay || (ty < state.MainWorldSurface && type != Mud))) skip = true;
-                    if (tile.Type == Stone && type == Mud && ty < state.MainWorldSurface + random.Next(-50, 50)) skip = true;
-                    if (tile.Type is 147 or 189 or 190 or 196 or 460 or 717 or 718 or 719) skip = true;
-                }
-                if (!skip) tile.Type = checked((ushort)type);
-                if (addTile) { SetActive(ref tile, true); tile.LiquidAmount = 0; tile.LiquidKind = WorldLiquidKind.Water; }
-                if (noYChange && ty < state.MainWorldSurface && type != Mud) tile.Wall = DirtWall;
-                if (type == Mud && ty > state.WaterLine && tile.LiquidAmount > 0) { tile.LiquidAmount = 0; tile.LiquidKind = WorldLiquidKind.Water; }
-            }
             x += vx; y += vy;
+            bool extraSteps = !HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) || random.Next(3) != 0;
             foreach (double threshold in ExtraStepThresholds)
             {
+                if (!extraSteps) break;
                 if (current <= threshold) break;
                 x += vx; y += vy; remaining--;
                 vy += random.Next(-10, 11) * 0.05d;
                 vx += random.Next(-10, 11) * 0.05d;
             }
-            vx = Math.Clamp(vx + random.Next(-10, 11) * 0.05d, -1d, 1d);
+            vx += random.Next(-10, 11) * 0.05d;
+            if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld)) vx += random.Next(-10, 11) * 0.25d;
+            vx = Math.Clamp(vx, -1d, 1d);
             if (!noYChange) vy = Math.Clamp(vy + random.Next(-10, 11) * 0.05d, -1d, 1d);
             else if (type != Mud && current < 3d) vy = Math.Clamp(vy, -1d, 1d);
             if (type == Mud && !noYChange)
@@ -1447,6 +1518,8 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             }
         }
     }
+
+    private bool RunnerOceanDepths(RuntimeGrid grid, int x, int y) => y <= (state.MainWorldSurface + state.MainRockLayer) / 2d + 40d && (x < 380 || x > grid.Width - 380);
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() => state.Bootstrap ??
         throw new InvalidOperationException("Early vanilla pass executed before Reset bootstrap publication.");
@@ -1462,7 +1535,8 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         if (x <= 1 || y <= 1 || x >= grid.Width - 2 || y >= grid.Height - 2 || grid.At(x, y).Wall != 0)
             return;
         grid.At(x, y).Wall = wall;
-        _ = random.Next(3);
+        // The shared wall owner also clears paint/coatings on bare neighboring walls.
+        grid.WallFraming(((VanillaRandom)random).Inner).SquareWallFrame(x, y);
     }
 
     private static bool IsActiveType(in WorldTile tile, ushort type) => tile.IsActive && tile.Type == type;
@@ -1480,6 +1554,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private sealed class VanillaRandom(IWorldGenerationVanillaRandom inner) : IRandom
     {
+        public IWorldGenerationVanillaRandom Inner => inner;
         public int Next() => inner.Next();
         public int Next(int max) => inner.Next(max);
         public int Next(int min, int max) => inner.Next(min, max);
@@ -1496,6 +1571,8 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private sealed class RuntimeGrid
     {
+        private GenerationWallFraming1458? wallFraming;
+        public GenerationWallFraming1458 WallFraming(IWorldGenerationVanillaRandom random) => wallFraming ??= new(store, random);
         private readonly WorldTileStore store;
         public RuntimeGrid(Workspace workspace) => store = workspace.TileStore;
         public int Width => store.Dimensions.WidthTiles;

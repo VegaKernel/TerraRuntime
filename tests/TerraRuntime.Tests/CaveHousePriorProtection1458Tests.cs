@@ -70,6 +70,9 @@ public sealed class CaveHousePriorProtection1458Tests
 
         var touching = Create();
         touching.Workspace.SetVanillaHiveProtectedAreas([new WorldTileRegion(right + 5, top - 40, 110, 110)]);
+        // The legacy projection is not the canonical StructureMap used by HouseUtils.
+        // Import the already padded source rectangle, as the real hive producer does.
+        touching.Workspace.VanillaStructureMap.AddProtectedStructure(new(right + 5, top - 40, 110, 110));
         Assert.True(CaveHousePlacement1458.TryPlace(touching.Workspace, touching.State, touching.Random,
             300, 190, out var touchingResult));
         Assert.Equal(accepted.Rooms, touchingResult.Rooms);
@@ -78,6 +81,7 @@ public sealed class CaveHousePriorProtection1458Tests
 
         var blocked = Create();
         blocked.Workspace.SetVanillaHiveProtectedAreas([new WorldTileRegion(right + 4, top - 40, 110, 110)]);
+        blocked.Workspace.VanillaStructureMap.AddProtectedStructure(new(right + 4, top - 40, 110, 110));
         WorldTile[] before = blocked.Workspace.TileStore.Tiles.ToArray();
         Assert.False(CaveHousePlacement1458.TryPlace(blocked.Workspace, blocked.State, blocked.Random,
             300, 190, out _));
@@ -101,6 +105,7 @@ public sealed class CaveHousePriorProtection1458Tests
 
         var touching = Create();
         touching.Workspace.SetVanillaJungleShrineProtectedAreas([new WorldTileRegion(right + 5, top + 2, 3, 3)]);
+        touching.Workspace.VanillaStructureMap.AddProtectedStructure(new(right + 5, top + 2, 3, 3));
         Assert.True(CaveHousePlacement1458.TryPlace(touching.Workspace, touching.State, touching.Random,
             300, 190, out var touchingResult));
         Assert.Equal(accepted.Rooms, touchingResult.Rooms);
@@ -108,6 +113,7 @@ public sealed class CaveHousePriorProtection1458Tests
 
         var blocked = Create();
         blocked.Workspace.SetVanillaJungleShrineProtectedAreas([new WorldTileRegion(right + 4, top + 2, 3, 3)]);
+        blocked.Workspace.VanillaStructureMap.AddProtectedStructure(new(right + 4, top + 2, 3, 3));
         WorldTile[] before = blocked.Workspace.TileStore.Tiles.ToArray();
         Assert.False(CaveHousePlacement1458.TryPlace(blocked.Workspace, blocked.State, blocked.Random,
             300, 190, out _));

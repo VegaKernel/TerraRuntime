@@ -248,6 +248,7 @@ public sealed partial class Workspace :
         if (region.Width <= 0 || region.Height <= 0)
             throw new ArgumentOutOfRangeException(nameof(region));
         vanillaShimmerStructure = region;
+        VanillaStructureMap.AddProtectedStructure(region);
     }
     internal void SetVanillaHiveLarvaAnchors(ReadOnlySpan<WorldGenerationPoint> anchors)
     {
@@ -323,11 +324,13 @@ public sealed partial class Workspace :
     {
         if (regions.Length > 16) throw new ArgumentOutOfRangeException(nameof(regions));
         vanillaGraniteRegions = regions.ToArray();
+        foreach(var region in regions)VanillaStructureMap.AddStructure(region,8);
     }
     internal void SetVanillaMarbleRegions(ReadOnlySpan<WorldTileRegion> regions)
     {
         if (regions.Length > 32) throw new ArgumentOutOfRangeException(nameof(regions));
         vanillaMarbleRegions = regions.ToArray();
+        foreach(var region in regions)VanillaStructureMap.AddStructure(region,8);
     }
     internal void SetVanillaMushroomCenters(ReadOnlySpan<WorldGenerationPoint> centers)
     {
@@ -338,7 +341,11 @@ public sealed partial class Workspace :
     internal VanillaUndergroundDesertRegion1458? VanillaUndergroundDesertRegion => vanillaUndergroundDesertRegion;
     internal VanillaDesertGenerationState1458? VanillaDesertGenerationState => vanillaDesertGenerationState;
     internal Vanilla.BuriedChestContext1458? VanillaBuriedChestContext => vanillaBuriedChestContext;
-    internal void SetVanillaDesertGenerationState(VanillaDesertGenerationState1458 value) => vanillaDesertGenerationState = value;
+    internal void SetVanillaDesertGenerationState(VanillaDesertGenerationState1458 value)
+    {
+        vanillaDesertGenerationState = value;
+        VanillaStructureMap.AddStructure(value.StructureArea,10);
+    }
     internal void SetVanillaBuriedChestContext(Vanilla.BuriedChestContext1458 value) =>
         vanillaBuriedChestContext = value ?? throw new ArgumentNullException(nameof(value));
     internal DungeonSetupProfile1458? VanillaDungeonSetupProfile => vanillaDungeonSetupProfile;
@@ -418,8 +425,13 @@ public sealed partial class Workspace :
             }
         }
 
-        generatedChests.Add(new WorldChest(
-            checked((short)generatedChests.Count),
+        // Active records remain sorted by the source slot. A removal leaves a hole, and the next
+        // birth occupies the first hole instead of changing any surviving generation-time identity.
+        int insertion = 0;
+        while (insertion < generatedChests.Count && generatedChests[insertion].SlotId == insertion)
+            insertion++;
+        generatedChests.Insert(insertion, new WorldChest(
+            checked((short)insertion),
             x,
             y,
             name,
@@ -429,7 +441,7 @@ public sealed partial class Workspace :
 
     /// <summary>
     /// Adapts the public generator chest capability to the runtime-owned generated-object side table. The tile anchor
-    /// must already exist, so all generators share the same persistence validation and dense slot assignment.
+    /// must already exist, so all generators share the same persistence validation and first-free source slot assignment.
     /// </summary>
     public bool TryAddChest(
         int x,
@@ -503,10 +515,6 @@ public sealed partial class Workspace :
                 return false;
 
             generatedChests.RemoveAt(i);
-            // The persisted file writes occupied entries densely; subsequent runtime/network slots
-            // therefore follow their remaining file order, not the temporary generation slot hole.
-            for (int later = i; later < generatedChests.Count; later++)
-                generatedChests[later] = generatedChests[later] with { SlotId = checked((short)later) };
             return true;
         }
         return true;
@@ -545,7 +553,7 @@ public sealed partial class Workspace :
         return removed;
     }
 
-    /// <summary>Returns a detached dense chest snapshot suitable for persistence.</summary>
+    /// <summary>Returns detached active chests in source slot order without changing their slot identities.</summary>
     public WorldChest[] CaptureGeneratedChests()
     {
         var snapshot = new WorldChest[generatedChests.Count];
@@ -558,7 +566,7 @@ public sealed partial class Workspace :
     }
 
     /// <summary>
-    /// Replaces only the detached item side-table for an already registered generated chest. Geometry, dense slot
+    /// Replaces only the detached item side-table for an already registered generated chest. Geometry, source slot
     /// identity, coordinates and name remain unchanged; the same vanilla item/prefix validation used by TryAddChest
     /// is applied before the replacement becomes visible to later generation passes.
     /// </summary>

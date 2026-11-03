@@ -586,7 +586,8 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         WorldGenerationPoint shimmer = workspace.VanillaShimmerPosition ??
             throw new InvalidOperationException("Evil altars require the preceding Shimmer generation position.");
         int placed = new EvilAltarPlacement1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
-            state.RockLayer, context.CancellationToken).Generate(shimmer, context.Request.Options.Evil == WorldGenerationEvil.Crimson);
+            state.RockLayer, context.CancellationToken,
+            workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null).Generate(shimmer, context.Request.Options.Evil == WorldGenerationEvil.Crimson);
         context.ReportProgress(1d, $"Placing evil altars ({placed})");
     }
 
@@ -805,8 +806,9 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
 
                 BuildJungleShrine(grid, x, y, halfWidth, halfHeight, jungleHut, random);
                 state.JungleChestCandidates.Add(new WorldGenerationPoint(x, y));
-                protectedShrines.Add(new WorldTileRegion(
-                    x - halfWidth - 1, y - halfHeight - 1, halfWidth + 1, halfHeight + 1));
+                var reservation=new WorldTileRegion(x-halfWidth-1,y-halfHeight-1,halfWidth+1,halfHeight+1);
+                protectedShrines.Add(reservation);
+                grid.Workspace.VanillaStructureMap.AddProtectedStructure(reservation);
                 totalFailures = 0;
                 break;
             }
@@ -830,44 +832,9 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                     return false;
             }
 
-        // StructureMap.CanPlace(area, 1) first checks the unpadded rectangle bounds, then
-        // checks protected overlap and GeneralPlacementTiles over the padded rectangle.
-        // The source's area width/height are half-extent + 1, not the hut's full extent.
-        int areaX = x - halfWidth - 1;
-        int areaY = y - halfHeight - 1;
-        int areaWidth = halfWidth + 1;
-        int areaHeight = halfHeight + 1;
-        if (areaX < 0 || areaY < 0 || areaX + areaWidth > grid.Width - 1 ||
-            areaY + areaHeight > grid.Height - 1)
-            return false;
-        foreach (WorldTileRegion protectedArea in grid.Workspace.VanillaHiveProtectedAreas)
-        {
-            if (areaX - 1 < protectedArea.ExclusiveRight && protectedArea.X < areaX + areaWidth + 1 &&
-                areaY - 1 < protectedArea.ExclusiveBottom && protectedArea.Y < areaY + areaHeight + 1) return false;
-        }
-        if (grid.Workspace.VanillaShimmerStructure is { } shimmer &&
-            areaX - 1 < shimmer.ExclusiveRight && shimmer.X < areaX + areaWidth + 1 &&
-            areaY - 1 < shimmer.ExclusiveBottom && shimmer.Y < areaY + areaHeight + 1) return false;
-        foreach (WorldTileRegion protectedArea in protectedShrines)
-        {
-            if (areaX - 1 < protectedArea.ExclusiveRight && protectedArea.X < areaX + areaWidth + 1 &&
-                areaY - 1 < protectedArea.ExclusiveBottom && protectedArea.Y < areaY + areaHeight + 1)
-                return false;
-        }
-        for (int scanX = areaX - 1; scanX < areaX + areaWidth + 1; scanX++)
-            for (int scanY = areaY - 1; scanY < areaY + areaHeight + 1; scanY++)
-            {
-                WorldTile tile = grid.At(scanX, scanY);
-                if (tile.IsActive && !IsGeneralPlacementTile(tile.Type))
-                    return false;
-            }
-        return true;
+        return grid.Workspace.VanillaStructureMap.CanPlace(new(x-halfWidth-1,y-halfHeight-1,halfWidth+1,halfHeight+1),1);
     }
 
-    // TerrariaServer 1.4.5.8 TileID.Sets.GeneralPlacementTiles exclusion set.
-    private static bool IsGeneralPlacementTile(ushort type) => type is not (
-        225 or 41 or 481 or 43 or 482 or 44 or 483 or 226 or 203 or 112 or 25 or 70 or 151 or 21 or 31 or
-        696 or 467 or 12 or 665 or 639 or 138 or 664 or 711 or 712 or 713 or 714 or 715 or 716);
 
     private static void BuildJungleShrine(RuntimeGrid grid, int x, int y, int halfWidth, int halfHeight, ushort hut, IWorldGenerationVanillaRandom random)
     {

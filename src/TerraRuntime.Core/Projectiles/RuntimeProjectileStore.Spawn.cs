@@ -44,7 +44,8 @@ public sealed partial class RuntimeProjectileStore
     public bool TrySpawnVanilla(
         in ProjectileStateUpdate update,
         int? timeLeftOverride,
-        out ProjectileSnapshot snapshot)
+        out ProjectileSnapshot snapshot,
+        bool sourceNetUpdate = false)
     {
         if (timeLeftOverride is <= 0 ||
             !IsValidState(in update) ||
@@ -54,6 +55,7 @@ public sealed partial class RuntimeProjectileStore
             return false;
         }
 
+        lifecycle = lifecycle with { SourceNetUpdate = sourceNetUpdate };
         if (timeLeftOverride is int sourceTimeLeft)
             lifecycle = lifecycle with { TimeLeft = sourceTimeLeft };
 

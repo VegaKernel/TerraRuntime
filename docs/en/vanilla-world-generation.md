@@ -4,19 +4,41 @@
 
 `terraruntime:vanilla` is TerraRuntime's runtime-owned clean-room TerrariaServer 1.4.5.8 generator. The public generator ID is stable while the runtime owns the exact generation plan behind it.
 
-## Continuous ordinary prefix through native pass 76
+Generation town placement can supply an optional `directionX` to `IWorldGenerationEntityEffects1458.MoveTownNpc`. Omitting it preserves the canonical NPC direction. The native Guide pass explicitly requests right-facing after allocating the NPC and resolving its identity; generic NPC birth keeps its original default. The existing NPC owner applies position, home and direction together.
+
+Generation WaterCheck delegates Glow Tulip (`656`) destruction to the existing generation framer. This admission applies only during generation with that owner present; loading and live liquid object support retain their existing contract.
+
+The cold projectile adapter uses the existing `RuntimeProjectileStore`: birth assigns `Damage`, while `OriginalDamage` remains zero after source defaults; later changes belong to the calling owner. Optional `sourceNetUpdate` retains the caller's synchronization request in `ProjectileLifecycleState.SourceNetUpdate` at birth. This describes the cold generation phase and does not itself publish a network event or hand the projectile to live simulation.
+
+Micro Biomes `98` also has a separate detached qualification for nine configured basic special profiles, numeric seeds `1458`/`42`, Classic Corruption at $4200\times1200$ tiles. These tests explicitly import original `97` checkpoints and compare the actual Execute caller, whole tiles/RNG, ordered chests/maps, phase flags and declared entity effects. They do not prove continuous special generation or equivalence to canonical named seed texts. The shared special buried-chest extension admits the forced Ivy family only; other special chest families retain an explicit refusal before mutation/RNG. That refusal is a runtime support boundary, not original vanilla behavior. The early production special prefix still stops after `19`.
+
+The shared generation dust decision reads the destroyed tile’s `FrameX`: crimson altar/orb bands select fixed dust and consume no appearance RNG. All five generation callers pass that frame context. Actual dungeon cracked-brick destruction delegates to the same framer and canonical projectile store, retaining original `736`–`738` birth order and lifecycle fields. Dedicated generation uses an explicit server context; client context skips that producer. Particle rendering and particle simulation are omitted. These cold births do not establish live AI10 support.
+
+Living-tree passage furniture uses the existing placement-anchor cleanup and canonical framing for successful and failed door, chair and loom offers. Failed offers can change inactive tile metadata without spending RNG; the original prologue and framing tail are preserved.
+
+## Continuous ordinary generation through Final Cleanup
+
+Ordinary Classic Corruption and Crimson worlds at $4200\times1200$ tiles, seeds `1458` and `42`, execute from fresh Reset through native `106`, Final Cleanup, without importing original checkpoints. Independent original captures compare every cell's 21 canonical fields, complete physical RNG at the observed native boundaries, both ordered StructureMap lists, sparse source chest slots with all 40 items, generation solidity, liquid queues and flags, shared loot counters, encoded NPC/extra-spawn sections, declared physical NPC/projectile state and the final Angler quest. Crimson observes every native boundary; Corruption combines the preceding prefix qualifications with the complete execution's final nine observed boundaries. Native passes reseed their RNG as the original does; this is not a claim of one uninterrupted RNG stream.
+
+The same canonical owners retain Dungeon first-key/rune decisions, the Micro Biomes caller's current generation layers, Guide facing after identity resolution and the final Shimmer solidity phase. Track construction, its retained height between both waves, structure protection, furniture framing and suppressed drop-argument RNG follow independently captured source behavior. The [combined managed qualification](../verification/worldgen-continuous106-managed-20261103.json) records the release gates and exact boundaries; an incomplete receipt is not release acceptance. NativeAOT remains user-deferred.
+
+Complete vanilla generation remains open. Medium/large worlds pass structural execution checks but their original-reference parity is still under investigation. Special stages after their qualified prefix, extra styles/combinations, other game-mode/evil cross-products, all retained source fields and full original save/load parity are not established by this checkpoint. The separate metadata audit compares 96 selected scalar/active-prefix GenVars facts at final boundaries; inactive array tails and a complete original memory image are outside that projection.
+
+## Earlier checkpoint through native pass 76
 
 Reset through native pass `76` is independently qualified for ordinary Classic Corruption, seeds `1458` and `42`, at $4200\times1200$ tiles. The executor imports no original checkpoint. It compares every cell's 21 canonical fields, the complete physical RNG and report draw, 175/171 ordered chests with all 40 items, 99/94 protected rectangles, three sky houses, and nine checkpoints of all 754 generation solidity values. This covers the existing prefix plus underground trees, floating houses, Quick Cleanup, pots, hellforges and the following surface passes. It does not establish complete-world equality or every retained GenVars field.
 
 Cold generation effects use the existing canonical NPC, projectile and tile-entity owners. Source-backed continuations include larva, tombstone and hive effects; town allocation before identity draws; held-item clearing and six further tile-entity footprints; cold logic-sensor pulses through the existing wiring circuit; and the existing furniture owner's derived pylon index. Arbitrary live leashes, unsupported circuit devices, nondefault island-house styles and grass tree conversion remain separate boundaries.
 
-All 37 original extra seed aliases now have qualified Reset/Terrain prefixes, including rain and dual-dungeon state and two rain/lightning combinations. Unsupported combinations refuse at Reset before mutation. These prefix qualifications do not admit their later special-world generation pipelines.
+The basic Drunk, Not the Bees, For the Worthy, Anniversary, Constant, No Traps, Remix, Everything and Skyblock profiles now execute the source-backed early prefix through native `19`, Mud Caves To Grass, on all three canonical sizes. Together with the ordinary control, their original seed texts give 30 independently repeated contexts and 570 boundaries checking all canonical tile fields, full physical RNG, all 754 generation solidity values and the declared retained metadata. Skyblock uses the original two-island placement, furniture, landmass and spawn lifecycle. Special native `20` and later refuse before unqualified execution. Extra island styles, other evil/game-mode combinations and full special pipelines remain open.
+
+All 37 original extra seed aliases retain their separately qualified Reset/Terrain prefixes, including rain and dual-dungeon state and two rain/lightning combinations. Unsupported combinations refuse at Reset before mutation. Those alias prefixes do not admit later special-world stages.
 
 Flowers now passes the canonical workspace into every plant-framing path. Filled and empty containers follow the original destruction order; their metadata remains available to later generation callbacks. Only explicit fresh vanilla finalization applies the actual SaveChests predicate: four active cells whose identities belong to the five source container identities. Invalid records are excluded at that late boundary without rewriting tiles. The matching source save/load evidence admits valid-atlas unregistered remnants of `21/467`; surviving records still require complete anchors and footprints. Other validation modes keep their existing contract. The older non-container Flowers destruction frontier remains explicit.
 
 The [combined managed acceptance](../verification/worldgen-continuous76-managed-20261103.json) records the final qualification and its limits. Detached native liquid `50/99` and final `105→106` checkpoint evidence remains separate from continuous-prefix evidence. NativeAOT remains deferred by the user's managed-only instruction.
 
-## Continuous ordinary prefix through spider caves
+## Earlier checkpoint through spider caves
 
 The source-backed ordinary executor is independently qualified from Reset through native pass `64` (Spider Caves) for Classic Corruption, seeds `1458` and `42`, at $4200\times1200\,\text{tiles}$. These runs import no original tiles, random state or metadata. They compare every cell's canonical 21 fields, all 56 physical RNG slots and the report draw, ordered chest contents and protected rectangles, and all 754 generation solidity entries. The two worlds retain 168/164 chests and 99/94 protected rectangles respectively. This projection does not establish whole `.wld` byte identity.
 
@@ -24,7 +46,7 @@ Mutable generation solidity belongs to the candidate workspace. Framing reads th
 
 Wet bee hive `444` destruction follows the original footprint and ordered halo framing without creating a projectile. Unsupported dry destruction still requires its projectile owner and refuses before mutation. Generation KillTile also retains the verified Hellstone `58` lava rule strictly below the underworld boundary.
 
-Native pass `99` is independently checked from actual original incoming checkpoints for the same two seeds, including vine framing, liquid skip flags, wet/stuck counters and queue state. That evidence does not establish a continuous prefix through `99`. Later passes, other world sizes, complete special-seed pipelines and entity-effect integration remain open. The [managed acceptance record](../verification/worldgen-continuous64-managed-20261103.json) records the final combined qualification; NativeAOT remains deferred by explicit user request.
+The earlier native `99` evidence uses actual original incoming checkpoints and covers vine framing, liquid skip flags, wet/stuck counters and queue state. That detached evidence alone did not establish continuous generation through `99`; the current continuous scope is stated above. The [earlier managed acceptance](../verification/worldgen-continuous64-managed-20261103.json) records the pass64 checkpoint. NativeAOT remains user-deferred.
 
 ## Ordinary canonical pipeline
 
@@ -77,7 +99,7 @@ The full source-backed chain is selected only when both conditions are true:
 - the seed profile is ordinary/default;
 - the world dimensions are one of Terraria's canonical sizes.
 
-Noncanonical synthetic dimensions deliberately replay the compatibility provider. Special and secret profiles do too, with one narrow source-backed exception: a pure `Don't Dig Up`/Remix profile on a canonical size executes the verified `Reset` and `Terrain` branches, then returns to the compatibility passes. It does not activate the ordinary source-shaped overlays or canonical structural checks. Zenith, combined special switches and every secret switch remain compatibility-only because their later pass mutations have not been ported.
+Noncanonical synthetic dimensions replay the compatibility provider. Canonical basic special profiles execute the qualified prefix through native `19` and refuse at the next unqualified stage. Extra aliases/combinations retain their separately qualified Reset/Terrain boundary; unadmitted combinations refuse before mutation. These prefixes do not establish a complete special-world pipeline.
 
 The production registration in `BuiltInWorldGeneratorSource` resolves `terraruntime:vanilla` to `SourceBackedFinal1458`. The older overlay classes remain implementation layers in the chain, not alternative public generators.
 
@@ -118,7 +140,7 @@ The first milestone is implemented by the final overlay. The second remains an e
 - generates a full `4200x1200` ordinary canonical world via `BuiltInWorldGeneratorSource`/`SourceBackedFinal1458` (114-plan through `Final Cleanup`);
 - verifies plan length and that every tile/wall id, shape and flag is within `VanillaTileIds`/`VanillaWallIds`/known-flag bounds – the same invariant enforced by `Final Cleanup`;
 - checks that generated chests form dense `2x2` `Containers` objects with unique anchors, that the side-table survives fresh `.wld` v326 composition and that spawn/dungeon/layers/bootstrap are within canonical ranges;
-- asserts that the starting `Guide` town NPC (`netId 22`, name `Andrew`) is emitted exactly once at `spawn * 16` and round-trips through `WorldFileFreshComposer326`;
+- checks that the starting `Guide` town NPC (`netId 22`) is emitted once with source-backed placement and identity and round-trips through `WorldFileFreshComposer326`;
 - composes the candidate to a validated `.wld` byte image ( >1 MiB for small worlds ), reloads it through `WorldFileLoader` with `ServerWorldLoadPolicy.CreateLimits()` and confirms chest/NPC counts are preserved;
 - proves deterministic replay: the same `WorldGenerationRequest` (seed `8675309`, `640x240` smoke size) hashed with SHA-256 yields byte-identical `.wld` images and that a different seed yields a different hash;
 - exercises budget and cancellation hardening: a `8000x5000` request is rejected as `GenerationBudgetExceeded`, a pre-cancelled `CancellationToken` yields `Cancelled`, and non-canonical `192x128`/`640x240` fallbacks remain valid and composable.

@@ -988,6 +988,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId PoopBlock = new(666);
     public static readonly TileTypeId StinkbugHousingBlocker = new(630);
     public static readonly TileTypeId StinkbugHousingBlockerEcho = new(631);
+    public static readonly TileTypeId GlowTulip = new(656);
     public static readonly TileTypeId ShimmerBlock = new(659);
     public static readonly TileTypeId AncientBlueBrick = new(677);
     public static readonly TileTypeId AncientGreenBrick = new(678);

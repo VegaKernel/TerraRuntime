@@ -21,15 +21,23 @@ public sealed class DungeonChestLoot1458Tests
     {
         string[] fields = first.Split('|');
         var random = new RandomAdapter(Int(fields[5]));
-        var loot = new DungeonChestLoot1458(random, Bootstrap());
+        var bootstrap = Bootstrap();
+        var context = new BuriedChestContext1458
+        {
+            Height = 1200, WorldSurface = 200, RockLayer = 500, LavaLine = 900,
+            CopperBar = bootstrap.CopperBar, IronBar = bootstrap.IronBar,
+            SilverBar = bootstrap.SilverBar, GoldBar = bootstrap.GoldBar,
+            TungstenIsSilverTier = false, DesertHiveLow = 0, DesertHiveHigh = 0, HellChestItem = []
+        };
+        var loot = new DungeonChestLoot1458(random, bootstrap, context);
         foreach (string row in new[] { first, second })
         {
             fields = row.Split('|');
             var items = loot.Build(Int(fields[1]), (ushort)Int(fields[2]), Int(fields[3]), Int(fields[4]), 200, 500, 1200, true);
             Assert.Equal(fields[7], string.Join(';', items.Select(v => $"{v.ItemType.Value},{v.Stack},{v.Prefix.Value}")));
             Assert.Equal(Int(fields[8]), random.Next());
-            Assert.Equal(bool.Parse(fields[9]), loot.GeneratedShadowKey);
-            Assert.Equal(bool.Parse(fields[10]), loot.GeneratedRamRune);
+            Assert.Equal(bool.Parse(fields[9]), context.GeneratedShadowKey);
+            Assert.Equal(bool.Parse(fields[10]), context.GeneratedRamRune);
         }
     }
 

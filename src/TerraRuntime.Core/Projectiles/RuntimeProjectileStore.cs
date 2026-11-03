@@ -53,6 +53,9 @@ public readonly record struct ProjectileLifecycleState(
     bool NetImportant,
     ProjectileLiquidState Liquid = default)
 {
+    /// <summary>Source NewProjectile caller requested an immediate update in the cold generation phase.</summary>
+    public bool SourceNetUpdate { get; init; }
+
     public bool IsInitialized => TimeLeft > 0;
 
     /// <summary>Projectile.oldVelocity captured at the source-equivalent update boundary.</summary>

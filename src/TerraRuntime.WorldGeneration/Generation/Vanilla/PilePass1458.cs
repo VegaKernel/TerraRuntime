@@ -34,7 +34,7 @@ internal sealed class PilePass1458(
     double worldSurface,
     double rockLayer,
     int beachDistance,
-    CancellationToken cancellation)
+    CancellationToken cancellation, Workspace? workspace = null)
 {
     private const ushort LargePiles = 186;
     private const ushort LargePiles2 = 187;
@@ -56,6 +56,8 @@ internal sealed class PilePass1458(
 
     public void Apply()
     {
+        if (workspace is { HasVanillaGenerationSolidity: true })
+            foreach (ushort type in NotSolid) workspace.SetVanillaGenerationSolid(new TileTypeId(type), false);
         LargeOnGround();
         LargeInUnderworld();
         LargeOnSurface();
@@ -63,6 +65,14 @@ internal sealed class PilePass1458(
         SmallEverywhere();
         SmallOnSurface();
         SmallBehindDirtWalls();
+        if (workspace is { HasVanillaGenerationSolidity: true })
+        {
+            foreach (ushort type in new ushort[] { 190, 192, 196, 189, 717, 718, 719, 202, 225, 460, 379 })
+                workspace.SetVanillaGenerationSolid(new TileTypeId(type), true);
+            // SetBoulderSolidity owns these nine IDs; the broader Boulders set also contains665.
+            for (ushort type = 0; type < VanillaTileIds.Count; type++)
+                if (type is 138 or 484 or 664 or 711 or 712 or 713 or 714 or 715 or 716) workspace.SetVanillaGenerationSolid(new TileTypeId(type), true);
+        }
     }
 
     /// <summary>
@@ -634,7 +644,7 @@ internal sealed class PilePass1458(
         if (!Contains(x, y))
             return;
 
-        if (GenerationDecorationPlacement1458.TryPlaceTile3x2(store, random, x, y, type, style, NotSolid))
+        if (GenerationDecorationPlacement1458.TryPlaceTile3x2(store, random, x, y, type, style, workspace is { HasVanillaGenerationSolidity: true } ? null : NotSolid, workspace))
             Placed++;
     }
 
@@ -643,7 +653,7 @@ internal sealed class PilePass1458(
         if (!Contains(x, y))
             return false;
 
-        bool placed = GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, style, size, NotSolid);
+        bool placed = GenerationDecorationPlacement1458.TryPlaceSmallPile(store, x, y, style, size, workspace is { HasVanillaGenerationSolidity: true } ? null : NotSolid, workspace);
         if (placed)
             Placed++;
         return placed;

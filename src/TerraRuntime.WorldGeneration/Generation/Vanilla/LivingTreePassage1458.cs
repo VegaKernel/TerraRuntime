@@ -53,6 +53,8 @@ internal sealed class LivingTreePassage1458(
 
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
+    private readonly GenerationTileFraming1458 framing = new(store, random, workspace,
+        useWorldGenerationSolidity: workspace?.HasVanillaGenerationSolidity == true);
 
 
     /// <summary>Source <c>GrowLivingTree_MakePassage</c>.</summary>
@@ -708,86 +710,145 @@ internal sealed class LivingTreePassage1458(
     /// <summary>Source <c>PlaceTile</c> plus <c>PlaceDoor</c>, whose three frame draws happen only on success.</summary>
     private void PlaceDoor(int x, int y, int style)
     {
-        if (!Contains(x, y - 3) || !Contains(x, y + 3))
-            return;
-
-        int anchor;
-        if (!IsActive(x, y - 1) && !IsActive(x, y - 2) && IsSolid(x, y - 3))
-            anchor = y - 1;
-        else if (!IsActive(x, y + 1) && !IsActive(x, y + 2) && IsSolid(x, y + 3))
-            anchor = y + 1;
-        else
-            return;
-
-        if (!Contains(x, anchor - 2) || !Contains(x, anchor + 2))
-            return;
-        if (!IsActive(x, anchor - 2) || At(x, anchor - 2).IsActuated ||
-            !VanillaTileCollisionCatalog.IsSolid(At(x, anchor - 2).TileType) || !IsSolid(x, anchor + 2))
+        if (!Contains(x, y)) return;
+        ref WorldTile placement = ref At(x, y);
+        if (placement.IsActive && placement.Type == 488) return;
+        if (placement.IsActive && framing.GenerationSolid(Door)) return;
+        if (!placement.IsActive)
+            HellFortGenerator1458.ClearPlacementAnchor(ref placement);
+        else if (!VanillaWorldFrameImportance326.IsFrameImportant(placement.Type))
         {
-            return;
+            placement.TrySetSourceShape(false, placement.SourceSlope);
+            placement.FrameX = 0;
+            placement.FrameY = 0;
         }
+        if (!Contains(x, y - 3) || !Contains(x, y + 3)) return;
+        int middle;
+        if (!IsActive(x, y - 1) && !IsActive(x, y - 2) && IsActive(x, y - 3) && framing.GenerationSolid(At(x, y - 3).Type))
+            middle = y - 1;
+        else if (!IsActive(x, y + 1) && !IsActive(x, y + 2) && IsActive(x, y + 3) && framing.GenerationSolid(At(x, y + 3).Type))
+            middle = y + 1;
+        else return;
 
-        int frameBase = 54 * (style / 36);
-        int frameRow = 54 * (style % 36);
-        for (int offset = -1; offset <= 1; offset++)
+        WorldTile above = At(x, middle - 2);
+        if (above.IsActive && !above.IsActuated && framing.GenerationSolid(above.Type) && IsSolid(x, middle + 2))
         {
-            ref WorldTile cell = ref At(x, anchor + offset);
-            cell.Flags |= WorldTileFlags.Active;
-            cell.Type = Door;
-            cell.FrameY = checked((short)(frameRow + (offset + 1) * 18));
-            cell.FrameX = checked((short)(frameBase + random.Next(3) * 18));
+            int frameBase = 54 * (style / 36), frameRow = 54 * (style % 36);
+            for (int offset = -1; offset <= 1; offset++)
+            {
+                ref WorldTile cell = ref At(x, middle + offset);
+                cell.Flags |= WorldTileFlags.Active;
+                cell.Type = Door;
+                cell.FrameY = checked((short)(frameRow + (offset + 1) * 18));
+                cell.FrameX = checked((short)(frameBase + random.Next(3) * 18));
+            }
         }
+        framing.SquareTileFrame(x, y);
+        if (At(x, y).IsActive)
+            {
+                if (At(x, y).Type is 54 or 328 or 459 or 748)
+                    new GenerationWallFraming1458(store, random).SquareWallFrame(x, y);
+                framing.SquareTileFrame(x, y);
+            }
     }
 
     /// <summary>Source <c>Place1x2</c> for a chair, whose style stride is forty pixels rather than thirty-six.</summary>
     private void PlaceChair(int x, int y, int style)
     {
-        if (!Contains(x, y - 1) || !Contains(x, y + 1))
-            return;
-        if (!IsFlatSolidFloor(x, y + 1) || IsActive(x, y - 1))
-            return;
-
-        short frameY = checked((short)(style * 40));
-        for (int offset = -1; offset <= 0; offset++)
+        if (!Contains(x, y)) return;
+        ref WorldTile placement = ref At(x, y);
+        if (placement.IsActive && placement.Type == 488) return;
+        if (!placement.IsActive)
+            HellFortGenerator1458.ClearPlacementAnchor(ref placement);
+        else if (!VanillaWorldFrameImportance326.IsFrameImportant(placement.Type))
         {
-            ref WorldTile cell = ref At(x, y + offset);
-            cell.Flags |= WorldTileFlags.Active;
-            cell.FrameY = checked((short)(frameY + (offset + 1) * 18));
-            cell.FrameX = 0;
-            cell.Type = Chair;
+            placement.TrySetSourceShape(false, placement.SourceSlope);
+            placement.FrameX = 0;
+            placement.FrameY = 0;
+        }
+        try
+        {
+            if (!Contains(x, y - 1) || !Contains(x, y + 1))
+                return;
+            if (!IsFlatSolidFloor(x, y + 1) || IsActive(x, y - 1))
+                return;
+
+            short frameY = checked((short)(style * 40));
+            for (int offset = -1; offset <= 0; offset++)
+            {
+                ref WorldTile cell = ref At(x, y + offset);
+                cell.Flags |= WorldTileFlags.Active;
+                cell.FrameY = checked((short)(frameY + (offset + 1) * 18));
+                cell.FrameX = 0;
+                cell.Type = Chair;
+            }
+        }
+        finally
+        {
+            framing.SquareTileFrame(x, y);
+            if (At(x, y).IsActive)
+            {
+                if (At(x, y).Type is 54 or 328 or 459 or 748)
+                    new GenerationWallFraming1458(store, random).SquareWallFrame(x, y);
+                framing.SquareTileFrame(x, y);
+            }
         }
     }
 
     /// <summary>Source <c>Place3x3</c> for the Living Loom, which hangs its three rows ABOVE the anchor.</summary>
     private void PlaceLoom(int x, int y)
     {
-        if (!Contains(x - 1, y - 2) || !Contains(x + 1, y + 1))
-            return;
-
-        for (int column = x - 1; column < x + 2; column++)
+        if (!Contains(x, y)) return;
+        ref WorldTile placement = ref At(x, y);
+        if (placement.IsActive && placement.Type == 488) return;
+        if (!placement.IsActive)
+            HellFortGenerator1458.ClearPlacementAnchor(ref placement);
+        else if (!VanillaWorldFrameImportance326.IsFrameImportant(placement.Type))
         {
-            for (int row = y - 2; row < y + 1; row++)
+            placement.TrySetSourceShape(false, placement.SourceSlope);
+            placement.FrameX = 0;
+            placement.FrameY = 0;
+        }
+        try
+        {
+            if (!Contains(x - 1, y - 2) || !Contains(x + 1, y + 1))
+                return;
+
+            for (int column = x - 1; column < x + 2; column++)
             {
-                if (IsActive(column, row))
+                for (int row = y - 2; row < y + 1; row++)
+                {
+                    if (IsActive(column, row))
+                        return;
+                }
+            }
+
+            for (int column = x - 1; column < x + 2; column++)
+            {
+                if (!IsFlatSolidFloor(column, y + 1))
                     return;
             }
-        }
 
-        for (int column = x - 1; column < x + 2; column++)
-        {
-            if (!IsFlatSolidFloor(column, y + 1))
-                return;
-        }
-
-        for (int dx = 0; dx < 3; dx++)
-        {
-            for (int dy = 0; dy < 3; dy++)
+            for (int dx = 0; dx < 3; dx++)
             {
-                ref WorldTile cell = ref At(x - 1 + dx, y - 2 + dy);
-                cell.Flags |= WorldTileFlags.Active;
-                cell.FrameY = checked((short)(dy * 18));
-                cell.FrameX = checked((short)(dx * 18));
-                cell.Type = LivingLoom;
+                for (int dy = 0; dy < 3; dy++)
+                {
+                    ref WorldTile cell = ref At(x - 1 + dx, y - 2 + dy);
+                    cell.Flags |= WorldTileFlags.Active;
+                    cell.FrameY = checked((short)(dy * 18));
+                    cell.FrameX = checked((short)(dx * 18));
+                    cell.Type = LivingLoom;
+                }
+            }
+        }
+        finally
+        {
+            framing.SquareTileFrame(x, y);
+            if (At(x, y).IsActive)
+            {
+                if (At(x, y).Type is 54 or 328 or 459 or 748)
+                    new GenerationWallFraming1458(store, random).SquareWallFrame(x, y);
+                framing.SquareTileFrame(x, y);
             }
         }
     }
@@ -818,8 +879,9 @@ internal sealed class LivingTreePassage1458(
             return true;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType);
+        return tile.IsActive && !tile.IsActuated && !tile.IsHalfBrick &&
+            framing.GenerationSolid(tile.Type) &&
+            (tile.SourceSlope == 0 || VanillaTileIds.IsPlatform(tile.TileType) && tile.SourceSlope is 1 or 2);
     }
 
     private bool IsSolid(int x, int y)
@@ -828,7 +890,8 @@ internal sealed class LivingTreePassage1458(
             return true;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && framing.GenerationSolid(tile.Type) &&
+            !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) &&
             !tile.IsActuated && tile.Shape < 2 && tile.Shape != 1;
     }
 

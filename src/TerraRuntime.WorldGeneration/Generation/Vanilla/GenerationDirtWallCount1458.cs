@@ -27,7 +27,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// set, not of the path taken to it.
 /// </para>
 /// </remarks>
-internal sealed class GenerationDirtWallCount1458(WorldTileStore store)
+internal sealed class GenerationDirtWallCount1458(WorldTileStore store, Workspace? workspace = null)
 {
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
@@ -91,7 +91,9 @@ internal sealed class GenerationDirtWallCount1458(WorldTileStore store)
     private bool SolidTile(int x, int y)
     {
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && (workspace?.HasVanillaGenerationSolidity == true
+                ? workspace.IsVanillaGenerationSolid(tile.TileType)
+                : VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && tile.Shape == 0 && !tile.IsActuated;
     }
 

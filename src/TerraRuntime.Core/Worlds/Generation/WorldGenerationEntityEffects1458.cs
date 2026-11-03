@@ -9,9 +9,9 @@ public sealed class WorldGenerationEntityEffects1458(RuntimeNpcStore npcs,Runtim
  public int CountNpcs(NpcTypeId type){int count=0;for(int i=0;i<Math.Min(200,npcs.Capacity);i++)if(npcs.TryGetActive((byte)i,out var npc)&&npc.Type==type.Value)count++;return count;}
  public bool RetainTownNpc(NpcTypeId type,float x,float y,bool homeless,int homeX,int homeY,out NpcHandle handle){if(!npcs.TryRetainGenerationTownNpc(type,x,y,homeless,homeX,homeY,sourceServer,out var npc)){handle=default;return false;}handle=npc.Handle;return true;}
  public bool TryCaptureNpc(byte slot,out NpcSnapshot snapshot){snapshot=default;return slot<200&&npcs.TryGetActive(slot,out snapshot);}
- public void MoveTownNpc(NpcHandle handle,float x,float y,bool homeless,int homeX,int homeY){
+ public void MoveTownNpc(NpcHandle handle,float x,float y,bool homeless,int homeX,int homeY,int? directionX=null){
   if(!npcs.TryGet(handle,out var before))throw new InvalidOperationException("Lost cold town occupation.");
-  var update=new NpcStateUpdate(before.Type,before.NetId,x,y,before.VelocityX,before.VelocityY,before.Target,before.Ai,before.Simulation with{Homeless=homeless,HomeTileX=homeX,HomeTileY=homeY});
+  var update=new NpcStateUpdate(before.Type,before.NetId,x,y,before.VelocityX,before.VelocityY,before.Target,before.Ai,before.Simulation with{DirectionX=directionX??before.Simulation.DirectionX,Homeless=homeless,HomeTileX=homeX,HomeTileY=homeY});
   if(!npcs.TryUpdateUnpublished(handle,in update,out _))throw new InvalidOperationException("Cold town movement refused.");
  }
  public void SpawnColdBoss(NpcTypeId type,NpcAiState ai,IWorldGenerationVanillaRandom random,int width,int height,Func<int,int,VanillaBossSpawnTile1458> readTile,bool skyblockLowTiles){
@@ -35,9 +35,9 @@ public sealed class WorldGenerationEntityEffects1458(RuntimeNpcStore npcs,Runtim
   var update=new NpcStateUpdate(before.Type,before.NetId,before.PositionX,before.PositionY,velocityX,velocityY,before.Target,before.Ai,before.Simulation with{TimeLeft=checked(before.Simulation.TimeLeft*lifetimeMultiplier)}){RequiresImmediateSync=sourceNetUpdate};
   if(!npcs.TryUpdateUnpublished(handle,in update,out _))throw new InvalidOperationException("Cold NPC finish refused.");
  }
- public void SpawnProjectile(ProjectileTypeId type,byte owner,float topLeftX,float topLeftY,float velocityX,float velocityY,short damage,float knockBack,ProjectileAiState ai){
-  var update=new ProjectileStateUpdate(type,owner,topLeftX,topLeftY,velocityX,velocityY,ai,0,damage,knockBack,damage);
-  if(!projectiles.TrySpawnVanilla(in update,out _))throw new InvalidOperationException("Cold projectile birth refused.");
+ public void SpawnProjectile(ProjectileTypeId type,byte owner,float topLeftX,float topLeftY,float velocityX,float velocityY,short damage,float knockBack,ProjectileAiState ai,bool sourceNetUpdate=false){
+  var update=new ProjectileStateUpdate(type,owner,topLeftX,topLeftY,velocityX,velocityY,ai,0,damage,knockBack,0);
+  if(!projectiles.TrySpawnVanilla(in update,timeLeftOverride:null,out _,sourceNetUpdate))throw new InvalidOperationException("Cold projectile birth refused.");
  }
  private sealed class SharedRandom(IWorldGenerationVanillaRandom random):IVanillaNpcRandom {public int NextInt32(int min,int max)=>random.Next(min,max);public double NextDouble()=>random.NextDouble();}
 }

@@ -38,8 +38,10 @@ internal static class GenerationPlantPlacement1458
         int x,
         int y,
         double worldSurface,
-        double rockLayer)
+        double rockLayer,
+        GenerationTileFraming1458? framing = null)
     {
+        PrepareTarget(store, x, y);
         int height = store.Dimensions.HeightTiles;
         if (y + 1 >= height)
             return;
@@ -57,20 +59,24 @@ internal static class GenerationPlantPlacement1458
         ref WorldTile tile = ref At(store, x, y);
         if (random.Next(16) == 0 && y > worldSurface && !onLihzahrd)
         {
-            // The source frames the thorn through SquareTileFrame, which leaves a generated bush at 0/0.
+            // The thorn branch frames immediately, then the PlaceTile epilogue frames the square again.
             Activate(ref tile, JungleThorns, 0);
+            framing?.SquareTileFrame(x, y);
+            framing?.SquareTileFrame(x, y);
             return;
         }
 
         if (random.Next(60) == 0 && belowRockLayer)
         {
             Activate(ref tile, JunglePlants, 144);
+            framing?.SquareTileFrame(x, y);
             return;
         }
 
         if (random.Next(230) == 0 && belowRockLayer)
         {
             Activate(ref tile, JunglePlants, 162);
+            framing?.SquareTileFrame(x, y);
             return;
         }
 
@@ -80,10 +86,12 @@ internal static class GenerationPlantPlacement1458
                 ? (short)(random.Next(2) * 18 + 108)
                 : (short)(random.Next(13) * 18 + 180);
             Activate(ref tile, JunglePlants, frame);
+            framing?.SquareTileFrame(x, y);
             return;
         }
 
         Activate(ref tile, JunglePlants, (short)(random.Next(6) * 18));
+        framing?.SquareTileFrame(x, y);
     }
 
     /// <summary>
@@ -97,8 +105,10 @@ internal static class GenerationPlantPlacement1458
         int x,
         int y,
         double worldSurface,
-        CancellationToken cancellation)
+        CancellationToken cancellation,
+        GenerationTileFraming1458? framing = null)
     {
+        PrepareTarget(store, x, y);
         int height = store.Dimensions.HeightTiles;
         if (y + 1 >= height)
             return;
@@ -109,7 +119,7 @@ internal static class GenerationPlantPlacement1458
 
         VanillaCatTailAnchor1458? anchor = null;
         if (y > worldSurface)
-            anchor = CatTail1458.TryPlace(store, random, x, y);
+            anchor = CatTail1458.TryPlace(store, random, x, y, framing);
 
         if (anchor is VanillaCatTailAnchor1458 placed)
         {
@@ -119,13 +129,16 @@ internal static class GenerationPlantPlacement1458
             for (int i = 0; i < growths; i++)
             {
                 cancellation.ThrowIfCancellationRequested();
-                CatTail1458.Grow(store, random, placed.X, placed.Y);
+                CatTail1458.Grow(store, random, placed.X, placed.Y, framing);
             }
 
+            framing?.SquareTileFrame(placed.X, placed.Y);
+            framing?.SquareTileFrame(x, y);
             return;
         }
 
         Activate(ref At(store, x, y), MushroomPlants, (short)(random.Next(5) * 18));
+        framing?.SquareTileFrame(x, y);
     }
 
     /// <summary>
@@ -164,12 +177,25 @@ internal static class GenerationPlantPlacement1458
     /// slope/half-brick shape all go to zero before the new tile is written. A generated plant therefore never
     /// inherits paint or shape from whatever the cell held before.
     /// </summary>
+    private static void PrepareTarget(WorldTileStore store, int x, int y)
+    {
+        ref WorldTile tile = ref At(store, x, y);
+        if (tile.IsActive)
+            return;
+        tile.Type = 0;
+        tile.FrameX = 0;
+        tile.FrameY = 0;
+        tile.TrySetSourceShape(false, 0);
+        tile.TileColor = 0;
+        tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+    }
+
     private static void Activate(ref WorldTile tile, ushort type, short frameX)
     {
         tile.Type = type;
         tile.FrameX = frameX;
         tile.FrameY = 0;
-        tile.Shape = 0;
+        tile.TrySetSourceShape(false, 0);
         tile.TileColor = 0;
         tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         tile.Flags |= WorldTileFlags.Active;

@@ -5,7 +5,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Ordinary DungeonGlobalTraps and the dart-trap branch of WorldGen.placeTrap (1.4.5.8).</summary>
 internal sealed class DungeonTraps1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    WorldGenerationPoint shimmer, CancellationToken cancellationToken)
+    WorldGenerationPoint shimmer, CancellationToken cancellationToken, Workspace? workspace = null)
 {
     private int Width => tiles.Dimensions.WidthTiles;
     private int Height => tiles.Dimensions.HeightTiles;
@@ -112,37 +112,10 @@ internal sealed class DungeonTraps1458(WorldTileStore tiles, IWorldGenerationVan
 
     private void KillCracked(int x, int y)
     {
-        // An explicit DFS preserves source recursive order without putting a connected cracked floor
-        // on the process call stack. Each child is deactivated before visiting another child.
-        var pending = new List<(int X, int Y, int Neighbor)> { (x, y, 0) };
-        ReadOnlySpan<(int X, int Y)> offsets = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)];
-        var framing = new DungeonObjectPlacement1458(tiles, random);
-        while (pending.Count > 0)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var step = pending[^1];
-            if (step.Neighbor < offsets.Length)
-            {
-                pending[^1] = (step.X, step.Y, step.Neighbor + 1);
-                int tx = step.X + offsets[step.Neighbor].X, ty = step.Y + offsets[step.Neighbor].Y;
-                WorldTile neighbor = At(tx, ty);
-                // The draw precedes the TYPE check, but follows active(), even for an ordinary brick.
-                if (neighbor.IsActive && random.Next(step.Neighbor == 2 ? 3 : 6) == 0 && neighbor.Type is >= 481 and <= 483)
-                {
-                    At(step.X, step.Y).Flags &= ~WorldTileFlags.Active;
-                    if (!LockedDoor(At(tx, ty + 1))) pending.Add((tx, ty, 0));
-                }
-                continue;
-            }
-            // The source additionally spawns transient projectiles736..738. Their NewProjectile path
-            // consumes no RNG and neither ticks nor persists in this unpublished world-file pass.
-            // Do not inject them into the live projectile authority while constructing a candidate.
-            ref WorldTile cell = ref At(step.X, step.Y);
-            cell.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-            cell.Type = 0; cell.Shape = 0; cell.TileColor = 0; cell.FrameX = cell.FrameY = -1;
-            framing.FrameSquare(step.X, step.Y);
-            pending.RemoveAt(pending.Count - 1);
-        }
+        if (workspace is null)
+            throw new NotSupportedException("Cracked dungeon anchors require the canonical generation entity owner.");
+        new GenerationTileFraming1458(tiles, random, workspace: workspace,
+            useWorldGenerationSolidity: true).KillTile(x, y);
     }
 
     private void PrepareAnchor(int x, int y)

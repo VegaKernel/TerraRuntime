@@ -106,7 +106,6 @@ internal sealed class UndergroundFinishState1458
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double RockLayer { get; private set; }
     public double WorldSurface { get; private set; }
-    public int UnderworldTop { get; private set; }
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
     {
@@ -118,25 +117,15 @@ internal sealed class UndergroundFinishState1458
             throw new InvalidOperationException("Underground-finish generation requires source-backed Terrain layers.");
         RockLayer = layers.RockLayer;
         WorldSurface = layers.WorldSurface;
-        UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
     }
 }
 
 internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
 {
-    private const ushort Mud = 59;
     private const ushort JungleGrass = 60;
     private const ushort IceBlock = 161;
-    private const ushort GreenMoss = 179;
-    private const ushort BrownMoss = 180;
-    private const ushort RedMoss = 181;
-    private const ushort BlueMoss = 182;
-    private const ushort PurpleMoss = 183;
-    private const ushort Hive = 225;
-    private const ushort Larva = 231;
 
     private const ushort MudUnsafeWall = 15;
-    private const ushort HiveUnsafeWall = 86;
 
     private readonly UndergroundFinishStage1458 stage;
     private readonly UndergroundFinishState1458 state;
@@ -175,7 +164,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
                 ApplyMudsWallsInJungle(context, grid, random);
                 break;
             case UndergroundFinishStage1458.Larva:
-                ApplyLarva(context, grid, random);
+                ApplyLarva(context, workspace);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -189,6 +178,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
         int minimumY = checked((int)(state.WorldSurface + state.RockLayer) / 2);
         int maximumY = RequireLavaLine(context, grid);
         int placed = 0;
+        var framing = new GenerationTileFraming1458(((Workspace)context.Workspace).TileStore, context.VanillaRandom!, (Workspace)context.Workspace, useWorldGenerationSolidity: true);
 
         // TerrariaServer 1.4.5.8 WorldGen.AddPasses / ExposedGemsInIceBiome: each offer first samples
         // a row, then that row's retained snow interval. Geometry/style rolls happen only after an Ice-family
@@ -209,12 +199,12 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
             int down = random.Next(1, 4);
             int style = SelectGemStyle(random.Next(12));
             for (int tx = x - left; tx < x + right; tx++)
-            for (int ty = y - up; ty < y + down; ty++)
-            {
-                if (!grid.ContainsWithMargin(tx, ty, 40) || grid.At(tx, ty).IsActive)
-                    continue;
-                if (TryPlaceLooseGem(grid, random, tx, ty, style)) placed++;
-            }
+                for (int ty = y - up; ty < y + down; ty++)
+                {
+                    if (!grid.ContainsWithMargin(tx, ty, 40) || grid.At(tx, ty).IsActive)
+                        continue;
+                    if (framing.PlaceGemInEmptyCell(tx, ty, style)) placed++;
+                }
         }
 
         context.ReportProgress(1d, $"Placing source-backed exposed gems in the Ice biome ({placed} objects)");
@@ -223,7 +213,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
     private void ApplyRandomGems(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         int placed = 0;
-        int lavaLine = RequireLavaLine(context, grid);
+        var framing = new GenerationTileFraming1458(((Workspace)context.Workspace).TileStore, context.VanillaRandom!, (Workspace)context.Workspace, useWorldGenerationSolidity: true);
         for (int offer = 0; offer < grid.Width; offer++)
         {
             if ((offer & 511) == 0)
@@ -233,7 +223,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
             WorldTile tile = grid.At(x, y);
             if (tile.IsActive || HasLava(in tile) || DungeonGenerationTiles1458.IsDungeonWall(tile.Wall) || tile.Wall == 27)
                 continue;
-            if (TryPlaceLooseGem(grid, random, x, y, SelectGemStyle(random.Next(12)))) placed++;
+            if (framing.PlaceGemInEmptyCell(x, y, SelectGemStyle(random.Next(12)))) placed++;
         }
 
         for (int offer = 0; offer < grid.Width; offer++)
@@ -250,8 +240,8 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
             int up = random.Next(1, 4);
             int down = random.Next(1, 4);
             for (int tx = x - left; tx < x + right; tx++)
-            for (int ty = y - up; ty < y + down; ty++)
-                if (!grid.At(tx, ty).IsActive && TryPlaceLooseGem(grid, random, tx, ty, 6)) placed++;
+                for (int ty = y - up; ty < y + down; ty++)
+                    if (!grid.At(tx, ty).IsActive && framing.PlaceGemInEmptyCell(tx, ty, 6)) placed++;
         }
 
         context.ReportProgress(1d, $"Placing source-backed random exposed gems ({placed} objects)");
@@ -268,17 +258,6 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
 
     private static bool HasLava(in WorldTile tile) => tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Lava;
 
-    private static bool TryPlaceLooseGem(RuntimeGrid grid, IRandom random, int x, int y, int style)
-    {
-        if (!grid.HasLooseGemAnchor(x, y)) return false;
-        ref WorldTile tile = ref grid.At(x, y);
-        tile.Type = 178;
-        tile.Flags |= WorldTileFlags.Active;
-        tile.FrameX = (short)(style * 18);
-        tile.FrameY = (short)(random.Next(3) * 18);
-        return true;
-    }
-
     private void ApplyMossGrass(IWorldGenerationContext context, Workspace workspace)
     {
         IWorldGenerationVanillaRandom random = context.VanillaRandom ??
@@ -287,7 +266,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
         // The strand's appearance and its survival are both decided by the ordinary SquareTileFrame that
         // PlaceTile triggers - twice per placement - so the pass is handed the real framer rather than a
         // biome-specific one.
-        var framing = new GenerationTileFraming1458(workspace.TileStore, random);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true);
         var pass = new LongMossPass1458(workspace.TileStore, random, framing, context.CancellationToken);
         pass.Apply();
         context.ReportProgress(1d, $"Growing Moss Grass ({pass.Placed} strands)");
@@ -301,7 +280,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
         // test: their short-circuited random draws are part of the shared generation stream even for other walls.
         int minJungleX = 0;
         int maxJungleX = 0;
-        int scanEnd = Math.Min(grid.Height, (int)state.WorldSurface + 20);
+        int scanEnd = Math.Min(grid.Height, (int)Math.Ceiling(state.WorldSurface + 20d));
 
         bool found = false;
         for (int x = 5; x < grid.Width - 5 && !found; x++)
@@ -331,6 +310,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
             }
         }
 
+        ((Workspace)context.Workspace).SetVanillaSurfaceJungleBounds(minJungleX, maxJungleX);
         int painted = 0;
         for (int x = minJungleX; x <= maxJungleX; x++)
         {
@@ -353,76 +333,30 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Converting Jungle dirt walls ({painted} cells)");
     }
 
-    private void ApplyLarva(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private static void ApplyLarva(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = grid.Width switch { <= 4200 => 4, <= 6400 => 6, _ => 8 };
-        int placed = 0;
-        var candidates = new List<(int X, int Y)>();
-
-        // Larva belongs inside Bee Hives. Find air pockets carrying Hive wall and surrounded by Hive material, then
-        // place the complete 3x3 frame-important object rather than emitting an orphan anchor tile.
-        for (int x = 5; x < grid.Width - 7; x += 2)
+        workspace.SetVanillaGenerationSolid(new TileTypeId(229), true);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, context.VanillaRandom!, workspace, useWorldGenerationSolidity: true);
+        foreach (WorldGenerationPoint anchor in workspace.VanillaHiveLarvaAnchors)
         {
-            if ((x & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            for (int y = Math.Max(20, (int)state.RockLayer); y < state.UnderworldTop - 8; y += 2)
-            {
-                if (grid.At(x, y).Wall != HiveUnsafeWall || !grid.IsEmptyRectangle(x, y, 3, 3))
-                    continue;
-                if (!grid.HasHiveShellNearby(x + 1, y + 1, 5, 5))
-                    continue;
-                candidates.Add((x, y));
-            }
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for (int x = anchor.X - 1; x <= anchor.X + 1; x++)
+                for (int y = anchor.Y - 2; y <= anchor.Y + 1; y++)
+                {
+                    ref WorldTile tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(x, y)];
+                    if (y == anchor.Y + 1)
+                    {
+                        tile.Flags |= WorldTileFlags.Active;
+                        tile.Type = 225;
+                        tile.ClearSourceShape();
+                    }
+                    else tile.Flags &= ~WorldTileFlags.Active;
+                }
+            framing.TryPlaceLarva(anchor.X, anchor.Y);
         }
-
-        while (candidates.Count > 0 && placed < target)
-        {
-            int index = random.Next(candidates.Count);
-            (int left, int top) = candidates[index];
-            candidates.RemoveAt(index);
-            if (!CanPlaceLarva(grid, left, top))
-                continue;
-
-            for (int dx = 0; dx < 3; dx++)
-            for (int dy = 0; dy < 3; dy++)
-            {
-                ref WorldTile tile = ref grid.At(left + dx, top + dy);
-                SetFramedTile(ref tile, Larva, dx * 18, dy * 18);
-                tile.Wall = HiveUnsafeWall;
-            }
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing complete Hive Larva objects ({placed}/{target})");
-    }
-
-    private static bool CanPlaceLarva(RuntimeGrid grid, int left, int top)
-    {
-        if (!grid.IsEmptyRectangle(left, top, 3, 3))
-            return false;
-        for (int x = left - 1; x <= left + 3; x++)
-        {
-            for (int y = top - 1; y <= top + 3; y++)
-            {
-                if (!grid.Contains(x, y))
-                    return false;
-                WorldTile tile = grid.At(x, y);
-                if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-                    return false;
-            }
-        }
-        return grid.HasHiveShellNearby(left + 1, top + 1, 5, 5);
-    }
-
-    private static void SetFramedTile(ref WorldTile tile, ushort type, int frameX, int frameY)
-    {
-        tile.Type = type;
-        tile.Flags |= WorldTileFlags.Active;
-        tile.FrameX = checked((short)frameX);
-        tile.FrameY = checked((short)frameY);
-        tile.Shape = 0;
-        tile.LiquidAmount = 0;
-        tile.LiquidKind = WorldLiquidKind.Water;
+        workspace.SetVanillaGenerationSolid(new TileTypeId(232), true);
+        workspace.SetVanillaGenerationSolid(new TileTypeId(162), true);
+        context.ReportProgress(1d, $"Placing Hive Larva objects ({workspace.VanillaHiveLarvaAnchors.Length})");
     }
 
     private interface IRandom
@@ -448,47 +382,5 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
             x >= margin && x < Width - margin && y >= margin && y < Height - margin;
         public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
 
-        public bool HasLooseGemAnchor(int x, int y) =>
-            IsLooseGemAnchor(in At(x, y + 1)) || IsLooseGemAnchor(in At(x - 1, y)) ||
-            IsLooseGemAnchor(in At(x + 1, y)) || IsLooseGemAnchor(in At(x, y - 1));
-
-        public bool IsEmptyRectangle(int left, int top, int width, int height)
-        {
-            if (left < 1 || top < 1 || left + width >= Width - 1 || top + height >= Height - 1)
-                return false;
-            for (int x = left; x < left + width; x++)
-            for (int y = top; y < top + height; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (tile.IsActive || tile.LiquidAmount != 0)
-                    return false;
-            }
-            return true;
-        }
-
-        public bool HasHiveShellNearby(int centerX, int centerY, int radiusX, int radiusY)
-        {
-            int hive = 0;
-            int hiveWall = 0;
-            int left = Math.Max(1, centerX - radiusX);
-            int right = Math.Min(Width - 2, centerX + radiusX);
-            int top = Math.Max(1, centerY - radiusY);
-            int bottom = Math.Min(Height - 2, centerY + radiusY);
-            for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottom; y++)
-            {
-                WorldTile tile = At(x, y);
-                if (tile.IsActive && tile.Type == Hive)
-                    hive++;
-                if (tile.Wall == HiveUnsafeWall)
-                    hiveWall++;
-            }
-            return hive >= 3 && hiveWall >= 9;
-        }
-
-        private static bool IsLooseGemAnchor(in WorldTile tile) =>
-            tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
-            !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
     }
 }

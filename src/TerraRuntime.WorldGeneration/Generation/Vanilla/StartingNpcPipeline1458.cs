@@ -107,7 +107,7 @@ internal sealed class StartingGuidePass1458 : IWorldGenerationPass
         {
             if (!workspace.TrySpawnGeneratedTownNpc(new(GuideNetId), checked(spawn.X * 16), checked(spawn.Y * 16),
                     true, spawn.X, spawn.Y, context.VanillaRandom!, () => new VanillaTownNpcIdentityResolver1458(
-                        mainRandom: shared, worldGenRandom: shared).Resolve(new NpcTypeId(GuideNetId), false)))
+                        mainRandom: shared, worldGenRandom: shared).Resolve(new NpcTypeId(GuideNetId), false), sourceDirectionX: 1))
                 throw new InvalidOperationException("Could not create the source starting Guide.");
             context.ReportProgress(1d, "Spawning and persisting the starting Guide");
             return;

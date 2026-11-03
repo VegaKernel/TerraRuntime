@@ -35,6 +35,13 @@ internal sealed partial class GenerationTileFraming1458
             if (row >= height || !Contains(column, row))
                 throw new FramingAbortException();
         }
-        GenerationKillTileDust1458.Consume(random, target.Type);
+        if(target.Type==254&&target.FrameX>=72)
+        {
+            int choices=target.FrameX<108?3:target.FrameX<144?2:4;
+            // Each of the ten pumpkin dust particles chooses between its two source dust identities.
+            // The dedicated generation context discards the particle after this appearance decision.
+            for(int particle=0;particle<10;particle++)random.Next(choices);
+        }
+        GenerationKillTileDust1458.Consume(random, target.Type, target.FrameX);
     }
 }

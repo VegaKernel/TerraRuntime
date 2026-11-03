@@ -91,7 +91,10 @@ internal static partial class CaveHousePlacement1458
         var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
         PlaceEmptyRooms(grid, construction, framing, rooms, in palette);
         foreach (CaveHouseRoom1458 room in rooms)
-            state.ProtectedHouseRooms.Add(room.Inflate(8));
+        {
+            state.ProtectedHouseRooms.Add(room.Inflate(8)); // retained house geometry, never a protection query
+            workspace.VanillaStructureMap.AddProtectedStructure(new(room.Left,room.Top,room.Width,room.Height),8);
+        }
         PlaceStairs(grid, construction.Walls, framing, rooms, in palette);
         PlaceDoors(grid, construction, framing, rooms, palette.DoorStyle, random);
         PlacePlatforms(grid, framing, rooms, palette.PlatformStyle);
@@ -177,43 +180,8 @@ internal static partial class CaveHousePlacement1458
     {
         foreach (CaveHouseRoom1458 room in rooms)
         {
-            CaveHouseRoom1458 padded = room.Inflate(5);
-            // HouseUtils.AreRoomsValid -> StructureMap.CanPlace checks protected
-            // overlap before construction. Shimmer, Hive and JungleShrines retain
-            // their source rectangles here; Marble/Granite use AddStructure, not protection.
-            if (workspace.VanillaShimmerStructure is WorldTileRegion shimmer &&
-                padded.Left < shimmer.ExclusiveRight && shimmer.X < padded.Right &&
-                padded.Top < shimmer.ExclusiveBottom && shimmer.Y < padded.Bottom)
-            {
-                return false;
-            }
-            foreach (WorldTileRegion hive in workspace.VanillaHiveProtectedAreas)
-            {
-                if (padded.Left < hive.ExclusiveRight && hive.X < padded.Right &&
-                    padded.Top < hive.ExclusiveBottom && hive.Y < padded.Bottom)
-                    return false;
-            }
-            foreach (WorldTileRegion shrine in workspace.VanillaJungleShrineProtectedAreas)
-            {
-                if (padded.Left < shrine.ExclusiveRight && shrine.X < padded.Right &&
-                    padded.Top < shrine.ExclusiveBottom && shrine.Y < padded.Bottom)
-                    return false;
-            }
-            foreach (CaveHouseRoom1458 reserved in state.ProtectedHouseRooms)
-            {
-                if (padded.Intersects(in reserved))
-                    return false;
-            }
-
-            for (int x = padded.Left; x < padded.Right; x++)
-                for (int y = padded.Top; y < padded.Bottom; y++)
-                {
-                    if (!grid.InWorld(x, y))
-                        return false;
-                    WorldTile tile = grid.At(x, y);
-                    if (tile.IsActive && Array.IndexOf(InvalidStructureTiles, tile.Type) >= 0)
-                        return false;
-                }
+            if(!workspace.VanillaStructureMap.CanPlace(new(room.Left,room.Top,room.Width,room.Height),5,
+                static tile=>Array.IndexOf(InvalidStructureTiles,tile)<0))return false;
 
             if (type == CaveHouseType1458.Granite)
                 continue;

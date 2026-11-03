@@ -31,7 +31,9 @@ internal sealed class SpeleothemPass1458(
     double rockLayer,
     int beachDistance,
     CancellationToken cancellation,
-    Action<int, int>? killWithFraming = null)
+    Action<int, int>? killWithFraming = null,
+    Func<TileTypeId, bool>? solidity = null,
+    GenerationTileFraming1458? framing = null)
 {
     private const ushort Speleothem = 165;
     private const ushort Stone = 1;
@@ -87,7 +89,7 @@ internal sealed class SpeleothemPass1458(
                     };
 
                     if (SettingsTreeGrower1458.TryGrow(
-                            store, SettingsTreeGrower1458.GemTree(tree), x, y, random))
+                            store, SettingsTreeGrower1458.GemTree(tree), x, y, random, framing))
                     {
                         GemTrees++;
                     }
@@ -98,10 +100,10 @@ internal sealed class SpeleothemPass1458(
 
                 // The two flattening steps: a sloped support directly above or below an isolated open cell is
                 // squared off first, so the speleothem has something flat to attach to.
-                if (IsSpeleothemStone(TypeAt(x, y - 1)) && !IsActive(x, y) && !IsActive(x, y + 1))
-                    At(x, y - 1).Shape = 0;
-                if (IsSpeleothemStone(TypeAt(x, y + 1)) && !IsActive(x, y) && !IsActive(x, y - 1))
-                    At(x, y + 1).Shape = 0;
+                if (IsSpeleothemStone(TypeAtRaw(x, y - 1)) && !IsActive(x, y) && !IsActive(x, y + 1))
+                    At(x, y - 1).TrySetSourceShape(At(x, y - 1).IsHalfBrick, 0);
+                if (IsSpeleothemStone(TypeAtRaw(x, y + 1)) && !IsActive(x, y) && !IsActive(x, y - 1))
+                    At(x, y + 1).TrySetSourceShape(At(x, y + 1).IsHalfBrick, 0);
 
                 PlaceTight(x, y);
             }
@@ -111,21 +113,21 @@ internal sealed class SpeleothemPass1458(
                 if (IsActive(x, y - 1) && TypeAt(x, y - 1) is Snow or Ice && random.Next(5) == 0)
                 {
                     if (!IsActive(x, y) && !IsActive(x, y + 1))
-                        At(x, y - 1).Shape = 0;
+                        At(x, y - 1).TrySetSourceShape(At(x, y - 1).IsHalfBrick, 0);
                     PlaceTight(x, y);
                 }
 
                 if (IsActive(x, y - 1) && TypeAt(x, y - 1) is Ebonstone or Crimstone && random.Next(5) == 0)
                 {
                     if (!IsActive(x, y) && !IsActive(x, y + 1))
-                        At(x, y - 1).Shape = 0;
+                        At(x, y - 1).TrySetSourceShape(At(x, y - 1).IsHalfBrick, 0);
                     PlaceTight(x, y);
                 }
 
                 if (IsActive(x, y + 1) && TypeAt(x, y + 1) is Ebonstone or Crimstone && random.Next(5) == 0)
                 {
                     if (!IsActive(x, y) && !IsActive(x, y - 1))
-                        At(x, y + 1).Shape = 0;
+                        At(x, y + 1).TrySetSourceShape(At(x, y + 1).IsHalfBrick, 0);
                     PlaceTight(x, y);
                 }
             }
@@ -491,7 +493,7 @@ internal sealed class SpeleothemPass1458(
 
         // The dust a broken tile makes is paid for out of the shared stream. A speleothem's costs nothing -
         // its dust identity is not one of the randomised ones - but the cost is asked for rather than assumed.
-        GenerationKillTileDust1458.Consume(random, At(x, y).Type);
+        GenerationKillTileDust1458.Consume(random, At(x, y).Type, At(x, y).FrameX);
         ref WorldTile cell = ref At(x, y);
         cell.Flags &= ~WorldTileFlags.Active;
         cell.Shape = 0;
@@ -513,7 +515,7 @@ internal sealed class SpeleothemPass1458(
 
     /// <summary>The substrates the scan squares off before offering a speleothem.</summary>
     private static bool IsSpeleothemStone(ushort type) =>
-        type is Stone or Snow or Ice or Ebonstone or Crimstone || IsMoss(type);
+        type is Stone or Snow or Ice or Ebonstone or Crimstone or 63 or 64 or 65 or 66 or 67 or 68 or 130 or 131 or 566 || IsMoss(type);
 
     /// <summary>Source <c>Main.tileMoss</c>.</summary>
     private static bool IsMoss(ushort type) =>
@@ -529,7 +531,7 @@ internal sealed class SpeleothemPass1458(
             return true;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && (solidity?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !tile.IsActuated && tile.Shape < 2 && tile.Shape != 1;
     }
 

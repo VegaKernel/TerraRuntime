@@ -11,7 +11,7 @@ internal static class PalmTreeGrower1458
     private const ushort SaplingTile = 20;
     private const int MaximumHeight = 20;
 
-    public static bool TryGrow(WorldTileStore store, int x, int checkedY, IWorldGenerationVanillaRandom random)
+    public static bool TryGrow(WorldTileStore store, int x, int checkedY, IWorldGenerationVanillaRandom random, GenerationTileFraming1458? framing = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(random);
@@ -63,6 +63,8 @@ internal static class PalmTreeGrower1458
             tile.FrameX = frameX;
             tile.FrameY = bend;
         }
+        if (framing is not null)
+            framing.RangeFrame(x - 2, floor - trunkHeight - 1, x + 2, floor + 1);
         return true;
     }
 
@@ -81,12 +83,12 @@ internal static class PalmTreeGrower1458
     private static bool IsClear(WorldTileStore store, int left, int right, int top, int bottom)
     {
         for (int x = left; x <= right; x++)
-        for (int y = top; y <= bottom; y++)
-        {
-            WorldTile tile = store.Get(x, y);
-            if (tile.IsActive && !TreeGrowthCatalog1458.IsReplaceableGrowthTile(tile.TileType))
-                return false;
-        }
+            for (int y = top; y <= bottom; y++)
+            {
+                WorldTile tile = store.Get(x, y);
+                if (tile.IsActive && !TreeGrowthCatalog1458.IsReplaceableGrowthTile(tile.TileType))
+                    return false;
+            }
         return true;
     }
 }

@@ -344,11 +344,28 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// ShimmerRemoveWater and LiquidInteractionsCleanup and must not use it after Dungeon/Aether placement.
     /// Unlike loading, a vertical fall below the retained generation water line converts water to lava.
     /// </summary>
-    public void QuickWaterBeforeDungeonGeneration(int waterLine, CancellationToken cancellationToken)
+    public void QuickWaterBeforeDungeonGeneration(int waterLine, CancellationToken cancellationToken,
+        Func<TileTypeId, bool>? isSolid = null, Action<TileTypeId, bool>? setSolid = null)
     {
         if (waterLine < 0 || waterLine >= tiles.Dimensions.HeightTiles)
             throw new ArgumentOutOfRangeException(nameof(waterLine));
-        QuickWaterCore(-1, -1, waterLine, cancellationToken);
+        var previousGet = generationSolid;
+        var previousSet = generationSetSolid;
+        generationSolid = isSolid;
+        generationSetSolid = setSolid;
+        try
+        {
+            generationSetSolid?.Invoke(VanillaTileIds.Bubble, true);
+            NotifyLiquidSolidity(false);
+            QuickWaterCore(-1, -1, waterLine, cancellationToken);
+        }
+        finally
+        {
+            // Source assigns literal true; it does not restore the previous phase values.
+            NotifyLiquidSolidity(true);
+            generationSolid = previousGet;
+            generationSetSolid = previousSet;
+        }
     }
 
     /// <summary>
@@ -805,9 +822,11 @@ public sealed class VanillaWorldLiquidSimulator1458
         int x, int y, in WorldTile tile, bool generatingWorld, out WorldTileRegion region, out WorldTileRegion cascade)
     {
         // Loading's fixed cascade proof cannot represent arbitrary furniture above a platform.
-        // An explicit generation owner already owns those callbacks. Style metadata still must resolve.
-        if (generatingWorld && generationDeathSideEffects is not null && (tile.TileType == VanillaTileIds.Tables || tile.TileType == VanillaTileIds.Platforms) &&
-            VanillaTileObjectLiquidDeath1458.TryGet(in tile, out _, out _))
+        // The supplied generation framer owns that halo and GlowTulip656's source Check1x1.
+        // This does not admit the tulip to the separate loading/live fixed-drop removal path.
+        if (generatingWorld && generationDeathSideEffects is not null &&
+            (tile.TileType == VanillaTileIds.GlowTulip || (tile.TileType == VanillaTileIds.Tables || tile.TileType == VanillaTileIds.Platforms) &&
+                VanillaTileObjectLiquidDeath1458.TryGet(in tile, out _, out _)))
         {
             region = new WorldTileRegion(x, y, 1, 1);
             cascade = default;

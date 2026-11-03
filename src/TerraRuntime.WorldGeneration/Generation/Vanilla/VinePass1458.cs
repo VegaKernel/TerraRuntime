@@ -392,7 +392,7 @@ internal static class VinePass1458
 
         // Breaking a tile is not free: the dust it makes is paid for out of the shared stream, and the corrupt
         // and crimson growth a hive can stand on costs ten draws a cell.
-        GenerationKillTileDust1458.Consume(random, cell.Type);
+        GenerationKillTileDust1458.Consume(random, cell.Type, cell.FrameX);
         cell.Flags &= ~WorldTileFlags.Active;
         cell.Shape = 0;
         cell.FrameX = -1;

@@ -17,7 +17,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// behind, which is why it went unnoticed until a flower patch was measured over a field of corrupt plants.
 /// </para>
 /// <para>
-/// The table is measured, not derived: the probe breaks one tile of every identity in the pinned official
+/// Frame-zero table values are measured, not derived: the probe breaks one tile of every identity in the pinned official
 /// assembly and counts the draws, twice over - once through the whole of <c>KillTile</c> and once through its
 /// dust helpers alone. The two agree for every identity where both can be read, which is what says the cost is
 /// the dust and nothing else. It measures the unfailed break, which is the only one generation makes:
@@ -26,7 +26,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// cut short by throwing are recorded as unknown, and this refuses them rather than guessing - a pass that
 /// breaks one has to be measured before it can be trusted. Six identities answer differently for different
 /// frames - the multi-cell objects whose origin the kill re-derives - and their frame-zero cost is what is
-/// recorded, because generation does not break them at any other frame.
+/// recorded here. Contextual dust needs its own source-backed dispatch. Frame-dependent reward argument
+/// evaluation belongs to its object-framing caller and is separate from this dust baseline.
 /// Types <c>178</c> and <c>352</c> are later corrections: the initial headless probe had null elements in its
 /// dust pool. Corrected original fixtures with a complete dust pool measure zero draws for178 and ten
 /// for352. The latter agrees across three seeds/four frames in both whole kills and isolated dust helpers,
@@ -76,16 +77,20 @@ internal static class GenerationKillTileDust1458
     /// Spends what the source spends on one tile's dust. The values are discarded: a <c>UnifiedRandom</c> draw
     /// consumes one sample whatever bound it is given, so only the count reaches the next caller.
     /// </summary>
-    public static void Consume(IWorldGenerationVanillaRandom random, ushort type)
+    public static void Consume(IWorldGenerationVanillaRandom random, ushort type, short frameX = 0)
     {
-        int draws = For(type);
+        int draws = For(type, frameX);
         for (int i = 0; i < draws; i++)
             random.Next(2);
     }
 
     /// <summary>The measured draw count, or a refusal for an identity nobody has measured.</summary>
-    public static int For(ushort type)
+    public static int For(ushort type, short frameX = 0)
     {
+        // GetTileDust samples the corrupt bands, but uses fixed dust5 for crimson bands.
+        if (type is 26 or 695 && frameX >= 54 || type is 31 or 696 && frameX >= 36)
+            return 0;
+
         if (type >= DrawsPerKill.Length)
             return 0;
 

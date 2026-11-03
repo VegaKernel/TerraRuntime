@@ -15,7 +15,8 @@ public sealed partial class Workspace
         int homeX,
         int homeY,
         IWorldGenerationVanillaRandom random,
-        Func<VanillaTownNpcSpawnIdentity1458> resolveIdentity)
+        Func<VanillaTownNpcSpawnIdentity1458> resolveIdentity,
+        int? sourceDirectionX = null)
     {
         ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(resolveIdentity);
@@ -33,7 +34,7 @@ public sealed partial class Workspace
             throw new InvalidOperationException("Lost canonical source town birth.");
 
         VanillaTownNpcSpawnIdentity1458 identity = resolveIdentity();
-        effects.MoveTownNpc(handle, npc.PositionX, npc.PositionY, homeless, homeX, homeY);
+        effects.MoveTownNpc(handle, npc.PositionX, npc.PositionY, homeless, homeX, homeY, sourceDirectionX);
         var projection = new WorldTownNpc(type.Value, identity.GivenName, npc.PositionX, npc.PositionY,
             homeless, homeX, homeY, identity.VariationIndex, false);
         generatedTownNpcs.Add(new(projection, handle));

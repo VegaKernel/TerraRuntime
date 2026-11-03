@@ -1132,4 +1132,48 @@
     <EmbeddedResource Include="Fixtures/GenerationFlowerChestOwner1458.json.gz" LogicalName="GenerationFlowerChestOwner1458" />
     <EmbeddedResource Include="Fixtures/GenerationSaveChestFilter1458.json.gz" LogicalName="GenerationSaveChestFilter1458" />
   </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationTraps1458.json.gz" LogicalName="GenerationTraps1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationSpawnAndWalls1458.json.gz" LogicalName="GenerationSpawnAndWalls1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationLateOrdinaryPasses1458.json.gz" LogicalName="GenerationLateOrdinaryPasses1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationCompositeHalfFraming1458.json.gz" LogicalName="GenerationCompositeHalfFraming1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationDyeLifecycle1458.json.gz" LogicalName="GenerationDyeLifecycle1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationDyePlacement1458.json.gz" LogicalName="GenerationDyePlacement1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationHerbPlanting1458.json.gz" LogicalName="GenerationHerbPlanting1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationNaturalPrefix85.json.gz" LogicalName="GenerationNaturalPrefix85" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationSunflowerPlacement1458.json.gz" LogicalName="GenerationSunflowerPlacement1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationSurfaceTrees1458.json.gz" LogicalName="GenerationSurfaceTrees1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationVegetation86To91Tests.json.gz" LogicalName="GenerationVegetation86To91Tests" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationNaturalPrefix91.json.gz" LogicalName="GenerationNaturalPrefix91" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationChestSparseSlots1458.json.gz" LogicalName="GenerationChestSparseSlots1458" /></ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/GenerationFramerPileFossil1458.json.gz" LogicalName="GenerationFramerPileFossil1458" />
+    <EmbeddedResource Include="Fixtures/GenerationTrackGenerator1458.json.gz" LogicalName="GenerationTrackGenerator1458" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/GenerationUndergroundFinishOwned1458.json.gz" LogicalName="GenerationUndergroundFinishOwned1458" />
+    <EmbeddedResource Include="Fixtures/GenerationNaturalPrefix97.json.gz" LogicalName="GenerationNaturalPrefix97" />
+    <EmbeddedResource Include="Fixtures/GenerationUndergroundFinishLegacy1458.json.gz" LogicalName="GenerationUndergroundFinishLegacy1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="data/MicroCompletion1458/*"><LogicalName>GenerationMicroCompletion1458Tests.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationCrimsonCallGraph1458.json.gz" LogicalName="GenerationCrimsonCallGraph1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationGlowTulipWaterCheck1458.json.gz" LogicalName="GenerationGlowTulipWaterCheck1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationCorruptionContinuous1061458.json.gz" LogicalName="GenerationCorruptionContinuous1061458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationEarlyRunnerSpecial1458.json.gz" LogicalName="GenerationEarlyRunnerSpecial1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationNaturalSpecialPrefix19.json.gz" LogicalName="GenerationNaturalSpecialPrefix19" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationSkyblockFixture1458.json.gz" LogicalName="GenerationSkyblockFixture1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationCrimsonTempleAndPhase1458.json.gz" LogicalName="GenerationCrimsonTempleAndPhase1458" /></ItemGroup>
+  <ItemGroup>
+<EmbeddedResource Include="data/DoublePileRewards1458.json.gz"><LogicalName>GenerationDoublePileRewards1458</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/SpecialSeedKill1458.json.gz"><LogicalName>GenerationSpecialSeedKill1458</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/SpecialMicro98/*.gz"><LogicalName>GenerationSpecialMicro98.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
+
+  </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationFrameContextDust1458.json.gz" LogicalName="GenerationFrameContextDust1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationDungeonDebris1458.json.gz" LogicalName="GenerationDungeonDebris1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationDungeonDebrisMedium1458.json.gz" LogicalName="GenerationDungeonDebrisMedium1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/GenerationLivingPassagePlacement1458.json.gz" LogicalName="GenerationLivingPassagePlacement1458" /></ItemGroup>
 </Project>

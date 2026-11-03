@@ -258,7 +258,8 @@ class WorkflowOwnershipTests(unittest.TestCase):
                        "new DungeonPitTraps1458", "chests.PlaceBiome", "new DungeonBookshelves1458",
                        "chests.PlaceBasic", "new DungeonLights1458", "new DungeonTraps1458",
                        "new DungeonFurniture1458", "new DungeonPaintings1458", "new DungeonBanners1458",
-                       "new DungeonLateDoors1458", "random, cancellationToken, pits"):
+                       "new DungeonLateDoors1458", "random, cancellationToken, pits",
+                       "new(0, 0), cancellationToken, workspace).Place(bounds"):
             with self.subTest(marker=marker), self.assertRaises(SystemExit):
                 require_runtime_features(source.replace(marker, "invalid"))
         with self.assertRaises(SystemExit):

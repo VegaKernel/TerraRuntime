@@ -83,6 +83,7 @@ internal sealed class FlowerAndMushroomPatchPass1458(
                     column = anchor.X;
                     row = anchor.Y;
                     logAnchor = null;
+                    workspace?.ConsumeVanillaFallenLogAnchor();
                 }
 
                 int style = NextFromList(random, [21, 24, 27, 30, 33, 36, 39, 42]);
@@ -230,7 +231,7 @@ internal sealed class FlowerAndMushroomPatchPass1458(
 
         // The dust is spent before the source decides whether the tile survives, so a cell this runtime
         // declines still costs the shared stream exactly what the source would have spent on it.
-        GenerationKillTileDust1458.Consume(random, At(x, y).Type);
+        GenerationKillTileDust1458.Consume(random, At(x, y).Type, At(x, y).FrameX);
         if (!IsRemovable(At(x, y).TileType))
             return;
 

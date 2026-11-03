@@ -45,7 +45,9 @@ internal sealed class HiveBiome1458(
 
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
+    // Geometry output only; all collision/protection decisions use the single structure owner.
     private readonly List<WorldTileRegion> protectedAreas = [];
+    private readonly VanillaStructureMap1458 structures=workspace?.VanillaStructureMap??new(store);
 
     /// <summary>The accepted HiveBiome AddProtectedStructure rectangles, including its five-cell padding.</summary>
     internal WorldTileRegion[] CaptureProtectedAreas() => protectedAreas.ToArray();
@@ -83,7 +85,7 @@ internal sealed class HiveBiome1458(
             // Both polar samples precede the horizontal boundary test, including rejected offers.
             int wantedPatches = random.Next(5);
             int madePatches = 0, patchBudget = 10000;
-            var patches = new HoneyPatch1458(store, random, CanPlace, protectedAreas.Add, workspace);
+            var patches = new HoneyPatch1458(store, random, CanPlace, Protect, workspace);
             while (madePatches < wantedPatches && patchBudget > 0)
             {
                 double radius = random.NextDouble() * 60d + 30d;
@@ -167,7 +169,7 @@ internal sealed class HiveBiome1458(
         }
 
         CreateStandForLarva(cursorX, cursorY);
-        protectedAreas.Add(new WorldTileRegion(originX - 55, originY - 55, 110, 110));
+        Protect(new WorldTileRegion(originX - 55, originY - 55, 110, 110));
         return true;
     }
 
@@ -482,36 +484,14 @@ internal sealed class HiveBiome1458(
     /// </summary>
     private bool CanPlace(int x, int y, int areaWidth, int areaHeight)
     {
-        if (x < 0 || y < 0 || x + areaWidth > width - 1 || y + areaHeight > height - 1)
-            return false;
-
-        if (workspace?.VanillaShimmerStructure is { } shimmer &&
-            x < shimmer.ExclusiveRight && shimmer.X < x + areaWidth &&
-            y < shimmer.ExclusiveBottom && shimmer.Y < y + areaHeight) return false;
-        foreach (WorldTileRegion protectedArea in protectedAreas)
-        {
-            if (x < protectedArea.ExclusiveRight && protectedArea.X < x + areaWidth &&
-                y < protectedArea.ExclusiveBottom && protectedArea.Y < y + areaHeight)
-                return false;
-        }
-
-        for (int column = x; column < x + areaWidth; column++)
-        {
-            for (int row = y; row < y + areaHeight; row++)
-            {
-                WorldTile tile = At(column, row);
-                if (tile.IsActive && !IsGeneralPlacementTile(tile.Type))
-                    return false;
-            }
-        }
-
-        return true;
+        return structures.CanPlace(new(x,y,areaWidth,areaHeight));
     }
 
-    /// <summary>Source <c>TileID.Sets.GeneralPlacementTiles</c>, which is all tiles except this list.</summary>
-    private static bool IsGeneralPlacementTile(ushort type) => type is not (
-        225 or 41 or 481 or 43 or 482 or 44 or 483 or 226 or 203 or 112 or 25 or 70 or 151 or 21 or 31 or
-        696 or 467 or 12 or 665 or 639 or 138 or 664 or 711 or 712 or 713 or 714 or 715 or 716);
+    private void Protect(WorldTileRegion region)
+    {
+        structures.AddProtectedStructure(region);protectedAreas.Add(region);
+    }
+
 
     /// <summary>
     /// The disc scan the site test runs: <c>Shapes.Circle(15)</c> chained through <c>IsSolid</c> and two

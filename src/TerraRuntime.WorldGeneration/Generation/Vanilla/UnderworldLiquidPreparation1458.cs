@@ -10,10 +10,12 @@ internal static class UnderworldLiquidPreparation1458
     private const ushort BreakableIce = 162;
     private const int ShimmerClearRadius = 150;
 
-    public static void Settle(WorldTileStore store, int waterLine, CancellationToken cancellationToken)
+    public static void Settle(WorldTileStore store, int waterLine, CancellationToken cancellationToken, Workspace? workspace = null)
     {
         ClearBeforeAether(store);
-        new VanillaWorldLiquidSimulator1458(store).QuickWaterBeforeDungeonGeneration(waterLine, cancellationToken);
+        new VanillaWorldLiquidSimulator1458(store).QuickWaterBeforeDungeonGeneration(waterLine, cancellationToken,
+            workspace is { HasVanillaGenerationSolidity: true } ? workspace.IsVanillaGenerationSolid : null,
+            workspace is { HasVanillaGenerationSolidity: true } ? workspace.SetVanillaGenerationSolid : null);
         ClearBeforeAether(store);
         CleanupInteractions(store, cancellationToken);
     }

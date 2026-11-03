@@ -115,11 +115,12 @@ internal sealed class ChestPlacementState1458
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
     public int LavaLine { get; private set; }
-    public int JungleItemCount { get; set; }
-    public bool LivingMahoganyWandsGenerated { get; set; }
+    public int JungleItemCount { get => ChestContext.JungleItemCount; set => ChestContext.JungleItemCount=value; }
+    public bool LivingMahoganyWandsGenerated { get => ChestContext.GennedLivingMahoganyWands; set => ChestContext.GennedLivingMahoganyWands=value; }
     public int CaveHouseSharpenerCount { get; set; }
     public int CaveHouseExtractinatorCount { get; set; }
     public int CaveHouseBastStatueCount { get; set; }
+    // Retained built-room geometry only. Protection queries read Workspace.VanillaStructureMap.
     public List<CaveHouseRoom1458> ProtectedHouseRooms { get; } = [];
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
@@ -142,38 +143,14 @@ internal sealed class ChestPlacementState1458
         // One context for the whole run. The shadow key, the ram rune, the living-mahogany wands and the
         // underworld's item cycle are all once-per-world facts, so they have to survive from one chest pass
         // to the next rather than reset with each of them.
-        ChestContext = workspace.VanillaBuriedChestContext ?? new BuriedChestContext1458
-        {
-            Height = workspace.HeightTiles,
-            WorldSurface = WorldSurface,
-            RockLayer = RockLayer,
-            LavaLine = LavaLine,
-            CopperBar = Bootstrap.CopperBar,
-            IronBar = Bootstrap.IronBar,
-            SilverBar = Bootstrap.SilverBar,
-            GoldBar = Bootstrap.GoldBar,
-            // Source SavedOreTiers.Silver == 168 is the Tungsten Ore tile, which decides whether the
-            // underworld's ammo stack is Cursed Bullets or Silver ones.
-            TungstenIsSilverTier = Bootstrap.SilverOre == 168,
-            DesertHiveLow = workspace.VanillaDesertGenerationState?.DensityBounds.ExclusiveBottom - 1 ?? 0,
-            DesertHiveHigh = workspace.VanillaDesertGenerationState?.DensityBounds.Y ?? 0,
-            HellChestItem = Bootstrap.HellChestItems
-        };
-        workspace.SetVanillaBuriedChestContext(ChestContext);
+        ChestContext = BuriedChestContext1458.GetOrCreate(workspace, Bootstrap, WorldSurface, RockLayer);
     }
 
     /// <summary>The run-wide chest state every chest pass shares.</summary>
     public BuriedChestContext1458 ChestContext { get; private set; } = null!;
 
     internal BuriedChest1458 CreatePlacer(Workspace workspace, IWorldGenerationVanillaRandom random) =>
-        new(workspace.TileStore, random, ChestContext,
-            workspace.CanRegisterGeneratedChest,
-            chest =>
-            {
-                if (!workspace.TryAddChest(chest.Left, chest.Top, string.Empty, chest.Items))
-                    throw new InvalidOperationException(
-                        $"Buried chest at {chest.Left},{chest.Top} passed placement but failed side-table registration.");
-            }, workspace: workspace);
+        BuriedChest1458.CreateOwned(workspace,random);
 }
 
 internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
@@ -350,7 +327,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         foreach (WorldGenerationPoint anchor in anchors)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            int primary = NextJungleChestPrimary(random);
+            int primary = state.ChestContext.NextJungleChestPrimary(random);
             if (placer.TryAdd(anchor.X + random.Next(2), anchor.Y, out _, out _,
                     primary, notNearOtherChests: false, chestStyle: IvyChestStyle,
                     trySlope: false, chestTileType: 0))
@@ -483,22 +460,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         return false;
     }
 
-    private int NextJungleChestPrimary(IWorldGenerationVanillaRandom random)
-    {
-        int primary = (state.JungleItemCount % 4) switch
-        {
-            0 => 211,
-            1 => 212,
-            2 => 213,
-            _ => 964
-        };
-        if (random.Next(15) == 0)
-            primary = 2292;
-        else if (random.Next(20) == 0)
-            primary = 3017;
-        state.JungleItemCount++;
-        return primary;
-    }
+
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Chest-placement pass executed before bootstrap initialization.");

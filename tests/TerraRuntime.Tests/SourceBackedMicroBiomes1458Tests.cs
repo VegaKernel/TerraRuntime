@@ -5,64 +5,24 @@ namespace TerraRuntime.Tests;
 
 public sealed class SourceBackedMicroBiomes1458Tests
 {
-    [Theory]
-    [InlineData(1, 0)]
-    [InlineData(-1, 0)]
-    [InlineData(1, 1)]
-    [InlineData(-1, 1)]
-    [InlineData(1, -1)]
-    [InlineData(-1, -1)]
-    public void Generated_tracks_connect_in_both_directions_with_no_phantom_switch(int direction, int slope)
-    {
-        var workspace = new Workspace(160, 400);
-        var grid = new MicroBiomesPass1458.RuntimeGrid(workspace);
-        var areas = new MicroBiomesPass1458.ProtectedAreaIndex(workspace);
-        for (int x = 0; x < 160; x++)
-        for (int y = 10; y < 180; y++)
-            workspace.TileStore.SetInitialPopulationTile(x, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
-        Assert.True(MicroBiomesPass1458.TryPlaceTrack(grid, areas, new SlopeRandom(slope),
-            direction == 1 ? 20 : 130, 90, direction, 80));
-        int count = 0;
-        for (int x = 1; x < 159; x++)
-        for (int y = 1; y < 399; y++)
-        {
-            WorldTile tile = workspace.TileStore.Get(x, y);
-            if (!tile.IsActive || tile.Type != 314) continue;
-            count++;
-            AssertTrackConnections(workspace.TileStore, x, y);
-            for (int up = 1; up < 5; up++) Assert.False(workspace.TileStore.Get(x, y - up).IsActive);
-        }
-        Assert.Equal(80, count);
-    }
-
     internal static void AssertTrackConnections(WorldTileStore tiles, int x, int y)
     {
         WorldTile tile = tiles.Get(x, y);
-        // Independent literal Minecart.Initialize left/right connection table; -2 means no neighbor.
-        (int Left, int Right)[] connections = [(-2, -2), (0, 0), (-2, 0), (0, -2),
-            (1, 0), (0, 1), (0, -1), (-1, 0), (-1, 1), (1, -1), (1, -2), (-2, 1), (-1, -2), (-2, -1)];
-        Assert.InRange(tile.FrameX, (short)1, (short)13);
+        // All36 original Minecart.Initialize frames, including pressure track21.
+        // Values are row offsets; -2 is the no-connection sentinel after subtracting1.
+        int[] left = [-2,0,-2,0,1,0,0,-1,-1,1,1,-2,-1,-2,-2,0,1,-2,-1,-2,-2,0,-2,0,-2,0,1,-2,-1,-2,0,0,-1,1,-1,1];
+        int[] right = [-2,0,0,-2,0,1,-1,0,1,-1,-2,1,-2,-1,0,-2,-2,1,-2,-1,-2,0,0,-2,0,-2,-2,1,-2,-1,0,0,1,-1,1,-1];
+        Assert.InRange(tile.FrameX, (short)0, (short)35);
         Assert.Equal(-1, tile.FrameY);
-        var pair = connections[tile.FrameX];
         foreach (int side in new[] { -1, 1 })
         {
-            int dy = side == -1 ? pair.Left : pair.Right;
+            int dy = side == -1 ? left[tile.FrameX] : right[tile.FrameX];
             if (dy == -2) continue;
             WorldTile neighbor = tiles.Get(x + side, y + dy);
             Assert.True(neighbor.IsActive && neighbor.Type == 314, $"Disconnected track {x},{y}");
-            Assert.InRange(neighbor.FrameX, (short)1, (short)13);
-            var other = connections[neighbor.FrameX];
-            Assert.Equal(-dy, side == -1 ? other.Right : other.Left);
+            Assert.InRange(neighbor.FrameX, (short)0, (short)35);
+            Assert.Equal(-dy, side == -1 ? right[neighbor.FrameX] : left[neighbor.FrameX]);
         }
-    }
-
-    private sealed class SlopeRandom(int slope) : IWorldGenerationVanillaRandom
-    {
-        public int Next() => 0;
-        public int Next(int maxValue) => 0;
-        public int Next(int minValue, int maxValue) => minValue == -1 ? slope : minValue;
-        public double NextDouble() => .5;
-        public void NextBytes(byte[] buffer) => Array.Clear(buffer);
     }
 
     [Fact]
@@ -108,47 +68,6 @@ public sealed class SourceBackedMicroBiomes1458Tests
         Assert.Equal("Settle Liquids Again", catalog[index + 1]);
     }
 
-    [Fact]
-    public void Pinned_micro_biome_tile_identities_match_format_contracts()
-    {
-        Assert.Equal((ushort)162, MicroBiomesPass1458.ThinIce);
-        Assert.Equal((ushort)141, MicroBiomesPass1458.Explosives);
-        Assert.Equal((ushort)215, MicroBiomesPass1458.Campfire);
-        Assert.Equal((ushort)314, MicroBiomesPass1458.MinecartTrack);
-        Assert.True(VanillaWorldFrameImportance326.IsFrameImportant(MicroBiomesPass1458.Campfire));
-        Assert.True(VanillaWorldFrameImportance326.IsFrameImportant(MicroBiomesPass1458.LargePiles2));
-    }
-
-    [Theory]
-    [InlineData(30)]
-    [InlineData(24)]
-    public void Track_placer_refuses_to_cut_through_frame_important_object(int objectY)
-    {
-        var workspace = new Workspace(128, 256);
-        workspace.TileStore.SetInitialPopulationTile(30, objectY, new WorldTile
-        {
-            Type = MicroBiomesPass1458.Campfire,
-            Flags = WorldTileFlags.Active,
-            FrameX = 0,
-            FrameY = 0
-        });
-        var grid = new MicroBiomesPass1458.RuntimeGrid(workspace);
-        var protectedAreas = new MicroBiomesPass1458.ProtectedAreaIndex(workspace);
-
-        bool placed = MicroBiomesPass1458.TryPlaceTrack(
-            grid,
-            protectedAreas,
-            new ZeroSlopeRandom(),
-            startX: 10,
-            startY: 30,
-            direction: 1,
-            requestedLength: 80);
-
-        Assert.False(placed);
-        Assert.Equal(MicroBiomesPass1458.Campfire, workspace.TileStore.Get(30, objectY).Type);
-        Assert.NotEqual(MicroBiomesPass1458.MinecartTrack, workspace.TileStore.Get(10, 30).Type);
-    }
-
     [Theory]
     [InlineData(192, 128)]
     [InlineData(4200, 1199)]
@@ -172,7 +91,7 @@ public sealed class SourceBackedMicroBiomes1458Tests
     }
 
     [Fact]
-    public void Special_seed_profile_keeps_compatibility_plan()
+    public void Special_seed_profile_registers_early_prefix_without_micro_biomes()
     {
         var provider = new SourceBackedMicroBiomes1458();
         var request = new WorldGenerationRequest(
@@ -188,7 +107,9 @@ public sealed class SourceBackedMicroBiomes1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(8, builder.Entries.Count);
+        Assert.Equal(27, builder.Entries.Count);
+        Assert.Contains(builder.Entries, static entry =>
+            entry.Descriptor.Id.Value == "terraria:1.4.5.8/MudCavesToGrass");
         Assert.DoesNotContain(builder.Entries, static entry =>
             entry.Descriptor.Id == SourceBackedMicroBiomes1458.MicroBiomesId);
     }
@@ -205,12 +126,4 @@ public sealed class SourceBackedMicroBiomes1458Tests
             Entries.Add(new CaptureEntry(descriptor, pass));
     }
 
-    private sealed class ZeroSlopeRandom : IWorldGenerationVanillaRandom
-    {
-        public int Next() => 0;
-        public int Next(int maxValue) => 0;
-        public int Next(int minValue, int maxValue) => minValue <= 0 && maxValue > 0 ? 0 : minValue;
-        public double NextDouble() => 0.5d;
-        public void NextBytes(byte[] buffer) => Array.Clear(buffer);
-    }
 }

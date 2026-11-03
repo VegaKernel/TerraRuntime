@@ -7,6 +7,7 @@ internal sealed partial class GenerationTileFraming1458
     // Entity effects share the composed canonical owners; this framer owns no entity slots.
     internal bool SourceGameMenu { get; set; } = true;
     internal bool SourceClient { get; set; }
+    internal bool SourceServer { get; set; } = true;
     internal void FrameEntityObject(int i,int j,ushort type)
     {
         if(destroyingObject)return;

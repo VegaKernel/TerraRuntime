@@ -2,6 +2,10 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Npcs;
+using TerraRuntime.Core.Projectiles;
+using TerraRuntime.Core.Worlds.Generation;
+using TerraRuntime.WorldGeneration.Runtime;
 using TerraRuntime.WorldGeneration.Vanilla;
 using Xunit;
 
@@ -18,9 +22,12 @@ public sealed class DungeonTraps1458Tests
     [Theory, MemberData(nameof(Cases))]
     public void Trap_search_objects_and_random_stream_match_original(int fixture, int palette, int seed, string expected, int next)
     {
-        var tiles = DungeonSurfaceFeatureFixture1458.TrapTiles(fixture, palette);
+        var workspace = new Workspace(1600, 800);
+        var tiles = DungeonSurfaceFeatureFixture1458.TrapTiles(fixture, palette, workspace.TileStore);
+        workspace.AttachEntityEffects(new WorldGenerationEntityEffects1458(
+            new RuntimeNpcStore(), new RuntimeProjectileStore(), sourceServer: true), 0, 1);
         var random = new RandomAdapter(seed);
-        new DungeonTraps1458(tiles, random, new(0, 0), CancellationToken.None)
+        new DungeonTraps1458(tiles, random, new(0, 0), CancellationToken.None, workspace)
             .Place(new(100, 300, 350, 460), 60);
         Assert.Equal(expected, Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(tiles.Tiles))));
         Assert.Equal(next, random.Next());

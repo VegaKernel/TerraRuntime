@@ -6,7 +6,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary CrimStart/CrimVein/CrimEnt and deferred CrimPlaceHearts, pinned to 1.4.5.8.
 /// Owns only unpublished cave geometry and the pass-local, ordered heart endpoints.</summary>
 internal sealed class CrimsonCaves1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    double worldSurface, CancellationToken cancellationToken)
+    double worldSurface, CancellationToken cancellationToken, Func<TileTypeId, bool>? solidity = null)
 {
     private const ushort Stone = 203, Wall = 83;
     private const int SafetyIterations = 100_000; // Abort malformed geometry; never choose fallback coordinates.
@@ -226,8 +226,8 @@ internal sealed class CrimsonCaves1458(WorldTileStore tiles, IWorldGenerationVan
     private bool Solid(int x, int y)
     {
         WorldTile tile = At(x, y);
-        return tile.IsActive && !tile.IsActuated && tile.Shape == 0 && tile.Type != 484 &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+        return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
+            (solidity?.Invoke(tile.TileType) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
     }
     private ref WorldTile At(int x, int y)
     {

@@ -28,7 +28,8 @@ internal sealed class WebsAndHoneyPass1458(
     double worldSurface,
     double rockLayer,
     int beachDistance,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    GenerationTileFraming1458? framing = null)
 {
     private const ushort HiveWall = 86;
     private const ushort SpiderWall = 62;
@@ -38,7 +39,8 @@ internal sealed class WebsAndHoneyPass1458(
     private readonly int height = store.Dimensions.HeightTiles;
 
     private readonly SpeleothemPass1458 speleothems =
-        new(store, random, worldSurface, rockLayer, beachDistance, cancellation);
+        new(store, random, worldSurface, rockLayer, beachDistance, cancellation, framing is null ? null : framing.KillTile,
+            framing is null ? null : type => framing!.GenerationSolid((ushort)type.Value), framing);
 
     public long Webs { get; private set; }
 
@@ -105,19 +107,21 @@ internal sealed class WebsAndHoneyPass1458(
     private bool TryPlaceCobweb(int x, int y)
     {
         ref WorldTile cell = ref At(x, y);
-        if (cell.LiquidAmount > 0)
+        if (cell.LiquidAmount > 0 || store.LiquidUpdates.IsCheckingLiquid(x, y))
             return false;
 
         cell.Type = 0;
         cell.FrameX = 0;
         cell.FrameY = 0;
-        cell.Shape = 0;
+        cell.TrySetSourceShape(false, 0);
         cell.TileColor = 0;
         cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
 
         cell.Flags |= WorldTileFlags.Active;
         cell.Type = Cobweb;
-        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
+        var owner = framing ?? new GenerationTileFraming1458(store, random);
+        owner.SquareTileFrame(x, y);
+        owner.TileFrame(x, y);
         return true;
     }
 
@@ -127,7 +131,7 @@ internal sealed class WebsAndHoneyPass1458(
             return true;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && (framing?.GenerationSolid(tile.Type) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && tile.Shape == 0 && !tile.IsActuated;
     }
 

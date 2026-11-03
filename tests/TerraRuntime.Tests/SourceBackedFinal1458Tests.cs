@@ -1093,7 +1093,7 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
-    public void Final_cleanup_removes_only_empty_chest_metadata_and_rebases_remaining_slots()
+    public void Final_cleanup_removes_only_empty_chest_metadata_and_preserves_source_slot_holes()
     {
         var workspace = new Workspace(600, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
@@ -1131,7 +1131,9 @@ public sealed class SourceBackedFinal1458Tests
         Assert.True(workspace.TileStore.Get(240, 100).IsActive);
         Assert.True(workspace.TileStore.Get(280, 100).IsActive);
         WorldChest[] chests = workspace.CaptureGeneratedChests();
-        Assert.Equal(new[] { (240, (short)0), (280, (short)1) },
+        // Source Chest removal leaves the surviving generation-time slot identities unchanged.
+        // Dense file/load projection occurs only after all callbacks at the fresh save boundary.
+        Assert.Equal(new[] { (240, (short)1), (280, (short)2) },
             chests.Select(chest => (chest.X, chest.SlotId)));
         Assert.Equal(1, chests[0].Items[0].Stack);
     }
@@ -2515,9 +2517,13 @@ public sealed class SourceBackedFinal1458Tests
         };
         workspace.TileStore.Set(48, 55, in submergedPlant);
 
+        var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
-            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, random));
 
+        Assert.Equal("1E53712E38F5A4FC1D33F9CE130635A41D2B42B171FC1779D6891781A9564C9D", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("84DCC1D06DC959EF0BDA16CC1FF011846EAD43736010A04051E5E4EA61E1AC10", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
         Assert.Equal((byte)0, workspace.TileStore.Get(10, 10).Shape);
         Assert.Equal((byte)4, workspace.TileStore.Get(11, 10).Shape);
         WorldTile preserved = workspace.TileStore.Get(12, 10);
@@ -2527,9 +2533,9 @@ public sealed class SourceBackedFinal1458Tests
         Assert.Equal(WorldTileFlags.Actuator | WorldTileFlags.Inactive, preserved.Flags);
         Assert.Equal((byte)25, preserved.LiquidAmount);
         Assert.Equal(WorldLiquidKind.Lava, preserved.LiquidKind);
-        Assert.Equal((byte)1, workspace.TileStore.Get(50, 50).Shape);
-        Assert.Equal((byte)1, workspace.TileStore.Get(55, 50).Shape);
-        Assert.Equal((byte)2, workspace.TileStore.Get(58, 50).Shape);
+        Assert.Equal((byte)2, workspace.TileStore.Get(50, 50).Shape);
+        Assert.Equal((byte)3, workspace.TileStore.Get(55, 50).Shape);
+        Assert.Equal((byte)1, workspace.TileStore.Get(58, 50).Shape);
         WorldTile drowned = workspace.TileStore.Get(48, 55);
         Assert.False(drowned.IsActive);
         Assert.Equal((ushort)0, drowned.Type);
@@ -2561,6 +2567,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(54, 55, in trapNeighbour);
 
         var random = new DripRandom();
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, random));
 
@@ -2586,6 +2593,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(50, 49, in bubble);
         workspace.TileStore.Set(50, 48, in water);
 
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100),
@@ -2618,6 +2626,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 200, default);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
@@ -2651,6 +2660,7 @@ public sealed class SourceBackedFinal1458Tests
         {
             Options = new(WorldGenerationGameMode.Classic, WorldGenerationEvil.Crimson)
         };
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
@@ -2692,6 +2702,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(51, 52, in dirtWallSupport);
 
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
@@ -2742,6 +2753,7 @@ public sealed class SourceBackedFinal1458Tests
         {
             Options = new(WorldGenerationGameMode.Classic, WorldGenerationEvil.Crimson)
         };
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
@@ -2781,6 +2793,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(50, 51, in lihzahrdBrick);
 
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
@@ -2803,6 +2816,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(60, 49, in chestAbove);
 
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
@@ -2831,6 +2845,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(51, 52, in support);
 
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(request, workspace, new RandomAdapter(1458)));
 
@@ -2865,6 +2880,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 200, in chestPiece);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
@@ -2905,6 +2921,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(299, 200, in halfBrick);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
@@ -2937,6 +2954,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 200, in target);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
@@ -2968,6 +2986,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 201, in support);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
@@ -2998,6 +3017,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 201, in empty);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
@@ -3027,6 +3047,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 200, in crystalPiece);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
@@ -3066,6 +3087,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 200, in orbPiece);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
@@ -3105,6 +3127,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(300, 200, in piece);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
@@ -3143,6 +3166,7 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(302, 200, in heartPiece);
 
         var random = new RandomAdapter(1458);
+        workspace.InitializeVanillaGenerationSolidity();
         new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
             .Execute(new Context(
                 new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
@@ -3318,7 +3342,8 @@ public sealed class SourceBackedFinal1458Tests
     [Fact]
     public void Water_plants_bamboo_fixture_matches_official_passlegacy_cells_and_rng()
     {
-        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1: an active Jungle Plant
+        // Proper-Main original registered Water Plants, mode2, two identical repeats; 600x500 seed1.
+        // Framing runs after every segment. An active Jungle Plant
         // in a three-cell water column over Jungle Grass enters PlaceBamboo and grows its source stack.
         const int width = 600;
         const int height = 500;
@@ -3352,17 +3377,20 @@ public sealed class SourceBackedFinal1458Tests
             WorldTile bamboo = workspace.TileStore.Get(300, y);
             Assert.True(bamboo.IsActive);
             Assert.Equal((ushort)571, bamboo.Type);
-            Assert.Equal((short)0, bamboo.FrameX);
+            Assert.Equal(new short[] { 162, 144, 108, 216, 36 }[y - 96], bamboo.FrameX);
             Assert.Equal((short)0, bamboo.FrameY);
         }
-        Assert.Equal(1928246059, random.Next());
+        Assert.Equal("9E703E93D20AB2FBC0C6B0298E93F5FDA15F0F6F5238DD629CAB7838C49347AB", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("9D1D83D0D35C5D0DCE25E3AB4E45C1374F2DD77FA12339A84BF7FE82DC7EE554", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
+        Assert.Equal(2145559145, random.Next());
     }
 
     [Fact]
     public void Water_plants_seaweed_fixture_matches_official_passlegacy_cells_and_rng()
     {
         // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1: a submerged seaweed
-        // tile at y=200 over a stone floor at y=210 grows one source segment at y=199.
+        // tile at y=200 over a stone floor at y=210 is rejected by the real underwater validator.
+        // Proper-Main original mode2 registered pass, two identical repeats.
         const int width = 600;
         const int height = 500;
         var workspace = new Workspace(width, height);
@@ -3388,18 +3416,20 @@ public sealed class SourceBackedFinal1458Tests
         for (int y = 199; y <= 200; y++)
         {
             WorldTile segment = workspace.TileStore.Get(300, y);
-            Assert.True(segment.IsActive);
-            Assert.Equal((ushort)549, segment.Type);
-            Assert.Equal((short)0, segment.FrameX);
-            Assert.Equal((short)0, segment.FrameY);
+            Assert.False(segment.IsActive);
+            Assert.Equal((ushort)0, segment.Type);
+            Assert.Equal((short)-1, segment.FrameX);
+            Assert.Equal((short)-1, segment.FrameY);
         }
+        Assert.Equal("563F025A04F275747422094FCDA230B94515191572493EAE2C8AAEDACD52ABA1", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("DCE698487378CA7EDE9CA5BC41C5DC16F49C18AE8A33B2F65EEF743CC39C2BFB", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
         Assert.Equal(540780342, random.Next());
     }
 
     [Fact]
     public void Water_plants_mixed_terrain_full_passlegacy_fixture_matches_the_official_grid_digest()
     {
-        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1. This single ordinary
+        // Proper-Main original mode2 registered pass, two identical repeats; 600x500 seed1. This ordinary
         // terrain fixture combines separate grass pools, a jungle-bamboo column, and two deep seaweed
         // columns; its whole-grid digest catches scan order, helper RNG, framing, and liquid mutations.
         const int width = 600;
@@ -3451,7 +3481,9 @@ public sealed class SourceBackedFinal1458Tests
                 workspace,
                 random));
 
-        Assert.Equal("0AFD55A6AD59A44C0A4E62B5022301E15900DF6658111CC5F19699F0635615EF", HashFixture(workspace));
+        Assert.Equal("D070FA84EE651295CD266B700D41742811EDBF94C83CC1FDA1CF14E79DBBB4CD", HashFixture(workspace));
+        Assert.Equal("FC4792F9039165A3D3B2AB251D71D443E90B9DECFA3EEDCD108766C6E2500FEC", GenerationNaturalPrefix49Tests.GridHash(workspace));
+        Assert.Equal("415AD977C8586F6614240413CEF87857D88F76E5191582ED9AECA6485C425F39", GenerationNaturalPrefix49Tests.RandomHash(random, includeReport: false));
         Assert.Equal(1773873583, random.Next());
     }
 
@@ -3579,7 +3611,7 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
-    public void Pure_remix_keeps_later_overlays_on_the_compatibility_path()
+    public void Pure_remix_registers_its_qualified_prefix_and_keeps_later_native_overlays_unadmitted()
     {
         var provider = new SourceBackedFinal1458();
         var request = new WorldGenerationRequest(
@@ -3595,9 +3627,10 @@ public sealed class SourceBackedFinal1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(10, builder.Entries.Count);
+        Assert.Equal(27, builder.Entries.Count);
         Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/TerrainLayers");
         Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/Dunes");
+        Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/MudCavesToGrass");
         Assert.DoesNotContain(builder.Entries, static entry => FinalPassIds.Contains(entry.Descriptor.Id));
         CaptureEntry terrain = Assert.Single(builder.Entries, static entry =>
             entry.Descriptor.Id == SourceBackedProvider1458.TerrainPassId);

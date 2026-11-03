@@ -42,7 +42,7 @@ public sealed class SourceBackedMidPipeline1458 : IWorldGenerationProvider
 
         WorldGenerationRequest requestCopy = request;
         VanillaWorldSeedProfile1458 profile = WorldSeedResolver1458.Resolve(in requestCopy);
-        if (!profile.IsDefault || !TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
+        if (!profile.SupportsSourceBackedResetAndTerrain || profile.Secret != VanillaSecretWorldSeed1458.None || !TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
         {
             capture.Replay(builder);
             return;
@@ -50,6 +50,19 @@ public sealed class SourceBackedMidPipeline1458 : IWorldGenerationProvider
 
         CapturedPass residualBiomes = capture.Require(CompatibilityBiomesId);
         var state = new MidState1458();
+        if (!profile.IsDefault)
+        {
+            foreach (CapturedPass entry in capture.Entries)
+            {
+                if (entry.Descriptor.Id == CompatibilityBiomesId)
+                {
+                    Add(builder, MudCavesToGrassId, profile.Has(VanillaSpecialWorldSeed1458.Skyblock) ? new WorldGenerationPassId("terraria:1.4.5.8/Grass") : JungleId, new MidPass1458(MidStage1458.MudCavesToGrass, state));
+                    builder.Add(CloneDescriptor(entry.Descriptor, entry.Descriptor.RngMode, [MudCavesToGrassId]), entry.Pass);
+                }
+                else builder.Add(entry.Descriptor, entry.Pass);
+            }
+            return;
+        }
 
         foreach (CapturedPass entry in capture.Entries)
         {
@@ -275,7 +288,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             case MidStage1458.Underworld:
                 UnderworldTerrain1458.Generate(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
                     workspace.VanillaLiquidLines ?? throw new InvalidOperationException("Underworld requires exact Early-pass liquid lines."),
-                    context.CancellationToken);
+                    context.CancellationToken, workspace);
                 UnderworldVegetation1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
                 HellFortGenerator1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
                 HellFortLighting1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
@@ -299,6 +312,15 @@ internal sealed class MidPass1458 : IWorldGenerationPass
 
     private static void ApplyMudCavesToGrass(IWorldGenerationContext context, Workspace workspace)
     {
+        WorldGenerationRequest request = context.Request;
+        VanillaWorldSeedProfile1458 profile = WorldSeedResolver1458.Resolve(in request);
+        if (profile.Has(VanillaSpecialWorldSeed1458.Skyblock)) return;
+        if (profile.Has(VanillaSpecialWorldSeed1458.NotTheBees))
+        {
+            TerrainGenerationState1458 terrain = workspace.VanillaTerrainState!.Value;
+            NotTheBeesEarly1458.Apply(workspace, context.VanillaRandom!, profile, terrain.WorldSurface, terrain.RockLayer,
+                workspace.VanillaLiquidLines!.Value.LavaLine, workspace.VanillaBootstrapState!.DungeonSide, context.CancellationToken);
+        }
         JungleMudSurface1458.Apply(workspace.TileStore, context.CancellationToken);
         context.ReportProgress(1d, "Spreading jungle grass and removing small terrain clumps");
     }
@@ -434,10 +456,12 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Evil-biome placement requires the generated desert bounds.");
         bool crimson = context.Request.Options.Evil == WorldGenerationEvil.Crimson;
         var crimsonCaves = crimson ? new CrimsonCaves1458(workspace.TileStore, context.VanillaRandom!,
-            state.WorldSurface, context.CancellationToken) : null;
+            state.WorldSurface, context.CancellationToken,
+            workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null) : null;
         var corruptionCaves = crimson ? null : new CorruptionCaves1458(workspace.TileStore, context.VanillaRandom!,
             state.WorldSurface, state.RockLayer, workspace.VanillaLiquidLines ??
-                throw new InvalidOperationException("Corruption requires exact Early-pass liquid lines."), context.CancellationToken);
+                throw new InvalidOperationException("Corruption requires exact Early-pass liquid lines."), context.CancellationToken,
+            workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
 
         for (int biome = 0; biome < grid.Width * 0.00045d; biome++)
         {
@@ -456,7 +480,8 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                 for (int x = left; x < right; x++) surface.ConvertJungleColumn(x, left, right, true);
                 surface.ConvertRegion(left, right, true);
                 new EvilAltarPlacement1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
-                    state.RockLayer, context.CancellationToken).GenerateCrimsonRegion(left, right);
+                    state.RockLayer, context.CancellationToken,
+                    workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null).GenerateCrimsonRegion(left, right);
                 continue;
             }
 

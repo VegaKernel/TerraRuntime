@@ -10,42 +10,42 @@ internal static class CactusGrower1458
 {
     private const ushort Cactus = 80;
 
-    public static bool Plant(WorldTileStore store, int x, int floor, IWorldGenerationVanillaRandom random)
+    public static bool Plant(WorldTileStore store, int x, int floor, IWorldGenerationVanillaRandom random, GenerationTileFraming1458? framing = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(random);
         if (!Inside(store, x, floor, 3) || floor < 13)
             return false;
-        bool changed = TryGrow(store, x, floor, random);
+        bool changed = TryGrow(store, x, floor, random, framing);
         // PlantCactus always performs all 150 candidate attempts, even if its first root attempt failed.
         for (int attempt = 0; attempt < 150; attempt++)
         {
             int candidateX = random.Next(x - 1, x + 2);
             int candidateY = random.Next(floor - 10, floor + 2);
-            changed |= TryGrow(store, candidateX, candidateY, random);
+            changed |= TryGrow(store, candidateX, candidateY, random, framing);
         }
         return changed;
     }
 
-    internal static bool TryGrow(WorldTileStore store, int x, int y, IWorldGenerationVanillaRandom random)
+    internal static bool TryGrow(WorldTileStore store, int x, int y, IWorldGenerationVanillaRandom random, GenerationTileFraming1458? framing = null)
     {
         // The source indexes local neighbours directly. Keep malformed/border sites fail-closed.
         if (!Inside(store, x, y, 3) || y < 12)
             return false;
         WorldTile source = store.Get(x, y);
-        if (!source.IsActive || source.IsActuated || source.Shape == 1 ||
+        if (!source.IsActive || source.IsActuated || source.IsHalfBrick ||
             (source.Type != Cactus && !IsSand(source.Type)) || store.Get(x, y - 1).LiquidAmount != 0)
             return false;
 
         int liquid = 0;
         for (int column = Math.Max(0, x - 50); column < Math.Min(store.Dimensions.WidthTiles, x + 50); column++)
-        for (int row = Math.Max(0, y - 25); row < Math.Min(store.Dimensions.HeightTiles, y + 25); row++)
-            liquid += store.Get(column, row).LiquidAmount;
+            for (int row = Math.Max(0, y - 25); row < Math.Min(store.Dimensions.HeightTiles, y + 25); row++)
+                liquid += store.Get(column, row).LiquidAmount;
         if (liquid / 255 > 25)
             return false;
 
         if (IsSand(source.Type))
-            return TryRoot(store, x, y, source, random);
+            return TryRoot(store, x, y, source, random, framing);
         if (!TryFindRoot(store, x, y, out int rootX, out int rootBottom))
             return false;
 
@@ -56,23 +56,23 @@ internal static class CactusGrower1458
             return false;
         int population = 0;
         for (int column = rootX - 2; column <= rootX + 2; column++)
-        for (int row = top; row <= rootBottom; row++)
-            if (IsCactus(store, column, row)) population++;
+            for (int row = top; row <= rootBottom; row++)
+                if (IsCactus(store, column, row)) population++;
         if (population >= random.Next(11, 13))
             return false;
 
         if (branch == 0)
         {
             if (rise == 0)
-                return Place(store, x, y - 1, source);
+                return Place(store, x, y - 1, source, framing);
             bool left = IsCactus(store, x, y - 1) && ClearBranch(store, x, y, -1);
             bool right = IsCactus(store, x, y - 1) && ClearBranch(store, x, y, 1);
             int choice = random.Next(3);
-            if (choice == 0 && left) return Place(store, x - 1, y, source);
-            if (choice == 1 && right) return Place(store, x + 1, y, source);
+            if (choice == 0 && left) return Place(store, x - 1, y, source, framing);
+            if (choice == 1 && right) return Place(store, x + 1, y, source, framing);
             // The height roll is consumed even when the upper cell is already occupied.
             if (rise < random.Next(2, 8) && !IsCactus(store, x - 1, y - 1) && !IsCactus(store, x + 1, y - 1))
-                return Place(store, x, y - 1, source);
+                return Place(store, x, y - 1, source, framing);
             return false;
         }
 
@@ -80,23 +80,23 @@ internal static class CactusGrower1458
             return false;
         return !Active(store, x, y - 1) && !Active(store, x, y - 2) &&
             !Active(store, x + branch, y - 1) && IsCactus(store, x - branch, y - 1) &&
-            Place(store, x, y - 1, source);
+            Place(store, x, y - 1, source, framing);
     }
 
-    private static bool TryRoot(WorldTileStore store, int x, int y, WorldTile source, IWorldGenerationVanillaRandom random)
+    private static bool TryRoot(WorldTileStore store, int x, int y, WorldTile source, IWorldGenerationVanillaRandom random, GenerationTileFraming1458? framing = null)
     {
         if (Active(store, x, y - 1) || Active(store, x - 1, y - 1) || Active(store, x + 1, y - 1))
             return false;
         int cactusCount = 0, sandCount = 0;
         for (int column = x - 6; column <= x + 6 && sandCount <= 10; column++)
-        for (int row = y - 3; row <= y + 1; row++)
-        {
-            if (!Inside(store, column, row, 5)) continue;
-            WorldTile tile = store.Get(column, row);
-            if (!tile.IsActive) continue;
-            if (tile.Type == Cactus && ++cactusCount >= 4) return false;
-            if (IsSand(tile.Type) && ++sandCount > 10) break;
-        }
+            for (int row = y - 3; row <= y + 1; row++)
+            {
+                if (!Inside(store, column, row, 5)) continue;
+                WorldTile tile = store.Get(column, row);
+                if (!tile.IsActive) continue;
+                if (tile.Type == Cactus && ++cactusCount >= 4) return false;
+                if (IsSand(tile.Type) && ++sandCount > 10) break;
+            }
         if (sandCount <= 10) return false;
         if (random.Next(2) == 0)
         {
@@ -104,8 +104,8 @@ internal static class CactusGrower1458
             ground.Shape = 0;
         }
         // SquareTileFrame -> CheckCactus immediately removes growth on a slope left unflattened by the roll.
-        if (store.Get(x, y).Shape != 0) return false;
-        return Place(store, x, y - 1, source);
+        if (framing is null && store.Get(x, y).Shape != 0) return false;
+        return Place(store, x, y - 1, source, framing);
     }
 
     private static bool TryFindRoot(WorldTileStore store, int x, int y, out int rootX, out int bottom)
@@ -130,7 +130,7 @@ internal static class CactusGrower1458
         !Active(store, x + direction, y - 1) && !Active(store, x + direction, y + 1) &&
         !Active(store, x + direction * 2, y);
 
-    private static bool Place(WorldTileStore store, int x, int y, WorldTile source)
+    private static bool Place(WorldTileStore store, int x, int y, WorldTile source, GenerationTileFraming1458? framing)
     {
         if (!Inside(store, x, y, 1) || Active(store, x, y)) return false;
         ref WorldTile tile = ref store.Tiles[store.GetUncheckedIndex(x, y)];
@@ -138,6 +138,7 @@ internal static class CactusGrower1458
         tile.Type = Cactus;
         tile.Flags = (tile.Flags & ~coatings) | WorldTileFlags.Active | (source.Flags & coatings);
         tile.TileColor = source.TileColor;
+        framing?.SquareTileFrame(x, y);
         return true;
     }
 

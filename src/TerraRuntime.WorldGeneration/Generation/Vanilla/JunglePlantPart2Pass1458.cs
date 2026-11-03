@@ -26,7 +26,8 @@ internal sealed class JunglePlantPart2Pass1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
     bool dungeonOnLeft,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    GenerationTileFraming1458? framing = null)
 {
     private const ushort JungleGrass = 60;
     private const ushort PlantDetritus = 233;
@@ -184,7 +185,13 @@ internal sealed class JunglePlantPart2Pass1458(
         if (!Contains(x, y) || !At(x, y).IsActive)
             return;
 
-        GenerationKillTileDust1458.Consume(random, At(x, y).Type);
+        if (framing is not null)
+        {
+            framing.KillTile(x, y);
+            return;
+        }
+
+        GenerationKillTileDust1458.Consume(random, At(x, y).Type, At(x, y).FrameX);
         ref WorldTile cell = ref At(x, y);
         cell.Flags &= ~WorldTileFlags.Active;
         cell.Shape = 0;
@@ -216,7 +223,7 @@ internal sealed class JunglePlantPart2Pass1458(
             return true;
 
         WorldTile tile = At(x, y);
-        return tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        return tile.IsActive && (framing?.GenerationSolid(tile.Type) ?? VanillaTileCollisionCatalog.IsSolid(tile.TileType)) &&
             !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) && !tile.IsActuated && tile.Shape == 0;
     }
 

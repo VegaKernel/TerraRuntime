@@ -6,7 +6,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary 1.4.5.8 evil altar searches and the generation-only Place3x2(26) operation.</summary>
 internal sealed class EvilAltarPlacement1458(
     WorldTileStore store, IWorldGenerationVanillaRandom random,
-    double worldSurface, double rockLayer, CancellationToken cancellationToken)
+    double worldSurface, double rockLayer, CancellationToken cancellationToken,
+    Func<TileTypeId, bool>? solidity = null)
 {
     private const ushort Altar = 26;
     // Safety policy for vanilla's otherwise unbounded rejected-coordinate loops. Never invent a position.
@@ -33,7 +34,7 @@ internal sealed class EvilAltarPlacement1458(
                     y = random.Next(low, high);
                 } while (OceanDepths(x, y) || Math.Sqrt((double)(x - shimmer.X) * (x - shimmer.X) +
                              (double)(y - shimmer.Y) * (y - shimmer.Y)) < 150);
-                if (!IsNearby(store, x, y)) TryPlace(store, x, y, crimson, crackedBricksSolid: false);
+                if (!IsNearby(store, x, y)) TryPlace(store, x, y, crimson, crackedBricksSolid: false, solidity: solidity);
                 // Vanilla tests the stored material, not activity, after the placement attempt.
                 if (At(x, y).Type == Altar) { placed++; break; }
             }
@@ -69,7 +70,7 @@ internal sealed class EvilAltarPlacement1458(
                 WorldTile support = At(x, y + 1);
                 if ((expansion > 10 || (support.IsActive && support.Type == 203)) && !IsNearby(store, x, y))
                 {
-                    TryPlace(store, x, y, crimson: true);
+                    TryPlace(store, x, y, crimson: true, solidity: solidity);
                     if (At(x, y).Type == Altar) break;
                 }
                 if (expansion > 100) break;
@@ -93,7 +94,7 @@ internal sealed class EvilAltarPlacement1458(
         return false;
     }
 
-    internal static bool TryPlace(WorldTileStore store, int x, int y, bool crimson, bool crackedBricksSolid = true)
+    internal static bool TryPlace(WorldTileStore store, int x, int y, bool crimson, bool crackedBricksSolid = true, Func<TileTypeId, bool>? solidity = null)
     {
         if (x < 5 || x > store.Dimensions.WidthTiles - 5 || y < 5 || y > store.Dimensions.HeightTiles - 5) return false;
         for (int dx = -1; dx <= 1; dx++)
@@ -102,7 +103,8 @@ internal sealed class EvilAltarPlacement1458(
             // TileID.Sets.Boulders includes 665 too (unlike the QuickWater solidity override).
             if ((!crackedBricksSolid && support.Type is 481 or 482 or 483) ||
                 support.Type is 138 or 484 or 664 or 665 or >= 711 and <= 716 ||
-                !support.IsActive || support.IsActuated || !VanillaTileCollisionCatalog.IsSolid(support.TileType)) return false;
+                !support.IsActive || support.IsActuated || support.IsHalfBrick ||
+                !(solidity?.Invoke(support.TileType) ?? VanillaTileCollisionCatalog.IsSolid(support.TileType))) return false;
             bool platform = support.Type is 19 or 427 or >= 435 and <= 439;
             // Coordinate SolidTile2 permits top slopes on platforms, but never half bricks.
             if (support.Shape != 0 && !(platform && support.Shape is 2 or 3)) return false;

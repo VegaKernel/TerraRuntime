@@ -38,7 +38,6 @@ public sealed partial class SourceBackedFinal1458 : IWorldGenerationProvider
         if (!profile.IsDefault || !TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
         {
             if (profile.SupportsSourceBackedResetAndTerrain &&
-                (profile.Special != VanillaSpecialWorldSeed1458.Remix || profile.Secret != VanillaSecretWorldSeed1458.None) &&
                 TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
                 ReplayQualifiedPrefixOnly(capture, builder);
             else
@@ -190,7 +189,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 ApplySettleLiquidsAgain(context, workspace, random);
                 break;
             case FinalStage1458.CactusPalmTreesCoral:
-                ApplyCactusPalmTreesCoral(context, grid, random);
+                ApplyCactusPalmTreesCoral(context, workspace, random);
                 break;
             case FinalStage1458.TileCleanup:
                 ApplyTileCleanup(context, grid, random);
@@ -205,7 +204,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 ApplyStalac(context, workspace, random);
                 break;
             case FinalStage1458.RemoveBrokenTraps:
-                ApplyRemoveBrokenTraps(context, grid);
+                ApplyRemoveBrokenTraps(context, workspace, random);
                 break;
             case FinalStage1458.FinalCleanup:
                 ApplyFinalCleanup(context, grid, random);
@@ -249,75 +248,6 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Applied source-backed QuickWater/WaterCheck liquid settle again");
     }
 
-    private void ApplyCactusPalmTreesCoral(
-        IWorldGenerationContext context,
-        RuntimeGrid grid,
-        IWorldGenerationVanillaRandom random)
-    {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int cactus = 0;
-        int palms = 0;
-        int coral = 0;
-        // The ordinary source pass scans from the world top to worldSurface-1, not a narrow band
-        // around that layer marker: dry beach surfaces can be well above the marker.
-        const int minSurface = 1;
-        int maxSurface = Math.Min(grid.Height - 1, (int)Math.Ceiling(state.Layers.WorldSurface - 1));
-
-        for (int x = 3; x < grid.Width - 3; x++)
-        {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int floor = grid.FindFirstActiveY(x, minSurface, maxSurface);
-            if (floor <= 2 || floor >= grid.Height - 2 || grid.At(x, floor).Type != Sand)
-                continue;
-
-            bool beach = x <= bootstrap.LeftBeachEnd + 90 || x >= bootstrap.RightBeachStart - 90;
-            if (beach && random.Next(9) == 0 && PalmTreeGrower1458.TryGrow(grid.Store, x, floor, random))
-            {
-                palms++;
-                continue;
-            }
-
-            if (!beach && random.Next(18) == 0 && CactusGrower1458.Plant(grid.Store, x, floor, random))
-                cactus++;
-        }
-
-        coral += PlaceCoralBand(context, grid, random, 3, Math.Min(grid.Width - 3, bootstrap.LeftBeachEnd + 110));
-        coral += PlaceCoralBand(context, grid, random, Math.Max(3, bootstrap.RightBeachStart - 110), grid.Width - 3);
-        context.ReportProgress(1d, $"Cactus, Palm Trees, & Coral complete; cactus={cactus}, palms={palms}, coral={coral}");
-    }
-
-    private static int PlaceCoralBand(
-        IWorldGenerationContext context,
-        RuntimeGrid grid,
-        IWorldGenerationVanillaRandom random,
-        int left,
-        int right)
-    {
-        int placed = 0;
-        for (int x = Math.Max(2, left); x < Math.Min(grid.Width - 2, right); x++)
-        {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            if (random.Next(10) != 0)
-                continue;
-
-            for (int y = 2; y < Math.Min(grid.Height - 2, grid.Height / 3); y++)
-            {
-                ref WorldTile water = ref grid.At(x, y);
-                WorldTile support = grid.At(x, y + 1);
-                if (water.IsActive || water.LiquidAmount < 96 || !support.IsActive || support.Type != Sand)
-                    continue;
-
-                SetObjectTile(ref water, Coral, frameX: checked((short)(random.Next(6) * 18)), preserveLiquid: true);
-                placed++;
-                break;
-            }
-        }
-        return placed;
-    }
-
     private static void ApplyTileCleanup(
         IWorldGenerationContext context,
         RuntimeGrid grid,
@@ -328,6 +258,9 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         // were invented by the former implementation and destroyed state the source deliberately preserves.
         // The later cleanup branches remain separately incomplete, but this shared first boundary must stay
         // source-shaped because they observe the shapes it leaves behind.
+        var workspace = (Workspace)context.Workspace;
+        var framing = new GenerationTileFraming1458(grid.Store, random, workspace: workspace, useWorldGenerationSolidity: true);
+        workspace.SetVanillaGenerationSolid(new(379), false);
         long flattened = 0;
         for (int x = 0; x < grid.Width; x++)
         {
@@ -338,7 +271,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 ref WorldTile tile = ref grid.At(x, y);
                 if ((tile.IsActive && TileCleanupKeepsSlope(tile.Type)) || tile.Shape == 0)
                     continue;
-                tile.Shape = 0;
+                tile.ClearSourceShape();
                 flattened++;
             }
         }
@@ -358,26 +291,26 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 ref WorldTile tile = ref grid.At(x, y);
                 if (tile.IsActive && tile.Shape is (2 or 3))
                 {
-                    bool joinsFacingHalfBrick = tile.Shape == 2
-                        ? grid.At(x + 1, y).IsActive && grid.At(x + 1, y).Shape == 1
-                        : grid.At(x - 1, y).IsActive && grid.At(x - 1, y).Shape == 1;
+                    bool joinsFacingHalfBrick = tile.SourceSlope == 2
+                        ? grid.At(x + 1, y).IsActive && grid.At(x + 1, y).IsHalfBrick
+                        : grid.At(x - 1, y).IsActive && grid.At(x - 1, y).IsHalfBrick;
                     if (joinsFacingHalfBrick)
                     {
-                        tile.Shape = 1;
+                        tile.ClearSourceShape(); tile.Shape = 1;
                         repairedTopSlopes++;
                     }
                 }
 
                 if (tile.IsActive && tile.LiquidAmount > 0 && SlowlyDiesInWater.Contains(tile.Type))
                 {
-                    KillSingleTileDuringCleanup(ref tile);
+                    framing.KillTile(x, y);
                     waterDeaths++;
                 }
 
                 // TerrariaServer 1.4.5.8 TileCleanup's two drip searches are intentionally inside the
                 // inner scan and share genRand with all subsequent decoration.  Do not pre-scan liquid
                 // columns: both the short-circuiting and the accepted-only draws are observable RNG order.
-                if (!tile.IsActive && tile.LiquidAmount == 0 && random.Next(3) != 0 && IsSolidTile(grid.At(x, y - 1)))
+                if (!tile.IsActive && tile.LiquidAmount == 0 && random.Next(3) != 0 && CoastalSolid(workspace, x, y - 1))
                 {
                     int ceilingRange = random.Next(15, 21);
                     for (int sourceY = y - 2; sourceY >= y - ceilingRange; sourceY--)
@@ -408,7 +341,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                         }
                     }
 
-                    if (!tile.IsActive && random.Next(4) == 0 && grid.At(x, y - 1).Type is 396 or 397)
+                    if (!tile.IsActive && random.Next(4) == 0 && grid.At(x, y - 1).Type is 396 or 397 or 398 or 399 or 400 or 401 or 402 or 403)
                     {
                         tile.Type = 461;
                         tile.FrameX = 0;
@@ -487,13 +420,9 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             }
         }
 
+        workspace.SetVanillaGenerationSolid(new(379), true);
         context.ReportProgress(1d, $"Tile Cleanup complete; flattened={flattened}, repairedTopSlopes={repairedTopSlopes}, waterDeaths={waterDeaths}, drips={drips}");
     }
-
-    private static bool IsSolidTile(in WorldTile tile) =>
-        // TileCleanup temporarily sets Main.tileSolid[379] = false around its complete scan. The mutation
-        // affects its SolidTile ceiling gate for drip offers, then the global table is restored on return.
-        tile.IsActive && tile.Type != 379 && VanillaTileCollisionCatalog.IsSolid(new TileTypeId(tile.Type));
 
     private static void RepairBasicChest(
         IWorldGenerationContext context, RuntimeGrid grid, int x, int y, ushort observedType, short frameX, short frameY)
@@ -585,7 +514,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             {
                 ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
                 piece.Flags |= WorldTileFlags.Active;
-                piece.Shape = 0;
+                piece.ClearSourceShape();
                 piece.Type = type;
                 piece.FrameX = checked((short)(dx * 18 + 36 * styleX));
                 piece.FrameY = checked((short)(dy * 18 + 36 * styleY));
@@ -603,7 +532,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 support.Type = TerrainTileForWall(support.Wall);
             }
 
-            support.Shape = 0;
+            support.ClearSourceShape();
         }
     }
 
@@ -614,7 +543,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             {
                 ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
                 piece.Flags |= WorldTileFlags.Active;
-                piece.Shape = 0;
+                piece.ClearSourceShape();
                 piece.Type = type;
                 piece.FrameX = checked((short)(dx * 18 + 54 * style));
                 piece.FrameY = checked((short)(dy * 18));
@@ -637,7 +566,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 !VanillaTileIds.IsPlatform(supportType))
                 support.Type = TerrainTileForWall(support.Wall);
 
-            support.Shape = 0;
+            support.ClearSourceShape();
             ref WorldTile below = ref grid.At(originX + dx, supportY + 1);
             if (below.Type == 28 && below.FrameY % 36 >= 18)
             {
@@ -691,20 +620,6 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
 
     // TileCleanup calls WorldGen.KillTile rather than clearing fluid; retain the liquid while applying the
     // single-cell state mutation shared with the verified generation/loading KillTile boundary.
-    private static void KillSingleTileDuringCleanup(ref WorldTile tile)
-    {
-        tile.Type = 0;
-        tile.FrameX = -1;
-        tile.FrameY = -1;
-        tile.TileColor = 0;
-        tile.Shape = 0;
-        tile.Flags &= ~(
-            WorldTileFlags.Active |
-            WorldTileFlags.Inactive |
-            WorldTileFlags.InvisibleBlock |
-            WorldTileFlags.FullbrightBlock);
-    }
-
     private static void ApplyLihzahrdAltars(
         IWorldGenerationContext context,
         Workspace workspace,
@@ -715,8 +630,8 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 "Lihzahrd Altars requires the Jungle Temple GenVars.lAltarX/lAltarY anchor.");
 
         // TerrariaServer 1.4.5.8 GenPassNameID.LihzahrdAltar consumes makeTemple's exact GenVars anchor;
-        // it neither discovers a temple nor draws RNG. SquareTileFrame follows these writes in vanilla, but
-        // no runtime re-framer is needed for this fixed explicit 3x2 footprint.
+        // The retained anchor owns placement; the following framing observes nearby objects and
+        // the source phase's support capabilities after every member has been written.
         for (int dx = 0; dx < 3; dx++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
@@ -731,10 +646,13 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
 
             ref WorldTile support = ref grid.At(altar.X + dx, altar.Y + 2);
             support.Flags |= WorldTileFlags.Active;
-            support.Shape = 0;
+            support.ClearSourceShape();
             support.Type = LihzahrdBrick;
         }
 
+        var framing = new GenerationTileFraming1458(grid.Store, context.VanillaRandom!, workspace: workspace, useWorldGenerationSolidity: true);
+        for (int dx = 0; dx < 3; dx++)
+            for (int dy = 0; dy < 2; dy++) framing.SquareTileFrame(altar.X + dx, altar.Y + dy);
         context.ReportProgress(1d, "Lihzahrd Altars complete; placed at retained temple anchor");
     }
 
@@ -746,6 +664,8 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         // TerrariaServer 1.4.5.8 GenPassNameID.LilypadsCattailsBambooAndSeaweed walks every ordinary
         // surface column. This ordering is important: the one-in-five offer is consumed before any
         // placement helper decides whether it can use the site.
+        var workspace = (Workspace)context.Workspace;
+        var framing = new GenerationTileFraming1458(grid.Store, random, workspace: workspace, useWorldGenerationSolidity: true);
         int surface = Math.Clamp((int)state.Layers.WorldSurface, 1, grid.Height - 1);
         int placed = 0;
         for (int x = 20; x < grid.Width - 20; x++)
@@ -761,27 +681,28 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 if (!grid.At(x, y).IsActive)
                 {
                     if (random.Next(2) == 0)
-                        placed += TryPlaceLilyPad(grid, random, x, y) ? 1 : 0;
+                        placed += TryPlaceLilyPad(grid, random, x, y, framing) ? 1 : 0;
                     else
                     {
-                        VanillaCatTailAnchor1458? anchor = CatTail1458.TryPlace(grid.Store, random, x, y);
+                        VanillaCatTailAnchor1458? anchor = CatTail1458.TryPlace(grid.Store, random, x, y, framing);
                         if (anchor is { } value)
                         {
                             placed++;
                             int growth = random.Next(14);
                             for (int k = 0; k < growth; k++)
-                                CatTail1458.Grow(grid.Store, random, value.X, value.Y);
+                                CatTail1458.Grow(grid.Store, random, value.X, value.Y, framing);
+                            framing.SquareTileFrame(value.X, value.Y);
                         }
                     }
                 }
 
                 WorldTile current = grid.At(x, y);
                 if ((!current.IsActive || current.Type is JunglePlants or JunglePlants2) &&
-                    TryPlaceBamboo(grid, random, x, y, surface))
+                    TryPlaceBamboo(grid, random, x, y, surface, framing))
                 {
                     placed++;
                     int growth = random.Next(10, 20);
-                    for (int l = 0; l < growth && TryPlaceBamboo(grid, random, x, y - l, surface); l++)
+                    for (int l = 0; l < growth && TryPlaceBamboo(grid, random, x, y - l, surface, framing); l++)
                         placed++;
                 }
             }
@@ -795,15 +716,15 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 if (!tile.IsActive)
                     continue;
                 if (tile.Type == Sand && random.Next(3) != 0)
-                    GrowSeaweed(grid, random, x, y);
+                    GrowSeaweed(grid, random, x, y, framing, workspace);
                 else if (tile.Type == 549)
-                    GrowSeaweed(grid, random, x, y);
+                    GrowSeaweed(grid, random, x, y, framing, workspace);
             }
         }
         context.ReportProgress(1d, $"Water Plants complete; placed={placed}");
     }
 
-    private static bool TryPlaceLilyPad(RuntimeGrid grid, IWorldGenerationVanillaRandom random, int x, int y)
+    private static bool TryPlaceLilyPad(RuntimeGrid grid, IWorldGenerationVanillaRandom random, int x, int y, GenerationTileFraming1458 framing)
     {
         if (x < 50 || x > grid.Width - 50 || y < 50 || y > grid.Height - 50)
             return false;
@@ -844,10 +765,9 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
 
         ref WorldTile pad = ref grid.At(x, y);
         pad.Flags |= WorldTileFlags.Active;
-        pad.Flags &= ~WorldTileFlags.Inactive;
         pad.Type = LilyPad;
         pad.TileColor = ground.TileColor;
-        pad.Shape = 0;
+        pad.ClearSourceShape();
         pad.FrameY = frameY;
         if (random.Next(2) == 0)
             pad.FrameX = checked((short)(18 * random.Next(3)));
@@ -860,6 +780,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 x < fifth * 3 ? random.Next(3, 6) : x < fifth * 4 ? random.Next(15, 18) : random.Next(12, 15);
             pad.FrameX = checked((short)(18 * group));
         }
+        framing.SquareTileFrame(x, y);
         return true;
     }
 
@@ -868,7 +789,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         IWorldGenerationVanillaRandom random,
         int x,
         int y,
-        int surface)
+        int surface, GenerationTileFraming1458 framing)
     {
         // WorldGen.PlaceBamboo draws this before every rejection, including malformed candidates.
         int densityRoll = random.Next(1, 21);
@@ -887,7 +808,7 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         int distance = 1;
         if (below.Type == 571)
         {
-            while (y + distance < grid.Height && !IsOrdinarySolid(grid.At(x, y + distance)))
+            while (y + distance < grid.Height && !CoastalSolid(grid.Workspace, x, y + distance))
                 distance++;
             if (y + distance >= grid.Height || distance + plants / random.Next(1, 21) > densityRoll)
                 return false;
@@ -900,27 +821,27 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
 
         ref WorldTile planted = ref grid.At(x, y);
         planted.Flags |= WorldTileFlags.Active;
-        planted.Flags &= ~WorldTileFlags.Inactive;
         planted.Type = 571;
         planted.FrameX = 0;
         planted.FrameY = 0;
-        planted.Shape = 0;
+        planted.ClearSourceShape();
         planted.TileColor = below.TileColor;
         planted.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         planted.Flags |= below.Flags & (WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        framing.SquareTileFrame(x, y);
         return true;
     }
 
     private static int GetWaterDepth(RuntimeGrid grid, int x, int y)
     {
         int bottom = y;
-        while (bottom < grid.Height && !IsOrdinarySolid(grid.At(x, bottom)))
+        while (bottom < grid.Height && !CoastalSolid(grid.Workspace, x, bottom))
             bottom++;
         if (bottom >= grid.Height)
             return 0;
         bottom--;
         int top = bottom;
-        while (top >= 0 && grid.At(x, top).LiquidAmount > 0 && !IsOrdinarySolid(grid.At(x, top)))
+        while (top >= 0 && grid.At(x, top).LiquidAmount > 0 && !CoastalSolid(grid.Workspace, x, top))
             top--;
         return bottom - top;
     }
@@ -935,13 +856,13 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         return count;
     }
 
-    private static void GrowSeaweed(RuntimeGrid grid, IWorldGenerationVanillaRandom random, int x, int y)
+    private static void GrowSeaweed(RuntimeGrid grid, IWorldGenerationVanillaRandom random, int x, int y, GenerationTileFraming1458 framing, Workspace workspace)
     {
         WorldTile tile = grid.At(x, y);
         if (tile.Type == 549 && tile.LiquidAmount < 200 || grid.At(x, y - 1).LiquidAmount < 200)
         {
             if (tile.IsActive && tile.Type == 549 && random.Next(2) == 0)
-                KillSingleTileDuringCleanup(ref grid.At(x, y));
+                framing.KillTile(x, y);
             return;
         }
         if (grid.At(x, y - 1).IsActive || grid.At(x, y - 2).IsActive || random.Next(1) != 0 ||
@@ -955,23 +876,29 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                     return;
             }
         int floor = y;
-        while (floor < grid.Height - 50 && !IsOrdinarySolid(grid.At(x, floor)))
+        while (floor < grid.Height - 50 && !CoastalSolid(grid.Workspace, x, floor))
             floor++;
         if (floor - y < 17 - random.Next(20))
         {
-            ref WorldTile seaweed = ref grid.At(x, y - 1);
-            seaweed.Flags |= WorldTileFlags.Active;
-            seaweed.Flags &= ~WorldTileFlags.Inactive;
-            seaweed.Type = 549;
-            seaweed.FrameX = 0;
-            seaweed.FrameY = 0;
-            seaweed.Shape = 0;
+            int targetY = y - 1;
+            if (grid.At(x, targetY).IsActive) return;
+            ref WorldTile attempted = ref grid.At(x, targetY); attempted.Type = 0; attempted.FrameX = 0; attempted.FrameY = 0; attempted.ClearSourceShape(); attempted.TileColor = 0; attempted.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+            if (x < 50 || x >= grid.Width - 50 || targetY < 50 || targetY >= grid.Height - 50) return;
+            for (int dy = 0; dy < 3; dy++) if (grid.At(x, targetY - dy).LiquidAmount == 0 || grid.At(x, targetY - dy).LiquidKind != WorldLiquidKind.Water) return;
+            WorldTile ground = grid.At(x, targetY + 1);
+            if (!ground.IsActive || ground.IsActuated || ground.Type != 549 && (!WorldSmoothingCatalog1458.IsSandConversion(ground.TileType) || !CoastalSolid(workspace, x, targetY + 1, true))) return;
+            ushort wall = grid.At(x, targetY).Wall;
+            if (wall != 0 && wall is not (>= 63 and <= 69) && wall is not (80 or 81)) return;
+            grid.At(x, targetY + 1).ClearSourceShape();
+            ref WorldTile seaweed = ref grid.At(x, targetY);
+            seaweed.Type = 549; seaweed.Flags |= WorldTileFlags.Active; seaweed.FrameX = 0; seaweed.FrameY = 0; seaweed.ClearSourceShape(); seaweed.TileColor = ground.TileColor;
+            const WorldTileFlags coat = WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock;
+            seaweed.Flags = (seaweed.Flags & ~coat) | (ground.Flags & coat);
+            framing.SquareTileFrame(x, targetY);
+            framing.SquareTileFrame(x, targetY);
+
         }
     }
-
-    private static bool IsOrdinarySolid(in WorldTile tile) =>
-        tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
-        !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
 
     /// <summary>
     /// Source <c>GenPassNameID.SpeleothemsAndGemTrees</c>, delegated to <see cref="SpeleothemPass1458"/>.
@@ -986,40 +913,19 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
     private void ApplyStalac(IWorldGenerationContext context, Workspace workspace, IWorldGenerationVanillaRandom random)
     {
         const int beachDistance = 380;
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace: workspace, useWorldGenerationSolidity: true);
         var pass = new SpeleothemPass1458(
             workspace.TileStore,
             random,
             state.Layers.WorldSurface,
             state.Layers.RockLayer,
             beachDistance,
-            context.CancellationToken);
+            context.CancellationToken, framing.KillTile, workspace.IsVanillaGenerationSolid, framing);
 
         pass.Apply();
         context.ReportProgress(
             1d,
             $"Speleothems and gem trees complete; speleothems={pass.Speleothems} gemTrees={pass.GemTrees}");
-    }
-
-    private static void ApplyRemoveBrokenTraps(IWorldGenerationContext context, RuntimeGrid grid)
-    {
-        int removed = 0;
-        for (int x = 1; x < grid.Width - 1; x++)
-        {
-            if ((x & 31) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            for (int y = 1; y < grid.Height - 1; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || (tile.Type != Trap && tile.Type != PressurePlate))
-                    continue;
-                if (tile.HasAnyWire || grid.HasWireNearby(x, y, tile.Type == Trap ? 8 : 2))
-                    continue;
-
-                ClearTile(ref tile, preserveLiquid: true);
-                removed++;
-            }
-        }
-        context.ReportProgress(1d, $"Remove Broken Traps complete; removed={removed}");
     }
 
     private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
@@ -1152,10 +1058,11 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             }
         }
         PlaceFinalCleanupGrassOffers(grid, random);
-        if(context.Workspace is Workspace teamWorkspace && teamWorkspace.VanillaSeedProfile.Has(TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese)) {
-            if(teamWorkspace.VanillaSeedProfile.Special != TerraRuntime.World.VanillaSpecialWorldSeed1458.None || teamWorkspace.VanillaSeedProfile.Secret != TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese)
+        if (context.Workspace is Workspace teamWorkspace && teamWorkspace.VanillaSeedProfile.Has(TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese))
+        {
+            if (teamWorkspace.VanillaSeedProfile.Special != TerraRuntime.World.VanillaSpecialWorldSeed1458.None || teamWorkspace.VanillaSeedProfile.Secret != TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese)
                 throw new NotSupportedException("Team spawn selection for combined seed profiles requires the source landmass and seed owners.");
-            GenerationTeamSpawns1458.Generate(teamWorkspace,random,framing,true);
+            GenerationTeamSpawns1458.Generate(teamWorkspace, random, framing, true);
         }
         framing.FinalSeedCleanup();
         if (context.Workspace is Workspace finalWorkspace)
@@ -1451,27 +1358,6 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             }
     }
 
-    private static void ClearTile(ref WorldTile tile, bool preserveLiquid)
-    {
-        byte liquidAmount = tile.LiquidAmount;
-        WorldLiquidKind liquidKind = tile.LiquidKind;
-        tile.Type = 0;
-        tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.Actuator);
-        tile.FrameX = 0;
-        tile.FrameY = 0;
-        tile.Shape = 0;
-        if (preserveLiquid)
-        {
-            tile.LiquidAmount = liquidAmount;
-            tile.LiquidKind = liquidKind;
-        }
-        else
-        {
-            tile.LiquidAmount = 0;
-            tile.LiquidKind = WorldLiquidKind.Water;
-        }
-    }
-
     private readonly record struct TileBounds(int Left, int Top, int Right, int Bottom)
     {
         public int Width => Right - Left + 1;
@@ -1481,22 +1367,13 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
     private sealed class RuntimeGrid
     {
         private readonly WorldTileStore store;
-        public RuntimeGrid(Workspace workspace) => store = workspace.TileStore;
+        private readonly Workspace workspace;
+        public RuntimeGrid(Workspace workspace) { this.workspace = workspace; store = workspace.TileStore; }
+        public Workspace Workspace => workspace;
         public WorldTileStore Store => store;
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;
         public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
-
-        public int FindFirstActiveY(int x, int minY, int maxExclusive)
-        {
-            int max = Math.Min(Height, maxExclusive);
-            for (int y = Math.Max(0, minY); y < max; y++)
-            {
-                if (At(x, y).IsActive)
-                    return y;
-            }
-            return max;
-        }
 
         public bool IsEmptyRectangle(int left, int top, int width, int height)
         {
@@ -1563,19 +1440,5 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             return true;
         }
 
-        public bool HasWireNearby(int cx, int cy, int radius)
-        {
-            int left = Math.Max(0, cx - radius);
-            int right = Math.Min(Width - 1, cx + radius);
-            int top = Math.Max(0, cy - radius);
-            int bottom = Math.Min(Height - 1, cy + radius);
-            for (int x = left; x <= right; x++)
-                for (int y = top; y <= bottom; y++)
-                {
-                    if (At(x, y).HasAnyWire)
-                        return true;
-                }
-            return false;
-        }
     }
 }

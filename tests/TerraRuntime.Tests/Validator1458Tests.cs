@@ -1,3 +1,6 @@
+using TerraRuntime.Core.Worlds.Generation;
+using TerraRuntime.Core.Projectiles;
+using TerraRuntime.Core.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.World;
@@ -137,9 +140,12 @@ public sealed class VanillaWorldGenerationValidator1458Tests
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Validator", checked((ulong)seed), width, height)
         { SeedText = seed.ToString(System.Globalization.CultureInfo.InvariantCulture) };
         var workspace = new Workspace(request.WidthTiles, request.HeightTiles);
+        Assert.True(workspace.TileStore.TryAttachTileEntities([], 1000));
+        workspace.AttachEntityEffects(new WorldGenerationEntityEffects1458(
+            new RuntimeNpcStore(), new RuntimeProjectileStore(), sourceServer: true), 0, 1);
         var exec = TerraRuntime.Core.Worlds.RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(exec.Succeeded, exec.Error?.ToString());
-        var final = Finalizer.Finalize(workspace);
+        var final = Finalizer.Finalize(workspace, ValidationMode.VanillaComplete);
         Assert.True(final.Succeeded, final.Validation?.Detail ?? final.Status.ToString());
         Assert.Equal(WorldValidationStatus.Valid, final.Validation?.Status);
     }

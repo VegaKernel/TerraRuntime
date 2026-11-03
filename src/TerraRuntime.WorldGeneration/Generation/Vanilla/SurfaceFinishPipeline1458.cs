@@ -244,13 +244,13 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 ApplyFallenLog(context, workspace);
                 break;
             case SurfaceFinishStage1458.Traps:
-                ApplyTraps(context, grid, random);
+                ApplyTraps(context, workspace);
                 break;
             case SurfaceFinishStage1458.Piles:
                 ApplyPiles(context, workspace);
                 break;
             case SurfaceFinishStage1458.SpawnPoint:
-                ApplySpawnPoint(context, grid);
+                ApplySpawnPoint(context, workspace);
                 break;
             case SurfaceFinishStage1458.GrassWall:
                 ApplyGrassWall(context, workspace);
@@ -351,56 +351,41 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Placing Fallen Logs ({pass.Placed})");
     }
 
-    private void ApplyTraps(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyTraps(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = grid.Width switch
+        WorldGenerationRequest request=context.Request;
+        if(!WorldSeedResolver1458.Resolve(in request).IsDefault)
+            throw new NotSupportedException("Special-seed trap generation requires its source-qualified trap branches.");
+        IWorldGenerationVanillaRandom random=context.VanillaRandom??throw new InvalidOperationException("Trap generation requires the shared vanilla RNG owner.");
+        VanillaWorldGenerationBootstrapState1458 bootstrap=RequireBootstrap();
+        VanillaLiquidLines1458 lines=workspace.VanillaLiquidLines??throw new InvalidOperationException("Trap generation requires retained lava depth.");
+        WorldGenerationPoint shimmer=workspace.VanillaShimmerPosition??throw new InvalidOperationException("Trap generation requires retained shimmer position.");
+        var placement=new GenerationTrapPlacement1458(workspace,random,state.WorldSurface,lines.LavaLine,shimmer,bootstrap.DungeonSide);
+        workspace.SetVanillaGenerationSolid(new TileTypeId(379),false);
+        int placed=0;
+        for(int offer=0;offer<workspace.WidthTiles*.05;offer++)
         {
-            <= 4200 => 28,
-            <= 6400 => 42,
-            _ => 56
-        };
-        int minY = Math.Clamp((int)state.RockLayer + 20, 30, state.UnderworldTop - 60);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 20);
-        int placed = 0;
-
-        for (int attempt = 0; attempt < target * 200 && placed < target; attempt++)
-        {
-            if ((attempt & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int plateX = random.Next(12, grid.Width - 12);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(plateX, probe, Math.Min(maxY + 25, grid.Height - 3));
-            int plateY = floor - 1;
-            if (plateY < 3 || grid.At(plateX, plateY).IsActive || !grid.At(plateX, floor).IsActive)
-                continue;
-
-            int direction = random.Next(2) == 0 ? -1 : 1;
-            int trapX = plateX + direction * random.Next(4, 9);
-            int trapY = Math.Max(2, plateY - random.Next(0, 3));
-            if (trapX < 2 || trapX >= grid.Width - 2 || grid.At(trapX, trapY).IsActive)
-                continue;
-
-            ref WorldTile plate = ref grid.At(plateX, plateY);
-            plate.Type = PressurePlate;
-            plate.Flags |= WorldTileFlags.Active | WorldTileFlags.WireRed;
-            plate.FrameX = 36; // gray pressure-plate style
-            plate.FrameY = 0;
-            plate.Shape = 0;
-
-            ref WorldTile trap = ref grid.At(trapX, trapY);
-            trap.Type = Trap;
-            trap.Flags |= WorldTileFlags.Active | WorldTileFlags.WireRed;
-            trap.FrameX = checked((short)(direction < 0 ? 18 : 0));
-            trap.FrameY = 0;
-            trap.Shape = 0;
-            trap.LiquidAmount = 0;
-
-            WireBetween(grid, plateX, plateY, trapX, trapY);
-            placed++;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for(int attempt=0;attempt<1150;attempt++)
+            {
+                int x=random.Next(200,workspace.WidthTiles-200),y=random.Next((int)state.WorldSurface,workspace.HeightTiles-210);
+                while(y<=(state.WorldSurface+state.RockLayer)/2+40&&(x<380||x>workspace.WidthTiles-380))
+                {x=random.Next(200,workspace.WidthTiles-200);y=random.Next((int)state.WorldSurface,workspace.HeightTiles-210);}
+                if(workspace.TileStore.Get(x,y).Wall==0&&placement.Place(x,y)){placed++;break;}
+            }
         }
-
-        context.ReportProgress(1d, $"Placing wired cavern traps ({placed}/{target})");
+        for(int offer=0;offer<workspace.WidthTiles*.003;offer++)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for(int attempt=0;attempt<20000;attempt++)
+            {
+                int x=random.Next((int)(workspace.WidthTiles*.15),(int)(workspace.WidthTiles*.85));
+                int y=random.Next((int)state.WorldSurface+20,workspace.HeightTiles-210);
+                if(workspace.TileStore.Get(x,y).Wall==187&&placement.PlaceSand(x,y)){placed++;break;}
+            }
+        }
+        workspace.SetVanillaGenerationSolid(new TileTypeId(379),true);
+        context.ReportProgress(1d,$"Placing traps ({placed} successful offers)");
     }
 
     /// <summary>
@@ -419,59 +404,21 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
             state.WorldSurface,
             state.RockLayer,
             DungeonGenerationCatalog1458.BeachDistance,
-            context.CancellationToken);
+            context.CancellationToken, workspace);
         pass.Apply();
 
         context.ReportProgress(1d, $"Placing ambient piles ({pass.Placed})");
     }
 
-    private void ApplySpawnPoint(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplySpawnPoint(IWorldGenerationContext context, Workspace workspace)
     {
-        int center = grid.Width / 2;
-        int minY = Math.Max(10, (int)state.WorldSurface - 170);
-        int maxY = Math.Min(grid.Height - 10, (int)state.WorldSurface + 190);
-        WorldGenerationPoint? selected = null;
-
-        for (int radius = 0; radius <= 180 && selected is null; radius++)
-        {
-            int[] xs = radius == 0 ? [center] : [center - radius, center + radius];
-            foreach (int x in xs)
-            {
-                if (x < 12 || x >= grid.Width - 12)
-                    continue;
-                int floor = grid.FindFirstActiveY(x, minY, maxY);
-                if (floor >= maxY || floor < 6)
-                    continue;
-                if (!grid.IsPlayerClearanceAvailable(x, floor - 4, floor - 1))
-                    continue;
-                selected = new WorldGenerationPoint(x, floor - 1);
-                break;
-            }
-        }
-
-        if (selected is not WorldGenerationPoint spawn)
-            throw new InvalidOperationException("Could not locate a safe source-backed Terraria spawn point near world center.");
-
-        for (int x = spawn.X - 2; x <= spawn.X + 2; x++)
-        for (int y = spawn.Y - 4; y <= spawn.Y; y++)
-        {
-            if (y == spawn.Y && grid.At(x, y + 1).IsActive)
-                continue;
-            ref WorldTile tile = ref grid.At(x, y);
-            if (tile.IsActive && !VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
-            {
-                tile.Flags &= ~WorldTileFlags.Active;
-                tile.Shape = 0;
-                tile.LiquidAmount = 0;
-            }
-        }
-
-        IWorldGenerationMetadataWorkspace metadata = context.Metadata ??
-            throw new InvalidOperationException("Spawn Point pass requires world metadata storage.");
-        if (!metadata.TrySetSpawn(spawn.X, spawn.Y))
-            throw new InvalidOperationException("Could not publish source-backed Terraria spawn point.");
-        state.SpawnPoint = spawn;
-        context.ReportProgress(1d, $"Selecting spawn point ({spawn.X}, {spawn.Y})");
+        WorldGenerationRequest request=context.Request;
+        if(!WorldSeedResolver1458.Resolve(in request).IsDefault)
+            throw new NotSupportedException("Special-seed spawn generation requires its source-qualified branches.");
+        IWorldGenerationVanillaRandom random=context.VanillaRandom??throw new InvalidOperationException("Spawn generation requires the shared vanilla RNG owner.");
+        var placement=new GenerationSpawnPoint1458(workspace,random,state.WorldSurface,context.CancellationToken);
+        WorldGenerationPoint spawn=placement.Apply();state.SpawnPoint=spawn;
+        context.ReportProgress(1d,$"Selecting spawn point ({spawn.X}, {spawn.Y})");
     }
 
     private void ApplyGrassWall(IWorldGenerationContext context, Workspace workspace)
@@ -488,27 +435,6 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Surface-finish pass executed before bootstrap initialization.");
-
-    private static void WireBetween(RuntimeGrid grid, int x0, int y0, int x1, int y1)
-    {
-        int x = x0;
-        int stepX = Math.Sign(x1 - x0);
-        while (x != x1)
-        {
-            grid.At(x, y0).Flags |= WorldTileFlags.WireRed;
-            x += stepX;
-        }
-        grid.At(x1, y0).Flags |= WorldTileFlags.WireRed;
-
-        int y = y0;
-        int stepY = Math.Sign(y1 - y0);
-        while (y != y1)
-        {
-            grid.At(x1, y).Flags |= WorldTileFlags.WireRed;
-            y += stepY;
-        }
-        grid.At(x1, y1).Flags |= WorldTileFlags.WireRed;
-    }
 
     private interface IRandom
     {

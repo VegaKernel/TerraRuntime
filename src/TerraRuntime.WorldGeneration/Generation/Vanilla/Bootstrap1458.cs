@@ -39,7 +39,10 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
         if (context.Workspace is Workspace workspace)
         {
             workspace.InitializeVanillaGenerationSolidity();
-            workspace.VanillaSkyIslandHouseCount=0;
+            workspace.InitializeVanillaStructureMap();
+            workspace.ResetVanillaLandmasses();
+            workspace.VanillaSkyIslandHouseCount = 0;
+            workspace.VanillaBoulderPetsPlaced = 0;
         }
         state.Bootstrap = Run(
             random,
@@ -248,8 +251,13 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
 
         return new VanillaWorldGenerationBootstrapState1458
         {
-            RainTime = rainTime, Raining = raining, MaxRaining = maxRaining, CloudAlpha = cloudAlpha,
-            WindSpeedTarget = windSpeedTarget, DungeonSides = dungeonSides, DungeonLocations = dungeonLocations,
+            RainTime = rainTime,
+            Raining = raining,
+            MaxRaining = maxRaining,
+            CloudAlpha = cloudAlpha,
+            WindSpeedTarget = windSpeedTarget,
+            DungeonSides = dungeonSides,
+            DungeonLocations = dungeonLocations,
             DualDungeonNormalizedDistanceSafeFromDither = dualDungeon ? 1d - 0.075d * ((width == 4200 ? 1200 : width == 6400 ? 1800 : 2400) / 1200d) : 0d,
             DayTime = dayTime,
             Time = isDrunk && !dayTime ? 0d : time,
