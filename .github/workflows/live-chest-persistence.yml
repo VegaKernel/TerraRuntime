@@ -108,7 +108,7 @@ jobs:
           dotnet run \
             --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
             -c Release \
-            -- "$world" --allow-empty > "$selector_log" 2>&1
+            -- "$world" > "$selector_log" 2>&1
           selector_status=$?
           set -e
           cat "$selector_log"
@@ -142,21 +142,10 @@ jobs:
           test -n "$CHEST_ID" -a -n "$CHEST_X" -a -n "$CHEST_Y" -a -n "$CHEST_SLOTS"
           test -n "$ITEM_SLOT" -a -n "$ITEM_STACK" -a -n "$ITEM_PREFIX" -a -n "$ITEM_NET_ID"
 
-          if (( ITEM_STACK == 0 )); then
-            committed_stack=1
-            committed_prefix=0
-            committed_net_id=2
-          elif (( ITEM_STACK < 32767 )); then
-            committed_stack=$((ITEM_STACK + 1))
-            committed_prefix=$ITEM_PREFIX
-            committed_net_id=$ITEM_NET_ID
-          else
-            committed_stack=$((ITEM_STACK - 1))
-            committed_prefix=$ITEM_PREFIX
-            committed_net_id=$ITEM_NET_ID
-          fi
+          committed_stack=$ITEM_STACK
+          committed_prefix=$ITEM_PREFIX
+          committed_net_id=$ITEM_NET_ID
           test "$committed_stack" -gt 0
-          test "$committed_stack" -ne "$ITEM_STACK"
           echo "COMMITTED_STACK=$committed_stack" >> "$GITHUB_ENV"
           echo "COMMITTED_PREFIX=$committed_prefix" >> "$GITHUB_ENV"
           echo "COMMITTED_NET_ID=$committed_net_id" >> "$GITHUB_ENV"
@@ -205,6 +194,11 @@ jobs:
           grep -q "committedStack=$committed_stack" "$mutation_log"
           grep -q "committedPrefix=$committed_prefix" "$mutation_log"
           grep -q "committedNetId=$committed_net_id" "$mutation_log"
+          committed_slot="$(sed -n 's/.* committedSlot=\([0-9][0-9]*\) .*/\1/p' "$mutation_log")"
+          test -n "$committed_slot"
+          test "$committed_slot" -lt "$CHEST_SLOTS"
+          test "$committed_slot" -ne "$ITEM_SLOT"
+          echo "COMMITTED_ITEM_SLOT=$committed_slot" >> "$GITHUB_ENV"
 
           kill -TERM "$host_pid"
           for _ in $(seq 1 120); do
@@ -238,7 +232,7 @@ jobs:
             --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
             -c Release \
             -- "$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld" \
-            --assert "$CHEST_ID" "$ITEM_SLOT" "$COMMITTED_STACK" "$COMMITTED_PREFIX" "$COMMITTED_NET_ID" \
+            --assert "$CHEST_ID" "$COMMITTED_ITEM_SLOT" "$COMMITTED_STACK" "$COMMITTED_PREFIX" "$COMMITTED_NET_ID" \
             2>&1 | tee artifacts/persistence-wld-assert.log
           grep -q "persisted_chest_item_ok" artifacts/persistence-wld-assert.log
 
@@ -285,7 +279,7 @@ jobs:
             --x "$CHEST_X" \
             --y "$CHEST_Y" \
             --slots "$CHEST_SLOTS" \
-            --item-slot "$ITEM_SLOT" \
+            --item-slot "$COMMITTED_ITEM_SLOT" \
             --item-stack "$COMMITTED_STACK" \
             --item-prefix "$COMMITTED_PREFIX" \
             --item-net-id "$COMMITTED_NET_ID" \
@@ -357,7 +351,7 @@ jobs:
             --project tools/TerraRuntime.ChestLocate/TerraRuntime.ChestLocate.csproj \
             -c Release \
             -- "$GITHUB_WORKSPACE/artifacts/vanilla-persistence.wld" \
-            --assert "$CHEST_ID" "$ITEM_SLOT" "$COMMITTED_STACK" "$COMMITTED_PREFIX" "$COMMITTED_NET_ID" \
+            --assert "$CHEST_ID" "$COMMITTED_ITEM_SLOT" "$COMMITTED_STACK" "$COMMITTED_PREFIX" "$COMMITTED_NET_ID" \
             2>&1 | tee artifacts/persistence-official-assert.log
           grep -q "persisted_chest_item_ok" artifacts/persistence-official-assert.log
 

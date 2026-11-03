@@ -225,7 +225,7 @@ def matching_world_info_repeat(message_id, initial, repeated):
     )
 
 
-def join_client(host, port, expected_slot):
+def join_client(host, port, expected_slot, before_spawn=None, spawn_tile=None):
     client = socket.create_connection((host, port), timeout=5)
     client.settimeout(15)
 
@@ -272,13 +272,16 @@ def join_client(host, port, expected_slot):
         client.close()
         raise
 
+    if before_spawn is not None:
+        before_spawn(client, expected_slot)
+
     spawn = struct.pack(
         "<HBBhhihhBB",
         18,
         12,
         expected_slot,
-        100 + expected_slot,
-        200,
+        spawn_tile[0] if spawn_tile is not None else 100 + expected_slot,
+        spawn_tile[1] if spawn_tile is not None else 200,
         0,
         0,
         0,

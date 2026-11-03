@@ -109,7 +109,8 @@ internal sealed class RuntimeWorldChestCustodyArtifacts(WorldPersistenceOwnerLea
     {
         owner.EnsureCheckpointWrite();
         var canonical = await ReadWorldAsync(owner.WorldPath, token).ConfigureAwait(false);
-        ValidateAnchor(canonical.World);
+        byte[] anchor = ReadValidatedAnchor(AnchorPath, canonical.World);
+        bool initialImport = CryptographicOperations.FixedTimeEquals(anchor.AsSpan(28, 32), canonical.Hash);
         await ReadGenerationAsync(canonical.World, canonical.Hash, token).ConfigureAwait(false);
         var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -120,8 +121,16 @@ internal sealed class RuntimeWorldChestCustodyArtifacts(WorldPersistenceOwnerLea
         {
             var backup = await ReadWorldAsync(backupPath, token).ConfigureAwait(false);
             ValidateAnchor(backup.World);
-            await ReadGenerationAsync(backup.World, backup.Hash, token).ConfigureAwait(false);
-            keep.Add(ArtifactPath(backup.World.Envelope.Revision, backup.Hash));
+            string dependency = ArtifactPath(backup.World.Envelope.Revision, backup.Hash);
+            // A vanilla .bak can predate the explicit initial import. It has no authority and
+            // cannot be recovered as a managed generation. The first atomic save replaces it
+            // with the already-authorized canonical image; do not require a nonexistent old
+            // dependency while preparing that save. Every later managed backup stays strict.
+            if (!initialImport || File.Exists(dependency))
+            {
+                await ReadGenerationAsync(backup.World, backup.Hash, token).ConfigureAwait(false);
+                keep.Add(dependency);
+            }
         }
         if (preparedRevision.HasValue && preparedHash is not null)
             keep.Add(ArtifactPath(preparedRevision.Value, preparedHash));
@@ -197,7 +206,10 @@ internal sealed class RuntimeWorldChestCustodyArtifacts(WorldPersistenceOwnerLea
         ValidateAnchor(AnchorPath, world);
     }
 
-    internal static void ValidateAnchor(string anchorPath, WorldFileData world)
+    internal static void ValidateAnchor(string anchorPath, WorldFileData world) =>
+        _ = ReadValidatedAnchor(anchorPath, world);
+
+    private static byte[] ReadValidatedAnchor(string anchorPath, WorldFileData world)
     {
         // Missing authority is never inferred as an initial-import request.
         using var stream = new FileStream(anchorPath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -209,6 +221,7 @@ internal sealed class RuntimeWorldChestCustodyArtifacts(WorldPersistenceOwnerLea
             System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(24, 4)) != world.Header.WorldId ||
             !CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes.AsSpan(0, AnchorLength - 32)), bytes.AsSpan(AnchorLength - 32)))
             throw new InvalidDataException("Managed custody anchor identity or checksum is invalid.");
+        return bytes;
     }
 
     private async Task<(WorldFileData World, byte[] Hash)> ReadWorldAsync(string path, CancellationToken token)

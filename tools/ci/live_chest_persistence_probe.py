@@ -3,10 +3,7 @@ import argparse
 import time
 
 from live_join_relay_probe import join_client
-from live_chest_open_probe import receive_snapshot, send_close, send_item, send_open
-
-
-EMPTY_SLOT_TEST_ITEM_NET_ID = 2  # Dirt Block in Terraria 1.4.5.8.
+from live_chest_open_probe import receive_snapshot, send_chest_transfer, send_close, send_open
 
 
 def fail(message):
@@ -20,7 +17,7 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         time.sleep(0.25)
 
         send_open(owner, tile_x, tile_y)
-        receive_snapshot(
+        items = receive_snapshot(
             owner,
             chest_id,
             tile_x,
@@ -32,44 +29,40 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             item_net_id,
         )
 
-        if item_stack == 0:
-            if item_prefix != 0 or item_net_id != 0:
-                fail(
-                    "empty persistence source slot is not canonical: "
-                    f"stack={item_stack} prefix={item_prefix} netId={item_net_id}"
-                )
-            committed_stack = 1
-            committed_prefix = 0
-            committed_net_id = EMPTY_SLOT_TEST_ITEM_NET_ID
-        else:
-            # Keep a pre-existing item non-empty so the post-shutdown verifier can identify the exact slot.
-            committed_stack = item_stack + 1 if item_stack < 32767 else item_stack - 1
-            committed_prefix = item_prefix
-            committed_net_id = item_net_id
-
-        if committed_stack <= 0 or committed_stack == item_stack:
-            fail(f"could not choose a non-empty persistence mutation for stack={item_stack}")
-
-        send_item(owner, chest_id, item_slot, committed_stack, committed_prefix, committed_net_id)
+        if item_stack <= 0:
+            fail('persistence fixture requires existing non-empty source stock')
+        committed_slot = next((index for index, item in enumerate(items)
+                               if index != item_slot and item == (0, 0, 0)), None)
+        if committed_slot is None:
+            fail('persistence fixture requires one empty destination slot')
+        committed_stack, committed_prefix, committed_net_id = item_stack, item_prefix, item_net_id
+        # Two ordinary context3 clicks move existing world stock through the
+        # cursor into a different slot, with no mint and an empty final cursor.
+        send_chest_transfer(owner, chest_id,
+                            [(item_slot, 0, 0, 0),
+                             (committed_slot, committed_stack, committed_prefix, committed_net_id)],
+                            (0, 0, 0))
         send_close(owner)
         send_open(owner, tile_x, tile_y)
-        receive_snapshot(
+        committed_items = receive_snapshot(
             owner,
             chest_id,
             tile_x,
             tile_y,
             slots,
-            item_slot,
+            committed_slot,
             committed_stack,
             committed_prefix,
             committed_net_id,
         )
+        if committed_items[item_slot] != (0, 0, 0):
+            fail('source slot was not emptied by the funded move')
         send_close(owner)
 
         print(
             "live_chest_persistence_mutation "
             f"chest={chest_id} x={tile_x} y={tile_y} slots={slots} "
-            f"itemSlot={item_slot} originalStack={item_stack} committedStack={committed_stack} "
+            f"itemSlot={item_slot} originalStack={item_stack} committedSlot={committed_slot} committedStack={committed_stack} "
             f"committedPrefix={committed_prefix} committedNetId={committed_net_id} "
             f"sections={sections} bootstrapFrames={bootstrap_frames}"
         )

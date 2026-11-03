@@ -133,6 +133,21 @@ def send_item(client, chest_id, item_slot, stack, prefix, item_net_id):
     )
 
 
+def send_chest_transfer(client, chest_id, changes, cursor_after, player_id=0):
+    # Source ItemSlot context3 reports its chest changes, then cursor58 and the
+    # packet138 boundary. The server validates conservation/private custody.
+    for slot, stack, prefix, item_net_id in changes:
+        send_item(client, chest_id, slot, stack, prefix, item_net_id)
+    stack, prefix, item_net_id = cursor_after
+    if stack == 0:
+        prefix = item_net_id = 0
+    client.sendall(struct.pack('<HBBhhBhB', 12, 5, player_id, 58,
+                               stack, prefix, item_net_id, 0) + b'\x03\x00\x8a')
+    # The bounded authority journal resolves over subsequent world ticks. A
+    # packet33 close queued immediately would invalidate its still-open owner.
+    time.sleep(0.5)
+
+
 def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
     payload, skipped = recv_until_packet(client, 155, 5)
     if len(payload) != 4:
@@ -145,6 +160,7 @@ def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_st
         )
 
     observed_item = None
+    items = []
     for expected_slot in range(slots):
         payload, skipped = recv_until_packet(client, 32, 5)
         if len(payload) != 8:
@@ -154,6 +170,7 @@ def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_st
             )
 
         received_id, received_slot, stack, prefix, net_id = struct.unpack("<hBhBh", payload)
+        items.append((stack, prefix, net_id))
         if received_id != chest_id or received_slot != expected_slot:
             fail(
                 f"packet32 identity mismatch at slot {expected_slot}: "
@@ -178,6 +195,7 @@ def receive_snapshot(client, chest_id, tile_x, tile_y, slots, item_slot, item_st
             f"packet33 mismatch: expected={(chest_id, tile_x, tile_y)}, "
             f"got={(active_id, active_x, active_y)}"
         )
+    return items
 
 
 def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item_prefix, item_net_id):
@@ -245,15 +263,14 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             item_net_id,
         )
 
-        # Packet 5 inventory conservation is intentionally not enforced yet. While this world chest is
-        # actively owned by the exact live connection, packet32 remains client-authoritative. Commit a
-        # universally valid stack decrement (1 -> empty is canonicalized), then close/reopen and verify
-        # the authoritative baseline contains the committed value. Vanilla 1.4.5.8 does not echo this
-        # packet32 back to the author; exact sender/observer routing is covered by the two-client probe.
+        # One source right-click moves one existing owned item to cursor58.
+        # A raw packet32 decrement alone has no paired inventory explanation.
         committed_stack = item_stack - 1
         committed_prefix = item_prefix if committed_stack > 0 else 0
         committed_net_id = item_net_id if committed_stack > 0 else 0
-        send_item(owner, chest_id, item_slot, committed_stack, item_prefix, item_net_id)
+        send_chest_transfer(owner, chest_id,
+                            [(item_slot, committed_stack, committed_prefix, committed_net_id)],
+                            (1, item_prefix, item_net_id))
         send_close(owner)
         send_open(owner, tile_x, tile_y)
         receive_snapshot(
@@ -268,9 +285,8 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
             committed_net_id,
         )
 
-        # Restore the source-world item through the same production packet32 path. The probe must not
-        # leave its in-memory authoritative world mutated just because a CI assertion needed a write.
-        send_item(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
+        # Deposit the same funded cursor item, preserving exact original stock.
+        send_chest_transfer(owner, chest_id, [(item_slot, item_stack, item_prefix, item_net_id)], (0, 0, 0))
         send_close(owner)
         send_open(owner, tile_x, tile_y)
         receive_snapshot(

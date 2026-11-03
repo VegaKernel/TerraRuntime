@@ -1,5 +1,7 @@
 # World loading, persistence and runtime snapshots
 
+A pre-existing vanilla `.bak` may predate an explicit custody import. While the canonical file still matches the anchor's exact initial-import hash, the first managed checkpoint can replace that well-formed same-world backup without requiring authority that was never created for it. The old backup is not authorized for recovery. Existing backup artifacts are still decoded and validated; after the first publication, every managed backup requires its matching generation artifact. Malformed/foreign backups and corrupt or missing managed authority continue to block publication.
+
 Ordinary invasion checkpoints also retain the pending Lantern Night flag produced by the first victory. The owner loads this flag from the source header; prepared cache layout `5` carries it, and the invasion header patch writes it only when explicitly supplied. Existing five-field save callers preserve the raw flag. Unknown or Snow Legion live state keeps the raw header representation. The later nightly consumer and its RNG remain outside this invasion block; the scalar owner therefore cannot clear an already pending flag. Independent original `SaveWorldHeader` pairs and queued checkpoint checks verify preservation without claiming full original loading or night simulation.
 
 [Русский](../ru/world-persistence.md) · [Documentation](README.md) · [Architecture](architecture.md) · [Roadmap](../roadmap.md)

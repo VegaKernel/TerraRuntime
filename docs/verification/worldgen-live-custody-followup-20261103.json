@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "acceptedManaged": true,
+  "remoteCiAccepted": false,
+  "remoteCiStatus": "Fresh push/workflow verification pending; prior ea9 has five failing live/startup workflows",
+  "allGenerationComplete": false,
+  "goalStatus": "active",
+  "parentCommit": "ea9be403f0b00202731668408ecf7cce7a38ec83",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "nativeAot": {
+    "accepted": false,
+    "status": "Explicit user managed-only restriction"
+  },
+  "scope": [
+    "First checkpoint permits a well-formed same-world pre-import vanilla backup without granting recovery authority, only while canonical bytes match immutable initial import hash",
+    "Source-ordered funded chest and Dirt real-host probes, complete pre-spawn player initialization and explicit custody import",
+    "Two-cell pre-import Dirt fixture tool refuses managed worlds and preserves all other tiles and retained sections"
+  ],
+  "validation": {
+    "releaseWarningsAsErrors": {
+      "warnings": 0,
+      "errors": 0,
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/build04.log",
+        "sha256": "4b246b672304ececc619f43251de0e8f2c6e8d43b31d40e836eb5dfbaec881f1"
+      }
+    },
+    "focused": {
+      "total": 8,
+      "passed": 8,
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/focused.xml",
+        "sha256": "354796c856ed6d071a4cc9dd083e9323a278e81f02063b47dffb72ce121645f7"
+      }
+    },
+    "python": {
+      "passed": 298,
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/python-ci.log",
+        "sha256": "2e444ba11da6d8b1e93432a1c4a4fd36416af6f0f808039e9eb0d69e4d755c2d"
+      }
+    },
+    "fast": {
+      "total": "56997",
+      "passed": "56997",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "390.577",
+      "skipped_tests": [],
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/fast/result.json",
+        "sha256": "a4cae2bff189fb327ec32dae48491acf7403deebd05a5321caf2489ac1bee161"
+      }
+    },
+    "full": {
+      "total": "1602311",
+      "passed": "1602311",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1444.790",
+      "skipped_tests": [],
+      "selectedMethods": 5717,
+      "excludedMethods": 0,
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/full/result.json",
+        "sha256": "382136eaa06d21725c0aa8da96b367899f5ddcd2ebfb209c11a0863bd433c30d"
+      }
+    },
+    "causal": {
+      "accepted": true,
+      "unchangedTestDllSha256": "74a2e71dc16983bbc24b04ce60be020f89f1c8261f5a53e38979ea6402ca3d66",
+      "failed": 4,
+      "passed": 3,
+      "errors": 0,
+      "mutant": "restoreacceptedEA9ApplicationDLL",
+      "applicationSha256": "f2cfe2182cd1e308643d3cb8f1963e172ab66f99cb2b13335354cac2881d39f6",
+      "failures": [
+        {
+          "name": "TerraRuntime.Tests.RuntimeWorldInitialBackup1458Tests.Failed_preparation_preserves_vanilla_backup_then_next_checkpoint_cleans_only_its_orphan",
+          "exception": "Xunit.Sdk.ThrowsException"
+        },
+        {
+          "name": "TerraRuntime.Tests.RuntimeWorldInitialBackup1458Tests.Later_managed_backup_with_missing_authority_still_blocks_publication",
+          "exception": "System.IO.FileNotFoundException"
+        },
+        {
+          "name": "TerraRuntime.Tests.RuntimeWorldInitialBackup1458Tests.First_checkpoint_replaces_unmanaged_vanilla_backup_without_authorizing_it(current: 2, previous: 1)",
+          "exception": "System.IO.FileNotFoundException"
+        },
+        {
+          "name": "TerraRuntime.Tests.RuntimeWorldInitialBackup1458Tests.First_checkpoint_replaces_unmanaged_vanilla_backup_without_authorizing_it(current: 4096, previous: 4095)",
+          "exception": "System.IO.FileNotFoundException"
+        }
+      ],
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/causal-result.json",
+        "sha256": "b2d5ba9d6e76bd42e6ba7b3f126c460f4e5dc4718cd99c8ceb0228641e4407b1"
+      }
+    },
+    "actualLifecycle": {
+      "completed": 2,
+      "retentionErrors": 0,
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/lifecycle/result.json",
+        "sha256": "b4ca760ee6e08aec754a611a0be73b7e6a0c097603ec98ecce7fdc64721f29c8"
+      }
+    },
+    "realHostProbes": {
+      "baselines": 8,
+      "omissionControls": 3,
+      "evidence": {
+        "path": ".cache/runtime-network-ci2-20261103/qualification.json",
+        "sha256": "e1884281f86c97e0fb55bfea60667767aeb5e4e02432bda7bbfebcceabe81756"
+      }
+    },
+    "coreClr": {
+      "accepted": true,
+      "managedOnly": true,
+      "executableSha256": "e1e236063749e77c694076eec3faa6a874b2aa1075b4dcb2f327393a45d21154",
+      "smokes": [
+        {
+          "name": "loop",
+          "exitCode": 0
+        },
+        {
+          "name": "protocol",
+          "exitCode": 0
+        },
+        {
+          "name": "network",
+          "exitCode": 0
+        },
+        {
+          "name": "world",
+          "exitCode": 0
+        },
+        {
+          "name": "tui",
+          "exitCode": 0
+        }
+      ],
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/coreclr-result.json",
+        "sha256": "ca0d5d2ed6040888f5d5251121548fe643f3268900d00a29f368c1f4f0d95880"
+      }
+    },
+    "guard": {
+      "accepted": true,
+      "sourceInputs": 4547,
+      "runtimeDlls": 158,
+      "drift": [],
+      "evidence": {
+        "path": ".cache/live-custody-followup-20261103/inputs-recursive.json",
+        "sha256": "fa19505f5dffcad35fff7d195c8c0282878b45fe871008ae76498f4707e9cf79"
+      }
+    },
+    "ordinaryManagedSmokes": [
+      {
+        "name": "loop",
+        "exitCode": 0,
+        "evidence": {
+          "path": ".cache/live-custody-followup-20261103/managed-loop.log",
+          "sha256": "b34f8c820f213d5217f47581f7015f7d336b1bcc034f638911eae5bf0ee8e3de"
+        }
+      },
+      {
+        "name": "protocol",
+        "exitCode": 0,
+        "evidence": {
+          "path": ".cache/live-custody-followup-20261103/managed-protocol.log",
+          "sha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+        }
+      },
+      {
+        "name": "network",
+        "exitCode": 0,
+        "evidence": {
+          "path": ".cache/live-custody-followup-20261103/managed-network.log",
+          "sha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+        }
+      },
+      {
+        "name": "world",
+        "exitCode": 0,
+        "evidence": {
+          "path": ".cache/live-custody-followup-20261103/managed-world.log",
+          "sha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+        }
+      },
+      {
+        "name": "tui",
+        "exitCode": 0,
+        "evidence": {
+          "path": ".cache/live-custody-followup-20261103/managed-tui.log",
+          "sha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+        }
+      }
+    ]
+  },
+  "shippingInputs": {
+    ".github/workflows/live-chest-persistence.yml": "2f825f71be5619df59401640eca6f7206895589fc6a732224ea6557b90446675",
+    ".github/workflows/live-dirt-action0.yml": "b01c0778e3bbc65a15c74b852a7a73a6d43df0b982b66ef84e7059d0dc90802f",
+    "src/TerraRuntime.Application/RuntimeWorldChestCustodyArtifacts.cs": "dc7e95996e43f1975a4409aa6ec54df0e6902b870d4be6ea35e0a47a378df06a",
+    "tests/TerraRuntime.Tests/RuntimeWorldInitialBackup1458Tests.cs": "3e0d6840bc537f5f38c3326f7550010f9ad16471de227ffa6948db1098ce0384",
+    "tools/TerraRuntime.TileLocate/Program.cs": "2821c46b73ac5cffd69c68db4d456013439aca3e903a1e8118f7a9005ea5eb33",
+    "tools/ci/live_chest_observer_probe.py": "e1e6a7f7e4adade6be5f76ecaa3c4a1128fcbf54ca0b080f3d58192570947f82",
+    "tools/ci/live_chest_open_probe.py": "7c4abdd04a4713dd34683cc6992b260ad3bcd74494cbb1b569d59204820f09d0",
+    "tools/ci/live_chest_persistence_probe.py": "ec4b8e7af48e737c7eba7de5cdab81da9b57abef014402deb069679a5199701c",
+    "tools/ci/live_dirt_kill_probe.py": "d68786edc434b905f88a62b3b78766834e67965667bea5328b4ea5a701c5c9fa",
+    "tools/ci/live_join_relay_probe.py": "b4b946cfbc8aeb2b8398b64b5fe3f10da33367bc67f9c957a1622d18318eef7b",
+    "tools/ci/test_gameplay_acceptance_tools.py": "c12770f575e9b1aa058db46d667a88d842c456b079fbaab5566bf15fc7159708",
+    "tools/ci/test_live_chest_transfer.py": "ce88c1418dc95c6c2d8489e50769143a5e6db926dda3ec69c3be9e7cb0b71338",
+    "tools/ci/test_workflow_world_custody.py": "d6b4328273a3a1e830ce8ffbc55d423f9488d77517ebfff8dfb7638d5bde71fc"
+  },
+  "rawEvidence": [
+    {
+      "path": ".cache/live-custody-followup-20261103/domain-audit.log",
+      "sha256": "fa4d80a58ee0b8541e535b0ae2be66e0fe365d9684494a8af5d292280f17939a"
+    },
+    {
+      "path": ".cache/live-custody-followup-20261103/documentation.log",
+      "sha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    },
+    {
+      "path": ".cache/live-custody-followup-20261103/independent-prepublication-guard.json",
+      "sha256": "3ba56f865db8ffb2aaf3240b6648417051557c7fddd4186cc775952ea05dd293"
+    },
+    {
+      "path": ".cache/live-custody-followup-20261103/tilelocate-build.log",
+      "sha256": "f8560f868578e6d0e6ec0ac5e31446e35765fbf05c114c38eae7f9cca33167ec"
+    }
+  ]
+}

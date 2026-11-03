@@ -47,6 +47,12 @@ class WorkflowWorldCustodyTests(unittest.TestCase):
                           ['run_host', 'warm', '17832']], calls)
         self.assertIn('test -s "$world.custody/managed-v1.anchor"', text)
 
+    def test_dirt_first_official_start_explicitly_imports(self):
+        commands = host_commands((ROOT / '.github/workflows/live-dirt-action0.yml').read_text())
+        self.assertEqual(1, len(commands))
+        self.assertEqual('17784', commands[0][commands[0].index('--port') + 1])
+        self.assertEqual(1, commands[0].count('--import-world-custody'))
+
     def test_interrupted_recovery_preserves_matching_authority_without_reimport(self):
         text = (ROOT / '.github/workflows/interrupted-world-save-recovery.yml').read_text()
         logical = re.sub(r'\\\r?\n\s*', ' ', text)

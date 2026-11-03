@@ -12,6 +12,7 @@ from live_chest_open_probe import (
     send_clear_name,
     send_close,
     send_item,
+    send_chest_transfer,
     send_open,
     send_rename,
 )
@@ -123,14 +124,9 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
         committed_stack = item_stack - 1
         committed_prefix = item_prefix if committed_stack > 0 else 0
         committed_net_id = item_net_id if committed_stack > 0 else 0
-        send_item(
-            owner,
-            chest_id,
-            item_slot,
-            committed_stack,
-            committed_prefix,
-            committed_net_id,
-        )
+        send_chest_transfer(owner, chest_id,
+                            [(item_slot, committed_stack, committed_prefix, committed_net_id)],
+                            (1, item_prefix, item_net_id))
         receive_item_update(
             observer,
             chest_id,
@@ -144,7 +140,7 @@ def run(host, port, chest_id, tile_x, tile_y, slots, item_slot, item_stack, item
 
         # Restore the source-world item through the same live packet32 path and prove the routing shape
         # a second time so the remainder of the lifecycle probe continues from the original fixture state.
-        send_item(owner, chest_id, item_slot, item_stack, item_prefix, item_net_id)
+        send_chest_transfer(owner, chest_id, [(item_slot, item_stack, item_prefix, item_net_id)], (0, 0, 0))
         receive_item_update(observer, chest_id, item_slot, item_stack, item_prefix, item_net_id)
         restore_item_observer_tail = assert_no_packet(observer, 32, "duplicate restore-item fanout")
         restore_item_owner_frames = assert_no_packet(owner, 32, "restore-item author exclusion")

@@ -1,9 +1,10 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
-if (args.Length != 1)
+bool seedDirt = args.Length == 2 && args[1] == "--seed-dirt";
+if (args.Length != 1 && !seedDirt)
 {
-    Console.Error.WriteLine("Usage: TerraRuntime.TileLocate <world.wld>");
+    Console.Error.WriteLine("Usage: TerraRuntime.TileLocate <world.wld> [--seed-dirt]");
     return 2;
 }
 
@@ -27,14 +28,15 @@ for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
     for (int x = margin; x < tiles.Dimensions.WidthTiles - margin; x++)
     {
         bool inactiveRing = true;
-        for (int offsetY = -1; offsetY <= 1 && inactiveRing; offsetY++)
+        for (int offsetY = seedDirt ? -3 : -1; offsetY <= (seedDirt ? 3 : 1) && inactiveRing; offsetY++)
         {
-            for (int offsetX = -1; offsetX <= 1; offsetX++)
+            for (int offsetX = seedDirt ? -3 : -1; offsetX <= (seedDirt ? 3 : 1); offsetX++)
             {
                 if (offsetX == 0 && offsetY == 0)
                     continue;
 
-                if (tiles.Get(x + offsetX, y + offsetY).IsActive)
+                WorldTile neighbor = tiles.Get(x + offsetX, y + offsetY);
+                if (neighbor.IsActive || seedDirt && neighbor.LiquidAmount != 0)
                 {
                     inactiveRing = false;
                     break;
@@ -42,7 +44,8 @@ for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
             }
         }
 
-        if (!inactiveRing || !VanillaDirtRules1458.CanPlaceOnEmpty(tiles, x, y))
+        if (!inactiveRing || !VanillaDirtRules1458.CanPlaceOnEmpty(tiles, x, y) ||
+            seedDirt && !VanillaDirtRules1458.CanPlaceOnEmpty(tiles, x, y + 1))
             continue;
 
         if (!mutations.Apply(new WorldTileMutationRequest(WorldTileMutationKind.PlaceTile, x, y, VanillaTileIds.Dirt)).Applied ||
@@ -53,6 +56,31 @@ for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
             return 4;
         }
 
+        if (seedDirt)
+        {
+            if (Directory.Exists(path + ".custody"))
+                throw new InvalidOperationException("Seed only an unmanaged CI fixture before explicit custody import.");
+            if (!mutations.Apply(new WorldTileMutationRequest(WorldTileMutationKind.PlaceTile, x, y, VanillaTileIds.Dirt)).Applied ||
+                !WorldFilePreservedSections.TryCapture(file, world.Envelope, out WorldFilePreservedSections? preserved))
+                throw new InvalidOperationException("Could not prepare the CI Dirt fixture.");
+            // Local ItemCheck requires a neighboring anchor when replacing
+            // the mined Dirt. Keep the player's body outside both seeded cells.
+            WorldTile floor = tiles.Get(x, y + 1);
+            floor.Type = checked((ushort)VanillaTileIds.Stone.Value);
+            floor.Flags |= WorldTileFlags.Active;
+            tiles.Set(x, y + 1, in floor);
+            var shadow = new WorldTileSaveShadowSynchronizer(tiles, 1);
+            while (!shadow.IsBootstrapped) shadow.CaptureBootstrap(1);
+            if (!shadow.TryCaptureImage(out WorldTileSaveImage? image))
+                throw new InvalidOperationException("Could not capture the CI Dirt fixture.");
+            using var rewritten = new MemoryStream();
+            if (WorldFileTileChestRewriter.TryRewrite(world.Envelope, world.Header, preserved!, image!, world.Chests,
+                    rewritten, out _) != WorldFileTileChestRewriteResult.Rewritten)
+                throw new InvalidOperationException("Could not rewrite the CI Dirt fixture.");
+            string temporary = path + ".dirt-seed.tmp";
+            File.WriteAllBytes(temporary, rewritten.ToArray());
+            File.Move(temporary, path, overwrite: true);
+        }
         Console.WriteLine($"x={x} y={y}");
         return 0;
     }

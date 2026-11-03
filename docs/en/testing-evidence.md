@@ -1,5 +1,9 @@
 # Testing, verification and evidence
 
+The [managed live-custody follow-up](../verification/worldgen-live-custody-followup-20261103.json) passed Release warnings-as-errors, 8 focused rows, 298 Python checks, fast `56,997/56,997`, unfiltered full `1,602,311/1,602,311` across all `5,717` methods, and ordinary/published CoreCLR five-smoke paths. The same-observer old-application control has four expected failures and three passing controls. This qualifies the first-backup correction and funded CI probes; fresh remote workflows remain pending and world generation is not complete.
+
+Live chest probes transfer an existing whole stack through the source cursor and inventory transaction before committing it to an empty chest slot. Dirt probes complete the ordinary player bootstrap before spawn, use the failed-hit plus pick-damage sequence, pick up the resulting server item, and debit the placement inventory. Omission controls reject unfunded chest edits, omitted pick damage and omitted placement debit. The Dirt workflow prepares its two-cell fixture before explicit custody import; the fixture tool refuses already-managed worlds and preserves every other tile and retained file section.
+
 CI reference checks bind decompiler-generated locals to their source roles before comparing the Moon Lord contract. Windows/XNA and Linux/missing-XNA spellings must preserve the same offsets, clocks, NPC slots, healing order, projectile identity and interpolation operands. Generated local names carry no semantic meaning; changed values and aliases still fail. Thirteen independent mutations of the pinned original decompilation are rejected. Initial CI startup of a freshly generated official world must explicitly import custody; subsequent startup, crash and recovery checks retain the existing authority boundary.
 
 [Русский](../ru/testing-evidence.md) · [Documentation](README.md) · [Reference policy](../reference-policy.md) · [Roadmap](../roadmap.md)

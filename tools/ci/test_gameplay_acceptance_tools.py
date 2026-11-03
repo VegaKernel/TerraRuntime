@@ -81,23 +81,67 @@ class MoonLordTeleportDecompilationTests(unittest.TestCase):
 
 
 class LiveMiningProbeTests(unittest.TestCase):
+    inventory = bytes.fromhex("000100010000b50d00")  # slot1, one Copper Pickaxe3509
+    released = bytes.fromhex("0000100000010000344400003444")
+    held = bytes.fromhex("0020100000010000344400003444")
+    contact = bytes.fromhex("0000100000010000344400002c44")  # X720/Y688, released
+    reservation = bytes.fromhex('1100006400000000344400003444')  # index17, miner0, timer100, X720/Y720
+
     def test_compact_pickup_sends_official_literal_and_checks_both_observers(self):
         origin, peer = Mock(), Mock()
         with patch("live_dirt_kill_probe.recv_until_packet", side_effect=[
-            (bytes.fromhex("110000"), []), (bytes.fromhex("1100"), []), (bytes.fromhex("1100"), [])
+            (self.reservation, []), (self.contact, []),
+            (bytes.fromhex("1100"), []), (bytes.fromhex("1100"), [])
         ]) as receive:
-            complete_pickup(origin, peer, 17)
-        origin.sendall.assert_called_once_with(bytes.fromhex("0500971100"))
-        self.assertEqual([call.args[1] for call in receive.call_args_list], [22, 151, 151])
+            complete_pickup(origin, peer, 17, 45, 45)
+        self.assertEqual([call.args[0] for call in origin.sendall.call_args_list], [
+            bytes.fromhex("11000d0000100000010000344400002c44"), bytes.fromhex("0500971100")])
+        self.assertEqual([(call.args[0], call.args[1]) for call in receive.call_args_list],
+                         [(origin, 22), (peer, 13), (origin, 151), (peer, 151)])
 
     def test_pickup_rejects_wrong_reservation_or_wrong_removed_slot(self):
         for responses in (
-            [(bytes.fromhex("110001"), [])],
-            [(bytes.fromhex("110000"), []), (bytes.fromhex("1200"), [])],
+            [(self.reservation[:2] + b'\1' + self.reservation[3:], [])],
+            [(b'\x12' + self.reservation[1:], [])],
+            [(self.reservation[:3], [])],
+            [(self.reservation + b'\0', [])],
+            [(self.reservation, []), (self.contact, []), (bytes.fromhex("1200"), [])],
+            [(self.reservation, []), (self.contact, []),
+             (bytes.fromhex("1100"), []), (bytes.fromhex("1200"), [])],
         ):
-            with patch("live_dirt_kill_probe.recv_until_packet", side_effect=responses):
+            with self.subTest(responses=responses), patch("live_dirt_kill_probe.recv_until_packet", side_effect=responses):
                 with self.assertRaises(SystemExit):
-                    complete_pickup(Mock(), Mock(), 17)
+                    complete_pickup(Mock(), Mock(), 17, 45, 45)
+
+    def test_pickup_rejects_malformed_or_unrelated_contact_before_sending_removal(self):
+        for movement in (b'', self.contact[:-1], self.contact + b'\0', self.held,
+                         bytes([1]) + self.contact[1:], self.contact[:5] + b'\0' + self.contact[6:],
+                         self.released):
+            origin = Mock()
+            with self.subTest(movement=movement), patch("live_dirt_kill_probe.recv_until_packet", side_effect=[
+                (self.reservation, []), (movement, [])
+            ]), self.assertRaises(SystemExit):
+                complete_pickup(origin, Mock(), 17, 45, 45)
+            # The reservation alone never acknowledges pickup: no packet151 before valid contact13.
+            self.assertEqual([call.args[0][2] for call in origin.sendall.call_args_list], [13])
+
+    def test_pickup_validates_variable_length_timer_tail_before_contact(self):
+        valid = bytes.fromhex('110000b96007b292040000344400003444')  # reservations12345/delay67890
+        with patch('live_dirt_kill_probe.recv_until_packet', side_effect=[
+            (valid, []), (self.contact, []), (b'\x11\0', []), (b'\x11\0', [])
+        ]):
+            complete_pickup(Mock(), Mock(), 17, 45, 45)
+        for reservation in (
+            self.reservation[:3] + b'\x80' * 5 + self.reservation[4:],
+            self.reservation[:3] + b'\xff\xff\xff\xff\x0f' + self.reservation[4:],
+            self.reservation[:-8] + bytes.fromhex('0000c07f00003444'),
+            self.reservation[:-8] + bytes.fromhex('0000204300003444'),
+        ):
+            origin = Mock()
+            with self.subTest(reservation=reservation), patch('live_dirt_kill_probe.recv_until_packet',
+                return_value=(reservation, [])), self.assertRaises(SystemExit):
+                complete_pickup(origin, Mock(), 17, 45, 45)
+            origin.sendall.assert_not_called()
 
     def test_movement_literal_shape_and_admissible_position(self):
         client = Mock()
@@ -109,18 +153,47 @@ class LiveMiningProbeTests(unittest.TestCase):
 
     def test_tool_switch_uses_distinct_hotbar_slot(self):
         origin, peer = Mock(), Mock()
-        inventory = bytes.fromhex("000100010000b50d00")  # slot1, Copper Pickaxe3509
-        movement = bytes.fromhex("0020100000010000344400003444")
-        with patch("live_dirt_kill_probe.recv_until_packet", side_effect=[(inventory, []), (movement, [])]):
+        with patch("live_dirt_kill_probe.recv_until_packet", side_effect=[
+            (self.inventory, []), (self.released, []), (self.held, [])
+        ]) as receive, patch('live_dirt_kill_probe.time.sleep') as wait:
             select_item(origin, peer, 0, COPPER_PICKAXE_ITEM, 45, 45)
         frames = [call.args[0] for call in origin.sendall.call_args_list]
-        self.assertEqual(struct.unpack_from("<h", frames[0], 4)[0], 1)
-        self.assertEqual(frames[1][8], 1)
+        self.assertEqual(frames, [bytes.fromhex('0c0005000100010000b50d00'),
+                                  bytes.fromhex('11000d0000100000010000344400003444'),
+                                  bytes.fromhex('11000d0020100000010000344400003444')])
+        self.assertEqual([call.args[1] for call in receive.call_args_list], [5, 13, 13])
+        wait.assert_called_once_with(0.05)
+
+    def test_tool_switch_rejects_held_ack_before_released_ack(self):
+        origin = Mock()
+        with patch('live_dirt_kill_probe.recv_until_packet', side_effect=[
+            (self.inventory, []), (self.held, []), (self.released, [])
+        ]), self.assertRaises(SystemExit):
+            select_item(origin, Mock(), 0, COPPER_PICKAXE_ITEM, 45, 45)
+        self.assertEqual(len(origin.sendall.call_args_list), 2, 'No use before validated release')
+
+    def test_tool_switch_rejects_wrong_inventory_or_malformed_movement(self):
+        for inventory in (self.inventory[:-1], self.inventory + b'\0',
+                          bytes.fromhex('000100020000b50d00'),  # wrong stack
+                          bytes.fromhex('000100010001b50d00'),  # wrong prefix
+                          bytes.fromhex('000000010000b50d00'),  # wrong hotbar slot
+                          bytes.fromhex('010100010000b50d00')):  # wrong player
+            with self.subTest(inventory=inventory), patch('live_dirt_kill_probe.recv_until_packet',
+                                                        return_value=(inventory, [])), self.assertRaises(SystemExit):
+                select_item(Mock(), Mock(), 0, COPPER_PICKAXE_ITEM, 45, 45)
+        for phase, movement in ((0, b''), (0, self.released[:-1]), (1, self.held + b'\0'),
+                                (1, self.released), (1, bytes([1]) + self.held[1:]),
+                                (1, self.held[:5] + b'\0' + self.held[6:])):
+            responses = [(self.inventory, [])] + ([(self.released, [])] if phase else []) + [(movement, [])]
+            with self.subTest(phase=phase, movement=movement), patch('live_dirt_kill_probe.recv_until_packet',
+                side_effect=responses), patch('live_dirt_kill_probe.time.sleep'), self.assertRaises(SystemExit):
+                select_item(Mock(), Mock(), 0, COPPER_PICKAXE_ITEM, 45, 45)
 
     def test_uncommitted_position_rejected(self):
-        inventory = bytes.fromhex("000100010000b50d00")
         stale_movement = bytes.fromhex("0020100000010000204300002043")  # old160/160
-        with patch("live_dirt_kill_probe.recv_until_packet", side_effect=[(inventory, []), (stale_movement, [])]):
+        with patch("live_dirt_kill_probe.recv_until_packet", side_effect=[
+            (self.inventory, []), (self.released, []), (stale_movement, [])
+        ]), patch('live_dirt_kill_probe.time.sleep'):
             with self.assertRaises(SystemExit):
                 select_item(Mock(), Mock(), 0, COPPER_PICKAXE_ITEM, 45, 45)
 

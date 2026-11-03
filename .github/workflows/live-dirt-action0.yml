@@ -100,14 +100,14 @@ jobs:
             exit "$status"
           fi
 
-      - name: Locate packet17-safe empty tile
+      - name: Seed isolated Dirt in the generated CI fixture before custody import
         shell: bash
         run: |
           set -euo pipefail
           dotnet run \
             --project tools/TerraRuntime.TileLocate/TerraRuntime.TileLocate.csproj \
             -c Release \
-            -- artifacts/live-dirt.wld \
+            -- artifacts/live-dirt.wld --seed-dirt \
             | tee artifacts/live-dirt-tile.txt
           grep -Eq '^x=[0-9]+ y=[0-9]+$' artifacts/live-dirt-tile.txt
 
@@ -136,6 +136,7 @@ jobs:
 
           dotnet "$server_dll" \
             --world "$world" \
+            --import-world-custody \
             --port 17784 \
             --max-players 2 \
             --no-tui \
