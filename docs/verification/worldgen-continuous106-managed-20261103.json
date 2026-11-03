@@ -1032,8 +1032,42 @@
     "unchangedAfterFullAndPublication": true
   },
   "remoteCi": {
-    "accepted": false,
-    "status": "Pending publication"
+    "accepted": true,
+    "status": "Published source verified on main and succeeding config/docs-only commit; all push workflows green at current head",
+    "sourceCommit": "d23cd62a3807ab5a01ea8abf27d7c50b83407307",
+    "verifiedHead": "a693bc699cf56f25ad5d176e19e335d8e698bd7b",
+    "sourceAndTestsUnchangedSinceSourceCommit": true,
+    "interveningPaths": [
+      ".github/workflows/terraria-worldgen-beaches.yml",
+      "docs/agent-memory/work-state.md",
+      "docs/en/testing-evidence.md",
+      "docs/ru/testing-evidence.md"
+    ],
+    "sourceHeadPush": {
+      "success": 23,
+      "cancelled": [
+        "CI superseded by next main push",
+        "Beaches cold-build exceeded former five-minute timeout"
+      ]
+    },
+    "currentHeadPush": [
+      {
+        "name": "CI",
+        "id": 41732270840,
+        "conclusion": "success"
+      },
+      {
+        "name": "Documentation",
+        "id": 41732270743,
+        "conclusion": "success"
+      },
+      {
+        "name": "Terraria Beaches Source Contract",
+        "id": 41732270739,
+        "conclusion": "success"
+      }
+    ],
+    "scope": "Current source/config publication evidence; no all-generation completion or local NativeAOT claim."
   },
   "gitIndexBridge": {
     "accepted": true,
