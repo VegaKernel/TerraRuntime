@@ -810,7 +810,17 @@
     "NativeAOT user-deferred"
   ],
   "remoteCi": {
-    "status": "Pending fresh main push; local acceptance is managed only"
+    "accepted": true,
+    "headSha": "a2e1c65ff63a2714037d8e4f3988e877c4410212",
+    "successfulWorkflows": 29,
+    "allReportedWorkflowsSucceeded": true,
+    "criticalRuns": {
+      "CI": 41652490294,
+      "Documentation": 41652489875,
+      "Vanilla Worldgen Canonical Sizes": 41652489887,
+      "Vanilla World Load": 41652490062
+    },
+    "sourceScopeUnchanged": true
   },
   "gitIndexBridge": {
     "accepted": true,
