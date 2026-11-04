@@ -6,28 +6,28 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary (not Drunk/Remix) Underworld ash-grass and Tree_Ash scans, immediately before AddHellHouses.</summary>
 internal static class UnderworldVegetation1458
 {
-    public static void Generate(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken)
+    public static void Generate(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken, bool edgeOnly = true)
     {
-        GrowGrass(store, random, cancellationToken);
+        GrowGrass(store, random, cancellationToken, edgeOnly);
         int width = store.Dimensions.WidthTiles, height = store.Dimensions.HeightTiles;
         for (int x = 25; x < width - 25; x++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!IsEdgeForest(x, width)) continue;
+            if (edgeOnly && !IsEdgeForest(x, width)) continue;
             for (int y = height - 200; y < height - 50; y++)
                 if (At(store, x, y) is { IsActive: true, Type: AshTreeGrower1458.AshGrass } && !At(store, x, y - 1).IsActive && random.Next(3) == 0)
                     AshTreeGrower1458.TryGrow(store, x, y, random);
         }
     }
 
-    internal static void GrowGrass(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken)
+    internal static void GrowGrass(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken, bool edgeOnly = true)
     {
         int width = store.Dimensions.WidthTiles, height = store.Dimensions.HeightTiles;
         if (height < 301) throw new ArgumentOutOfRangeException(nameof(store), "Underworld vegetation needs its complete source scan domain.");
         for (int x = 25; x < width - 25; x++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!IsEdgeForest(x, width)) continue;
+            if (edgeOnly && !IsEdgeForest(x, width)) continue;
             // Next(-1,2) belongs to EACH loop-condition evaluation, including the terminating one.
             for (int y = height - 300; y < height - 100 + random.Next(-1, 2); y++)
             {

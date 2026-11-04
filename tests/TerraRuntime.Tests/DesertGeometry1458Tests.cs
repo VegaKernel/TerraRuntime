@@ -24,18 +24,19 @@ public sealed class DesertGeometry1458Tests
     [InlineData(17, true, 673048843, "BAF338358EC677494950D241C2D29931C51359A1FC652AC4EA7BE88FFB0DBEED")]
     public void Surface_and_cluster_fields_match_official_binary(int seed, bool clusters, int next, string hash)
     {
-        WorldTileStore tiles = Fixture();
+        Workspace workspace = Fixture();
+        WorldTileStore tiles = workspace.TileStore;
         var random = new Random(seed);
         DesertSurface1458 description = Assert.IsType<DesertSurface1458>(DesertSurface1458.TryDescribe(tiles, random, 300, 180.5, false, TestContext.Current.CancellationToken));
         Assert.Equal(278, description.Combined.X);
         Assert.Equal(44, description.Combined.Width);
         Assert.Equal(115, description.Combined.Y);
         description.PlaceMound(tiles, random, 180.5, TestContext.Current.CancellationToken);
-        if (clusters) DesertHive1458.PlaceClusters(tiles, description, random, seed, 180.5, TestContext.Current.CancellationToken);
+        if (clusters) DesertHive1458.PlaceClusters(tiles, description, random, seed, 180.5, new GenerationTileFraming1458(tiles, random, workspace, true), TestContext.Current.CancellationToken);
         Assert.Equal(next, random.Next());
         var normalized = new WorldTile[600 * 400];
         for (int x = 0; x < 600; x++)
-        for (int y = 0; y < 400; y++) normalized[x * 400 + y] = At(tiles, x, y);
+            for (int y = 0; y < 400; y++) normalized[x * 400 + y] = At(tiles, x, y);
         Assert.Equal(hash, Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(normalized.AsSpan()))));
     }
 
@@ -67,7 +68,8 @@ public sealed class DesertGeometry1458Tests
     [InlineData(161)]
     public void Inactive_invalid_row_identity_rejects_without_drawing_hive_offset(ushort type)
     {
-        WorldTileStore tiles = Fixture();
+        Workspace workspace = Fixture();
+        WorldTileStore tiles = workspace.TileStore;
         At(tiles, 300, 120).Type = type;
         At(tiles, 300, 120).Flags &= ~WorldTileFlags.Active;
         var random = new Random(1458);
@@ -81,7 +83,8 @@ public sealed class DesertGeometry1458Tests
     [Fact]
     public void Unknown_mound_wall_aborts_before_mutation()
     {
-        WorldTileStore tiles = Fixture();
+        Workspace workspace = Fixture();
+        WorldTileStore tiles = workspace.TileStore;
         var random = new Random(1458);
         DesertSurface1458 description = DesertSurface1458.TryDescribe(tiles, random, 300, 180.5, false, TestContext.Current.CancellationToken)!;
         At(tiles, 300, 150).Wall = 21;
@@ -113,15 +116,16 @@ public sealed class DesertGeometry1458Tests
     [InlineData(3, 17, 1069146118, "091F3CDC7A0203D9A21CDF18333EF64A5DDAEB7CA688F0341760401CDD9187D7")]
     public void Entrance_matches_official_binary(int kind, int seed, int next, string hash)
     {
-        WorldTileStore tiles = Fixture(1200, 600);
+        Workspace workspace = Fixture(1200, 600);
+        WorldTileStore tiles = workspace.TileStore;
         var random = new Random(seed);
         DesertSurface1458 description = DesertSurface1458.TryDescribe(tiles, random, 600, 180.5, false, TestContext.Current.CancellationToken)!;
         description.PlaceMound(tiles, random, 180.5, TestContext.Current.CancellationToken);
-        new DesertEntrances1458(tiles, description, random, TestContext.Current.CancellationToken).Place(kind);
+        new DesertEntrances1458(tiles, description, random, new GenerationTileFraming1458(tiles, random, workspace, true), TestContext.Current.CancellationToken).Place(kind);
         Assert.Equal(next, random.Next());
         var normalized = new WorldTile[1200 * 600];
         for (int x = 0; x < 1200; x++)
-        for (int y = 0; y < 600; y++) normalized[x * 600 + y] = At(tiles, x, y);
+            for (int y = 0; y < 600; y++) normalized[x * 600 + y] = At(tiles, x, y);
         Assert.Equal(hash, Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(normalized.AsSpan()))));
     }
 
@@ -133,35 +137,45 @@ public sealed class DesertGeometry1458Tests
     [InlineData(17, 916745811, "AA188E3A8D32D1509F9E26C95C403155D668D3C197A96C6EA05618F50947F401")]
     public void Decorated_hive_matches_official_binary(int seed, int next, string hash)
     {
-        WorldTileStore tiles = Fixture();
+        Workspace workspace = Fixture();
+        WorldTileStore tiles = workspace.TileStore;
         var random = new Random(seed);
         DesertSurface1458 description = DesertSurface1458.TryDescribe(tiles, random, 300, 180.5, false, TestContext.Current.CancellationToken)!;
         description.PlaceMound(tiles, random, 180.5, TestContext.Current.CancellationToken);
-        DesertHive1458.PlaceClusters(tiles, description, random, seed, 180.5, TestContext.Current.CancellationToken);
-        new DesertDecoration1458(tiles, random).Apply(description, TestContext.Current.CancellationToken);
+        DesertHive1458.PlaceClusters(tiles, description, random, seed, 180.5, new GenerationTileFraming1458(tiles, random, workspace, true), TestContext.Current.CancellationToken);
+        new DesertDecoration1458(tiles, random, new GenerationTileFraming1458(tiles, random, workspace, true)).Apply(description, TestContext.Current.CancellationToken);
         Assert.Equal(next, random.Next());
         var normalized = new WorldTile[600 * 400];
         for (int x = 0; x < 600; x++)
-        for (int y = 0; y < 400; y++) normalized[x * 400 + y] = At(tiles, x, y);
+            for (int y = 0; y < 400; y++) normalized[x * 400 + y] = At(tiles, x, y);
         Assert.Equal(hash, Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(normalized.AsSpan()))));
     }
 
-    private static WorldTileStore Fixture(int width = 600, int height = 400)
+    private static Workspace Fixture(int width = 600, int height = 400)
     {
-        var tiles = new WorldTileStore(new WorldDimensions(width, height));
+        var workspace = new Workspace(width, height);
+        workspace.InitializeVanillaGenerationSolidity();
+        workspace.SetVanillaGenerationSolid(new(484), false);
+        WorldTileStore tiles = workspace.TileStore;
         for (int x = 0; x < width; x++)
-        for (int y = 0; y < height; y++)
-        {
-            bool solid = y >= 100 + x * 13 % 21;
-            At(tiles, x, y) = new WorldTile
+            for (int y = 0; y < height; y++)
             {
-                Type = (ushort)(solid ? 0 : 1), Wall = (ushort)(y >= 140 ? 2 : 0),
-                FrameX = 18, FrameY = 36, LiquidAmount = 123, LiquidKind = (WorldLiquidKind)(y % 4),
-                TileColor = 3, WallColor = 4, Shape = 1,
-                Flags = (solid ? WorldTileFlags.Active : 0) | WorldTileFlags.WireRed | WorldTileFlags.InvisibleWall
-            };
-        }
-        return tiles;
+                bool solid = y >= 100 + x * 13 % 21;
+                At(tiles, x, y) = new WorldTile
+                {
+                    Type = (ushort)(solid ? 0 : 1),
+                    Wall = (ushort)(y >= 140 ? 2 : 0),
+                    FrameX = 18,
+                    FrameY = 36,
+                    LiquidAmount = 123,
+                    LiquidKind = (WorldLiquidKind)(y % 4),
+                    TileColor = 3,
+                    WallColor = 4,
+                    Shape = 1,
+                    Flags = (solid ? WorldTileFlags.Active : 0) | WorldTileFlags.WireRed | WorldTileFlags.InvisibleWall
+                };
+            }
+        return workspace;
     }
 
     private static ref WorldTile At(WorldTileStore tiles, int x, int y) => ref tiles.Tiles[tiles.GetUncheckedIndex(x, y)];

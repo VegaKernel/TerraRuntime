@@ -58,6 +58,12 @@ internal static class WorldSmoothingCatalog1458
 
     public static bool UsesNeighborIdentityForGapFill(TileTypeId type) => type.Value == 495;
 
+    public static bool UsesGapBoulderPlacement(TileTypeId type) => type.Value is 138 or 484 or 664 or >= 711 and <= 716;
+
+    public static bool IsGapTeleporter(TileTypeId type) => type.Value == 235;
+
+    public static bool IsGapGolfHole(TileTypeId type) => type.Value == 476;
+
     public static bool IsPressurePlateWire(TileTypeId type) => type.Value == 136;
 
     public static bool IsTrap(TileTypeId type) => type.Value == 137;

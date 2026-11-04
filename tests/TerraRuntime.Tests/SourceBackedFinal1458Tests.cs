@@ -3627,7 +3627,7 @@ public sealed class SourceBackedFinal1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(27, builder.Entries.Count);
+        Assert.Equal(49, builder.Entries.Count);
         Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/TerrainLayers");
         Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/Dunes");
         Assert.Contains(builder.Entries, static entry => entry.Descriptor.Id.Value == "terraria:1.4.5.8/MudCavesToGrass");

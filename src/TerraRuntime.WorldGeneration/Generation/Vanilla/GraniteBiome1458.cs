@@ -3,9 +3,9 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
-/// <summary>Ordinary GraniteBiome pressure field, material placement and decoration (1.4.5.8).</summary>
+/// <summary>1.4.5.8 GraniteBiome pressure field, Drunk materials and ordinary/Remix selection.</summary>
 internal sealed class GraniteBiome1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random, int seed,
-    int lavaLine, CancellationToken cancellation)
+    int lavaLine, CancellationToken cancellation, bool drunk = false)
 {
     private const int Side = 200, Center = Side / 2;
     private readonly record struct Magma(double Pressure, double Resistance, bool Active);
@@ -16,6 +16,8 @@ internal sealed class GraniteBiome1458(WorldTileStore tiles, IWorldGenerationVan
     {
         cancellation.ThrowIfCancellationRequested();
         int width = workspace.WidthTiles, height = workspace.HeightTiles;
+        bool remix = workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix);
+        TerrainGenerationState1458 terrain = workspace.VanillaTerrainState ?? throw new InvalidOperationException("Granite requires retained terrain layers.");
         double rock = workspace.VanillaTerrainState?.CurrentRockLayer ??
             throw new InvalidOperationException("Granite requires retained GenVars terrain state.");
         int lava = workspace.VanillaLiquidLines?.LavaLine ??
@@ -32,7 +34,9 @@ internal sealed class GraniteBiome1458(WorldTileStore tiles, IWorldGenerationVan
             cancellation.ThrowIfCancellationRequested();
             // Unlike Marble, source computes this fraction and product in float.
             int left = (int)(origins.Count / (float)count * (width - 200)) + 100;
-            int x = random.Next(left, left + (int)band), y = random.Next((int)rock + 20, height - 220);
+            int x = random.Next(left, left + (int)band), y = remix
+                ? random.Next((int)terrain.CurrentWorldSurface + 100, (int)terrain.CurrentRockLayer)
+                : random.Next((int)rock + 20, height - 220);
             int rerolls = 0;
             while (x > width * .45 && x < width * .55)
             {
@@ -45,7 +49,7 @@ internal sealed class GraniteBiome1458(WorldTileStore tiles, IWorldGenerationVan
             else if (attempts > width * 10) break;
             // Vanilla does not reset this attempt counter on successful selection.
         }
-        var biome = new GraniteBiome1458(workspace.TileStore, random, seed, lava, cancellation);
+        var biome = new GraniteBiome1458(workspace.TileStore, random, seed, lava, cancellation, workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld));
         var regions = new List<WorldTileRegion>(origins.Count);
         foreach (WorldGenerationPoint point in origins)
             if (biome.Place(point.X, point.Y, out WorldTileRegion region)) regions.Add(region);
@@ -75,8 +79,8 @@ internal sealed class GraniteBiome1458(WorldTileStore tiles, IWorldGenerationVan
     private void Build(int left, int top)
     {
         for (int x = 0; x < Side; x++)
-        for (int y = 0; y < Side; y++)
-            source[x, y] = target[x, y] = new(0, framing.Flat(left + x, top + y) ? 4 : 1, false);
+            for (int y = 0; y < Side; y++)
+                source[x, y] = target[x, y] = new(0, framing.Flat(left + x, top + y) ? 4 : 1, false);
     }
 
     private WorldTileRegion Simulate()
@@ -89,35 +93,35 @@ internal sealed class GraniteBiome1458(WorldTileStore tiles, IWorldGenerationVan
             // Bounds expand during the scan, but neighbours become active in the target
             // buffer only. Do not clear that buffer: source retains alternate-step values.
             for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottom; y++)
-            {
-                Magma cell = source[x, y];
-                if (!cell.Active) continue;
-                double total = 0, forceX = 0, forceY = 0;
-                for (int dx = -1; dx <= 1; dx++)
-                for (int dy = -1; dy <= 1; dy++)
+                for (int y = top; y <= bottom; y++)
                 {
-                    if (dx == 0 && dy == 0) continue;
-                    Magma neighbor = source[x + dx, y + dy];
-                    if (cell.Pressure > .01 && !neighbor.Active)
-                    {
-                        if (dx == -1) left = Math.Clamp(x + dx, 1, left);
-                        else right = Math.Clamp(x + dx, right, Side - 2);
-                        if (dy == -1) top = Math.Clamp(y + dy, 1, top);
-                        else bottom = Math.Clamp(y + dy, bottom, Side - 2);
-                        target[x + dx, y + dy] = neighbor with { Active = true };
-                    }
-                    double lengthFactor = dx != 0 && dy != 0 ? diagonal : 1d;
-                    total += neighbor.Pressure;
-                    forceX += neighbor.Pressure * (dx * lengthFactor);
-                    forceY += neighbor.Pressure * (dy * lengthFactor);
+                    Magma cell = source[x, y];
+                    if (!cell.Active) continue;
+                    double total = 0, forceX = 0, forceY = 0;
+                    for (int dx = -1; dx <= 1; dx++)
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            if (dx == 0 && dy == 0) continue;
+                            Magma neighbor = source[x + dx, y + dy];
+                            if (cell.Pressure > .01 && !neighbor.Active)
+                            {
+                                if (dx == -1) left = Math.Clamp(x + dx, 1, left);
+                                else right = Math.Clamp(x + dx, right, Side - 2);
+                                if (dy == -1) top = Math.Clamp(y + dy, 1, top);
+                                else bottom = Math.Clamp(y + dy, bottom, Side - 2);
+                                target[x + dx, y + dy] = neighbor with { Active = true };
+                            }
+                            double lengthFactor = dx != 0 && dy != 0 ? diagonal : 1d;
+                            total += neighbor.Pressure;
+                            forceX += neighbor.Pressure * (dx * lengthFactor);
+                            forceY += neighbor.Pressure * (dy * lengthFactor);
+                        }
+                    double mean = total / 8d;
+                    if (mean <= cell.Resistance) continue;
+                    double force = Math.Sqrt(forceX * forceX + forceY * forceY) / 8d;
+                    double pressure = Math.Max(0, Math.Max(mean - force - cell.Pressure, 0) + force + cell.Pressure * .875 - cell.Resistance);
+                    target[x, y] = new(pressure, Math.Max(0, cell.Resistance - pressure * .02), true);
                 }
-                double mean = total / 8d;
-                if (mean <= cell.Resistance) continue;
-                double force = Math.Sqrt(forceX * forceX + forceY * forceY) / 8d;
-                double pressure = Math.Max(0, Math.Max(mean - force - cell.Pressure, 0) + force + cell.Pressure * .875 - cell.Resistance);
-                target[x, y] = new(pressure, Math.Max(0, cell.Resistance - pressure * .02), true);
-            }
             if (iteration < 2) target[Center, Center] = new(25, 0, true);
             (source, target) = (target, source);
         }
@@ -128,49 +132,49 @@ internal sealed class GraniteBiome1458(WorldTileStore tiles, IWorldGenerationVan
     {
         if (y <= lavaLine - 30) return false;
         for (int dx = -50; dx < 50; dx++)
-        for (int dy = -50; dy < 50; dy++)
-        {
-            if (!Inside(x + dx, y + dy)) continue;
-            WorldTile cell = At(x + dx, y + dy);
-            if (cell.IsActive && cell.Type is 147 or 161 or 162 or 163 or 200) return false;
-        }
+            for (int dy = -50; dy < 50; dy++)
+            {
+                if (!Inside(x + dx, y + dy)) continue;
+                WorldTile cell = At(x + dx, y + dy);
+                if (cell.IsActive && cell.Type is 147 or 161 or 162 or 163 or 200) return false;
+            }
         return true;
     }
 
     private void PlaceMaterial(int left, int top, WorldTileRegion area, bool lava)
     {
         for (int x = area.X; x < area.ExclusiveRight; x++)
-        for (int y = area.Y; y < area.ExclusiveBottom; y++)
-        {
-            if (!Inside(left + x, top + y) || !source[x, y].Active) continue;
-            Magma magma = source[x, y];
-            ref WorldTile cell = ref At(left + x, top + y);
-            double wave = Math.Sin((top + y) * .4) * .7 + 1.2;
-            double threshold = .2 + .5 / Math.Sqrt(Math.Max(0, magma.Pressure - magma.Resistance));
-            if (Math.Max(1 - Math.Max(0, wave * threshold), magma.Pressure / 15d) > .35 + (framing.Flat(left + x, top + y) ? 0 : .5))
-                cell = new WorldTile { Type = StoneBiomeTiles1458.IsOre(cell.Type) ? cell.Type : (ushort)368, Wall = 180, Flags = WorldTileFlags.Active };
-            else if (magma.Resistance < .01) { framing.ClearTile(left + x, top + y); cell.Wall = 180; }
-            if (cell.LiquidAmount > 0 && lava) cell.LiquidKind = WorldLiquidKind.Lava;
-        }
+            for (int y = area.Y; y < area.ExclusiveBottom; y++)
+            {
+                if (!Inside(left + x, top + y) || !source[x, y].Active) continue;
+                Magma magma = source[x, y];
+                ref WorldTile cell = ref At(left + x, top + y);
+                double wave = Math.Sin((top + y) * .4) * .7 + 1.2;
+                double threshold = .2 + .5 / Math.Sqrt(Math.Max(0, magma.Pressure - magma.Resistance));
+                if (Math.Max(1 - Math.Max(0, wave * threshold), magma.Pressure / 15d) > .35 + (framing.Flat(left + x, top + y) ? 0 : .5))
+                    cell = new WorldTile { Type = StoneBiomeTiles1458.IsOre(cell.Type) ? cell.Type : (ushort)(drunk ? 367 : 368), Wall = (ushort)(drunk ? 178 : 180), Flags = WorldTileFlags.Active };
+                else if (magma.Resistance < .01) { framing.ClearTile(left + x, top + y); cell.Wall = (ushort)(drunk ? 178 : 180); }
+                if (cell.LiquidAmount > 0 && lava) cell.LiquidKind = WorldLiquidKind.Lava;
+            }
     }
 
     private void Cleanup(int left, int top, WorldTileRegion area)
     {
         var isolated = new List<WorldGenerationPoint>();
         for (int x = area.X; x < area.ExclusiveRight; x++)
-        for (int y = area.Y; y < area.ExclusiveBottom; y++)
-        {
-            int tx = left + x, ty = top + y;
-            if (!source[x, y].Active || !Inside(tx, ty) || !framing.Flat(tx, ty)) continue;
-            int solids = 0;
-            for (int dx = -1; dx <= 1; dx++)
-            for (int dy = -1; dy <= 1; dy++) if (framing.Flat(tx + dx, ty + dy)) solids++;
-            if (solids < 3) isolated.Add(new(tx, ty));
-        }
+            for (int y = area.Y; y < area.ExclusiveBottom; y++)
+            {
+                int tx = left + x, ty = top + y;
+                if (!source[x, y].Active || !Inside(tx, ty) || !framing.Flat(tx, ty)) continue;
+                int solids = 0;
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++) if (framing.Flat(tx + dx, ty + dy)) solids++;
+                if (solids < 3) isolated.Add(new(tx, ty));
+            }
         foreach (WorldGenerationPoint point in isolated)
         {
             framing.ClearTile(point.X, point.Y, true);
-            At(point.X, point.Y).Wall = 180;
+            At(point.X, point.Y).Wall = (ushort)(drunk ? 178 : 180);
         }
     }
 

@@ -70,6 +70,7 @@ public sealed class DungeonWholePass1458Tests
             _ => throw new InvalidOperationException("Unknown original palette.")
         };
         var workspace = new Workspace(width, height);
+        workspace.InitializeVanillaGenerationSolidity();
         workspace.AttachEntityEffects(new WorldGenerationEntityEffects1458(
             new RuntimeNpcStore(), new RuntimeProjectileStore(), sourceServer: true), 0, 1);
         workspace.SetVanillaDungeonSetupProfile(new(palette, kind, entranceSeed));

@@ -1,3 +1,4 @@
+using System.Numerics;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.World;
@@ -24,9 +25,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// again from the top rather than left empty.
 /// </para>
 /// <para>
-/// The ordinary-world path is what is ported. The remix, for-the-worthy, drunk, not-the-bees, tenth-anniversary
-/// and secret-seed arms are not reachable in the profile this generator builds, and each of them short-circuits
-/// on a world flag before it touches the stream, so leaving them out costs no draws.
+/// These shared tables consume the caller's canonical seed profile. Placement performs admission before
+/// mutation. The original requested style remains separate from the resolved atlas style because remix's
+/// cavern selection tests the caller's style even when the physical chest family changes.
 /// </para>
 /// </remarks>
 internal static class BuriedChestLoot1458
@@ -43,27 +44,33 @@ internal static class BuriedChestLoot1458
         int style,
         int primary,
         ushort chestTileType,
+        int requestedStyle,
         VanillaWorldSeedProfile1458 profile=default)
     {
         var chest = new Slots(random);
-        bool rainbowGlowsticks=profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10);
+        bool rainbowGlowsticks=profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)||profile.Has(VanillaSecretWorldSeed1458.RainbowRoad);
         bool remix=profile.Has(VanillaSpecialWorldSeed1458.Remix);
         while (chest.Count == 0)
         {
-            bool aboveSurface = remix?floorY>context.Height-400:floorY < context.WorldSurface + 25.0;
+            bool aboveSurface = remix?floorY>=(context.RockLayer+(context.Height-350)*2)/3.0:floorY < context.WorldSurface + 25.0;
             if ((aboveSurface && (kind.Wooden || kind.LivingWood)) || kind.ForcedSurfaceItem)
-                Surface(random, context, in kind, chest, primary,rainbowGlowsticks);
+                Surface(random, context, in kind, chest, primary,rainbowGlowsticks,profile);
             else if (!remix&&floorY<context.RockLayer||remix&&floorY>context.RockLayer&&floorY<context.Height-250)
-                Underground(random, context, in kind, chest, primary);
-            else if (floorY < context.Height - 250)
-                Cavern(random, context, in kind, chest, primary, floorY,rainbowGlowsticks);
+                Underground(random, context, in kind, chest, primary,profile);
+            else if (floorY < context.Height - 250 || remix&&requestedStyle is 7 or 14)
+                Cavern(random, context, in kind, chest, primary, floorY,rainbowGlowsticks,profile);
             else
-                Underworld(random, context, in kind, chest, primary);
+                Underworld(random, context, in kind, chest, primary,rainbowGlowsticks);
 
             if (chest.Count > 0 && chestTileType == 21)
-                ContainerTail(random, in kind, chest, style);
+                ContainerTail(random, in kind, chest, style,profile);
             if (chest.Count > 0 && chestTileType == 467)
                 DesertContainerTail(random, in kind, chest, style);
+
+            if(profile.Has(VanillaSecretWorldSeed1458.RainbowRoad)&&primary is 1156 or 1571 or 1569 or 1572 or 4607)
+            {chest.Put(1260);chest.Prefix();chest.Advance();}
+            bool vampire=profile.Has(VanillaSecretWorldSeed1458.WhatAHorribleNightToHaveACurse);
+            if(vampire&&!kind.Dungeon&&!kind.Lihzahrd&&!kind.Skyware&&!kind.Hell&&random.Next(4)==0)chest.PutAndAdvance(5597);
 
             // One chest in twelve carries a voice-change item, and its identity is a fourteen-way draw even
             // though only fourteen of the results are distinct.
@@ -73,9 +80,29 @@ internal static class BuriedChestLoot1458
                 chest.Prefix();
                 chest.Advance();
             }
+            else if(vampire&&random.Next(12)==0)
+            {
+                chest.Put(random.Next(4) switch{1=>5505,2=>5506,3=>5508,_=>5509});
+                chest.Prefix();chest.Advance();
+            }
         }
 
         return chest.ToArray();
+    }
+
+    private static void ApplyExtraSignature(IWorldGenerationVanillaRandom random,Slots chest,VanillaWorldSeedProfile1458 profile,int vampireMatch)
+    {
+        if(profile.Has(VanillaSecretWorldSeed1458.WhatAHorribleNightToHaveACurse)&&random.Next(10)==vampireMatch)
+        {chest.Put(random.Next(2)==0?1800:900);chest.Prefix();}
+        if(profile.Has(VanillaSecretWorldSeed1458.IAmError)&&random.Next(3*((BitOperations.PopCount((ulong)profile.Secret)+3)/4))==0)
+        {
+            if(BitOperations.PopCount((ulong)profile.Secret)<6)
+            {
+                ReadOnlySpan<int> pool=[4008,238,2275,3352,3262,3334,4818,1325,4144,3350,4347,1309,1863,485,748,1825,1321,5451,3385,3386,3387,3388,4951,4420,3043,2341,2342,2800,3623,4980,4273,4711];
+                chest.Put(pool[random.Next(32)]);
+            }
+            chest.Prefix();
+        }
     }
 
     /// <summary>Source <c>Item.GetRandomVoiceItem</c>.</summary>
@@ -90,7 +117,7 @@ internal static class BuriedChestLoot1458
         BuriedChestContext1458 context,
         in BuriedChestKind1458 kind,
         Slots chest,
-        int primary,bool rainbowGlowsticks)
+        int primary,bool rainbowGlowsticks,VanillaWorldSeedProfile1458 profile)
     {
         if (primary > 0)
         {
@@ -110,6 +137,8 @@ internal static class BuriedChestLoot1458
                 chest.PutAndAdvance(random.Next(2) == 0 ? 4429 : 4427);
             if (kind.LivingWood && random.Next(3) != 0)
                 chest.PutAndAdvance(5528);
+            if(kind.ForcedSurfaceItem&&profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10))
+            {chest.PutAndAdvance(848);chest.PutAndAdvance(866);}
         }
         else
         {
@@ -117,7 +146,7 @@ internal static class BuriedChestLoot1458
             chest.Put(choice switch
             {
                 0 => 280, 1 => 281, 2 => 284, 3 => 285, 4 => 953, 5 => 946,
-                6 => 3068, 7 => 3069, 8 => 3084, 9 => 4341, _ => 6165
+                6 => 3068, 7 => profile.Has(VanillaSpecialWorldSeed1458.Remix)?517:3069, 8 => 3084, 9 => 4341, _ => 6165
             });
             chest.Prefix();
             chest.Advance();
@@ -184,7 +213,7 @@ internal static class BuriedChestLoot1458
         BuriedChestContext1458 context,
         in BuriedChestKind1458 kind,
         Slots chest,
-        int primary)
+        int primary,VanillaWorldSeedProfile1458 profile)
     {
         if (primary > 0)
         {
@@ -222,6 +251,7 @@ internal static class BuriedChestLoot1458
         {
             chest.Put(random.Next(6) switch { 0 => 49, 1 => 50, 2 => 53, 3 => 54, 4 => 5011, _ => 975 });
             chest.Prefix();
+            ApplyExtraSignature(random,chest,profile,1);
             chest.Advance();
 
             if (random.Next(20) == 0)
@@ -235,7 +265,8 @@ internal static class BuriedChestLoot1458
                 chest.Put(930);
                 chest.Prefix();
                 chest.Advance();
-                chest.PutStackAndAdvance(931, random.Next(26) + 25);
+                if(profile.Has(VanillaSecretWorldSeed1458.RainbowRoad))chest.PutStackAndAdvance(5379,random.Next(50)+50);
+                else chest.PutStackAndAdvance(931, random.Next(26) + 25);
             }
 
             if (kind.Style32 && random.Next(2) == 0)
@@ -296,7 +327,7 @@ internal static class BuriedChestLoot1458
         in BuriedChestKind1458 kind,
         Slots chest,
         int primary,
-        int floorY,bool rainbowGlowsticks)
+        int floorY,bool rainbowGlowsticks,VanillaWorldSeedProfile1458 profile)
     {
         if (primary > 0)
         {
@@ -334,8 +365,8 @@ internal static class BuriedChestLoot1458
             // The seven-way selector is drawn BEFORE the two gates that can override it, so a chest that ends
             // up with a Magic Mirror still paid for the roll it did not use.
             int choice = random.Next(7);
-            bool belowLava = floorY > context.LavaLine;
-            if (random.Next(20) == 0 && belowLava)
+            bool belowLava = profile.Has(VanillaSpecialWorldSeed1458.Remix)?floorY>context.WorldSurface&&floorY<context.RockLayer:floorY > context.LavaLine;
+            if (random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?15:20) == 0 && belowLava)
             {
                 chest.Put(906);
                 chest.Prefix();
@@ -350,12 +381,14 @@ internal static class BuriedChestLoot1458
                 chest.Put(930);
                 chest.Prefix();
                 chest.Advance();
-                chest.PutStack(931, random.Next(26) + 25);
+                if(profile.Has(VanillaSecretWorldSeed1458.RainbowRoad))chest.PutStack(5379,random.Next(50)+50);
+                else chest.PutStack(931, random.Next(26) + 25);
             }
             else
             {
                 chest.Put(choice switch { 0 => 49, 1 => 50, 2 => 53, 3 => 54, 4 => 5011, _ => 975 });
                 chest.Prefix();
+                ApplyExtraSignature(random,chest,profile,0);
             }
 
             chest.Advance();
@@ -405,10 +438,11 @@ internal static class BuriedChestLoot1458
         }
         if (random.Next(2) == 0)
             chest.PutStackAndAdvance(2350, random.Next(2, 5));
-        if (random.Next(2) == 0)
+        if (random.Next(2) == 0 || profile.Has(VanillaSecretWorldSeed1458.WhatAHorribleNightToHaveACurse)&&random.Next(2)==0)
         {
             int selector = random.Next(2);
             int stack = random.Next(15, 31);
+            if(profile.Has(VanillaSecretWorldSeed1458.WhatAHorribleNightToHaveACurse))stack*=2;
             chest.PutStackAndAdvance(selector == 0 ? (kind.Frozen ? 974 : 8) : rainbowGlowsticks?5643:282, stack);
         }
         if (random.Next(2) == 0)
@@ -420,7 +454,7 @@ internal static class BuriedChestLoot1458
         BuriedChestContext1458 context,
         in BuriedChestKind1458 kind,
         Slots chest,
-        int primary)
+        int primary,bool rainbowGlowsticks)
     {
         if (primary > 0)
         {
@@ -486,7 +520,7 @@ internal static class BuriedChestLoot1458
         {
             int selector = random.Next(2);
             int stack = random.Next(15) + 15;
-            chest.PutStackAndAdvance(selector == 0 ? 8 : 282, stack);
+            chest.PutStackAndAdvance(selector == 0 ? 8 : rainbowGlowsticks?5643:282, stack);
         }
         if (random.Next(2) == 0)
             chest.PutStackAndAdvance(73, random.Next(2, 5));
@@ -526,7 +560,7 @@ internal static class BuriedChestLoot1458
     }
 
     private static void ContainerTail(
-        IWorldGenerationVanillaRandom random, in BuriedChestKind1458 kind, Slots chest, int style)
+        IWorldGenerationVanillaRandom random, in BuriedChestKind1458 kind, Slots chest, int style,VanillaWorldSeedProfile1458 profile)
     {
         if (kind.Ivy && random.Next(4) == 0) chest.PutAndAdvance(2204);
         if (kind.Ivy && random.Next(50) == 0) chest.PutAndAdvance(753);
@@ -535,6 +569,7 @@ internal static class BuriedChestLoot1458
         if (kind.Skyware && random.Next(3) == 0) chest.PutAndAdvance(2197);
         if (kind.Lihzahrd) chest.PutAndAdvance(2195);
         if (kind.Dungeon && random.Next(8) == 0) chest.PutAndAdvance(2192);
+        if(kind.Dungeon&&profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy)&&random.Next(5)==0)chest.PutAndAdvance(5515);
         if (kind.Skyware)
         {
             chest.PutAndAdvance(BiomeFurniture(random));

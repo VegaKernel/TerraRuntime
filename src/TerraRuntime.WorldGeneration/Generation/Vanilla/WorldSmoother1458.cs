@@ -51,7 +51,7 @@ internal static class WorldSmoother1458
             workspace.SetVanillaGenerationSolid(new TileTypeId(482), true);
             workspace.SetVanillaGenerationSolid(new TileTypeId(483), true);
         }
-        var grid = new Grid(workspace.TileStore, new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true));
+        var grid = new Grid(workspace.TileStore, new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: true), workspace);
         long sloped = 0;
         long halfBricks = 0;
         long removed = 0;
@@ -220,15 +220,15 @@ internal static class WorldSmoother1458
         ref long filled)
     {
         ref WorldTile tile = ref grid.At(x, y);
-        WorldTile below = grid.At(x, y + 1);
+
         WorldTile right = grid.At(x + 1, y);
         if (WorldSmoothingCatalog1458.SupportsGapFillNeighbor(right.TileType) &&
             IsFullSolid(grid, grid.At(x - 1, y + 1)) && IsFullSolid(grid, right) && !grid.At(x - 1, y).IsActive &&
             !grid.At(x + 1, y - 1).IsActive)
         {
-            PlaceGapTile(ref tile, WorldSmoothingCatalog1458.UsesNeighborIdentityForGapFill(right.TileType)
+            PlaceGapTile(grid, random, x, y, WorldSmoothingCatalog1458.UsesNeighborIdentityForGapFill(right.TileType)
                 ? right.TileType
-                : below.TileType);
+                : grid.At(x, y + 1).TileType);
             filled++;
             ShapeSlopeOrHalf(grid, x, y, ref tile, random, sourceSlope: 2, ref sloped, ref halfBricks);
         }
@@ -238,9 +238,9 @@ internal static class WorldSmoother1458
             IsFullSolid(grid, grid.At(x + 1, y + 1)) && IsFullSolid(grid, left) && !grid.At(x + 1, y).IsActive &&
             !grid.At(x - 1, y - 1).IsActive)
         {
-            PlaceGapTile(ref tile, WorldSmoothingCatalog1458.UsesNeighborIdentityForGapFill(left.TileType)
+            PlaceGapTile(grid, random, x, y, WorldSmoothingCatalog1458.UsesNeighborIdentityForGapFill(left.TileType)
                 ? left.TileType
-                : below.TileType);
+                : grid.At(x, y + 1).TileType);
             filled++;
             ShapeSlopeOrHalf(grid, x, y, ref tile, random, sourceSlope: 1, ref sloped, ref halfBricks);
         }
@@ -389,19 +389,36 @@ internal static class WorldSmoother1458
         if (before && !grid.At(x, y).IsActive) removed++;
     }
 
-    private static void PlaceGapTile(ref WorldTile tile, TileTypeId type)
+    private static void PlaceGapTile(Grid grid, IWorldGenerationVanillaRandom random, int x, int y, TileTypeId type)
     {
         if (type.Value is 2 or 23 or 109 or 199 or 60 or 661 or 662 or 70 or 633 or
             179 or 180 or 181 or 182 or 183 or 381 or 534 or 536 or 539 or 625 or 627)
             return;
+        if (grid.Framer.GenerationSolid(checked((ushort)type.Value)) && !grid.Framer.EmptyPlacementTile(x, y)) return;
+        if (type == VanillaTileIds.ClosedDoor)
+        {
+            CaveHousePlacement1458.PlaceHouseDoor(grid.Workspace, random, x, y, 0);
+            return;
+        }
+        if (WorldSmoothingCatalog1458.UsesGapBoulderPlacement(type))
+        {
+            grid.Framer.PlaceTrapBoulder(x, y, checked((ushort)type.Value));
+            return;
+        }
+        ref WorldTile tile = ref grid.At(x, y);
+        if (!tile.IsActive) HellFortGenerator1458.ClearPlacementAnchor(ref tile);
+        if (WorldSmoothingCatalog1458.IsGapTeleporter(type))
+        {
+            // Either diagonal gap requires an occupied neighbour in the same row;
+            // Place3x1 therefore refuses its footprint after clearing the anchor.
+            grid.Framer.SquareTileFrame(x, y);
+            grid.Framer.FinishPlacement(x, y);
+            return;
+        }
         tile.Type = checked((ushort)type.Value);
         tile.Flags |= WorldTileFlags.Active;
-        tile.Flags &= ~WorldTileFlags.Inactive;
-        tile.FrameX = 0;
-        tile.FrameY = 0;
-        tile.Shape = 0;
-        tile.TileColor = 0;
-        tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        if (WorldSmoothingCatalog1458.IsGapGolfHole(type)) grid.Framer.SquareTileFrame(x, y);
+        grid.Framer.FinishPlacement(x, y);
     }
 
     private static void ClearShape(ref WorldTile tile) => tile.Shape = (byte)TileShape1458.Full;
@@ -427,15 +444,17 @@ internal static class WorldSmoother1458
     {
         private readonly Span<WorldTile> tiles;
 
-        public Grid(WorldTileStore store, GenerationTileFraming1458 framer)
+        public Grid(WorldTileStore store, GenerationTileFraming1458 framer, Workspace workspace)
         {
             Framer = framer;
+            Workspace = workspace;
             Width = store.Dimensions.WidthTiles;
             Height = store.Dimensions.HeightTiles;
             tiles = store.Tiles;
         }
 
         public GenerationTileFraming1458 Framer { get; }
+        public Workspace Workspace { get; }
         public int Width { get; }
         public int Height { get; }
         public ref WorldTile At(int x, int y) => ref tiles[x * Height + y];

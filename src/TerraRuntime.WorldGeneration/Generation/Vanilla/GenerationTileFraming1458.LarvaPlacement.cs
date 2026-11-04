@@ -24,6 +24,6 @@ internal sealed partial class GenerationTileFraming1458
                     tile.FrameY = (short)((row - y + 2) * 18);
                 }
         SquareTileFrame(x, y);
-        return FinishPlantPlacement(x, y);
+        return FinishPlacement(x, y);
     }
 }

@@ -70,6 +70,7 @@ public static class Finalizer
             candidate.VanillaSeedProfile)
         {
             VanillaBootstrapState = candidate.VanillaBootstrapState,
+            VanillaManifest = candidate.VanillaGenerationManifest,
             AnglerQuest = candidate.VanillaAnglerQuest,
             ExtraSpawnPoints = candidate.CaptureVanillaExtraSpawnPoints()
         };

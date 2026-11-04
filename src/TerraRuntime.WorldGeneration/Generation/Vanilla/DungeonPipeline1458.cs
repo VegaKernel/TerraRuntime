@@ -48,7 +48,7 @@ public sealed class SourceBackedDungeonPipeline1458 : IWorldGenerationProvider
 
         WorldGenerationRequest requestCopy = request;
         VanillaWorldSeedProfile1458 profile = WorldSeedResolver1458.Resolve(in requestCopy);
-        if (!profile.IsDefault || !TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
+        if (!profile.SupportsSourceBackedResetAndTerrain || profile.Secret != VanillaSecretWorldSeed1458.None || !TerrainPass1458.IsCanonicalWorldSize(request.WidthTiles, request.HeightTiles))
         {
             capture.Replay(builder);
             return;
@@ -246,6 +246,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         Workspace workspace = context.Workspace as Workspace ??
             throw new InvalidOperationException(
                 "Source-backed dungeon-stage Terraria generation requires Workspace.");
+        if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Skyblock)) return;
         state.EnsureInitialized(context, workspace);
         var grid = new RuntimeGrid(workspace);
         var random = new VanillaRandom(
@@ -309,7 +310,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             state.UnderworldTop,
             bootstrap.DungeonLocation,
             bootstrap.DungeonSide,
-            context.CancellationToken);
+            context.CancellationToken, anchor => SpawnOldMan(context, workspace, anchor));
         workspace.SetVanillaDungeonGraph(graph);
         DungeonFeaturePipeline1458.Result features = DungeonFeaturePipeline1458.Apply(
             workspace,
@@ -322,31 +323,13 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         state.DungeonX = graph.Anchor.X;
         state.DungeonY = graph.Anchor.Y;
         state.DungeonBrick = graph.BrickTileType;
-        DungeonComponent1458 finalHall = graph.Components.Last(static component =>
-            component.Kind == DungeonComponentKind1458.Hall);
-        state.DungeonGenerationX = finalHall.End.X;
-        if (context.Metadata is not null && !context.Metadata.TrySetDungeon(graph.Anchor.X, graph.Anchor.Y))
-            throw new InvalidOperationException("Source-backed Dungeon produced an invalid dungeon anchor.");
-        bool retainedOldMan = workspace.EntityEffects is not null
-            ? workspace.TrySpawnGeneratedTownNpc(VanillaNpcIds.OldMan,
-                checked(graph.Anchor.X * 16 + 8), checked(graph.Anchor.Y * 16),
-                false, graph.Anchor.X, graph.Anchor.Y,
-                context.VanillaRandom ?? throw new InvalidOperationException("Old Man birth requires shared RNG."),
-                static () => new(string.Empty, 0))
-            : workspace.TryAddGeneratedTownNpc(
-                VanillaNpcIds.OldMan.Value,
-                string.Empty,
-                checked(graph.Anchor.X * 16f + 8f - DungeonGenerationCatalog1458.OldManWidth * .5f),
-                checked(graph.Anchor.Y * 16f - DungeonGenerationCatalog1458.OldManHeight),
-                homeless: false,
-                homeTileX: graph.Anchor.X,
-                homeTileY: graph.Anchor.Y,
-                townNpcVariationIndex: 0,
-                homelessDespawn: false);
-        if (!retainedOldMan)
-        {
-            throw new InvalidOperationException("Could not register the source-generated dungeon Old Man.");
-        }
+        state.DungeonGenerationX = graph.Components.Single(static component =>
+            component.Kind == DungeonComponentKind1458.Entrance).Start.X;
+
+        if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.TheConstant) &&
+            !workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) &&
+            !workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix))
+            DungeonLavaCavern1458.Generate(workspace, context.VanillaRandom!, context.CancellationToken);
 
         context.ReportProgress(
             1d,
@@ -354,6 +337,33 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             $"features doors={features.Doors}, platforms={features.Platforms}, spikes={features.Spikes}, " +
             $"biomeChests={features.BiomeChests}, chests={features.BasicChests}, shelves={features.Bookshelves}, " +
             $"lights={features.Lights}, traps={features.Traps}, furniture={features.Furniture}, banners={features.Banners}");
+    }
+
+    private static void SpawnOldMan(IWorldGenerationContext context, Workspace workspace, DungeonPoint1458 anchor)
+    {
+        if (context.Metadata is not null && !context.Metadata.TrySetDungeon(anchor.X, anchor.Y))
+            throw new InvalidOperationException("Source-backed Dungeon produced an invalid dungeon anchor.");
+        bool retainedOldMan = workspace.EntityEffects is not null
+            ? workspace.TrySpawnGeneratedTownNpc(VanillaNpcIds.OldMan,
+                checked(anchor.X * 16 + 8), checked(anchor.Y * 16),
+                false, anchor.X, anchor.Y,
+                context.VanillaRandom ?? throw new InvalidOperationException("Old Man birth requires shared RNG."),
+                static () => new(string.Empty, 0))
+            : workspace.TryAddGeneratedTownNpc(
+                VanillaNpcIds.OldMan.Value,
+                string.Empty,
+                checked(anchor.X * 16f + 8f - DungeonGenerationCatalog1458.OldManWidth * .5f),
+                checked(anchor.Y * 16f - DungeonGenerationCatalog1458.OldManHeight),
+                homeless: false,
+                homeTileX: anchor.X,
+                homeTileY: anchor.Y,
+                townNpcVariationIndex: 0,
+                homelessDespawn: false);
+        if (!retainedOldMan)
+        {
+            throw new InvalidOperationException("Could not register the source-generated dungeon Old Man.");
+        }
+
     }
 
     private void ApplyMountainCaveOpenings(IWorldGenerationContext context, Workspace workspace)
@@ -516,7 +526,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Gems requires retained vanilla liquid lines.");
         IWorldGenerationVanillaRandom random = context.VanillaRandom!;
         var runner = new SmallTerrainRunner1458(workspace.TileStore, random, state.WorldSurface, lines,
-            context.CancellationToken);
+            context.CancellationToken, seedProfile: workspace.VanillaSeedProfile);
 
         // WorldGen's ordinary Gems delegate: six ordered series, three substrate attempts per deposit.
         // Keep the two multiplications and integer-versus-double comparison (fractional counts round up).

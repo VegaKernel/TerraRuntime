@@ -41,6 +41,7 @@ internal sealed class BootstrapPass1458 : IWorldGenerationPass
             workspace.InitializeVanillaGenerationSolidity();
             workspace.InitializeVanillaStructureMap();
             workspace.ResetVanillaLandmasses();
+            workspace.ResetVanillaGenerationOres();
             workspace.VanillaSkyIslandHouseCount = 0;
             workspace.VanillaBoulderPetsPlaced = 0;
         }

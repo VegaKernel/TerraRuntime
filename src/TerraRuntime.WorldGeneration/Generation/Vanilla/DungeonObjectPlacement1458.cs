@@ -4,7 +4,7 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Shared generation-time placement and framing for dungeon platform and furniture passes.</summary>
-internal sealed class DungeonObjectPlacement1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random)
+internal sealed class DungeonObjectPlacement1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random, Workspace? workspace = null)
 {
     internal void SetPlatform(int x, int y, int style)
     {
@@ -60,6 +60,7 @@ internal sealed class DungeonObjectPlacement1458(WorldTileStore tiles, IWorldGen
     }
 
     private bool destroyingChandelier;
+    private GenerationTileFraming1458? pressurePlateFraming;
 
     internal void FrameSquare(int x, int y) => FrameArea(x - 1, y - 1, x + 1, y + 1);
 
@@ -82,12 +83,8 @@ internal sealed class DungeonObjectPlacement1458(WorldTileStore tiles, IWorldGen
             else if (cell.Type is 240 or 241 or 242) ValidatePainting(tx, ty, cell);
             else if (cell.Type is 13 or 33 or 49 or 50) FrameTableObject(tx, ty);
             else if (cell.Type == 135)
-            {
-                WorldTile floor = At(tx, ty + 1);
-                if (!floor.IsActive || floor.IsActuated || floor.Shape is 1 or 2 or 3 ||
-                    !DungeonGenerationTiles1458.IsSolidType(floor.TileType) || GenerationObjectSupport1458.IsBoulder(floor.Type))
-                    throw new InvalidOperationException("Unsupported detached dungeon pressure plate.");
-            }
+                (pressurePlateFraming ??= new GenerationTileFraming1458(tiles, random, workspace,
+                    useWorldGenerationSolidity: workspace is { HasVanillaGenerationSolidity: true })).TileFrame(tx, ty);
             // TileFrameImportant has no attachment/framing branch for the solid, single-cell dart trap.
             else if (VanillaWorldFrameImportance326.IsFrameImportant(cell.Type) && cell.Type is not (10 or 13 or 28 or 33 or 34 or 42 or 49 or 50 or 91 or 136 or 137 or 215))
                 throw new InvalidOperationException($"Unsupported existing object {cell.Type} at {tx},{ty} in dungeon framing area {left},{top}..{right},{bottom}.");

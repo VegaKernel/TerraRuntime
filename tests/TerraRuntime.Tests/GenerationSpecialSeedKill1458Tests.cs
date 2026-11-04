@@ -102,7 +102,7 @@ public sealed class GenerationSpecialSeedKill1458Tests
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    public static IEnumerable<object[]> UnsupportedChestScopes => Enumerable.Range(0, 26).Select(i => new object[] { i });
+    public static IEnumerable<object[]> UnsupportedChestScopes => Enumerable.Range(0, 26).Where(i => i >= 24 || i % 3 == 2).Select(i => new object[] { i });
 
     [Theory, MemberData(nameof(UnsupportedChestScopes))]
     public void Unsupported_special_chest_scope_refuses_before_random_or_world_changes(int index)
@@ -117,7 +117,7 @@ public sealed class GenerationSpecialSeedKill1458Tests
         var random = new RandomAdapter(1458);var slots = random.Slots;var before = GridHash(workspace);
         var context = new BuriedChestContext1458 { Height=80, WorldSurface=20, RockLayer=50, LavaLine=60, CopperBar=20, IronBar=22, SilverBar=21, GoldBar=19, TungstenIsSilverTier=false, DesertHiveLow=0, DesertHiveHigh=0, HellChestItem=[] };
         var placer = new BuriedChest1458(workspace.TileStore,random,context,workspace:workspace);
-        int style = index < 24 ? index % 3 == 0 ? -1 : index % 3 == 1 ? 0 : 10 : 10;
+        int style = index < 24 ? index % 3 == 0 ? -1 : index % 3 == 1 ? 0 : 1 : 10;
         ushort type = (ushort)(index < 24 && index % 3 == 2 ? 467 : 21);
         Assert.Throws<NotSupportedException>(() => placer.TryAdd(40,30,out _,out _,chestStyle:style,chestTileType:type));
         Assert.Equal(0,random.Cursor);Assert.Equal(slots,random.Slots);Assert.Equal(before,GridHash(workspace));

@@ -14,11 +14,14 @@ internal static class UnderworldTerrain1458
     {
         int width = store.Dimensions.WidthTiles, height = store.Dimensions.HeightTiles;
         if (width <= 40 || height < 300 || !double.IsFinite(worldSurface) || worldSurface < 0 ||
-            worldSurface >= height - 200 || lines.WaterLine < 0 || lines.LavaLine < lines.WaterLine || lines.LavaLine >= height)
+            worldSurface >= height - 200 || lines.WaterLine < 0 || lines.WaterLine >= height || lines.LavaLine < 0 || lines.LavaLine >= height)
             throw new ArgumentOutOfRangeException(nameof(lines));
 
+        bool split = workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) == true ||
+            workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) == true;
         CarveAndFill(store, random, cancellationToken);
-        var runner = new SmallTerrainRunner1458(store, random, worldSurface, lines, cancellationToken);
+        var runner = new SmallTerrainRunner1458(store, random, worldSurface, lines, cancellationToken,
+            rockLayer: workspace is not null && workspace.TryGetLayers(out var layers) ? layers.RockLayer : null, seedProfile: workspace?.VanillaSeedProfile ?? default);
         for (int x = 0; x < width; x++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -30,24 +33,28 @@ internal static class UnderworldTerrain1458
                 Ash, true, 0, random.Next(1, 3), true);
         }
 
-        UnderworldLiquidPreparation1458.Settle(store, lines.WaterLine, cancellationToken, workspace);
+        UnderworldLiquidPreparation1458.Settle(store, lines.WaterLine, cancellationToken, workspace, new GenerationTileFraming1458(store, random, workspace, useWorldGenerationSolidity: true));
         for (int x = 0; x < width; x++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (random.Next(13) != 0) continue;
             int y = height - 65;
             while ((At(store, x, y).LiquidAmount > 0 || At(store, x, y).IsActive) && y > height - 140) y--;
-            runner.Run(x, y - random.Next(2, 5), random.Next(5, 30), 1000, Ash, true, 0, random.Next(1, 3), true);
+            if (!split || random.Next(3) == 0 || x <= width * .4 || x >= width * .6)
+                runner.Run(x, y - random.Next(2, 5), random.Next(5, 30), 1000, Ash, true, 0, random.Next(1, 3), true);
             double scale = random.Next(1, 3);
             if (random.Next(3) == 0) scale *= 0.5;
-            if (random.Next(2) == 0)
-                runner.Run(x, y - random.Next(2, 5), (int)(random.Next(5, 15) * scale),
-                    (int)(random.Next(10, 15) * scale), Ash, true, 1, 0.3);
-            if (random.Next(2) == 0)
+            if (!split || random.Next(3) == 0 || x <= width * .4 || x >= width * .6)
             {
-                scale = random.Next(1, 3);
-                runner.Run(x, y - random.Next(2, 5), (int)(random.Next(5, 15) * scale),
-                    (int)(random.Next(10, 15) * scale), Ash, true, -1, 0.3);
+                if (random.Next(2) == 0)
+                    runner.Run(x, y - random.Next(2, 5), (int)(random.Next(5, 15) * scale),
+                        (int)(random.Next(10, 15) * scale), Ash, true, 1, 0.3);
+                if (random.Next(2) == 0)
+                {
+                    scale = random.Next(1, 3);
+                    runner.Run(x, y - random.Next(2, 5), (int)(random.Next(5, 15) * scale),
+                        (int)(random.Next(10, 15) * scale), Ash, true, -1, 0.3);
+                }
             }
             runner.Run(x + random.Next(-10, 10), y + random.Next(-10, 10), random.Next(5, 15),
                 random.Next(5, 10), LiquidCavity, false, random.Next(-1, 3), random.Next(-1, 3));
@@ -62,6 +69,10 @@ internal static class UnderworldTerrain1458
         for (int i = 0; i < width; i++)
             runner.Run(random.Next(20, width - 20), random.Next(height - 180, height - 10),
                 random.Next(2, 7), random.Next(2, 7), LiquidCavity);
+        if (split)
+            for (int i = 0; i < width * 2; i++)
+                runner.Run(random.Next((int)(width * .35), (int)(width * .65)), random.Next(height - 180, height - 10),
+                    random.Next(5, 20), random.Next(5, 10), LiquidCavity);
         UnderworldLava1458.RestoreSurface(store, cancellationToken);
         int deposits = (int)((double)(width * height) * 0.0008);
         for (int i = 0; i < deposits; i++)

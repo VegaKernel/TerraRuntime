@@ -5,7 +5,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>DungeonGlobalBanners ordinary sampling, solid-ceiling search and separation rules.</summary>
 internal sealed class DungeonBanners1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken,
-    IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null)
+    IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null, Workspace? workspace = null)
 {
     public int Place(DungeonBounds1458 bounds, IReadOnlyList<int> wallVariants)
     {
@@ -13,7 +13,7 @@ internal sealed class DungeonBanners1458(WorldTileStore tiles, IWorldGenerationV
         if (bounds.Left < 10 || bounds.Top < 10 || bounds.Right > width - 10 || bounds.Bottom > height - 10 ||
             bounds.Left >= bounds.Right || bounds.Top >= bounds.Bottom || wallVariants.Count != 3)
             throw new InvalidOperationException("Invalid dungeon banner sampling bounds.");
-        var placement = new DungeonObjectPlacement1458(tiles, random);
+        var placement = new DungeonObjectPlacement1458(tiles, random, workspace);
         int placed = 0, attempts = (int)(200f * ((float)width / 4200f));
         for (int attempt = 0; attempt < attempts; attempt++)
         {

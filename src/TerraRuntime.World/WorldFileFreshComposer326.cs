@@ -457,11 +457,11 @@ public static class WorldFileFreshComposer326
             Bestiary: CreateBestiaryLimits(sections.Bestiary),
             RuntimeMetadata: new WorldFileRuntimeMetadataLimits(
                 HeaderStringBudget,
-                HeaderStringBudget * 3L,
+                HeaderStringBudget * 3L + VanillaWorldGenerationManifest1458.MaxSerializedBytes,
                 MaxAnglerNames: 0,
                 MaxBannerEntries: WorldBannerData1458.MaximumEntries,
                 MaxPartyNpcEntries: 0,
-                MaxManifestBytes: 0));
+                MaxManifestBytes: VanillaWorldGenerationManifest1458.MaxSerializedBytes));
     }
 
     private static bool TryCapturePointer(MemoryStream stream, int[] pointers, int index)

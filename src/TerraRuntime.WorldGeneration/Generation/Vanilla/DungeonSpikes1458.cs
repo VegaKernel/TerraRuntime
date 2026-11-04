@@ -8,14 +8,14 @@ internal sealed class DungeonSpikes1458(WorldTileStore tiles, IWorldGenerationVa
     IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null)
 {
     public int Place(DungeonBounds1458 bounds, ushort wall, ushort crackedBrick, double worldSurface,
-        DungeonBounds1458? protectedEntrance = null)
+        DungeonBounds1458? protectedEntrance = null, bool worthy = false, int? undergroundTop = null)
     {
         if ((wall, crackedBrick) is not ((7, 481) or (8, 482) or (9, 483)))
             throw new InvalidOperationException("Unsupported ordinary dungeon spike palette.");
         int minY = checked((int)worldSurface + 25);
         if (bounds.Left < 2 || bounds.Right >= tiles.Dimensions.WidthTiles - 1 || minY < 2 || bounds.Bottom >= tiles.Dimensions.HeightTiles - 1 ||
             bounds.Left >= bounds.Right || minY > bounds.Bottom) throw new InvalidOperationException("Invalid dungeon spike sampling bounds.");
-        int target = (int)(42f * ((float)tiles.Dimensions.WidthTiles / 4200f)), placed = 0;
+        int target = (int)(42f * ((float)tiles.Dimensions.WidthTiles / 4200f)) * (worthy ? 3 : 1), placed = 0;
         for (int orientation = 0; orientation < 2; orientation++)
         {
             int attempts = 0, completed = 0;
@@ -24,6 +24,7 @@ internal sealed class DungeonSpikes1458(WorldTileStore tiles, IWorldGenerationVa
                 cancellationToken.ThrowIfCancellationRequested();
                 attempts++;
                 int x = random.Next(bounds.Left, bounds.Right), y = random.Next(minY, bounds.Bottom);
+                if (orientation == 0 && undergroundTop is int sourceTop) y = random.Next(sourceTop + 25, bounds.Bottom);
                 if (!At(x, y).IsActive && At(x, y).Wall == wall)
                 {
                     int sign = random.Next(2) == 0 ? -1 : 1;

@@ -13,21 +13,23 @@ internal static class HellFortGenerator1458
     // Vanilla contains unbounded rejection loops. An exhausted candidate fails generation; no substitute layout.
     private const int RejectionLimit = 100_000;
 
-    public static int Generate(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken)
+    public static int Generate(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken, VanillaWorldSeedProfile1458 seedProfile = default)
     {
         int width = store.Dimensions.WidthTiles, height = store.Dimensions.HeightTiles;
         int quarter = width / 4, count = 0;
         for (int x = 100; x < width - 100; x++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (x < quarter || x > width - quarter) continue;
+            bool split = seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) || seedProfile.Has(VanillaSpecialWorldSeed1458.Remix);
+            if (split ? x > quarter && x < width - quarter : x < quarter || x > width - quarter) continue;
             int y = height - 40;
             while (y > 0 && (At(store, x, y).IsActive || At(store, x, y).LiquidAmount > 0)) y--;
             if (y == 0 || !At(store, x, y + 1).IsActive) continue;
             ushort brick = (ushort)random.Next(75, 77);
             if (random.Next(5) > 0) brick = ObsidianBrick;
             ushort wall = brick == ObsidianBrick ? ObsidianWall : HellstoneWall;
-            count += Build(store, x, y, brick, wall, random, cancellationToken) > 0 ? 1 : 0;
+            if (seedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy)) brick = HellstoneBrick;
+            count += Build(store, x, y, brick, wall, random, cancellationToken, seedProfile) > 0 ? 1 : 0;
             x += random.Next(30, 130);
             if (random.Next(10) == 0) x += random.Next(0, 200);
         }
@@ -35,15 +37,17 @@ internal static class HellFortGenerator1458
     }
 
     internal static int Build(WorldTileStore store, int anchorX, int anchorY, ushort brick, ushort wall,
-        IWorldGenerationVanillaRandom random, CancellationToken cancellationToken = default)
+        IWorldGenerationVanillaRandom random, CancellationToken cancellationToken = default, VanillaWorldSeedProfile1458 seedProfile = default)
     {
-        if ((brick, wall) is not ((ObsidianBrick, ObsidianWall) or (HellstoneBrick, HellstoneWall)))
+        if ((brick, wall) is not ((ObsidianBrick, ObsidianWall) or (HellstoneBrick, HellstoneWall) or (HellstoneBrick, ObsidianWall)))
             throw new ArgumentOutOfRangeException(nameof(brick));
         int[] left = new int[Columns], right = new int[Columns], top = new int[Rows], bottom = new int[Rows];
-        left[2] = anchorX - random.Next(4, 10);
-        right[2] = anchorX + random.Next(4, 10);
-        for (int col = 1; col >= 0; col--) { right[col] = left[col + 1]; left[col] = right[col] - random.Next(8, 20); }
-        for (int col = 3; col < Columns; col++) { left[col] = right[col - 1]; right[col] = left[col] + random.Next(8, 20); }
+        bool drunk = seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld);
+        int minimumWidth = drunk ? 4 : 8, maximumWidth = drunk ? 40 : 20;
+        left[2] = anchorX - random.Next(minimumWidth / 2, maximumWidth / 2);
+        right[2] = anchorX + random.Next(minimumWidth / 2, maximumWidth / 2);
+        for (int col = 1; col >= 0; col--) { right[col] = left[col + 1]; left[col] = right[col] - random.Next(minimumWidth, maximumWidth); }
+        for (int col = 3; col < Columns; col++) { left[col] = right[col - 1]; right[col] = left[col] + random.Next(minimumWidth, maximumWidth); }
         top[3] = anchorY - random.Next(6, 12);
         bottom[3] = anchorY;
         for (int row = 4; row < Rows; row++) { top[row] = bottom[row - 1]; bottom[row] = top[row] + random.Next(6, 12); }
@@ -56,13 +60,13 @@ internal static class HellFortGenerator1458
         for (int attempt = 0; attempt < 2; attempt++)
         for (int side = 0; side < 2; side++)
         {
-            if (random.Next(3) != 0) continue;
+            if (random.Next(3) != 0 && !drunk) continue;
             hasWing = true;
             _ = random.Next(10); // Source clamps this draw to the current [3,3] center interval.
             int row = 3, inner = side == 0 ? 1 : 3, outer = side == 0 ? 0 : 4;
             rooms[inner, row] = true;
             int column = inner;
-            if (random.Next(2) == 0) { rooms[outer, row] = true; column = outer; }
+            if (random.Next(2) == 0 || drunk) { rooms[outer, row] = true; column = outer; }
             int direction = random.Next(2) == 0 ? -1 : 1;
             // The source's Next(10) is a zero/nonzero gate, NOT a decreasing room budget.
             if (random.Next(10) > 0)

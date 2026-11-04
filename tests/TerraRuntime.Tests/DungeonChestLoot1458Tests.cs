@@ -29,11 +29,13 @@ public sealed class DungeonChestLoot1458Tests
             SilverBar = bootstrap.SilverBar, GoldBar = bootstrap.GoldBar,
             TungstenIsSilverTier = false, DesertHiveLow = 0, DesertHiveHigh = 0, HellChestItem = []
         };
-        var loot = new DungeonChestLoot1458(random, bootstrap, context);
         foreach (string row in new[] { first, second })
         {
             fields = row.Split('|');
-            var items = loot.Build(Int(fields[1]), (ushort)Int(fields[2]), Int(fields[3]), Int(fields[4]), 200, 500, 1200, true);
+            int primary=Int(fields[1]),type=Int(fields[2]),style=Int(fields[3]),floor=Int(fields[4]);
+            bool biome=type==21&&style is >=23 and <=27||type==467&&style==13;
+            var kind=new BuriedChestKind1458(Wooden:type==21&&style==0,Frozen:false,DesertHive:false,Ivy:false,Water:false,LivingWood:false,Style32:false,Hell:false,Dungeon:biome||type==21&&style!=0&&floor>=200,LockedBiome:biome,ForcedSurfaceItem:false,Skyware:false,Lihzahrd:false);
+            var items=BuriedChestLoot1458.Fill(random,context,in kind,floor,style,primary,(ushort)type,style);
             Assert.Equal(fields[7], string.Join(';', items.Select(v => $"{v.ItemType.Value},{v.Stack},{v.Prefix.Value}")));
             Assert.Equal(Int(fields[8]), random.Next());
             Assert.Equal(bool.Parse(fields[9]), context.GeneratedShadowKey);

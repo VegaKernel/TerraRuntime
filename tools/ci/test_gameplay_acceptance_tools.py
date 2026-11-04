@@ -240,6 +240,7 @@ class WorkflowOwnershipTests(unittest.TestCase):
             "DungeonEntranceKind1458.Dome => builder.GenerateDome(anchor, seed, leftDungeon)",
             "DungeonEntranceKind1458.Tower => builder.GenerateTower(anchor, seed, leftDungeon)",
             "entrance.BuildingPlatforms",
+            "cancellationToken, oldManBirth, treeFraming, growDungeonTree, seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)",
             "_ = sharedRandom.Next();",
         ):
             with self.subTest(marker=marker), self.assertRaises(SystemExit):
@@ -259,7 +260,12 @@ class WorkflowOwnershipTests(unittest.TestCase):
                        "chests.PlaceBasic", "new DungeonLights1458", "new DungeonTraps1458",
                        "new DungeonFurniture1458", "new DungeonPaintings1458", "new DungeonBanners1458",
                        "new DungeonLateDoors1458", "random, cancellationToken, pits",
-                       "new(0, 0), cancellationToken, workspace).Place(bounds"):
+                       "new(0, 0), cancellationToken, workspace).Place(bounds",
+                       "new DungeonPlatforms1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken, workspace)",
+                       "new DungeonBookshelves1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken, pits, workspace)",
+                       "new DungeonLights1458(workspace.TileStore, random, cancellationToken, pits, workspace)",
+                       "new DungeonBanners1458(workspace.TileStore, random, cancellationToken, pits, workspace)",
+                       "new DungeonLateDoors1458(workspace.TileStore, random, cancellationToken, workspace)"):
             with self.subTest(marker=marker), self.assertRaises(SystemExit):
                 require_runtime_features(source.replace(marker, "invalid"))
         with self.assertRaises(SystemExit):

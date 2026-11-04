@@ -6,9 +6,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary evil surface strips and Dirt/Mud SpreadGrass, pinned to WorldGen 1.4.5.8.</summary>
 internal sealed class EvilBiomeSurface1458(
     WorldTileStore store, IWorldGenerationVanillaRandom random,
-    double surfaceLow, double worldSurface, CancellationToken cancellationToken)
+    double surfaceLow, double worldSurface, CancellationToken cancellationToken, Workspace? workspace = null)
 {
-    private readonly GenerationGrass1458 grassSpread = new(store, random, cancellationToken);
+    private readonly GenerationGrass1458 grassSpread = new(store, random, cancellationToken, workspace: workspace);
 
     public void ConvertJungleColumn(int x, int left, int right, bool crimson)
     {

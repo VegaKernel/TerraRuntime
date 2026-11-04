@@ -6,7 +6,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary LegacyEntranceDungeonHall; the graph still selects its origin and component seed.</summary>
 internal sealed class DungeonLegacyEntranceHall1458(WorldTileStore tiles, ushort brick, ushort crackedBrick, ushort wall,
     double worldSurface, int entranceStrengthX, int entranceStrengthX2, int entranceStrengthY2,
-    IWorldGenerationVanillaRandom sharedRandom, CancellationToken cancellationToken)
+    IWorldGenerationVanillaRandom sharedRandom, CancellationToken cancellationToken, VanillaWorldSeedProfile1458 seedProfile = default)
 {
     public (DungeonComponent1458 Component, DungeonPoint1458 Cursor, bool ReachedSurface)
         Generate(DungeonPoint1458 origin, int dungeonTopX, int seed, bool skewed)
@@ -89,7 +89,7 @@ internal sealed class DungeonLegacyEntranceHall1458(WorldTileStore tiles, ushort
                     reached = true;
                     // Strength/steps use the component RNG; TileRunner itself consumes the caller's world RNG.
                     // The admitted -1 slice never reads liquid-line inputs (unlike the -2 underworld cavity).
-                    new SmallTerrainRunner1458(tiles, sharedRandom, worldSurface, default, cancellationToken)
+                    new SmallTerrainRunner1458(tiles, sharedRandom, worldSurface, default, cancellationToken, seedProfile: seedProfile)
                         .Run(probeX, probeY, random.Next(25, 35), random.Next(10, 20),
                             SmallTerrainRunner1458.AirCavity, speedX: 0, speedY: -1);
                 }

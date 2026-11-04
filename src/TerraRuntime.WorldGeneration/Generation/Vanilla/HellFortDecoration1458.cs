@@ -9,20 +9,20 @@ internal static class HellFortDecoration1458
 {
     internal static int AttemptCount(int width) => (int)Math.Ceiling(420_000d / width);
 
-    public static void Generate(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken)
+    public static void Generate(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken, VanillaWorldSeedProfile1458 seedProfile = default)
     {
         for (int request = 0; request < AttemptCount(store.Dimensions.WidthTiles); request++)
-            if (SampleHouse(store, random, painting: true, cancellationToken, out int x, out int y))
+            if (SampleHouse(store, random, painting: true, cancellationToken, out int x, out int y, seedProfile))
                 TryPlacePaintingCandidate(store, x, y, random);
         Span<int> palette = stackalloc int[3];
         SelectBannerPalette(random, palette, cancellationToken);
         for (int request = 0; request < AttemptCount(store.Dimensions.WidthTiles); request++)
-            if (SampleHouse(store, random, painting: false, cancellationToken, out int x, out int y))
+            if (SampleHouse(store, random, painting: false, cancellationToken, out int x, out int y, seedProfile))
                 TryPlaceCeilingCandidate(store, x, y, palette, random);
     }
 
     private static bool SampleHouse(WorldTileStore store, IWorldGenerationVanillaRandom random, bool painting,
-        CancellationToken cancellationToken, out int x, out int y)
+        CancellationToken cancellationToken, out int x, out int y, VanillaWorldSeedProfile1458 seedProfile)
     {
         int width = store.Dimensions.WidthTiles, height = store.Dimensions.HeightTiles, quarter = (int)(width * .25);
         // Painting has an initial sample plus 100001 retries; ceiling has a counted do/while sample.
@@ -31,6 +31,8 @@ internal static class HellFortDecoration1458
         {
             cancellationToken.ThrowIfCancellationRequested();
             x = random.Next(quarter, width - quarter); y = random.Next(height - 250, height - 20);
+            if ((!painting || sample > 0) && (seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) || seedProfile.Has(VanillaSpecialWorldSeed1458.Remix)))
+                x = random.Next(2) != 0 ? random.Next(width - quarter, width - 50) : random.Next(50, quarter);
             if (sample == last) return false; // Source discards even a valid final over-budget sample.
             if (HouseAir(store, x, y)) return true;
         }

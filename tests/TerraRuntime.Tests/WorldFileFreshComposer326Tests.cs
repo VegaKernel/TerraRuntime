@@ -117,6 +117,27 @@ public sealed class WorldFileFreshComposer326Tests
         Assert.Empty(file);
     }
 
+    [Fact]
+    public void Compose_budgets_manifest_in_addition_to_valid_header_strings()
+    {
+        using var resource = typeof(WorldFileFreshComposer326Tests).Assembly.GetManifestResourceStream("GenerationManifest1458")!;
+        using var gzip = new System.IO.Compression.GZipStream(resource, System.IO.Compression.CompressionMode.Decompress);
+        using var document = System.Text.Json.JsonDocument.Parse(gzip);
+        var rows = document.RootElement.GetProperty("worlds")[0].GetProperty("manifest")
+            .GetProperty("GenPassResults").EnumerateArray().Select(row => new VanillaGenerationPassResult1458(
+                row.GetProperty("Name").GetString()!, 0, row.GetProperty("RandNext").GetInt32(),
+                row.GetProperty("Hash").ValueKind == System.Text.Json.JsonValueKind.Null ? null : row.GetProperty("Hash").GetUInt32(),
+                row.GetProperty("Skipped").GetBoolean())).ToArray();
+        var header = VanillaFreshWorldHeader326.Create(new string('N', 3500), new string('7', 3500),
+            128, 96, Guid.Parse("bb4e657a-e7c9-43f4-a266-609839431458"), worldId: 1458);
+        var generation = new RuntimeWorldGenerationMetadataSnapshot(new(64, 20), new(16, 40), new(32d, 64d))
+        { VanillaManifest = new(rows) };
+        var result = WorldFileFreshComposer326.TryCompose(header, generation, new WorldTileStore(header.Dimensions),
+            gameMode: 0, crimson: false, creationTimeBinary: 0, lastPlayedBinary: 0, out byte[] file);
+        Assert.True(result.Succeeded, result.ToString());
+        Assert.NotEmpty(file);
+    }
+
     private static WorldFileLoadLimits CreateLimits(long tileCount) =>
         new(
             MaxTileCount: tileCount,

@@ -191,6 +191,16 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
     {
         var request = new WorldGenerationRequest(VanillaId, "Chest anchors", 42, 4200, 1200) { SeedText = "42" };
         var workspace = new Workspace(request.WidthTiles, request.HeightTiles);
+        var npcs = new TerraRuntime.Core.Npcs.RuntimeNpcStore();
+        var projectiles = new TerraRuntime.Core.Projectiles.RuntimeProjectileStore();
+        var npcContext = new TerraRuntime.Gameplay.Npcs.VanillaNpcSpawnContext(1, 0, false) { WorldDifficulty = 1 };
+        npcs.SetVanillaSpawnContextSource(() => npcContext);
+        npcs.SetVanillaSpawnWetCollisionSource((x, y, width, height) =>
+            VanillaWorldCollision.GetLiquidContacts(workspace.TileStore, x, y, width, height).Wet);
+        Assert.True(workspace.TileStore.TryAttachTileEntities([], 1000));
+        workspace.AttachEntityEffects(
+            new TerraRuntime.Core.Worlds.Generation.WorldGenerationEntityEffects1458(npcs, projectiles, sourceServer: true),
+            sourceMyPlayer: 0, sourceNpcDifficulty: 1);
         WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
             new ChestCheckingProvider(), in request, workspace,
             cancellationToken: TestContext.Current.CancellationToken);

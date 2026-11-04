@@ -128,7 +128,7 @@ internal sealed class DungeonFurniture1458(Workspace workspace, IWorldGeneration
 
     private void PlaceObject(int x, int y, ushort type, int style, bool faceRight = false)
     {
-        var framing = new DungeonObjectPlacement1458(Tiles, random);
+        var framing = new DungeonObjectPlacement1458(Tiles, random, workspace);
         if (type is 33 or 49 or 50) { framing.TableObject(x, y, type, style); return; }
         GenerationFurniturePlacement1458.Place(workspace, x, y, type, style, faceRight, crackedBricksSolid: false);
         if (type is not (79 or 90)) framing.FrameSquare(x, y);

@@ -4,7 +4,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Direct-generated ordinary LegacyDungeonHall, with its component-local random stream.</summary>
 internal sealed class DungeonLegacyHall1458(WorldTileStore tiles, ushort brick, ushort crackedBrick, ushort wall,
-    double rockLayer, int underworldTop, CancellationToken cancellationToken)
+    double rockLayer, int underworldTop, CancellationToken cancellationToken, double worldSurface = 0, bool remix = false)
 {
     private enum VerticalBias { Initial, Edge, Shallow }
 
@@ -76,7 +76,7 @@ internal sealed class DungeonLegacyHall1458(WorldTileStore tiles, ushort brick, 
         else if (origin.X < 200) Horizontal(1);
         else if (origin.Y >= lowerLimit) Vertical(-1, VerticalBias.Edge);
         else if (origin.Y < 200) Vertical(1, VerticalBias.Edge);
-        else if (origin.Y < rockLayer + 100) Vertical(1, VerticalBias.Shallow);
+        else if (origin.Y < (remix ? worldSurface : rockLayer) + 100) Vertical(1, VerticalBias.Shallow);
         else if (origin.X < tiles.Dimensions.WidthTiles / 2 && origin.X > tiles.Dimensions.WidthTiles * .25f) Horizontal(-1);
         else if (origin.X > tiles.Dimensions.WidthTiles / 2 && origin.X < tiles.Dimensions.WidthTiles * .75f) Horizontal(1);
 
@@ -91,7 +91,7 @@ internal sealed class DungeonLegacyHall1458(WorldTileStore tiles, ushort brick, 
             turnTicks++;
             if ((direction.X > 0 && x > tiles.Dimensions.WidthTiles - 100) ||
                 (direction.X < 0 && x < 100) || (direction.Y > 0 && y >= lowerLimit) ||
-                (direction.Y < 0 && (y < 100 || y < rockLayer + 50))) steps = 0;
+                (direction.Y < 0 && (y < 100 || y < (remix ? (worldSurface + rockLayer) / 2 : rockLayer + 50)))) steps = 0;
             steps--; // Even a stopped hall paints one final brush before moving its cursor.
             int x0 = ClampX((int)(x - strength - 4d - random.Next(6)));
             int x1 = ClampX((int)(x + strength + 4d + random.Next(6)));

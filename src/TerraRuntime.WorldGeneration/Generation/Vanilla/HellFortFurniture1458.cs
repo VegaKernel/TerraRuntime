@@ -25,6 +25,8 @@ internal static class HellFortFurniture1458
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 x = random.Next(quarter, width - quarter); y = random.Next(height - 250, height - 20);
+                if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) || workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix))
+                    x = random.Next(2) != 0 ? random.Next(width - quarter, width - 50) : random.Next(50, quarter);
                 if (++retries > 100_000) break;
             }
             if (retries > 100_000 || !IsHouseAir(At(store, x, y))) continue;

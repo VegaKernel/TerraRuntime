@@ -199,7 +199,7 @@ internal static class DungeonGraphGenerator1458
         int underworldTop,
         int dungeonLocation,
         int dungeonSide,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Action<DungeonPoint1458>? oldManBirth = null)
     {
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(sharedRandom);
@@ -226,7 +226,9 @@ internal static class DungeonGraphGenerator1458
                     setup.RoughEntranceHeight,
                     cancellationToken,
                     out int candidateX,
-                    out int candidateSurface))
+                    out int candidateSurface,
+                    workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)
+                        ? (int)(workspace.VanillaTerrainState ?? throw new InvalidOperationException("The underground entrance requires retained generation layers.")).CurrentRockLayer - 20 : 10))
             {
                 entranceX = candidateX;
                 entranceSurface = candidateSurface;
@@ -242,6 +244,7 @@ internal static class DungeonGraphGenerator1458
         }
 
         int startY = ResolveStartY(workspace.TileStore, dungeonLocation, worldSurface, rockLayer, sharedRandom);
+        if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)) startY = (int)worldSurface + 70;
         int entranceStrengthX = sharedRandom.Next(25, 30);
         int entranceStrengthY = sharedRandom.Next(20, 25);
         int entranceStrengthX2 = sharedRandom.Next(35, 50);
@@ -263,7 +266,11 @@ internal static class DungeonGraphGenerator1458
             entranceStrengthY,
             entranceStrengthX2,
             entranceStrengthY2,
-            cancellationToken);
+            cancellationToken, workspace.VanillaSeedProfile, oldManBirth,
+            new GenerationTileFraming1458(workspace.TileStore, sharedRandom, workspace, useWorldGenerationSolidity: true),
+            (x, attachmentY, roots) => new LivingTreeGrower1458(workspace.TileStore, sharedRandom,
+                worldSurface, underworldTop, cancellationToken, workspace: workspace).GenerateDungeonTree(
+                    x, (int)worldSurface, attachmentY, roots, DungeonPlatforms1458.StyleForColor(setup.Palette.Color)));
         DungeonPoint1458 cursor = new(dungeonLocation, startY);
         DungeonPoint1458 lastHall = default;
         var components = GenerateLayout(renderer, sharedRandom, ref cursor, ref lastHall, steps,
@@ -275,7 +282,7 @@ internal static class DungeonGraphGenerator1458
         var entranceHallPlatforms = new List<DungeonHallPlatform1458>();
         int generatingDungeonTopX = entranceCursor.X;
         int entranceRoomDelay = DungeonGenerationCatalog1458.InitialRoomDelay;
-        bool reachedEntrance = false;
+        bool reachedEntrance = workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld);
         for (int attempt = 0; attempt < 99 && !reachedEntrance; attempt++)
         {
             if (entranceRoomDelay > 0)
@@ -515,7 +522,7 @@ internal static class DungeonGraphGenerator1458
         int roughEntranceHeight,
         CancellationToken cancellationToken,
         out int entranceX,
-        out int entranceY)
+        out int entranceY, int searchStartY = 10)
     {
         for (int remaining = DungeonGenerationCatalog1458.EntranceSearchCountdown - 1; remaining > 0; remaining--)
         {
@@ -529,7 +536,7 @@ internal static class DungeonGraphGenerator1458
                 continue;
             }
 
-            int candidateY = FindFirstOccupied(store, candidateX);
+            int candidateY = FindFirstOccupied(store, candidateX, searchStartY);
             if (!AreCloudTilesNearby(store, candidateX, candidateY, 15) &&
                 !AreCloudTilesNearby(store, candidateX, Math.Max(50, candidateY - 50), 50) &&
                 candidateY - 40 - roughEntranceHeight > 0)
@@ -545,9 +552,9 @@ internal static class DungeonGraphGenerator1458
         return false;
     }
 
-    private static int FindFirstOccupied(WorldTileStore store, int x)
+    private static int FindFirstOccupied(WorldTileStore store, int x, int firstY)
     {
-        for (int y = 10; y < store.Dimensions.HeightTiles; y++)
+        for (int y = firstY; y < store.Dimensions.HeightTiles; y++)
         {
             WorldTile tile = store.Get(x, y);
             if (tile.IsActive || tile.LiquidAmount > 0 || tile.Wall > 0)
@@ -595,6 +602,10 @@ internal static class DungeonGraphGenerator1458
         private readonly int entranceStrengthX2;
         private readonly int entranceStrengthY2;
         private readonly CancellationToken cancellationToken;
+        private readonly VanillaWorldSeedProfile1458 seedProfile;
+        private readonly Action<DungeonPoint1458>? oldManBirth;
+        private readonly GenerationTileFraming1458? treeFraming;
+        private readonly Action<int, int, bool>? growDungeonTree;
 
         public Renderer(
             WorldTileStore store,
@@ -610,7 +621,7 @@ internal static class DungeonGraphGenerator1458
             int entranceStrengthY,
             int entranceStrengthX2,
             int entranceStrengthY2,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, VanillaWorldSeedProfile1458 seedProfile = default, Action<DungeonPoint1458>? oldManBirth = null, GenerationTileFraming1458? treeFraming = null, Action<int, int, bool>? growDungeonTree = null)
         {
             this.store = store;
             this.brick = brick;
@@ -626,6 +637,10 @@ internal static class DungeonGraphGenerator1458
             this.entranceStrengthX2 = entranceStrengthX2;
             this.entranceStrengthY2 = entranceStrengthY2;
             this.cancellationToken = cancellationToken;
+            this.seedProfile = seedProfile;
+            this.oldManBirth = oldManBirth;
+            this.treeFraming = treeFraming;
+            this.growDungeonTree = growDungeonTree;
         }
 
         public DungeonComponent1458 RenderRoom(DungeonPoint1458 origin, int seed, bool startingRoom) =>
@@ -633,7 +648,7 @@ internal static class DungeonGraphGenerator1458
 
         public (DungeonComponent1458 Component, DungeonPoint1458 Cursor, DungeonPoint1458 Direction)
             RenderHall(DungeonPoint1458 origin, DungeonPoint1458 lastDirection, int seed) =>
-            new DungeonLegacyHall1458(store, brick, crackedBrick, wall, rockLayer, underworldTop, cancellationToken)
+            new DungeonLegacyHall1458(store, brick, crackedBrick, wall, rockLayer, underworldTop, cancellationToken, worldSurface, seedProfile.Has(VanillaSpecialWorldSeed1458.Remix))
                 .Generate(origin, lastDirection, seed);
 
         public DungeonComponent1458 RenderLegacyEntranceSegment(
@@ -646,7 +661,7 @@ internal static class DungeonGraphGenerator1458
             out bool reachedSurface)
         {
             var result = new DungeonLegacyEntranceHall1458(store, brick, crackedBrick, wall, worldSurface,
-                entranceStrengthX, entranceStrengthX2, entranceStrengthY2, sharedRandom, cancellationToken)
+                entranceStrengthX, entranceStrengthX2, entranceStrengthY2, sharedRandom, cancellationToken, seedProfile)
                 .Generate(start, generatingDungeonTopX, seed, useSkewedEntranceHalls);
             end = result.Cursor;
             reachedSurface = result.ReachedSurface;
@@ -660,7 +675,7 @@ internal static class DungeonGraphGenerator1458
             out DungeonPoint1458 end)
         {
             var result = new DungeonLegacyEntranceHall1458(store, brick, crackedBrick, wall, worldSurface,
-                entranceStrengthX, entranceStrengthX2, entranceStrengthY2, sharedRandom, cancellationToken)
+                entranceStrengthX, entranceStrengthX2, entranceStrengthY2, sharedRandom, cancellationToken, seedProfile)
                 .GeneratePrecalculated(segment, platforms);
             end = result.Cursor;
             return result.Component;
@@ -676,9 +691,12 @@ internal static class DungeonGraphGenerator1458
             if (kind == DungeonEntranceKind1458.Legacy)
                 return new DungeonLegacyEntrance1458(store, brick, crackedBrick, wall, worldSurface,
                     entranceStrengthX, entranceStrengthY, entranceStrengthX2, entranceStrengthY2,
-                    sharedRandom, cancellationToken).Generate(anchor, seed);
+                    sharedRandom, cancellationToken,
+                    seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) || seedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy), oldManBirth,
+                    growDungeonTree, seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)).Generate(anchor, seed);
 
-            var builder = new DungeonSurfaceBuildings1458(store, brick, crackedBrick, wall, worldSurface, sharedRandom, cancellationToken);
+            var builder = new DungeonSurfaceBuildings1458(store, brick, crackedBrick, wall, worldSurface, sharedRandom, cancellationToken, oldManBirth, treeFraming, growDungeonTree, seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld));
+            if (seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)) leftDungeon = !leftDungeon;
             var result = kind switch
             {
                 DungeonEntranceKind1458.Dome => builder.GenerateDome(anchor, seed, leftDungeon),

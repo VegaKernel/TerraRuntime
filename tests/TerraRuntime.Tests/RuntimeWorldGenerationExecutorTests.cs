@@ -267,6 +267,84 @@ public sealed class RuntimeWorldGenerationExecutorTests
         Assert.False(workspace.TrySetTile(16, 1, default));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Completion_boundary_runs_after_body_and_failure_stops_the_next_pass(bool rejectCompletion)
+    {
+        var events = new List<string>();
+        var failure = new InvalidOperationException("Report refused");
+        var workspace = new CompletionWorkspace((context, descriptor) =>
+        {
+            Assert.True(context.Workspace.TryGetTile(1, 1, out WorldGenerationTile tile));
+            Assert.True((tile.Flags & WorldGenerationTileFlags.Active) != 0);
+            events.Add("complete:" + descriptor.Id.Value);
+            if (rejectCompletion) throw failure;
+        });
+        var first = new WorldGenerationPassId("test:first");
+        var second = new WorldGenerationPassId("test:second");
+        var provider = new TestProvider("test:completion", (_, builder) =>
+        {
+            builder.Add(new(first), new ActionPass(context =>
+            {
+                events.Add("first");
+                Assert.True(context.Workspace.TrySetTile(1, 1,
+                    new WorldGenerationTile(1, 0, 0, 0, WorldGenerationTileFlags.Active, 0, 0, 0, 0, WorldGenerationLiquidKind.Water)));
+            }));
+            builder.Add(new(second, requiredAfter: [first]), new ActionPass(_ => events.Add("second")));
+        });
+        var request = new WorldGenerationRequest(provider.Id, "Completion", 42, 16, 16);
+        var result = RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace,
+            cancellationToken: TestContext.Current.CancellationToken);
+        if (rejectCompletion)
+        {
+            Assert.Equal(WorldGenerationExecutionStatus.PassFailed, result.Status);
+            Assert.Equal(first, result.PassId);
+            Assert.Same(failure, result.Error);
+            Assert.Equal(new[] { "first", "complete:test:first" }, events);
+        }
+        else
+        {
+            Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Status);
+            Assert.Equal(new[] { "first", "complete:test:first", "second", "complete:test:second" }, events);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Failed_or_cancelled_body_never_publishes_a_completion(bool cancel)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        int completions = 0;
+        var workspace = new CompletionWorkspace((_, _) => completions++);
+        var failure = new InvalidOperationException("Body failed");
+        var provider = new TestProvider("test:incomplete", (_, builder) =>
+            builder.Add(new(new("test:body")), new ActionPass(_ =>
+            {
+                if (cancel) cancellation.Cancel();
+                else throw failure;
+            })));
+        var request = new WorldGenerationRequest(provider.Id, "Incomplete", 42, 16, 16);
+        var result = RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace,
+            cancellationToken: cancellation.Token);
+        Assert.Equal(cancel ? WorldGenerationExecutionStatus.Cancelled : WorldGenerationExecutionStatus.PassFailed, result.Status);
+        Assert.Equal(0, completions);
+        if (!cancel) Assert.Same(failure, result.Error);
+    }
+
+    private sealed class CompletionWorkspace(Action<IWorldGenerationContext, WorldGenerationPassDescriptor> completed)
+        : IWorldGenerationWorkspace, IWorldGenerationPassCompletionSink
+    {
+        private readonly Workspace tiles = new(16, 16);
+        public int WidthTiles => tiles.WidthTiles;
+        public int HeightTiles => tiles.HeightTiles;
+        public bool TryGetTile(int x, int y, out WorldGenerationTile tile) => tiles.TryGetTile(x, y, out tile);
+        public bool TrySetTile(int x, int y, in WorldGenerationTile tile) => tiles.TrySetTile(x, y, in tile);
+        public void PassCompleted(IWorldGenerationContext context, WorldGenerationPassDescriptor descriptor, int durationMs) =>
+            completed(context, descriptor);
+    }
+
     private static int FindActiveX(Workspace workspace, int y)
     {
         for (int x = 0; x < workspace.WidthTiles; x++)

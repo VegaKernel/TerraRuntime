@@ -40,6 +40,13 @@ public sealed class GenerationNaturalPrefix66Tests
         // Actual original pass-through observations also capture all754 Main.tileSolid values before GenerateWorld
         // restores its arrays; each hook is qualified against the untouched entire final grid and physical RNG.
         var workspace = new Workspace(4200, 1200);
+        var npcs = new TerraRuntime.Core.Npcs.RuntimeNpcStore();
+        var projectiles = new TerraRuntime.Core.Projectiles.RuntimeProjectileStore();
+        var npcContext = new TerraRuntime.Gameplay.Npcs.VanillaNpcSpawnContext(1, 0, false) { WorldDifficulty = 1 };
+        npcs.SetVanillaSpawnContextSource(() => npcContext);
+        npcs.SetVanillaSpawnWetCollisionSource((x, y, width, height) => VanillaWorldCollision.GetLiquidContacts(workspace.TileStore, x, y, width, height).Wet);
+        Assert.True(workspace.TileStore.TryAttachTileEntities([], 1000));
+        workspace.AttachEntityEffects(new TerraRuntime.Core.Worlds.Generation.WorldGenerationEntityEffects1458(npcs, projectiles, sourceServer: true), sourceMyPlayer: 0, sourceNpcDifficulty: 1);
         var provider = new SourceBackedFinal1458();
         var request = new WorldGenerationRequest(provider.Id, "ContinuousPrefix66", seed, 4200, 1200)
         {

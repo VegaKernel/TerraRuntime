@@ -6,10 +6,10 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary Lakes placement and SonOfLakinater geometry, pinned to 1.4.5.8.
 /// Owns only unpublished surface basins and their ordered exclusion columns.</summary>
 internal sealed class SurfaceLakes1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    double worldSurface, double surfaceLow, CancellationToken cancellationToken)
+    double worldSurface, double surfaceLow, CancellationToken cancellationToken, Workspace? generationWorkspace = null)
 {
-    private readonly StoneBiomeTiles1458 framing = new(tiles, random);
-    private readonly GenerationGrass1458 grass = new(tiles, random, cancellationToken);
+    private readonly GenerationTileFraming1458 framing = new(tiles, random, generationWorkspace, useWorldGenerationSolidity: generationWorkspace is not null);
+    private readonly GenerationGrass1458 grass = new(tiles, random, cancellationToken, workspace: generationWorkspace);
 
     public void Generate(Workspace workspace)
     {
@@ -26,10 +26,12 @@ internal sealed class SurfaceLakes1458(WorldTileStore tiles, IWorldGenerationVan
         {
             cancellationToken.ThrowIfCancellationRequested();
             int x = random.Next(340, tiles.Dimensions.WidthTiles - 340);
-            for (int redraw = 0; x > tiles.Dimensions.WidthTiles * .45 && x < tiles.Dimensions.WidthTiles * .55; redraw++)
+            bool anniversary = workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) && !workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix);
+            if (anniversary) x = random.Next((int)(tiles.Dimensions.WidthTiles * .15), (int)(tiles.Dimensions.WidthTiles * .85));
+            for (int redraw = 0; (!anniversary || workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.TheConstant)) && x > tiles.Dimensions.WidthTiles * .45 && x < tiles.Dimensions.WidthTiles * .55; redraw++)
             {
                 Check(redraw);
-                x = random.Next(340, tiles.Dimensions.WidthTiles - 340);
+                x = anniversary ? random.Next((int)(tiles.Dimensions.WidthTiles * .15), (int)(tiles.Dimensions.WidthTiles * .85)) : random.Next(340, tiles.Dimensions.WidthTiles - 340);
             }
             bool rejected = false;
             foreach (int existing in lakes) if (Math.Abs(x - existing) < 150) { rejected = true; break; }
@@ -76,9 +78,16 @@ internal sealed class SurfaceLakes1458(WorldTileStore tiles, IWorldGenerationVan
     public void Carve(int originX, int originY)
     {
         Check(0);
-        _ = random.Next(3); // Ordinary world samples the secret-seed liquid branch but keeps water.
+        var profile = generationWorkspace?.VanillaSeedProfile ?? default;
+        WorldLiquidKind liquidKind = WorldLiquidKind.Water;
+        if (random.Next(3) == 0)
+        {
+            if (profile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) && profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) && profile.Has(VanillaSpecialWorldSeed1458.Remix) && !profile.Has(VanillaSpecialWorldSeed1458.NotTheBees)) liquidKind = WorldLiquidKind.Shimmer;
+            else if (profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy) && (originX < tiles.Dimensions.WidthTiles * .45 || originX > tiles.Dimensions.WidthTiles * .55)) liquidKind = WorldLiquidKind.Lava;
+        }
         double strength = random.Next(15,31), remaining = random.Next(30,61);
         if (random.Next(5) == 0) { strength *= 1.3; remaining *= 1.3; }
+        if (profile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)) { strength *= 1.3; remaining *= 1.3; }
         double x = originX, y = originY;
         double acceleration = random.NextDouble() * .002;
         double vx;
@@ -103,7 +112,7 @@ internal sealed class SurfaceLakes1458(WorldTileStore tiles, IWorldGenerationVan
                 if (distance < strength * .4)
                 {
                     if (ty >= originY && (ty > originY + 1 || WaterStays(tx,ty)))
-                    { cell.LiquidAmount = 255; cell.LiquidKind = WorldLiquidKind.Water; }
+                    { cell.LiquidAmount = 255; cell.LiquidKind = liquidKind; }
                     Excavate(tx,ty);
                 }
                 else if (ty > originY + 1 && distance < strength && cell.LiquidAmount == 0)
@@ -140,11 +149,10 @@ internal sealed class SurfaceLakes1458(WorldTileStore tiles, IWorldGenerationVan
     }
 
     private bool WaterStays(int x, int y) => RetainsWater(At(x,y + 1)) && RetainsWater(At(x - 1,y)) && RetainsWater(At(x + 1,y));
-    private static bool RetainsWater(in WorldTile tile)
+    private bool RetainsWater(in WorldTile tile)
     {
         if (tile.IsActive && tile.Type >= VanillaTileIds.Count) throw new InvalidOperationException("Unknown lake boundary material.");
-        return tile.LiquidAmount == 255 || (tile.IsActive && tile.Type != 484 &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType));
+        return tile.LiquidAmount == 255 || (tile.IsActive && framing.GenerationSolid(tile.Type) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType));
     }
     private static bool IsCloud(ushort type)
     {
@@ -155,7 +163,7 @@ internal sealed class SurfaceLakes1458(WorldTileStore tiles, IWorldGenerationVan
     {
         WorldTile tile = At(x,y); // Validate coordinates before the shared framing owner's unchecked access.
         if (tile.IsActive && tile.Type >= VanillaTileIds.Count) throw new InvalidOperationException("Unknown lake support material.");
-        return framing.Flat(x,y);
+        return framing.SolidTile(x,y);
     }
     private void Check(int iteration)
     {

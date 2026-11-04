@@ -9,7 +9,7 @@ internal sealed partial class GenerationTileFraming1458
         if (!PreparePlantPlacement(x, y, refuseLiquid: false)) return false;
         GenerationFurniturePlacement1458.Place(workspace ?? throw new InvalidOperationException("Skyblock fixtures require their retained Workspace."), x, y, type, style, solidity: IsFramingSolid);
         SquareTileFrame(x, y);
-        return FinishPlantPlacement(x, y);
+        return FinishPlacement(x, y);
     }
     internal void SwitchSkyblockFixture(int x, int y)
     {

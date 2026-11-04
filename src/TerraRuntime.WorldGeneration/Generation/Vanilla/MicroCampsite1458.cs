@@ -56,7 +56,7 @@ internal static class MicroCampsite1458
         if(random.Next()%10!=0)CaveHousePlacement1458.PlaceHouseObject(workspace,random,x+pile,floor,186);
         if(random.Next()%10!=0)
         {
-            CaveHousePlacement1458.PlaceHouseObject(workspace,random,x,floor,215);
+            CaveHousePlacement1458.PlaceHouseObject(workspace,random,x,floor,215,workspace.VanillaSeedProfile.Has(VanillaSecretWorldSeed1458.RainbowRoad)?5:0);
             var campfire=shape.At(x,floor);
             if(campfire.IsActive&&campfire.Type==215)
                 for(int cx=x-1;cx<=x+1;cx++)for(int cy=floor-1;cy<=floor;cy++)shape.At(cx,cy).FrameY+=36;

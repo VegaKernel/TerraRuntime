@@ -16,12 +16,15 @@ internal readonly record struct DungeonPlatformCandidate1458(DungeonPoint1458 Po
 
 /// <summary>Ordinary DungeonGlobalPlatforms placement and ordered shelf objects on unpublished generation tiles.</summary>
 internal sealed class DungeonPlatforms1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    double worldSurface, double rockLayer, CancellationToken cancellationToken)
+    double worldSurface, double rockLayer, CancellationToken cancellationToken, Workspace? workspace = null)
 {
+    internal static int StyleForColor(int dungeonColor) => dungeonColor switch
+    { 0 => 6, 1 => 8, 2 => 7, _ => throw new InvalidOperationException("Unknown dungeon color.") };
+
     public int Place(IReadOnlyList<DungeonPlatformCandidate1458> candidates, int dungeonColor)
     {
-        var placement = new DungeonObjectPlacement1458(tiles, random);
-        int style = dungeonColor switch { 0 => 6, 1 => 8, 2 => 7, _ => throw new InvalidOperationException("Unknown dungeon color.") };
+        var placement = new DungeonObjectPlacement1458(tiles, random, workspace);
+        int style = StyleForColor(dungeonColor);
         int placed = 0;
         foreach (var candidate in candidates)
         {

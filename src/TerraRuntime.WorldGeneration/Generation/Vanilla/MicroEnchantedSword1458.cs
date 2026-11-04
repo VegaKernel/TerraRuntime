@@ -10,16 +10,18 @@ internal static class MicroEnchantedSword1458
     {
         var shape=new MicroBiomeTraversal1458(workspace,random);int ground=0;
         shape.Rectangle(x-25,y-25,50,50,(cx,cy)=>{var tile=shape.At(cx,cy);if(tile.IsActive&&tile.Type is 0 or 1)ground++;});
-        if(ground<1250||y<=55)return false;
-        int searchHeight=y-55,airLength=Math.Min(50,searchHeight),surface=-1;
+        bool error=workspace.VanillaSeedProfile.Has(VanillaSecretWorldSeed1458.IAmError);
+        int threshold=error?105:55;
+        if(ground<(error?625:1250)||y<=threshold)return false;
+        int searchHeight=y-threshold,airLength=Math.Min(50,searchHeight),surface=-1;
         for(int step=0;step<searchHeight;step++)
         {
             int cy=y-step;bool any=false;
             for(int below=0;below<airLength;below++)if(shape.IsConditionSolid(x,cy+below)){any=true;break;}
             if(!any){surface=cy;break;}
         }
-        if(surface<=55)return false;
-        for(int step=0;step<y-surface;step++){var tile=shape.At(x,y-step);if(tile.IsActive&&tile.Type==53)return false;}
+        if(surface<=threshold){if(!error)return false;surface=y-100;}
+        if(!error)for(int step=0;step<y-surface;step++){var tile=shape.At(x,y-step);if(tile.IsActive&&tile.Type==53)return false;}
         surface+=50;
         int cavernY=y+20,moundY=y+30;double widthScale=.8+random.NextDouble()*.5;
         var area=new WorldTileRegion(x-(int)(20*widthScale),cavernY-20,(int)(40*widthScale),40);

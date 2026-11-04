@@ -104,6 +104,7 @@ public sealed class VanillaWorldLiquidSimulator1458
     private bool BaseLiquidSolid(TileTypeId type) => generationSolid?.Invoke(type) ?? VanillaTileCollisionCatalog.IsSolid(type);
 
     private int? generationWaterLine;
+    private Func<int, int, bool>? generationRemixLava;
     private bool generationStuck;
     private Func<int, int, ushort, bool>? generationDungeonWater;
     private Action? generationShimmerBoundary;
@@ -345,14 +346,17 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// Unlike loading, a vertical fall below the retained generation water line converts water to lava.
     /// </summary>
     public void QuickWaterBeforeDungeonGeneration(int waterLine, CancellationToken cancellationToken,
-        Func<TileTypeId, bool>? isSolid = null, Action<TileTypeId, bool>? setSolid = null)
+        Func<TileTypeId, bool>? isSolid = null, Action<TileTypeId, bool>? setSolid = null,
+        Func<int, int, bool>? isRemixLava = null)
     {
         if (waterLine < 0 || waterLine >= tiles.Dimensions.HeightTiles)
             throw new ArgumentOutOfRangeException(nameof(waterLine));
         var previousGet = generationSolid;
         var previousSet = generationSetSolid;
+        var previousRemix = generationRemixLava;
         generationSolid = isSolid;
         generationSetSolid = setSolid;
+        generationRemixLava = isRemixLava;
         try
         {
             generationSetSolid?.Invoke(VanillaTileIds.Bubble, true);
@@ -365,6 +369,7 @@ public sealed class VanillaWorldLiquidSimulator1458
             NotifyLiquidSolidity(true);
             generationSolid = previousGet;
             generationSetSolid = previousSet;
+            generationRemixLava = previousRemix;
         }
     }
 
@@ -447,8 +452,12 @@ public sealed class VanillaWorldLiquidSimulator1458
 
             // Liquid.SettleWaterAt tests this iteration's vertical fall, not the preceding lateral descent.
             // Loading passes height as its water line; ordinary pre-Dungeon generation retains the Terrain line.
-            if (fellVertically && !originWasHoney && !originWasShimmer && y > waterLine)
-                kind = WorldLiquidKind.Lava;
+            if (fellVertically && !originWasHoney && !originWasShimmer)
+            {
+                if (generationRemixLava is not null)
+                    kind = generationRemixLava(x, y) ? WorldLiquidKind.Lava : WorldLiquidKind.Water;
+                else if (y > waterLine) kind = WorldLiquidKind.Lava;
+            }
             if (fellVertically && !originWasHoney && !originWasShimmer &&
                 generationDungeonWater?.Invoke(x, y, origin.Wall) == true)
                 kind = WorldLiquidKind.Water;
@@ -577,7 +586,7 @@ public sealed class VanillaWorldLiquidSimulator1458
 
             int targetX = originHadTestedKind ? x : neighbourX;
             int targetY = originHadTestedKind ? y : neighbourY;
-            if (beforeDungeonGeneration && testedKind == WorldLiquidKind.Lava)
+            if (beforeDungeonGeneration && generationRemixLava is null && testedKind == WorldLiquidKind.Lava)
                 ApplyPreDungeonDesertLava1458(targetX, targetY);
             WorldTile source = tiles.Get(targetX, targetY);
             // AttemptToMove* dispatch uses the origin flags, not the destination's current kind.

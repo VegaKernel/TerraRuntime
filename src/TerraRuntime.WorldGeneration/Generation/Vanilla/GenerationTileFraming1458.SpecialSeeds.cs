@@ -5,6 +5,9 @@ internal sealed partial class GenerationTileFraming1458
     private bool SpecialSeedWorthy => workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy) == true;
     private bool SpecialSeedRemix => workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) == true;
     private bool SpecialSeedDrunk => workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) == true;
+    internal bool TreeHasBareBranches(int groundY) => SpecialSeedRemix &&
+        workspace is not null && workspace.TryGetLayers(out var layers) && groundY < layers.WorldSurface;
+
 
     private void BreakSpecialSeedSiltNeighbours(int x, int y)
     {

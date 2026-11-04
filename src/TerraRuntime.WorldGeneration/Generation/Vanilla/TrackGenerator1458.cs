@@ -243,6 +243,8 @@ internal sealed class TrackGenerator1458
             WorldTile ceiling = At(step.X, step.Y - playerHeight);
             if (!ceiling.IsActive || ceiling.Type != 379) framing.SmoothSourceSlope(step.X, step.Y - playerHeight);
             WorldTileFlags keptWires = At(step.X, step.Y).Flags & wires;
+            // Both source ResetToType and the pressure arm's ClearEverything reset Tile.skipLiquid.
+            workspace.TileStore.LiquidUpdates.ClearSkipNextUpdate(step.X, step.Y);
             // Source deliberately reads the initialized next history entry even for the final laid segment.
             if (pressure[i] && i > 0 && path[i - 1].Y == step.Y && path[i + 1].Y == step.Y)
                 framing.PlaceSourcePressureTrack(step.X, step.Y);

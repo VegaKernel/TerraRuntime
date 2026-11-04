@@ -36,6 +36,8 @@ internal sealed class DungeonTraps1458(WorldTileStore tiles, IWorldGenerationVan
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (At(x, y).Wall == 350 || Math.Sqrt(Math.Pow(x - (double)shimmer.X, 2) + Math.Pow(y - (double)shimmer.Y, 2)) < 100) return false;
+        bool noTraps = workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.NoTraps) == true;
+        if (noTraps) workspace!.SetVanillaBoulderSolidity(false);
         int floor = y;
         bool deep = false;
         while (!Solid(x, floor))
@@ -43,7 +45,9 @@ internal sealed class DungeonTraps1458(WorldTileStore tiles, IWorldGenerationVan
             if (++floor > Height - 10 || At(x, floor).Wall == 350) return false;
             if (floor >= Height - 300) deep = true;
         }
+        if (noTraps) workspace!.SetVanillaBoulderSolidity(true);
         int plateY = floor - 1;
+        if (!noTraps)
         for (int tx = Math.Max(0, x - 20); tx <= Math.Min(Width - 1, x + 20); tx++)
         for (int ty = Math.Max(0, plateY - 20); ty <= Math.Min(Height - 1, plateY + 20); ty++)
             if (At(tx, ty) is { IsActive: true, Type: 70 }) return false;
@@ -55,6 +59,7 @@ internal sealed class DungeonTraps1458(WorldTileStore tiles, IWorldGenerationVan
             if (At(tx, ty) is { IsActive: true, IsActuated: false }) return false;
         WorldTile support = At(x, floor);
         if (support.Type is 48 or 232 || GenerationObjectSupport1458.IsBoulder(support.Type) || support.Wall == 350) return false;
+        if (noTraps) workspace!.SetVanillaBoulderSolidity(false);
         int trapY = plateY - random.Next(3), left = x, right = x;
         while (!Solid(left, trapY) && !Cracked(left, trapY))
             if (--left < 0 || At(left, trapY).Wall == 350) return false;
@@ -71,12 +76,12 @@ internal sealed class DungeonTraps1458(WorldTileStore tiles, IWorldGenerationVan
             At(x, plateY).Flags |= WorldTileFlags.Active; At(x, plateY).Type = 135;
             At(x, plateY).FrameY = (short)(plateStyle * 18);
         }
-        new DungeonObjectPlacement1458(tiles, random).FrameSquare(x, plateY);
+        new DungeonObjectPlacement1458(tiles, random, workspace).FrameSquare(x, plateY);
         KillAnchor(trapX, trapY);
         PrepareAnchor(trapX, trapY);
         At(trapX, trapY).Flags |= WorldTileFlags.Active; At(trapX, trapY).Type = 137; At(trapX, trapY).FrameY = 0;
         // PlaceTile(137) frames its neighbors after installing the solid trap, not only after KillTile.
-        new DungeonObjectPlacement1458(tiles, random).FrameSquare(trapX, trapY);
+        new DungeonObjectPlacement1458(tiles, random, workspace).FrameSquare(trapX, trapY);
         if (trapX == left) At(trapX, trapY).FrameX += 18;
         int wireX = x, wireY = plateY;
         while (wireX != trapX || wireY != trapY)
@@ -107,7 +112,7 @@ internal sealed class DungeonTraps1458(WorldTileStore tiles, IWorldGenerationVan
             throw new InvalidOperationException($"Unverified dungeon trap anchor destruction {cell.Type} at {x},{y}.");
         cell.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         cell.Type = 0; cell.Shape = 0; cell.TileColor = 0; cell.FrameX = cell.FrameY = -1;
-        new DungeonObjectPlacement1458(tiles, random).FrameSquare(x, y);
+        new DungeonObjectPlacement1458(tiles, random, workspace).FrameSquare(x, y);
     }
 
     private void KillCracked(int x, int y)

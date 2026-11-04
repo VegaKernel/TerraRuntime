@@ -58,19 +58,21 @@ internal static class DungeonFeaturePipeline1458
         var pits = new DungeonPitTraps1458(workspace.TileStore, random, cancellationToken).Place(earlyBounds,
             graph.BrickTileType, setup.Palette.BrickWallType, setup.Palette.CrackedBrickTileType, worldSurface, graph.Anchor.Y);
         int spikes = new DungeonSpikes1458(workspace.TileStore, random, cancellationToken, pits)
-            .Place(earlyBounds, setup.Palette.BrickWallType, setup.Palette.CrackedBrickTileType, worldSurface, protectedEntrance);
+             .Place(earlyBounds, setup.Palette.BrickWallType, setup.Palette.CrackedBrickTileType, worldSurface, protectedEntrance,
+                workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy),
+                workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) ? graph.Components.Single(static c => c.Kind == DungeonComponentKind1458.Entrance).Start.Y : null);
         int doors = new DungeonDoors1458(workspace.TileStore, random, cancellationToken)
             .Place(candidates.Doors, graph.BrickTileType, setup.Palette.BrickWallType, setup.Palette.Color);
         new DungeonWallVariants1458(workspace.TileStore, random, cancellationToken)
             .Apply(earlyBounds, setup.Palette.BrickWallType, wallVariants, worldSurface);
-        int platforms = new DungeonPlatforms1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken)
+        int platforms = new DungeonPlatforms1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken, workspace)
             .Place(candidates.Platforms, setup.Palette.Color);
         var chests = new DungeonChests1458(workspace, random, bootstrap, worldSurface, rockLayer, cancellationToken, pits);
         int biomeChests = chests.PlaceBiome(earlyBounds, graph.Components.Single(static c => c.Kind == DungeonComponentKind1458.Entrance).Bounds);
-        int bookshelves = new DungeonBookshelves1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken, pits)
+        int bookshelves = new DungeonBookshelves1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken, pits, workspace)
             .Place(earlyBounds, wallVariants, graph.Decoration, protectedEntrance);
         int basicChests = chests.PlaceBasic(graph.Components);
-        int lights = new DungeonLights1458(workspace.TileStore, random, cancellationToken, pits).Place(bounds, wallVariants,
+        int lights = new DungeonLights1458(workspace.TileStore, random, cancellationToken, pits, workspace).Place(bounds, wallVariants,
             setup.Palette.Color, graph.Decoration, graph.Components.Single(static c => c.Kind == DungeonComponentKind1458.Entrance).Bounds);
         // This pass PRECEDES Shimmer. WorldGen.clearWorld sets genVars.shimmerPosition to zero;
         // Workspace's nullable position separately records whether the later Shimmer pass completed.
@@ -78,10 +80,10 @@ internal static class DungeonFeaturePipeline1458
         int furniture = new DungeonFurniture1458(workspace, random, cancellationToken, pits).Place(bounds, setup.Palette.BrickWallType, worldSurface);
         int paintings = new DungeonPaintings1458(workspace.TileStore, random, cancellationToken)
             .Place(bounds, setup.Palette.BrickWallType, worldSurface, protectedEntrance);
-        int banners = new DungeonBanners1458(workspace.TileStore, random, cancellationToken, pits).Place(bounds, wallVariants);
+        int banners = new DungeonBanners1458(workspace.TileStore, random, cancellationToken, pits, workspace).Place(bounds, wallVariants);
         // LegacyDungeonLayout replaces outerProgressionBounds[0] with the SAME dungeonBounds object.
         // Its subsequent entrance updates and post-chest inflation therefore also govern late doors.
-        new DungeonLateDoors1458(workspace.TileStore, random, cancellationToken).Apply(bounds);
+        new DungeonLateDoors1458(workspace.TileStore, random, cancellationToken, workspace).Apply(bounds);
 
         return new Result(
             doors,

@@ -8,8 +8,6 @@ internal sealed class DungeonChests1458(Workspace workspace, IWorldGenerationVan
     VanillaWorldGenerationBootstrapState1458 bootstrap, double worldSurface, double rockLayer, CancellationToken cancellationToken,
     IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null)
 {
-    private readonly DungeonChestLoot1458 loot = new(random, bootstrap,
-        BuriedChestContext1458.GetOrCreate(workspace, bootstrap, worldSurface, rockLayer));
     private static ReadOnlySpan<int> BasicLoot => [155, 156, 157, 163, 113, 3317, 327, 164];
     private int lootIndex;
     private int Width => workspace.WidthTiles;
@@ -18,7 +16,8 @@ internal sealed class DungeonChests1458(Workspace workspace, IWorldGenerationVan
     internal int PlaceBiome(DungeonBounds1458 bounds, DungeonBounds1458 entrance)
     {
         int placed = 0;
-        for (int biome = 0; biome < 5; biome++)
+        int count = workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) ? 6 : 5;
+        for (int biome = 0; biome < count; biome++)
         for (int attempt = 1; attempt < 1000; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -29,7 +28,8 @@ internal sealed class DungeonChests1458(Workspace workspace, IWorldGenerationVan
             {
                 0 => (1156, 23, 21),
                 1 => bootstrap.EffectiveCrimson ? (1569, 25, 21) : (1571, 24, 21),
-                2 => (1260, 26, 21), 3 => (1572, 27, 21), _ => (4607, 13, 467)
+                2 => (1260, 26, 21), 3 => (1572, 27, 21), 4 => (4607, 13, 467),
+                _ => bootstrap.EffectiveCrimson ? (1571, 24, 21) : (1569, 25, 21)
             };
             if (TryPlace(x, y, (ushort)type, style, item)) { placed++; break; }
         }
@@ -51,7 +51,8 @@ internal sealed class DungeonChests1458(Workspace workspace, IWorldGenerationVan
                 int y = (int)(room.End.Y - radius + radius * 2 * random.NextDouble());
                 if (!AllowsBasicChestArea(x, y)) continue;
                 if (lootIndex >= 8) lootIndex = 0;
-                int item = BasicLoot[lootIndex], style = lootIndex == 6 ? 0 : 2;
+                int item = lootIndex == 2 && workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) ? 2623 : BasicLoot[lootIndex];
+                int style = lootIndex == 6 ? 0 : 2;
                 if (y < worldSurface + 50d) { item = 327; style = 0; }
                 if (!TryPlace(x, y, 21, style, item)) continue;
                 lootIndex++; placed++; break;
@@ -76,55 +77,19 @@ internal sealed class DungeonChests1458(Workspace workspace, IWorldGenerationVan
 
     internal bool TryPlace(int x, int y, ushort type, int style, int item)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (x < 3 || x >= Width - 3 || y < 3 || y >= Height - 10)
             throw new InvalidOperationException("Dungeon chest seed escaped the admitted world margin.");
-        for (int floor = y; floor < Height - 10; floor++)
+        BuriedChest1458.EnsureQualifiedScope(workspace.VanillaSeedProfile,style,type);
+        var context=BuriedChestContext1458.GetOrCreate(workspace, bootstrap, worldSurface, rockLayer);
+        bool prior=context.GeneratingDungeon;
+        context.GeneratingDungeon=true;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            WorldTile cell = At(x, floor);
-            if (cell.LiquidAmount > 0 && cell.LiquidKind == WorldLiquidKind.Shimmer || cell.IsActive && cell.Type == 231) return false;
-            for (int tx = x - 2; tx <= x + 2; tx++)
-            for (int ty = floor - 2; ty <= floor + 2; ty++)
-                if (tx >= 100 && tx < Width - 100 && ty >= 100 && ty < Height - 100 && At(tx, ty).IsActive &&
-                    (GenerationObjectSupport1458.IsBoulder(At(tx, ty).Type) || At(tx, ty).Type is 26 or 237)) return false;
-            if (!DungeonGenerationTiles1458.SolidTile(cell)) continue;
-            int left = x - 1, top = floor - 2;
-            if (!CanPlaceObject(left, top)) return false;
-            for (int column = 0; column < 2; column++)
-            for (int row = 0; row < 2; row++)
-            {
-                ref WorldTile target = ref At(left + column, top + row);
-                target.Flags |= WorldTileFlags.Active; target.Type = type;
-                target.FrameX = (short)(style * 36 + column * 18); target.FrameY = (short)(row * 18);
-            }
-            var items = loot.Build(item, type, style, floor, worldSurface, rockLayer, Height,
-                DungeonGenerationTiles1458.IsDungeonWall(cell.Wall));
-            if (!workspace.TryAddChest(left, top, string.Empty, items))
-                throw new InvalidOperationException("Dungeon chest passed placement but failed side-table registration.");
-            return true;
+            return BuriedChest1458.CreateOwned(workspace, random).TryAdd(x,y,out _,out _,item,
+                notNearOtherChests:false,chestStyle:style,trySlope:false,chestTileType:type);
         }
-        return false;
-    }
-
-    private bool CanPlaceObject(int left, int top)
-    {
-        if (left < 5 || left + 2 > Width - 5 || top < 5 || top + 2 > Height - 5) return false;
-        for (int column = 0; column < 2; column++)
-        {
-            WorldTile floor = At(left + column, top + 2);
-            if (GenerationObjectSupport1458.IsBoulder(floor.Type) || !GenerationObjectSupport1458.SupportsChest(floor, crackedBricksSolid: false)) return false;
-            for (int row = 0; row < 2; row++)
-            {
-                WorldTile cell = At(left + column, top + row);
-                if (cell.LiquidAmount > 0 && cell.LiquidKind == WorldLiquidKind.Lava) return false;
-                if (!cell.IsActive) continue;
-                if ((VanillaProjectileTileCutFacts.IsCuttable(cell.TileType) && cell.Type is not (484 or 654)) ||
-                    GenerationObjectSupport1458.BreakableWhenPlacing(cell.Type))
-                    throw new InvalidOperationException($"Unverified break-on-placement object {cell.Type} at {left + column},{top + row} in Dungeon chest footprint.");
-                return false;
-            }
-        }
-        return workspace.CanRegisterGeneratedChest(left, top);
+        finally { context.GeneratingDungeon=prior; }
     }
 
     private ref WorldTile At(int x, int y) => ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(x, y)];

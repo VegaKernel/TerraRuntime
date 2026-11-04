@@ -5,7 +5,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>The four ordinary DesertBiome entrances on an unpublished terrain candidate.</summary>
 internal sealed class DesertEntrances1458(WorldTileStore tiles, DesertSurface1458 description,
-    IWorldGenerationVanillaRandom random, CancellationToken cancellation = default)
+    IWorldGenerationVanillaRandom random, GenerationTileFraming1458 framing, CancellationToken cancellation = default)
 {
     private readonly record struct Point(int X, int Y);
     private readonly record struct Connection(double X, double Y, int Direction);
@@ -85,11 +85,11 @@ internal sealed class DesertEntrances1458(WorldTileStore tiles, DesertSurface145
         }
         Point[] neighbours = [new(1, 0), new(-1, 0), new(0, 1), new(0, -1), new(1, 1), new(1, -1), new(-1, 1), new(-1, -1)];
         foreach (Point room in rooms.Ordered)
-        foreach (Point offset in neighbours)
-        {
-            int x = room.X + offset.X, y = room.Y + offset.Y;
-            if (!rooms.Contains(x, y)) Expand(x, y, ConvertSand);
-        }
+            foreach (Point offset in neighbours)
+            {
+                int x = room.X + offset.X, y = room.Y + offset.Y;
+                if (!rooms.Contains(x, y)) Expand(x, y, ConvertSand);
+            }
         for (int i = 1; i < connections.Count; i++)
         {
             Connection from = connections[i - 1], to = connections[i];
@@ -141,7 +141,7 @@ internal sealed class DesertEntrances1458(WorldTileStore tiles, DesertSurface145
                 Rectangle(cx - radius, cy - radius * 2, radius * 2, radius * 2, ClearAndRecord);
                 Tail(cx, cy, radius * 2, radius * 1.5, ClearAndRecord);
                 foreach (Point point in shape.Ordered)
-                    Expand(point.X, point.Y + 1, (x, y) => { if (Solid(x, y)) DesertHive1458.Smooth(tiles, x, y, neighbours: true); });
+                    Expand(point.X, point.Y + 1, (x, y) => { if (Solid(x, y)) framing.SmoothSourceSlope(x, y, neighbours: true); });
             }
             int drift = cx;
             int start = anthill ? cy - radius - 3 : cy + (int)(radius * 1.5);
@@ -170,7 +170,7 @@ internal sealed class DesertEntrances1458(WorldTileStore tiles, DesertSurface145
                     tile.Shape = 0; tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive);
                     Expand(x, y, (tx, ty) => Wall(tx, ty, 0));
                 });
-                foreach (Point point in shape.Ordered) DesertHive1458.Smooth(tiles, point.X, point.Y);
+                foreach (Point point in shape.Ordered) framing.SmoothSourceSlope(point.X, point.Y, neighbours: false);
             }
             else foreach (Point point in shape.Ordered) Wall(point.X, point.Y + 2, 0);
 
@@ -208,7 +208,7 @@ internal sealed class DesertEntrances1458(WorldTileStore tiles, DesertSurface145
         FrameWall(x, y); FrameWall(x + 1, y); FrameWall(x - 1, y); FrameWall(x, y - 1); FrameWall(x, y + 1);
     }
     private void FrameWall(int x, int y) => DesertSurface1458.FrameWalls(tiles, random, x, y);
-    private bool Solid(int x, int y) => DesertHive1458.Solid(At(x, y));
+    private bool Solid(int x, int y) => framing.SolidOrSloped(x, y);
 
     private void Blotch(int x, int y, Action<int, int> action)
     {
@@ -216,12 +216,12 @@ internal sealed class DesertEntrances1458(WorldTileStore tiles, DesertSurface145
         if (random.NextDouble() >= .3) { action(x, y); return; }
         int left = random.Next(-1, 1), right = random.Next(0, 2), up = random.Next(-1, 1), down = random.Next(0, 2);
         for (int dx = left; dx <= right; dx++)
-        for (int dy = up; dy <= down; dy++) action(x + dx, y + dy);
+            for (int dy = up; dy <= down; dy++) action(x + dx, y + dy);
     }
     private static void Expand(int x, int y, Action<int, int> action)
     {
         for (int dx = -1; dx <= 1; dx++)
-        for (int dy = -1; dy <= 1; dy++) action(x + dx, y + dy);
+            for (int dy = -1; dy <= 1; dy++) action(x + dx, y + dy);
     }
     private void Circle(int x, int y, int rx, int ry, Action<int, int> action)
     {
@@ -237,7 +237,7 @@ internal sealed class DesertEntrances1458(WorldTileStore tiles, DesertSurface145
     {
         cancellation.ThrowIfCancellationRequested();
         for (int col = x; col < x + width; col++)
-        for (int row = y; row < y + height; row++) action(col, row);
+            for (int row = y; row < y + height; row++) action(col, row);
     }
 
     private static void Tail(int x, int y, double width, double offsetY, Action<int, int> action)

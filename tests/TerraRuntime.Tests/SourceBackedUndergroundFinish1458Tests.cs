@@ -337,7 +337,7 @@ public sealed class SourceBackedUndergroundFinish1458Tests
 
         provider.BuildPlan(in request, builder);
 
-        Assert.Equal(27, builder.Entries.Count);
+        Assert.Equal(49, builder.Entries.Count);
         Assert.Contains(builder.Entries, static entry =>
             entry.Descriptor.Id.Value == "terraria:1.4.5.8/MudCavesToGrass");
         Assert.DoesNotContain(builder.Entries, static entry =>

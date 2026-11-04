@@ -3,8 +3,8 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
-/// <summary>Ordinary 1.4.5.8 MarbleBiome slab geometry and its AddGenerationPass selection.</summary>
-internal sealed class MarbleBiome1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random, CancellationToken cancellation)
+/// <summary>1.4.5.8 MarbleBiome slabs, Drunk materials and ordinary/Remix pass selection.</summary>
+internal sealed class MarbleBiome1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random, CancellationToken cancellation, bool drunk = false)
 {
     private readonly record struct Slab(byte Shape, bool Wall);
     private readonly Slab[,] slabs = new Slab[56, 26];
@@ -14,19 +14,23 @@ internal sealed class MarbleBiome1458(WorldTileStore tiles, IWorldGenerationVani
     {
         cancellation.ThrowIfCancellationRequested();
         int width = workspace.WidthTiles, height = workspace.HeightTiles;
+        bool remix = workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix);
+        TerrainGenerationState1458 terrain = workspace.VanillaTerrainState ?? throw new InvalidOperationException("Marble requires retained terrain layers.");
         if (!TerrainPass1458.IsCanonicalWorldSize(width, height) || !double.IsFinite(rockLayer) || rockLayer < 50 || rockLayer >= height - 260)
             throw new InvalidOperationException("Unsupported ordinary marble pass envelope.");
         double scale = width * (double)height / 5040000d;
         int count = random.Next((int)(4 * scale), (int)(8 * scale) + 1);
         double band = (width - 160d) / count;
-        var biome = new MarbleBiome1458(workspace.TileStore, random, cancellation);
+        var biome = new MarbleBiome1458(workspace.TileStore, random, cancellation, workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld));
         var regions = new List<WorldTileRegion>(count);
         int failed = 0;
         while (regions.Count < count)
         {
             cancellation.ThrowIfCancellationRequested();
             int left = (int)(regions.Count / (double)count * (width - 200)) + 100;
-            int x = random.Next(left, left + (int)band), y = random.Next((int)rockLayer + 20, height - 220);
+            int x = random.Next(left, left + (int)band), y = remix
+                ? random.Next((int)terrain.CurrentWorldSurface + 100, (int)terrain.CurrentRockLayer)
+                : random.Next((int)rockLayer + 20, height - 220);
             int rerolls = 0;
             while (x > width * .45 && x < width * .55)
             {
@@ -60,7 +64,7 @@ internal sealed class MarbleBiome1458(WorldTileStore tiles, IWorldGenerationVani
                 bool existing = false;
                 // IsGroupSolid(scale=3) compares against 3/4*3, i.e. zero, not 75 percent.
                 for (int dx = 0; dx < 3; dx++)
-                for (int dy = 0; dy < 3; dy++) existing |= framing.Solid(left + col * 3 + dx, top + row * 3 + dy);
+                    for (int dy = 0; dy < 3; dy++) existing |= framing.Solid(left + col * 3 + dx, top + row * 3 + dy);
                 int distance = Math.Abs(row - rows / 2) - hollow / 4 + edge;
                 bool active = false, wall = true;
                 if (distance > 3) { active = existing; wall = false; }
@@ -71,14 +75,14 @@ internal sealed class MarbleBiome1458(WorldTileStore tiles, IWorldGenerationVani
             }
         }
         for (int col = 1; col <= columns; col++)
-        for (int row = 1; row <= rows; row++)
-        {
-            Slab slab = slabs[col, row];
-            if (slab.Shape == 0) continue;
-            int mask = (slabs[col, row - 1].Shape != 0 ? 8 : 0) | (slabs[col, row + 1].Shape != 0 ? 4 : 0) |
-                (slabs[col - 1, row].Shape != 0 ? 2 : 0) | (slabs[col + 1, row].Shape != 0 ? 1 : 0);
-            slabs[col, row] = slab with { Shape = mask switch { 10 => 2, 9 => 3, 6 => 4, 5 => 5, 4 => 6, _ => 1 } };
-        }
+            for (int row = 1; row <= rows; row++)
+            {
+                Slab slab = slabs[col, row];
+                if (slab.Shape == 0) continue;
+                int mask = (slabs[col, row - 1].Shape != 0 ? 8 : 0) | (slabs[col, row + 1].Shape != 0 ? 4 : 0) |
+                    (slabs[col - 1, row].Shape != 0 ? 2 : 0) | (slabs[col + 1, row].Shape != 0 ? 1 : 0);
+                slabs[col, row] = slab with { Shape = mask switch { 10 => 2, 9 => 3, 6 => 4, 5 => 5, 4 => 6, _ => 1 } };
+            }
         int midX = columns / 2, midY = rows / 2, squaredRadius = (midY + 1) * (midY + 1);
         double startDrift = random.NextDouble() * 2 - 1, middleDrift = random.NextDouble() * 2 - 1, endDrift = random.NextDouble() * 2 - 1;
         double drift = 0;
@@ -107,10 +111,19 @@ internal sealed class MarbleBiome1458(WorldTileStore tiles, IWorldGenerationVani
             for (int row = top; row < bottom; row++)
             {
                 ref WorldTile cell = ref At(x + col, y + row);
-                ushort type = StoneBiomeTiles1458.IsOre(cell.Type) ? cell.Type : (ushort)367;
-                ushort wall = slab.Wall ? (ushort)178 : cell.Wall;
-                bool active = slab.Shape switch { 0 => false, 1 => true, 2 => col < 3 - row, 3 => col > row,
-                    4 => col < row, 5 => col >= 3 - row, 6 => row >= 1, _ => throw new InvalidOperationException() };
+                ushort type = StoneBiomeTiles1458.IsOre(cell.Type) ? cell.Type : (ushort)(drunk ? 368 : 367);
+                ushort wall = slab.Wall ? (ushort)(drunk ? 180 : 178) : cell.Wall;
+                bool active = slab.Shape switch
+                {
+                    0 => false,
+                    1 => true,
+                    2 => col < 3 - row,
+                    3 => col > row,
+                    4 => col < row,
+                    5 => col >= 3 - row,
+                    6 => row >= 1,
+                    _ => throw new InvalidOperationException()
+                };
                 cell = new WorldTile { Type = type, Wall = wall, Flags = active ? WorldTileFlags.Active : WorldTileFlags.None };
                 framing.FrameNeighbours(x + col, y + row);
                 DesertSurface1458.FrameWalls(tiles, random, x + col, y + row);

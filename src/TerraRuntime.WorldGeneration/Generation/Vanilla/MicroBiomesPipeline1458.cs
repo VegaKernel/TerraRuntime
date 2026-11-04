@@ -92,17 +92,23 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
     {
         var profile=workspace.VanillaSeedProfile;
         if(profile.Has(VanillaSpecialWorldSeed1458.Skyblock))return;
-        if(profile.Secret!=VanillaSecretWorldSeed1458.None||profile.Special is not (VanillaSpecialWorldSeed1458.None or VanillaSpecialWorldSeed1458.DrunkWorld or VanillaSpecialWorldSeed1458.ForTheWorthy or VanillaSpecialWorldSeed1458.CelebrationMk10 or VanillaSpecialWorldSeed1458.TheConstant or VanillaSpecialWorldSeed1458.NotTheBees or VanillaSpecialWorldSeed1458.Remix or VanillaSpecialWorldSeed1458.NoTraps or (VanillaSpecialWorldSeed1458)255))
-            throw new NotSupportedException("Micro Biomes extra and combined seed branches require independent source qualification.");
+        if(!MicroSeedCapabilities1458.Supports(profile))
+            throw new NotSupportedException("Micro Biomes seed configuration requires independent source qualification.");
         bool bees=profile.Has(VanillaSpecialWorldSeed1458.NotTheBees),remix=profile.Has(VanillaSpecialWorldSeed1458.Remix),worthy=profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy),anniversary=profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10);
+        bool noSurface=profile.Has(VanillaSecretWorldSeed1458.MolePeople),errorWorld=profile.Has(VanillaSecretWorldSeed1458.IAmError);
+        int extraCount=System.Numerics.BitOperations.PopCount((ulong)profile.Secret);
+        bool actuallyNoTraps=profile.Has(VanillaSecretWorldSeed1458.MoreTrapsPlease)&&extraCount<4;
         if(!workspace.HasVanillaGenerationSolidity)throw new InvalidOperationException("Micro Biomes requires the live source solidity owner.");
         if(worthy)workspace.SetVanillaGenerationSolid(new(56),true);
         workspace.SetVanillaGenerationSolid(new(229),true);
         double widthScale=workspace.WidthTiles/4200d,areaScale=workspace.WidthTiles*(double)workspace.HeightTiles/5040000d;
+        int target,attempts;
+        if(!actuallyNoTraps)
+        {
         var deadMan=new MicroDeadMansChest1458(workspace,random,oceanLevel);
         var chestSlots=workspace.CaptureGeneratedChests();
         var candidates=deadMan.GetPossibleChests().Select(point=>chestSlots.Single(chest=>chest.X==point.X&&chest.Y==point.Y).SlotId).ToList();
-        int target=Range(10,20,widthScale),attempts=3000;
+        target=Range(10,20,widthScale);attempts=3000;
         for(int done=0;done<target&&candidates.Count>0;done++)
         {
             cancellationToken.ThrowIfCancellationRequested();if(--attempts<=0)break;
@@ -110,6 +116,7 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
             var point=workspace.CaptureGeneratedChests().FirstOrDefault(chest=>chest.SlotId==candidates[index])??
                 throw new NullReferenceException("The source selected a chest slot whose canonical occupation was removed.");
             deadMan.Place(point.X,point.Y);candidates.RemoveAt(index);
+        }
         }
         progress?.Invoke(.1);
         if(!bees||remix)
@@ -123,8 +130,11 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
         }
         }
         progress?.Invoke(.2);
+        if(!noSurface||errorWorld)
+        {
         target=Range(1,2,widthScale);double swordChance=.5;
         if(anniversary){target*=2;swordChance/=2;}
+        if(errorWorld){int factor=6/((extraCount+3)/4);if(factor>1){target*=factor;swordChance/=factor;}}
         for(int attempt=0;attempt<target;attempt++)
         {
             if(!(anniversary&&attempt==0)&&random.NextDouble()<swordChance)continue;
@@ -132,9 +142,11 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
             while(retries++<=workspace.WidthTiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();int y=(int)generationSurface+random.Next(50,100);
+                if(errorWorld&&(random.Next(3)!=0||noSurface))y=random.Next((int)generationSurface+random.Next(50,100),workspace.HeightTiles-300);
                 int x=random.Next(2)==0?random.Next(50,(int)(workspace.WidthTiles*.3)):random.Next((int)(workspace.WidthTiles*.7),workspace.WidthTiles-50);
                 if(MicroEnchantedSword1458.Place(workspace,random,x,y,anniversary:anniversary))break;
             }
+        }
         }
         progress?.Invoke(.3);
         if(!bees||remix)
@@ -143,11 +155,13 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
         for(int done=0;done<target;)
         {
             cancellationToken.ThrowIfCancellationRequested();if(--attempts<=0)break;
-            var point=Point((int)worldSurface,380,200,380);if(MicroCampsite1458.Place(workspace,random,point.X,point.Y))done++;
+            int top=(int)worldSurface;
+            if(noSurface){if(!workspace.TryGetLayers(out var mainLayers))throw new InvalidOperationException("Campsite requires retained Main layers.");top=(int)mainLayers.RockLayer/4;}
+            var point=Point(top,380,200,380);if(MicroCampsite1458.Place(workspace,random,point.X,point.Y))done++;
         }
         }
         progress?.Invoke(.4);
-        if(!bees||remix)
+        if(!actuallyNoTraps&&(!bees||remix))
         {
         target=Range(14,29,areaScale);attempts=3000;
         if((worthy||profile.Has(VanillaSpecialWorldSeed1458.NoTraps))&&!bees)target=(int)(target*1.5);
@@ -167,8 +181,9 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
         progress?.Invoke(.6);progress?.Invoke(.7);
         var tracks=new TrackGenerator1458(workspace,random);
         PlaceTracks(Range(1,2,widthScale),(int)(400*widthScale),(int)(1000*widthScale));progress?.Invoke(.8);
-        PlaceTracks(Range(4,7,areaScale),(int)(150*widthScale),(int)(300*widthScale));progress?.Invoke(.9);
-        if(!bees)for(int done=0;done<workspace.WidthTiles*.02;done++)
+        int standardCount=Range(4,7,areaScale);if(errorWorld)standardCount=(int)(standardCount*1.5);
+        PlaceTracks(standardCount,(int)(150*widthScale),(int)(300*widthScale));progress?.Invoke(.9);
+        if(!actuallyNoTraps&&!bees)for(int done=0;done<workspace.WidthTiles*.02;done++)
             for(int attempt=0;attempt<10150;attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();int x=random.Next(200,workspace.WidthTiles-200),y=random.Next(lavaLine-100,workspace.HeightTiles-210);
@@ -186,7 +201,7 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
             {
                 cancellationToken.ThrowIfCancellationRequested();var point=Point((int)worldSurface,10,200,10);
                 if(tracks.Place(point.X,point.Y,min,max)){done++;failed=0;}
-                else if(++failed>workspace.WidthTiles/2){done++;failed=0;}
+                else if(++failed>workspace.WidthTiles/(errorWorld?4:2)){done++;failed=0;}
             }
         }
     }

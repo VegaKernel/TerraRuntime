@@ -22,6 +22,12 @@ public sealed partial class Workspace
         vanillaGenerationSolidity.TryGetValue(type.Value, out bool solid)
             ? solid : VanillaTileCollisionCatalog.IsSolid(type);
 
+    internal void SetVanillaBoulderSolidity(bool solid)
+    {
+        ReadOnlySpan<int> identities = [138, 484, 664, 711, 712, 713, 714, 715, 716];
+        foreach (int type in identities) SetVanillaGenerationSolid(new TileTypeId(type), solid);
+    }
+
     internal void SetVanillaGenerationSolid(TileTypeId type, bool solid)
     {
         if (!HasVanillaGenerationSolidity)

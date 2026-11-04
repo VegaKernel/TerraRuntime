@@ -4,7 +4,7 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>DesertHive.AddTileVariance and its ordinary generation-only placement slice.</summary>
-internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random)
+internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random, GenerationTileFraming1458 framing, VanillaWorldSeedProfile1458 seedProfile = default, double rockLayer = double.MaxValue)
 {
     public void Apply(DesertSurface1458 description, CancellationToken cancellation = default)
     {
@@ -26,6 +26,7 @@ internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGeneratio
             {
                 if (!Inside(x, y, 5) || !At(x, y).IsActive || At(x, y).Type != 396) continue;
                 bool up = ClearSide(-1), down = ClearSide(1);
+                if (seedProfile.Has(VanillaSpecialWorldSeed1458.Remix) && y > rockLayer) continue;
                 if (up && random.Next(20) == 0)
                 {
                     ushort type = 485;
@@ -62,7 +63,7 @@ internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGeneratio
         else if (type is 484 or 751 or 187) Furniture(x, y, type, style);
         else throw new InvalidOperationException("Unverified desert decoration.");
         // Source has an explicit square even on failed PlaceTight/Place3x2.
-        if (type is 165 or 187 || At(x, y).IsActive) FrameSquare(x, y);
+        if (type is 165 or 187 || At(x, y).IsActive) framing.SquareTileFrame(x, y);
     }
 
     private void Furniture(int x, int y, ushort type, int style)
@@ -73,13 +74,13 @@ internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGeneratio
             if (At(col, y - 1).IsActive || At(col, y).IsActive || !Flat(col, y + 1)) return;
         }
         for (int col = 0; col < width; col++)
-        for (int row = 0; row < 2; row++)
-        {
-            ref WorldTile cell = ref At(x - 1 + col, y - 1 + row);
-            cell.Type = type; cell.Flags |= WorldTileFlags.Active;
-            cell.FrameX = (short)(col * 18 + (type == 187 ? style * 54 : 0));
-            cell.FrameY = (short)(row * 18 + (type == 187 ? 0 : style * 36));
-        }
+            for (int row = 0; row < 2; row++)
+            {
+                ref WorldTile cell = ref At(x - 1 + col, y - 1 + row);
+                cell.Type = type; cell.Flags |= WorldTileFlags.Active;
+                cell.FrameX = (short)(col * 18 + (type == 187 ? style * 54 : 0));
+                cell.FrameY = (short)(row * 18 + (type == 187 ? 0 : style * 36));
+            }
         if (type == 187)
         {
             bool supported = true;
@@ -89,15 +90,15 @@ internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGeneratio
             // placement would leave the wrong inactive type/frames at a rejected pile.
             if (!supported)
                 for (int col = x - 1; col <= x + 1; col++)
-                for (int row = y - 1; row <= y; row++)
-                {
-                    ref WorldTile cell = ref At(col, row);
-                    cell.Type = 0; cell.FrameX = cell.FrameY = -1;
-                    cell.Shape = cell.TileColor = 0;
-                    cell.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive |
-                        WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-                    FrameSquare(col, row);
-                }
+                    for (int row = y - 1; row <= y; row++)
+                    {
+                        ref WorldTile cell = ref At(col, row);
+                        cell.Type = 0; cell.FrameX = cell.FrameY = -1;
+                        cell.Shape = cell.TileColor = 0;
+                        cell.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive |
+                            WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+                        framing.SquareTileFrame(col, row);
+                    }
         }
     }
 
@@ -118,12 +119,12 @@ internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGeneratio
         _ = random.Next(4);
         if (!allowed) return;
         for (int col = 0; col < 2; col++)
-        for (int row = 0; row < 2; row++)
-        {
-            ref WorldTile cell = ref At(x + col, y - 1 + row);
-            cell.Type = 485; cell.Flags |= WorldTileFlags.Active;
-            cell.FrameX = (short)(style * 36 + col * 18); cell.FrameY = (short)(row * 18);
-        }
+            for (int row = 0; row < 2; row++)
+            {
+                ref WorldTile cell = ref At(x + col, y - 1 + row);
+                cell.Type = 485; cell.Flags |= WorldTileFlags.Active;
+                cell.FrameX = (short)(style * 36 + col * 18); cell.FrameY = (short)(row * 18);
+            }
     }
 
     private void Stalactite(int x, int y)
@@ -150,32 +151,7 @@ internal sealed class DesertDecoration1458(WorldTileStore tiles, IWorldGeneratio
         }
     }
 
-    internal void FrameSquare(int x, int y)
-    {
-        for (int col = x - 1; col <= x + 1; col++)
-        for (int row = y - 1; row <= y + 1; row++)
-            FrameCell(col, row);
-    }
-
-    internal void FrameNeighbours(int x, int y)
-    {
-        FrameCell(x, y); FrameCell(x + 1, y); FrameCell(x - 1, y); FrameCell(x, y + 1); FrameCell(x, y - 1);
-    }
-
-    private void FrameCell(int x, int y)
-    {
-        if (x <= 5 || y <= 5 || x >= tiles.Dimensions.WidthTiles - 5 || y >= tiles.Dimensions.HeightTiles - 5) return;
-        ref WorldTile cell = ref At(x, y);
-        if (cell.IsActive) return; // geometry is unchanged after complete admitted placements
-        cell.Shape = cell.TileColor = 0;
-        cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-    }
-
-    private bool Flat(int x, int y)
-    {
-        WorldTile cell = At(x, y);
-        return cell.Shape == 0 && DesertHive1458.Solid(cell);
-    }
+    private bool Flat(int x, int y) => framing.SolidTile(x, y);
     private bool Inside(int x, int y, int border) => x >= border && y >= border &&
         x < tiles.Dimensions.WidthTiles - border && y < tiles.Dimensions.HeightTiles - border;
     private ref WorldTile At(int x, int y) => ref tiles.Tiles[tiles.GetUncheckedIndex(x, y)];

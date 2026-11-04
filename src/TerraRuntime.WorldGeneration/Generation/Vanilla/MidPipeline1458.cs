@@ -57,8 +57,23 @@ public sealed class SourceBackedMidPipeline1458 : IWorldGenerationProvider
                 if (entry.Descriptor.Id == CompatibilityBiomesId)
                 {
                     Add(builder, MudCavesToGrassId, profile.Has(VanillaSpecialWorldSeed1458.Skyblock) ? new WorldGenerationPassId("terraria:1.4.5.8/Grass") : JungleId, new MidPass1458(MidStage1458.MudCavesToGrass, state));
-                    builder.Add(CloneDescriptor(entry.Descriptor, entry.Descriptor.RngMode, [MudCavesToGrassId]), entry.Pass);
+                    Add(builder, FullDesertId, MudCavesToGrassId, new MidPass1458(MidStage1458.FullDesert, state));
+                    Add(builder, MushroomPatchesId, FullDesertId, new MidPass1458(MidStage1458.MushroomPatches, state));
+                    Add(builder, MarbleId, MushroomPatchesId, new MidPass1458(MidStage1458.Marble, state));
+                    Add(builder, GraniteId, MarbleId, new MidPass1458(MidStage1458.Granite, state));
+                    Add(builder, FloatingIslandsId, GraniteId, new MidPass1458(MidStage1458.FloatingIslands, state));
+                    Add(builder, DirtToMudId, FloatingIslandsId, new MidPass1458(MidStage1458.DirtToMud, state));
+                    Add(builder, SiltId, DirtToMudId, new MidPass1458(MidStage1458.Silt, state));
+                    Add(builder, ShiniesId, SiltId, new MidPass1458(MidStage1458.Shinies, state));
+                    Add(builder, WebsId, ShiniesId, new MidPass1458(MidStage1458.Webs, state));
+                    Add(builder, UnderworldId, WebsId, new MidPass1458(MidStage1458.Underworld, state));
+                    Add(builder, CorruptionId, UnderworldId, new MidPass1458(MidStage1458.Corruption, state));
+                    Add(builder, LakesId, CorruptionId, new MidPass1458(MidStage1458.Lakes, state));
+                    Add(builder, SlushId, LakesId, new MidPass1458(MidStage1458.Slush, state));
+                    builder.Add(CloneDescriptor(entry.Descriptor, WorldGenerationRngMode.IsolatedDeterministic, [SlushId]), SourceBackedBiomesCompatibilityBarrier1458.Instance);
                 }
+                else if (entry.Descriptor.Id == CompatibilityOresId)
+                    builder.Add(entry.Descriptor, SourceBackedOreCompatibilityBarrier1458.Instance);
                 else builder.Add(entry.Descriptor, entry.Pass);
             }
             return;
@@ -246,6 +261,9 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         Workspace workspace = context.Workspace as Workspace ??
             throw new InvalidOperationException("Source-backed mid Terraria generation requires Workspace.");
         state.EnsureInitialized(context, workspace);
+        WorldGenerationRequest seedRequest = context.Request;
+        // The basic Skyblock option denies all nine bodies, including FloatingIslands without its extra alias.
+        if (WorldSeedResolver1458.Resolve(in seedRequest).Has(VanillaSpecialWorldSeed1458.Skyblock)) return;
         var grid = new RuntimeGrid(workspace);
         var random = new VanillaRandom(
             context.VanillaRandom ??
@@ -289,11 +307,16 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                 UnderworldTerrain1458.Generate(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
                     workspace.VanillaLiquidLines ?? throw new InvalidOperationException("Underworld requires exact Early-pass liquid lines."),
                     context.CancellationToken, workspace);
-                UnderworldVegetation1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
-                HellFortGenerator1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix))
+                    UnderworldStartingMound1458.Generate(workspace, context.VanillaRandom!, context.CancellationToken);
+                else if (!workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld))
+                    UnderworldVegetation1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                HellFortGenerator1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken, workspace.VanillaSeedProfile);
                 HellFortLighting1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
                 HellFortFurniture1458.Generate(workspace, context.VanillaRandom!, context.CancellationToken);
-                HellFortDecoration1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                HellFortDecoration1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken, workspace.VanillaSeedProfile);
+                if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld))
+                    UnderworldVegetation1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken, edgeOnly: false);
                 context.ReportProgress(1d, "Generating underworld terrain, lava, hellstone and forts");
                 break;
             case MidStage1458.Corruption:
@@ -343,7 +366,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             desert = DesertSurface1458.TryDescribe(workspace.TileStore, vanilla, center,
-                state.WorldSurface, flips >= 2, context.CancellationToken);
+                state.WorldSurface, flips >= 2, context.CancellationToken, workspace.VanillaSeedProfile);
             if (desert is not null) break;
             int offset = vanilla.Next(half) / 2 + half / 8 + vanilla.Next(attemptsOnSide / 12);
             center = half + offset * -side;
@@ -354,13 +377,14 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         state.DesertRight = desert.Combined.ExclusiveRight;
         workspace.SetVanillaUndergroundDesertRegion(desert.Combined.X - 10, desert.Combined.Y - 10,
             desert.Combined.Width + 20, desert.Combined.Height + 20);
-        desert.PlaceMound(workspace.TileStore, vanilla, state.WorldSurface, context.CancellationToken);
+        var framing = new GenerationTileFraming1458(workspace.TileStore, vanilla, workspace, useWorldGenerationSolidity: true);
+        desert.PlaceMound(workspace.TileStore, vanilla, state.WorldSurface, context.CancellationToken, workspace.VanillaSeedProfile);
         // WorldBuilding.Configuration.json overrides the class field default with 0.5.
-        if (vanilla.NextDouble() <= .5)
-            new DesertEntrances1458(workspace.TileStore, desert, vanilla, context.CancellationToken).Place(vanilla.Next(4));
+        if (!workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) && vanilla.NextDouble() <= .5)
+            new DesertEntrances1458(workspace.TileStore, desert, vanilla, framing, context.CancellationToken).Place(vanilla.Next(4));
         WorldTileRegion bounds = DesertHive1458.PlaceClusters(workspace.TileStore, desert, vanilla,
-            context.Request.ResolveVanillaSeed1458(), state.WorldSurface, context.CancellationToken);
-        var decoration = new DesertDecoration1458(workspace.TileStore, vanilla);
+            context.Request.ResolveVanillaSeed1458(), state.WorldSurface, framing, context.CancellationToken, workspace.VanillaSeedProfile, state.RockLayer);
+        var decoration = new DesertDecoration1458(workspace.TileStore, vanilla, framing, workspace.VanillaSeedProfile, state.RockLayer);
         decoration.Apply(desert, context.CancellationToken);
         for (int x = desert.Hive.X - 20; x < desert.Hive.ExclusiveRight + 20; x++)
         {
@@ -369,10 +393,26 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             {
                 if (x <= 0 || y <= 0 || x >= grid.Width - 1 || y >= grid.Height - 1) continue;
                 DesertSurface1458.FrameWalls(workspace.TileStore, vanilla, x, y);
-                // All admitted decoration footprints are complete and this phase makes
-                // no new active-tile edits. Generation TileFrame still clears inactive metadata.
-                decoration.FrameNeighbours(x, y);
+                // WorldUtils.TileFrame(frameNeighbors:true) resets all five sites, in this order.
+                framing.TileFrame(x, y, resetFrame: true);
+                framing.TileFrame(x + 1, y, resetFrame: true);
+                framing.TileFrame(x - 1, y, resetFrame: true);
+                framing.TileFrame(x, y + 1, resetFrame: true);
+                framing.TileFrame(x, y - 1, resetFrame: true);
             }
+        }
+        if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix))
+        {
+            for (int x = 50; x < grid.Width - 50; x++)
+                for (int y = (int)state.RockLayer + vanilla.Next(-1, 2); y < grid.Height - 50; y++)
+                {
+                    ref WorldTile tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(x, y)];
+                    if (!tile.IsActive || tile.Type is not (396 or 397 or 53) || framing.SolidTile(x, y - 1)) continue;
+                    // The height draw belongs to the loop condition and is repeated, including the failing check.
+                    for (int below = y; below < y + vanilla.Next(4, 7) &&
+                        workspace.TileStore.Get(x, below + 1).IsActive && workspace.TileStore.Get(x, below).Type is 396 or 397; below++)
+                        workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(x, below)].Type = 53;
+                }
         }
         workspace.SetVanillaDesertGenerationState(new(desert.Hive, bounds,
             new WorldTileRegion(desert.Combined.X, 50, desert.Combined.Width, desert.Combined.ExclusiveBottom - 20)));
@@ -408,8 +448,25 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                 continue;
             bool lake = used.Count >= islandCount;
             used.Add(x);
-            islands.Generate(x, y, lake);
-            anchors.Add(new(x, y, 0, lake));
+            int style = 0, materialStyle = 0;
+            VanillaWorldSeedProfile1458 profile = workspace.VanillaSeedProfile;
+            bool remix = profile.Has(VanillaSpecialWorldSeed1458.Remix);
+            bool drunk = profile.Has(VanillaSpecialWorldSeed1458.DrunkWorld);
+            bool anniversary = profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10);
+            bool worthy = profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy);
+            if (!lake)
+            {
+                if (drunk && !remix) style = materialStyle = random.Next(2) == 0 ? 3 : 1;
+                else if (remix && drunk && (!anniversary || worthy))
+                    style = (bootstrap.CrimsonLeft && x < grid.Width / 2) || (!bootstrap.CrimsonLeft && x > grid.Width / 2) ? 5 : 4;
+                else if (!profile.Has(VanillaSpecialWorldSeed1458.NotTheBees) || remix)
+                {
+                    if (worthy || remix && !anniversary) style = bootstrap.EffectiveCrimson ? 5 : 4;
+                    else if (anniversary) style = 6;
+                }
+            }
+            islands.Generate(x, y, lake, materialStyle);
+            anchors.Add(new(x, y, style, lake));
         }
 
         workspace.SetVanillaSkyIslands(anchors.ToArray());
@@ -423,7 +480,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         var terrain = workspace.VanillaTerrainState ?? throw new InvalidOperationException("Webs require Terrain state.");
         var lines = workspace.VanillaLiquidLines ?? throw new InvalidOperationException("Webs require liquid lines.");
         var random = context.VanillaRandom ?? throw new InvalidOperationException("Webs require shared vanilla RNG.");
-        var runner = new SmallTerrainRunner1458(workspace.TileStore, random, state.WorldSurface, lines, context.CancellationToken);
+        var runner = new SmallTerrainRunner1458(workspace.TileStore, random, state.WorldSurface, lines, context.CancellationToken, seedProfile: workspace.VanillaSeedProfile);
         int width = workspace.WidthTiles, height = workspace.HeightTiles;
         int count = (int)((double)(width * height) * .0006);
         ReadOnlySpan<WorldGenerationPoint> caves = workspace.VanillaMountainCaves;
@@ -454,20 +511,23 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         var bounds = EvilBiomePlacement1458.Scan(workspace.TileStore, state.WorldSurface, context.CancellationToken);
         var desert = workspace.VanillaUndergroundDesertRegion ??
             throw new InvalidOperationException("Evil-biome placement requires the generated desert bounds.");
-        bool crimson = context.Request.Options.Evil == WorldGenerationEvil.Crimson;
+        bool drunk = workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld);
+        double count = grid.Width * .00045 * (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) ? 2 : 1) / (drunk ? 2 : 1);
+        foreach (bool crimson in drunk ? new[] { true, false } : new[] { context.Request.Options.Evil == WorldGenerationEvil.Crimson })
+        {
         var crimsonCaves = crimson ? new CrimsonCaves1458(workspace.TileStore, context.VanillaRandom!,
             state.WorldSurface, context.CancellationToken,
             workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null) : null;
         var corruptionCaves = crimson ? null : new CorruptionCaves1458(workspace.TileStore, context.VanillaRandom!,
             state.WorldSurface, state.RockLayer, workspace.VanillaLiquidLines ??
                 throw new InvalidOperationException("Corruption requires exact Early-pass liquid lines."), context.CancellationToken,
-            workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
+            workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null, workspace);
 
-        for (int biome = 0; biome < grid.Width * 0.00045d; biome++)
+        for (int biome = 0; biome < count; biome++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             var region = EvilBiomePlacement1458.Select(grid.Width, bounds, bootstrap.DungeonLocation,
-                bootstrap.DungeonSide, desert.X, desert.Right, crimson, context.VanillaRandom!, context.CancellationToken);
+                bootstrap.DungeonSide, desert.X, desert.Right, crimson, context.VanillaRandom!, context.CancellationToken, workspace.VanillaSeedProfile, bootstrap.CrimsonLeft);
             int left = region.Left, right = region.Right;
 
             // Ordinary Crimson has one CrimStart per selected region, before surface conversion.
@@ -476,7 +536,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             if (crimson)
             {
                 var surface = new EvilBiomeSurface1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurfaceLow,
-                    state.WorldSurface, context.CancellationToken);
+                    state.WorldSurface, context.CancellationToken, workspace);
                 for (int x = left; x < right; x++) surface.ConvertJungleColumn(x, left, right, true);
                 surface.ConvertRegion(left, right, true);
                 new EvilAltarPlacement1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
@@ -489,15 +549,14 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         }
 
         crimsonCaves?.PlaceHearts();
-        context.ReportProgress(1d, crimson
-            ? "Generating crimson surface conversion and chasms"
-            : "Generating corruption surface conversion and chasms");
+        }
+        context.ReportProgress(1d, "Generating evil surface conversion and chasms");
     }
 
     private void ApplyLakes(IWorldGenerationContext context, Workspace workspace)
     {
         new SurfaceLakes1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
-            state.WorldSurfaceLow, context.CancellationToken).Generate(workspace);
+            state.WorldSurfaceLow, context.CancellationToken, workspace).Generate(workspace);
         context.ReportProgress(1d, "Generating ordinary surface lakes");
     }
 

@@ -114,17 +114,39 @@ public sealed class GenerationSpecialResetTerrain1458Tests
     }
 
     [Theory, MemberData(nameof(UnsupportedCases))]
-    public void Uncancelled_basic_special_profile_refuses_generation_after_its_qualified_early_prefix(string key)
+    public void Uncancelled_basic_special_profile_refuses_generation_after_its_qualified_prefix_through_gems(string key)
     {
         JsonElement row = Row("actual", key);
         var workspace = new Workspace(4200, 1200);
         var provider = new SourceBackedFinal1458();
         var request = Request(row.GetProperty("seedText").GetString()!, 4200);
+        AttachSourceOwners(workspace, in request);
         var result = RuntimeWorldGenerationExecutor.Execute(provider, request, workspace, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         Assert.Equal(WorldGenerationExecutionStatus.PassFailed, result.Status);
-        Assert.Equal("terraria:1.4.5.8/Biomes", result.PassId.Value);
+        Assert.Equal("terraria:1.4.5.8/GravitatingSand", result.PassId.Value);
         Assert.IsType<NotSupportedException>(result.Error);
-        Assert.Contains("through MudCavesToGrass", result.Error!.Message);
+        Assert.Contains("through Gems", result.Error!.Message);
+    }
+
+    private static void AttachSourceOwners(Workspace workspace, in WorldGenerationRequest request)
+    {
+        var npcs = new TerraRuntime.Core.Npcs.RuntimeNpcStore();
+        var projectiles = new TerraRuntime.Core.Projectiles.RuntimeProjectileStore();
+        var profile = WorldSeedResolver1458.Resolve(in request);
+        bool good = profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy) || profile.Has(VanillaSpecialWorldSeed1458.Zenith);
+        float difficulty = good ? 2 : 1;
+        var npcContext = new TerraRuntime.Gameplay.Npcs.VanillaNpcSpawnContext(difficulty, 0, good)
+        {
+            WorldDifficulty = difficulty,
+            TenthAnniversaryWorld = profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) || profile.Has(VanillaSpecialWorldSeed1458.Zenith),
+            RemixWorld = profile.Has(VanillaSpecialWorldSeed1458.Remix) || profile.Has(VanillaSpecialWorldSeed1458.Zenith)
+        };
+        npcs.SetVanillaSpawnContextSource(() => npcContext);
+        npcs.SetVanillaSpawnWetCollisionSource((x, y, width, height) =>
+            VanillaWorldCollision.GetLiquidContacts(workspace.TileStore, x, y, width, height).Wet);
+        workspace.AttachEntityEffects(new TerraRuntime.Core.Worlds.Generation.WorldGenerationEntityEffects1458(
+            npcs, projectiles, sourceServer: true), sourceMyPlayer: 0, sourceNpcDifficulty: difficulty);
+        Assert.True(workspace.TileStore.TryAttachTileEntities([], 1000));
     }
 
     private static Workspace RunPrefix(JsonElement row, bool checkOriginal)

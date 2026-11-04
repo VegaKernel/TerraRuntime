@@ -15,7 +15,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// canopy blob, either a circle for a crown anchor or a diamond for a branch anchor. That is why the runtime's
 /// previous tapered column read as nothing like the original.
 /// </remarks>
-internal sealed class LivingTreeGrower1458(
+internal sealed partial class LivingTreeGrower1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
     double worldSurface,
@@ -183,8 +183,9 @@ internal sealed class LivingTreeGrower1458(
         int sinceBranch = random.Next(-8, -4);
         int side = random.Next(2);
         int interval = random.Next(5, 15);
+        if (dungeonTree) workspace!.SetVanillaGenerationSolid(VanillaTileIds.Spikes, false);
 
-        while (growing && row > 5)
+        while (growing && (dungeonTree || row > 5))
         {
             cancellation.ThrowIfCancellationRequested();
             sinceBranch++;
@@ -277,12 +278,12 @@ internal sealed class LivingTreeGrower1458(
 
                     // The source tests the dungeon wall BEFORE it draws the side, so a branch crossing one
                     // thickens nowhere, records no canopy anchor and consumes no value.
-                    if (!IsDungeonWall(WallAt(x, y)))
+                    if (dungeonTree || !IsDungeonWall(WallAt(x, y)))
                     {
                         if (random.Next(2) == 0)
                         {
                             WriteWood(x, y);
-                            WriteWood(x, y - 1);
+                            WriteWood(x, y - 1, activate: !dungeonTree);
                         }
                         else
                         {
@@ -320,7 +321,7 @@ internal sealed class LivingTreeGrower1458(
         int leftCooldown = 0;
         int rightCooldown = 0;
 
-        while (remaining > 0 && y >= 30)
+        while (remaining > 0 && (dungeonTree || y >= 30))
         {
             cancellation.ThrowIfCancellationRequested();
             WriteWood(x, y);
@@ -422,7 +423,7 @@ internal sealed class LivingTreeGrower1458(
             cancellation.ThrowIfCancellationRequested();
             int plug = random.Next(1, 6);
             int row = j + 1;
-            while (plug > 0 && row < height - 1)
+            while (plug > 0 && (dungeonTree || row < height - 1))
             {
                 if (IsSolid(column, row))
                     plug--;
@@ -452,7 +453,7 @@ internal sealed class LivingTreeGrower1458(
                     WriteRoot(x, row);
                     row += dy;
                     WriteRoot(x, row);
-                    if (Contains(x, row + 1) && !At(x, row + 1).IsActive)
+                    if ((dungeonTree || Contains(x, row + 1)) && !At(x, row + 1).IsActive)
                     {
                         dx = 0;
                         dy = 1;
@@ -513,6 +514,8 @@ internal sealed class LivingTreeGrower1458(
                     }
                 }
 
+                if (dungeonTree) continue;
+
                 // One column in thirty hangs plant detritus from the underside of the canopy.
                 if (random.Next(30) == 0)
                 {
@@ -561,6 +564,7 @@ internal sealed class LivingTreeGrower1458(
     /// <summary>Source <c>GrowLivingTree_CanPlaceLeaves</c>.</summary>
     private bool CanPlaceLeaves(int x, int y)
     {
+        if (dungeonTree) return At(x, y).Type != LivingWood;
         if (!Contains(x, y) || x < 5 || y < 5 || x >= width - 5 || y >= height - 5)
             return false;
 
@@ -589,14 +593,20 @@ internal sealed class LivingTreeGrower1458(
     }
 
     /// <summary>Writes living wood unless a dungeon wall protects the cell.</summary>
-    private void WriteWood(int x, int y)
+    private void WriteWood(int x, int y, bool activate = true)
     {
-        if (!Contains(x, y) || IsDungeonWall(At(x, y).Wall))
+        if (!dungeonTree && (!Contains(x, y) || IsDungeonWall(At(x, y).Wall)))
             return;
 
         ref WorldTile cell = ref At(x, y);
         cell.Type = LivingWood;
-        cell.Flags |= WorldTileFlags.Active;
+        if (activate) cell.Flags |= WorldTileFlags.Active;
+        if (dungeonTree)
+        {
+            cell.ClearSourceShape();
+            if (dungeonPaint != 0) cell.TileColor = dungeonPaint;
+            return;
+        }
         if (cell.Shape == 1)
             cell.Shape = 0;
         cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
@@ -605,12 +615,17 @@ internal sealed class LivingTreeGrower1458(
     /// <summary>The root plug ignores dungeon walls; only the living-wood wall stops a spreading root.</summary>
     private void ForceWood(int x, int y)
     {
-        if (!Contains(x, y))
+        if (!dungeonTree && !Contains(x, y))
             return;
 
         ref WorldTile cell = ref At(x, y);
         cell.Type = LivingWood;
         cell.Flags |= WorldTileFlags.Active;
+        if (dungeonTree)
+        {
+            cell.ClearSourceShape();
+            return;
+        }
         if (cell.Shape == 1)
             cell.Shape = 0;
         cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
@@ -618,12 +633,17 @@ internal sealed class LivingTreeGrower1458(
 
     private void WriteRoot(int x, int y)
     {
-        if (!Contains(x, y) || At(x, y).Wall == LivingWoodWall)
+        if ((!dungeonTree && !Contains(x, y)) || At(x, y).Wall == LivingWoodWall)
             return;
 
         ref WorldTile cell = ref At(x, y);
         cell.Type = LivingWood;
         cell.Flags |= WorldTileFlags.Active;
+        if (dungeonTree)
+        {
+            cell.ClearSourceShape();
+            return;
+        }
         if (cell.Shape == 1)
             cell.Shape = 0;
         cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
@@ -634,6 +654,12 @@ internal sealed class LivingTreeGrower1458(
         ref WorldTile cell = ref At(x, y);
         cell.Type = LeafBlock;
         cell.Flags |= WorldTileFlags.Active;
+        if (dungeonTree)
+        {
+            cell.ClearSourceShape();
+            if (dungeonPaint != 0) cell.TileColor = dungeonPaint;
+            return;
+        }
         if (cell.Shape == 1)
             cell.Shape = 0;
         cell.Flags &= ~WorldTileFlags.HalfBrickWithSlope;
@@ -646,7 +672,7 @@ internal sealed class LivingTreeGrower1458(
 
         WorldTile tile = At(x, y);
         return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
-            VanillaTileCollisionCatalog.IsSolid(tile.TileType);
+            (dungeonTree ? workspace!.IsVanillaGenerationSolid(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) : VanillaTileCollisionCatalog.IsSolid(tile.TileType));
     }
 
     /// <summary>Source <c>TileID.Sets.Ore</c>, which is wider than the eight ores a pickaxe cares about.</summary>
@@ -663,5 +689,9 @@ internal sealed class LivingTreeGrower1458(
 
     private bool Contains(int x, int y) => (uint)x < (uint)width && (uint)y < (uint)height;
 
-    private ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
+    private ref WorldTile At(int x, int y)
+    {
+        if (dungeonTree && !Contains(x, y)) throw new IndexOutOfRangeException("Dungeon tree escaped the source tile bounds.");
+        return ref store.Tiles[store.GetUncheckedIndex(x, y)];
+    }
 }

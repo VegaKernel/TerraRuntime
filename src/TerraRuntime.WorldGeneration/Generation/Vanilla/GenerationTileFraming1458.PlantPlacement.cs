@@ -9,7 +9,7 @@ internal sealed partial class GenerationTileFraming1458
         if (!PreparePlantPlacement(x, y, refuseLiquid: true)) return false;
         PlaceSunflower(x, y, worldSurface);
         SquareTileFrame(x, y);
-        return FinishPlantPlacement(x, y);
+        return FinishPlacement(x, y);
     }
     private bool PreparePlantPlacement(int x, int y, bool refuseLiquid)
     {
@@ -21,7 +21,7 @@ internal sealed partial class GenerationTileFraming1458
         { anchor.TrySetSourceShape(false, anchor.SourceSlope); anchor.FrameX = 0; anchor.FrameY = 0; }
         return true;
     }
-    private bool FinishPlantPlacement(int x, int y)
+    internal bool FinishPlacement(int x, int y)
     {
         bool active = At(x, y).IsActive;
         if (active)
@@ -31,10 +31,29 @@ internal sealed partial class GenerationTileFraming1458
         }
         return active;
     }
+    // Fresh cold generation has no active player sessions. Physical NPC occupancy
+    // is read from the already composed canonical owner, with its retained body.
+    internal bool EmptyPlacementTile(int x, int y)
+    {
+        if (!Contains(x, y) || At(x, y).IsActive) return false;
+        var effects = workspace?.EntityEffects ?? throw new NotSupportedException(
+            "Solid placement requires the canonical generation NPC owner.");
+        for (int slot = 0; slot < 200; slot++)
+        {
+            if (!effects.TryCaptureNpc((byte)slot, out var npc)) continue;
+            if (!TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out var definition) ||
+                !definition.TryResolveHitbox(npc.Simulation, out var body))
+                throw new NotSupportedException("Placement needs its canonical NPC body.");
+            int left = (int)npc.PositionX, top = (int)npc.PositionY;
+            if (x * 16 < left + body.Width && x * 16 + 16 > left &&
+                y * 16 < top + body.Height && y * 16 + 16 > top) return false;
+        }
+        return true;
+    }
     internal bool TryPlaceDyePlant(int x, int y, int style)
     {
         if (!PreparePlantPlacement(x, y, refuseLiquid: false)) return false;
-        PlaceDyePlant(x, y, style); SquareTileFrame(x, y); return FinishPlantPlacement(x, y);
+        PlaceDyePlant(x, y, style); SquareTileFrame(x, y); return FinishPlacement(x, y);
     }
     internal void PlaceDyePlant(int x, int y, int style)
     {
@@ -80,7 +99,7 @@ internal sealed partial class GenerationTileFraming1458
         {
             ref WorldTile tile = ref At(x, y); tile.Flags |= WorldTileFlags.Active; tile.Type = 656; tile.ClearSourceShape(); tile.FrameX = tile.FrameY = 0;
         }
-        return FinishPlantPlacement(x, y);
+        return FinishPlacement(x, y);
     }
     // Place2x2 uses the Tile overload; its platform rule differs from SolidTile2(x,y).
     private bool SolidTile2(in WorldTile tile) => tile.IsActive && IsFramingSolid(tile.TileType) && tile.SourceSlope == 0 && !tile.IsHalfBrick && !tile.IsActuated;
@@ -101,7 +120,7 @@ internal sealed partial class GenerationTileFraming1458
                 ref WorldTile cell = ref At(x - 1 + dx, y - 1 + dy); cell.Flags |= WorldTileFlags.Active; cell.Type = 752; cell.FrameX = (short)(dx * 18); cell.FrameY = (short)(dy * 18);
             }
         }
-        return FinishPlantPlacement(x, y);
+        return FinishPlacement(x, y);
     }
     internal void PlaceSunflower(int x, int y, double worldSurface)
     {

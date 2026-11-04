@@ -53,6 +53,9 @@ internal static class DungeonGenerationTiles1458
         return definition.IsDungeonWall;
     }
 
+    // Source default DungeonGenVars glass set, distinct from Main.wallDungeon and room edge walls.
+    internal static bool IsDefaultDungeonGlass(ushort wall) => wall is 21 or 88 or 89 or 90 or 91 or 92 or 93 or 241 or 242 or 243;
+
     public static bool IsDungeonTile(ushort type)
     {
         if (!VanillaTileDefinitionCatalog.TryGet(new TileTypeId(type), out VanillaTileDefinition definition))

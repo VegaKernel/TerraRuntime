@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Core.Worlds;
@@ -139,6 +140,7 @@ public static class RuntimeWorldGenerationExecutor
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                long started = Stopwatch.GetTimestamp();
                 var random = new WorldGenerationRandomAdapter(
                     WorldGenerationPassRandom.Create(request.Seed, descriptor.Id));
                 IWorldGenerationVanillaRandom? vanillaRandom = null;
@@ -164,6 +166,11 @@ public static class RuntimeWorldGenerationExecutor
                     cancellationToken);
                 entry.Pass.Execute(context);
                 cancellationToken.ThrowIfCancellationRequested();
+                if (workspace is IWorldGenerationPassCompletionSink completion)
+                {
+                    long elapsedMs = Stopwatch.GetElapsedTime(started).Ticks / TimeSpan.TicksPerMillisecond;
+                    completion.PassCompleted(context, descriptor, (int)Math.Min(elapsedMs, int.MaxValue));
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

@@ -5,7 +5,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Ordinary style-zero LateDualDungeonFeatures door restyling, after banners.</summary>
 internal sealed class DungeonLateDoors1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken, Workspace? workspace = null)
 {
     public int Apply(DungeonBounds1458 progressionBounds)
     {
@@ -14,7 +14,7 @@ internal sealed class DungeonLateDoors1458(WorldTileStore tiles, IWorldGeneratio
         if (progressionBounds.Left < 10 || progressionBounds.Top < 10 || progressionBounds.Right > width - 10 ||
             progressionBounds.Bottom > height - 10) throw new InvalidOperationException("Invalid ordinary Dungeon late-feature bounds.");
         int changed = 0;
-        var framing = new DungeonObjectPlacement1458(tiles, random);
+        var framing = new DungeonObjectPlacement1458(tiles, random, workspace);
         for (int x = progressionBounds.Left; x <= progressionBounds.Right; x++)
         {
             cancellationToken.ThrowIfCancellationRequested();

@@ -6,13 +6,13 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary Corruption chasm geometry, pinned to WorldGen 1.4.5.8.
 /// Mutates only an unpublished candidate; uses the existing ore runner and altar placement.</summary>
 internal sealed class CorruptionCaves1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    double worldSurface, double rockLayer, VanillaLiquidLines1458 liquidLines, CancellationToken cancellationToken, Func<TileTypeId, bool>? solidity = null)
+    double worldSurface, double rockLayer, VanillaLiquidLines1458 liquidLines, CancellationToken cancellationToken, Func<TileTypeId, bool>? solidity = null, Workspace? workspace = null)
 {
     private const ushort Stone = 25, Wall = 3;
 
     public void GenerateRegion(int left, int right, int center, double surfaceLow)
     {
-        var surface = new EvilBiomeSurface1458(tiles, random, surfaceLow, worldSurface, cancellationToken);
+        var surface = new EvilBiomeSurface1458(tiles, random, surfaceLow, worldSurface, cancellationToken, workspace);
         int cooldown = 0;
         for (int x = left; x < right; x++)
         {
@@ -152,7 +152,7 @@ internal sealed class CorruptionCaves1458(WorldTileStore tiles, IWorldGeneration
         if (random.Next(3) != 0) return;
         int oreX = (int)x, oreY = (int)y;
         while (!At(oreX, oreY).IsActive) { cancellationToken.ThrowIfCancellationRequested(); oreY++; }
-        new SmallTerrainRunner1458(tiles, random, worldSurface, liquidLines, cancellationToken)
+        new SmallTerrainRunner1458(tiles, random, worldSurface, liquidLines, cancellationToken, rockLayer: rockLayer, seedProfile: workspace?.VanillaSeedProfile ?? default)
             .Run(oreX, oreY, random.Next(2, 6), random.Next(3, 7), 22);
     }
 

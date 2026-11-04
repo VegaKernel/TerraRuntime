@@ -26,29 +26,33 @@ internal sealed class DesertSurface1458
 
     // Ordinary placement preparation; the existing FullDesert pass owns the subsequent phases.
     public static DesertSurface1458? TryDescribe(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-        int centerX, double worldSurface, bool skipTileCheck, CancellationToken cancellation = default)
+        int centerX, double worldSurface, bool skipTileCheck, CancellationToken cancellation = default,
+        VanillaWorldSeedProfile1458 seedProfile = default)
     {
         double scale = tiles.Dimensions.WidthTiles / 4200d;
         int columns = (int)(80 * scale);
         int rows = (int)((random.NextDouble() * .5 + 1.5) * 170 * scale);
+        if (seedProfile.Has(VanillaSpecialWorldSeed1458.Remix)) rows = (int)(340 * scale);
         int width = columns * 4, height = rows * 2, left = centerX - width / 2;
         if (columns < 1 || rows < 1) throw new InvalidOperationException("Unsupported desert dimensions.");
         Surface surface = Scan(tiles, left - 5, width + 10, worldSurface, cancellation);
         if (!skipTileCheck)
             for (int x = left; x < left + width; x++)
                 // Source checks identity even on an inactive tile.
-                if (At(tiles, x, surface.Bottom).Type is 59 or 60 or 147 or 161) return null;
+                if (At(tiles, x, surface.Bottom).Type is 147 or 161 ||
+                    (!seedProfile.Has(VanillaSpecialWorldSeed1458.NotTheBees) || seedProfile.Has(VanillaSpecialWorldSeed1458.Remix)) && At(tiles, x, surface.Bottom).Type is 59 or 60) return null;
         int top = (int)(surface.Average + surface.Bottom) / 2;
         int hiveTop = top + random.Next(40, 60);
         if (top < 20 || hiveTop + height >= tiles.Dimensions.HeightTiles - 20)
             throw new InvalidOperationException("Desert description exceeds the admitted generation envelope.");
+        int offset = seedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) ? (int)(20 * scale) : 0;
         return new(new(left, top, width, hiveTop + height - top),
-            new(left, top, width, hiveTop + height / 2 - top),
-            new(left, hiveTop, width, height), columns, rows, surface);
+            new(left, top, width, hiveTop + height / 2 - top + offset),
+            new(left, hiveTop + offset, width, height - offset), columns, rows, surface);
     }
 
     public void PlaceMound(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-        double worldSurface, CancellationToken cancellation = default)
+        double worldSurface, CancellationToken cancellation = default, VanillaWorldSeedProfile1458 seedProfile = default)
     {
         int moundHeight = Math.Min(Desert.Height, Hive.Height / 2);
         int moundBottom = Desert.Y + moundHeight;
@@ -56,9 +60,9 @@ internal sealed class DesertSurface1458
         // Validate the entire possible wall-framing envelope before the first write.
         // Prefix walls and the two desert walls have ordinary (not large-pattern) frames.
         for (int x = Desert.X - 6; x < Desert.ExclusiveRight + 6; x++)
-        for (int y = Math.Max(1, Math.Min(Heights.Top - 1, Desert.Y - 10) - 1); y <= bottom; y++)
-            if (At(tiles, x, y).Wall is not (0 or 2 or 15 or 64 or 187 or 216))
-                throw new InvalidOperationException("Unverified wall framing in desert mound input.");
+            for (int y = Math.Max(1, Math.Min(Heights.Top - 1, Desert.Y - 10) - 1); y <= bottom; y++)
+                if (At(tiles, x, y).Wall is not (0 or 2 or 15 or 64 or 187 or 216))
+                    throw new InvalidOperationException("Unverified wall framing in desert mound input.");
         int ridgeNoise = 0, clearingNoise = 0;
         for (int offset = -5; offset < Desert.Width + 5; offset++)
         {
@@ -87,7 +91,7 @@ internal sealed class DesertSurface1458
                 tile.Type = 53;
                 tile.Shape = 0;
                 tile.Flags |= WorldTileFlags.Active;
-                tile.LiquidAmount = 0; // preserve the empty liquid-kind bits, paint, wires and frames
+                if (!seedProfile.Has(VanillaSpecialWorldSeed1458.Remix)) tile.LiquidAmount = 0; // preserve kind bits, paint, wires and frames
                 FrameWalls(tiles, random, x, y);
             }
         }
@@ -97,18 +101,18 @@ internal sealed class DesertSurface1458
     internal static void FrameWalls(WorldTileStore tiles, IWorldGenerationVanillaRandom random, int x, int y)
     {
         for (int tx = x - 1; tx <= x + 1; tx++)
-        for (int ty = y - 1; ty <= y + 1; ty++)
-        {
-            if (tx <= 0 || ty <= 0 || tx >= tiles.Dimensions.WidthTiles - 1 || ty >= tiles.Dimensions.HeightTiles - 1)
-                continue;
-            ref WorldTile tile = ref At(tiles, tx, ty);
-            if (tile.Wall == 0)
+            for (int ty = y - 1; ty <= y + 1; ty++)
             {
-                tile.WallColor = 0;
-                tile.Flags &= ~(WorldTileFlags.InvisibleWall | WorldTileFlags.FullbrightWall);
+                if (tx <= 0 || ty <= 0 || tx >= tiles.Dimensions.WidthTiles - 1 || ty >= tiles.Dimensions.HeightTiles - 1)
+                    continue;
+                ref WorldTile tile = ref At(tiles, tx, ty);
+                if (tile.Wall == 0)
+                {
+                    tile.WallColor = 0;
+                    tile.Flags &= ~(WorldTileFlags.InvisibleWall | WorldTileFlags.FullbrightWall);
+                }
+                else if (tx == x && ty == y) _ = random.Next(0, 3);
             }
-            else if (tx == x && ty == y) _ = random.Next(0, 3);
-        }
     }
 
     public static Surface Scan(WorldTileStore tiles, int left, int width, double worldSurface,

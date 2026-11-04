@@ -23,9 +23,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// in the same run are not independent.
 /// </para>
 /// <para>
-/// Ordinary placement retains its established contract. Configured special profiles are qualified here only
-/// for the forced Ivy chest used by Micro Biomes; other special families explicitly refuse before mutation
-/// or random consumption. This admission fence is a runtime scope limit, not vanilla refusal behavior.
+/// Configured basic special profiles share this placement and loot owner for source-qualified container families.
+/// Selected Error, Rainbow Road, vampire and Mole People configurations use the same qualified families. Other configured
+/// families refuse before mutation or random consumption; this is a runtime admission limit, not vanilla behavior.
 /// </para>
 /// </remarks>
 internal sealed class BuriedChest1458(
@@ -45,6 +45,21 @@ internal sealed class BuriedChest1458(
                 if(!workspace.TryAddChest(chest.Left,chest.Top,string.Empty,chest.Items))
                     throw new InvalidOperationException($"Buried chest at {chest.Left},{chest.Top} passed placement but failed side-table registration.");
             },workspace:workspace);
+    // Runtime admission boundary, shared by the raw primitive and Dungeon producer. It is not a vanilla refusal rule.
+    internal static void EnsureQualifiedScope(VanillaWorldSeedProfile1458 profile,int chestStyle,ushort chestTileType)
+    {
+        bool basicProfile=profile.Secret==VanillaSecretWorldSeed1458.None&&profile.Special is
+            VanillaSpecialWorldSeed1458.None or VanillaSpecialWorldSeed1458.DrunkWorld or VanillaSpecialWorldSeed1458.ForTheWorthy or
+            VanillaSpecialWorldSeed1458.CelebrationMk10 or VanillaSpecialWorldSeed1458.TheConstant or VanillaSpecialWorldSeed1458.NotTheBees or
+            VanillaSpecialWorldSeed1458.Remix or VanillaSpecialWorldSeed1458.NoTraps or VanillaSpecialWorldSeed1458.Skyblock or (VanillaSpecialWorldSeed1458)255;
+        const VanillaSecretWorldSeed1458 error=VanillaSecretWorldSeed1458.IAmError,rainbow=VanillaSecretWorldSeed1458.RainbowRoad,vampire=VanillaSecretWorldSeed1458.WhatAHorribleNightToHaveACurse;
+        const VanillaSecretWorldSeed1458 count4=error|VanillaSecretWorldSeed1458.MolePeople|rainbow|VanillaSecretWorldSeed1458.MoreTrapsPlease;
+        bool additional=profile.Special==VanillaSpecialWorldSeed1458.None&&profile.Secret is error or rainbow or vampire or (error|rainbow) or (error|vampire) or (rainbow|vampire) or count4 or (count4|VanillaSecretWorldSeed1458.NegativeInfinity) or (count4|VanillaSecretWorldSeed1458.NegativeInfinity|VanillaSecretWorldSeed1458.Monochrome) or (count4|VanillaSecretWorldSeed1458.NegativeInfinity|vampire) or VanillaSecretWorldSeed1458.MolePeople;
+        bool family=(chestTileType is 0 or Containers&&chestStyle is -1 or 0 or 1 or 2 or 4 or 7 or 8 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 23 or 24 or 25 or 26 or 27 or 29 or 32 or 34 or 42)||(chestTileType==Containers2&&chestStyle is 2 or 10 or 11 or 13 or 24);
+        if((!basicProfile&&!additional&&!(chestStyle==10&&chestTileType is 0 or Containers&&MicroSeedCapabilities1458.Supports(profile))) || (basicProfile||additional)&&!profile.IsDefault&&!family)
+            throw new NotSupportedException("The configured special buried-chest family is outside the source-qualified component.");
+    }
+
     private const ushort Containers = 21;
     private const ushort Containers2 = 467;
     private const ushort MagicStorage = 231;
@@ -77,14 +92,7 @@ internal sealed class BuriedChest1458(
         chestX = 0;
         chestY = 0;
         var profile=workspace?.VanillaSeedProfile??default;
-        if (profile.Secret != VanillaSecretWorldSeed1458.None ||
-            profile.Special != VanillaSpecialWorldSeed1458.None &&
-            (chestStyle != 10 || chestTileType is not (0 or Containers) ||
-             profile.Special is not (VanillaSpecialWorldSeed1458.DrunkWorld or VanillaSpecialWorldSeed1458.ForTheWorthy or
-                 VanillaSpecialWorldSeed1458.CelebrationMk10 or VanillaSpecialWorldSeed1458.TheConstant or
-                 VanillaSpecialWorldSeed1458.NotTheBees or VanillaSpecialWorldSeed1458.Remix or
-                 VanillaSpecialWorldSeed1458.NoTraps or (VanillaSpecialWorldSeed1458)255)))
-            throw new NotSupportedException("Special buried chest placement is qualified only for Micro Biomes Ivy chests.");
+        EnsureQualifiedScope(profile,chestStyle,chestTileType);
         bool remix=profile.Has(VanillaSpecialWorldSeed1458.Remix),worthy=profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy);
         if (chestTileType == 0)
             chestTileType = Containers;
@@ -166,6 +174,25 @@ internal sealed class BuriedChest1458(
             if (mainItemInChest >= 0)
                 primary = mainItemInChest;
 
+            // Error worlds evaluate the alternate-appearance chance even for a forced Ivy style,
+            // whose switch arm has no alternative. This still precedes all chest-family classification.
+            if(profile.Has(VanillaSecretWorldSeed1458.IAmError)&&chestTileType==Containers&&random.Next(2)==0)
+            {
+                int alternative=style switch{0=>5,1 or 11 or 12 or 13 or 15=>6,_=>-1};
+                if(alternative>=0)
+                {
+                    if(random.Next(3)==0)
+                    {
+                        do{alternative=random.Next(52);}while(alternative is >=18 and <=27);
+                    }
+                    style=alternative;
+                }
+            }
+
+            bool remixWorthy=remix&&worthy;
+            bool drunkCelebration=profile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)&&profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10);
+            bool beeCelebration=profile.Has(VanillaSpecialWorldSeed1458.NotTheBees)&&profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10);
+            bool originalContainer=chestTileType==Containers;
             bool wooden = false;
             bool frozen = false;
             bool desertHive = false;
@@ -183,17 +210,19 @@ internal sealed class BuriedChest1458(
             if (chestTileType == Containers && (chestStyle == 0 || (chestStyle == -1 && style == 0)))
                 wooden = true;
 
-            if ((chestTileType == Containers2 && chestStyle == 10) ||
+            if ((chestTileType == Containers2 && chestStyle == 10) || (chestTileType==Containers&&chestStyle==42&&remixWorthy) ||
                 (primary == 0 && floor <= height - 205 && IsUndergroundDesert(i, k)))
             {
                 desertHive = true;
                 style = 10;
                 chestTileType = Containers2;
+                if(remixWorthy&&chestStyle==42&&originalContainer){style=42;chestTileType=Containers;}
                 // Which half of the hive the chest sits in picks between two disjoint signature sets.
                 bool lowerHive = floor > (context.DesertHiveHigh * 3 + context.DesertHiveLow * 4) / 7;
                 primary = lowerHive
                     ? SelectRandom(4061, 4062, 4276)
                     : SelectRandom(4056, 4055, 4262, 4263);
+                if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
             }
 
             bool beeIce=false;
@@ -210,19 +239,27 @@ internal sealed class BuriedChest1458(
                 frozen = true;
                 if (chestTileType == Containers)
                     style = 11;
+                if(drunkCelebration&&chestTileType==Containers&&chestStyle==34)style=34;
                 primary = SelectRandom(670, 724, 950, 1319, 987, 1579, 6153);
+                if(remix&&primary==1319)primary=725;
                 if (random.Next(20) == 0)
                     primary = 997;
+                if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
             }
 
-            if ((chestTileType == Containers && chestStyle == 10) ||
-                primary is 211 or 212 or 213 or 753)
+            if ((chestTileType == Containers && (chestStyle == 10 || chestStyle==29&&beeCelebration)) ||
+                (chestTileType==Containers2&&chestStyle==11&&beeCelebration)||primary is 211 or 212 or 213 or 753)
             {
                 ivy = true;
                 if (!context.GeneratingDungeon)
                 {
                     style = 10;
                     chestTileType = Containers;
+                }
+                if(beeCelebration)
+                {
+                    if(chestStyle==29&&originalContainer){style=29;chestTileType=Containers;}
+                    else if(chestStyle==11&&!originalContainer){style=11;chestTileType=Containers2;}
                 }
                 if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
             }
@@ -233,10 +270,14 @@ internal sealed class BuriedChest1458(
                 primary = context.HellChestItem[context.HellChest];
                 style = 4;
                 advanceHellChest = true;
+                if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
             }
 
             if (chestTileType == Containers && style == 17)
+            {
                 water = true;
+                if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
+            }
 
             if (chestTileType == Containers && style == 12)
             {
@@ -251,11 +292,15 @@ internal sealed class BuriedChest1458(
                 else
                 {
                     livingWood = true;
+                    if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
                 }
             }
 
             if (chestTileType == Containers && style == 32)
+            {
                 style32 = true;
+                if(worthy&&random.Next(profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10)?45:15)==0)primary=52;
+            }
             if (chestTileType == Containers && style == 16)
                 lihzahrd = true;
             if (chestTileType == Containers && style != 0 && IsDungeon(i, k))
@@ -268,13 +313,22 @@ internal sealed class BuriedChest1458(
             if (chestTileType == Containers && style != 0 && primary is 848 or 857 or 934)
                 forcedSurfaceItem = true;
             if (chestTileType == Containers && (style == 13 || primary is 159 or 65 or 158 or 2219))
+            {
                 skyware = true;
+                if(remix&&!worthy&&!profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10))
+                {
+                    if(context.Crimson)style=43;
+                    else {chestTileType=Containers2;style=3;}
+                }
+            }
 
-            // Dead in the source as written: the left half only holds when the primary is non-zero, and the
-            // right half demands it be zero. Kept because removing it would hide that.
+            // Spider chest families provide their signature when the caller leaves it unspecified.
             if ((primary == 939 || (chestTileType == Containers && style == 15) ||
                  (chestTileType == Containers2 && style == 2)) && primary == 0)
                 primary = 939;
+
+            if(profile.Has(VanillaSpecialWorldSeed1458.NoTraps)&&style==1&&chestTileType==Containers&&(!remix||random.Next(3)==0))
+            {style=4;chestTileType=Containers2;}
 
             if (!TryPlaceChest(i - 1, floor - 1, chestTileType, notNearOtherChests, style))
             {
@@ -303,7 +357,7 @@ internal sealed class BuriedChest1458(
                 dungeon, lockedBiome, forcedSurfaceItem, skyware, lihzahrd);
             WorldGenerationChestItem[] items =
                 BuriedChestLoot1458.Fill(random, context, in kind, floor, style, primary, chestTileType,
-                    profile);
+                    chestStyle,profile);
             var result = new BuriedChestResult1458(chestX, chestY - 1, chestTileType, style, items);
             Chests.Add(result);
             onPlaced?.Invoke(result);
@@ -485,6 +539,7 @@ internal sealed class BuriedChestContext1458
             return existing;
         var context = new BuriedChestContext1458
         {
+            Crimson = bootstrap.EffectiveCrimson,
             Height = workspace.HeightTiles,
             WorldSurface = worldSurface,
             RockLayer = rockLayer,
@@ -512,6 +567,8 @@ internal sealed class BuriedChestContext1458
         JungleItemCount++;
         return primary;
     }
+    /// <summary>Source Main.crimson, initialized from the immutable effective world evil.</summary>
+    public bool Crimson { get; init; }
     public required int Height { get; init; }
     public required double WorldSurface { get; init; }
     public required double RockLayer { get; init; }
@@ -529,7 +586,7 @@ internal sealed class BuriedChestContext1458
     public required int[] HellChestItem { get; init; }
 
     /// <summary>Source <c>GenVars.CurrentDungeonGenVars.GeneratingDungeon</c>.</summary>
-    public bool GeneratingDungeon { get; init; }
+    public bool GeneratingDungeon { get; set; }
 
     public int HellChest { get; set; }
     public bool GeneratedShadowKey { get; set; }

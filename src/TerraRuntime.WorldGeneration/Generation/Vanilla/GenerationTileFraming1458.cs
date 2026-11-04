@@ -2387,8 +2387,10 @@ internal sealed partial class GenerationTileFraming1458(
             RemoveOwnedTileEntity(i, j, tile.Type == 723 ? WorldTileEntityKind.KiteAnchor : WorldTileEntityKind.CritterAnchor);
         if (tile.Type == 520)
             RemoveOwnedTileEntity(i, j, WorldTileEntityKind.FoodPlatter);
+        byte originalSlope=tile.SourceSlope;
         tile.Flags &= ~WorldTileFlags.Active;
-        tile.ClearSourceShape();
+        // Source clears half-brick here; the later TileFrame clears slope only outside its five-cell border.
+        if(!tile.TrySetSourceShape(false,originalSlope))throw new InvalidOperationException("Invalid source kill shape.");
         tile.FrameX = -1;
         tile.FrameY = -1;
         tile.TileColor = 0;
@@ -2410,6 +2412,8 @@ internal sealed partial class GenerationTileFraming1458(
             tile.LiquidKind = WorldLiquidKind.Water;
         }
         if (tile.Type == 419) RefreshUnwiredLogicGate(i, j + 1);
+        else if (tile.Type is 54 or 328 or 459 or 748)
+            new GenerationWallFraming1458(store,random).SquareWallFrame(i,j);
         tile.Type = 0;
         tile.Flags &= ~WorldTileFlags.Inactive;
         SquareTileFrame(i, j);

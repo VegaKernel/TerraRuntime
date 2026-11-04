@@ -42,15 +42,23 @@ internal static class EvilBiomePlacement1458
 
     public static Region Select(int width, SurfaceBounds bounds, int dungeonLocation, int dungeonSide,
         int desertLeft, int desertRight, bool crimson, IWorldGenerationVanillaRandom random,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, VanillaWorldSeedProfile1458 seedProfile = default, bool crimsonLeft = false)
     {
         if (width <= 1000) throw new ArgumentOutOfRangeException(nameof(width));
+        bool drunk = seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld);
+        bool remix = seedProfile.Has(VanillaSpecialWorldSeed1458.Remix);
+        bool anniversary = seedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) && !seedProfile.Has(VanillaSpecialWorldSeed1458.TheConstant);
+        bool ignoreJungle = seedProfile.Has(VanillaSpecialWorldSeed1458.NotTheBees) && !remix;
+        int edge = anniversary && !remix ? 1000 : 500, dungeonAvoidance = anniversary && !remix ? 200 : 100;
+        int centerAvoidance = drunk && crimson ? 100 : 200;
         int jungleLeft = bounds.JungleLeft, jungleRight = bounds.JungleRight;
         int snowLeft = bounds.SnowLeft, snowRight = bounds.SnowRight;
         for (int attempt = 0; attempt < MaximumAttempts; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            int center = random.Next(500, width - 500);
+            int center = drunk
+                ? crimson == crimsonLeft ? random.Next(edge, width / 2) : random.Next(width / 2, width - edge)
+                : random.Next(edge, width - edge);
             int left = Math.Max(BeachAvoidance, center - random.Next(200) - 100);
             int right = Math.Min(width - BeachAvoidance, center + random.Next(200) + 100);
             center = Math.Max(center, left + 50);
@@ -61,10 +69,12 @@ internal static class EvilBiomePlacement1458
                 if (dungeonSide <= -1 && left < 400) left = 400;
                 else if (dungeonSide >= 1 && left > width - 400) left = width - 400;
             }
-            bool rejected = left < dungeonLocation + 100 && right > dungeonLocation - 100;
-            rejected |= Inside(center, width / 2 - 200, width / 2 + 200) ||
-                        Inside(left, width / 2 - 200, width / 2 + 200) ||
-                        Inside(right, width / 2 - 200, width / 2 + 200);
+            bool rejected = left < dungeonLocation + dungeonAvoidance && right > dungeonLocation - dungeonAvoidance;
+            if (remix) { if (!rejected) return new(center, left, right); continue; }
+            if (!anniversary)
+                rejected |= Inside(center, width / 2 - centerAvoidance, width / 2 + centerAvoidance) ||
+                            Inside(left, width / 2 - centerAvoidance, width / 2 + centerAvoidance) ||
+                            Inside(right, width / 2 - centerAvoidance, width / 2 + centerAvoidance);
             // Source tests these three points, not generic interval overlap with the desert.
             rejected |= Inside(center, desertLeft, desertRight) || Inside(left, desertLeft, desertRight) ||
                         Inside(right, desertLeft, desertRight);
@@ -72,7 +82,7 @@ internal static class EvilBiomePlacement1458
             {
                 snowLeft++; snowRight--; rejected = true;
             }
-            if (left < jungleRight && right > jungleLeft)
+            if (!ignoreJungle && left < jungleRight && right > jungleLeft)
             {
                 jungleLeft++; jungleRight--; rejected = true;
             }

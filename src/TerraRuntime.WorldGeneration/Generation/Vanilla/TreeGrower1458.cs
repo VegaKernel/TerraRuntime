@@ -99,6 +99,7 @@ internal static partial class TreeGrower1458
         byte color = ground.TileColor;
         WorldTileFlags coating = ground.Flags &
             (WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        bool bareBranches = framing?.TreeHasBareBranches(groundY) == true;
         bool previousLeftBranch = false;
         bool previousRightBranch = false;
 
@@ -124,7 +125,7 @@ internal static partial class TreeGrower1458
             if (previousLeftBranch)
             {
                 variant = random.Next(SegmentVariantCount);
-                bool leafy = random.Next(LeafyBranchRollExclusive) < LeafyBranchSuccessCount;
+                bool leafy = random.Next(LeafyBranchRollExclusive) < LeafyBranchSuccessCount && !bareBranches;
                 ref WorldTile branch = ref tiles[Index(stride, x - 1, y)];
                 SetTreeTile(ref branch, color, coating, TreeFrameCatalog1458.LeftBranch(leafy, variant));
             }
@@ -132,7 +133,7 @@ internal static partial class TreeGrower1458
             if (previousRightBranch)
             {
                 variant = random.Next(SegmentVariantCount);
-                bool leafy = random.Next(LeafyBranchRollExclusive) < LeafyBranchSuccessCount;
+                bool leafy = random.Next(LeafyBranchRollExclusive) < LeafyBranchSuccessCount && !bareBranches;
                 ref WorldTile branch = ref tiles[Index(stride, x + 1, y)];
                 SetTreeTile(ref branch, color, coating, TreeFrameCatalog1458.RightBranch(leafy, variant));
             }
@@ -162,7 +163,7 @@ internal static partial class TreeGrower1458
         if (TreeFrameCatalog1458.TryGetTrunkBase(rootShape, baseVariant, out TreeFrame1458 baseFrame))
             SetTreeFrame(ref trunkBase, baseFrame);
 
-        bool leafyTop = random.Next(LeafyTopRollExclusive) != 0;
+        bool leafyTop = random.Next(LeafyTopRollExclusive) != 0 && !bareBranches;
         int topVariant = random.Next(SegmentVariantCount);
         ref WorldTile top = ref tiles[Index(stride, x, groundY - treeHeight)];
         SetTreeFrame(ref top, TreeFrameCatalog1458.Top(leafyTop, topVariant));

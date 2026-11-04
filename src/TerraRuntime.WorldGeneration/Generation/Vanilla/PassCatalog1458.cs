@@ -138,6 +138,30 @@ internal static class PassCatalog1458
         "Shimmer",
     ];
 
+    private static readonly Dictionary<string, string> OrdinaryReportNames = CreateOrdinaryReportNames();
+
+    internal static bool TryGetOrdinaryReportName(TerraRuntime.Contracts.Gameplay.WorldGenerationPassId id, out string? name) =>
+        OrdinaryReportNames.TryGetValue(id.Value, out name);
+
+    private static Dictionary<string, string> CreateOrdinaryReportNames()
+    {
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string name in PassNames)
+        {
+            // These registrations are conditional in WorldGen.AddGenerationPasses. The ordinary plan's
+            // Dither entry is only a compatibility barrier; it does not appear in WorldManifest.
+            if (name is "Skyblock" or "Dual Dungeons Dither Snake") continue;
+            string id = "terraria:1.4.5.8/" + new string(name.Where(char.IsAsciiLetterOrDigit).ToArray());
+            // The source display name has a lowercase conjunction; the existing typed pass ID uses PascalCase.
+            if (name == "Glowing Mushrooms and Jungle Plants")
+                id = "terraria:1.4.5.8/GlowingMushroomsAndJunglePlants";
+            else if (name == "Surface Ore and Stone")
+                id = "terraria:1.4.5.8/SurfaceOreAndStone";
+            names.TryAdd(id, name); // The extra-Jungle registration shares the same original name.
+        }
+        return names;
+    }
+
     public static ReadOnlySpan<string> SourceOrderBeforeSpecialSeedFiltering => PassNames;
 
     public static ReadOnlySpan<string> DisabledForDualDungeons => DualDungeonDisabledPassNames;

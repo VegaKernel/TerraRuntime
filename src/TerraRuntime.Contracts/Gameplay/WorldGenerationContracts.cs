@@ -149,6 +149,16 @@ public interface IWorldGenerationPass
     void Execute(IWorldGenerationContext context);
 }
 
+/// <summary>
+/// Optional workspace lifecycle boundary invoked once after a successful pass returns and cancellation is checked.
+/// Duration covers executor setup and the pass body; the callback may retain report state using the same pass RNG.
+/// A callback failure fails candidate execution, so incomplete reports cannot silently reach finalization.
+/// </summary>
+public interface IWorldGenerationPassCompletionSink
+{
+    void PassCompleted(IWorldGenerationContext context, WorldGenerationPassDescriptor descriptor, int durationMs);
+}
+
 /// <summary>Runtime-owned execution context for one generation pass.</summary>
 public interface IWorldGenerationContext
 {

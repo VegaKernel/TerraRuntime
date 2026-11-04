@@ -5,7 +5,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Ordinary DungeonGlobalBookshelves search, retry accounting and ordered shelf decoration.</summary>
 internal sealed class DungeonBookshelves1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random,
-    double worldSurface, double rockLayer, CancellationToken cancellationToken, IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null)
+    double worldSurface, double rockLayer, CancellationToken cancellationToken, IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null, Workspace? workspace = null)
 {
     public int Place(DungeonBounds1458 bounds, IReadOnlyList<int> wallVariants,
         DungeonDecorationProfile1458 decoration, DungeonBounds1458? protectedEntrance = null)
@@ -14,7 +14,7 @@ internal sealed class DungeonBookshelves1458(WorldTileStore tiles, IWorldGenerat
         if (bounds.Left < 5 || bounds.Right >= width - 5 || bounds.Top < 5 || bounds.Bottom >= height - 5 ||
             bounds.Left >= bounds.Right || bounds.Top >= bounds.Bottom || wallVariants.Count != 3)
             throw new InvalidOperationException("Invalid dungeon bookshelf sampling bounds.");
-        var placement = new DungeonObjectPlacement1458(tiles, random);
+        var placement = new DungeonObjectPlacement1458(tiles, random, workspace);
         int completed = 0, failures = 0, placed = 0;
         while (completed < width / 20)
         {

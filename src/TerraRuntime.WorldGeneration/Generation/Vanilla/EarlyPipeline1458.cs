@@ -244,8 +244,6 @@ internal sealed partial class EarlyPass1458 : IWorldGenerationPass
     private const ushort SnowWall = 40;
     private const ushort MudWall = 15;
     private const ushort JungleWall = 64;
-    private static readonly double[] ExtraStepThresholds =
-        [50d, 100d, 150d, 200d, 250d, 300d, 400d, 500d, 600d, 700d, 800d, 900d];
 
     private readonly EarlyStage1458 stage;
     private readonly EarlyState1458 state;
@@ -1409,18 +1407,7 @@ internal sealed partial class EarlyPass1458 : IWorldGenerationPass
 
     private void VaryRunner(IRandom random, ref double strength, ref int steps, int type)
     {
-        if (state.MudWall) return;
-        if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld))
-        {
-            strength *= 1d + random.Next(-80, 81) * 0.01d;
-            steps = (int)(steps * (1d + random.Next(-80, 81) * 0.01d));
-        }
-        else if (HasSpecial(VanillaSpecialWorldSeed1458.Remix)) strength *= 1d + random.Next(-50, 51) * 0.01d;
-        else if (HasSpecial(VanillaSpecialWorldSeed1458.ForTheWorthy) && type != 57)
-        {
-            strength *= 1d + random.Next(-80, 81) * 0.015d;
-            steps += random.Next(3);
-        }
+        if (!state.MudWall) SmallTerrainRunner1458.VaryForSeed(((VanillaRandom)random).Inner, state.Profile, ref strength, ref steps, type);
     }
 
     private void RunTileRunner(RuntimeGrid grid, IRandom random, int i, int j, double strength, int steps, int type,
@@ -1430,13 +1417,7 @@ internal sealed partial class EarlyPass1458 : IWorldGenerationPass
         double current = strength, remaining = steps, x = i, y = j;
         double vx = random.Next(-10, 11) * 0.1d, vy = random.Next(-10, 11) * 0.1d;
         if (speedX != 0d || speedY != 0d) { vx = speedX; vy = speedY; }
-        WorldLiquidKind liquidKind = WorldLiquidKind.Water;
-        if (HasSpecial(VanillaSpecialWorldSeed1458.NotTheBees) && HasSpecial(VanillaSpecialWorldSeed1458.TheConstant) && !HasSpecial(VanillaSpecialWorldSeed1458.Remix) && random.Next(3) == 0) liquidKind = WorldLiquidKind.Honey;
-        else if (random.Next(4) == 0)
-        {
-            if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) && HasSpecial(VanillaSpecialWorldSeed1458.CelebrationMk10) && HasSpecial(VanillaSpecialWorldSeed1458.Remix) && !HasSpecial(VanillaSpecialWorldSeed1458.NotTheBees)) liquidKind = WorldLiquidKind.Shimmer;
-            else if (HasSpecial(VanillaSpecialWorldSeed1458.ForTheWorthy)) liquidKind = WorldLiquidKind.Lava;
-        }
+        WorldLiquidKind liquidKind = SmallTerrainRunner1458.ChooseLiquidForSeed(((VanillaRandom)random).Inner, state.Profile);
         while (current > 0d && remaining > 0d)
         {
             if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) && random.Next(30) == 0)
@@ -1477,7 +1458,7 @@ internal sealed partial class EarlyPass1458 : IWorldGenerationPass
                         {
                             tile.LiquidAmount = byte.MaxValue;
                             tile.LiquidKind = liquidKind;
-                            if (!HasSpecial(VanillaSpecialWorldSeed1458.Remix) && ty > state.LavaLine || HasSpecial(VanillaSpecialWorldSeed1458.Remix) && ty > state.LavaLine && (ty < state.MainRockLayer - 80d || ty > grid.Height - 350) && !RunnerOceanDepths(grid, tx, ty)) tile.LiquidKind = WorldLiquidKind.Lava;
+                            if (!HasSpecial(VanillaSpecialWorldSeed1458.Remix) && ty > state.LavaLine || HasSpecial(VanillaSpecialWorldSeed1458.Remix) && ty > state.LavaLine && (ty < state.MainRockLayer - 80d || ty > grid.Height - 350) && !SmallTerrainRunner1458.OceanDepths(tx, ty, grid.Width, state.MainWorldSurface, state.MainRockLayer)) tile.LiquidKind = WorldLiquidKind.Lava;
                         }
                         SetActive(ref tile, false);
                         continue;
@@ -1496,15 +1477,8 @@ internal sealed partial class EarlyPass1458 : IWorldGenerationPass
                     if (type == Mud && ty > state.WaterLine && tile.LiquidAmount > 0) { tile.LiquidAmount = 0; tile.LiquidKind = (WorldLiquidKind)((byte)tile.LiquidKind & ~1); }
                 }
             x += vx; y += vy;
-            bool extraSteps = !HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld) || random.Next(3) != 0;
-            foreach (double threshold in ExtraStepThresholds)
-            {
-                if (!extraSteps) break;
-                if (current <= threshold) break;
-                x += vx; y += vy; remaining--;
-                vy += random.Next(-10, 11) * 0.05d;
-                vx += random.Next(-10, 11) * 0.05d;
-            }
+            SmallTerrainRunner1458.ApplyExtraSteps(((VanillaRandom)random).Inner, HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld),
+                current, ref remaining, ref x, ref y, ref vx, ref vy);
             vx += random.Next(-10, 11) * 0.05d;
             if (HasSpecial(VanillaSpecialWorldSeed1458.DrunkWorld)) vx += random.Next(-10, 11) * 0.25d;
             vx = Math.Clamp(vx, -1d, 1d);
@@ -1519,7 +1493,6 @@ internal sealed partial class EarlyPass1458 : IWorldGenerationPass
         }
     }
 
-    private bool RunnerOceanDepths(RuntimeGrid grid, int x, int y) => y <= (state.MainWorldSurface + state.MainRockLayer) / 2d + 40d && (x < 380 || x > grid.Width - 380);
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() => state.Bootstrap ??
         throw new InvalidOperationException("Early vanilla pass executed before Reset bootstrap publication.");

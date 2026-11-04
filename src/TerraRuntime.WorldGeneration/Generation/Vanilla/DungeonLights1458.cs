@@ -5,7 +5,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>Ordinary DungeonGlobalLights ceiling selection, lantern/chandelier placement and wired switches.</summary>
 internal sealed class DungeonLights1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken,
-    IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null)
+    IReadOnlyList<DungeonPitTraps1458.Pit>? pits = null, Workspace? workspace = null)
 {
     public int Place(DungeonBounds1458 bounds, IReadOnlyList<int> variants, int color,
         DungeonDecorationProfile1458 decoration, DungeonBounds1458? entrance)
@@ -95,7 +95,7 @@ internal sealed class DungeonLights1458(WorldTileStore tiles, IWorldGenerationVa
 
     private void GenerateSwitch(int lightX, int lightY)
     {
-        var placement = new DungeonObjectPlacement1458(tiles, random);
+        var placement = new DungeonObjectPlacement1458(tiles, random, workspace);
         for (int attempt = 0; attempt < 1000; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();

@@ -5,6 +5,24 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 internal sealed partial class GenerationTileFraming1458
 {
+    internal void QuickWaterBeforeDungeonGeneration(int waterLine, CancellationToken cancellationToken)
+    {
+        var sink = new GenerationLiquidMergeSink(this);
+        new VanillaWorldLiquidSimulator1458(store, sideEffects: sink, random: new GenerationLiquidRandom(random))
+            .QuickWaterBeforeDungeonGeneration(waterLine, cancellationToken,
+                workspace is { HasVanillaGenerationSolidity: true } ? workspace.IsVanillaGenerationSolid : null,
+                workspace is { HasVanillaGenerationSolidity: true } ? workspace.SetVanillaGenerationSolid : null,
+                workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) == true ? RemixFallingLava : null);
+    }
+
+    private bool RemixFallingLava(int x, int y)
+    {
+        if (workspace?.VanillaLiquidLines is not { } lines || !workspace.TryGetLayers(out var layers))
+            throw new InvalidOperationException("Remix liquid flow requires retained Main layers and liquid lines.");
+        return y > lines.LavaLine && (y < layers.RockLayer - 80 || y > store.Dimensions.HeightTiles - 350) &&
+            !SmallTerrainRunner1458.OceanDepths(x, y, store.Dimensions.WidthTiles, layers.WorldSurface, layers.RockLayer);
+    }
+
     internal VanillaWaterCheckDiagnostic1458 WaterCheckLiquidsDuringGeneration()
     {
         bool previous = useGenerationSolidity, previousIgnore = ignoreWaterSolidity;

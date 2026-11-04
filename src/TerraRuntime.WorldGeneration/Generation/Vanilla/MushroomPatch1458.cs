@@ -3,16 +3,17 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
-/// <summary>Ordinary WorldGen.ShroomPatch brush and roots, before pass-wide grass and cleanup.</summary>
+/// <summary>Source WorldGen.ShroomPatch brush, Worthy scale and shared roots before pass-wide cleanup.</summary>
 internal sealed class MushroomPatch1458(WorldTileStore store, IWorldGenerationVanillaRandom random,
     double worldSurface, VanillaLiquidLines1458 lines, WorldTileRegion undergroundDesert,
-    CancellationToken cancellation)
+    CancellationToken cancellation, VanillaWorldSeedProfile1458 seedProfile = default)
 {
-    private readonly SmallTerrainRunner1458 roots = new(store, random, worldSurface, lines, cancellation, undergroundDesert);
+    private readonly SmallTerrainRunner1458 roots = new(store, random, worldSurface, lines, cancellation, undergroundDesert, seedProfile: seedProfile);
 
     public void Place(int originX, int originY)
     {
         double widthScale = store.Dimensions.WidthTiles / 4200d;
+        if (seedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy) && !seedProfile.Has(VanillaSpecialWorldSeed1458.Remix)) widthScale *= 1.5;
         double radius = random.Next(80, 100) * widthScale;
         double remaining = random.Next(20, 26) * widthScale;
         double first = remaining - 1;
@@ -27,24 +28,24 @@ internal sealed class MushroomPatch1458(WorldTileStore store, IWorldGenerationVa
             int top = Math.Max(0, (int)(y - radius * .5)), bottom = Math.Min(store.Dimensions.HeightTiles, (int)(y + radius * .5));
             double brush = radius * random.Next(80, 120) * .01;
             for (int tx = left; tx < right; tx++)
-            for (int ty = top; ty < bottom; ty++)
-            {
-                ref WorldTile tile = ref At(tx, ty);
-                double dx = Math.Abs(tx - x), dy = Math.Abs((ty - y) * 2.3);
-                double distance = Math.Sqrt(dx * dx + dy * dy);
-                if (distance < brush * .8 && tile.LiquidKind == WorldLiquidKind.Lava) tile.LiquidAmount = 0;
-                if (distance < brush * .2 && ty < y)
+                for (int ty = top; ty < bottom; ty++)
                 {
-                    tile.Flags &= ~WorldTileFlags.Active;
-                    if (tile.Wall > 0) tile.Wall = 80;
+                    ref WorldTile tile = ref At(tx, ty);
+                    double dx = Math.Abs(tx - x), dy = Math.Abs((ty - y) * 2.3);
+                    double distance = Math.Sqrt(dx * dx + dy * dy);
+                    if (distance < brush * .8 && tile.LiquidKind == WorldLiquidKind.Lava) tile.LiquidAmount = 0;
+                    if (distance < brush * .2 && ty < y)
+                    {
+                        tile.Flags &= ~WorldTileFlags.Active;
+                        if (tile.Wall > 0) tile.Wall = 80;
+                    }
+                    else if (distance < brush * .4 * (.95 + random.NextDouble() * .1))
+                    {
+                        tile.Type = SmallTerrainRunner1458.Mud;
+                        if (remaining == first && ty > y) tile.Flags |= WorldTileFlags.Active;
+                        if (tile.Wall > 0) tile.Wall = 80;
+                    }
                 }
-                else if (distance < brush * .4 * (.95 + random.NextDouble() * .1))
-                {
-                    tile.Type = SmallTerrainRunner1458.Mud;
-                    if (remaining == first && ty > y) tile.Flags |= WorldTileFlags.Active;
-                    if (tile.Wall > 0) tile.Wall = 80;
-                }
-            }
             x += vx; y += vy;
             x += vx; // Source moves horizontally twice before changing the velocity.
             vx += random.Next(-100, 110) * .005;

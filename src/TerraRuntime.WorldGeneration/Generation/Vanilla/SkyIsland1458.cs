@@ -3,7 +3,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
-/// <summary>Ordinary CloudIsland/CloudLake geometry on the unpublished generation candidate.</summary>
+/// <summary>Source cloud, snow, desert island and sky-lake geometry on the unpublished candidate.</summary>
 internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerationVanillaRandom random)
 {
     private const ushort Cloud = 189, Rain = 196, Dirt = 0, Wall = 73;
@@ -35,11 +35,15 @@ internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerati
         return false; // Source skips exhausted requests; no fabricated evenly spaced anchor or guessed ground.
     }
 
-    public void Generate(int x, int y, bool lake)
+    public void Generate(int x, int y, bool lake, int materialStyle = 0)
     {
         // All source neighborhoods stay inside this envelope. Reject unsupported edge contexts before mutation.
         if (x < 160 || x >= tiles.Dimensions.WidthTiles - 160 || y < 70 || y >= tiles.Dimensions.HeightTiles - 100)
             throw new InvalidOperationException("Sky island anchor outside the admitted ordinary envelope.");
+        if (materialStyle is not (0 or 1 or 3) || lake && materialStyle != 0)
+            throw new ArgumentOutOfRangeException(nameof(materialStyle));
+        ushort coreType = materialStyle switch { 1 => 53, 3 => 147, _ => Dirt };
+        ushort wetCloud = materialStyle == 3 ? (ushort)460 : Rain;
         left = right = x;
         top = bottom = y;
         Trail(x, y, core: false, lake);
@@ -49,12 +53,12 @@ internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerati
             while (!At(bx, by).IsActive && by > 15) by--;
             by += random.Next(-3, 4);
             int radius = random.Next(4, 8);
-            ushort type = random.Next(4) == 0 ? Rain : Cloud;
+            ushort type = random.Next(4) == 0 ? wetCloud : Cloud;
             Blob(bx, by, radius, type, top, jitterMinimum: 0);
             bx += random.Next(radius, (int)(radius * 1.5));
         }
-        Trail(x, top, core: true, lake);
-        if (!lake) RestoreCloudUnderside();
+        Trail(x, top, core: true, lake, coreType);
+        if (!lake) RestoreCloudUnderside(coreType);
         InteriorWalls(frameWalls: !lake);
         SurfaceWater();
         int pockets = lake ? random.Next(1, 4) : random.Next(4);
@@ -63,7 +67,7 @@ internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerati
             int bx = random.Next(left - 5, right + 5);
             int by = top - random.Next(20, 40);
             int radius = random.Next(4, 8);
-            ushort type = (lake ? random.Next(4) != 0 : random.Next(2) == 0) ? Rain : Cloud;
+            ushort type = (lake ? random.Next(4) != 0 : random.Next(2) == 0) ? wetCloud : Cloud;
             Blob(bx, by, radius, type, int.MinValue, jitterMinimum: -1);
             for (int tx = bx - radius + 2; tx <= bx + radius - 2; tx++)
             {
@@ -74,7 +78,7 @@ internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerati
         }
     }
 
-    private void Trail(int originX, int originY, bool core, bool lake)
+    private void Trail(int originX, int originY, bool core, bool lake, ushort coreType = Dirt)
     {
         double width = core ? random.Next(80, 95) : random.Next(100, 150);
         int steps = core ? random.Next(10, 15) : random.Next(20, 30);
@@ -113,7 +117,7 @@ internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerati
                     }
                     else if (tile.Type == Cloud)
                     {
-                        if (!lake) tile.Type = Dirt;
+                        if (!lake) tile.Type = coreType;
                         else
                         {
                             tile.Flags &= ~WorldTileFlags.Active;
@@ -138,13 +142,13 @@ internal sealed partial class SkyIsland1458(WorldTileStore tiles, IWorldGenerati
         }
     }
 
-    private void RestoreCloudUnderside()
+    private void RestoreCloudUnderside(ushort coreType)
     {
         int x = left + random.Next(5);
         while (x < right)
         {
             int y = bottom;
-            while ((!At(x, y).IsActive || At(x, y).Type != Dirt) && x < right)
+            while ((!At(x, y).IsActive || At(x, y).Type != coreType) && x < right)
             {
                 if (--y < top) { y = bottom; x += random.Next(1, 4); }
             }

@@ -233,6 +233,8 @@ public sealed class VanillaWorldSmoother1458Tests
     private static Workspace CreateWorkspace()
     {
         var workspace = new Workspace(64, 64);
+        workspace.AttachEntityEffects(new TerraRuntime.Core.Worlds.Generation.WorldGenerationEntityEffects1458(
+            new TerraRuntime.Core.Npcs.RuntimeNpcStore(), new TerraRuntime.Core.Projectiles.RuntimeProjectileStore(), true));
         for (int x = 0; x < workspace.WidthTiles; x++)
             for (int y = 0; y < workspace.HeightTiles; y++)
                 SetActive(workspace, x, y, VanillaTileIds.Trees);

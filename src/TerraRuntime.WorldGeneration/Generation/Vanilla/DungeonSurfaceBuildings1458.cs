@@ -8,7 +8,7 @@ internal readonly record struct DungeonBuildingPlatform1458(DungeonPoint1458 Pos
 
 /// <summary>Ordinary Dome/Tower building geometry and ordered feature candidates, never live world mutation.</summary>
 internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort brick, ushort cracked, ushort wall,
-    double worldSurface, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken)
+    double worldSurface, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken, Action<DungeonPoint1458>? oldManBirth = null, GenerationTileFraming1458? framing = null, Action<int, int, bool>? growDungeonTree = null, bool undergroundEntrance = false)
 {
     private readonly DungeonPillars1458 pillars = new(tiles, brick, random);
     private readonly List<DungeonBuildingPlatform1458> platforms = [];
@@ -24,6 +24,7 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
         bool trees = local.Next(4) != 0;
         int windowKind = local.Next(3);
         Prepare(origin);
+        if (!undergroundEntrance)
         Circle(center + (leftDungeon ? 39 : -39), floor - 20, 20);
         Foundation(tower: false);
         Slime(center, floor, 40, 1, 1, (x, y) =>
@@ -42,16 +43,17 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
         });
         Slime(center, floor - 4, 40, (double).9f, (double)1.1f, (x, y) =>
         {
-            if (y < floor - 1 && At(x, y).IsActive && At(x, y).Type == 0 && TouchesAir(x, y, onlyInactive: true)) At(x, y).Type = 2;
+            if (!undergroundEntrance && y < floor - 1 && At(x, y).IsActive && At(x, y).Type == 0 && TouchesAir(x, y, onlyInactive: true)) At(x, y).Type = 2;
         });
         Slime(center, floor, 35, 1, 1, (x, y) => { if (y < floor + 1) DungeonGenerationTiles1458.ClearTile(ref At(x, y)); });
         Door(leftDungeon);
+        if (undergroundEntrance) Door(!leftDungeon);
         MainWindow(windowKind, floor - 16, tower: false);
         byte paint = windowKind == 1 ? (byte)26 : (byte)0;
         // Basic side windows keep the style glass for Skeletron; its override applies only to the mosaic.
-        Window(center - 29, floor - 8, 5, 10, windowKind == 2 ? (ushort)241 : null, paint);
+        Window(center - 29, floor - 8, 5, 10, windowKind == 2 && !undergroundEntrance ? (ushort)241 : null, paint);
         Window(center + 29, floor - 8, 5, 10, windowKind == 2 ? (ushort)91 : null, paint);
-        Window(center - 20, floor - 11, 5, 11, windowKind == 2 ? (ushort)90 : null, paint);
+        Window(center - 20, floor - 11, 5, 11, windowKind == 2 ? (undergroundEntrance ? (ushort)91 : (ushort)90) : null, paint);
         Window(center + 20, floor - 11, 5, 11, windowKind == 2 ? (ushort)88 : null, paint);
         pillars.Place(center - 14, floor, 3, 0, true, true, true);
         pillars.Place(center + 14, floor, 3, 0, true, true, true);
@@ -63,7 +65,9 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
         if (trees)
             foreach ((int offset, int rise) in new[] { (-38, 25), (-27, 41), (-14, 49), (38, 25), (27, 41), (14, 49) })
                 TreeOnPillar(local, center + offset, floor - rise);
-        Stairs(leftDungeon ? 1 : -1);
+        oldManBirth?.Invoke(new(center, floor));
+        if (undergroundEntrance) growDungeonTree?.Invoke(center, floor - 35 + 5, false);
+        else Stairs(leftDungeon ? 1 : -1);
         return (Result(origin, seed, floor - 40), platforms.ToArray());
     }
 
@@ -98,7 +102,7 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
             if ((depth != 1 || local.Next(2) != 0) && (depth != 2 || local.Next(3) == 0) && (depth != 3 || local.Next(4) == 0))
                 cell.Type = TouchesAir(x + column, y + depth, onlyInactive: false) ? (ushort)2 : (ushort)0;
         }
-        TreeGrower1458.TryGrow(tiles, x, y, random, ignoreWalls: true);
+        TreeGrower1458.TryGrow(tiles, x, y, random, ignoreWalls: true, framing: framing);
     }
 
     public (DungeonEntranceResult1458 Entrance, IReadOnlyList<DungeonBuildingPlatform1458> Platforms) GenerateTower(
@@ -109,6 +113,7 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
         var local = new DungeonUnifiedRandom1458(seed);
         int windowKind = local.Next(3);
         Prepare(origin);
+        if (!undergroundEntrance)
         Circle(center + (leftDungeon ? 34 : -34), floor - 15, 15);
         Foundation(tower: true);
         TowerShell();
@@ -143,7 +148,9 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
         Window(center - 10, floor - 37, 7, 11); Window(center + 10, floor - 37, 7, 11);
         Window(center, floor - 39, 7, 13);
         Door(leftDungeon); Door(!leftDungeon);
-        Stairs(1); Stairs(-1);
+        oldManBirth?.Invoke(new(center, floor));
+        if (undergroundEntrance) growDungeonTree?.Invoke(center, floor - 90 + 8, false);
+        else { Stairs(1); Stairs(-1); }
         return (Result(origin, seed, floor - 90), platforms.ToArray());
     }
 
@@ -179,7 +186,7 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
         for (int column = -40; column <= 40; column++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            for (int depth = -5; depth < 100; depth++)
+            for (int depth = -5; depth < (undergroundEntrance ? 45 : 100); depth++)
             {
                 ref WorldTile cell = ref At(center + column, floor + depth);
                 bool dungeonWall = DungeonGenerationTiles1458.IsDungeonWall(cell.Wall);
@@ -230,7 +237,9 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
     private void AddPlatform(int x, int y, bool shelf = false, bool noWaterbolt = true) =>
         platforms.Add(new(new(x, y), 0, true, (double).33f, shelf ? .75 : 0, shelf ? (double).1f : 0, shelf && noWaterbolt));
     private void Window(int x, int y, int width, int height, ushort? glass = null, byte paint = 0) =>
-        DungeonWindows1458.Basic(tiles, random, brick, x, y, width, height, glass, paint);
+        DungeonWindows1458.Basic(tiles, random, brick, x, y, width, height,
+            glass ?? (undergroundEntrance ? ClosedGlass : null), paint);
+    private ushort ClosedGlass => brick switch { 41 => 96, 43 => 94, 44 => 98, _ => throw new InvalidOperationException() };
     private void MainWindow(int kind, int y, bool tower)
     {
         if (kind == 0)
@@ -239,7 +248,7 @@ internal sealed class DungeonSurfaceBuildings1458(WorldTileStore tiles, ushort b
             Window(center + (tower ? 9 : 8), y + (tower ? 4 : 0), 5, 24);
             Window(center, y + (tower ? 3 : -1), 5, 28);
         }
-        else new DungeonMosaicWindows1458(tiles, kind == 1 ? (ushort)89 : (ushort)91,
+        else new DungeonMosaicWindows1458(tiles, undergroundEntrance ? ClosedGlass : kind == 1 ? (ushort)89 : (ushort)91,
             DungeonWindows1458.Palette(brick).Edge, kind == 1 ? (byte)26 : (byte)0)
             .Place(center, y + (kind == 1 ? (tower ? -1 : -3) : (tower ? 5 : -1)), kind);
     }

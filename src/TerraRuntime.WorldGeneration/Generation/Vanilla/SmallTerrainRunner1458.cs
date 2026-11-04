@@ -3,11 +3,11 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
-/// <summary>The ordinary, small-strength TileRunner slice used by Underworld, roots, deposits and webs.
-/// It admits only the verified web override; mud walls, secret seeds and large-strength acceleration remain excluded.</summary>
+/// <summary>Source TileRunner for retained roots, deposits and webs. Basic seed variation shares the early runner's
+/// physical stream; extra seeds, special liquid cavities and potentially large-strength acceleration remain explicit frontiers.</summary>
 internal sealed class SmallTerrainRunner1458(WorldTileStore store, IWorldGenerationVanillaRandom random,
     double worldSurface, VanillaLiquidLines1458 lines, CancellationToken cancellationToken,
-    WorldTileRegion undergroundDesert = default, double? rockLayer = null)
+    WorldTileRegion undergroundDesert = default, double? rockLayer = null, VanillaWorldSeedProfile1458 seedProfile = default)
 {
     internal const int Mud = 59;
     internal const int AirCavity = -1;
@@ -36,62 +36,89 @@ internal sealed class SmallTerrainRunner1458(WorldTileStore store, IWorldGenerat
             (type == Mud && !mudDeposit && (addTile || !noYChange || speedX != 0 || speedY != 2 ||
                 strength is < 10 or >= 20 || steps is < 10 or >= 20 || originY < 0)))
             throw new ArgumentOutOfRangeException(nameof(type));
+        if (!seedProfile.SupportsSourceBackedResetAndTerrain || seedProfile.Secret != VanillaSecretWorldSeed1458.None || seedProfile.Has(VanillaSpecialWorldSeed1458.Skyblock))
+            throw new NotSupportedException("This small terrain runner has no qualified extra-seed context.");
+        double maximumScale = seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) ? 1.8 :
+            seedProfile.Has(VanillaSpecialWorldSeed1458.Remix) ? 1.5 : seedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy) && type != UnderworldTerrain1458.Ash ? 2.2 : 1;
+        if (strength * maximumScale > (entranceOpening ? 77 : 70)) throw new NotSupportedException("This bounded runner admits the measured small-brush and dungeon entrance domains.");
+        if (!seedProfile.IsDefault && type == UnderworldTerrain1458.LiquidCavity &&
+            (originY < store.Dimensions.HeightTiles - 300 || rockLayer is not double rockLevel || !double.IsFinite(rockLevel)))
+            throw new NotSupportedException("Special liquid cavities require the bounded Underworld caller and retained Main layers.");
+        VaryForSeed(random, seedProfile, ref strength, ref steps, type);
         double x = originX, y = originY;
         double vx = random.Next(-10, 11) * 0.1, vy = random.Next(-10, 11) * 0.1;
         if (speedX != 0 || speedY != 0) { vx = speedX; vy = speedY; }
-        _ = random.Next(4); // Ordinary TileRunner still samples its unused secret-seed liquid decision.
-        for (int remaining = steps; remaining > 0; remaining--)
+        WorldLiquidKind liquidKind = ChooseLiquidForSeed(random, seedProfile);
+        double remaining = steps;
+        while (strength > 0 && remaining > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) && random.Next(30) == 0)
+            { x += random.Next(-100, 101) * .05; y += random.Next(-100, 101) * .05; }
+            if (liquidKind == WorldLiquidKind.Lava && seedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) &&
+                x > store.Dimensions.WidthTiles * .45 && y < store.Dimensions.WidthTiles * .55 && y < worldSurface) liquidKind = WorldLiquidKind.Water;
             if (type == Mud && y < 0) remaining = 0;
-            double current = strength * ((double)remaining / steps);
+            double current = strength * (remaining / steps);
+            remaining--;
             int left = Math.Max(1, (int)(x - current * 0.5));
             int right = Math.Min(store.Dimensions.WidthTiles - 1, (int)(x + current * 0.5));
             int top = Math.Max(1, (int)(y - current * 0.5));
             int bottom = Math.Min(store.Dimensions.HeightTiles - 1, (int)(y + current * 0.5));
             for (int tx = left; tx < right; tx++)
-            for (int ty = top; ty < bottom; ty++)
             {
-                ref WorldTile tile = ref UnderworldTerrain1458.At(store, tx, ty);
-                if (tile.IsActive && (tile.Type >= VanillaTileIds.Count ||
-                    (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type) && !VanillaProjectileTileCutFacts.IsCuttable(tile.TileType)) ||
-                    tile.Type == ignoreTileType))
-                    continue;
-                if (Math.Abs(tx - x) + Math.Abs(ty - y) >= strength * 0.5 * (1 + random.Next(-10, 11) * 0.015)) continue;
-                if (type is AirCavity or UnderworldTerrain1458.LiquidCavity)
+                if (tx < 430 || tx >= store.Dimensions.WidthTiles - 430) liquidKind = WorldLiquidKind.Water;
+                for (int ty = top; ty < bottom; ty++)
                 {
-                    if (tile.IsActive && tile.TileType == VanillaTileIds.Sand) continue;
-                    if (type == UnderworldTerrain1458.LiquidCavity && tile.IsActive && (ty < lines.WaterLine || ty > lines.LavaLine))
+                    if (seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) && type == UnderworldTerrain1458.Ash && ty < store.Dimensions.HeightTiles - 300) continue;
+                    ref WorldTile tile = ref UnderworldTerrain1458.At(store, tx, ty);
+                    if (tile.IsActive && (tile.Type >= VanillaTileIds.Count ||
+                        (VanillaWorldFrameImportance326.IsFrameImportant(tile.Type) && !VanillaProjectileTileCutFacts.IsCuttable(tile.TileType)) ||
+                        tile.Type == ignoreTileType))
+                        continue;
+                    if (Math.Abs(tx - x) + Math.Abs(ty - y) >= strength * 0.5 * (1 + random.Next(-10, 11) * 0.015)) continue;
+                    if (type is AirCavity or UnderworldTerrain1458.LiquidCavity)
                     {
-                        tile.LiquidAmount = byte.MaxValue;
-                        tile.LiquidKind = ty > lines.LavaLine ? WorldLiquidKind.Lava : WorldLiquidKind.Water;
+                        if (tile.IsActive && tile.TileType == VanillaTileIds.Sand) continue;
+                        if (type == UnderworldTerrain1458.LiquidCavity && tile.IsActive && (ty < lines.WaterLine || ty > lines.LavaLine))
+                        {
+                            tile.LiquidAmount = byte.MaxValue;
+                            tile.LiquidKind = liquidKind;
+                        if (ty > lines.LavaLine && (!seedProfile.Has(VanillaSpecialWorldSeed1458.Remix) ||
+                            (ty < rockLayer!.Value - 80 || ty > store.Dimensions.HeightTiles - 350) &&
+                            !OceanDepths(tx, ty, store.Dimensions.WidthTiles, worldSurface, rockLayer.Value)))
+                            tile.LiquidKind = WorldLiquidKind.Lava;
+                        }
+                        tile.Flags &= ~WorldTileFlags.Active;
+                        continue;
                     }
-                    tile.Flags &= ~WorldTileFlags.Active;
-                    continue;
-                }
 
-                if (!overRide || !tile.IsActive || CanReplace(tile.TileType, type, tx, ty))
-                {
-                    tile.Type = (ushort)type;
-                    if (web) tile.Shape = 0; // TileID.Sets.SaveSlopes[51] is false.
-                }
-                // Other admitted positive types have SaveSlopes=true. Activation/liquid clearing is independent
-                // of the replacement gate, but frame-important objects were skipped before consuming RNG.
-                if (addTile)
-                {
-                    tile.Flags |= WorldTileFlags.Active;
-                    tile.LiquidAmount = 0;
-                    UnderworldTerrain1458.ClearLavaFlag(ref tile);
-                }
-                if (noYChange && type != Mud && ty < worldSurface) tile.Wall = (ushort)VanillaWallIds.DirtUnsafe.Value;
-                if (type == Mud && ty > lines.WaterLine && tile.LiquidAmount > 0)
-                {
-                    tile.LiquidAmount = 0;
-                    UnderworldTerrain1458.ClearLavaFlag(ref tile);
+                    if (!overRide || !tile.IsActive || CanReplace(tile.TileType, type, tx, ty))
+                    {
+                        tile.Type = (ushort)type;
+                        if (web) tile.ClearSourceShape(); // TileID.Sets.SaveSlopes[51] clears independent half-brick and slope bits.
+                    }
+                    // Other admitted positive types have SaveSlopes=true. Activation/liquid clearing is independent
+                    // of the replacement gate, but frame-important objects were skipped before consuming RNG.
+                    if (addTile)
+                    {
+                        tile.Flags |= WorldTileFlags.Active;
+                        tile.LiquidAmount = 0;
+                        UnderworldTerrain1458.ClearLavaFlag(ref tile);
+                    }
+                    if (noYChange && type != Mud && ty < worldSurface) tile.Wall = (ushort)VanillaWallIds.DirtUnsafe.Value;
+                    if (type == Mud && ty > lines.WaterLine && tile.LiquidAmount > 0)
+                    {
+                        tile.LiquidAmount = 0;
+                        UnderworldTerrain1458.ClearLavaFlag(ref tile);
+                    }
                 }
             }
             x += vx; y += vy;
-            vx = Math.Clamp(vx + random.Next(-10, 11) * 0.05, -1, 1);
+            ApplyExtraSteps(random, seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld), current,
+                ref remaining, ref x, ref y, ref vx, ref vy);
+            vx += random.Next(-10, 11) * .05;
+            if (seedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld)) vx += random.Next(-10, 11) * .25;
+            vx = Math.Clamp(vx, -1, 1);
             if (!noYChange) vy = Math.Clamp(vy + random.Next(-10, 11) * 0.05, -1, 1);
             else if (type != Mud && current < 3) vy = Math.Clamp(vy, -1, 1);
             if (mudDeposit)
@@ -101,6 +128,50 @@ internal sealed class SmallTerrainRunner1458(WorldTileStore store, IWorldGenerat
                 if (y > store.Dimensions.HeightTiles - 300) vy = -1;
             }
         }
+    }
+
+    // Shared source TileRunner advancement:900 follows800, and350 is intentionally absent.
+    internal static void ApplyExtraSteps(IWorldGenerationVanillaRandom random, bool drunk, double current,
+        ref double remaining, ref double x, ref double y, ref double vx, ref double vy)
+    {
+        if (drunk && random.Next(3) == 0) return;
+        ReadOnlySpan<double> thresholds = [50,100,150,200,250,300,400,500,600,700,800,900];
+        foreach (double threshold in thresholds)
+        {
+            if (current <= threshold) break;
+            x += vx; y += vy; remaining--;
+            vy += random.Next(-10, 11) * .05;
+            vx += random.Next(-10, 11) * .05;
+        }
+    }
+
+    internal static bool OceanDepths(int x, int y, int width, double surface, double rock) =>
+        y <= (surface + rock) / 2 + 40 && (x < 380 || x > width - 380);
+
+    internal static void VaryForSeed(IWorldGenerationVanillaRandom random, VanillaWorldSeedProfile1458 profile,
+        ref double strength, ref int steps, int type)
+    {
+        if (profile.Has(VanillaSpecialWorldSeed1458.DrunkWorld))
+        {
+            strength *= 1 + random.Next(-80, 81) * .01;
+            steps = (int)(steps * (1 + random.Next(-80, 81) * .01));
+        }
+        else if (profile.Has(VanillaSpecialWorldSeed1458.Remix)) strength *= 1 + random.Next(-50, 51) * .01;
+        else if (profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy) && type != 57)
+        {
+            strength *= 1 + random.Next(-80, 81) * .015;
+            steps += random.Next(3);
+        }
+    }
+
+    internal static WorldLiquidKind ChooseLiquidForSeed(IWorldGenerationVanillaRandom random, VanillaWorldSeedProfile1458 profile)
+    {
+        if (profile.Has(VanillaSpecialWorldSeed1458.NotTheBees) && profile.Has(VanillaSpecialWorldSeed1458.TheConstant) &&
+            !profile.Has(VanillaSpecialWorldSeed1458.Remix) && random.Next(3) == 0) return WorldLiquidKind.Honey;
+        if (random.Next(4) != 0) return WorldLiquidKind.Water;
+        if (profile.Has(VanillaSpecialWorldSeed1458.DrunkWorld) && profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) &&
+            profile.Has(VanillaSpecialWorldSeed1458.Remix) && !profile.Has(VanillaSpecialWorldSeed1458.NotTheBees)) return WorldLiquidKind.Shimmer;
+        return profile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy) ? WorldLiquidKind.Lava : WorldLiquidKind.Water;
     }
 
     private bool CanReplace(TileTypeId old, int replacement, int x, int y) => old.Value switch

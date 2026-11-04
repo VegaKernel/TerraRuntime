@@ -6,7 +6,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>Ordinary surface LegacyEntrance building. Owns geometry, not graph layout or NPC creation.</summary>
 internal sealed class DungeonLegacyEntrance1458(WorldTileStore tiles, ushort brick, ushort crackedBrick, ushort wall,
     double surface, int strengthX, int strengthY, int strengthX2, int strengthY2,
-    IWorldGenerationVanillaRandom worldRandom, CancellationToken cancellationToken)
+    IWorldGenerationVanillaRandom worldRandom, CancellationToken cancellationToken, bool reverseDirection = false, Action<DungeonPoint1458>? oldManBirth = null, Action<int, int, bool>? growDungeonTree = null, bool undergroundEntrance = false)
 {
     // LegacyDungeonEntrance uses promoted single-precision ratios, except its outer wall clearing rectangle.
     private const double ExteriorRatio = .6000000238418579, VestibuleOffset = .550000011920929;
@@ -32,6 +32,7 @@ internal sealed class DungeonLegacyEntrance1458(WorldTileStore tiles, ushort bri
         }
         double cx = origin.X, cy = origin.Y - strengthY / 2d;
         int direction = origin.X > tiles.Dimensions.WidthTiles / 2 ? -1 : 1;
+        if (reverseDirection) direction *= -1;
         left = (int)cx; top = (int)cy; right = left + 1; bottom = top + 1;
         var hall = Outer(cx, cy, strengthX, strengthY, random, mainHall: true);
         Include(hall);
@@ -83,7 +84,10 @@ internal sealed class DungeonLegacyEntrance1458(WorldTileStore tiles, ushort bri
         chamber = Rect(cx - strengthX2 * .5, cy - strengthY2 * .5, cx + strengthX2 * .5, cy + strengthY2 * .5);
         ClearChamber(chamber, 0);
         var oldMan = new DungeonPoint1458((int)cx, chamber.Bottom);
+        oldManBirth?.Invoke(oldMan);
+        if (undergroundEntrance) growDungeonTree?.Invoke(origin.X, origin.Y, true);
         int potentialTop = DungeonGraphGenerator1458.ResolvePotentialBounds(tiles.Dimensions, surface, direction > 0 ? -1 : 1).Top;
+        if (!undergroundEntrance)
         DungeonEntranceStairs1458.Generate(tiles, direction > 0 ? chamber.Right : chamber.Left, chamber.Bottom,
             direction, potentialTop - chamber.Bottom - 5, potentialTop, brick, wall, cancellationToken);
         _ = random.Next(2); // Source draws an unused pillar height before pillar width.

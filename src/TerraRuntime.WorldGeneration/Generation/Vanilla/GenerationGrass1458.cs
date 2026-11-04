@@ -47,7 +47,8 @@ internal sealed class GenerationGrass1458(WorldTileStore store, IWorldGeneration
         // the surface refusal only applies over dirt - mud keeps its jungle grass at any depth.
         if (grass is 23 or 199)
         {
-            if ((x > store.Dimensions.WidthTiles * .45 && x <= store.Dimensions.WidthTiles * .55) ||
+            if ((workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) != true &&
+                x > store.Dimensions.WidthTiles * .45 && x <= store.Dimensions.WidthTiles * .55) ||
                 x < 380 || x >= store.Dimensions.WidthTiles - 380) return;
         }
         else if (dirt == 0 && y >= worldSurface) return;

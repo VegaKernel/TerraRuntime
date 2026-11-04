@@ -203,7 +203,7 @@ public static class WorldFileFreshRuntimeMetadata326Encoder
                 writer.Write(seeds.Has(VanillaSecretWorldSeed1458.DoubleDaringDangers));
                 writer.Write(seeds.Has(VanillaSecretWorldSeed1458.ElectricBoogaloo));
                 writer.Write(seeds.Has(VanillaSecretWorldSeed1458.CalmBeforeTheStorm));
-                writer.Write(string.Empty);
+                writer.Write(source.Generation.VanillaManifest?.Serialize() ?? string.Empty);
                 writer.Flush();
             }
 

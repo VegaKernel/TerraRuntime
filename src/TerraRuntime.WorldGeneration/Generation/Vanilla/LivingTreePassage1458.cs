@@ -31,7 +31,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// loot therefore consume the same stream at the original call site, including a refused chest offer.
 /// </para>
 /// </remarks>
-internal sealed class LivingTreePassage1458(
+internal sealed partial class LivingTreePassage1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
     double worldSurface,

@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "sourceBase": "00655a442e2a8b4316bcbc41a4b13bcaa1df6ef7",
+  "candidate": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-managed-v6-20261104\\workspace",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "nativeAot": "Explicitly user-deferred; managed checks only.",
+  "scope": [
+    "Ordinary Classic: three canonical sizes, Corruption/Crimson, numeric seeds1458/42; 24 fresh full executions and2544 native comparisons.",
+    "Basic configured special profiles through native36;30 worlds/1080 native boundaries across three sizes.",
+    "Shared tree, chest, framing and solidity fixes; detached additional-option Micro98 and chest components remain separately scoped.",
+    "Ordinary106-row generation report, final hash, bounded fresh-file persistence and scoped original-loader verification."
+  ],
+  "build": {
+    "productionFreshWarnings": 0,
+    "productionFreshErrors": 0,
+    "testSuccessorWarnings": 0,
+    "testSuccessorErrors": 0,
+    "productionBuild": {
+      "path": "E:\\TerraRuntimeAgentCache\\root-next-managed-v4-20261104\\gates\\build-fresh.log",
+      "sha256": "760038b3a056f9c266efbb35c75cfc7d61cafc40c52cd9db36ccd3200a1d292c"
+    },
+    "testBuild": {
+      "path": "E:\\TerraRuntimeAgentCache\\root-next-managed-v6-20261104\\gates\\build-test-successor.log",
+      "sha256": "0144fffe583b7b53d879605ae4c7963c905dc76e1e987d7df7708f3695df894b"
+    },
+    "qualification": "Original V4 fresh production build; unchanged production source/resources and all157production DLLs preserved through two test-only successors."
+  },
+  "focused": {
+    "total": "133319",
+    "passed": "133319",
+    "failed": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "1009.324"
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1135.254034600017,
+    "tests": {
+      "total": "185645",
+      "passed": "185645",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1132.777",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1887.8788010999851,
+    "tests": {
+      "total": "1730960",
+      "passed": "1730960",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1874.330",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredFullMethods": 5859,
+  "pythonChecks": {
+    "unitTests": 300,
+    "domainCatalog": 490,
+    "pairedPages": 137
+  },
+  "ordinaryManagedSmokes": [
+    "loop",
+    "protocol",
+    "network",
+    "world",
+    "tui"
+  ],
+  "publishedCoreClr": {
+    "accepted": true,
+    "managedOnly": true,
+    "executableSha256": "872ac790ceb79ecadcd88b28ba8d98c4761afebfa9051595a17014dc74552faa",
+    "smokes": [
+      "loop",
+      "protocol",
+      "network",
+      "world",
+      "tui"
+    ]
+  },
+  "sourceGuard": {
+    "sourceCount": 5001,
+    "recursiveDllCount": 158,
+    "scopeDocuments": 2,
+    "unchangedAfterFullAndPublication": true,
+    "manifest": {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-managed-v6-20261104\\inputs-recursive.json",
+      "sha256": "910ca6d586cda5d81d2e8d4cf983b2b1a804f3268c4ed61ccdb3a54db7ab1c20"
+    },
+    "testDllSha256": "84bc5f605ceb544b938d023729f5f59b13fbb90b2b509e5bd0e6cd52200dd1bc"
+  },
+  "productionMacroBridge": {
+    "productionDllsByteExact": 157,
+    "parentManifest": {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-managed-v4-20261104\\inputs-recursive.json",
+      "sha256": "23f2770de760d74505307fdeb46060e4d4371a3ef2fdf8f5639c1de12b71fc6e"
+    },
+    "successors": [
+      {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-managed-v5-20261104\\test-only-production-bridge.json",
+        "sha256": "4a6a4adbd0d2468c8c6f13f745af53a9a03f1d3fa5c006938864c9d1c2bc4052"
+      },
+      {
+        "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-managed-v6-20261104\\test-only-production-bridge.json",
+        "sha256": "0f5d189e2deccffd208c461f600d02860321f77ae46e296f1fe777062d634503"
+      }
+    ]
+  },
+  "ordinaryMatrix": {
+    "receipt": {
+      "path": "E:\\TerraRuntimeAgentCache\\.cache\\worldgen-ordinary-final-matrix-20261104\\qualification.json",
+      "sha256": "4d0642cc0b41f22ef00367e536e3772552c2a2d03d6818554bdd75cc5692ae5f"
+    },
+    "independentRootAudit": {
+      "path": "E:\\TerraRuntimeAgentCache\\root-publication-20261104\\root-independent-matrix-audit.json",
+      "sha256": "3ced84e4bccd1af480432920519e17004e9310636d35f57913d8e61b847a4c60"
+    },
+    "profiles": 12,
+    "runtimeRuns": 24,
+    "nativeBoundariesExact": 2544,
+    "runtimeRepeatFiles": 5484,
+    "sourceRepeatFiles": 6360,
+    "observedPrefixFieldComparisons": 1776,
+    "limitation": "Declared physical/retained projections only; original pre-override RandomEvil intermediate unobserved, not treated as equal."
+  },
+  "saveLoad": {
+    "receipt": {
+      "path": "E:\\TerraRuntimeAgentCache\\root-final-v4-proof-20261104\\report-save-load-qualification02.json",
+      "sha256": "50df835c5914caf9894f0577a360d97ac61ff264dab7c035a4c24056e0b2e7c7"
+    },
+    "headerReceipt": {
+      "path": "E:\\TerraRuntimeAgentCache\\root-final-v4-proof-20261104\\header-before-manifest-qualification03.json",
+      "sha256": "3d33d68213a9844536e7415eea485bd075cc63a6cae98fe7cf573c2546f7a011"
+    },
+    "worlds": 2,
+    "actualOriginalMatches": 212,
+    "all21DecodedTileFieldsExact": true,
+    "postTileSectionsExact": 18,
+    "entireHeaderBeforeManifestExact": true,
+    "measuredTimingsDiffer": true,
+    "wholeFileByteEquality": false,
+    "limitation": "Two small Classic Corruption worlds, explicit matched identity/date inputs; whole live-world custody/atomic rotation remains open."
+  },
+  "loadedWorldResave": {
+    "receipt": {
+      "path": "E:\\TerraRuntimeAgentCache\\root-final-v6-proof-20261104\\loaded-manifest\\qualification.json",
+      "sha256": "b04dd658454e7aaf5818a58158147f69438b40aa45e40b2f982bdf0509ec0dbf"
+    },
+    "actualOriginalLoads": 8,
+    "actualOriginalGenPassMatches": 848,
+    "currentSevenDllBridge": true,
+    "entireHistoricalHeaderAndManifestByteExact": true,
+    "boundedShadowBudgets": {
+      "bootstrap": 7,
+      "dirty": 3
+    },
+    "onePaintEdit": true,
+    "tamperMatches105": true,
+    "limitation": "Existing loaded template/cache/shadow/rewriter path; entire live-server custody and atomic rotation remain open."
+  },
+  "finalTestDllControls": {
+    "chests": {
+      "path": "E:\\TerraRuntime-agent-cache\\worldgen-v6-chest-causals-20261104\\qualification.json",
+      "sha256": "f8015f791705386cd9634933849c603608aea619b21f531652d30f792501e2e7"
+    },
+    "special": {
+      "path": "E:\\TerraRuntime-agent-work\\finalv4-special36-replay-20261104\\frozen-v6\\qualification.json",
+      "sha256": "e95324d594ac851cb1ff7e7844d270f7686fccd91955ee2ff22309f7e1ce5846"
+    },
+    "manifest": {
+      "path": "E:\\TerraRuntimeAgentCache\\root-final-v6-proof-20261104\\manifest-controls\\result.json",
+      "sha256": "19be85a23864913ac8a6ceca9f6da9172ced999611a8bd662bbd051a0bf54a72"
+    },
+    "effectiveMutants": 78,
+    "xunitAssertionFailures": 712,
+    "expectedMutantOnlyRefusals": 144,
+    "passingControlRows": 8984,
+    "runnerErrors": 0,
+    "note": "Special refusal rows are deliberately distinct from assertion failures; unchanged baselines are additionally recorded in component receipts."
+  },
+  "componentIntegrationHistory": [
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\component-integration.json",
+      "sha256": "6d5a8ba406b12198408bed71a9bb0cae4209aacad9a78569d3cfbbd064340946"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\smooth54-integration.json",
+      "sha256": "bc513374cefc791a8cc0cd664d14be29034755c28e0bfa888ebc897d4f5196da"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\large98-integration.json",
+      "sha256": "7929b15934295ff4773576c919a2030630ff019c4a6274ed492cde9515b4db7f"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\buried-chests-integration.json",
+      "sha256": "1e31153b4fe9e96ec19e1586e1f0341043381673b0c49e0f45f07d8c9d28ddf7"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\manifest-hash-integration.json",
+      "sha256": "98888f51a1f602a58fb21f16900408a039f098262467712ac32d293e5a7b04c9"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\manifest-report-integration.json",
+      "sha256": "d0c60fc8792c102aced00c2561e4b51cd099cdfd64d7af03f320916554c0573f"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\additional-secret-chests-integration.json",
+      "sha256": "5c9ee47d8a1c1a7062b11e7a9880d86ebd510b8d77fe3583d90beda68d2f5b76"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\dungeon-tree-integration.json",
+      "sha256": "7a4331e7b212c70d126100a997d7bc91044b4c905e5ad8dd6543777f98755a68"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\pyramid-cursor-integration.json",
+      "sha256": "08cfb43b05c299ababbacbe3ce6eb34fa71357fbf0bbd2fd4d9f6727640e9961"
+    },
+    {
+      "path": "C:\\Users\\Xekep\\Documents\\GitHub\\TerraRuntime\\.cache\\worldgen-next-special-integration-20261104\\special36-integration.json",
+      "sha256": "7260849b2ca3795006a8b165a5a92e670ee64dfcd78c40f62c7217762e859efc"
+    }
+  ],
+  "rejectedCandidates": [
+    {
+      "candidate": "V1",
+      "reason": "Missing canonical owners in legacy fixtures."
+    },
+    {
+      "candidate": "V2",
+      "reason": "Focused tests passed but XML write exhausted C disk; runner exit4, not accepted."
+    },
+    {
+      "candidate": "V3",
+      "reason": "Python ownership audit used stale signatures."
+    },
+    {
+      "candidate": "V4",
+      "reason": "Focused three stale expected special-plan counts36 vs49."
+    },
+    {
+      "candidate": "V5",
+      "reason": "Full one legacy fixture lacked canonical NPC owner; raw1730959/1730960 preserved."
+    }
+  ],
+  "openScope": [
+    "Special37+ production pipelines and complete special reports; qualified private49 package is not included here.",
+    "Non-Classic full matrices; private Journey85/four-mode proofs require their separate production integration.",
+    "Additional option/style/evil/mode combinations and canonical named-text equivalence.",
+    "All retained GenVars/inactive array tails, full live effect ownership, complete original save/load lifecycle."
+  ],
+  "pending": [
+    "main publication",
+    "fresh remote CI"
+  ],
+  "remoteCi": {
+    "accepted": false,
+    "status": "Pending publication"
+  },
+  "gitIndexBridge": {
+    "accepted": true,
+    "sourceInputs": 5001,
+    "scopeDocuments": 2,
+    "total": 5003,
+    "allBytesExact": true,
+    "sha256": "47c3a9b52a07389f1c1392cfe47038a3e33446a5be4d48fa43ba8433a2ddfee9"
+  },
+  "status": "Local managed qualification and exact source/index bridge verified; main publication and remote CI pending."
+}
