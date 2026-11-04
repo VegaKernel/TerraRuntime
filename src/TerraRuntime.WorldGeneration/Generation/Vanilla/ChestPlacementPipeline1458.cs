@@ -257,6 +257,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
 
             int x = random.Next(80, grid.Width - 80);
             int y = random.Next(houseMinimumY, houseMaximumY);
+            y = AdjustBigHouseOffer1458(y, state.WorldSurfaceHigh, state.WorldSurface,
+                grid.Height, workspace.VanillaSeedProfile, random);
             // WorldGen's third UndergroundHousesAndBuriedChests loop rejects oceanDepths before
             // CaveHouseBiome.Place. Letting the builder inspect an ocean offer changes both its
             // acceptance and the shared RNG stream before the next sampled candidate.
@@ -293,6 +295,31 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         int x, int y, int width, double worldSurface, double rockLayer) =>
         y <= (worldSurface + rockLayer) / 2d + 40d &&
         (x < BeachDistance || x > width - BeachDistance);
+
+    internal static int AdjustBigHouseOffer1458(int sampledY, double worldSurfaceHigh,
+        double worldSurface, int worldHeight, VanillaWorldSeedProfile1458 profile,
+        IWorldGenerationVanillaRandom random)
+    {
+        // WorldGen's third house loop reads this SecretSeed property after the Y
+        // sample and before oceanDepths. IAmError samples Next(3) here even if
+        // CaveHouseBiome.Place will later refuse the candidate. HouseUtils reads
+        // the same property again when its room search begins.
+        bool biggerHouse = profile.Has(VanillaSecretWorldSeed1458.AbandonedManors) ||
+            profile.Has(VanillaSecretWorldSeed1458.IAmError) && random.Next(3) == 0;
+        if (!biggerHouse)
+            return sampledY;
+
+        int minimum = (int)(worldSurfaceHigh + 20d);
+        int maximum = worldHeight - 230;
+        if (profile.Has(VanillaSpecialWorldSeed1458.Remix))
+        {
+            minimum = (int)worldSurface;
+            maximum = worldHeight - 400;
+        }
+        minimum += (profile.Has(VanillaSecretWorldSeed1458.IAmError) ? 30 : 7) * 10;
+        // MathHelper.Clamp is Max(min, Min(max, value)), including min > max.
+        return Math.Max(minimum, Math.Min(maximum, sampledY));
+    }
 
     internal static (int Top, int Bottom) GetAdditionalDesertHouseVerticalRange1458(
         int desertTop, int desertBottom, double worldSurface) =>

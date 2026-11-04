@@ -11,6 +11,49 @@ namespace TerraRuntime.Tests;
 public sealed class CaveHousePriorProtection1458Tests
 {
     [Fact]
+    public void Not_the_bees_house_admits_hive_block_but_keeps_other_blacklisted_tiles_rejected()
+    {
+        // Official 1.4.5.8 HouseUtils.AreRoomsValid switches to BeelistedTiles in
+        // notTheBeesWorld: tile 225 alone is removed from BlacklistedTiles.
+        var baseline = Create();
+        Assert.True(CaveHousePlacement1458.TryPlace(baseline.Workspace, baseline.State,
+            baseline.Random, 300, 190, out var result));
+        CaveHouseRoom1458 room = result.Rooms[0];
+        int tileX = room.Left - 4, tileY = room.Top + 1;
+
+        var ordinary = Create();
+        var hiveBlock = new WorldTile { Type = 225, Flags = WorldTileFlags.Active };
+        ordinary.Workspace.TileStore.Set(tileX, tileY, in hiveBlock);
+        WorldTile[] ordinaryBefore = ordinary.Workspace.TileStore.Tiles.ToArray();
+        Assert.False(CaveHousePlacement1458.TryPlace(ordinary.Workspace, ordinary.State,
+            ordinary.Random, 300, 190, out _));
+        Assert.Equal(ordinaryBefore, ordinary.Workspace.TileStore.Tiles.ToArray());
+        Assert.Equal(0, ordinary.Workspace.GeneratedChestCount);
+        Assert.Equal(2, ordinary.Random.Calls);
+
+        var bees = Create();
+        bees.Workspace.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.NotTheBees,
+            VanillaSecretWorldSeed1458.None));
+        bees.Workspace.TileStore.Set(tileX, tileY, in hiveBlock);
+        Assert.True(CaveHousePlacement1458.TryPlace(bees.Workspace, bees.State,
+            bees.Random, 300, 190, out _));
+        Assert.Equal(1, bees.Workspace.GeneratedChestCount);
+        Assert.Equal(hiveBlock, bees.Workspace.TileStore.Get(tileX, tileY));
+
+        var protectedTile = Create();
+        protectedTile.Workspace.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.NotTheBees,
+            VanillaSecretWorldSeed1458.None));
+        var larva = new WorldTile { Type = 226, Flags = WorldTileFlags.Active };
+        protectedTile.Workspace.TileStore.Set(tileX, tileY, in larva);
+        WorldTile[] protectedBefore = protectedTile.Workspace.TileStore.Tiles.ToArray();
+        Assert.False(CaveHousePlacement1458.TryPlace(protectedTile.Workspace, protectedTile.State,
+            protectedTile.Random, 300, 190, out _));
+        Assert.Equal(protectedBefore, protectedTile.Workspace.TileStore.Tiles.ToArray());
+        Assert.Equal(0, protectedTile.Workspace.GeneratedChestCount);
+        Assert.Equal(2, protectedTile.Random.Calls);
+    }
+
+    [Fact]
     public void Cave_house_offers_respect_prior_shimmer_protection_before_any_structure_write()
     {
         // Official HouseUtils.AreRoomsValid -> StructureMap.CanPlace(room, blacklist, 5).

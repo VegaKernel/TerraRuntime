@@ -65,7 +65,7 @@ internal static partial class CaveHousePlacement1458
 
         var grid = new Grid(workspace.TileStore, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
         if (!grid.InWorld(originX, originY, 1, 1, 30) || HasWireOrChestNearby(grid, originX, originY, 25) ||
-            !TryCreateRooms(grid, random, originX, originY, out CaveHouseRoom1458[] rooms))
+            !TryCreateRooms(grid, random, workspace.VanillaSeedProfile, originX, originY, out CaveHouseRoom1458[] rooms))
         {
             return false;
         }
@@ -112,13 +112,40 @@ internal static partial class CaveHousePlacement1458
     private static bool TryCreateRooms(
         Grid grid,
         IWorldGenerationVanillaRandom random,
+        VanillaWorldSeedProfile1458 profile,
         int originX,
         int originY,
         out CaveHouseRoom1458[] rooms)
     {
         rooms = [];
+        // WorldGen.SecretSeed.GenerateBiggerAbandonedHouses is evaluated before
+        // HouseUtils searches for the first floor. IAmError draws even when no
+        // usable floor exists; AbandonedManors always selects the larger house.
+        bool biggerHouse = profile.Has(VanillaSecretWorldSeed1458.AbandonedManors) ||
+            profile.Has(VanillaSecretWorldSeed1458.IAmError) && random.Next(3) == 0;
         if (!TryFindSolidDown(grid, originX, originY, MaximumDownSearch, out int floorY) || floorY == originY)
             return false;
+
+        if (biggerHouse)
+        {
+            CaveHouseRoom1458 last = FindRoom(grid, originX, floorY);
+            int maximumRooms = profile.Has(VanillaSecretWorldSeed1458.IAmError) ? random.Next(7, 31) : 7;
+            int count = Math.Max(0, maximumRooms - random.Next(4));
+            var bigRooms = new CaveHouseRoom1458[count];
+            for (int index = 0; index < count; index++)
+            {
+                last = FindBigHouseRoom(grid, random, last);
+                bigRooms[index] = last;
+            }
+            // HouseUtils.CreateRooms_BigAbandonedHouses increments a copied
+            // Rectangle in its final loop; the list's room Y values do not move.
+            foreach (CaveHouseRoom1458 room in bigRooms)
+                if (!grid.InWorld(room.X, room.Y, room.Width, room.Height, 10) ||
+                    room.Bottom > grid.Height - 220)
+                    return false;
+            rooms = bigRooms;
+            return count != 0;
+        }
 
         CaveHouseRoom1458 middle = FindRoom(grid, originX, floorY);
         CaveHouseRoom1458 upper = FindRoom(grid, middle.X + middle.Width / 2, middle.Y + 1);
@@ -151,6 +178,12 @@ internal static partial class CaveHousePlacement1458
         return true;
     }
 
+    internal static bool TryCreateRoomsForTesting(Workspace workspace, IWorldGenerationVanillaRandom random,
+        int originX, int originY, out CaveHouseRoom1458[] rooms) =>
+        TryCreateRooms(new Grid(workspace.TileStore,
+                workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null),
+            random, workspace.VanillaSeedProfile, originX, originY, out rooms);
+
     private static CaveHouseRoom1458 FindRoom(Grid grid, int originX, int originY)
     {
         int left = TryFindSolidHorizontal(grid, originX, originY, -1, 25, out int foundLeft)
@@ -171,6 +204,31 @@ internal static partial class CaveHousePlacement1458
         return new CaveHouseRoom1458(x, originY - height, width, height);
     }
 
+    private static CaveHouseRoom1458 FindBigHouseRoom(Grid grid, IWorldGenerationVanillaRandom random,
+        in CaveHouseRoom1458 previous)
+    {
+        int originX = previous.X + previous.Width / 2, originY = previous.Y + 1;
+        int left = TryFindSolidHorizontal(grid, originX, originY, -1, 25, out int foundLeft)
+            ? foundLeft : originX - 25;
+        int right = TryFindSolidHorizontal(grid, originX, originY, 1, 25, out int foundRight)
+            ? foundRight : originX + 25;
+        int width, x;
+        if (random.Next(2) == 0)
+        {
+            x = Math.Max(left, previous.Left);
+            width = random.Next(15, 31);
+        }
+        else
+        {
+            width = random.Next(15, 31);
+            x = Math.Min(right, previous.Right) - width;
+        }
+        if (x <= 10) x = 10;
+        if (x + width >= grid.Width - 10) x = grid.Width - 10 - width;
+        int height = random.Next(8, 13);
+        return new CaveHouseRoom1458(x, originY - height, width, height);
+    }
+
     private static bool AreRoomsValid(
         Workspace workspace,
         Grid grid,
@@ -178,10 +236,13 @@ internal static partial class CaveHousePlacement1458
         IReadOnlyList<CaveHouseRoom1458> rooms,
         CaveHouseType1458 type)
     {
+        // HouseUtils.AreRoomsValid selects BeelistedTiles for notTheBeesWorld. Its only
+        // difference from BlacklistedTiles is that hive block 225 may surround a house.
+        bool notTheBees = workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.NotTheBees);
         foreach (CaveHouseRoom1458 room in rooms)
         {
             if(!workspace.VanillaStructureMap.CanPlace(new(room.Left,room.Top,room.Width,room.Height),5,
-                static tile=>Array.IndexOf(InvalidStructureTiles,tile)<0))return false;
+                tile=>notTheBees&&tile==225||Array.IndexOf(InvalidStructureTiles,tile)<0))return false;
 
             if (type == CaveHouseType1458.Granite)
                 continue;

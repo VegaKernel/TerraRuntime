@@ -268,7 +268,7 @@ internal sealed partial class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type is 96 or 441 or 457 or 468)
+        if (tile.Type is 96 or 254 or 441 or 457 or 468)
         {
             CheckTwoByTwoStyle(i, j, tile.Type);
             return;
@@ -363,6 +363,12 @@ internal sealed partial class GenerationTileFraming1458(
         if (tile.Type is 128 or 269)
         {
             LegacyCheckMannequin(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type == 334)
+        {
+            FrameLegacyWeaponsRack(i, j);
             return;
         }
 
@@ -1564,7 +1570,7 @@ internal sealed partial class GenerationTileFraming1458(
     private static bool IsBoulderContainer(ushort type) =>
         type is 21 or 467 or 88 or 441 or 468 or 470 or 475;
 
-    /// <summary>WorldGen.Check2x2Style for the four generation-safe non-pumpkin identities.</summary>
+    /// <summary>WorldGen.Check2x2Style for the generation-time object identities.</summary>
     private void CheckTwoByTwoStyle(int i, int j, ushort type)
     {
         if (destroyingObject)
@@ -1600,6 +1606,8 @@ internal sealed partial class GenerationTileFraming1458(
             }
             if (!SolidTileAllowBottomSlope(x, top + 2))
                 broken = true;
+            else if (type == 254 && At(x, top + 2).Type is not (2 or 109 or 477 or 492))
+                broken = true;
         }
         if (!broken)
             return;
@@ -1609,6 +1617,24 @@ internal sealed partial class GenerationTileFraming1458(
             for (int y = top; y < top + 2; y++)
                 if (At(x, y).IsActive && At(x, y).Type == type)
                     KillTile(x, y);
+        if (type == 254 && observed.FrameX >= 72)
+        {
+            // WorldGen.Check2x2Style makes the pumpkin seed reward rolls after fragment dust,
+            // even though Item.NewItem returns without spawning an item during generation.
+            if (observed.FrameX < 108)
+            {
+                if (random.Next(2) == 0)
+                    random.Next(1, 3);
+            }
+            else if (observed.FrameX < 144)
+                random.Next(2, 6);
+            else
+            {
+                random.Next(5, 11);
+                if (SourceHalloween)
+                    random.Next(200); // The conditional Item.NewItem consumes no further RNG.
+            }
+        }
         destroyingObject = false;
         for (int x = left - 1; x < left + 3; x++)
             for (int y = top - 1; y < top + 3; y++)

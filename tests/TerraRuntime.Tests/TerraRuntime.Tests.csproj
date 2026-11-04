@@ -1157,7 +1157,7 @@
     <EmbeddedResource Include="Fixtures/GenerationUndergroundFinishLegacy1458.json.gz" LogicalName="GenerationUndergroundFinishLegacy1458" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="data/MicroCompletion1458/*"><LogicalName>GenerationMicroCompletion1458Tests.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="data/MicroCompletion1458/*" WithCulture="false"><LogicalName>GenerationMicroCompletion1458Tests.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/GenerationCrimsonCallGraph1458.json.gz" LogicalName="GenerationCrimsonCallGraph1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/GenerationGlowTulipWaterCheck1458.json.gz" LogicalName="GenerationGlowTulipWaterCheck1458" /></ItemGroup>
@@ -1169,7 +1169,7 @@
   <ItemGroup>
 <EmbeddedResource Include="data/DoublePileRewards1458.json.gz"><LogicalName>GenerationDoublePileRewards1458</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="data/SpecialSeedKill1458.json.gz"><LogicalName>GenerationSpecialSeedKill1458</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/SpecialMicro98/*.gz"><LogicalName>GenerationSpecialMicro98.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/SpecialMicro98/*.gz" WithCulture="false"><LogicalName>GenerationSpecialMicro98.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
 
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/GenerationFrameContextDust1458.json.gz" LogicalName="GenerationFrameContextDust1458" /></ItemGroup>
@@ -1185,30 +1185,30 @@
 <ItemGroup>
 <EmbeddedResource Include="data/ColdPaletteDust1458.json.gz"><LogicalName>GenerationColdPaletteDust1458</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="data/TruncatedWallKill1458.json.gz"><LogicalName>GenerationTruncatedWallKill1458</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/SecretMicro98/*.gz"><LogicalName>GenerationSecretMicro98.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/SecretMicro98/*.gz" WithCulture="false"><LogicalName>GenerationSecretMicro98.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
 
 </ItemGroup>
 <ItemGroup><EmbeddedResource Include="Fixtures/GenerationSmoothGap1458.json.gz" LogicalName="GenerationSmoothGap1458" /></ItemGroup>
 <ItemGroup><EmbeddedResource Include="Fixtures/GenerationLargeMicroBiomes1458.json.gz" LogicalName="GenerationLargeMicroBiomes1458" /></ItemGroup>
   <ItemGroup>
-<EmbeddedResource Include="data/SpecialBuriedChests1458/*.gz"><LogicalName>SpecialBuriedChests1458.%(Filename)</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/DungeonBuriedChestPhase1458/*.gz"><LogicalName>DungeonBuriedChestPhase1458.%(Filename)</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/SpecialChestDepth1458/*.gz"><LogicalName>SpecialChestDepth1458.%(Filename)</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/SpecialChestFamilies1458/*.gz"><LogicalName>SpecialChestFamilies1458.%(Filename)</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/RequestedChestStyle1458/*.gz"><LogicalName>RequestedChestStyle1458.%(Filename)</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/AnniversaryCavernChance1458/*.gz"><LogicalName>AnniversaryCavernChance1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/SpecialBuriedChests1458/*.gz" WithCulture="false"><LogicalName>SpecialBuriedChests1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/DungeonBuriedChestPhase1458/*.gz" WithCulture="false"><LogicalName>DungeonBuriedChestPhase1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/SpecialChestDepth1458/*.gz" WithCulture="false"><LogicalName>SpecialChestDepth1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/SpecialChestFamilies1458/*.gz" WithCulture="false"><LogicalName>SpecialChestFamilies1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/RequestedChestStyle1458/*.gz" WithCulture="false"><LogicalName>RequestedChestStyle1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/AnniversaryCavernChance1458/*.gz" WithCulture="false"><LogicalName>AnniversaryCavernChance1458.%(Filename)</LogicalName></EmbeddedResource>
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/GenerationManifestHash1458.json.gz"><LogicalName>GenerationManifestHash1458</LogicalName></EmbeddedResource></ItemGroup>
   <ItemGroup>
 <EmbeddedResource Include="Fixtures/GenerationManifest1458.json.gz"><LogicalName>GenerationManifest1458</LogicalName></EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-<EmbeddedResource Include="data/AdditionalSecretChest1458/*.gz"><LogicalName>AdditionalSecretChest1458.%(Filename)</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/AdditionalSecretChestFamilies1458/*.gz"><LogicalName>AdditionalSecretChestFamilies1458.%(Filename)</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="data/AdditionalSecretChestPool1458/*.gz"><LogicalName>AdditionalSecretChestPool1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/AdditionalSecretChest1458/*.gz" WithCulture="false"><LogicalName>AdditionalSecretChest1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/AdditionalSecretChestFamilies1458/*.gz" WithCulture="false"><LogicalName>AdditionalSecretChestFamilies1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/AdditionalSecretChestPool1458/*.gz" WithCulture="false"><LogicalName>AdditionalSecretChestPool1458.%(Filename)</LogicalName></EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-<EmbeddedResource Include="data/AdditionalSecretDungeonChest1458/*.gz"><LogicalName>AdditionalSecretDungeonChest1458.%(Filename)</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="data/AdditionalSecretDungeonChest1458/*.gz" WithCulture="false"><LogicalName>AdditionalSecretDungeonChest1458.%(Filename)</LogicalName></EmbeddedResource>
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="GenerationDungeonTree1458.json.gz"><LogicalName>GenerationDungeonTree1458</LogicalName></EmbeddedResource></ItemGroup>
   <ItemGroup><EmbeddedResource Include="GenerationPyramidEntranceCursor1458.json.gz"><LogicalName>GenerationPyramidEntranceCursor1458</LogicalName></EmbeddedResource></ItemGroup>

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "a6d65321",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "Row 63 source-backed NotTheBees house blacklist and AbandonedManors/IAmError big-house room and outer-offer rules; no official big-house differential or public special-pass admission.",
+    "Row 109 official TileFrame254/334 registered Final Cleanup fixture; NoTraps, Drunk, GetGood, shimmer-ocean, source-reachable Worthy+Anniversary paint and repeated first NotTheBees helper fixtures.",
+    "Anniversary final grass quota and NotTheBees Mud admission; remaining special-seed tails and public non-default Final Cleanup remain open.",
+    "Embedded binary golden resources remain in the main test assembly on Windows rather than the accidental bin satellite assembly."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 151, "passed": 151, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185690, "passed": 185690, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1205.38 },
+  "full": { "total": 1731005, "passed": 1731005, "failed": 0, "errors": 0, "skipped": 0, "methods": 5885, "wallSeconds": 2505.29 },
+  "testDllSha256": "17ff897699939a2322631b12dd296dca588472812643a30c493b7f047fd68c2d",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "878270ae19ae3cfcedd685e8a8d77d21469659ac0c3be906f053d3cd35b80af4",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "rejectedEarlierFast": {
+    "total": 185690,
+    "failed": 751,
+    "cause": "746 embedded .bin.gz goldens were placed into a bin satellite assembly; five child-worker runs lacked DOTNET_ROOT. The raw rejected run remains under ignored .cache/worldgen-20261105-fast."
+  },
+  "remaining": [
+    "Rows 63 and 109 remain P; public special-seed Final Cleanup pipeline not admitted.",
+    "FinishNotTheBees, full Anniversary sky/chest/prefix continuations, FinishRemixWorld and other special tails need complete canonical evidence.",
+    "NativeAOT smoke, complete special full-pass differentials and whole-generation parity remain unverified."
+  ]
+}

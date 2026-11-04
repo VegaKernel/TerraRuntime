@@ -1057,7 +1057,19 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
                 tile.Reserved = 0;
             }
         }
-        PlaceFinalCleanupGrassOffers(grid, random);
+        PlaceFinalCleanupGrassOffers(grid, random,
+            (context.Workspace as Workspace)?.VanillaSeedProfile ?? default);
+        if (context.Workspace is Workspace noTrapsWorkspace &&
+            noTrapsWorkspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.NoTraps))
+            FinishNoTraps(noTrapsWorkspace, grid, random, framing, context.CancellationToken);
+        if (context.Workspace is Workspace drunkWorkspace &&
+            drunkWorkspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.DrunkWorld))
+            FinishDrunkGen(drunkWorkspace, random, context.CancellationToken);
+        if (context.Workspace is Workspace goodWorldWorkspace &&
+            goodWorldWorkspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.ForTheWorthy))
+            FinishGetGoodWorld(context, grid, random, framing);
+        if (context.Workspace is Workspace shimmerOceanWorkspace)
+            ApplyOnlyShimmerOceanTail(shimmerOceanWorkspace, context.CancellationToken);
         if (context.Workspace is Workspace teamWorkspace && teamWorkspace.VanillaSeedProfile.Has(TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese))
         {
             if (teamWorkspace.VanillaSeedProfile.Special != TerraRuntime.World.VanillaSpecialWorldSeed1458.None || teamWorkspace.VanillaSeedProfile.Secret != TerraRuntime.World.VanillaSecretWorldSeed1458.RoyaleWithCheese)
@@ -1194,14 +1206,17 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
         return 0;
     }
 
-    private static void PlaceFinalCleanupGrassOffers(RuntimeGrid grid, IWorldGenerationVanillaRandom random)
+    private static void PlaceFinalCleanupGrassOffers(RuntimeGrid grid, IWorldGenerationVanillaRandom random,
+        VanillaWorldSeedProfile1458 profile)
     {
-        // WorldGen.FinalCleanup's ordinary final offer loop.  Secret-seed multipliers and Mud eligibility
-        // belong to the explicit secret-seed barrier; the source-backed provider enters this pass only for
-        // the default canonical profile.
+        // WorldGen.FinalCleanup: Anniversary multiplies the accepted-offer quota, while NotTheBees
+        // admits TileID.Sets.Mud (only type 59 in the pinned 1.4.5.8 content set). The provider still
+        // gates complete special-seed pipelines separately; this kernel must retain the source tail.
         if (grid.Width <= 100 || grid.Height <= 250)
             return;
         int target = grid.Width switch { >= 8400 => 9, >= 6400 => 6, _ => 3 };
+        if (profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10))
+            target *= 5;
         int attempts = 3000;
         int placed = 0;
         while (placed < target && --attempts > 0)
@@ -1212,7 +1227,8 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             // TileID.Sets.Dirt in 1.4.5.8 contains both Dirt (0) and
             // Dirtiest Block (668). Re-selecting an existing 668 still counts
             // as a successful offer and shortens this shared-RNG loop.
-            if (!tile.IsActive || tile.Type is not (0 or 668))
+            if (!tile.IsActive || tile.Type is not (0 or 668) &&
+                !(profile.Has(VanillaSpecialWorldSeed1458.NotTheBees) && tile.Type == 59))
                 continue;
             // Tile.ClearTile clears slope and Active/Inactive only. In particular,
             // FinalCleanup's replacement preserves wall, liquid, wires, paint,

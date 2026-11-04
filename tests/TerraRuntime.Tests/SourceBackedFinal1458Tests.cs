@@ -2148,6 +2148,39 @@ public sealed class SourceBackedFinal1458Tests
         Assert.Equal(3, offers);
     }
 
+    [Theory]
+    [InlineData(VanillaSpecialWorldSeed1458.None, (ushort)59, 0)]
+    [InlineData(VanillaSpecialWorldSeed1458.CelebrationMk10, (ushort)0, 15)]
+    [InlineData(VanillaSpecialWorldSeed1458.NotTheBees, (ushort)59, 3)]
+    [InlineData(VanillaSpecialWorldSeed1458.CelebrationMk10 | VanillaSpecialWorldSeed1458.NotTheBees, (ushort)59, 15)]
+    public void Final_cleanup_special_grass_tail_uses_anniversary_quota_and_bee_mud_admission(
+        VanillaSpecialWorldSeed1458 special, ushort substrate, int expectedOffers)
+    {
+        // TerrariaServer 1.4.5.8 WorldGen.FinalCleanup's final offer loop. This is a direct
+        // delegate/kernel check; the public special-seed plan still has its own admission gate.
+        var workspace = new Workspace(420, 400);
+        Assert.True(workspace.TrySetLayers(180, 250));
+        workspace.SetVanillaSeedProfile(new(special, VanillaSecretWorldSeed1458.None));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200,
+            effectiveCrimson: false, special: special));
+        for (int x = 0; x < 420; x++)
+            for (int y = 0; y < 400; y++)
+            {
+                var tile = new WorldTile { Type = substrate, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in tile);
+            }
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 420, 400),
+                workspace, new RandomAdapter(1458)));
+
+        int offers = 0;
+        for (int x = 0; x < 420; x++)
+            for (int y = 0; y < 400; y++)
+                offers += workspace.TileStore.Get(x, y).Type == 668 ? 1 : 0;
+        Assert.Equal(expectedOffers, offers);
+    }
+
     [Fact]
     public void Final_cleanup_matches_the_official_ordinary_passlegacy_whole_grid_fixture()
     {
