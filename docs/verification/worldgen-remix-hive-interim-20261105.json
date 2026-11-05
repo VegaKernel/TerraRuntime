@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": false,
+  "allGenerationComplete": false,
+  "baseCommit": "3d0a8215",
+  "scope": [
+    "Source 1.4.5.8 Liquid.LavaCheck excludes Remix/dual-dungeon from the generation-time Underground Desert 7x7 lava-kind recolor. The shared simulator now applies the Remix exclusion in its foreign-liquid reaction path.",
+    "On a genuine canonical 4200x1200 seed-1458 Remix Micro Biomes to registered Settle Liquids Again checkpoint, an isolated runtime with the byte-identical guarded simulator matches the original postimage on all 17 tile fields, all 56 physical RNG slots and cursor including report draw, queues and 754 solidity bits. Old code differs in 203 dry liquid-kind cells.",
+    "Portable direct official registered 1000x500 Remix and ordinary fixtures match seven-field and full-17-field grids, next RNG and queues. Removing the guard fails Remix while ordinary remains green.",
+    "Existing BeeHive 444 KillTile owner matches two direct official dry/wet 100x100 full-17-field grid, raw RNG and projectile-655 fixtures; omitting KillTile fails both grids. Full Bees tail remains open."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 5, "passed": 5, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": "Pending at user-requested stop point.",
+  "affected": "Pending at user-requested stop point.",
+  "unfilteredFull": "Pending at user-requested stop point; required before broad parity acceptance.",
+  "nativeAot": "User-deferred; not run.",
+  "artifactLocation": "Official binary, raw world images and diagnostic harnesses remain ignored local reference and are not committed.",
+  "remaining": [
+    "Do not mark this packet accepted until fast, affected/full and smoke gates complete.",
+    "Row 109 and the complete Bees/Remix generation prefixes remain open.",
+    "The Anniversary 14-stat sidecar prototype is isolated/test-injected and not imported into production."
+  ]
+}

@@ -1733,7 +1733,11 @@ public sealed class VanillaWorldLiquidSimulator1458
             return;
         }
 
-        if (generationWaterLine is not null && sourceKind == WorldLiquidKind.Lava) ApplyPreDungeonDesertLava1458(x, y);
+        // TerrariaServer 1.4.5.8 Liquid.LavaCheck excludes Remix (and dual-dungeon) worlds
+        // from its UndergroundDesertCheck 7x7 lava recolor. The retained Remix callback is
+        // present only for that effective seed profile; this rule applies during all settle rounds.
+        if (generationWaterLine is not null && generationRemixLava is null && sourceKind == WorldLiquidKind.Lava)
+            ApplyPreDungeonDesertLava1458(x, y);
         WorldTile source = tiles.Get(x, y);
         if (createMergeTilesDuringGeneration && source.TileType != VanillaTileIds.ShimmerBlock && (source.TileType != VanillaTileIds.RollingCactus || rollingCactusSolid) &&
             source.IsActive && !source.IsActuated &&
