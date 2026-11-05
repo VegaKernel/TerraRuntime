@@ -6,6 +6,10 @@ Connected fishing: [pole, bait and catch](fishing-authority-1458.md), [Angler qu
 
 This directory contains the English TerraRuntime documentation. The Russian version is maintained in parallel under `docs/ru/` and must describe the same actual code state.
 
+## Development tools
+
+- [VanillaPorter Roslyn prototype](vanilla-porter.md) — local vanilla source analysis, bounded synthetic method adaptation and its explicit verification limits.
+
 ## Start here
 
 - [Authoritative wiring and basic mechanisms](wiring-mechanisms.md)
