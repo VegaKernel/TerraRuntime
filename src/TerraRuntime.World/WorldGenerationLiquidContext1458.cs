@@ -11,4 +11,5 @@ internal readonly record struct WorldGenerationLiquidContext1458(
     Action RemoveWaterAroundShimmer,
     Action CleanupInteractions,
     Action<int, int> FrameSquare,
-    Action<int, int> FrameRetiredPlant);
+    Action<int, int> FrameRetiredPlant,
+    Func<int, int, bool>? IsRemixLava = null);

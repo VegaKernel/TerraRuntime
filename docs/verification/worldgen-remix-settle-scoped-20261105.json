@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "128af4c2",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "Bounded source-ordered Remix second scan now admits active stone1+natural wall1, inactive natural wall1 and grass2 conversion in addition to earlier sparse inputs. Direct original full-grid/RNG fixtures and effective omission controls cover these selected candidates only.",
+    "Bounded final Remix CheckLilyPad scan admits up to four separated water-kind pads on source-qualified grass support styles 477/109/60/116. A direct official multi-pad full-grid/RNG fixture and omission control cover this slice, not interacting or arbitrary pads.",
+    "The existing source RemixFallingLava predicate is now passed through the shared generation-settle liquid context for Remix only and restored after the operation. A direct official vertical-shaft Settle Liquids Again fixture matches seven fields of every cell and next RNG; old/disabled callback fails Water-vs-Lava.",
+    "On a genuine canonical Remix Micro Biomes to Settle Liquids Again source checkpoint, clean runtime replay after the callback fix matches the final six-field grid, full physical RNG after the source report draw, liquid queues and all 754 mutable solidity bits. The full 17-field image still differs in 203 zero-volume liquid-kind tags (first 2334,588), so full pass parity is not accepted."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 168, "passed": 168, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185838, "passed": 185838, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1295.47 },
+  "unfilteredFull": { "methods": 5955, "total": 1731153, "passed": 1731153, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 2414.95 },
+  "testDllSha256": "e880051c2c246112a3b6ab4b644e1f95533bbc3ba631638f98729fa99a81fa5f",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "b60470451f59f8ecd276f40c22e377a637a0925fa470b6e2e64fb5a7e9fd2d5a",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "separateNativeResearch": {
+    "sourceProfiles": ["Anniversary 4200x1200 seed1458 pre/post Final Cleanup", "NotTheBees 4200x1200 seed1458 pre/post Final Cleanup", "Remix 4200x1200 seed1458 pre/post Settle Liquids Again"],
+    "artifactLocation": "Ignored local reference only; game binary, raw tile images and private diagnostics are not committed.",
+    "scope": "Natural Anniversary and NotTheBees registered Final Cleanup replay are still red at their first source-specific cells; genuine Remix settle agrees only on the declared six-field/RNG/queue/solidity projection."
+  },
+  "remaining": [
+    "Row109 remains P: public special-seed Final Cleanup and continuous real-prefix pass parity are not admitted.",
+    "Anniversary needs source-ordered in-pass tail and mutable prior-prefix Item state; Bees needs the second tail and entity/projectile side-table parity; Remix still needs broad conversion/earlier prefix plus zero-volume liquid-kind ownership.",
+    "Full generation and NativeAOT parity remain unverified."
+  ]
+}

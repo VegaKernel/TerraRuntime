@@ -7,7 +7,7 @@ internal sealed partial class FinalPass1458
 {
     // Source WorldGen.FinishRemixWorld's second x/y scan. This admitted sparse slice
     // preserves its two unconditional draws per cell and the Drunk split draw.
-    // Stone1/wall0 is the first occupied Convert candidate admitted here;
+    // Stone1 with wall0/1, grass2/wall0 and inactive natural wall1 are admitted Convert candidates;
     // broader tile/wall families still need an explicit source fixture.
     internal static void FinishRemixSecondScanSparse(Workspace workspace, int deepestCloud,
         IWorldGenerationVanillaRandom random, GenerationTileFraming1458 framing,
@@ -38,9 +38,11 @@ internal sealed partial class FinalPass1458
             for (int y = 25; y < height - 25 && y < layers.WorldSurface + 2; y++)
             {
                 WorldTile tile = At(x, y);
-                if (tile.IsActive && tile.Type is not (1 or 56) ||
-                    tile.IsActive && tile.Type == 1 && tile.Wall != 0 ||
-                    tile.Wall is not (0 or 87 or 178 or 180))
+                if (tile.IsActive && tile.Type is not (1 or 2 or 56) ||
+                    tile.IsActive && tile.Type == 56 && tile.Wall == 1 ||
+                    tile.IsActive && tile.Type == 1 && tile.Wall is not (0 or 1) ||
+                    tile.IsActive && tile.Type == 2 && tile.Wall != 0 ||
+                    tile.Wall is not (0 or 1 or 87 or 178 or 180))
                     throw new NotSupportedException("Remix conversion needs WorldGen.Convert for this occupied cell.");
             }
         }
@@ -67,7 +69,8 @@ internal sealed partial class FinalPass1458
                     conversionType = left == bootstrap.CrimsonLeft ? 4 : 1;
                 }
                 // Source Convert is inert for the other admitted sparse identities.
-                if (convertOffer && tile.IsActive && tile.Type == 1)
+                if (convertOffer && (tile.IsActive && tile.Type is (1 or 2) ||
+                    !tile.IsActive && tile.Wall == 1))
                     converter.ConvertAt(x, y, conversionType, rainbowSandAndBlackSandWalls: false);
                 if (y < layers.WorldSurface - random.Next(19, 22) && tile.Wall is 178 or 180)
                     tile.Wall = 0;

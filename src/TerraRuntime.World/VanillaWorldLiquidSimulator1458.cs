@@ -65,7 +65,9 @@ public sealed class VanillaWorldLiquidSimulator1458
         ArgumentNullException.ThrowIfNull(context.IsSolid);
         ArgumentNullException.ThrowIfNull(context.SetSolid);
         var oldGet = generationSolid; var oldSet = generationSetSolid;
+        var oldRemix = generationRemixLava;
         generationSolid = context.IsSolid; generationSetSolid = context.SetSolid;
+        generationRemixLava = context.IsRemixLava;
         try
         {
             generationWaterLine = context.WaterLine;
@@ -81,6 +83,7 @@ public sealed class VanillaWorldLiquidSimulator1458
             context.SetSolid(VanillaTileIds.RollingCactus, false);
             generationSolid = oldGet;
             generationSetSolid = oldSet;
+            generationRemixLava = oldRemix;
             generationWaterLine = null;
             generationDungeonWater = null;
             generationShimmerBoundary = null;

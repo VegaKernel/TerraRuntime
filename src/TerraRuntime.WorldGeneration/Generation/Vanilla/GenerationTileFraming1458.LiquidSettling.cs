@@ -19,7 +19,9 @@ internal sealed partial class GenerationTileFraming1458
         {
             var sink = new GenerationLiquidMergeSink(this);
             var context = new WorldGenerationLiquidContext1458(waterLine, solid, setSolid, dungeonWater,
-                shimmerBoundary, cleanup, (x, y) => SquareTileFrame(x, y), FrameRetiredLiquidPlant);
+                shimmerBoundary, cleanup, (x, y) => SquareTileFrame(x, y), FrameRetiredLiquidPlant,
+                workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) == true
+                    ? RemixFallingLava : null);
             return new VanillaWorldLiquidSimulator1458(store, sideEffects: sink, random: new GenerationLiquidRandom(random))
                 .SettleDuringWorldGeneration(sink, in context, cancellationToken);
         }
