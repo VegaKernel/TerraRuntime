@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "4dd3885d",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "The shared generation liquid simulator excludes Remix from Liquid.LavaCheck's source UndergroundDesertCheck 7x7 lava-kind recolor. A direct untouched 1.4.5.8 registered 1000x500 ordinary/Remix fixture matches seven-field and full-17-field grids, next RNG and queues; removing the guard fails Remix while ordinary stays green.",
+    "A genuine canonical 4200x1200 seed-1458 Remix Micro Biomes to registered Settle Liquids Again replay matches strict pre- and post-17-field tile images, all 56 physical RNG slots and cursor including the pass report draw, empty liquid queues and all 754 solidity bits. The old runtime's 203 zero-volume liquid-kind differences are eliminated. This is one natural pass boundary, not entire worldgen-prefix parity.",
+    "Existing generation KillTile/framing owners for BeeHive 444 and plant detritus 233 match direct untouched official dry/wet 100x100 fixtures on full-17-field grids, physical RNG and projectile side effects. Dry hive publishes projectile 655, wet hive suppresses it, and both detritus cases publish none. Omitting either KillTile call fails both corresponding official grids. The full 41x41 FinishNotTheBees tail is not admitted."
+  ],
+  "canonicalRemix": {
+    "sourcePre17Sha256": "e9f9221d263a64fb849a1570a0366ff4c765c837e0e82ba7c144b2ef5e4f088b",
+    "sourcePost17Sha256": "af4fad9d98631bb71529c658ea9b5b18a6f68a7e096013c1c5bb9cba5d543f9e",
+    "sourcePostSixFieldSha256": "246408db936e7ba97cf0c6a8b52bcbd5463752cc68d405ef7cb920128b7fd05b",
+    "sourceRngCursorBeforeReport": 45,
+    "sourceRngCursorAfterReport": 46,
+    "sourceReportDraw": 1811195756,
+    "liquidActive": 0,
+    "liquidBuffered": 0,
+    "solidityEntries": 754
+  },
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 8, "passed": 8, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185858, "passed": 185858, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1802.60 },
+  "unfilteredFull": { "methods": 5970, "total": 1731173, "passed": 1731173, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 2880.49 },
+  "testDllSha256": "7e172d4bfec0c323c15c58e614668129167c8473074154d42623cd7f83186768",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "4274eb3a8cc55ddfac7638ef3f1c9d75addef9f74a6a340f2e5ef20c2685463d3",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "artifactLocation": "Untouched official binary, raw canonical tile images and diagnostic harnesses remain ignored local reference and are not committed.",
+  "remaining": [
+    "Row 109 remains P; genuine registered Anniversary and Bees Final Cleanup still diverge at their first in-pass special-tail cells.",
+    "The complete Bees 41x41 scan, Anniversary chest Item-state producer boundary and broad Remix conversion/prefix remain unqualified.",
+    "Row 63 Buried Chests and all-world full fixed-seed generation parity remain open."
+  ]
+}
