@@ -427,6 +427,11 @@ internal sealed class BuriedChest1458(
             return false;
         if (x < width * 0.15 || x > width * 0.85)
             return false;
+        // WorldGen.IsUndergroundDesert, TerrariaServer 1.4.5.8: Remix's
+        // underground-desert classification stops at the rock-layer line.
+        if (workspace?.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) == true &&
+            y > context.RockLayer)
+            return false;
 
         for (int scanX = x - 15; scanX <= x + 15; scanX++)
         {

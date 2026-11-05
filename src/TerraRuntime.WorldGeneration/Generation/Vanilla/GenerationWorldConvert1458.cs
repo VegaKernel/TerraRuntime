@@ -35,8 +35,10 @@ internal sealed class GenerationWorldConvert1458(
         {
             // WorldGen.Convert (1/2/4) leaves active Dirt0 unchanged, but its
             // independently eligible wall can still convert and frame. Only
-            // active wall0/1 is qualified; inactive tile0 retains its older wall cohorts.
-            0 when !tile.IsActive || tile.Wall is 0 or 1 => 0,
+            // Active wall0/1 and the natural Anniversary+Remix Hallow Dirt0/wall2
+            // Convert(2) pair are qualified; inactive tile0 keeps its older cohorts.
+            0 when !tile.IsActive || tile.Wall is 0 or 1 ||
+                conversionType == 2 && tile.Wall == 2 => 0,
             // These occupied source pairs carry no tile conversion for 1/2/4.
             // Keep the admission tied to their independently observed walls.
             226 when tile.Wall == 87 => 226,
@@ -64,7 +66,8 @@ internal sealed class GenerationWorldConvert1458(
         {
             0 => 0,
             1 => conversionType switch { 1 => 3, 2 => 28, _ => 83 },
-            2 when tile.IsActive && tile.Type == 25 => 2,
+            2 when tile.IsActive && (tile.Type == 25 ||
+                conversionType == 2 && tile.Type == 0) => 2,
             3 when tile.IsActive && tile.Type == 25 => conversionType switch { 1 => 3, 2 => 28, _ => 83 },
             7 when tile.IsActive && tile.Type == 41 => 7,
             87 when tile.IsActive && tile.Type == 226 => 87,

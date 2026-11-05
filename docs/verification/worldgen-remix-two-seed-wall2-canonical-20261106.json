@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "6c9591bb",
+  "scope": [
+    "The registered Buried Chests pass on a second untouched official TerrariaServer.exe 1.4.5.8 canonical 4200x1200 Remix seed1458 raw58 Statues preimage now matches its raw59 postimage on current common production code: all 5.04 million 17-field tiles, 115 ordered chests and every item slot including empties, StructureMap111/96 and all 56 physical RNG entries/cursor plus next audit draw. The previously accepted Remix seed42 raw58-to59 checkpoint also still matches on this code. Temporary absolute-path diagnostics were removed before final build.",
+    "The causal source branch is WorldGen.IsUndergroundDesert: under Remix it returns false below rockLayer before the ±15 desert-wall scan. A direct untouched official wall187 three-case fixture distinguishes Remix at rockLayer, Remix below and ordinary below; restoring the old predicate makes the portable regression fail. The old seed1458 registered pass selected trapped chest467/item4062 at (2519,792), while the source selected ordinary chest21/item54 despite an equal RNG stream.",
+    "The shared WorldGen.Convert(2) owner separately admits source-inert active Dirt0/wall2 on the natural Anniversary+Remix pre-Final-Cleanup image. Untouched official direct Convert(141,330,2) leaves the entire 4200x1200 17-field image byte-identical and consumes no RNG. The portable owner test passes while the old refusal fails; conversion types 1/4 remain fail-closed. The enclosing registered Final Cleanup second scan is still missing."
+  ],
+  "canonicalRemixBuriedChests": {
+    "seed": 1458,
+    "rawBoundary": "58 Statues -> 59 Buried Chests",
+    "officialPreJsonSha256": "2a8d3ff4eaae7901fb51638fb9ad129691204abae9b141e5c1b3fd0aae325bdf",
+    "officialPostJsonSha256": "5b64a10cbf037129553b9210a89ec47ef92156badc8d69ece8942fb032f985f2",
+    "officialPreRaw17Sha256": "7447e20889a1a47fe43993c1e9392e6a33d6680ed29c03b2f1e3007cc2710a2d",
+    "officialPostRaw17Sha256": "2fd781447344fb956f51e85c2bd66f442fd55cabb33d2b357d025484541c8d25",
+    "initialChests": 23,
+    "postChests": 115,
+    "postStructures": 111,
+    "postProtectedRectangles": 96,
+    "postRngIndex": 18,
+    "postNextAuditDraw": 955470412,
+    "currentCommonRegisteredRuntimeExact": true
+  },
+  "priorRemixSeed42Receipt": "worldgen-remix-buried-coral-canonical-20261105.json",
+  "priorRemixSeed42StillExact": true,
+  "undergroundDesertPredicateOriginalJsonSha256": "85bb354e3854888c215b4d1875cd840476fc20c4a8b3403518d2e538124dc139",
+  "convertDirtWall2": {
+    "genuineInputCoordinate": [141, 330],
+    "officialPreAndPostCompressedSha256": "6f4808575ec83c4e8a79d43804d496f07b9d4a2a8746a9babbc68543f0bb4dcc",
+    "rawRngIndex": 0,
+    "nextAuditDraw": 906992634,
+    "portablePositiveAndNegativeCases": 3,
+    "oldOwnerRefusalCausal": true
+  },
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 9, "passed": 9, "failed": 0, "errors": 0, "skipped": 0 },
+  "testDllSha256": "a6a419503ef35f7f8ad7c97592c60fc0b8f3080da0ace367a89985fe37d229e7",
+  "fast": { "methods": 5829, "total": 185910, "passed": 185910, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1775.523 },
+  "unfilteredFull": { "methods": 5996, "total": 1731225, "passed": 1731225, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 2760.336 },
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "c8371cae405cdb1e804d5252fa969173148f0f654636a842e1634fd35c4ee614",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "artifactLocation": "Official binary, raw canonical worlds, direct source captures and temporary absolute-path diagnostic harnesses remain ignored local reference and are not committed.",
+  "remaining": "Roadmap row63 remains P for other special/secret profiles, dimensions and seeds despite two exact Remix checkpoints. Row109 remains P for the registered Anniversary+Remix second Convert scan, chest prefix side effects and other special tails. Full worldgen parity is not established."
+}
