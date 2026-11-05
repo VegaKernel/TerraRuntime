@@ -2149,6 +2149,174 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Theory]
+    [InlineData(1458, 1231831761)]
+    [InlineData(42, 1674419807)]
+    public void No_traps_final_cleanup_matches_official_registered_pass_on_empty_grid(int seed, int expectedNext)
+    {
+        // Direct TerrariaServer 1.4.5.8 registered FinalCleanup PassLegacy, seeds1458/42,
+        // 600x500, empty grid with initialized generation solidity and netMode0.
+        // This checks the integrated NoTraps tail's full-map RNG ordering, not
+        // trapped-chest placement or real-prefix special terrain. At headless
+        // netMode1 the source skips AnglerQuestSwap and yields one fewer draw;
+        // netMode2 needs a Netplay.Clients bootstrap to send the quest packet.
+        var workspace = new Workspace(600, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.InitializeVanillaGenerationSolidity();
+        workspace.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.NoTraps,
+            VanillaSecretWorldSeed1458.None));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200,
+            effectiveCrimson: false, special: VanillaSpecialWorldSeed1458.NoTraps));
+        var random = new RandomAdapter(seed);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", checked((ulong)seed), 600, 500),
+                workspace, random));
+
+        Assert.Equal("CA4531797FCC694C4F3B50D4E8F2E24CFC13E9881B841C060436CB80CDFB32B0", HashFixture(workspace));
+        Assert.Equal(expectedNext, random.Next());
+    }
+
+    [Theory]
+    [InlineData(1458, 147300460)]
+    [InlineData(42, 2047190936)]
+    public void Drunk_final_cleanup_matches_official_registered_pass_on_empty_grid(int seed, int expectedNext)
+    {
+        // Direct official registered FinalCleanup PassLegacy, 600x500/netMode0.
+        // The fixture exercises the integrated Drunk tail's initial paint draw
+        // and the shared Angler epilogue without claiming a natural terrain prefix.
+        var workspace = new Workspace(600, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.InitializeVanillaGenerationSolidity();
+        workspace.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.DrunkWorld,
+            VanillaSecretWorldSeed1458.None));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200,
+            effectiveCrimson: false, special: VanillaSpecialWorldSeed1458.DrunkWorld));
+        var random = new RandomAdapter(seed);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", checked((ulong)seed), 600, 500),
+                workspace, random));
+
+        Assert.Equal("CA4531797FCC694C4F3B50D4E8F2E24CFC13E9881B841C060436CB80CDFB32B0", HashFixture(workspace));
+        Assert.Equal(expectedNext, random.Next());
+    }
+
+    [Theory]
+    [InlineData(1458, 147300460)]
+    [InlineData(42, 2047190936)]
+    public void Worthy_final_cleanup_matches_official_registered_pass_on_empty_grid(int seed, int expectedNext)
+    {
+        // Direct official registered FinalCleanup PassLegacy, 600x500/netMode0.
+        // The empty input isolates FinishGetGoodWorld's initial dungeon-color
+        // draw and the shared Angler epilogue; populated paint/chest fixtures
+        // remain separate and the real-prefix special pass stays open.
+        var workspace = new Workspace(600, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.InitializeVanillaGenerationSolidity();
+        workspace.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.ForTheWorthy,
+            VanillaSecretWorldSeed1458.None));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200,
+            effectiveCrimson: false, special: VanillaSpecialWorldSeed1458.ForTheWorthy));
+        var random = new RandomAdapter(seed);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", checked((ulong)seed), 600, 500),
+                workspace, random));
+
+        Assert.Equal("CA4531797FCC694C4F3B50D4E8F2E24CFC13E9881B841C060436CB80CDFB32B0", HashFixture(workspace));
+        Assert.Equal(expectedNext, random.Next());
+    }
+
+    [Fact]
+    public void No_traps_final_cleanup_matches_official_registered_canonical_empty_grid()
+    {
+        // Direct registered TerrariaServer 1.4.5.8 FinalCleanup PassLegacy,
+        // 4200x1200/netMode0/seed1458. This expands the NoTraps scan/RNG
+        // evidence to canonical dimensions without importing a natural prefix.
+        var workspace = new Workspace(4200, 1200);
+        Assert.True(workspace.TrySetLayers(300, 500));
+        workspace.InitializeVanillaGenerationSolidity();
+        workspace.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.NoTraps,
+            VanillaSecretWorldSeed1458.None));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200,
+            effectiveCrimson: false, special: VanillaSpecialWorldSeed1458.NoTraps));
+        var random = new RandomAdapter(1458);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 4200, 1200),
+                workspace, random));
+
+        Assert.Equal("C0A59ACDE70112846F96432A2D814E792FE73B7D015F8E9359E50A0BFC61C8A1", HashFixture(workspace));
+        Assert.Equal(1524584706, random.Next());
+    }
+
+    [Theory]
+    [InlineData(1458, 1951084952)]
+    [InlineData(42, 732501627)]
+    public void No_traps_final_cleanup_matches_registered_pass_objects_and_chest_metadata(
+        int seed, int expectedNext)
+    {
+        // Direct registered official FinalCleanup PassLegacy, netMode0, 600x500:
+        // coherent 2x2 Life Crystal and trapped chest on flat stone support,
+        // with a source Chest record containing two occupied item slots.
+        var workspace = new Workspace(600, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.InitializeVanillaGenerationSolidity();
+        workspace.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.NoTraps,
+            VanillaSecretWorldSeed1458.None));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200,
+            effectiveCrimson: false, special: VanillaSpecialWorldSeed1458.NoTraps));
+        for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile crystal = new()
+                {
+                    Type = 12,
+                    FrameX = (short)(dx * 18),
+                    FrameY = (short)(dy * 18),
+                    Flags = WorldTileFlags.Active
+                };
+                WorldTile trapped = new()
+                {
+                    Type = 467,
+                    FrameX = (short)(144 + dx * 18),
+                    FrameY = (short)(dy * 18),
+                    Flags = WorldTileFlags.Active
+                };
+                workspace.TileStore.Set(100 + dx, 200 + dy, in crystal);
+                workspace.TileStore.Set(300 + dx, 240 + dy, in trapped);
+            }
+        WorldTile stone = new() { Type = 1, Flags = WorldTileFlags.Active };
+        for (int dx = 0; dx < 2; dx++)
+        {
+            workspace.TileStore.Set(100 + dx, 202, in stone);
+            workspace.TileStore.Set(300 + dx, 242, in stone);
+        }
+        WorldGenerationChestItem[] items =
+        [
+            new(1, new ItemTypeId(1)),
+            new(1, new ItemTypeId(2))
+        ];
+        Assert.True(workspace.TryAddChest(300, 240, string.Empty, items));
+        var random = new RandomAdapter(seed);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", checked((ulong)seed), 600, 500),
+                workspace, random));
+
+        Assert.Equal("EB1FDAA51A0BB40C32D063119E920BF102F36D47E140CC9B968747840B2D7F93", HashFixture(workspace));
+        Assert.Equal(expectedNext, random.Next());
+        Assert.Equal((ushort)12, workspace.TileStore.Get(100, 200).Type);
+        Assert.Equal((ushort)21, workspace.TileStore.Get(300, 240).Type);
+        WorldChest chest = Assert.Single(workspace.CaptureGeneratedChests());
+        Assert.Equal(300, chest.X);
+        Assert.Equal(240, chest.Y);
+        Assert.Equal(new WorldChestItem(1, 1, 0), chest.Items[0]);
+        Assert.Equal(new WorldChestItem(1, 2, 0), chest.Items[1]);
+        Assert.All(chest.Items.Skip(2), static item => Assert.True(item.IsEmpty));
+    }
+
+    [Theory]
     [InlineData(VanillaSpecialWorldSeed1458.None, (ushort)59, 0)]
     [InlineData(VanillaSpecialWorldSeed1458.CelebrationMk10, (ushort)0, 15)]
     [InlineData(VanillaSpecialWorldSeed1458.NotTheBees, (ushort)59, 3)]

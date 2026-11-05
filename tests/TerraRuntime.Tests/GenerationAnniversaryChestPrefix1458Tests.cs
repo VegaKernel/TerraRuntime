@@ -9,6 +9,84 @@ namespace TerraRuntime.Tests;
 public sealed class GenerationAnniversaryChestPrefix1458Tests
 {
     [Theory]
+    [InlineData(1, 65, 65, 57, 60, 96, 68, 68, 60, 83, 96, 61497087)]
+    [InlineData(2, 76, 68, 82, 60, 85, 68, 76, 57, 83, 85, 1643613848)]
+    [InlineData(3, 68, 72, 60, 83, 95, 65, 68, 60, 57, 59, 1078246962)]
+    [InlineData(1458, 68, 72, 60, 60, 95, 72, 65, 60, 57, 97, 955664633)]
+    public void Direct_official_summon_prefixes_follow_accessory_ranged_magic_sparse_order(
+        int seed, byte a0, byte a1, byte r0, byte m0, byte s0,
+        byte a2, byte a3, byte r1, byte m1, byte s1, int nextRandom)
+    {
+        // Direct original ImproveAllChestContents: Pygmy Staff1157 and Slime
+        // Staff1309 cover all five GoodPrefixIdsForSummonerWeapon across seeds.
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        PlaceChest(world, 40, 40);
+        PlaceChest(world, 50, 50);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(2)), new(1, new ItemTypeId(96)),
+             new(1, new ItemTypeId(113)), new(1, new ItemTypeId(1157))]));
+        Assert.True(world.TryAddChest(40, 40, string.Empty, []));
+        Assert.True(world.TryAddChest(50, 50, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(219)), new(1, new ItemTypeId(165)),
+             new(1, new ItemTypeId(1309))]));
+        Assert.True(world.TryRemoveEmptyGeneratedChest(40, 40));
+        var random = new RandomAdapter(seed);
+
+        Assert.Equal(10, AnniversaryChestPrefix1458.ImproveQualifiedChests(world, random,
+            TestContext.Current.CancellationToken));
+
+        WorldChest[] chests = world.CaptureGeneratedChests();
+        Assert.Equal(new short[] { 0, 2 }, chests.Select(chest => chest.SlotId));
+        Assert.Equal(new byte[] { a0, a1, 0, r0, m0, s0 },
+            chests[0].Items.Take(6).Select(item => item.Prefix));
+        Assert.Equal(new byte[] { a2, a3, r1, m1, s1 },
+            chests[1].Items.Take(5).Select(item => item.Prefix));
+        Assert.Equal(nextRandom, random.Next());
+    }
+
+    [Theory]
+    [InlineData(1, 65, 65, 57, 60, 72, 68, 57, 60, 217468053)]
+    [InlineData(2, 76, 68, 82, 60, 65, 68, 60, 57, 483147644)]
+    [InlineData(3, 68, 72, 60, 83, 72, 65, 82, 60, 748827235)]
+    [InlineData(1458, 68, 72, 60, 60, 68, 72, 82, 60, 765575680)]
+    public void Direct_official_magic_prefixes_compose_with_accessory_ranged_and_sparse_slots(
+        int seed, byte a0, byte a1, byte r0, byte m0, byte a2, byte a3, byte r1,
+        byte m1, int nextRandom)
+    {
+        // Direct official ImproveAllChestContents on the same sparse 0/hole/2
+        // image as the ranged fixture, adding Magic Missile113 and Water Bolt165.
+        // Both source Magic entries accept all three 83/57/60 options.
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        PlaceChest(world, 40, 40);
+        PlaceChest(world, 50, 50);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(2)), new(1, new ItemTypeId(96)),
+             new(1, new ItemTypeId(113))]));
+        Assert.True(world.TryAddChest(40, 40, string.Empty, []));
+        Assert.True(world.TryAddChest(50, 50, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(219)), new(1, new ItemTypeId(165))]));
+        Assert.True(world.TryRemoveEmptyGeneratedChest(40, 40));
+        var random = new RandomAdapter(seed);
+
+        Assert.Equal(8, AnniversaryChestPrefix1458.ImproveQualifiedChests(world, random,
+            TestContext.Current.CancellationToken));
+
+        WorldChest[] chests = world.CaptureGeneratedChests();
+        Assert.Equal(new short[] { 0, 2 }, chests.Select(chest => chest.SlotId));
+        Assert.Equal(new byte[] { a0, a1, 0, r0, m0 },
+            chests[0].Items.Take(5).Select(item => item.Prefix));
+        Assert.Equal(new byte[] { a2, a3, r1, m1 },
+            chests[1].Items.Take(4).Select(item => item.Prefix));
+        Assert.Equal(nextRandom, random.Next());
+    }
+
+    [Theory]
     [InlineData(1, 65, 65, 57, 76, 72, 57, 760389092)]
     [InlineData(2, 76, 68, 82, 76, 65, 82, 1722583523)]
     [InlineData(1458, 68, 72, 60, 76, 68, 60, 370853568)]
@@ -83,6 +161,8 @@ public sealed class GenerationAnniversaryChestPrefix1458Tests
     [Theory]
     [InlineData(4)] // melee family has a different good-prefix list.
     [InlineData(39)] // weak bow enters Item.Prefix positive-request fallback.
+    [InlineData(1244)] // weak magic item also enters positive-request fallback.
+    [InlineData(4758)] // weak summon item enters positive-request fallback.
     public void Unsupported_weapon_chest_refuses_before_prefix_or_rng_mutation(int unsupported)
     {
         Workspace world = Create();

@@ -26,8 +26,8 @@ internal sealed partial class FinalPass1458
         bool paints = !remix && !bees && !constant;
         if (paints && !worthy && !drunk)
             throw new NotSupportedException("Anniversary sky-island conversion requires its source tree and tile owners.");
-        if (!worthy && workspace.CaptureGeneratedChests().Length != 0)
-            throw new NotSupportedException("Anniversary chest prefix improvement is not source-qualified.");
+        if (!worthy)
+            AnniversaryChestPrefix1458.ValidateQualifiedChests(workspace);
         if (!workspace.TryGetLayers(out WorldGenerationLayers layers))
             throw new InvalidOperationException("Anniversary painting requires retained world surface.");
 
@@ -62,6 +62,8 @@ internal sealed partial class FinalPass1458
                     grid.At(x + 1, y + 1).Type = 665;
                 }
             }
+        if (!worthy)
+            AnniversaryChestPrefix1458.ImproveQualifiedChests(workspace, random, cancellationToken);
     }
 
     private static void PaintAnniversaryDungeon(RuntimeGrid grid, CancellationToken cancellationToken)

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "ed45b900",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "Nine direct official registered Final Cleanup PassLegacy rows on synthetic predecessors: five NoTraps (including canonical empty grid and two populated crystal/trapped-chest/chest-record cases), two Drunk and two ForTheWorthy. Six-field complete-grid and next physical RNG agree. Removing only NoTraps fails all five registered NoTraps rows while controls pass.",
+    "The headless official registered pass uses netMode=0 so AnglerQuestSwap executes. A prior netMode=1 comparison omitted its draw and was rejected as a false RNG oracle.",
+    "Anniversary ImproveAllChestContents admits source-qualified accessory, GunsBows, magic and summon categories with accepted candidate prefixes. Four direct original mixed sparse-chest seeds compare ten ordered prefixes and next RNG; weak positive-fallback items still refuse before mutation. A bounded Anniversary then Drunk helper composition compares complete paint/fireplace grid, ordered chests and next RNG for two seeds, with effective chest-call omission control.",
+    "Bounded WorldGen.Convert(1/2/4) now covers all eleven source moss IDs, four NewWall identities and admitted torch-4 styles. Direct official full-grid/RNG cases and a torch framing omission control qualify this slice only."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 150, "passed": 150, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185749, "passed": 185749, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1474.90 },
+  "affected": { "mode": "affected", "domains": ["infrastructure", "worldgen"], "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 881.86 },
+  "testDllSha256": "45cb5cb3b30f561a45c7758c0902081e5aeff5efd67255a920323d366a699061",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "f4ad73d47058f9002d74a4db303c186624ed383b069c2d9c721de44c8875e43a",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "previousUnfilteredFull": {
+    "commit": "d42f4873",
+    "total": 1731005,
+    "passed": 1731005,
+    "methods": 5885,
+    "note": "This bounded packet used mandatory fast plus complete affected-domain matrices, not a new unfiltered full run."
+  },
+  "remaining": [
+    "Row 109 remains P. Registered special-pass fixtures use synthetic predecessors, not a real contiguous special-seed prefix.",
+    "Full Anniversary needs natural prior-prefix Item state and sky-island terrain ownership; Remix needs later Convert/QuickWater/tree continuation; Bees needs varied-terrain larva/grass/dungeon composition.",
+    "The full special pass, whole generation and NativeAOT parity remain unverified."
+  ]
+}

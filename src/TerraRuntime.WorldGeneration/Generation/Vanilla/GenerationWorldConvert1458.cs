@@ -4,8 +4,9 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>
-/// The independently observed natural stone/grass/ice/sand, representative moss,
-/// hardened-sand, sandstone and jungle grass, plus matching wall slice of
+/// The independently observed natural stone/grass/ice/sand, complete source moss set,
+/// representative hardened-sand, sandstone and jungle grass, plus matching wall and
+/// first four NewWall conversion-family identities and ordinary torch-4 styles of
 /// TerrariaServer.exe 1.4.5.8 <c>WorldGen.Convert</c> for conversion types 1/2/4.
 /// </summary>
 internal sealed class GenerationWorldConvert1458(
@@ -26,13 +27,17 @@ internal sealed class GenerationWorldConvert1458(
         ref WorldTile tile = ref store.Tiles[store.GetUncheckedIndex(x, y)];
         if (!tile.IsActive && tile.Wall == 0)
             return;
+        if (tile.IsActive && tile.Type == 4 && tile.FrameY < 0)
+            throw new NotSupportedException("Negative torch frame needs a direct conversion fixture.");
         ushort newTile = tile.Type switch
         {
             1 => conversionType switch { 1 => 25, 2 => 117, _ => 203 },
             2 => conversionType switch { 1 => 23, 2 => 109, _ => 199 },
             161 => conversionType switch { 1 => 163, 2 => 164, _ => 200 },
             53 => conversionType switch { 1 => 112, 2 => 116, _ => 234 },
-            179 => conversionType switch { 1 => 25, 2 => 117, _ => 203 },
+            4 => 4,
+            179 or 180 or 181 or 182 or 183 or 381 or 534 or 536 or 539 or 625 or 627 =>
+                conversionType switch { 1 => 25, 2 => 117, _ => 203 },
             397 => conversionType switch { 1 => 398, 2 => 402, _ => 399 },
             396 => conversionType switch { 1 => 400, 2 => 403, _ => 401 },
             60 => conversionType switch { 1 => 661, 2 => 60, _ => 662 },
@@ -47,6 +52,7 @@ internal sealed class GenerationWorldConvert1458(
             63 => conversionType switch { 1 => 69, 2 => 70, _ => 81 },
             216 => conversionType switch { 1 => 217, 2 => 219, _ => 218 },
             187 => conversionType switch { 1 => 220, 2 => 222, _ => 221 },
+            >= 188 and <= 191 => (ushort)((conversionType switch { 1 => 188, 2 => 200, _ => 192 }) + tile.Wall - 188),
             _ => throw new NotSupportedException($"WorldGen.Convert has no qualified wall {tile.Wall} mapping here.")
         };
         if (tile.IsActive && newTile != tile.Type && store.Tiles[store.GetUncheckedIndex(x, y - 1)].IsActive)
@@ -58,6 +64,23 @@ internal sealed class GenerationWorldConvert1458(
         {
             tile.Wall = newWall;
             wallFraming.SquareWallFrame(x, y);
+        }
+        if (tile.IsActive && tile.Type == 4)
+        {
+            // TileID.Sets.Conversion.Torch's 1/2/4 arm admits only these style
+            // bands. A rejected style is untouched; an already-matching style
+            // does not invoke SquareTileFrame or consume its downstream work.
+            int style = tile.FrameY / 22;
+            if (style is 0 or 9 or 16 or 18 or 19 or 20 or 21 or 22)
+            {
+                int target = conversionType switch { 1 => 18, 2 => 20, _ => 19 };
+                if (style != target)
+                {
+                    tile.FrameY = (short)(target * 22);
+                    tileFraming.SquareTileFrame(x, y);
+                }
+            }
+            return;
         }
         if (tile.IsActive && newTile != tile.Type)
         {

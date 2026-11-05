@@ -109,6 +109,103 @@ public sealed class GenerationWorldConvert1458Tests
         Assert.Equal(sandstoneWall, store.Get(160, 100).Wall);
     }
 
+    [Theory]
+    [InlineData(1, "35419419F51361FCFEBCA91EAC6FDADA3A91B0F4BC307A5357C56EDFB2D9FAE2", 25, 188, 1507290721)]
+    [InlineData(2, "423202407FF96305C09D17925610FC3BA90FA77044004E305170AF49E0DE186E", 117, 200, 1960233424)]
+    [InlineData(4, "2A7BA043ECE54F3CCF22141FE9B73B69EC0D848D02E7E25790BBBFC19975497B", 203, 192, 1960233424)]
+    public void Complete_source_moss_set_and_four_new_wall_families_match_original(int conversionType,
+        string sourceHash, ushort expectedMoss, ushort firstNewWall, int sourceNext)
+    {
+        // Direct original WorldGen.Convert(1/2/4), same 200x200 base cohort plus
+        // all eleven Main.tileMoss identities on row120 and source NewWall1..4
+        // identities188..191 on row140. The corrupt wall arm is idempotent, while
+        // Hallow/Crimson each spend four additional SquareWallFrame draws.
+        WorldTileStore store = new(new WorldDimensions(200, 200));
+        Put(store, 20, 100, 1);
+        Put(store, 30, 100, 2);
+        Put(store, 40, 100, 161);
+        Put(store, 50, 100, 53);
+        Put(store, 60, 100, 56);
+        Put(store, 70, 100, 0, 1);
+        Put(store, 80, 100, 1, 1);
+        Put(store, 30, 101, 1);
+        Put(store, 50, 101, 1);
+        Put(store, 90, 100, 179);
+        Put(store, 100, 100, 397);
+        Put(store, 110, 100, 396);
+        Put(store, 120, 100, 60);
+        Put(store, 140, 100, 0, 63);
+        Put(store, 150, 100, 0, 216);
+        Put(store, 160, 100, 0, 187);
+        ushort[] mossIds = [179, 180, 181, 182, 183, 381, 534, 536, 539, 625, 627];
+        for (int mossSite = 0; mossSite < mossIds.Length; mossSite++)
+            Put(store, 20 + mossSite * 12, 120, mossIds[mossSite]);
+        for (int wallSite = 0; wallSite < 4; wallSite++)
+            Put(store, 20 + wallSite * 12, 140, 0, (ushort)(188 + wallSite));
+        CountingRandom random = new(1458);
+        GenerationWorldConvert1458 converter = new(store, random, new GenerationTileFraming1458(store, random));
+
+        foreach (int x in new[] { 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 140, 150, 160 })
+            converter.ConvertAt(x, 100, conversionType, rainbowSandAndBlackSandWalls: false);
+        for (int mossSite = 0; mossSite < mossIds.Length; mossSite++)
+            converter.ConvertAt(20 + mossSite * 12, 120, conversionType, rainbowSandAndBlackSandWalls: false);
+        for (int wallSite = 0; wallSite < 4; wallSite++)
+            converter.ConvertAt(20 + wallSite * 12, 140, conversionType, rainbowSandAndBlackSandWalls: false);
+
+        Assert.Equal(sourceHash, Hash(store));
+        Assert.Equal(sourceNext, random.Next());
+        for (int mossSite = 0; mossSite < mossIds.Length; mossSite++)
+            Assert.Equal(expectedMoss, store.Get(20 + mossSite * 12, 120).Type);
+        for (int wallSite = 0; wallSite < 4; wallSite++)
+            Assert.Equal((ushort)(firstNewWall + wallSite), store.Get(20 + wallSite * 12, 140).Wall);
+    }
+
+    [Theory]
+    [InlineData(1, "8E3FD94B442A547D1A19BB0130B3790580D64BF2B5C8FDC5DF891BBBA61E009E", 396)]
+    [InlineData(2, "D9C3949E13CC8A93D2905B6EE349630BA8C3850C528C4EFFFE83DFFE96D92133", 440)]
+    [InlineData(4, "BB50AB042349A6677B5F3E2E031D1B9A7D6513AE76185523FDE69D0D9721AE66", 418)]
+    public void Torch_style_conversion_matches_original_eligible_rejected_and_same_style_cases(
+        int conversionType, string sourceHash, short convertedFrameY)
+    {
+        // Direct original WorldGen.Convert(1/2/4) on supported torch4 styles
+        // 0/17/22/19 and an unsupported style0 at x140. Conversion admits
+        // 0/22/19 but rejects17; CheckTorch then destroys the unsupported peer.
+        WorldTileStore store = new(new WorldDimensions(200, 200));
+        Put(store, 20, 100, 1);
+        Put(store, 30, 100, 2);
+        Put(store, 40, 100, 161);
+        Put(store, 50, 100, 53);
+        Put(store, 60, 100, 56);
+        Put(store, 70, 100, 0, 1);
+        Put(store, 80, 100, 1, 1);
+        Put(store, 30, 101, 1);
+        Put(store, 50, 101, 1);
+        short[] inputFrames = [0, 374, 484, 418, 0];
+        for (int index = 0; index < inputFrames.Length; index++)
+        {
+            int x = 100 + index * 10;
+            WorldTile torch = new() { Type = 4, Flags = WorldTileFlags.Active,
+                FrameY = inputFrames[index] };
+            store.Set(x, 100, torch);
+            if (x != 140)
+                Put(store, x, 101, 1);
+        }
+        CountingRandom random = new(1458);
+        GenerationWorldConvert1458 converter = new(store, random, new GenerationTileFraming1458(store, random));
+
+        foreach (int x in new[] { 20, 30, 40, 50, 60, 70, 80, 100, 110, 120, 130, 140 })
+            converter.ConvertAt(x, 100, conversionType, rainbowSandAndBlackSandWalls: false);
+
+        Assert.Equal(sourceHash, Hash(store));
+        Assert.Equal(1916656655, random.Next());
+        Assert.Equal(convertedFrameY, store.Get(100, 100).FrameY);
+        Assert.Equal((short)374, store.Get(110, 100).FrameY);
+        Assert.Equal(convertedFrameY, store.Get(120, 100).FrameY);
+        Assert.Equal(convertedFrameY, store.Get(130, 100).FrameY);
+        Assert.False(store.Get(140, 100).IsActive);
+        Assert.Equal((short)-1, store.Get(140, 100).FrameY);
+    }
+
     private static void Put(WorldTileStore store, int x, int y, ushort type, ushort wall = 0)
     {
         WorldTile tile = new() { Type = type, Wall = wall,
