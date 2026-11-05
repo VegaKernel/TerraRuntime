@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "7c44abd9",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": "Plain Anniversary, official TerrariaServer.exe 1.4.5.8 raw ordinal 58 Statues to raw ordinal 59 Buried Chests, canonical 4200x1200 world; registered runtime pass from a strict official preimage import. All 17 tile fields, ordered chests and all item slots including empties, StructureMap structures/protected rectangles, physical RNG56/cursor and next audit draw compared. Native capture/import harnesses and original binary/raw images remain ignored local reference; only direct style50/51 portable fixtures are committed.",
+  "sourceCheckpoints": [
+    {
+      "seed": 1458,
+      "officialPreJsonSha256": "4ca1bf21fa126dd51568e4a6e84c13f02c55ac5e1a02436ddbdafa2131369331",
+      "officialPostJsonSha256": "20636b023e27746980760479c56db8348f2aa7634ec7d2afd02423ca91617680",
+      "officialPostRaw17Sha256": "f3d8a19cbba09e087046f42564305f45a6975137dafe3ff813d1d807236e417e",
+      "initialChests": 26,
+      "postChests": 118,
+      "postStructures": 102,
+      "postProtectedRectangles": 87,
+      "postRngIndex": 39,
+      "postNextAuditDraw": 558153814,
+      "registeredRuntimeExact": true
+    },
+    {
+      "seed": 42,
+      "officialPreJsonSha256": "c6756f84513c31b8d38da9e36d407b49a924604b4cb2da0e7400f76b99cfac85",
+      "officialPostJsonSha256": "a8023799de573e1a5630a90be0c569c762eaf7debf71045b8dd89b2e7161261d",
+      "officialPostRaw17Sha256": "002ea72edd60ed5c72e0291bbac31d23a1a09c93d9abe9cc4e4cb59a8994fc31",
+      "initialChests": 22,
+      "postChests": 108,
+      "postStructures": 116,
+      "postProtectedRectangles": 99,
+      "postRngIndex": 42,
+      "postNextAuditDraw": 989427474,
+      "registeredRuntimeExact": true
+    }
+  ],
+  "causalPortableFixture": "Direct untouched WorldGen.AddBuriedChest style50/51 tile21 placement, frames, ordered loot/prefixes and all RNG56 slots at seeds1/42/1458. Restoring the old style50 guard fails the three new source fixtures; adjacent style49/tile21 and style50/51/tile467 refuse before RNG.",
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 91, "passed": 91, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "methods": 5816, "total": 185887, "passed": 185887, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1240.625 },
+  "unfilteredFull": { "methods": 5983, "total": 1731202, "passed": 1731202, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 2916.759 },
+  "testDllSha256": "7f1c6f3889b1b95c78c8f85f349770b3cb6a972448ac2deecba24cd762891f62",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "5af7dbcfe9f5dc9e20dbb7ca3fdc3f1128763bbf95859e445b94ee9e8a61e3d4",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "remaining": [
+    "Roadmap row 63 remains P: other special/secret profiles, sizes, seeds and cave-house branches lack complete registered official pass differentials.",
+    "Roadmap row 109 remains P: registered Anniversary/Bees special-seed tails and all-profile Final Cleanup parity remain open.",
+    "Full fixed-seed world generation across every pass and NativeAOT qualification are not established by these two checkpoints."
+  ]
+}
