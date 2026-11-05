@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "587c3309",
+  "scope": [
+    "The registered Buried Chests pass on a genuine untouched TerrariaServer.exe 1.4.5.8 canonical 4200x1200 Remix seed42 raw58 Statues preimage now matches its raw59 postimage. Strict imported preimage and current common production code were compared across all 5.04 million 17-field tiles, all 108 ordered chest/item slots including empties, all 111 StructureMap structures/94 protected rectangles, physical RNG56/cursor and next audit draw. The temporary absolute-path diagnostic was removed before final build and is not committed.",
+    "The causal source branch is DesertHouseBuilder.PlaceBiomeSpecificPriorityTool: on Remix, a room below rockLayer returns before its first X draw. A direct untouched official three-seed fixture matches the narrow runtime guard and full RNG; removing the guard fails all three. A controlled exact-midstate builder rehost now matches every phase RNG56, final tile17, chest and map after this guard.",
+    "The shared WorldGen.Convert(2) owner additionally admits source-inert Coral81/wall0. Direct official calls on the genuine Anniversary+Remix pre-Final-Cleanup image show full17/RNG unchanged for Coral alone and after a sand112-to116 call. A portable 15x15 exact-natural-center source fixture matches, while restoring the old refusal fails. The enclosing registered Final Cleanup still lacks the Remix second scan; row109 remains P."
+  ],
+  "canonicalRemixBuriedChests": {
+    "seed": 42,
+    "rawBoundary": "58 Statues -> 59 Buried Chests",
+    "officialPreJsonSha256": "ccff509cae0a80bce5fb7091478b712722395ef1a2958ae83467cd20d597cfb5",
+    "officialPostJsonSha256": "c69ad321d3a2d871271af9f2d64fffd41c03f90150850824ea561bae5c279018",
+    "officialPreRaw17Sha256": "254c8e09b7ab8835aaedae45ac3790d62b06dfe8e6254a4d28591e790d974d1e",
+    "officialPostRaw17Sha256": "711904ba022d005e29b1816e29a7910c32a27ed6eb50fbc2ad10e50c5913ed2d",
+    "postChests": 108,
+    "postStructures": 111,
+    "postProtectedRectangles": 94,
+    "postRngIndex": 19,
+    "postNextAuditDraw": 1989660471,
+    "currentCommonRegisteredRuntimeExact": true
+  },
+  "priorityGuardOriginalJsonSha256": "4102e4f1659f65d5cb78e97ba8002d406edc9ede163e090b6b3b4c3fbc4a6644",
+  "priorityGuardCausal": "Official seeds1/42/1458 leave RNG56/index1 and Bast count0 unchanged for a Remix desert room below rockLayer; old runtime guard spends twenty draws and all three portable cases fail. Ordinary profile control still spends its source twenty floor/roof attempts.",
+  "coralDirectNatural": {
+    "officialPreAndInertPostRaw17Sha256": "58fd79c88ee8d69e9f59ac61a90b455c9cc8d0e0283d80e88cef2958a4a45c7c",
+    "officialSandThenCoralPostRaw17Sha256": "1a6eae177f21f2ea86d324c0ed1be91672e0a489a91a32111c34a22f11a0f2cf",
+    "portableControlledRaw17Sha256": "09e49e19c9b49817024b773890ef117d9f5b48b20489472422a83b30f27ac739",
+    "rawRngIndex": 0,
+    "nextAuditDraw": 906992634,
+    "oldOwnerThrows": true
+  },
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 25, "passed": 25, "failed": 0, "errors": 0, "skipped": 0 },
+  "testDllSha256": "962499dbaf5a90434266d98eb8f4c3db221c828f0e25747f6d4bec3ff5ad7667",
+  "fast": { "methods": 5826, "total": 185906, "passed": 185906, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1502.049 },
+  "unfilteredFull": { "methods": 5993, "total": 1731221, "passed": 1731221, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 3119.661 },
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "9b3807a53058daaba461650624a035ade0a7e85e566d3fdbdd72fe4600cc3d1d",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "artifactLocation": "Official binary, raw canonical worlds, source phase captures and temporary absolute-path diagnostic harnesses remain ignored local reference and are not committed.",
+  "remaining": "Row63 remains P for other special/secret profiles and sizes despite this exact Remix seed42 boundary. Row109 remains P for registered Anniversary+Remix second scan, chest-prefix side effects, broader special tails and all-profile Final Cleanup. Full worldgen parity is not established."
+}

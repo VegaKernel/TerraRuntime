@@ -41,6 +41,10 @@ internal sealed class GenerationWorldConvert1458(
             // Keep the admission tied to their independently observed walls.
             226 when tile.Wall == 87 => 226,
             41 when tile.Wall == 7 => 41,
+            // Source Conversion sets exclude Coral81. The natural Remix
+            // second scan still calls Convert on its water-covered form; with
+            // wall0 this is a true no-op, not an unsupported conversion.
+            81 when tile.Wall == 0 => 81,
             1 or 25 or 117 or 203 => conversionType switch { 1 => 25, 2 => 117, _ => 203 },
             2 or 23 or 109 or 199 => conversionType switch { 1 => 23, 2 => 109, _ => 199 },
             477 or 492 => conversionType switch { 1 => 23, 2 => 492, _ => 199 },

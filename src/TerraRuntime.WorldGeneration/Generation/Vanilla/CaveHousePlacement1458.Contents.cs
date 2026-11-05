@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
@@ -11,8 +12,19 @@ internal static partial class CaveHousePlacement1458
             throw new InvalidOperationException("Cave-house placement requires Reset bootstrap state.");
         if (type != CaveHouseType1458.Desert || state.CaveHouseBastStatueCount >= maximum)
             return;
-        if (TryPlaceRoomTool(workspace, random, rooms, 506, roof: false) ||
-            TryPlaceRoomTool(workspace, random, rooms, 506, roof: true))
+        // DesertHouseBuilder.PlaceBiomeSpecificPriorityTool returns from the entire
+        // helper on a Remix room below rockLayer, before rolling its first X.
+        foreach (CaveHouseRoom1458 room in rooms)
+        {
+            if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix) &&
+                room.Bottom - 2 > state.RockLayer)
+                return;
+            if (!TryPlaceRoomTool(workspace, random, [room], 506, roof: false))
+                continue;
+            state.CaveHouseBastStatueCount++;
+            return;
+        }
+        if (TryPlaceRoomTool(workspace, random, rooms, 506, roof: true))
             state.CaveHouseBastStatueCount++;
     }
 
