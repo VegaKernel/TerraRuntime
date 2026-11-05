@@ -1077,6 +1077,9 @@ internal sealed partial class FinalPass1458 : IWorldGenerationPass
             GenerationTeamSpawns1458.Generate(teamWorkspace, random, framing, true);
         }
         framing.FinalSeedCleanup();
+        if (context.Workspace is Workspace anniversaryColorWorkspace &&
+            anniversaryColorWorkspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10))
+            PaintAnniversaryTreesAndMushrooms(anniversaryColorWorkspace, random, context.CancellationToken);
         if (context.Workspace is Workspace finalWorkspace)
             CleanupShimmer(finalWorkspace, random, framing, context.CancellationToken);
         framing.FinalizeLiquidsDuringGeneration(context.CancellationToken);

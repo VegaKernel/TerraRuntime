@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "d42f4873",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "Final Cleanup now calls the late Anniversary PaintTheTrees/PaintTheMushrooms source tail after seed finalization; two direct official 600x500 full-grid/paint/RNG fixtures cover ordinary Anniversary and Anniversary+Remix.",
+    "Accessory-only ImproveAllChestContents component reuses the existing admitted item-prefix table; three direct official seeds match ordered prefix choices and RNG, while unsupported item families fail before mutation.",
+    "The first FinishRemixWorld cloud/wall scan is an independently qualified detached component, not the complete Remix helper or public special-pass admission."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 117, "passed": 117, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185700, "passed": 185700, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1213.30 },
+  "affected": { "mode": "affected", "domains": ["infrastructure", "worldgen"], "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 661.84 },
+  "testDllSha256": "baa0ea46365ce8ce068b9836941c3edec73c1e503b26e531515c7344c4d4d832",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "005d4b0e92a1f4ee3adfd01f2d9324637a875674a026bb91d73c3346cf812ff8",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "previousUnfilteredFull": {
+    "commit": "d42f4873",
+    "total": 1731005,
+    "passed": 1731005,
+    "methods": 5885,
+    "note": "This bounded follow-up used mandatory fast plus the complete affected-domain matrix, not a new unfiltered full run."
+  },
+  "remaining": [
+    "Rows 63 and 109 remain P; public special-seed Final Cleanup pipeline not admitted.",
+    "FinishRemixWorld conversion/liquid/tree continuation and unrestricted Anniversary sky/chest prefix categories remain open.",
+    "Full special-pass, whole-generation and NativeAOT parity remain unverified."
+  ]
+}
