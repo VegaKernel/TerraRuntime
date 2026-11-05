@@ -56,7 +56,11 @@ internal sealed class BuriedChest1458(
         const VanillaSecretWorldSeed1458 count4=error|VanillaSecretWorldSeed1458.MolePeople|rainbow|VanillaSecretWorldSeed1458.MoreTrapsPlease;
         bool additional=profile.Special==VanillaSpecialWorldSeed1458.None&&profile.Secret is error or rainbow or vampire or (error|rainbow) or (error|vampire) or (rainbow|vampire) or count4 or (count4|VanillaSecretWorldSeed1458.NegativeInfinity) or (count4|VanillaSecretWorldSeed1458.NegativeInfinity|VanillaSecretWorldSeed1458.Monochrome) or (count4|VanillaSecretWorldSeed1458.NegativeInfinity|vampire) or VanillaSecretWorldSeed1458.MolePeople;
         bool family=(chestTileType is 0 or Containers&&chestStyle is -1 or 0 or 1 or 2 or 4 or 7 or 8 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 23 or 24 or 25 or 26 or 27 or 29 or 32 or 34 or 42)||(chestTileType==Containers2&&chestStyle is 2 or 10 or 11 or 13 or 24);
-        if((!basicProfile&&!additional&&!(chestStyle==10&&chestTileType is 0 or Containers&&MicroSeedCapabilities1458.Supports(profile))) || (basicProfile||additional)&&!profile.IsDefault&&!family)
+        // Direct original AddBuriedChest with plain Anniversary MarbleHouseBuilder
+        // chest style 51/tile 21 has independent placement, loot and RNG fixtures.
+        bool anniversaryMarble = profile.Special == VanillaSpecialWorldSeed1458.CelebrationMk10 &&
+            profile.Secret == VanillaSecretWorldSeed1458.None && chestTileType == Containers && chestStyle == 51;
+        if((!basicProfile&&!additional&&!(chestStyle==10&&chestTileType is 0 or Containers&&MicroSeedCapabilities1458.Supports(profile))) || (basicProfile||additional)&&!profile.IsDefault&&!family&&!anniversaryMarble)
             throw new NotSupportedException("The configured special buried-chest family is outside the source-qualified component.");
     }
 

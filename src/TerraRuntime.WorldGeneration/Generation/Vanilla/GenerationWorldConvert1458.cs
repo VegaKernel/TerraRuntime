@@ -33,6 +33,14 @@ internal sealed class GenerationWorldConvert1458(
             throw new NotSupportedException("Negative torch frame needs a direct conversion fixture.");
         ushort newTile = tile.Type switch
         {
+            // WorldGen.Convert (1/2/4) leaves active Dirt0 unchanged, but its
+            // independently eligible wall can still convert and frame. Only
+            // active wall0/1 is qualified; inactive tile0 retains its older wall cohorts.
+            0 when !tile.IsActive || tile.Wall is 0 or 1 => 0,
+            // These occupied source pairs carry no tile conversion for 1/2/4.
+            // Keep the admission tied to their independently observed walls.
+            226 when tile.Wall == 87 => 226,
+            41 when tile.Wall == 7 => 41,
             1 or 25 or 117 or 203 => conversionType switch { 1 => 25, 2 => 117, _ => 203 },
             2 or 23 or 109 or 199 => conversionType switch { 1 => 23, 2 => 109, _ => 199 },
             477 or 492 => conversionType switch { 1 => 23, 2 => 492, _ => 199 },
@@ -46,13 +54,16 @@ internal sealed class GenerationWorldConvert1458(
             60 or 661 or 662 => conversionType switch { 1 => 661, 2 => tile.Type, _ => 662 },
             32 or 69 or 352 or 655 => conversionType switch { 1 => 32, 2 => tile.Type, _ => 352 },
             56 => 56,
-            0 when !tile.IsActive => 0,
             _ => throw new NotSupportedException($"WorldGen.Convert has no qualified tile {tile.Type} mapping here.")
         };
         ushort newWall = tile.Wall switch
         {
             0 => 0,
             1 => conversionType switch { 1 => 3, 2 => 28, _ => 83 },
+            2 when tile.IsActive && tile.Type == 25 => 2,
+            3 when tile.IsActive && tile.Type == 25 => conversionType switch { 1 => 3, 2 => 28, _ => 83 },
+            7 when tile.IsActive && tile.Type == 41 => 7,
+            87 when tile.IsActive && tile.Type == 226 => 87,
             63 => conversionType switch { 1 => 69, 2 => 70, _ => 81 },
             216 => conversionType switch { 1 => 217, 2 => 219, _ => 218 },
             187 => conversionType switch { 1 => 220, 2 => 222, _ => 221 },

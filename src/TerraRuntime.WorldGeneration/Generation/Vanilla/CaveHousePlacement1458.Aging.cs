@@ -6,19 +6,22 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 internal static partial class CaveHousePlacement1458
 {
     internal static void AgeRooms(Workspace workspace, IWorldGenerationVanillaRandom random,
-        CaveHouseType1458 type, ReadOnlySpan<CaveHouseRoom1458> rooms)
+        CaveHouseType1458 type, ReadOnlySpan<CaveHouseRoom1458> rooms, ushort? wallTypeOverride = null)
     {
-        foreach (CaveHouseRoom1458 room in rooms) AgeRoom(workspace, random, type, room);
+        foreach (CaveHouseRoom1458 room in rooms)
+            AgeRoom(workspace, random, type, room, wallTypeOverride);
     }
 
     /// <summary>The seven ordinary house aging profiles, sharing the retained tile and wall framers.</summary>
     internal static void AgeRoom(Workspace workspace, IWorldGenerationVanillaRandom random,
-        CaveHouseType1458 type, CaveHouseRoom1458 room)
+        CaveHouseType1458 type, CaveHouseRoom1458 room, ushort? wallTypeOverride = null)
     {
         if (!workspace.TryGetLayers(out var layers))
             throw new InvalidOperationException("Cave-house aging requires retained world layers.");
         var aging = new AgingRoom(workspace, random);
         CaveHousePalette1458 palette = ResolvePalette(type);
+        if (wallTypeOverride is { } convertedWall && type == CaveHouseType1458.Wood)
+            palette = palette with { WallType = convertedWall };
         bool underground = room.Y > layers.WorldSurface;
 
         if (type == CaveHouseType1458.Wood)

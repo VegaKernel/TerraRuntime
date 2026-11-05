@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "226b74e3",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "Reusable WorldGen.Convert(1/2/4) admits source-qualified active Dirt0 with wall0/1, inert Temple226/wall87 and Dungeon41/wall7, and stone25 with wall2/3. Direct untouched original 200x200 full-grid/RNG fixtures pin wall-before-tile ordering; active Dirt0 old refusal fails three fixtures, and a temporary Temple-pair refusal fails the terrain cohort. The public Remix second-scan preflight is unchanged and remains fail-closed on broad natural candidates.",
+    "The existing GenerationGrass owner matches direct untouched SpreadGrass59-to-60 and 59-to-70 microfixtures from natural Bees terrain, with effective omission controls. Separate genuine canonical 4200x1200 seed-1458 direct-helper replays after the official first NotTheBees helper match all 17 fields of 5.04 million tiles, all 56 physical RNG slots/cursor and 17 ordered projectile slots for each call. The enclosing second Bees 41x41 scan and registered Final Cleanup are not admitted.",
+    "Plain-Anniversary WoodHouseBuilder uses the original constructor rainbow-brick choice after seed-house RNG, carries the selected wall into room aging and applies the post-Place rainbow paint chance. Direct original constructor/paint seed fixtures and full WoodHouseBuilder.Place two-room fixtures match full17 grids, RNG56, ordered chest items and protected rooms; omission of the constructor choice fails all three complete builder fixtures. The first genuine canonical Wood house bounded room-shell envelope and its two protected rectangles match, but the full Buried Chests pass still diverges at a later house.",
+    "Plain-Anniversary Marble-house AddBuriedChest style51/tile21 matches untouched original placement, 2x2 frames, ordered loot/prefixes and full RNG at seeds1/42/1458. Adjacent style50/tile21 and style51/tile467 still refuse before RNG. This is a direct chest component, not whole cave-house-loop parity."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 123, "passed": 123, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185883, "passed": 185883, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1340.54 },
+  "affected": { "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 551.46 },
+  "unfilteredFull": "Not rerun for this bounded component packet; previous main checkpoint 226b74e3 passed 1731173/1731173 across 5970 methods.",
+  "testDllSha256": "f36774f3ce97a81457331acd42c40d8ffea21376acaa7cd2f78d53a6c7cc7e4e",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "f0304bcc201eabbf6132b2d42de4ff1b37c799b33482746980bab8ae80edb5d5",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "artifactLocation": "Untouched official binary, raw canonical tile images, source captures and diagnostic harnesses remain ignored local reference and are not committed.",
+  "remaining": [
+    "Rows 63 and 109 remain P. Strict source pre63 import matches tile17, initial chests and StructureMap, but registered runtime post differs after the first Wood house; full cave-house candidate order/RNG is open.",
+    "Public Remix/Bees special Final Cleanup tails, the complete Bees second scan, broader Convert preflight and general Anniversary mutable chest Item state are not admitted.",
+    "Full fixed-seed worldgen parity and NativeAOT qualification remain unverified."
+  ]
+}

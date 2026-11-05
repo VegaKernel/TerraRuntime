@@ -37,8 +37,9 @@ internal readonly record struct CaveHousePlacementResult1458(
     int ChestStyle);
 
 /// <summary>
-/// Ordinary-seed TerrariaServer 1.4.5.8 CaveHouseBiome/HouseUtils/HouseBuilder placement on the retained candidate,
-/// including source construction callbacks, decoration, aging, protected rooms and shared chest/tool state.
+/// TerrariaServer 1.4.5.8 CaveHouseBiome/HouseUtils/HouseBuilder placement on the retained candidate,
+/// including ordinary construction, the bounded plain-Anniversary Wood palette/paint owner,
+/// decoration, aging, protected rooms and shared chest/tool state.
 /// </summary>
 internal static partial class CaveHousePlacement1458
 {
@@ -61,6 +62,7 @@ internal static partial class CaveHousePlacement1458
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(random);
+        EnsurePlainAnniversaryHouseScope(workspace.VanillaSeedProfile);
         result = default;
 
         var grid = new Grid(workspace.TileStore, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
@@ -82,11 +84,17 @@ internal static partial class CaveHousePlacement1458
     internal static CaveHousePlacementResult1458 PlaceRooms(Workspace workspace, ChestPlacementState1458 state,
         IWorldGenerationVanillaRandom random, CaveHouseRoom1458[] rooms, CaveHouseType1458 type)
     {
+        EnsurePlainAnniversaryHouseScope(workspace.VanillaSeedProfile);
         var grid = new Grid(workspace.TileStore, workspace.HasVanillaGenerationSolidity ? workspace.IsVanillaGenerationSolid : null);
         Array.Sort(rooms, static (left, right) => left.Top.CompareTo(right.Top));
         if (type is CaveHouseType1458.Wood or CaveHouseType1458.Ice or CaveHouseType1458.Desert or CaveHouseType1458.Jungle)
             random.NextDouble(); // Ordinary PotentiallyConvertToSeedHouse draws before testing its empty choices.
         CaveHousePalette1458 palette = ResolvePalette(type);
+        if (type == CaveHouseType1458.Wood && workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10))
+        {
+            (ushort tile, ushort wall) = RollWoodAnniversaryPalette(random, workspace.VanillaSeedProfile);
+            palette = palette with { TileType = tile, WallType = wall };
+        }
         var construction = new AgingRoom(workspace, random);
         var framing = new GenerationTileFraming1458(workspace.TileStore, random, workspace, useWorldGenerationSolidity: workspace.HasVanillaGenerationSolidity);
         PlaceEmptyRooms(grid, construction, framing, rooms, in palette);
@@ -102,11 +110,51 @@ internal static partial class CaveHousePlacement1458
 
         PlacePriorityTool(workspace, state, random, rooms, type);
         FillRooms(workspace, random, rooms, type);
-        AgeRooms(workspace, random, type, rooms);
+        AgeRooms(workspace, random, type, rooms, palette.WallType);
         BuriedChestResult1458? chest = PlaceRoomChest(workspace, state, random, rooms, in palette);
         PlaceBiomeTool(workspace, state, random, rooms, type);
+        if (type == CaveHouseType1458.Wood && workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10))
+            RainbowifyWoodAnniversaryRooms(workspace, random, rooms, palette.TileType);
         return new CaveHousePlacementResult1458(type, rooms, chest?.Left ?? -1, chest?.Top ?? -1,
             chest?.TileType ?? palette.ChestTileType, chest?.Style ?? palette.ChestStyle);
+    }
+
+    internal static (ushort TileType, ushort WallType) RollWoodAnniversaryPalette(
+        IWorldGenerationVanillaRandom random, VanillaWorldSeedProfile1458 profile)
+    {
+        if (profile.Special != VanillaSpecialWorldSeed1458.CelebrationMk10 ||
+            profile.Secret != VanillaSecretWorldSeed1458.None)
+            throw new NotSupportedException("Wood Anniversary palette is qualified only for the plain Anniversary profile.");
+        // WoodHouseBuilder constructor calls PotentiallyConvertToRainbowBrick
+        // after the caller's PotentiallyConvertToSeedHouse draw.
+        return random.Next(2) == 0 ? ((ushort)160, (ushort)44) : ((ushort)30, (ushort)27);
+    }
+
+    private static void EnsurePlainAnniversaryHouseScope(VanillaWorldSeedProfile1458 profile)
+    {
+        if (profile.Has(VanillaSpecialWorldSeed1458.CelebrationMk10) &&
+            (profile.Special != VanillaSpecialWorldSeed1458.CelebrationMk10 ||
+             profile.Secret != VanillaSecretWorldSeed1458.None))
+            throw new NotSupportedException("Combined Anniversary cave houses are not source-qualified.");
+    }
+
+    internal static void RainbowifyWoodAnniversaryRooms(Workspace workspace,
+        IWorldGenerationVanillaRandom random, ReadOnlySpan<CaveHouseRoom1458> rooms, ushort tileType)
+    {
+        // WoodHouseBuilder.Place calls this after base.Place, including its chest
+        // and tool offers. The tile-160 refusal spends one draw; paint itself does not.
+        if (tileType == 160 && random.Next(2) == 0)
+            return;
+        foreach (CaveHouseRoom1458 room in rooms)
+            for (int x = room.Left; x < room.Right; x++)
+                for (int y = room.Top; y < room.Bottom; y++)
+                {
+                    ref WorldTile tile = ref workspace.TileStore.Tiles[
+                        workspace.TileStore.GetUncheckedIndex(x, y)];
+                    byte paint = (byte)(13 + ((x % 44 + y % 44) % 11));
+                    if (tile.IsActive) tile.TileColor = paint;
+                    if (tile.Wall != 0) tile.WallColor = paint;
+                }
     }
 
     private static bool TryCreateRooms(
