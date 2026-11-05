@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "d3e293ad",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "Detached official ConvertSkyIslands(2,true) helper differentials on both committed Anniversary checkpoint97 canonical 4200x1200 worlds (seeds1458/42) match the complete six-field grid and next RNG. Omitting the source willow/tree kill fails both canonical fixtures. These are source97 terrains with fresh helper RNG, not continuous pre-FinalCleanup state.",
+    "Four test-only NotTheBees checkpoint97 classes compare existing PlaceTile231 and SpreadGrass owners on authentic terrain windows and nine tile identities. An intentionally perturbed unsupported vine/support fixture proves the physical SquareTileFrame effect; untouched windows do not. No production Bees tail or public admission is added.",
+    "Bounded Remix second-scan owner preserves source RNG cadence on sparse and qualified stone1 candidates, with strict refusal of other populated Convert sites. Separate helpers reuse the existing QuickWater simulator for spawn scrub/re-settle, source tree growers for real grass-tree growth, no-growth and dungeon palettes, cavern tile637 styling and a bounded lily-pad move. Direct official whole-grid/RNG component and composed fixtures with effective omissions qualify these narrow slices, not full FinishRemixWorld."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 39, "passed": 39, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185833, "passed": 185833, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1600.22 },
+  "affected": { "mode": "affected", "domains": ["infrastructure", "worldgen"], "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 679.75 },
+  "testDllSha256": "8ffd3ae1000195d5eadcd46ceb7ed015d72834b1ffb6782e7000be1818623b07",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "d4bbb24ed7ef933be45992f000a1f0eb6d009de79405c7b8afe074c2578fb571",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "previousUnfilteredFull": {
+    "commit": "d42f4873",
+    "total": 1731005,
+    "passed": 1731005,
+    "methods": 5885,
+    "note": "This bounded packet used mandatory fast plus complete affected-domain matrices, not a new unfiltered full run."
+  },
+  "separateNativeResearch": {
+    "officialPrePostFinalCleanup": ["Anniversary 4200x1200 seed1458", "NotTheBees 4200x1200 seed1458"],
+    "artifactLocation": "Ignored local reference only; native tile images and game assets are not committed.",
+    "status": "Source snapshots captured; strict runtime side-table hydration and registered-pass replay remain pending. This is not a parity claim."
+  },
+  "remaining": [
+    "Row109 remains P; public special-seed Final Cleanup and continuous real-prefix pass parity are not admitted.",
+    "Anniversary needs prior-prefix mutable Item state and source-ordered tail wiring; Bees needs full varied-terrain/side-table ownership; Remix needs broad Convert and earlier continuous prefix/settle proof.",
+    "NativeAOT and whole-generation special-seed parity remain unverified."
+  ]
+}
