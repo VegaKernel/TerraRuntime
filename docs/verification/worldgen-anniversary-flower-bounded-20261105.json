@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "5f42ccfe",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "Anniversary ImproveAllChestContents admits only the source-qualified item 3069 positive fallback with prior prefix 0 or 60. Direct untouched two-chest official fixtures for seeds 1, 42 and 1458 match final persisted prefix IDs and next physical RNG. Removing the inner Next(4) no-prefix retry fails all three fixtures.",
+    "The official all-table audit found 823 simplified-runtime current-stat mismatches among 22966 accepted prior-prefix states and 12 good-option decision mismatches among 77932 checks; other prior prefixes remain fail-closed. Full mutable Item stats and continuous Anniversary Final Cleanup are not admitted.",
+    "A bounded WorldGen.PlaceTile(24) owner for inactive former plant 61 over full Corrupt grass 661 matches five direct official generation-mode 100x100 full-17-field grid/raw-RNG cases: dry wall0 flower, wall207 thorn, liquid refusal, wall207 support rejection after one draw, and full-honey wall15 refusal without a draw. The direct helper is not wired into the registered Bees Final Cleanup tail.",
+    "A separate genuine canonical Remix settle rehost still has 39 zero-volume liquid-kind differences with exact strict preimage, other post fields and RNG. The first target is correct after QuickWater; the later write owner is not proven, so no liquid patch is included."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 41, "passed": 41, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185850, "passed": 185850, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1357.81 },
+  "affected": { "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 577.53 },
+  "unfilteredFull": "Not rerun for this bounded packet; previous main checkpoint 5f42ccfe passed 1731153/1731153 across 5955 methods.",
+  "testDllSha256": "64942897a91358090fc726b0fdc4061ae80e86e36df4932098f1be3e730e204a",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "426c4ee57dde3a9a14b36530a3e2d4c9e788ae55eacd91768a150efd8a66cce9",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "separateNativeResearch": {
+    "artifactLocation": "Ignored local reference only; official binary, raw world images and test-only diagnostics are not committed.",
+    "scope": "Genuine Anniversary and NotTheBees registered Final Cleanup still first diverge at (778,420) and (6,802). A direct official hive KillTile projectile fixture is prepared for the next isolated packet but is not included or claimed here."
+  },
+  "remaining": [
+    "Row 109 remains P: public special-seed Final Cleanup, complete important TileFrame coverage and continuous real-prefix PassLegacy parity remain open.",
+    "Anniversary needs in-pass tail and full mutable prior-prefix Item state; Bees needs the second 41x41 scan, projectile/entity side tables and public wiring; Remix still needs zero-volume liquid-kind ownership and broader conversion/prefix support.",
+    "Full generation and NativeAOT parity remain unverified."
+  ]
+}

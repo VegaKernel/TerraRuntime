@@ -2231,6 +2231,14 @@ Primary evidence: TerrariaServer 1.4.5.8 `Projectile.StatusPvP`, the PvP branch 
 - Dedicated-server packet-55 handling relays only when both encoded target and sender are hostile and `Main.pvpBuff[buff]` is true. Client handling applies the packet only when the encoded target equals `Main.myPlayer`, using `AddBuff(..., fromNetPvP: true)`. This is targeted owner delivery, not observer replication.
 - The exact 1.4.5.8 `Main.pvpBuff` true set is `{20,70,24,323,31,39,44,324,69,103,119,120,137,320,30,36,397,398,399,400}`. TerraRuntime's packet-55 egress must remain bounded to this source-pinned set.
 
+## Anniversary chest prefix state and bounded flower placement
+
+TerrariaServer 1.4.5.8 `Item.Prefix` / `WorldGen.ImproveAllChestContents`: the genuine Anniversary seed-1458 pre-`Final Cleanup` image has 1,162 nonempty chest items, including 105 already prefixed. All 14 prefix-relevant scalar fields of those items reconstruct from original `Item.SetDefaults(type)` followed by the existing prefix. A separate official all-table audit found 886 prefixable IDs, 867 with an Anniversary good-prefix category, 22,966 accepted `(type, prior-family-prefix)` states and 77,932 good-option checks. The current runtime's simplified prior-stat projection disagrees on 823 current states and 12 candidate decisions (first: item type 1, prior prefix 39, source damage 4 versus runtime 3; candidate 81 is source-accepted but runtime-rejected). General prior-prefix admission is therefore unsafe. The ignored official audit artifact has SHA-256 `FFEA57CFBEC27533D4C4EDF09B47222E0635918E02B98AC46909DE71436A7CA8`.
+
+The bounded item-3069 exception is source-qualified for prior prefix `0` or `60` only. Direct original two-chest `ImproveAllChestContents` fixtures at seeds `1`, `42` and `1458` verify ordered persisted prefix IDs and the next RNG. `Item.Prefix(positive)` can reject a good-option request, then its inner fallback spends a `Next(4)` no-prefix chance before the outer option-removal retry; deleting that draw breaks all three fixtures. This is not full mutable Item-stat or continuous `Final Cleanup` parity.
+
+TerrariaServer 1.4.5.8 `WorldGen.PlaceTile(24)` under actual generation flags and the 754-entry `tileSolid` catalog has five direct bounded 100-by-100 fixtures for an inactive former plant `61` over full Corrupt grass `661`. Dry wall `0` places a styled flower; dry wall `207` can choose thorn `32` and frame it twice; liquid refusal preserves the old anchor without RNG; wall `207` on both target and support clears the old anchor, consumes one draw, and returns false. The source-reachable full-honey wall-`15` case also refuses before mutation or RNG, without admitting dry wall `15`. The retained helper matches complete 17-field grids and raw RNG for these cases but does not establish the complete `FinishNotTheBees` tail or in-pass `Final Cleanup` parity.
+
 ## Working rule for new vanilla facts
 
 ## Skeletron Prime projectile tick order

@@ -9,6 +9,59 @@ namespace TerraRuntime.Tests;
 public sealed class GenerationAnniversaryChestPrefix1458Tests
 {
     [Theory]
+    [InlineData(1, 65, 60, 60, 60, 1464848243)]
+    [InlineData(42, 72, 60, 60, 82, 1634773126)]
+    [InlineData(1458, 68, 60, 60, 82, 1845354897)]
+    public void Direct_official_weak_magic_positive_fallback_retries_and_preserves_prior_prefix_order(
+        int seed, byte accessory, byte freshMagic, byte priorMagic, byte ranged, int nextRandom)
+    {
+        // Untouched TerrariaServer 1.4.5.8 ImproveAllChestContents on two
+        // source chests. Item3069 rejects GoodMagic 83/57 on its current stats;
+        // Item.Prefix(positive) may itself roll prefix0 before the outer good-
+        // option list removes a rejected candidate. The second 3069 starts
+        // with genuine positive prefix60 from SetDefaults -> Prefix(60).
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        PlaceChest(world, 40, 40);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(3069))]));
+        Assert.True(world.TryAddChest(40, 40, string.Empty,
+            [new(1, new ItemTypeId(3069), new PrefixId(60)),
+             new(1, new ItemTypeId(219))]));
+        var random = new RandomAdapter(seed);
+
+        Assert.Equal(4, AnniversaryChestPrefix1458.ImproveQualifiedChests(world, random,
+            TestContext.Current.CancellationToken));
+        WorldChest[] chests = world.CaptureGeneratedChests();
+        Assert.Equal(new byte[] { accessory, freshMagic },
+            chests[0].Items.Take(2).Select(static item => item.Prefix));
+        Assert.Equal(new byte[] { priorMagic, ranged },
+            chests[1].Items.Take(2).Select(static item => item.Prefix));
+        Assert.Equal(nextRandom, random.Next());
+    }
+
+    [Theory]
+    [InlineData(49, 65)]
+    [InlineData(113, 34)]
+    [InlineData(3069, 57)]
+    public void Unqualified_existing_prefix_state_refuses_before_any_chest_or_rng_change(
+        int type, int priorPrefix)
+    {
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(type), new PrefixId(priorPrefix))]));
+        WorldChest before = Assert.Single(world.CaptureGeneratedChests());
+        var random = new RandomAdapter(1458);
+        int expectedNext = new RandomAdapter(1458).Next();
+
+        Assert.Throws<NotSupportedException>(() => AnniversaryChestPrefix1458.ImproveQualifiedChests(
+            world, random, TestContext.Current.CancellationToken));
+        Assert.Equal(before.Items, Assert.Single(world.CaptureGeneratedChests()).Items);
+        Assert.Equal(expectedNext, random.Next());
+    }
+
+    [Theory]
     [InlineData(1, "65,65,0,57,60,96,59,59,0", "76,65,57,83,59,81,57,0", 1464848243)]
     [InlineData(1458, "68,72,0,60,60,95,57,81,0", "76,68,60,57,96,57,81,0", 1162070998)]
     public void Direct_official_no_category_items_preserve_prefix_and_rng_between_melee_items(

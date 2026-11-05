@@ -7,8 +7,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>
 /// Source-reachable accessory, guns/bows, magic, summon and melee slices of TerrariaServer 1.4.5.8
 /// WorldGen.ImproveAllChestContents/PrefixItemFromOptions. The verified
-/// Eye of Cthulhu Shield dual-category case is included; positive-request
-/// fallback and other existing-prefix items remain refused.
+/// Eye of Cthulhu Shield dual-category case and the source-qualified weak
+/// magic 3069 fallback (including its prior prefix 60) are included; other
+/// positive-request fallback and existing-prefix items remain refused.
 /// </summary>
 internal static class AnniversaryChestPrefix1458
 {
@@ -50,9 +51,11 @@ internal static class AnniversaryChestPrefix1458
                         out VanillaItemPrefixRecord1458 record))
                     continue;
                 ReadOnlySpan<byte> choices = GoodOptions(record.Family);
-                byte prefix = choices[random.Next(choices.Length)];
+                if (item.Prefix != 0)
+                    record = ApplyPrefixStats(in record, item.Prefix);
+                byte prefix = ChooseGoodPrefix(ref record, choices, item.Prefix, item.ItemType, random);
                 if (item.ItemType == 3097)
-                    prefix = GoodMeleePrefixes[random.Next(GoodMeleePrefixes.Length)];
+                    prefix = ChooseGoodPrefix(ref record, GoodMeleePrefixes, prefix, item.ItemType, random);
                 items[slot] = items[slot] with { Prefix = new PrefixId(prefix) };
                 chestChanged = true;
                 changed++;
@@ -73,8 +76,9 @@ internal static class AnniversaryChestPrefix1458
     {
 
         // Source Prefix(-3) checks CanHavePrefixes and returns without an RNG
-        // draw. Reject other prefixable families, prior prefixes and any positive
-        // good-prefix option that would enter Item.Prefix's random fallback.
+        // draw. Only 3069 with prior 60 has a source-qualified existing-prefix
+        // reconstruction; all other prior states remain fail-closed. Keep
+        // unqualified positive fallback refused before any mutation or draw.
         foreach (WorldChest chest in chests)
             foreach (WorldChestItem item in chest.Items)
             {
@@ -83,11 +87,16 @@ internal static class AnniversaryChestPrefix1458
                         out VanillaItemPrefixRecord1458 record))
                     continue;
                 if (item.Prefix != 0)
-                    throw new NotSupportedException("Anniversary prefixing requires the source item category and prior-prefix state.");
+                {
+                    if (item.ItemType != 3069 || item.Prefix != 60)
+                        throw new NotSupportedException("Anniversary prior-prefix item state is not source-qualified.");
+                    record = ApplyPrefixStats(in record, item.Prefix);
+                }
                 ReadOnlySpan<byte> choices = GoodOptions(record.Family);
                 foreach (byte candidate in choices)
-                    if (!VanillaItemPrefixTable1458.Accepts(in record, candidate))
-                        throw new NotSupportedException("Anniversary positive-prefix fallback is not qualified.");
+                    if (!VanillaItemPrefixTable1458.Accepts(in record, candidate) && item.ItemType != 3069)
+                        throw new NotSupportedException($"Anniversary positive-prefix fallback is not qualified: " +
+                            $"chest ({chest.X},{chest.Y}), item {item.ItemType}, family {record.Family}, candidate {candidate}.");
                 if (item.ItemType == 3097)
                     foreach (byte candidate in GoodMeleePrefixes)
                         if (!VanillaItemPrefixTable1458.Accepts(in record, candidate))
@@ -104,6 +113,67 @@ internal static class AnniversaryChestPrefix1458
         4 => GoodSummonPrefixes,
         _ => []
     };
+
+    private static byte ChooseGoodPrefix(ref VanillaItemPrefixRecord1458 current,
+        ReadOnlySpan<byte> options, byte originalPrefix, int itemType,
+        IWorldGenerationVanillaRandom random)
+    {
+        byte[] remaining = options.ToArray();
+        int count = remaining.Length;
+        while (count > 0)
+        {
+            int index = random.Next(count);
+            byte candidate = remaining[index];
+            if (VanillaItemPrefixTable1458.Accepts(in current, candidate))
+            {
+                current = ApplyPrefixStats(in current, candidate);
+                return candidate;
+            }
+            if (itemType != 3069)
+                throw new NotSupportedException("Unqualified positive-prefix fallback.");
+            // Item.Prefix(positive) retries inside the item before the outer
+            // PrefixItemFromOptions loop removes the rejected option.
+            ReadOnlySpan<byte> family = VanillaItemPrefixTable1458.GetFamily(current.Family);
+            bool chosen = false;
+            // The accepted 3069 family always has valid outcomes, but refuse a
+            // pathological stream instead of spinning indefinitely in generation.
+            for (int attempt = 0; attempt < 1024; attempt++)
+            {
+                // Item.Prefix(positive) falls back with rolledPrefix=-1. Its
+                // retry prelude still has the ordinary one-in-four no-prefix
+                // draw, even though the original request was positive.
+                byte rolled = random.Next(4) == 0 ? (byte)0 : family[random.Next(family.Length)];
+                if (!VanillaItemPrefixTable1458.Accepts(in current, rolled))
+                    continue;
+                if (rolled != 0)
+                    current = ApplyPrefixStats(in current, rolled);
+                chosen = true;
+                break;
+            }
+            if (!chosen)
+                throw new NotSupportedException("Positive-prefix fallback exceeded the source roll bound.");
+            for (int move = index; move + 1 < count; move++)
+                remaining[move] = remaining[move + 1];
+            count--;
+        }
+        if (originalPrefix != 0)
+            current = ApplyPrefixStats(in current, originalPrefix);
+        return originalPrefix;
+    }
+
+    private static VanillaItemPrefixRecord1458 ApplyPrefixStats(in VanillaItemPrefixRecord1458 current,
+        int prefix)
+    {
+        if (!VanillaItemPrefixTable1458.TryGetStatModifiers(new PrefixId(prefix), out var modifiers) ||
+            !VanillaItemPrefixTable1458.TryGetManaMultiplier(new PrefixId(prefix), out float mana))
+            throw new NotSupportedException("Unowned positive-prefix stat modifiers.");
+        return current with
+        {
+            Damage = checked((short)Math.Round(current.Damage * (double)modifiers.DamageMultiplier)),
+            UseAnimation = checked((byte)Math.Round(current.UseAnimation * (double)modifiers.SpeedMultiplier)),
+            Mana = checked((byte)Math.Round(current.Mana * (double)mana))
+        };
+    }
 
     // Direct 1.4.5.8 Item.SetDefaults audit across all 886 prefixable items:
     // these 19 roll a melee prefix family but all five GiveItemGoodPrefixes
