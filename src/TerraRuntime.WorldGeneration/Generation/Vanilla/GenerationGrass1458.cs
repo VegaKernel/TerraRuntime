@@ -3,7 +3,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
-/// <summary>Depth-limited ordinary SpreadGrass for dirt/mud substrates, pinned to 1.4.5.8.
+/// <summary>Depth-limited generation-time SpreadGrass for dirt/mud substrates, pinned to 1.4.5.8.
 /// Shared by evil surface conversion, lake carving and the surface grass walls.</summary>
 /// <remarks>
 /// <para>
@@ -31,7 +31,7 @@ internal sealed class GenerationGrass1458(WorldTileStore store, IWorldGeneration
 
     public void Apply(int x, int y, ushort dirt, ushort grass)
     {
-        if (!((dirt == 0 && grass is 2 or 23 or 199) || (dirt == 59 && grass is 60 or 661 or 662) ||
+        if (!((dirt == 0 && grass is 2 or 23 or 199) || (dirt == 59 && grass is 60 or 70 or 661 or 662) ||
               (dirt == 1 && grass is (>= 179 and <= 183) or 381 or 534 or 536 or 539 or 625 or 627)))
             throw new InvalidOperationException("Unverified generation grass conversion.");
         Spread(x, y, dirt, grass, 0);

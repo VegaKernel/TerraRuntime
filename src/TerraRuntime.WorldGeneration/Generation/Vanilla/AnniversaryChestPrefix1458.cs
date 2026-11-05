@@ -5,15 +5,20 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>
-/// Accessory-only source-reachable slice of TerrariaServer 1.4.5.8
-/// WorldGen.ImproveAllChestContents/PrefixItemFromOptions. Weapon and existing-prefix
-/// items require the wider Item.Prefix positive-request owner and are refused.
+/// Accessory and fully accepted guns/bows slice of TerrariaServer 1.4.5.8
+/// WorldGen.ImproveAllChestContents/PrefixItemFromOptions. Other weapon families,
+/// positive-request fallback and existing-prefix items remain refused.
 /// </summary>
 internal static class AnniversaryChestPrefix1458
 {
     private static ReadOnlySpan<byte> GoodAccessoryPrefixes => [65, 68, 72, 76];
+    private static ReadOnlySpan<byte> GoodRangedPrefixes => [82, 57, 60];
 
     internal static int ImproveAccessoryChests(Workspace workspace,
+        IWorldGenerationVanillaRandom random, CancellationToken cancellationToken = default) =>
+        ImproveAccessoryAndRangedChests(workspace, random, cancellationToken);
+
+    internal static int ImproveAccessoryAndRangedChests(Workspace workspace,
         IWorldGenerationVanillaRandom random, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(workspace);
@@ -21,19 +26,20 @@ internal static class AnniversaryChestPrefix1458
         WorldChest[] chests = workspace.CaptureGeneratedChests();
 
         // Source Prefix(-3) checks CanHavePrefixes and returns without an RNG
-        // draw. Reject all non-accessory prefixable items and pre-prefixed
-        // accessories before mutating any chest or consuming the shared stream.
+        // draw. Reject other prefixable families, prior prefixes and any positive
+        // good-prefix option that would enter Item.Prefix's random fallback.
         foreach (WorldChest chest in chests)
             foreach (WorldChestItem item in chest.Items)
             {
                 if (item.IsEmpty || !VanillaItemPrefixTable1458.TryGet(new ItemTypeId(item.ItemType),
                         out VanillaItemPrefixRecord1458 record))
                     continue;
-                if (record.Family != 7 || item.Prefix != 0)
+                if (record.Family is not (7 or 2) || item.Prefix != 0)
                     throw new NotSupportedException("Anniversary prefixing requires the source item category and prior-prefix state.");
-                foreach (byte candidate in GoodAccessoryPrefixes)
+                ReadOnlySpan<byte> choices = record.Family == 7 ? GoodAccessoryPrefixes : GoodRangedPrefixes;
+                foreach (byte candidate in choices)
                     if (!VanillaItemPrefixTable1458.Accepts(in record, candidate))
-                        throw new NotSupportedException("Anniversary accessory positive-prefix fallback is not qualified.");
+                        throw new NotSupportedException("Anniversary positive-prefix fallback is not qualified.");
             }
 
         int changed = 0;
@@ -48,9 +54,10 @@ internal static class AnniversaryChestPrefix1458
                 items[slot] = new WorldGenerationChestItem(item.Stack,
                     new ItemTypeId(item.ItemType), new PrefixId(item.Prefix));
                 if (item.IsEmpty || !VanillaItemPrefixTable1458.TryGet(new ItemTypeId(item.ItemType),
-                        out _))
+                        out VanillaItemPrefixRecord1458 record))
                     continue;
-                byte prefix = GoodAccessoryPrefixes[random.Next(GoodAccessoryPrefixes.Length)];
+                ReadOnlySpan<byte> choices = record.Family == 7 ? GoodAccessoryPrefixes : GoodRangedPrefixes;
+                byte prefix = choices[random.Next(choices.Length)];
                 items[slot] = items[slot] with { Prefix = new PrefixId(prefix) };
                 chestChanged = true;
                 changed++;

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "83e01505",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "GenerationGrass now admits source SpreadGrass mud59 to mushroom-grass70. Six direct official netMode0 whole-grid/RNG fixtures cover seeds1458/42, sibling mud59 to jungle-grass60, enclosed and lava refusals. A prior headless netMode2 oracle was revoked because an uninitialized network send was swallowed before recursion.",
+    "Reusable bounded WorldGen.Convert(1/2/4) owner handles source-observed stone, grass, ice, sand, representative moss/hardened-sand/sandstone/jungle-grass tiles and stone/grass/hardened/sandstone walls with existing tile/wall framing. Seven direct original whole-grid/RNG fixtures and causal wall-framing omission checks qualify this cohort only.",
+    "Anniversary chest helper additionally admits ranged Family2 items whose three good-prefix choices all succeed. Three direct original six-item/RNG fixtures and a full 886-record admission audit against the official 93-ID GunsBows set bound the scope.",
+    "Four direct official PlaceTile(231) fixtures establish that the existing larva placement and double framing path was already correct; no speculative production fix was applied."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 279, "passed": 279, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185721, "passed": 185721, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1174.97 },
+  "affected": { "mode": "affected", "domains": ["infrastructure", "worldgen"], "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 549.07 },
+  "testDllSha256": "f6ea3e84097551c5eaec042329d14659ce5a5144558a9a4b519ce9209f2751f5",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "bf7b05405337759edc634662d942f6d140a1d370e0326e8c1dcc51411fe79e11",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "previousUnfilteredFull": {
+    "commit": "d42f4873",
+    "total": 1731005,
+    "passed": 1731005,
+    "methods": 5885,
+    "note": "This bounded prerequisite packet used mandatory fast plus complete affected-domain matrices, not a new unfiltered full run."
+  },
+  "remaining": [
+    "Rows 63 and 109 remain P; public special-seed Final Cleanup is not admitted.",
+    "Bees needs real-prefix PlaceTile231/SpreadGrass/tree/dungeon composition; Remix needs broader Convert, QuickWater and AddTrees; Anniversary needs other prefix categories and sky paths.",
+    "Full special-pass, whole-generation and NativeAOT parity remain unverified."
+  ]
+}

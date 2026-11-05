@@ -9,6 +9,40 @@ namespace TerraRuntime.Tests;
 public sealed class GenerationAnniversaryChestPrefix1458Tests
 {
     [Theory]
+    [InlineData(1, 65, 65, 57, 76, 72, 57, 760389092)]
+    [InlineData(2, 76, 68, 82, 76, 65, 82, 1722583523)]
+    [InlineData(1458, 68, 72, 60, 76, 68, 60, 370853568)]
+    public void Direct_official_ranged_and_accessory_prefixes_share_sparse_chest_order(
+        int seed, byte a0, byte a1, byte r0, byte a2, byte a3, byte r1, int nextRandom)
+    {
+        // Direct original ImproveAllChestContents: source item 96 Musket and
+        // 219 Phoenix Blaster accept all three GoodPrefixIdsForRangedWeapon;
+        // weak Wooden Bow 39 does not, and is outside this bounded branch.
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        PlaceChest(world, 40, 40);
+        PlaceChest(world, 50, 50);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(2)), new(1, new ItemTypeId(96))]));
+        Assert.True(world.TryAddChest(40, 40, string.Empty, []));
+        Assert.True(world.TryAddChest(50, 50, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(219))]));
+        Assert.True(world.TryRemoveEmptyGeneratedChest(40, 40));
+        var random = new RandomAdapter(seed);
+
+        Assert.Equal(6, AnniversaryChestPrefix1458.ImproveAccessoryAndRangedChests(world,
+            random, TestContext.Current.CancellationToken));
+
+        WorldChest[] chests = world.CaptureGeneratedChests();
+        Assert.Equal(new short[] { 0, 2 }, chests.Select(chest => chest.SlotId));
+        Assert.Equal(new byte[] { a0, a1, 0, r0 }, chests[0].Items.Take(4).Select(item => item.Prefix));
+        Assert.Equal(new byte[] { a2, a3, r1 }, chests[1].Items.Take(3).Select(item => item.Prefix));
+        Assert.Equal(nextRandom, random.Next());
+    }
+
+    [Theory]
     [InlineData(1, 65, 65, 68, 76, 1412011072)]
     [InlineData(2, 76, 68, 65, 76, 234085668)]
     [InlineData(1458, 68, 72, 76, 76, 1014131397)]
@@ -46,13 +80,15 @@ public sealed class GenerationAnniversaryChestPrefix1458Tests
         Assert.Equal(nextRandom, random.Next());
     }
 
-    [Fact]
-    public void Unsupported_weapon_chest_refuses_before_prefix_or_rng_mutation()
+    [Theory]
+    [InlineData(4)] // melee family has a different good-prefix list.
+    [InlineData(39)] // weak bow enters Item.Prefix positive-request fallback.
+    public void Unsupported_weapon_chest_refuses_before_prefix_or_rng_mutation(int unsupported)
     {
         Workspace world = Create();
         PlaceChest(world, 30, 30);
         Assert.True(world.TryAddChest(30, 30, string.Empty,
-            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(4))]));
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(unsupported))]));
         var random = new RandomAdapter(1458);
         int expectedNext = new RandomAdapter(1458).Next();
         WorldChest before = Assert.Single(world.CaptureGeneratedChests());
