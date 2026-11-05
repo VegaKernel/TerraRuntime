@@ -9,6 +9,114 @@ namespace TerraRuntime.Tests;
 public sealed class GenerationAnniversaryChestPrefix1458Tests
 {
     [Theory]
+    [InlineData(1, "65,65,0,57,60,96,59,59,0", "76,65,57,83,59,81,57,0", 1464848243)]
+    [InlineData(1458, "68,72,0,60,60,95,57,81,0", "76,68,60,57,96,57,81,0", 1162070998)]
+    public void Direct_official_no_category_items_preserve_prefix_and_rng_between_melee_items(
+        int seed, string firstChest, string secondChest, int nextRandom)
+    {
+        // Actual original ImproveAllChestContents: Harpoon160 and Whip4672
+        // have a rollable melee family, but all five source category flags are
+        // false. They remain at prefix0 and cost no draws in mixed chests.
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        PlaceChest(world, 40, 40);
+        PlaceChest(world, 50, 50);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(2)), new(1, new ItemTypeId(96)),
+             new(1, new ItemTypeId(113)), new(1, new ItemTypeId(1157)),
+             new(1, new ItemTypeId(155)), new(1, new ItemTypeId(162)),
+             new(1, new ItemTypeId(160))]));
+        Assert.True(world.TryAddChest(40, 40, string.Empty, []));
+        Assert.True(world.TryAddChest(50, 50, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(219)), new(1, new ItemTypeId(165)),
+             new(1, new ItemTypeId(1309)), new(1, new ItemTypeId(55)),
+             new(1, new ItemTypeId(3389)), new(1, new ItemTypeId(4672))]));
+        Assert.True(world.TryRemoveEmptyGeneratedChest(40, 40));
+        var random = new RandomAdapter(seed);
+
+        Assert.Equal(14, AnniversaryChestPrefix1458.ImproveQualifiedChests(world, random,
+            TestContext.Current.CancellationToken));
+
+        WorldChest[] chests = world.CaptureGeneratedChests();
+        Assert.Equal(new short[] { 0, 2 }, chests.Select(chest => chest.SlotId));
+        Assert.Equal(Parse(firstChest), chests[0].Items.Take(9).Select(item => item.Prefix));
+        Assert.Equal(Parse(secondChest), chests[1].Items.Take(8).Select(item => item.Prefix));
+        Assert.Equal(nextRandom, random.Next());
+
+        static byte[] Parse(string value) => value.Split(',').Select(byte.Parse).ToArray();
+    }
+
+    [Theory]
+    [InlineData(1, 81, 1002897798)]
+    [InlineData(2, 59, 356479430)]
+    [InlineData(3, 57, 1857544709)]
+    [InlineData(1458, 59, 1916656655)]
+    public void Direct_official_eye_of_cthulhu_shield_runs_accessory_then_melee_prefix_passes(
+        int seed, byte finalPrefix, int nextRandom)
+    {
+        // Original Item.SetDefaults(3097): accessory=true and melee=true.
+        // ImproveAllChestContents therefore selects accessory good prefix,
+        // then a melee good prefix on the same item, consuming two draws.
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(3097))]));
+        var random = new RandomAdapter(seed);
+
+        Assert.Equal(1, AnniversaryChestPrefix1458.ImproveQualifiedChests(world,
+            random, TestContext.Current.CancellationToken));
+
+        WorldChest chest = Assert.Single(world.CaptureGeneratedChests());
+        Assert.Equal((short)0, chest.SlotId);
+        Assert.Equal(3097, chest.Items[0].ItemType);
+        Assert.Equal(finalPrefix, chest.Items[0].Prefix);
+        Assert.Equal(nextRandom, random.Next());
+    }
+
+    [Theory]
+    [InlineData(1, "65,65,0,57,60,96,59,59", "76,65,57,83,59,81,57", 1464848243)]
+    [InlineData(2, "76,68,0,82,60,85,81,57", "68,65,82,60,85,81,59", 820542731)]
+    [InlineData(3, "68,72,0,60,83,95,81,81", "76,68,57,57,97,57,81", 176237219)]
+    [InlineData(1458, "68,72,0,60,60,95,57,81", "76,68,60,57,96,57,81", 1162070998)]
+    public void Direct_official_melee_prefixes_cover_four_families_after_other_categories(
+        int seed, string firstChest, string secondChest, int nextRandom)
+    {
+        // TerrariaServer 1.4.5.8 ImproveAllChestContents with Muramasa155,
+        // Ball O' Hurt162, Enchanted Boomerang55 and Terrarian3389 in four
+        // source melee prefix families. Null slot1 is skipped, not a terminator.
+        Workspace world = Create();
+        PlaceChest(world, 30, 30);
+        PlaceChest(world, 40, 40);
+        PlaceChest(world, 50, 50);
+        Assert.True(world.TryAddChest(30, 30, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(2)), new(1, new ItemTypeId(96)),
+             new(1, new ItemTypeId(113)), new(1, new ItemTypeId(1157)),
+             new(1, new ItemTypeId(155)), new(1, new ItemTypeId(162))]));
+        Assert.True(world.TryAddChest(40, 40, string.Empty, []));
+        Assert.True(world.TryAddChest(50, 50, string.Empty,
+            [new(1, new ItemTypeId(49)), new(1, new ItemTypeId(53)),
+             new(1, new ItemTypeId(219)), new(1, new ItemTypeId(165)),
+             new(1, new ItemTypeId(1309)), new(1, new ItemTypeId(55)),
+             new(1, new ItemTypeId(3389))]));
+        Assert.True(world.TryRemoveEmptyGeneratedChest(40, 40));
+        var random = new RandomAdapter(seed);
+
+        Assert.Equal(14, AnniversaryChestPrefix1458.ImproveQualifiedChests(world, random,
+            TestContext.Current.CancellationToken));
+
+        WorldChest[] chests = world.CaptureGeneratedChests();
+        Assert.Equal(new short[] { 0, 2 }, chests.Select(chest => chest.SlotId));
+        Assert.Equal(Parse(firstChest), chests[0].Items.Take(8).Select(item => item.Prefix));
+        Assert.Equal(Parse(secondChest), chests[1].Items.Take(7).Select(item => item.Prefix));
+        Assert.Equal(nextRandom, random.Next());
+
+        static byte[] Parse(string value) => value.Split(',').Select(byte.Parse).ToArray();
+    }
+
+    [Theory]
     [InlineData(1, 65, 65, 57, 60, 96, 68, 68, 60, 83, 96, 61497087)]
     [InlineData(2, 76, 68, 82, 60, 85, 68, 76, 57, 83, 85, 1643613848)]
     [InlineData(3, 68, 72, 60, 83, 95, 65, 68, 60, 57, 59, 1078246962)]
@@ -159,10 +267,11 @@ public sealed class GenerationAnniversaryChestPrefix1458Tests
     }
 
     [Theory]
-    [InlineData(4)] // melee family has a different good-prefix list.
     [InlineData(39)] // weak bow enters Item.Prefix positive-request fallback.
     [InlineData(1244)] // weak magic item also enters positive-request fallback.
     [InlineData(4758)] // weak summon item enters positive-request fallback.
+    [InlineData(196)] // Weak melee item needs positive-prefix fallback.
+    [InlineData(3506)] // Another weak melee item needs positive-prefix fallback.
     public void Unsupported_weapon_chest_refuses_before_prefix_or_rng_mutation(int unsupported)
     {
         Workspace world = Create();

@@ -4,10 +4,11 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>
-/// The independently observed natural stone/grass/ice/sand, complete source moss set,
-/// representative hardened-sand, sandstone and jungle grass, plus matching wall and
-/// first four NewWall conversion-family identities and ordinary torch-4 styles of
-/// TerrariaServer.exe 1.4.5.8 <c>WorldGen.Convert</c> for conversion types 1/2/4.
+/// The independently observed source conversion sets for natural stone/grass/golf grass/
+/// ice/sand/hardened sand/sandstone/jungle grass, complete source moss set,
+/// matching wall and first four NewWall identities, torch-4 styles and four thorn
+/// identities and color-only special paint from TerrariaServer.exe 1.4.5.8
+/// <c>WorldGen.Convert</c> types 1/2/4.
 /// </summary>
 internal sealed class GenerationWorldConvert1458(
     WorldTileStore store,
@@ -15,14 +16,15 @@ internal sealed class GenerationWorldConvert1458(
     GenerationTileFraming1458 tileFraming)
 {
     private readonly GenerationWallFraming1458 wallFraming = new(store, random);
+    private readonly GenerationWorldTreeConversion1458 treeConversion = new(store);
 
     internal void ConvertAt(int x, int y, int conversionType, bool rainbowSandAndBlackSandWalls)
     {
         if (x < 1 || y < 1 || x >= store.Dimensions.WidthTiles - 1 ||
             y >= store.Dimensions.HeightTiles - 1)
             return;
-        if (conversionType is not (1 or 2 or 4) || rainbowSandAndBlackSandWalls)
-            throw new NotSupportedException("This conversion profile needs its own source-backed table and paint owner.");
+        if (conversionType is not (1 or 2 or 4))
+            throw new NotSupportedException("This conversion type needs its own source-backed table.");
 
         ref WorldTile tile = ref store.Tiles[store.GetUncheckedIndex(x, y)];
         if (!tile.IsActive && tile.Wall == 0)
@@ -31,16 +33,18 @@ internal sealed class GenerationWorldConvert1458(
             throw new NotSupportedException("Negative torch frame needs a direct conversion fixture.");
         ushort newTile = tile.Type switch
         {
-            1 => conversionType switch { 1 => 25, 2 => 117, _ => 203 },
-            2 => conversionType switch { 1 => 23, 2 => 109, _ => 199 },
-            161 => conversionType switch { 1 => 163, 2 => 164, _ => 200 },
-            53 => conversionType switch { 1 => 112, 2 => 116, _ => 234 },
+            1 or 25 or 117 or 203 => conversionType switch { 1 => 25, 2 => 117, _ => 203 },
+            2 or 23 or 109 or 199 => conversionType switch { 1 => 23, 2 => 109, _ => 199 },
+            477 or 492 => conversionType switch { 1 => 23, 2 => 492, _ => 199 },
+            161 or 163 or 164 or 200 => conversionType switch { 1 => 163, 2 => 164, _ => 200 },
+            53 or 112 or 116 or 234 => conversionType switch { 1 => 112, 2 => 116, _ => 234 },
             4 => 4,
             179 or 180 or 181 or 182 or 183 or 381 or 534 or 536 or 539 or 625 or 627 =>
                 conversionType switch { 1 => 25, 2 => 117, _ => 203 },
-            397 => conversionType switch { 1 => 398, 2 => 402, _ => 399 },
-            396 => conversionType switch { 1 => 400, 2 => 403, _ => 401 },
-            60 => conversionType switch { 1 => 661, 2 => 60, _ => 662 },
+            397 or 398 or 399 or 402 => conversionType switch { 1 => 398, 2 => 402, _ => 399 },
+            396 or 400 or 401 or 403 => conversionType switch { 1 => 400, 2 => 403, _ => 401 },
+            60 or 661 or 662 => conversionType switch { 1 => 661, 2 => tile.Type, _ => 662 },
+            32 or 69 or 352 or 655 => conversionType switch { 1 => 32, 2 => tile.Type, _ => 352 },
             56 => 56,
             0 when !tile.IsActive => 0,
             _ => throw new NotSupportedException($"WorldGen.Convert has no qualified tile {tile.Type} mapping here.")
@@ -55,15 +59,41 @@ internal sealed class GenerationWorldConvert1458(
             >= 188 and <= 191 => (ushort)((conversionType switch { 1 => 188, 2 => 200, _ => 192 }) + tile.Wall - 188),
             _ => throw new NotSupportedException($"WorldGen.Convert has no qualified wall {tile.Wall} mapping here.")
         };
-        if (tile.IsActive && newTile != tile.Type && store.Tiles[store.GetUncheckedIndex(x, y - 1)].IsActive)
-            throw new NotSupportedException("Conversion under an active tile needs source tree ownership qualification.");
+        bool changesTile = tile.IsActive && newTile != tile.Type;
+        bool changesWall = newWall != tile.Wall;
+        int torchStyle = tile.IsActive && tile.Type == 4 ? tile.FrameY / 22 : -1;
+        int targetTorchStyle = conversionType switch { 1 => 18, 2 => 20, _ => 19 };
+        bool changesTorch = torchStyle is 0 or 9 or 16 or 18 or 19 or 20 or 21 or 22 &&
+            torchStyle != targetTorchStyle;
+        if (rainbowSandAndBlackSandWalls &&
+            (changesTile || changesTorch) &&
+            (tile.Flags & (WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock)) != 0 ||
+            rainbowSandAndBlackSandWalls && changesWall &&
+            (tile.Flags & (WorldTileFlags.InvisibleWall | WorldTileFlags.FullbrightWall)) != 0)
+            throw new NotSupportedException("Special paint coating conversion needs independent Main.rand ownership.");
+        GenerationWorldTreeConversion1458.Plan treePlan = default;
+        bool treeAbove = changesTile && store.Tiles[store.GetUncheckedIndex(x, y - 1)].IsActive;
+        if (treeAbove)
+            treePlan = treeConversion.Prepare(x, y, newTile);
 
         // WorldGen.Convert processes a wall first. SquareWallFrame spends one shared
         // draw for this ordinary wall; the later tile conversion uses the same RNG.
         if (newWall != tile.Wall)
         {
             tile.Wall = newWall;
+            if (rainbowSandAndBlackSandWalls && tile.WallColor != 0)
+            {
+                tile.WallColor = 0;
+                for (int dust = 0; dust < 10; dust++) random.Next(2);
+            }
             wallFraming.SquareWallFrame(x, y);
+        }
+        if (tile.IsActive && conversionType == 2 && tile.Type is 32 or 69 or 352 or 655)
+        {
+            // Hallow does not produce a thorn identity. WorldGen.Convert invokes
+            // KillTile after any wall conversion; dust for32/352 moves shared RNG.
+            tileFraming.KillTile(x, y);
+            return;
         }
         if (tile.IsActive && tile.Type == 4)
         {
@@ -77,14 +107,26 @@ internal sealed class GenerationWorldConvert1458(
                 if (style != target)
                 {
                     tile.FrameY = (short)(target * 22);
+                    if (rainbowSandAndBlackSandWalls && tile.TileColor != 0)
+                    {
+                        for (int dust = 0; dust < 10; dust++) random.Next(2);
+                        tile.TileColor = 0;
+                    }
                     tileFraming.SquareTileFrame(x, y);
                 }
             }
             return;
         }
-        if (tile.IsActive && newTile != tile.Type)
+        if (changesTile)
         {
+            if (treeAbove)
+                treeConversion.Apply(x, y, newTile, treePlan);
             tile.Type = newTile;
+            if (rainbowSandAndBlackSandWalls && tile.TileColor != 0)
+            {
+                for (int dust = 0; dust < 10; dust++) random.Next(2);
+                tile.TileColor = 0;
+            }
             tileFraming.SquareTileFrame(x, y);
         }
     }

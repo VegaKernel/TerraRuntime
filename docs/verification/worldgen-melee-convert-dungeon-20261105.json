@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "57fcd809",
+  "sdk": "11.0.100-rc.3.26522.148",
+  "scope": [
+    "A complete official Item.SetDefaults audit of IDs 1..6195 establishes exact 886/886 prefixable-item membership. Anniversary chest improvement adds source-qualified melee, the two-draw accessory-then-melee shield 3097, and 19 source no-op prefixable IDs. Weak melee 196/3506 and existing nonzero prefixes still fail closed because mutable positive-prefix fallback is not represented by the chest side table. Direct original sparse-chest/RNG fixtures and effective omission controls qualify these bounded categories.",
+    "Bounded WorldGen.Convert(1/2/4) adds all 29 source natural conversion input identities, thorn Hallow KillTile with dust RNG, color-only special paint, and a separate source-grown 596/616 vanity-tree owner covering validated trunks, caps, branches and roots. Direct original full-grid/RNG fixtures and effective omissions qualify these slices. The special paint flag is incompatible with Remix; coated tiles and broader tree styles remain refused.",
+    "Independent WorldGen.OverGrownDungeon helpers match official single exposed-brick conversion with vine, plant, successful tree and blocked-tree continuations, plus bounded multi-hit dungeon wall/brick terrain. Full-grid/RNG and omission controls pass. These helpers are not wired into the full NotTheBees tail or public special-seed Final Cleanup."
+  ],
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 79, "passed": 79, "failed": 0, "errors": 0, "skipped": 0 },
+  "fast": { "total": 185794, "passed": 185794, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1516.14 },
+  "affected": { "mode": "affected", "domains": ["infrastructure", "worldgen"], "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 622.33 },
+  "testDllSha256": "876e1f912a38493cb09caefaf3ff7ef70c89b485e2aa08c6db75044c9a553fca",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "3d51da64b577fd9250fa25b81d40fbece752d63d871b276faf394b44ddd99ca4",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "previousUnfilteredFull": {
+    "commit": "d42f4873",
+    "total": 1731005,
+    "passed": 1731005,
+    "methods": 5885,
+    "note": "This bounded packet used mandatory fast plus complete affected-domain matrices, not a new unfiltered full run."
+  },
+  "remaining": [
+    "Row 109 remains P: public non-default Final Cleanup and continuous real-prefix special-seed differential are not admitted.",
+    "The canonical Anniversary sky helper is still isolated and not in this packet; full Bees/Remix/Anniversary tails remain open.",
+    "NativeAOT and whole-generation special-seed parity remain unverified."
+  ]
+}
