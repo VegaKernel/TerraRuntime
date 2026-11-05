@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "codeCommit": "e8a643ea",
+  "scope": "Untouched official TerrariaServer.exe 1.4.5.8 ordinary no-special canonical 4200x1200 worlds, raw58 Statues preimage to raw59 Buried Chests postimage. Strict imported source preimages followed by the unchanged registered runtime pass. All 17 tile fields on 5.04 million cells, all ordered chests and item slots including empties, all ordered StructureMap structures/protected rectangles and all 56 physical RNG entries/cursor plus next audit draw compared.",
+  "sourceCheckpoints": [
+    {
+      "seed": 42,
+      "officialPreJsonSha256": "5b6139daf29a3ecc3e5615c665b932492d545f2190109dd1a735857c4f11eb39",
+      "officialPostJsonSha256": "2ad16f025c906a56bdcc115f322afeca609c0e6692970f765c0a74685eb02f96",
+      "officialPreRaw17Sha256": "c3580e40596471f6f124e3856480ee66523bf5899241a9e76af4707fbacf970a",
+      "officialPostRaw17Sha256": "79034c01c8905c36d6cc59422a67b083fa561beecef600b7762930a3c6155008",
+      "postChests": 113,
+      "postStructures": 111,
+      "postProtectedRectangles": 94,
+      "postRngIndex": 21,
+      "postNextAuditDraw": 2092534132,
+      "registeredRuntimeExact": true
+    },
+    {
+      "seed": 1458,
+      "officialPreJsonSha256": "46f4b030bf758576bd7e99d50548d4cfdca5cc05522b9582a4452daaaa853c74",
+      "officialPostJsonSha256": "ddc4e6c956e78852a87f023a6f1f19042c5cc3765f85bfb7695b6a3842b6b517",
+      "officialPreRaw17Sha256": "7c3862aa890d07ca39f81247150ab63a36eca8ca1578b6233b3e99bde9c2c661",
+      "officialPostRaw17Sha256": "867a9bc6b57ed1b81b693325ae9df4e57ab2043b635e552bccfb7885d34fe1a2",
+      "postChests": 117,
+      "postStructures": 114,
+      "postProtectedRectangles": 99,
+      "postRngIndex": 12,
+      "postNextAuditDraw": 1624913959,
+      "registeredRuntimeExact": true
+    }
+  ],
+  "priorAnniversaryCheckpoint": "worldgen-buried-anniversary-natural-20261105.json",
+  "combinedCanonicalDifferentials": 4,
+  "productionCodeChangedSincePriorCheckpoint": false,
+  "verificationReusedFromExactCodeCommit": {
+    "testDllSha256": "7f1c6f3889b1b95c78c8f85f349770b3cb6a972448ac2deecba24cd762891f62",
+    "releaseWarnings": 0,
+    "releaseErrors": 0,
+    "fast": "185887/185887",
+    "unfilteredFull": "1731202/1731202",
+    "ordinaryAndFreshCoreClrSmokes": ["loop", "protocol", "network", "world", "tui"],
+    "pythonUnitTests": 300,
+    "gameplayDomainFilesAudited": 493,
+    "pairedRuEnPages": 137
+  },
+  "newIsolatedReplay": "Each ordinary source checkpoint was imported and replayed with a temporary uncommitted diagnostic on the same production code; WAE0/0 and focused1/1 per seed. Original binaries, raw images and diagnostic harnesses remain ignored local reference.",
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "remaining": "Row 63 stays P: other profiles, dimensions, seeds and cave-house branches are not fully differentially verified. Row 109 and full worldgen are also open."
+}
