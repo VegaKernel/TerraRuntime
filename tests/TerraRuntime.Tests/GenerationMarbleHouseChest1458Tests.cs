@@ -71,6 +71,65 @@ public sealed class GenerationMarbleHouseChest1458Tests
         Assert.Equal(next, random.Next());
     }
 
+    // Untouched 1.4.5.8 AddBuriedChest on the same 600x800 source image with
+    // Remix active; independent JSON SHA256 style50 047E8958..., style51 31C5999A...
+    [Theory]
+    [InlineData(50, 1, "50x1p0;21x6p0;28x3p0;2350x4p0;72x74p0", 19,
+        "a6f16ccc6f3443c11578f67c34e342745fee4da302c7da12211e1410a4cf2a6d", 1507096884)]
+    [InlineData(50, 42, "5011x1p0;166x12p0;21x7p0;42x33p0;28x3p0;289x2p0;2350x3p0;8x10p0", 25,
+        "4c6628fff234d8c859ffb904f830919a9cd3952e956344fc16635bcab0e4c429", 1159577995)]
+    [InlineData(50, 1458, "53x1p78;52x1p0;21x9p0;2350x3p0", 19,
+        "88db2929620e73ce283e39192f2001a5cf7b411df9e31b08220fd687792e2f66", 1845354897)]
+    [InlineData(51, 1, "50x1p0;21x6p0;28x3p0;2350x4p0;72x74p0", 19,
+        "a6f16ccc6f3443c11578f67c34e342745fee4da302c7da12211e1410a4cf2a6d", 1507096884)]
+    [InlineData(51, 42, "5011x1p0;166x12p0;21x7p0;42x33p0;28x3p0;289x2p0;2350x3p0;8x10p0", 25,
+        "4c6628fff234d8c859ffb904f830919a9cd3952e956344fc16635bcab0e4c429", 1159577995)]
+    [InlineData(51, 1458, "53x1p78;52x1p0;21x9p0;2350x3p0", 19,
+        "88db2929620e73ce283e39192f2001a5cf7b411df9e31b08220fd687792e2f66", 1845354897)]
+    public void Remix_stone_house_styles50_51_match_direct_original_loot_frame_and_rng(
+        int style, int seed, string inventory, uint expectedIndex, string expectedSeeds, int next)
+    {
+        var world = new Workspace(600, 800);
+        world.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.Remix,
+            VanillaSecretWorldSeed1458.None));
+        Assert.True(world.TrySetLayers(150, 250));
+        for (int x = 0; x < 600; x++)
+            for (int y = 500; y < 800; y++)
+            {
+                var tile = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                world.TileStore.Set(x, y, in tile);
+            }
+        var random = new RandomAdapter(seed);
+        var context = new BuriedChestContext1458
+        {
+            Height = 800, WorldSurface = 150, RockLayer = 250, LavaLine = 0,
+            CopperBar = 20, IronBar = 22, SilverBar = 21, GoldBar = 19,
+            TungstenIsSilverTier = false, DesertHiveHigh = 100, DesertHiveLow = 400,
+            HellChestItem = [274, 220, 112, 218, 3019]
+        };
+        var placer = new BuriedChest1458(world.TileStore, random, context, workspace: world);
+        Assert.True(placer.TryAdd(300, 450, out int chestX, out int chestY,
+            0, notNearOtherChests: false, chestStyle: style, trySlope: false, chestTileType: 21));
+        Assert.Equal((299, 499), (chestX, chestY));
+        BuriedChestResult1458 chest = Assert.Single(placer.Chests);
+        Assert.Equal((299, 498, (ushort)21, style),
+            (chest.Left, chest.Top, chest.TileType, chest.Style));
+        Assert.Equal(inventory, string.Join(';', chest.Items.Where(static item => item.Stack > 0)
+            .Select(static item => $"{item.ItemType.Value}x{item.Stack}p{item.Prefix.Value}")));
+        for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile tile = world.TileStore.Get(299 + dx, 498 + dy);
+                Assert.True(tile.IsActive);
+                Assert.Equal((ushort)21, tile.Type);
+                Assert.Equal((short)(style * 36 + dx * 18), tile.FrameX);
+                Assert.Equal((short)(dy * 18), tile.FrameY);
+            }
+        Assert.Equal(expectedIndex, random.Index);
+        Assert.Equal(expectedSeeds, random.SeedArrayHash());
+        Assert.Equal(next, random.Next());
+    }
+
     [Theory]
     [InlineData(49, 21)] // Neighbouring style has no direct source fixture.
     [InlineData(50, 467)] // Stone-house style is only qualified on tile 21.
@@ -80,6 +139,32 @@ public sealed class GenerationMarbleHouseChest1458Tests
     {
         var world = new Workspace(80, 80);
         world.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.CelebrationMk10,
+            VanillaSecretWorldSeed1458.None));
+        var random = new RandomAdapter(1458);
+        int expectedNext = new RandomAdapter(1458).Next();
+        var context = new BuriedChestContext1458
+        {
+            Height = 80, WorldSurface = 30, RockLayer = 40, LavaLine = 60,
+            CopperBar = 20, IronBar = 22, SilverBar = 21, GoldBar = 19,
+            TungstenIsSilverTier = false, DesertHiveHigh = 0, DesertHiveLow = 0,
+            HellChestItem = []
+        };
+        var placer = new BuriedChest1458(world.TileStore, random, context, workspace: world);
+        Assert.Throws<NotSupportedException>(() =>
+            placer.TryAdd(30, 30, out _, out _, chestStyle: style,
+                chestTileType: chestTileType));
+        Assert.Equal(expectedNext, random.Next());
+    }
+
+    [Theory]
+    [InlineData(49, 21)]
+    [InlineData(50, 467)]
+    [InlineData(51, 467)]
+    public void Remix_neighbouring_unqualified_families_refuse_before_rng(
+        int style, ushort chestTileType)
+    {
+        var world = new Workspace(80, 80);
+        world.SetVanillaSeedProfile(new(VanillaSpecialWorldSeed1458.Remix,
             VanillaSecretWorldSeed1458.None));
         var random = new RandomAdapter(1458);
         int expectedNext = new RandomAdapter(1458).Next();

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "acceptedManaged": true,
+  "allGenerationComplete": false,
+  "baseCommit": "4372bc8d",
+  "scope": [
+    "Remix Buried Chests cavern-chest and cave-house offer loops consume the ordinary Y draw before their source replacement Y draw. Untouched official first-offer quotas/bounds/values and all 56 RNG slots/cursor prove each draw; removing either replacement makes its portable regression fail.",
+    "Only Remix stone-house AddBuriedChest styles 50/51 on tile21 join the fail-closed special guard. Direct untouched original seed1/42/1458 fixtures match placement, 2x2 frames, ordered loot/prefix and RNG56; adjacent style49 or tile467 refuses before RNG.",
+    "The existing WorldGen.Convert(2) owner matches a detached genuine canonical Anniversary+Remix seed1458 full-natural 5.04M-cell direct call at (25,303), and a portable exact-natural-3x3 rehost in a constructed 15x15 halo matches full17/RNG with effective omission. The registered Final Cleanup still omits the enclosing Remix second scan.",
+    "Existing TileFrame-important long moss type184 matches a direct untouched official five-direction/support-loss 600x500 full17/RNG fixture; deleting its existing dispatch fails the regression. No new production TileFrame branch is claimed."
+  ],
+  "officialRemixBuriedChests": {
+    "seed": 42,
+    "rawBoundary": "58 Statues -> 59 Buried Chests",
+    "sourcePreJsonSha256": "ccff509cae0a80bce5fb7091478b712722395ef1a2958ae83467cd20d597cfb5",
+    "sourcePostJsonSha256": "c69ad321d3a2d871271af9f2d64fffd41c03f90150850824ea561bae5c279018",
+    "sourcePostRaw17Sha256": "711904ba022d005e29b1816e29a7910c32a27ed6eb50fbc2ad10e50c5913ed2d",
+    "strictPreImport": "Exact full17/side tables/RNG on isolated diagnostic",
+    "registeredPostExact": false,
+    "acceptedPrefix": "After source Y draws and narrow chest styles, all 108 chest count and first 93 protected-map entries align; full tile17/RNG diverges inside a late additional desert house, first tile (1563,614). A direct same-midstate CaveHouseBiome.Place rehost diverges first at (1641,898) source396/runtime397, with chest x1666/runtime1667 and RNG mismatch. No desert phase fix or whole-pass parity is claimed."
+  },
+  "officialAnniversaryRemixFinalCleanup": {
+    "seed": 1458,
+    "rawBoundary": "104 Remove Broken Traps -> 105 Final Cleanup",
+    "sourcePreRaw17Sha256": "58fd79c88ee8d69e9f59ac61a90b455c9cc8d0e0283d80e88cef2958a4a45c7c",
+    "sourcePostRaw17Sha256": "32ba21a8a87ff34600c10fd666f1651a527a3e86b31c37665a60e6fa68f16928",
+    "sourcePreCompressedSha256": "6f4808575ec83c4e8a79d43804d496f07b9d4a2a8746a9babbc68543f0bb4dcc",
+    "sourcePostCompressedSha256": "9153c8a3fccb8a211414111f79f5a762eaf66420c07db388aad7881eb62e5aa8",
+    "strictPreImport": "Exact full17, dense 189 chest items, StructureMap156/137, one projectile, 754 solidity and bootstrap; six town NPCs were projection-only, not NPC parity",
+    "registeredPostExact": false,
+    "firstTileDifference": "(25,303): source active sand112 -> hallow sand116; runtime remains sand112 because the source Remix second scan Convert(2) call is not registered",
+    "directNaturalConvertPostRaw17Sha256": "1a6eae177f21f2ea86d324c0ed1be91672e0a489a91a32111c34a22f11a0f2cf",
+    "portableWindowPreRaw17Sha256": "7832e0778ef73cd0dc0ff15e5a2795cfab8c87605948581282dbe1312210c628",
+    "portableWindowPostRaw17Sha256": "a39ef1d80163209730d74f86a03d193d89202ca613426d601479478622a05ffb"
+  },
+  "officialFixtureJsonSha256": {
+    "remixFirstYDraws": "139ae2acc62908b3f5d215f0cf3efeda521dc7c1f84af782c594451439e0902d",
+    "remixStyle50": "047e8958f6fc4b98e0cc6324efd75adb29e0adce162deb43393a5e54c8260c92",
+    "remixStyle51": "31c5999a47dfe387fdfa423ca802a72995cacef650d980577fc760a16157f209"
+  },
+  "build": { "releaseWarnings": 0, "releaseErrors": 0 },
+  "focused": { "total": 23, "passed": 23, "failed": 0, "errors": 0, "skipped": 0 },
+  "testDllSha256": "582a239442b7b9c3f1a32dacd21c08e41e9d66d295fe39c887cc06b49192823d",
+  "fast": { "methods": 5823, "total": 185901, "passed": 185901, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 1615.523 },
+  "affected": { "methods": 83, "total": 88062, "passed": 88062, "failed": 0, "errors": 0, "skipped": 0, "wallSeconds": 693.327 },
+  "unfilteredFull": "Not rerun for this bounded component packet; prior code checkpoint e8a643ea passed 1731202/1731202 across 5983 methods.",
+  "managedSmokes": ["loop", "protocol", "network", "world", "tui"],
+  "publishedCoreClr": {
+    "rid": "win-x64",
+    "selfContained": true,
+    "executableSha256": "17db39f4ae5448c4f8abbf1b456a2c5c600cb76a40606c7c8b67ed70d43ba3bd",
+    "smokes": ["loop", "protocol", "network", "world", "tui"]
+  },
+  "pythonUnitTests": 300,
+  "gameplayDomainFilesAudited": 493,
+  "pairedRuEnPages": 137,
+  "nativeAot": "Explicitly user-deferred; no NativeAOT acceptance claim.",
+  "artifactLocation": "Official binary, raw worlds, source captures, rehost midstates and absolute-path diagnostic harnesses remain ignored local reference; only portable fixtures and bounded owners are committed.",
+  "remaining": "Rows 63 and 109 remain P. The late Remix desert-house body, broader Remix special-seed Final Cleanup second scan, Anniversary prior-prefix item state and full fixed-seed generator remain open."
+}

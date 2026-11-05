@@ -60,7 +60,11 @@ internal sealed class BuriedChest1458(
         // HouseBuilder styles 50/51 on tile 21 has independent loot/RNG fixtures.
         bool anniversaryStoneHouse = profile.Special == VanillaSpecialWorldSeed1458.CelebrationMk10 &&
             profile.Secret == VanillaSecretWorldSeed1458.None && chestTileType == Containers && chestStyle is 50 or 51;
-        if((!basicProfile&&!additional&&!(chestStyle==10&&chestTileType is 0 or Containers&&MicroSeedCapabilities1458.Supports(profile))) || (basicProfile||additional)&&!profile.IsDefault&&!family&&!anniversaryStoneHouse)
+        // Direct original Remix fixtures separately qualify both stone-house styles
+        // on tile 21; their depth-dependent loot differs from Anniversary's.
+        bool remixStoneHouse = profile.Special == VanillaSpecialWorldSeed1458.Remix &&
+            profile.Secret == VanillaSecretWorldSeed1458.None && chestTileType == Containers && chestStyle is 50 or 51;
+        if((!basicProfile&&!additional&&!(chestStyle==10&&chestTileType is 0 or Containers&&MicroSeedCapabilities1458.Supports(profile))) || (basicProfile||additional)&&!profile.IsDefault&&!family&&!anniversaryStoneHouse&&!remixStoneHouse)
             throw new NotSupportedException("The configured special buried-chest family is outside the source-qualified component.");
     }
 

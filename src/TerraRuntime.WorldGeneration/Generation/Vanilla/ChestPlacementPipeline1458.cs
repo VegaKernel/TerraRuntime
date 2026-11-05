@@ -222,7 +222,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         var placer = state.CreatePlacer(workspace, random);
         var pass = new BuriedChestsPass1458(placer, workspace.TileStore, random, state.WorldSurfaceHigh,
             state.RockLayer, (state.WorldSurface + state.RockLayer) / 2d + 40d, BeachDistance,
-            context.CancellationToken);
+            context.CancellationToken, state.WorldSurface,
+            workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix));
         pass.Apply();
         int chestsPlaced = placer.Chests.Count;
         int houseTarget = pass.CaveHouseCount;
@@ -257,6 +258,10 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
 
             int x = random.Next(80, grid.Width - 80);
             int y = random.Next(houseMinimumY, houseMaximumY);
+            // Remix pays the ordinary Y draw before sampling the replacement,
+            // including candidates later rejected by the house builder.
+            if (workspace.VanillaSeedProfile.Has(VanillaSpecialWorldSeed1458.Remix))
+                y = random.Next((int)state.WorldSurface, grid.Height - 400);
             y = AdjustBigHouseOffer1458(y, state.WorldSurfaceHigh, state.WorldSurface,
                 grid.Height, workspace.VanillaSeedProfile, random);
             // WorldGen's third UndergroundHousesAndBuriedChests loop rejects oceanDepths before

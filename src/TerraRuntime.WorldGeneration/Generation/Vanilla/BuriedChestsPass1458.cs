@@ -33,7 +33,9 @@ internal sealed class BuriedChestsPass1458(
     double rockLayer,
     double oceanLevel,
     int beachDistance,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    double worldSurface = 0,
+    bool remix = false)
 {
     private const int Budget = 10000;
 
@@ -64,6 +66,10 @@ internal sealed class BuriedChestsPass1458(
 
             int x = random.Next(20, width - 20);
             int y = random.Next((int)((worldSurfaceHigh + 20.0 + rockLayer) / 2.0), height - 230);
+            // WorldGen.UndergroundHousesAndBuriedChests samples the ordinary Y
+            // first, then replaces it with a second Remix Y draw.
+            if (remix)
+                y = random.Next((int)worldSurface, height - 400);
             ushort wall = At(x, y).Wall;
             if (DungeonGenerationTiles1458.IsDungeonWall(wall) || wall == 87 || OceanDepths(x, y))
             {
