@@ -49,7 +49,7 @@ game loop
 
     def test_literal_marker_allows_intentional_diagram_like_text(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
+            root = Path(temp).resolve()
             source = root / "literal.md"
             source.write_text(
                 "<!-- docs-style: literal-text -->\n"
@@ -62,7 +62,7 @@ game loop
 
     def test_unmarked_ascii_flow_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
+            root = Path(temp).resolve()
             source = root / "diagram.md"
             source.write_text(
                 "```text\nA -> B\nB -> C\nC -> D\n```\n",
@@ -79,7 +79,7 @@ game loop
 class LinkValidationTests(unittest.TestCase):
     def test_missing_relative_link_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
+            root = Path(temp).resolve()
             docs = root / "docs"
             docs.mkdir()
             source = docs / "guide.md"
@@ -93,7 +93,7 @@ class LinkValidationTests(unittest.TestCase):
 
     def test_existing_relative_link_passes(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
+            root = Path(temp).resolve()
             docs = root / "docs"
             docs.mkdir()
             source = docs / "guide.md"
@@ -106,7 +106,7 @@ class LinkValidationTests(unittest.TestCase):
 
     def test_external_links_are_ignored(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
+            root = Path(temp).resolve()
             source = root / "guide.md"
             source.write_text(
                 "[web](https://example.com/path)\n[mail](mailto:test@example.com)\n",
@@ -118,7 +118,7 @@ class LinkValidationTests(unittest.TestCase):
 
     def test_relative_link_may_not_escape_repository(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp) / "repo"
+            root = Path(temp).resolve() / "repo"
             docs = root / "docs"
             docs.mkdir(parents=True)
             source = docs / "guide.md"

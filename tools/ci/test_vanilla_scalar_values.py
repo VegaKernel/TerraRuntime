@@ -18,7 +18,8 @@ from vanilla_data import source_analysis as analysis
 class ValueCandidateTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
-        self.folder = Path(temporary.name)
+        # Match the validator's canonical path spelling, including Windows TEMP aliases.
+        self.folder = Path(temporary.name).resolve()
         (self.folder / 'C.cs').write_text('class C{}', encoding='utf-8')
         assembly = self.folder / 'Reference.exe'; assembly.write_bytes(b'never executed')
         self.request = {'schemaVersion': 2, 'analysis': {'schemaVersion': 1,

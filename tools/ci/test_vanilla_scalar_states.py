@@ -14,7 +14,8 @@ from vanilla_data import scalar_candidate as scalar
 class StateCandidateTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
-        folder = Path(temp.name)
+        # Windows runners may spell TEMP with an 8.3 alias; requests use resolved paths.
+        folder = Path(temp.name).resolve()
         (folder / 'C.cs').write_text('class C{}', encoding='utf8')
         (folder / 'Reference.exe').write_bytes(b'not executed')
         self.request = {'schemaVersion': 3, 'analysis': {'schemaVersion': 1, 'sourceRoot': str(folder),
