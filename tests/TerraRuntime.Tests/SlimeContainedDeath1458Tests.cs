@@ -10,6 +10,7 @@ using TerraRuntime.World;
 using System.Text.Json;
 using System.Reflection;
 using TerraRuntime.Network;
+using System.IO.Compression;
 
 namespace TerraRuntime.Tests;
 
@@ -119,6 +120,89 @@ public sealed class SlimeContainedDeath1458Tests
         Assert.True(before.HasSameState(fixture.Random)); Assert.Empty(fixture.Items());
     }
 
+    [Theory]
+    [InlineData(false, false, 1)] [InlineData(false, false, 42)] [InlineData(false, false, 1458)]
+    [InlineData(true, false, 1)] [InlineData(true, false, 42)] [InlineData(true, false, 1458)]
+    [InlineData(true, true, 1)] [InlineData(true, true, 42)] [InlineData(true, true, 1458)]
+    public void Remix_lava_slime_prepared_projectile_death_requires_no_lava_tile_producer(bool expert, bool master, int seed)
+    {
+        foreach (bool lowTiles in new[] { false, true })
+            AssertRemixLavaDeath(expert, master, seed, lowTiles);
+    }
+
+    private static void AssertRemixLavaDeath(bool expert, bool master, int seed, bool lowTiles)
+    {
+        var fixture = new Fixture(seed, expert: expert, master: master, remix: true, lowTiles: lowTiles);
+        var npc = fixture.Spawn(59);
+        var before = fixture.Random.Clone();
+        var projectile = new ProjectileSnapshot(new(0, new(1)), new(1), new(1), 0,
+            npc.PositionX, npc.PositionY, 1, 0, default, 0, 32767, 0, 32767);
+        int publications = 0;
+        // No WorldTileStore is supplied: source HitEffect's Remix guard must
+        // exclude the producer even in Expert/Master, before any terrain read.
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, fixture.Pipeline.TryStrikePreparedProjectile(
+            in projectile, in npc, 1, 32767, 0, false, before, before.Clone(), () => true,
+            _ => publications++));
+        Assert.Equal(1, publications);
+        Assert.False(fixture.Npcs.TryGet(npc.Handle, out _));
+        Assert.NotEmpty(fixture.Items());
+        var accepted = fixture.Random.Clone();
+        var items = fixture.Items();
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Rejected, fixture.Pipeline.TryStrikePreparedProjectile(
+            in projectile, in npc, 1, 32767, 0, false, accepted, accepted.Clone(), () => true,
+            _ => publications++));
+        Assert.Equal(1, publications);
+        Assert.True(accepted.HasSameState(fixture.Random));
+        Assert.Equal(items, fixture.Items());
+    }
+
+    public static IEnumerable<object[]> RemixLavaHitEffects()
+    {
+        using var resource = typeof(SlimeContainedDeath1458Tests).Assembly.GetManifestResourceStream(
+            "TerraRuntime.Tests.Fixtures.slime-lava-remix-hit-effect-official.json.gz")!;
+        using var gzip = new GZipStream(resource, CompressionMode.Decompress);
+        using var document = JsonDocument.Parse(gzip);
+        foreach (var row in document.RootElement.GetProperty("rows").EnumerateArray()) yield return [row.Clone()];
+    }
+
+    [Theory, MemberData(nameof(RemixLavaHitEffects))]
+    public void Remix_lethal_hit_effect_matches_original_all_rng_cells_without_terrain(JsonElement row)
+    {
+        int mode = row.GetProperty("mode").GetInt32();
+        var fixture = new Fixture(row.GetProperty("seed").GetInt32(), expert: mode > 0, master: mode == 2,
+            remix: true, lowTiles: row.GetProperty("lowTiles").GetBoolean());
+        var npc = fixture.Spawn(59);
+        typeof(RuntimeNpcNetworkCombatPipeline).GetMethod("ExecuteNpcDeathHitEffects",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(fixture.Pipeline, [npc]);
+        const BindingFlags fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        var expected = row.GetProperty("rng");
+        Assert.Equal(expected.GetProperty("inext").GetUInt32(),
+            (uint)typeof(VanillaUnifiedRandom1458).GetField("inext", fields)!.GetValue(fixture.Random)!);
+        Assert.Equal(expected.GetProperty("SeedArray").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
+            (int[])typeof(VanillaUnifiedRandom1458).GetField("seedArray", fields)!.GetValue(fixture.Random)!);
+        Assert.True(row.GetProperty("terrainNotAccessed").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData(true, false)] [InlineData(false, true)] [InlineData(true, true)]
+    public void Non_remix_lava_producer_still_refuses_without_owned_world_tile_death(bool expert, bool lowTiles)
+    {
+        var fixture = new Fixture(1458, expert: expert, lowTiles: lowTiles);
+        var npc = fixture.Spawn(59);
+        var before = fixture.Random.Clone();
+        var projectile = new ProjectileSnapshot(new(0, new(1)), new(1), new(1), 0,
+            npc.PositionX, npc.PositionY, 1, 0, default, 0, 32767, 0, 32767);
+        int publications = 0;
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Rejected, fixture.Pipeline.TryStrikePreparedProjectile(
+            in projectile, in npc, 1, 32767, 0, false, before, before.Clone(), () => true,
+            _ => publications++));
+        Assert.Equal(0, publications);
+        Assert.True(fixture.Npcs.TryGet(npc.Handle, out var retained));
+        Assert.Equal(npc, retained);
+        Assert.True(before.HasSameState(fixture.Random));
+        Assert.Empty(fixture.Items());
+    }
+
     [Fact]
     public void Held_allocation_claim_rejects_before_content_rng_then_retry_materializes_once()
     {
@@ -140,12 +224,14 @@ public sealed class SlimeContainedDeath1458Tests
         internal RuntimeWorldProgressionMutations Progression { get; } = new();
         internal RuntimeNpcNetworkCombatPipeline Pipeline { get; }
         internal PlayerHandle Player { get; } = new(new(0), new(1));
-        internal Fixture(int seed, VanillaMechBossSpawnersContext1458 mechanicalLootBaseline = default)
+        internal Fixture(int seed, VanillaMechBossSpawnersContext1458 mechanicalLootBaseline = default,
+            bool expert = false, bool master = false, bool remix = false, bool lowTiles = false)
         {
             Random = new(seed);
             Pipeline = new(Npcs, Store, this, new PlayerAuthority(null, null), static () => 0, null,
-                new(Store), null, Clock, Progression, false, false, lootRandom: Random,
-                seasonalItemContext: () => default, mechanicalLootBaseline: mechanicalLootBaseline);
+                new(Store), null, Clock, Progression, expert, master, lootRandom: Random,
+                seasonalItemContext: () => default, mechanicalLootBaseline: mechanicalLootBaseline,
+                lootRemixWorld: remix, skyblockLowTiles: lowTiles, npcSpecificLowTiles: () => lowTiles);
         }
         internal NpcSnapshot Spawn(int type, float held = 2, int width = 0, int height = 0, float value = 0)
         {

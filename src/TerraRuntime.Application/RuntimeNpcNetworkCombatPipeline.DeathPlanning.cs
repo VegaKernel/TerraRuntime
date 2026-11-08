@@ -259,9 +259,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(dead.TypeIdentity) ||
                 RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity))
             {
-                // Lava's Expert/Skyblock tile producer needs an owned world-tile death operation.
+                // NPC.HitEffect (1.4.5.8) excludes Remix before its Expert/Skyblock
+                // lava producer. Only that producer needs an owned tile operation.
                 if (dead.TypeIdentity == VanillaNpcIds.LavaSlime &&
-                    (expertMode || plannedSpecificLowTiles != false || lootRemixWorld != false)) return false;
+                    lootRemixWorld != true && (expertMode || plannedSpecificLowTiles != false)) return false;
                 if (dead.TypeIdentity == VanillaNpcIds.BlueSlime && dead.Ai.Ai1 == 1345f) return false;
                 var previewProgression = previewDeathProgression.CaptureSnapshot();
                 if ((RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity)

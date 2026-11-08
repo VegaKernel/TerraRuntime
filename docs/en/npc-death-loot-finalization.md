@@ -1,5 +1,7 @@
 # NPC death, loot and world-item finalization
 
+Lava Slime's prepared projectile death now respects the `NPC.HitEffect` Remix exclusion in Terraria `1.4.5.8`: Remix creates no death lava in Classic, Expert or Master, including the represented Skyblock `lowTiles` flag. It therefore does not require a world-tile producer. Eighteen actual official `HitEffect` calls retain all 56 RNG cells and the cursor after forty dedicated-server choices, with no terrain access. Runtime regressions cover lethal adoption, reward creation and duplicate rejection; prepared projectile deaths outside Remix still refuse in Expert/Skyblock when the required tile producer is unavailable. Other death ingresses are outside this new qualification. Issue `#124` remains open for authoritative lava creation, framing, scheduling, replication and persistence in eligible worlds.
+
 Eleventh integrated local acceptance: 1553881/1553882 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Full gameplay/NPC parity remains open.
 
 Tenth integrated local acceptance: 1474709/1474710 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Broad parity remains open.

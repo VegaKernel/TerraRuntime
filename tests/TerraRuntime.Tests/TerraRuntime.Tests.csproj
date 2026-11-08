@@ -239,6 +239,7 @@
     <EmbeddedResource Include="Fixtures/GoldCritterCatchInitializedLinux1458.v2.json.gz" LogicalName="GoldCritterCatchInitializedLinux1458v2" />
     <EmbeddedResource Include="Fixtures/GroundCritterContactLinux1458.json.gz" LogicalName="GroundCritterContactLinux1458" />
     <EmbeddedResource Include="Fixtures/slime-contained-lava-composed-death-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slime-lava-remix-hit-effect-official.json.gz" />
     <EmbeddedResource Include="Fixtures/global-lava-hit-loot-composed-official-1458.json.gz" LogicalName="GlobalLavaHitLootComposed1458" />
     <EmbeddedResource Include="Fixtures/invasion-lifecycle-official-1458.json.gz" LogicalName="InvasionLifecycle1458" />
     <EmbeddedResource Include="Fixtures/invasion-world-wire-official-1458.json.gz" LogicalName="InvasionWorldWire1458" />

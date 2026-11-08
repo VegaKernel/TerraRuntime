@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "lava-slime-remix-death-managed-20261108",
+  "acceptedManagedScope": true,
+  "issue124Closed": false,
+  "allGenerationComplete": false,
+  "base": "009be6e48363b973db7e2df600f14a487b81f275",
+  "scope": "Prepared Lava Slime projectile deaths respect the source Remix exclusion. The same prepared projectile path retains its non-Remix producer refusal. Other death ingresses and actual lava production remain unqualified by this change. No new world, RNG, item, NPC or liquid owner.",
+  "oracle": {
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "actualHitEffectCalls": 18,
+    "profiles": "Classic/Expert/Master x lowTiles false/true x seeds1/42/1458, Remix true",
+    "projection": "All56 physical RNG cells and cursor after40 dedicated caller choices. No-terrain-access is derived from the reviewed official Remix branch, not an instrumented memory-access trace.",
+    "numericFixture": "tests/TerraRuntime.Tests/Fixtures/slime-lava-remix-hit-effect-official.json.gz",
+    "fixtureSha256": "719213fd9633eacd9d40ecf29eb09351bb560b4ebf7fd853f0d7899e77cb7765",
+    "scopeExcludes": "Full original death/loot/wire trace or original GUI acceptance."
+  },
+  "causal": {
+    "effectiveOldGuardMutations": 1,
+    "assertionFailures": 9,
+    "passingControls": 21,
+    "runnerErrors": 0,
+    "sameTestDll": true,
+    "record": "E:\\TerraRuntimeAgentCache\\issues-20261108\\old-guard-causal.json"
+  },
+  "inputs": {
+    "selectedSourceResourceAndScopeDocFiles": 4932,
+    "recursiveTestClosureDlls": 158,
+    "testDllSha256": "7cb6eb569009eb5716fc70393281ce8df50cb7e834aa228c319881687134930b",
+    "executionManifest": "E:\\TerraRuntimeAgentCache\\issues-20261108\\inputs-final.json",
+    "executionManifestSha256": "572ab9103225b2666b92777649a9b0b9e9d39fd80c674fe895003f9e420a02a2",
+    "executionGuardsUnchanged": true,
+    "publicationManifest": "E:\\TerraRuntimeAgentCache\\issues-20261108\\inputs-publication.json",
+    "publicationManifestSha256": "663a89d16344977fbe613cb30c2156a1d733fe5aa3226e927ae0c2cecdce0580",
+    "pairedDocumentationScopeBridge": {
+      "scope": "Final review narrows paired documentation to the actually tested prepared-projectile path. Runtime code/resources and every DLL remain byte-exact to the completed execution cohort.",
+      "scopeDocChanges": [
+        {
+          "path": "docs/en/npc-death-loot-finalization.md",
+          "before": "525a4b3cf9b3602d7222d7b46e519897808f29f60e0e152c99555f1e1195d7b8",
+          "after": "905b0bec8f9a6db220f41e20057593f4d759cb3c4bd7957a3f6f933838e2ae60",
+          "executionDocCopy": "E:\\TerraRuntimeAgentCache\\issues-20261108\\execution-scope-docs\\docs\\en\\npc-death-loot-finalization.md"
+        },
+        {
+          "path": "docs/ru/npc-death-loot-finalization.md",
+          "before": "980a553a9aa7ae75a5aaef022d683512ce10c7f17b5477be3c517debf232d158",
+          "after": "eb7d7e1533122c2daedec8e4a4d038222b38b5fd0a8d60293729be47566c329d",
+          "executionDocCopy": "E:\\TerraRuntimeAgentCache\\issues-20261108\\execution-scope-docs\\docs\\ru\\npc-death-loot-finalization.md"
+        }
+      ],
+      "codeOrResourceChanges": 0,
+      "dllChanges": 0
+    }
+  },
+  "managed": {
+    "warnings": 0,
+    "errors": 0,
+    "focused": 8102,
+    "pythonTests": 300,
+    "mirroredDocPages": 137,
+    "fast": {
+      "rawResult": {
+        "executed": true,
+        "exit_code": 1,
+        "wall_seconds": 1386.8129252999788,
+        "tests": {
+          "total": "185940",
+          "passed": "185939",
+          "failed": "1",
+          "errors": "0",
+          "skipped": "0",
+          "time": "1383.588",
+          "skipped_tests": []
+        },
+        "accepted": false
+      },
+      "actualXmlRows": 185940,
+      "actualMethods": 5832,
+      "failedRowsResolvedByExactSameDllReplay": [
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97FramingCausal1458Tests.Original_PlaceTile231_frames_and_removes_an_unsupported_neighbour_vine"
+      ],
+      "unresolvedFailures": 0,
+      "coverageAccepted": true,
+      "rawRunRelabelled": false
+    },
+    "full": {
+      "rawResult": {
+        "executed": true,
+        "exit_code": 1,
+        "wall_seconds": 2559.4954108000966,
+        "tests": {
+          "total": "1731255",
+          "passed": "1731246",
+          "failed": "9",
+          "errors": "0",
+          "skipped": "0",
+          "time": "2544.036",
+          "skipped_tests": []
+        },
+        "accepted": false
+      },
+      "actualXmlRows": 1731255,
+      "actualMethods": 5999,
+      "failedRowsResolvedByExactSameDllReplay": [
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 382, anchorY: 240, expectedType: 5, expectedResult: True, expectedHash: \\\"a91f91ee85f0251eb9af685ef81241bfffb4c3fb0de5c57eca\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 367, anchorY: 799, expectedType: 62, expectedResult: True, expectedHash: \\\"c7e22cce75ee0453bdd3d41ecede3cc2d7999c3631810164a0\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 351, anchorY: 632, expectedType: 185, expectedResult: True, expectedHash: \\\"fb83c003966e8284613be62dcd8ec86708371c0cd85b5362e1\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 404, anchorY: 253, expectedType: 488, expectedResult: False, expectedHash: \\\"8d32161e4d76663260993c03996ef39cd643067752b0ea9c3c\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 3633, anchorY: 226, expectedType: 52, expectedResult: True, expectedHash: \\\"89c13380159e3cf0ee175d62568b2efa521ac221829eb8fe7d\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 419, anchorY: 631, expectedType: 165, expectedResult: True, expectedHash: \\\"e454a8b1a14d2054acb761cb3df880aa481184de2044735ffc\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 375, anchorY: 300, expectedType: 186, expectedResult: True, expectedHash: \\\"09d09c7e781d1f8aa19ebc4cf2d8e876500d5ebd5ff83a367a\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 2659, anchorY: 859, expectedType: 231, expectedResult: True, expectedHash: \\\"3869722e436f7fcbc42b54a11cfc827296721cd3e7ec341594\\\"···)",
+        "TerraRuntime.Tests.GenerationLarvaCheckpoint97ClassMatrix1458Tests.Checkpoint97_varied_anchor_class_matches_official_PlaceTile231(anchorX: 351, anchorY: 395, expectedType: 7, expectedResult: True, expectedHash: \\\"fe21d83919b2db7e7f39940302a94f14db133774191fcb3b7e\\\"···)"
+      ],
+      "unresolvedFailures": 0,
+      "coverageAccepted": true,
+      "rawRunRelabelled": false
+    },
+    "layoutReplay": {
+      "passed": 18,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "repair": "Restored conventional data-root lookup with a junction from relocated build/data to unchanged tracked test data; source/DLL/golden bytes unchanged.",
+      "record": "E:\\TerraRuntimeAgentCache\\issues-20261108\\artifact-layout-repair.json"
+    },
+    "smokes": {
+      "appDllSha256": "f0c1637fa46677dd5c47524037b36814f6e21d244cbc0365daa5f2ec9e7eecb5",
+      "results": [
+        {
+          "smoke": "loop",
+          "exitCode": 0,
+          "wallSeconds": 1.4036398000316694
+        },
+        {
+          "smoke": "protocol",
+          "exitCode": 0,
+          "wallSeconds": 0.9048426999943331
+        },
+        {
+          "smoke": "network",
+          "exitCode": 0,
+          "wallSeconds": 0.10014170000795275
+        },
+        {
+          "smoke": "world",
+          "exitCode": 0,
+          "wallSeconds": 0.5717899999581277
+        },
+        {
+          "smoke": "tui",
+          "exitCode": 0,
+          "wallSeconds": 4.698208299931139
+        }
+      ]
+    }
+  },
+  "nextUnqualifiedResearch": {
+    "officialProducer": {
+      "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+      "actualCallsPerRepeat": 126,
+      "repeats": 2,
+      "byteExact": true,
+      "observationsSha256": "92709ce06bf58b7b562b3862054bb1565677d2748ba3846a90c7062c94d72a7c",
+      "helperSha256": "dbcb5274ddeeff4c892d9fa18a05e24c377a828e59bff4399d223ab8dea53e76",
+      "runtimeQualification": false,
+      "scope": "Official HitEffect only, Classic/Expert/Master x lowTiles false/true x seeds1/42/1458 x seven terrain inputs. All 128x128 Tile physical fields observed, changes, ordered Liquid array, complete RNG fields. Not complete death, NPC loot, world pipeline, live networking or production acceptance."
+    },
+    "genericDirectApplyNegativeControl": "E:\\TerraRuntimeAgentCache\\issues-20261108\\lava-direct-apply-control\\result.json",
+    "sourceInventory": "E:\\TerraRuntimeAgentCache\\issues-20261108\\death-source-analysis02\\result.json",
+    "sourceInventoryClosureComplete": false,
+    "shippingImplementationIncluded": false
+  },
+  "siblingCallerAudit": {
+    "actualDebuffContexts": 6,
+    "result": {
+      "scope": "Additional actual production sibling audit: Lava Slime ignores the currently admitted Poison/Fire additions, so these six Remix contexts produce no legal lethal DoT request; actual TryStrikeDebuffDeath refuses without NPC/RNG mutation. Not an independent original full-death oracle or shipping-TestDLL replay.",
+      "cases": [
+        {
+          "mode": 0,
+          "lowTiles": false,
+          "immuneFlagsRetained": true,
+          "ineligibleDeathRejected": true
+        },
+        {
+          "mode": 0,
+          "lowTiles": true,
+          "immuneFlagsRetained": true,
+          "ineligibleDeathRejected": true
+        },
+        {
+          "mode": 1,
+          "lowTiles": false,
+          "immuneFlagsRetained": true,
+          "ineligibleDeathRejected": true
+        },
+        {
+          "mode": 1,
+          "lowTiles": true,
+          "immuneFlagsRetained": true,
+          "ineligibleDeathRejected": true
+        },
+        {
+          "mode": 2,
+          "lowTiles": false,
+          "immuneFlagsRetained": true,
+          "ineligibleDeathRejected": true
+        },
+        {
+          "mode": 2,
+          "lowTiles": true,
+          "immuneFlagsRetained": true,
+          "ineligibleDeathRejected": true
+        }
+      ]
+    },
+    "productionDllBridge": {
+      "productionDlls": {
+        "TerraRuntime.Application.dll": "2ee6567f47cef064e401ed39564c2176ecfb3f9df0ca62ced193d25ed5271d06",
+        "TerraRuntime.Contracts.dll": "cc60e4215b173898b9ca01cbd77c52ab0fb66bc46fa71ed83b0c14116162e603",
+        "TerraRuntime.Core.dll": "996650de0d2d4ee79496ae9c4721338bb3483d1814088b6088039330ed90c017",
+        "TerraRuntime.Extensibility.dll": "687698369eebdfc9734c0c573f6e6be04654eeb92cbc7b2c1b3488dfd9ec677d",
+        "TerraRuntime.Extensible.Server.dll": "c2abd54539a581631bb7a17fd6803b559fe6e143d06699a1290789ea3a13243f",
+        "TerraRuntime.Gameplay.dll": "240ca1a652470b8a2d515f26fe7d6919506eb97ec35ddbad36aa00bdc1946888",
+        "TerraRuntime.HostContracts.dll": "685aac005ed54f7c94391fe14392befda2a622342642fbd0abd0cf8a558b8cce",
+        "TerraRuntime.HostModuleFixture.dll": "b00d6dacb0f38bb8571467b7c66d16dd43b4a8198996684b4fe07b9f2de40c76",
+        "TerraRuntime.Network.dll": "5645e5868165b65356c50928bcbd1027127ae23388bb9b219c2d235869a030bc",
+        "TerraRuntime.Protocol.dll": "3a95ed76da9bef36d28d6df320e7e95b970db95751a9dc3445ff649e1a70ff55",
+        "TerraRuntime.Protocol.Multiplicity.dll": "1fd411dca70a10743237c1b20a1d94fda1bfc0023fe2234b2769b71d1dae1c3d",
+        "TerraRuntime.Schematics.dll": "fc95c119bef905a30507098d1c6329510d361bb5f42991fe8cac12414b5e2b0e",
+        "TerraRuntime.Server.dll": "f0c1637fa46677dd5c47524037b36814f6e21d244cbc0365daa5f2ec9e7eecb5",
+        "TerraRuntime.Transport.dll": "094333e07e29ece1a661423c6603fae7e976a503676feeb7a19e761774debcf1",
+        "TerraRuntime.WorkerPoolProbe.dll": "b3f1023c45988d074aa77ea7e816d79b834c3dde83f10877509acb7836717357",
+        "TerraRuntime.World.dll": "8e0fed11be2953864b20373507b5044ea4c087e997820e3a3be115cc1020532b",
+        "TerraRuntime.WorldGeneration.dll": "26c7884948cb5fe2a6ff73e321aad6208073d76050b5fa5e0d4037119df98563"
+      },
+      "allExactFinalShippingClosure": true,
+      "helperAssemblyIsShippingTestDll": false
+    },
+    "conclusion": "Currently admitted Poison/Fire additions are ignored for Lava Slime; they do not form a legal lethal DoT request. This does not qualify a new debuff-death capability."
+  },
+  "limits": [
+    "Actual non-Remix Expert/Skyblock death lava creation/framing/queue/replication/persistence remains open (#124).",
+    "Ordinary inventory drops (#123) and unsupported wiring devices (#125) are not fixed.",
+    "Disconnect diagnosis (#126) awaits actual stopped logs; no timeout or abuse limit was relaxed.",
+    "Local NativeAOT is user-deferred. No fresh local NativeAOT or GUI/client acceptance claim.",
+    "Remote CI for the publication commit is pending."
+  ]
+}
