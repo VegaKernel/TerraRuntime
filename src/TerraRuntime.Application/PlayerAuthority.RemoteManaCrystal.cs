@@ -86,11 +86,11 @@ internal sealed partial class PlayerAuthority
         member.ItemPhase = phase;
     }
 
-    private bool TryAcknowledgeManaCrystalInventory(PlayerEquipmentRuntimeCommand command)
+    private bool TryAcknowledgeManaCrystalInventory(PlayerEquipmentRuntimeCommand command, bool pendingOnly = false)
     {
         if (!membership.TryGet(command.Connection, out var member) ||
             member.ItemPhase is not { ManaCrystalIntent: { } intent } phase ||
-            intent.Player != command.Connection.Player || command.Request.SlotId != intent.Slot) return false;
+            intent.Player != command.Connection.Player || command.Request.SlotId != intent.Slot || pendingOnly && intent.Completed) return false;
         var request = command.Request;
         if (request == intent.After.ToCommitRequest(command.Connection.Player.Slot, intent.Slot))
         {

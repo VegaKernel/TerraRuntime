@@ -39,6 +39,9 @@ internal sealed record RuntimePlayerTransferState(
     }
     internal long[] FundedInventoryCoinValues { get; init; } = new long[VanillaPlayerItemSlotCatalog.InventoryCount];
     internal short[] FundedInventoryQuantities { get; init; } = new short[VanillaPlayerItemSlotCatalog.InventoryCount];
+    internal CharacterDropAllowance1458[] CharacterDropAllowances { get; init; } = [];
+    internal long CharacterDropCopper { get; init; }
+    internal bool CharacterDropIntakeSealed { get; init; }
     internal OwnedInventoryQuantity1458[] OwnedInventoryQuantities { get; init; } = [];
     internal RuntimePlayerItemPhase1458? ItemPhase { get; init; }
     internal RuntimePlayerPhysicsPhase1458? PhysicsPhase { get; init; }

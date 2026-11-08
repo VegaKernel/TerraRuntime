@@ -424,7 +424,7 @@ internal sealed class Harness
             (RuntimePlayerTransferProfileStore)typeof(PlayerAuthority)
                 .GetField("transferProfiles", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Players)!;
 
-        internal Fixture(JsonElement row, bool windows, IRuntimePlayerEventSink? playerEvents = null)
+        internal Fixture(JsonElement row, bool windows, IRuntimePlayerEventSink? playerEvents = null, short? characterCrystalStack = null)
         {
             Projectiles = new(commitSink: Replication);
             var tiles = new WorldTileStore(new WorldDimensions(400, 300));
@@ -447,6 +447,7 @@ internal sealed class Harness
             Connection = new(GameCommandSourceId.FromConnection(99809), session.Handle);
             State.Apply(new PlayerHealthRuntimeCommand(Connection, new(session.Slot, 400, 400)));
             State.Apply(new PlayerManaRuntimeCommand(Connection, new(session.Slot, (short)I(spec,"currentMana"), (short)I(spec,"baseMana"))));
+            if (characterCrystalStack is { } importedStack) Equipment(0, 109, importedStack);
             State.Apply(new PlayerSpawnRuntimeCommand(Connection, session, new(session.Slot, 100, 103, 0, 0, 0, 0, 0)));
             Move(false, 0, false, 1600, 1606);
             int mode = I(spec, "mode");

@@ -46,7 +46,10 @@ public sealed class ServerRuntimeWorldItemPickupIntegrationTests
             ShimmerTime: 0f,
             EnemyGrabDelayTime: 0);
         state.Apply(new WorldItemAllocateRuntimeCommand(connection, drop, completion));
-        WorldItemSnapshot allocated = Assert.IsType<WorldItemSnapshot>(await completion.Task);
+        Assert.Null(await completion.Task);
+        Assert.Equal(0, outbound.QueuedFrames);
+        // The pickup/reservation producer is trusted; client21 alone is refused.
+        Assert.True(items.TryAllocateSourceDrop(drop, [new(0,320,320,20,42)], out WorldItemSnapshot allocated, out _));
 
         TerrariaFrame initialDrop = DequeueFrame(outbound);
         Assert.Equal(TerrariaMessageId.WorldItemDrop, (TerrariaMessageId)initialDrop.MessageId);

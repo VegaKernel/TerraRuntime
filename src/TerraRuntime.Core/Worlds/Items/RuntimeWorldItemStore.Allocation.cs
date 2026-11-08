@@ -328,9 +328,9 @@ public sealed partial class RuntimeWorldItemStore
         {
             slot = -1;
             if (disposed || claimed || failed || steps.Count == VanillaCapacity || leaseTicks < 0 ||
-                creationSource is not (WorldItemCreationSource1458.NewItem or WorldItemCreationSource1458.ClientSynchronization) || !IsValidDrop(in drop) ||
+                creationSource is not (WorldItemCreationSource1458.NewItem or WorldItemCreationSource1458.ClientSynchronization or WorldItemCreationSource1458.InventoryDrop) || !IsValidDrop(in drop) ||
                 !VanillaWorldItemAllocationCatalog1458.TryGet(drop.ItemNetId, out var facts)) return Fail();
-            var publicationDrop = creationSource == WorldItemCreationSource1458.ClientSynchronization
+            var publicationDrop = creationSource != WorldItemCreationSource1458.NewItem
                 ? drop with { Ownership = WorldItemOwnershipMode.None } : drop;
             foreach (var retained in working)
                 if (retained.Reserved && !retained.SourceLease) return Fail();
@@ -403,10 +403,10 @@ public sealed partial class RuntimeWorldItemStore
                 // WorldItem retains the resulting reservation/delay fields,
                 // while every later SyncItem uses the default ownership None.
                 state.Update = CreateInitial(in publicationDrop) with { Ownership = WorldItemOwnershipMode.None };
-                state.OwnedCoinPhysical = creationSource == WorldItemCreationSource1458.NewItem && preparedCoinValue.HasValue;
-                state.FundedCoinValue = creationSource == WorldItemCreationSource1458.NewItem
+                state.OwnedCoinPhysical = creationSource != WorldItemCreationSource1458.ClientSynchronization && preparedCoinValue.HasValue;
+                state.FundedCoinValue = creationSource != WorldItemCreationSource1458.ClientSynchronization
                     ? preparedCoinValue ?? CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) : 0;
-                state.FundedQuantity = creationSource == WorldItemCreationSource1458.NewItem && CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) == 0 ? publicationDrop.Stack : 0;
+                state.FundedQuantity = creationSource != WorldItemCreationSource1458.ClientSynchronization && CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) == 0 ? publicationDrop.Stack : 0;
                 if (leaseTicks == 0) state.Update = state.Update with { Color = null };
                 state.Update = state.Update with { GrabDelayPlayer = 0 };
                 if (leaseTicks == 0 && drop.Ownership == WorldItemOwnershipMode.GrabDelayForAllPlayers)

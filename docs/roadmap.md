@@ -1,3 +1,5 @@
+Managed #123 checkpoint accepted,2026-11-08: one-use initial-character ordinary throws, conserved funding/consumption/transfer, exact source creation RNG/prefix/ownership publication, and no arbitrary client21 fallback. ReleaseWAE0/0; focus36; fast185956; unfiltered full1731271/all6008methods; five managed smokes, Python300/docs137 pass. [Receipt](verification/ordinary-character-item-drop-managed-20261108.json). Broader #123 client-session/unsupported contexts and #124/#125/#126 remain open; localNativeAOT user-deferred.
+
 # TerraRuntime roadmap
 
 Issue `#124`, Remix death-admission correction (2026-11-08): prepared projectile deaths of Lava Slime now follow the official no-lava Remix branch in Classic/Expert/Master, including represented `lowTiles`. Independent official HitEffect observations cover eighteen contexts, all RNG cells/cursor and absence of terrain access. This removes an incorrect refusal; eligible non-Remix Expert/Skyblock lava production remains open and is not accepted by this change. Issue `#123` inventory-drop funding, `#125` unsupported wiring devices and `#126` disconnect diagnosis remain open; the user has no disconnect stop logs yet.

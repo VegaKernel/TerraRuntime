@@ -46,7 +46,7 @@ internal sealed partial class WorldItemAuthority
             }).ToArray();
             using var allocation = worldItems.CreateAllocationPreview(views);
             if (!allocation.TrySpawnSource(created, 0, out var slot,
-                    command.Connection.Player.Slot.Value, WorldItemCreationSource1458.NewItem) ||
+                    command.Connection.Player.Slot.Value, WorldItemCreationSource1458.InventoryDrop) ||
                 slot >= worldItems.Capacity)
                 return false;
             if (!allocation.TryClaim() || !players.IsCurrentItemOwnerPlayers(captures) ||

@@ -22,12 +22,18 @@ internal sealed partial class WorldItemAuthority
                 var body = c.State.HasMount ? VanillaPlayerMountHitbox1458.Resolve(c.State.MountType) : (Width: 20f, Height: 42f);
                 return new WorldItemAllocationPlayer1458(c.State.Player.Slot.Value, c.State.PositionX, c.State.PositionY, (int)body.Width, (int)body.Height);
             }).ToArray();
+            var prefixWorld = players.PickupWorld;
+            var prefixArithmetic = players.PickupWindowsArithmetic;
+            if (!TryPrepareClientCreation(command.State, out var created, out var liveRandom, out var beforeRandom, out var afterRandom, out var calendar)) return false;
             using var allocation = worldItems.CreateAllocationPreview(views);
-            if (!allocation.TrySpawnSource(command.State, 0, out var slot, command.Connection.Player.Slot.Value,
-                    WorldItemCreationSource1458.NewItem) || slot >= worldItems.Capacity || !allocation.TryClaim() ||
-                !players.IsCurrentItemOwnerPlayers(captures) || !inventory.IsCurrent) return false;
+            if (!allocation.TrySpawnSource(in created, 0, out var slot, command.Connection.Player.Slot.Value,
+                    WorldItemCreationSource1458.InventoryDrop) || slot >= worldItems.Capacity || !allocation.TryClaim() ||
+                !players.IsCurrentItemOwnerPlayers(captures) || !inventory.IsCurrent ||
+                (seasonalContext is not null && seasonalContext() != calendar) ||
+                players.PickupWorld != prefixWorld || players.PickupWindowsArithmetic != prefixArithmetic || !liveRandom!.HasSameState(beforeRandom!)) return false;
             if (!allocation.TryAdoptUnpublished(out var publication) || publication is null || !inventory.TryAdoptUnpublished())
                 throw new InvalidOperationException("Prepared funded drop lost callback-free joint adoption.");
+            liveRandom.CopyStateFrom(afterRandom!);
             if (slot < worldItems.Capacity) _ = worldItems.TryGetActive(slot, out snapshot);
             Exception? failure = null;
             try { while (publication.TryPublishNext(out _)) { } }

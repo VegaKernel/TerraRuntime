@@ -1972,7 +1972,7 @@
       "baseline_summed_seconds": 6.363103
     },
     {
-      "method": "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Real_client21_creation_matches_actual_original_body_owner_wire_and_rng",
+      "method": "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Unfunded_client21_is_refused_and_detached_creation_matches_original_body_owner_wire_and_rng",
       "file": "tests/TerraRuntime.Tests/WorldItemOwnerIntegration1458Tests.cs",
       "domains": [
         "players",

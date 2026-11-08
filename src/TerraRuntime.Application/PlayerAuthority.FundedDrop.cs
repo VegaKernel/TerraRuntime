@@ -6,6 +6,8 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class PlayerAuthority
 {
+    // Reward-overflow arbitration still distinguishes private funding from the
+    // separate first-import drop allowance; the latter cannot fund a reward.
     internal bool HasDropFunding(ConnectionHandle connection)
     {
         if (!membership.TryGet(connection, out var member) || !inventory.TryGet(connection, 58, out var mouse)) return false;
@@ -41,10 +43,13 @@ internal sealed partial class PlayerAuthority
         var body = state.HasMount ? VanillaPlayerMountHitbox1458.Resolve(state.MountType) : (Width: 20f, Height: 42f);
         int direction = (state.ControlFlags & 64) != 0 ? 1 : -1;
         // Source DropSelectedItem requests NewItem at player Center; the world item's 16x16 body is centered there.
+        // ItemID.Sets.DropWithGrabDelayForAllPlayers (1.4.5.8) contains only the Guide doll.
+        bool allPlayers = item.ItemType.Value == 267;
         var expected = new WorldItemDropStateUpdate(state.PositionX + body.Width / 2f - VanillaWorldItemOwner1458.PhysicalWidth / 2f,
             state.PositionY + body.Height / 2f - VanillaWorldItemOwner1458.PhysicalHeight / 2f,
             direction * 4f + state.VelocityX, -2f, item.Stack, checked((byte)item.Prefix.Value),
-            WorldItemOwnershipMode.GrabDelayForLocalPlayer, checked((short)item.ItemType.Value), false, 0f, 100);
+            allPlayers ? WorldItemOwnershipMode.GrabDelayForAllPlayers : WorldItemOwnershipMode.GrabDelayForLocalPlayer,
+            checked((short)item.ItemType.Value), false, 0f, allPlayers ? (byte)0 : (byte)100);
         if (proposal != expected) return false;
         preparation = new(this, member, state, phase, items, cursorReturn);
         return true;

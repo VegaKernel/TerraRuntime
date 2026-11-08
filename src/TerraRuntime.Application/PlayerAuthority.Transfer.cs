@@ -78,6 +78,7 @@ internal sealed partial class PlayerAuthority
         }
 
         transferProfiles.TryCapture(connection, out PlayerAppearanceCommitRequest? appearance, out PlayerEquipmentCommitRequest[] equipment, out BuffTypeId[]? buffTypes);
+        var dropAllowances = this.inventory.CaptureCharacterDropAllowances(connection, out long dropCopper, out bool dropIntakeSealed);
         var transfer = new RuntimePlayerTransferState(player.CaptureSnapshot(), inventory, appearance, equipment, buffTypes, player.GodMode, mouseItemNormalized)
         {
             ShopBankInventory = bankItems,
@@ -86,6 +87,9 @@ internal sealed partial class PlayerAuthority
             OwnedShopBankQuantityCaps = bankCaps,
             FundedInventoryCoinValues = coinValues,
             FundedInventoryQuantities = funded,
+            CharacterDropAllowances = dropAllowances,
+            CharacterDropCopper = dropCopper,
+            CharacterDropIntakeSealed = dropIntakeSealed,
             OwnedInventoryQuantities = quantityCaps,
             OwnsManaMaximum = player.OwnsManaMaximum,
             OwnsLifeMaximum = player.OwnsLifeMaximum,
@@ -264,7 +268,8 @@ internal sealed partial class PlayerAuthority
             !RuntimePlayerInventoryStore.AreValidShopBankOwnership(transfer.ShopBankInventory,
             transfer.FundedShopBankQuantities,
             transfer.OwnedShopBankQuantityCaps) ||
-            inventory.Serial >= ulong.MaxValue - 5 ||
+            !RuntimePlayerInventoryStore.AreValidCharacterDropAllowances(transfer.CharacterDropAllowances, transfer.CharacterDropCopper, transfer.CharacterDropIntakeSealed) ||
+            inventory.Serial >= ulong.MaxValue - 6 ||
             transfer.OwnedInventoryQuantities is null ||
             !RuntimePlayerInventoryStore.AreValidOwnedQuantities(transfer.OwnedInventoryQuantities,
             transfer.Inventory) ||
@@ -287,6 +292,7 @@ internal sealed partial class PlayerAuthority
 
         inventory.AdoptOwnedQuantities(connection, transfer.OwnedInventoryQuantities);
         inventory.AdoptFundedQuantities(connection, transfer.FundedInventoryQuantities, transfer.FundedInventoryCoinValues);
+        inventory.AdoptCharacterDropAllowances(connection, transfer.CharacterDropAllowances, transfer.CharacterDropCopper, transfer.CharacterDropIntakeSealed);
         if (!inventory.TryAdoptShopBanks(connection,
             transfer.ShopBankInventory,
             transfer.FundedShopBankCopper,

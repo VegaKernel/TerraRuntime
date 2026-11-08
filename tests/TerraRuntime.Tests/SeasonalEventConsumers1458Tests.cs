@@ -168,7 +168,22 @@ public sealed class SeasonalEventConsumers1458Tests
             State.Apply(new WorldItemAllocateRuntimeCommand(Connection,
                 new(800, 400, 0, 0, 1, 0, WorldItemOwnershipMode.None, item, false, 0, 0), completion));
             Assert.True(completion.Task.IsCompletedSuccessfully);
-            return Assert.IsType<WorldItemSnapshot>(completion.Task.Result);
+            Assert.Null(completion.Task.Result);
+            // The calendar consumer remains independently exercised on the composed
+            // detached materializer. An unproved client21 cannot create a pickup.
+            var wire = new WorldItemDropStateUpdate(800,400,0,0,1,0,WorldItemOwnershipMode.None,item,false,0,0);
+            object?[] args = [wire,null,null,null,null,null];
+            var method = typeof(WorldItemAuthority).GetMethod("TryPrepareClientCreation", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            Assert.True((bool)method.Invoke(Graph.WorldItems,args)!);
+            var created = Assert.IsType<WorldItemDropStateUpdate>(args[1]);
+            using var allocation = Items.CreateAllocationPreview([new(0,800,400,20,42)]);
+            Assert.True(allocation.TrySpawnSource(created,0,out short slot,0,WorldItemCreationSource1458.InventoryDrop));
+            Assert.True(allocation.TryClaim());
+            Assert.True(allocation.TryAdoptUnpublished(out var publication)); Assert.NotNull(publication);
+            Assert.IsType<VanillaUnifiedRandom1458>(args[2]).CopyStateFrom(Assert.IsType<VanillaUnifiedRandom1458>(args[4]));
+            while(publication!.TryPublishNext(out _)) { }
+            Assert.True(Items.TryGetActive(slot,out var snapshot));
+            return snapshot;
         }
 
         internal WorldItemSnapshot[] KillGuaranteedHeartActor()

@@ -106,10 +106,11 @@ internal sealed partial class RuntimePlayerInventoryStore
         bool consumed = mutation.Item != before;
         Span<RuntimePlayerInventoryMutation> writes = stackalloc RuntimePlayerInventoryMutation[1];
         writes[0] = mutation;
-        if (!TryApplyAtomic(connection, writes, expectedSerial)) return false;
+        if (!TryApplyAtomic(connection, writes, expectedSerial, accountCharacterDrop: false)) return false;
         // TryApplyAtomic has no callbacks. Use the prevalidated budget, not its
         // raw-report min projection, before any projectile observer can run.
         if (consumed) fundedQuantities[offset] = checked((short)Math.Max(0, originalQuantity - 1));
+        BurnCharacterDropConsumption(connection, in before, originalQuantity, 0, mutation.Item, fundedQuantities[offset], 0);
         return true;
     }
 
@@ -154,15 +155,19 @@ internal sealed partial class RuntimePlayerInventoryStore
         preparation = null;
         if (Serial >= ulong.MaxValue - 1 || !TryGet(connection, slot, out var item) || item.IsEmpty ||
             !item.IsCanonical || item.ItemFlags != 0 || !TryGetFundedQuantity(connection, slot, out var funded) ||
-            funded != item.Stack || !CanAcceptOwnedQuantityReport(connection, item.ToCommitRequest(connection.Player.Slot, slot))) return false;
+            !CanAcceptOwnedQuantityReport(connection, item.ToCommitRequest(connection.Player.Slot, slot))) return false;
+        long copper = CoinValue(item);
+        long initialCost = copper > 0
+            ? copper - coinFundedValues[GetOffset(connection.Player.Slot.Value, slot)] : item.Stack - funded;
+        if (!CanSpendCharacterDrop(connection, in item, initialCost)) return false;
         var image = new RuntimePlayerInventoryItem[InventorySlotCount];
         if (!TryCopyInventory(connection, image)) return false;
-        preparation = new(this, connection, Serial, slot, image, item);
+        preparation = new(this, connection, Serial, slot, image, item, initialCost);
         return true;
     }
 
     internal sealed class FundedDropPreparation(RuntimePlayerInventoryStore owner, ConnectionHandle connection,
-        ulong serial, short slot, RuntimePlayerInventoryItem[] image, RuntimePlayerInventoryItem item)
+        ulong serial, short slot, RuntimePlayerInventoryItem[] image, RuntimePlayerInventoryItem item, long initialCost)
     {
         private bool adopted;
         internal RuntimePlayerInventoryItem Item => item;
@@ -172,7 +177,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             get
             {
                 if (adopted || !owner.TryIsCurrent(connection, serial) ||
-                    !owner.TryGetFundedQuantity(connection, slot, out var quantity) || quantity != item.Stack) return false;
+                    !owner.CanSpendCharacterDrop(connection, in item, initialCost)) return false;
                 for (int i = 0; i < image.Length; i++)
                     if (!owner.TryGet(connection, i, out var current) || current != image[i]) return false;
                 return true;
@@ -181,6 +186,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         internal bool TryAdoptUnpublished()
         {
             if (!IsCurrent) return false;
+            owner.SpendCharacterDrop(connection, in item, initialCost);
             adopted = true;
             int offset = GetOffset(connection.Player.Slot.Value, slot);
             int lane = QuantityLane(item.ItemType);

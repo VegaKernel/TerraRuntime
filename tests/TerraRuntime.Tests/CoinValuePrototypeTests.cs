@@ -20,7 +20,7 @@ public sealed class CoinValuePrototypeTests
    unknown.State.Tick();Assert.True(unknown.Items.TryGetActive(raw.Handle.Slot,out var current));Assert.True(unknown.Items.TryGetFundedCoinValue(current,out long value));Assert.Equal(0,value);
    Assert.All(unknown.ItemImage(), i=>Assert.True(i.IsEmpty));Assert.Equal(0,Inventory(unknown).CaptureFundedCoinValues(unknown.Connection).Sum());
    var clientAllocate=new TaskCompletionSource<WorldItemSnapshot?>();unknown.State.Apply(new WorldItemAllocateRuntimeCommand(unknown.Connection,new WorldItemDropStateUpdate(1600,1606,0,0,1,0,WorldItemOwnershipMode.None,72,false,0,0),clientAllocate));
-   var clientGround=await clientAllocate.Task;Assert.NotNull(clientGround);Assert.True(unknown.Items.TryGetFundedCoinValue(clientGround!.Value,out long clientValue));Assert.Equal(0,clientValue);
+   Assert.Null(await clientAllocate.Task);Assert.Equal(1,unknown.Items.ActiveCount);
    unknown.State.Tick();Assert.All(unknown.ItemImage(),i=>Assert.True(i.IsEmpty));
 
   }

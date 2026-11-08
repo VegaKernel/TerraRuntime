@@ -23,8 +23,9 @@ internal sealed partial class RuntimePlayerInventoryStore
         var funding = CaptureFundedQuantities(connection);
         var caps = CaptureOwnedQuantities(connection);
         if (!TryPlanCursorReturn(before, funding, caps, world, dropResidual,
-                out var after, out var nextFunding, out var nextCaps, out var residual))
+                out var after, out var nextFunding, out var nextCaps, out var residual, allowUnfundedResidual: true))
             return false;
+        if (dropResidual && !CanSpendCharacterDrop(connection, in residual, Math.Max(0, residual.Stack - funding[58]))) return false;
         preparation = new(this, connection, playerMutationStamps[connection.Player.Slot.Value], before,
             funding, caps, after, nextFunding, nextCaps, residual);
         return true;
@@ -34,7 +35,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     internal static bool TryPlanCursorReturn(RuntimePlayerInventoryItem[] before, short[] funding,
         OwnedInventoryQuantity1458[] caps, VanillaItemPrefixWorld1458? world, bool dropResidual,
         out RuntimePlayerInventoryItem[] after, out short[] nextFunding,
-        out OwnedInventoryQuantity1458[] nextCaps, out RuntimePlayerInventoryItem residual)
+        out OwnedInventoryQuantity1458[] nextCaps, out RuntimePlayerInventoryItem residual, bool allowUnfundedResidual = false)
     {
         after = (RuntimePlayerInventoryItem[])before.Clone();
         nextFunding = (short[])funding.Clone();
@@ -50,8 +51,8 @@ internal sealed partial class RuntimePlayerInventoryStore
         residual = InventoryTuple(plan.Residual);
         // The existing visible cursor budget may be mixed. Reserve only the fully
         // funded residual that will become ground; returned unknown units stay unknown.
-        int reservedResidual = dropResidual ? residual.Stack : 0;
-        if (funding[58] < reservedResidual) return false;
+        int reservedResidual = dropResidual ? Math.Min(funding[58], residual.Stack) : 0;
+        if (dropResidual && !allowUnfundedResidual && funding[58] < residual.Stack) return false;
         int remainingFunding = funding[58];
         int storageFunding = funding[58] - reservedResidual;
         var capList = caps.ToList();
@@ -69,7 +70,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             else if (QuantityLane(before[58].ItemType) >= 0)
                 capList.Add(new(mutation.Slot, before[58].ItemType, checked((short)mutation.After.Stack)));
         }
-        if (dropResidual && remainingFunding != residual.Stack)
+        if (dropResidual && remainingFunding != reservedResidual)
             return false;
         int cursorCap = capList.FindIndex(c => c.Slot == 58 && c.ItemType == before[58].ItemType);
         if (cursorCap >= 0)
@@ -106,6 +107,8 @@ internal sealed partial class RuntimePlayerInventoryStore
         internal bool TryAdoptUnpublished()
         {
             if (!IsCurrent) return false;
+            var copper = owner.CaptureFundedCoinValues(connection);
+            owner.BurnCharacterDropConsumption(connection, before, funding, copper, after, nextFunding, copper);
             adopted = true;
             int player = connection.Player.Slot.Value;
             for (short slot = 0; slot < after.Length; slot++)

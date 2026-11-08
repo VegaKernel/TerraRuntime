@@ -175,7 +175,8 @@ internal sealed partial class RuntimePlayerInventoryStore
     /// </summary>
     public bool TryApplyAtomic(
         ConnectionHandle connection,
-        ReadOnlySpan<RuntimePlayerInventoryMutation> mutations)
+        ReadOnlySpan<RuntimePlayerInventoryMutation> mutations,
+        bool accountCharacterDrop = true)
     {
         if (!connection.IsAssigned ||
             connections[connection.Player.Slot.Value] != connection ||
@@ -199,15 +200,26 @@ internal sealed partial class RuntimePlayerInventoryStore
         }
 
         int playerSlot = connection.Player.Slot.Value;
+        Span<RuntimePlayerInventoryItem> priorItems = stackalloc RuntimePlayerInventoryItem[mutations.Length];
+        Span<short> priorFunding = stackalloc short[mutations.Length];
+        Span<long> priorCopper = stackalloc long[mutations.Length];
+        Span<RuntimePlayerInventoryItem> nextItems = stackalloc RuntimePlayerInventoryItem[mutations.Length];
+        Span<short> nextFunding = stackalloc short[mutations.Length];
+        Span<long> nextCopper = stackalloc long[mutations.Length];
         for (int index = 0; index < mutations.Length; index++)
         {
             RuntimePlayerInventoryMutation mutation = mutations[index];
+            int offset = GetOffset(playerSlot, mutation.Slot);
+            priorItems[index] = items[offset]; priorFunding[index] = fundedQuantities[offset]; priorCopper[index] = coinFundedValues[offset];
             PreserveReportedFunding(playerSlot, mutation.Slot, mutation.Item);
             items[GetOffset(playerSlot, mutation.Slot)] = mutation.Item.IsEmpty
                 ? default
                 : mutation.Item;
+            nextItems[index] = items[offset]; nextFunding[index] = fundedQuantities[offset]; nextCopper[index] = coinFundedValues[offset];
         }
 
+        if (accountCharacterDrop)
+            BurnCharacterDropConsumption(connection, priorItems, priorFunding, priorCopper, nextItems, nextFunding, nextCopper);
         if (mutations.Length > 0) Changed(playerSlot);
         return true;
     }
@@ -226,8 +238,8 @@ internal sealed partial class RuntimePlayerInventoryStore
     internal bool TryApplyAtomic(
         ConnectionHandle connection,
         ReadOnlySpan<RuntimePlayerInventoryMutation> mutations,
-        ulong expectedSerial) =>
-        TryIsCurrent(connection, expectedSerial) && TryApplyAtomic(connection, mutations);
+        ulong expectedSerial, bool accountCharacterDrop = true) =>
+        TryIsCurrent(connection, expectedSerial) && TryApplyAtomic(connection, mutations, accountCharacterDrop);
 
     public void Clear(ConnectionHandle connection)
     {
@@ -245,6 +257,8 @@ internal sealed partial class RuntimePlayerInventoryStore
         ClearShopBanks(playerSlot);
         fundedQuantities.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
         coinFundedValues.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
+        characterDropAllowances[playerSlot] = null;
+        characterDropCopper[playerSlot] = 0;
     }
 
     private static int GetOffset(int playerSlot, int inventorySlot) =>

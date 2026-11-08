@@ -39,6 +39,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         private readonly ulong serial;
         private readonly RuntimePlayerInventoryItem[] before;
         private readonly short[] quantity;
+        private readonly short[] capturedQuantity;
         private readonly short debitSlot;
         private readonly int debitType;
         private readonly long[] capturedCopper;
@@ -56,6 +57,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         {
             this.owner = owner; this.connection = connection; this.serial = serial; this.before = before;
             this.quantity = quantity; this.debitSlot = debitSlot; this.debitType = debitType;
+            capturedQuantity = quantity.ToArray();
             this.capturedCopper = capturedCopper; this.sourceCapture = sourceCapture;
             this.liveBefore = liveBefore;
             Image = before.ToArray();
@@ -133,6 +135,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         internal bool TryAdoptUnpublished()
         {
             if (!sealedPlan || !IsCurrent || copper is null) return false;
+            owner.BurnCharacterDropConsumption(connection, before, capturedQuantity, capturedCopper, Image, quantity, copper);
             adopted = true;
             int player = connection.Player.Slot.Value;
             for (int slot = 0; slot < Image.Length; slot++)

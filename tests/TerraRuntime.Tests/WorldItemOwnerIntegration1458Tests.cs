@@ -111,14 +111,31 @@ public sealed class WorldItemOwnerIntegration1458Tests
         foreach(var row in document.RootElement.EnumerateArray())yield return [row.GetRawText()];
     }
     [Theory] [MemberData(nameof(ClientCreations))]
-    public void Real_client21_creation_matches_actual_original_body_owner_wire_and_rng(string json)
+    public void Unfunded_client21_is_refused_and_detached_creation_matches_original_body_owner_wire_and_rng(string json)
     {
         using var doc=JsonDocument.Parse(json);var row=doc.RootElement;
         using var f=new Fixture(row.GetProperty("seed").GetInt32(),row.GetProperty("full").GetBoolean(),row.GetProperty("season").GetInt32());
         using var memory=new MemoryStream();using(var writer=new BinaryWriter(memory,System.Text.Encoding.UTF8,true))
         {writer.Write((short)400);writer.Write(1000f);writer.Write(1000f);writer.Write(2.5f);writer.Write(-3.75f);writer.Write((short)1);writer.Write((byte)row.GetProperty("prefix").GetInt32());writer.Write((byte)row.GetProperty("mode").GetInt32());writer.Write((short)row.GetProperty("type").GetInt32());}
         Assert.Equal(TerrariaFrameSinkResult.Continue,f.Sink.OnFrame(Frame(21,memory.ToArray())));
-        Assert.Equal(1,f.State.AppliedWorldItemAllocations);Assert.Equal(0,f.State.RejectedWorldItemAllocations);
+        Assert.Equal(0,f.State.AppliedWorldItemAllocations);Assert.Equal(1,f.State.RejectedWorldItemAllocations);
+        Assert.Equal(0,f.Outbound.QueuedFrames);
+        Assert.True(f.Random.HasSameState(new(row.GetProperty("seed").GetInt32())));
+        // Retain every independent original MessageBuffer21 materialization row.
+        // This detached algorithm check grants no client inventory authority.
+        var wire = new WorldItemDropStateUpdate(1000,1000,2.5f,-3.75f,1,
+            row.GetProperty("prefix").GetByte(), (WorldItemOwnershipMode)row.GetProperty("mode").GetByte(),
+            row.GetProperty("type").GetInt16(),false,0,0);
+        object?[] args = [wire, null, null, null, null, null];
+        var method = typeof(WorldItemAuthority).GetMethod("TryPrepareClientCreation", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Assert.True((bool)method.Invoke(f.Graph.WorldItems,args)!);
+        var created = Assert.IsType<WorldItemDropStateUpdate>(args[1]);
+        using var allocation = f.Items.CreateAllocationPreview([new(0,1000,1000,20,42)]);
+        Assert.True(allocation.TrySpawnSource(created,0,out _,0,WorldItemCreationSource1458.InventoryDrop));
+        Assert.True(allocation.TryClaim());
+        Assert.True(allocation.TryAdoptUnpublished(out var publication)); Assert.NotNull(publication);
+        f.Random.CopyStateFrom(Assert.IsType<VanillaUnifiedRandom1458>(args[4]));
+        while(publication!.TryPublishNext(out _)) { }
         Assert.Equal(Convert.FromHexString(row.GetProperty("frame21").GetString()!),Read(f.Outbound));
         if(row.GetProperty("owner").GetInt32()!=255)Assert.Equal(Convert.FromHexString(row.GetProperty("frame22").GetString()!),Read(f.Outbound));
         Assert.Equal(0,f.Outbound.QueuedFrames);Assert.Equal(row.GetProperty("next").GetInt32(),f.Random.Next());
@@ -207,6 +224,7 @@ public sealed class WorldItemOwnerIntegration1458Tests
             State=new(worldItems:Items,worldTiles:Tiles,worldItemSpawnRandom:new SystemWorldItemSpawnRandom(Random),worldItemReplication:Registry,expertMode:mode>0,masterMode:mode==2,
                 townCommerceWorldFacts:default(RuntimeTownCommerceWorldFacts1458) with{Halloween=(season&1)!=0,XMas=(season&2)!=0,TenthAnniversaryWorld=(season&4)!=0,GoodWorld=good});
             Graph=Assert.IsType<ServerRuntimeComposition>(typeof(ServerRuntimeState).GetField("_runtime",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(State));
+            Graph.Players.SetPlayerUpdateWorldFacts(new(128,128,60,false,false));
             Assert.True(slots.TryAcquireConnection(out var lease));var session=new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));session.ObserveWorldRequest();session.ObserveSectionRequest();
             Connection=new(GameCommandSourceId.FromConnection(7101),session.Handle);State.Apply(new PlayerSpawnRuntimeCommand(Connection,session,new(session.Slot,62,62,0,0,0,0,0)));
             State.Apply(new PlayerMovementRuntimeCommand(Connection,new(session.Slot,0,0,0,0,0,1000,1000,false,0,0,false,0,false,0,0,0,0,false,0,0)));

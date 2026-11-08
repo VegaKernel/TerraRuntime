@@ -208,41 +208,12 @@ internal sealed partial class WorldItemAuthority
 
         if (!ownedPickupTransactionRunning && players.TryRetainSortOverflow(this, command)) return;
         if (!ownedPickupTransactionRunning && players.TryRetainFishingOverflow(this, command)) return;
-        if (players.HasDropFunding(command.Connection))
-        {
-            if (TryApplyFundedDrop(command, out var owned))
-            { AppliedAllocations++; command.Completion?.TrySetResult(owned.Handle.IsAssigned ? owned : null); }
-            else { RejectedAllocations++; command.Completion?.TrySetResult(null); }
-            return;
-        }
-
-        WorldItemDropStateUpdate state = command.State;
-        if (!TryPrepareClientCreation(in state, out var created, out var liveRandom, out var beforeRandom, out var afterRandom, out var calendar))
-        { RejectedAllocations++; command.Completion?.TrySetResult(null); return; }
-        state = created;
-        Span<WorldItemAllocationPlayer1458> views = stackalloc WorldItemAllocationPlayer1458[byte.MaxValue];
-        int viewCount = 0;
-        foreach (var player in players.Members)
-        {
-            var body = player.HasMount ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (Width: 20f, Height: 42f);
-            views[viewCount++] = new(player.Slot.Value, player.PositionX, player.PositionY, (int)body.Width, (int)body.Height);
-        }
-        using var allocation = worldItems.CreateAllocationPreview(views[..viewCount]);
-        if (allocation.TrySpawnSource(in state, 0, out _, sourceLocalPlayerId: command.Connection.Player.Slot.Value,
-                creationSource: WorldItemCreationSource1458.ClientSynchronization) &&
-            liveRandom!.HasSameState(beforeRandom!) && (seasonalContext is null || seasonalContext() == calendar) && allocation.TryClaim())
-        {
-            liveRandom.CopyStateFrom(afterRandom!); // Adopt before any source21/22 publication callback.
-            if (!allocation.TryCommitNext(out short selectedSlot, out _)) throw new InvalidOperationException("Accepted client item creation lost its claimed source plan.");
-            WorldItemSnapshot snapshot = default;
-            if (selectedSlot < worldItems.Capacity) _ = worldItems.TryGetActive(selectedSlot, out snapshot);
-            AppliedAllocations++;
-            command.Completion?.TrySetResult(snapshot.Handle.IsAssigned ? snapshot : null);
-            return;
-        }
-
-        RejectedAllocations++;
-        command.Completion?.TrySetResult(null);
+        // A valid wire image is not creation authority. Every ordinary client21
+        // must pay through the same inventory/allocation transaction, including
+        // first-import stock; rejected or replayed requests cannot reach NewItem.
+        if (TryApplyFundedDrop(command, out var owned))
+        { AppliedAllocations++; command.Completion?.TrySetResult(owned.Handle.IsAssigned ? owned : null); }
+        else { RejectedAllocations++; command.Completion?.TrySetResult(null); }
     }
 
     private void ApplyDrop(WorldItemDropRuntimeCommand command)

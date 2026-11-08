@@ -17,7 +17,8 @@ internal sealed partial class RuntimePlayerInventoryStore
         if (fundedQuantities[GetOffset(player, slot)] == 0 && fundedQuantities[GetOffset(player, 58)] == 0 &&
             coinFundedValues[GetOffset(player, slot)] == 0 && coinFundedValues[GetOffset(player, 58)] == 0 &&
             !HasQuantityLane(player, slot, beforeSlot) && !HasQuantityLane(player, 58, beforeCursor) &&
-            !VanillaPlayerItemSlotCatalog.IsCoinSlot(slot)) return false;
+            !VanillaPlayerItemSlotCatalog.IsCoinSlot(slot) && !HasCharacterDropStock(connection, in beforeSlot) &&
+            !HasCharacterDropStock(connection, in beforeCursor)) return false;
         int context = VanillaPlayerItemSlotCatalog.IsCoinSlot(slot) ? VanillaInventoryCursorMove1458.CoinContext : VanillaInventoryCursorMove1458.OrdinaryContext;
         var source = StorageTuple(beforeSlot); var cursor = StorageTuple(beforeCursor);
         var reported = StorageTuple(reportedSlot);
@@ -125,6 +126,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             original=before[slot]; originalFunding=funding[slot]; return true;
         }
         internal ItemTypeId BeforePotionType => before[slot].ItemType;
+        internal RuntimePlayerInventoryItem BeforePotionItem => before[slot];
         internal void AdoptSelectedPotionDebit() => adopted=true;
         internal bool DebitApplied => debitApplied;
         internal bool CanEagerDebit => afterSlot.IsEmpty || (afterSlot.ItemType == before[slot].ItemType &&

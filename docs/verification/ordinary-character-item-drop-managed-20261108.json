@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "ordinary-character-item-drop-managed-20261108",
+  "baseCommit": "4654057e4559f180eada8cf8dba2d013518a16b8",
+  "issue": 123,
+  "issueClosed": false,
+  "allIssuesComplete": false,
+  "accepted": true,
+  "scope": [
+    "One-use initial classic-character drop allowance, separate from private funding, in existing inventory owner.",
+    "Initial main inventory and four banks; type/prefix units and pooled copper; raw reports cannot reseed; accepted owner consumption burns unfunded stock.",
+    "Managed transfer retains remaining allowance; exact-generation disconnect clears it; a new classic file join remains the existing trust boundary.",
+    "Ordinary selected/cursor full-stack debit plus detached NewItem/prefix RNG and funded allocation before observers; source Guide267 all-player delay.",
+    "InventoryDrop publication retains source ownership None then requested reservation/delay.",
+    "Unproved generic client21 creation removed; separate fishing/crate/Angler/sort-overflow proofs retained.",
+    "Pending Mana Crystal acknowledgements precede new cursor speculation; empty intake alone grants no new move proof."
+  ],
+  "limits": [
+    "Existing owned living item-phase context is required; unsupported held/channelled and unknown required prefix/world contexts refuse.",
+    "Transient sentinel400 ordinary-drop allocation stays unadmitted.",
+    "No server-side character persistence or .plr ownership validation; fresh classic imports are trusted.",
+    "No new unmodified GUI client/network session was captured; original component/drop observations and materialization wire fixtures provide independent evidence.",
+    "Local NativeAOT is user-deferred; no local toolchain installation or native qualification."
+  ],
+  "sdk": "11.0.100-rc.3.26522.148",
+  "managedBuild": {
+    "configuration": "Release",
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\issues-all-20261108\\build16.log"
+  },
+  "focused": {
+    "total": 36,
+    "passed": 36,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xmlSha256": "431889405efbb0882d3277df7fd0be15d305c6451e4311ad03b18600d2c5e53b",
+    "manaCrystalInternalOriginalScenarios": 84
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1195.5756552999374,
+    "tests": {
+      "total": "185956",
+      "passed": "185956",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1193.017",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1849.3377130000154,
+    "tests": {
+      "total": "1731271",
+      "passed": "1731271",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1836.630",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6008,
+  "fastSelectedMethods": 5841,
+  "independentEvidence": {
+    "originalSelectedDropProfilesCompared": 36,
+    "platforms": [
+      "Linux/CoreCLR",
+      "Windows CLR4 x86"
+    ],
+    "originalMessageBuffer21RowsPreserved": 3584,
+    "materializerRowsNowSeparateUnprovedIngressRefusalFromDetachedSourceMaterialization": true,
+    "fixtures": {
+      "owned-human-drop-configured-official-1458.json.gz": "cb14702630b1cfa037d2da6be5507da9afede6658fea0b9f85aff0f22d277252",
+      "world-item-client-create-official.json.gz": "7d7d126a1931dace1e5d58a9e10e051829a3117ea0917d9df3b7d16c894981e0"
+    }
+  },
+  "causalControls": {
+    "unchangedTestDllSha256": "c00515cfa1e85fe2a7f41d25e8acdabb92fbdb34ad94ab790915e818a579ad8b",
+    "inputFilesCompared": 198,
+    "differences": [
+      "TerraRuntime.Application.dll"
+    ],
+    "excludedOutputs": "logs/ contains generated per-process runtime logs, not execution inputs",
+    "controls": [
+      {
+        "name": "oldguard03",
+        "assemblyDifferences": [
+          "TerraRuntime.Application.dll"
+        ],
+        "xmlSha256": "273318c089a7d25eed309847986b447de4e2622fb277167c5e0249c7f347a7f7",
+        "mutantAssemblySha256": "8a8cc839f512b9b5d3b864c2cb35775d769c821d94c3aaac6fe2a44328524663",
+        "effectiveMutations": 1,
+        "failed": 16,
+        "passed": 6,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "bypass03",
+        "assemblyDifferences": [
+          "TerraRuntime.Application.dll"
+        ],
+        "xmlSha256": "0db570b77250a2bdb3ca4321432e68929ada1e82e8b9c3348a9824fd0d0ca70d",
+        "mutantAssemblySha256": "d2997d6d51dd3413a82639fa9553507434c761f7265a919afa6fa82d55307dce",
+        "effectiveMutations": 1,
+        "failed": 15,
+        "passed": 7,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "mana-priority03",
+        "assemblyDifferences": [
+          "TerraRuntime.Application.dll"
+        ],
+        "xmlSha256": "3a8ec1199cf432afdbaf14dd37dbb5b0a99e058766e4354805f89c2f3ef36dc4",
+        "mutantAssemblySha256": "12c791367e1473ef8ce7d4e6145507a3ca1e0de3038c171a63235ec6cd1ce047",
+        "effectiveMutations": 1,
+        "failed": 1,
+        "passed": 23,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 4930,
+    "recursiveDllFilePaths": 411,
+    "before": "5665b2dbaba4253c8462e06db5e5fa912e4cba1a7b5fca3c4efd6ddb665ffbae",
+    "afterFast": {
+      "sourceInputs": 4930,
+      "recursiveDlls": 411,
+      "differences": [],
+      "passed": true
+    },
+    "afterFull": {
+      "sourceInputs": 4930,
+      "recursiveDlls": 411,
+      "differences": [],
+      "passed": true
+    }
+  },
+  "testDllSha256": "c00515cfa1e85fe2a7f41d25e8acdabb92fbdb34ad94ab790915e818a579ad8b",
+  "pythonCi": {
+    "total": 300,
+    "passed": 300
+  },
+  "documentation": {
+    "mirroredPairs": 137,
+    "markdownFiles": 313,
+    "pairedChangedBase": "origin/main",
+    "passed": true
+  },
+  "projectReferences": {
+    "shippingProjects": 15,
+    "edges": 29,
+    "passed": true
+  },
+  "gameplayDomainAudit": {
+    "csharpFiles": 508,
+    "passed": true
+  },
+  "managedSmokes": [
+    {
+      "exitCode": 0,
+      "smoke": "loop",
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/loop-smoke03.log"
+    },
+    {
+      "exitCode": 0,
+      "smoke": "protocol",
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/protocol-smoke03.log"
+    },
+    {
+      "exitCode": 0,
+      "smoke": "network",
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/network-smoke03.log"
+    },
+    {
+      "exitCode": 0,
+      "smoke": "world",
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/world-smoke03.log"
+    },
+    {
+      "exitCode": 0,
+      "smoke": "tui",
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/tui-smoke03.log"
+    }
+  ],
+  "diagnosticRunsNotAccepted": [
+    "fast01 and fast03 interrupted while legacy generic-client creation fixtures were being corrected",
+    "fast02 selection rejected stale renamed heavy-method identity; policy identity updated",
+    "fast04 complete185956 rows with1 pending-Mana-Crystal/cursor regression, preserved; fixed and qualified by fast05/full03"
+  ],
+  "otherIssues": {
+    "124": "Separate uncommitted lava-worktree; terrain/death participant under qualification, platform kills and canonical dynamic Skyblock census incomplete.",
+    "125": "Open; source semantic analysis only, no new admitted wiring device.",
+    "126": "User has no affected/unaffected connection-stop logs; no timeout cause asserted or blanket policy weakened."
+  },
+  "evidenceRoot": "E:\\TerraRuntimeAgentCache\\issues-all-20261108",
+  "publicationIndex": {
+    "sourceInputs": 4930,
+    "rawExact": 4929,
+    "gitLineEndingCanonicalization": [
+      {
+        "path": "tests/TerraRuntime.Tests/ServerRuntimeWorldItemCommandTests.cs",
+        "transformation": "Git attributes normalize CRLF to LF; C# whitespace only, no multiline literals",
+        "qualifiedRawSha256": "4208d48207759cccb652edd87cb547b15ca884717c7234498146d1c4fb03df09",
+        "indexSha256": "fd9c8388cfec77c5c1b0896f810945933c81407515103ae3dc6618694e8b8d0b"
+      }
+    ],
+    "accepted": true
+  }
+}

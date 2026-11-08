@@ -221,6 +221,10 @@ internal sealed partial class RuntimePlayerInventoryStore
             for(int index=0;index<mutations.Length;index++)
             {
                 var mutation=mutations[index];
+                var originalItem = mutation.CursorSourceDebit?.BeforePotionItem ?? mutation.Before;
+                int physicalOffset = GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot);
+                short originalFunding = mutation.CursorSourceDebit is not null ? frozenSourceFunding[index] : owner.fundedQuantities[physicalOffset];
+                long originalCopper = owner.coinFundedValues[physicalOffset];
                 if (mutation.CursorSourceDebit is { } source)
                 {
                     owner.fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]=(short)Math.Max(0,frozenSourceFunding[index]-1);
@@ -237,6 +241,8 @@ internal sealed partial class RuntimePlayerInventoryStore
                 }
                 owner.PreserveReportedFunding(mutation.Connection.Player.Slot.Value, mutation.Slot, mutation.After);
                 owner.items[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] = mutation.After;
+                owner.BurnCharacterDropConsumption(mutation.Connection, in originalItem, originalFunding, originalCopper,
+                    mutation.After, owner.fundedQuantities[physicalOffset], owner.coinFundedValues[physicalOffset]);
                 int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);
                 if (lane >= 0 && (mutation.CursorSourceDebit is not null || mutation.After.Stack < mutation.Before.Stack) &&
                     (mutation.After.IsEmpty || mutation.After.ItemType == mutation.Before.ItemType))

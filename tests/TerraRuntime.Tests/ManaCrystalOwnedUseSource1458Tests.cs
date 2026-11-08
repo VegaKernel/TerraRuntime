@@ -21,12 +21,14 @@ public sealed class ManaCrystalOwnedUseSource1458Tests
         int cases = 0;
         foreach (string platform in new[] { "linux", "windows" })
             foreach (var original in originals.RootElement.GetProperty(platform).EnumerateArray())
+                foreach (bool imported in new[] { false, true })
                 foreach (int order in new[] { 0, 1, 2 })
                 {
-                    using var fixture = new HumanChannelledMagicAuthority1458Tests.Harness.Fixture(phases.RootElement[0], false);
                     var before = original.GetProperty("before").GetProperty("vitals");
                     var expected = original.GetProperty("afterOuter").GetProperty("vitals");
                     int stack = original.GetProperty("before").GetProperty("item").GetProperty("stack").GetInt32();
+                    using var fixture = new HumanChannelledMagicAuthority1458Tests.Harness.Fixture(phases.RootElement[0], false,
+                        characterCrystalStack: imported ? checked((short)stack) : null);
                     fixture.Equipment(0, 109, (short)stack);
                     fixture.State.Apply(new PlayerManaRuntimeCommand(fixture.Connection,
                         new(fixture.Connection.Player.Slot, (short)before.GetProperty("statMana").GetInt32(),
@@ -82,7 +84,7 @@ public sealed class ManaCrystalOwnedUseSource1458Tests
                     }
                     cases++;
                 }
-        Assert.Equal(42, cases);
+        Assert.Equal(84, cases);
     }
     [Fact]
     public void Whole_census_adoption_precedes_observers_and_late_provider_edits_refuse()

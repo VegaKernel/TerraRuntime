@@ -5,7 +5,10 @@ namespace TerraRuntime.Core.Worlds;
 public enum WorldItemCreationSource1458 : byte
 {
     NewItem = 0,
-    ClientSynchronization = 1
+    ClientSynchronization = 1,
+    // Proven inventory debit funds the result, while MessageBuffer21 publishes
+    // ownership None before applying the requested reservation/grab delay.
+    InventoryDrop = 2
 }
 
 /// <summary>One world's generation-owned player/inventory/terrain dependencies for source FindOwner.</summary>

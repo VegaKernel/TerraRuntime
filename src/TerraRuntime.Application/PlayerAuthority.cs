@@ -548,6 +548,9 @@ internal sealed partial class PlayerAuthority
         if (TryReconcileShopInventoryReport(equipment)) return;
         if (TryReconcileFavoriteCursorReturn(equipment)) return;
         if (TryReconcileOwnedCursorMove(equipment, allowNewCandidate: false)) return;
+        // A captured, unpaid crystal use owns its exact debit acknowledgement.
+        // Its packet5 must not start a speculative UI move over imported stock.
+        if (TryAcknowledgeManaCrystalInventory(equipment, pendingOnly: true)) return;
         // Existing operation ownership precedes ammo reports. A merely
         // speculative cursor debit must wait for the qualified unpaid ammo
         // offer too; packet5 alone does not identify a new cursor operation.
@@ -809,6 +812,7 @@ internal sealed partial class PlayerAuthority
         // not138. Adopt their existing ceilings before spawn observers; this is
         // never repeated by the separate respawn or managed-transfer paths.
         inventory.SealFishingCharacterInventory(spawn.Connection);
+        inventory.SealCharacterDropIntake(spawn.Connection);
 
         RuntimePendingPlayerVitals? pending = membership.TakePending(request.ClaimedSlot);
         bool hasPending = pending is not null && pending.Connection == spawn.Connection;

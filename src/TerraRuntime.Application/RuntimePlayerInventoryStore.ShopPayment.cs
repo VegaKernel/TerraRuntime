@@ -257,6 +257,9 @@ internal sealed partial class RuntimePlayerInventoryStore
         internal bool TryAdoptUnpublished()
         {
             if (!IsCurrent) return false;
+            short[] originalQuantity = [.. beforeQuantity, .. bankQuantity];
+            short[] acceptedQuantity = [.. afterQuantity, .. bankQuantity];
+            owner.BurnCharacterDropConsumption(connection, before, originalQuantity, beforeCopper, after, acceptedQuantity, afterCopper);
             adopted = true;
             int player = connection.Player.Slot.Value;
             after.AsSpan(0, InventorySlotCount).CopyTo(owner.items.AsSpan(player * InventorySlotCount, InventorySlotCount));

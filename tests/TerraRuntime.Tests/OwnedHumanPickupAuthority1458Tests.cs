@@ -219,8 +219,8 @@ public sealed class OwnedHumanPickupAuthority1458Tests
             Assert.True(inventory.TryPrepareRemotePhase(new RemotePhaseInventoryMutation[] { new(f.Connection, 0, before, default) }, inventory.Serial, out var consumed)); Assert.True(consumed!.TryAdoptUnpublished());
             var completion = new TaskCompletionSource<WorldItemSnapshot?>();
             f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, new(1600, 1606, 0, 0, 1, 0, WorldItemOwnershipMode.ReserveForLocalPlayer, 71, false, 0, 0), completion));
-            Assert.True(completion.Task.IsCompletedSuccessfully); var forgedCoin = await completion.Task; Assert.NotNull(forgedCoin);
-            f.State.Apply(new WorldItemDropRuntimeCommand(f.Connection, forgedCoin!.Value.Handle, new(1600, 1606, 0, 0, 1, 0, WorldItemOwnershipMode.None, 110, false, 0, 0)));
+            Assert.True(completion.Task.IsCompletedSuccessfully); Assert.Null(await completion.Task);
+            Assert.Equal(0, f.Items.ActiveCount);
             f.State.Tick();
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var retained));
             Assert.True(retained.IsEmpty, "Unfunded client slot400 must not reopen consumed quantity through an owned pickup grant.");
@@ -281,7 +281,8 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         {
             var completion = new TaskCompletionSource<WorldItemSnapshot?>();
             f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, new(1600, 1606, 0, 0, 2, 0, WorldItemOwnershipMode.ReserveForLocalPlayer, 23, false, 0, 0), completion));
-            Assert.True(completion.Task.IsCompletedSuccessfully); Assert.NotNull(await completion.Task);
+            Assert.True(completion.Task.IsCompletedSuccessfully); Assert.Null(await completion.Task);
+            Assert.Equal(0, f.Items.ActiveCount);
             f.State.Tick(); Assert.All(f.ItemImage(), item => Assert.True(item.IsEmpty));
         }
         foreach (bool fullyTrusted in new[] { false, true })
@@ -409,6 +410,8 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         var completion = new TaskCompletionSource<WorldItemSnapshot?>();
         f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, proposed, completion));
         Assert.NotNull(await completion.Task); Assert.True(observed > 0); Assert.Equal(10, f.Member.ItemAnimation);
+        // MessageBuffer21 creates the item before overlaying the client's velocity.
+        _ = beforeDropRandom.Next(-30, 31); _ = beforeDropRandom.Next(-40, -15);
         Assert.True(((SystemWorldItemSpawnRandom)f.Runtime.WorldItems.SpawnRandom).SourceRandom.HasSameState(beforeDropRandom));
         f.WorldEvents.Callback = null;
         f.Set(0, 0, 0); // Exact later source5 is an acknowledgement, not another debit.

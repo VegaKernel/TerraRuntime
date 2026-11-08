@@ -40,13 +40,19 @@ public sealed class WorldItemRelease1458Tests
     }
 
     [Fact]
-    public void New_packet21_drop_keeps_source_grab_delay_and_falls_into_lava()
+    public void Unfunded_packet21_is_refused_and_trusted_drop_keeps_grab_delay_and_falls_into_lava()
     {
         using var f = new Fixture();
         // Independently pinned packet21 bytes: slot400, (2560,3840), zero velocity, stack1, prefix0,
         // ownership2, type267. Goes through real decoder/ingress, not a direct environmental call.
         byte[] payload = [144,1, 0,0,32,69, 0,0,112,69, 0,0,0,0, 0,0,0,0, 1,0, 0,2, 11,1];
         Assert.Equal(TerrariaFrameSinkResult.Continue, f.Sink.OnFrame(Frame(21, payload)));
+        Assert.Equal(0, f.Items.ActiveCount);
+        Assert.Equal(1, f.State.RejectedWorldItemAllocations);
+        // Environmental/release behavior starts with an authorized server producer.
+        // Real ordinary inventory debit, including Guide doll ownership3, is checked
+        // through the allocation command in CharacterItemThrow1458Tests.
+        f.Allocate(WorldItemOwnershipMode.GrabDelayForLocalPlayer, y: 3840);
         var buffer = new WorldItemSnapshot[400];
         Assert.Equal(1, f.Items.CopyActive(buffer));
         var doll = buffer[0];
@@ -150,10 +156,9 @@ public sealed class WorldItemRelease1458Tests
         }
         public WorldItemSnapshot Allocate(WorldItemOwnershipMode mode, float y = 4000, short type = 267)
         {
-            var result = new TaskCompletionSource<WorldItemSnapshot?>();
-            State.Apply(new WorldItemAllocateRuntimeCommand(Connection,
-                new WorldItemDropStateUpdate(2560, y, 0, 0, 1, 0, mode, type, false, 0, 0), result));
-            return Assert.IsType<WorldItemSnapshot>(result.Task.Result);
+            var drop = new WorldItemDropStateUpdate(2560, y, 0, 0, 1, 0, mode, type, false, 0, 0);
+            Assert.True(Items.TryAllocateSourceDrop(drop, [new(0,2560,3840,20,42)], out var item, out _, Connection.Player.Slot.Value));
+            return item;
         }
         public void Dispose() => bootstrap.Dispose();
     }
