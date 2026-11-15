@@ -197,6 +197,15 @@ internal sealed partial class RuntimeTileManipulationReplicationRegistry : IRunt
             return false;
         }
 
+        return RetainSourceLiquid(in state);
+    }
+
+    // Liquid.NetSendLiquid's pending-set write is an owner mutation. Prepared
+    // producers use this callback-free boundary after joint adoption; endpoint
+    // visibility and transport remain deferred to FlushPendingLiquids.
+    internal bool RetainSourceLiquid(in TerrariaLiquidState state)
+    {
+
         int key = ((ushort)state.TileX << 16) | (ushort)state.TileY;
         if (pendingLiquids.TryGetValue(key, out TerrariaLiquidState existing))
         {

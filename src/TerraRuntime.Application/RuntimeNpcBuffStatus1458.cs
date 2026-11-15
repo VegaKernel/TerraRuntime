@@ -15,6 +15,7 @@ internal readonly record struct RuntimeNpcBuffPlan1458(NpcSnapshot Expected, ulo
     RuntimeNpcBuffSlots1458 Slots, PlayerDebuffSnapshot1458 Flags, bool Stinky, bool Expired,
     int LifeAfter, int? CounterAfter, int DotDamage)
 {
+    internal bool Venom { get; init; }
     internal bool LoveStruck { get; init; }
     internal NpcTypeId? TransformedType { get; init; }
 }
@@ -57,6 +58,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         if (goodWorld && (type == VanillaNpcIds.Golem.Value || type == VanillaNpcIds.GolemHead.Value ||
             type == VanillaNpcIds.GolemFistLeft.Value || type == VanillaNpcIds.GolemFistRight.Value)) return default;
         if (plan.Flags.Poisoned) _ = random.Next(30);
+        if (plan.Venom) _ = random.Next(10);
         if (plan.Flags.OnFire && random.Next(4) < 3) _ = random.Next(4);
         // NPC.UpdateNPC_BuffApplyVFX119 evaluates arguments even when dedicated Gore.NewGore returns600.
         if (plan.LoveStruck && random.Next(5) == 0 &&
@@ -117,7 +119,15 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         bool torch = before.TypeIdentity == VanillaNpcIds.BlueSlime &&
             before.Ai.Ai1 == VanillaItemIds.Torch.Value && goodWorld;
         bool slime = before.TypeIdentity == VanillaNpcIds.BlueSlime || before.TypeIdentity == VanillaNpcIds.LavaSlime;
-        if (slime)
+        bool venom = ReadVenom(in entry.Slots);
+        if (venom || counter is < -119)
+        {
+            if (!VanillaNpcVenomRegeneration1458.TryStep(in before, goodWorld, flags.Poisoned, flags.OnFire, venom, out var regen))
+                return false;
+            life = regen.Life; counter = regen.Counter; damage = regen.Damage;
+            if (life <= 0 && !allowLethal) return false;
+        }
+        else if (slime)
         {
             if (!VanillaSlimeRegeneration1458.TryStep(in before, goodWorld, flags.Poisoned, flags.OnFire, out var regen))
                 return false;
@@ -139,7 +149,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
             if (life <= 0 && !allowLethal) return false;
         }
         plan = new(before, entry.Revision, slots, flags, stinky, expired, life, counter, damage)
-        { LoveStruck = ReadLoveStruck(in entry.Slots) };
+        { Venom = venom, LoveStruck = ReadLoveStruck(in entry.Slots) };
         return true;
     }
 
@@ -181,8 +191,9 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
     internal bool TryApply(NpcHandle handle, BuffTypeId type, int duration)
     {
         if (duration is < 0 or > short.MaxValue || !EnsureGeneration(handle) || !npcs.TryGet(handle, out var npc) ||
-            type != VanillaBuffIds.Stinky && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.OnFire &&
+            type != VanillaBuffIds.Stinky && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.OnFire && type != VanillaBuffIds.Venom &&
             type.Value != LoveStruckBuffType) return false;
+        if (type == VanillaBuffIds.Venom && npc.Type is not (1 or 3 or 59)) return false;
         if (type.Value == LoveStruckBuffType && !HasVerifiedShoppingStatus(npc.Type)) return false;
         if (type != VanillaBuffIds.Stinky && type.Value != LoveStruckBuffType && !IsDotResident(npc.Type)) return false;
         if ((npc.TypeIdentity == VanillaNpcIds.BlueSlime || npc.TypeIdentity == VanillaNpcIds.LavaSlime) &&
@@ -321,8 +332,13 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
     {
         if (!npcs.TryGet(handle, out var npc) || !IsSupported(in npc)) return false;
         if (entries[handle.Slot].Handle != handle)
-            entries[handle.Slot] = new Entry { Handle = handle, Revision = 1,
-                DefinitionType = npc.Type, DefinitionNetId = npc.NetId };
+            entries[handle.Slot] = new Entry
+            {
+                Handle = handle,
+                Revision = 1,
+                DefinitionType = npc.Type,
+                DefinitionNetId = npc.NetId
+            };
         else if (entries[handle.Slot].DefinitionType != npc.Type || entries[handle.Slot].DefinitionNetId != npc.NetId)
         {
             ref Entry entry = ref entries[handle.Slot];

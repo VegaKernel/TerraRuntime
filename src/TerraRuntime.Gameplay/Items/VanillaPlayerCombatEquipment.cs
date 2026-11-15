@@ -30,6 +30,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     /// <summary>Player.ApplyEquipFunctional: represented lava protection, separate from fireWalk.</summary>
     public int LavaProtectionTicks { get; init; }
     public bool LavaRose { get; init; }
+    public bool DeadMansSweater { get; init; }
     public bool AnkhShield { get; init; }
     public VanillaPlayerBuffImmunity1458 BuffImmunity { get; init; }
     // Player.ApplyEquipFunctional 1.4.5.8: Ankh Shield includes Chilled, but not Frozen.
@@ -78,7 +79,8 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         ArmorPenetration: 0,
         MeleeArmorPenetration: 0,
         NoKnockback: false,
-        MagicQuiver: false) { Archery = false, MinionDamage = 1f, ManaFlower = false, ManaCostMultiplier = 1f };
+        MagicQuiver: false)
+    { Archery = false, MinionDamage = 1f, ManaFlower = false, ManaCostMultiplier = 1f };
 
     /// <summary>Player.CapAttackSpeeds / TurnAttackSpeedToUseTimeMultiplier.</summary>
     public float MeleeAnimationMultiplier
@@ -304,10 +306,15 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 1)
         {
+            // Player.GrantArmorBenefits 1.4.5.8, functional body slot only.
+            if (type.Value == 5007) { snapshot = snapshot with { DeadMansSweater = true }; return true; }
             if (VanillaGemStaff1458.TryGetRobe(type, out var robe))
             {
-                snapshot = snapshot with { Defense = snapshot.Defense + robe.Defense,
-                    ManaCostMultiplier = snapshot.ManaCostMultiplier - robe.ManaCostReduction };
+                snapshot = snapshot with
+                {
+                    Defense = snapshot.Defense + robe.Defense,
+                    ManaCostMultiplier = snapshot.ManaCostMultiplier - robe.ManaCostReduction
+                };
                 return true;
             }
             if (type.Value == 3804) { snapshot = snapshot with { Defense = snapshot.Defense + 17, RangedDamage = snapshot.RangedDamage + 0.2f, MinionDamage = snapshot.MinionDamage + 0.2f, HuntressAmmoCost90 = true }; return true; }

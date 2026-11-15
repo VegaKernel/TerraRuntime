@@ -1,0 +1,354 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "net11-stable-item-flow-darts-managed-20261116",
+  "baseCommit": "4fa777dbe3c0ede717f5ee9ce5bf077f1929ee73",
+  "accepted": true,
+  "allIssuesComplete": false,
+  "sdk": "11.0.100",
+  "runtime": "11.0.0",
+  "targetFramework": "net11.0",
+  "newProductionDependencies": false,
+  "scope": [
+    "Existing bound player/world role permits ordinary pickup, conserved cursor pairs and funded full-stack throws after unrelated player RNG retirement. Never reopens or reseeds retired RNG; random consumers retain stricter ownership gates.",
+    "Existing inventory custody, revision/generation and detached world-item allocation owners remain authoritative; unknown item-time disables left-click speculation, and absent phase requires idle actor state.",
+    "Lava Slime death uses detached tile/liquid/item journals, source AddWater ordering, effective Expert/GoodWorld and mutable Skyblock census. Wood-platform drops and stale-publication guards retained.",
+    "Passive trap137 neighbors reuse existing no-op TileFrame owner; original death, tiles, queues, items and RNG fixtures cover interaction with admitted darts.",
+    "Trap137 styles0/1/5 use existing circuit cooldown200 and projectile store, source cardinal births, dry motion/collision/end, environmental NPC hits for types1/3/59 and existing human/server player hit preparations.",
+    "Owned Venom duration, final positive update, NPC regeneration pulses, player regeneration loss, Poisoned and Dead Mans Sweater adjustments are source-backed; packet50 cannot grant owned Venom."
+  ],
+  "limits": [
+    "Venom health regeneration is admitted independently; its unqualified complete player visual phase still retires shared player RNG.",
+    "No newly captured unmodified GUI client session; component fixtures and runtime authority tests are not whole Main.Update or network-client acceptance.",
+    "Unproved raw client item allocation, unknown required item/prefix/channel contexts and unqualified transfer intents still refuse; classic character import remains the existing trust boundary.",
+    "Other passive furniture/plant/falling-tile effects around Lava Slime death remain conservative refusals.",
+    "Lethal player contacts reuse the existing functional death path; complete KillMe/tombstone RNG continuation is unqualified.",
+    "Trap styles2/3/4, arbitrary wet flight, other NPC families, all equipment, statues, logic gates, pumps, teleporters and unsupported plate families are not qualified.",
+    "Player EVP gold is direct original local-player component projection; the source dedicated netMode2 dispatcher does not itself call EVP. Unknown immunity70 equipment rows are retained in capture but excluded from admitted runtime projections.",
+    "Issue126 lacks affected and unaffected stop-reason traces; no actual cause is asserted and no timeout/rate/abuse limit was relaxed.",
+    "Local NativeAOT publish and C++ toolchain installation remain user-deferred; this is managed acceptance only."
+  ],
+  "issues": {
+    "123": {
+      "complete": false,
+      "fixed": "Storage transfer stops after player phase RNG retirement",
+      "remaining": "Actual GUI client acceptance and unsupported transfer contexts"
+    },
+    "124": {
+      "complete": false,
+      "fixed": "Non-Remix eligible death terrain/liquid, census, platform drop and passive trap137 interaction",
+      "remaining": "Unqualified neighbor framing and actual client session"
+    },
+    "125": {
+      "complete": false,
+      "fixed": "Three dart families and represented status/combat continuations",
+      "remaining": "Other traps/devices and full wiring/client acceptance"
+    },
+    "126": {
+      "complete": false,
+      "blockedOn": "Actual affected/unaffected connection stop logs and client/plugin context"
+    }
+  },
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\release-items-20261116\\build14.log",
+    "logSha256": "76a655b21e6665f6b31eacdbade1c76117442b9fde528a98c80e3bcbb25c57aa"
+  },
+  "focused": {
+    "total": 21643,
+    "passed": 21643,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1341.3343513999716,
+    "tests": {
+      "total": "199310",
+      "passed": "199310",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1337.465",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 2104.2675735999946,
+    "tests": {
+      "total": "1744625",
+      "passed": "1744625",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "2086.665",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6037,
+  "causalControls": {
+    "sourceInputs": 5120,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b",
+    "controls": [
+      {
+        "control": "retired-storage",
+        "exitCode": 1,
+        "total": 12,
+        "passed": 3,
+        "failed": 9,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b"
+      },
+      {
+        "control": "trap-frame-refusal",
+        "exitCode": 1,
+        "total": 382,
+        "passed": 298,
+        "failed": 84,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b"
+      },
+      {
+        "control": "dart-clock",
+        "exitCode": 1,
+        "total": 7790,
+        "passed": 7782,
+        "failed": 8,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b"
+      },
+      {
+        "control": "sweater-duration",
+        "exitCode": 1,
+        "total": 7790,
+        "passed": 7502,
+        "failed": 288,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b"
+      },
+      {
+        "control": "venom-pulse",
+        "exitCode": 1,
+        "total": 5079,
+        "passed": 4608,
+        "failed": 471,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b"
+      },
+      {
+        "control": "venom-health-scope",
+        "exitCode": 1,
+        "total": 51,
+        "passed": 49,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b"
+      }
+    ]
+  },
+  "independentEvidence": {
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "fixtures": [
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/LavaSlimeHitEffectTerrain1458.json.gz",
+        "sha256": "8423afe67de64e90334aa14b1a3a6888c1250dd1f50ed2d6cbc1e5eb85b96fa1",
+        "uncompressedSha256": "f0be1defc261c8228cdf5f97788bd01f715d5d50289202e81fd42b75ec2b478e",
+        "rows": 252,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/LavaSlimeTrapTerrain1458.json.gz",
+        "sha256": "34da8825303810e863b23387b7315b5d1712500fe4ef06354033a1b051d3a584",
+        "uncompressedSha256": "95b9e804afcae2f900233d36e00f6baa92c90ccf83297c5fba6daee2de424eb0",
+        "rows": 108,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/SkyblockCensus1458.json.gz",
+        "sha256": "5b471eb2509bf1c4b3da213769316494105c5677434c7865cb828dff62b33e58",
+        "uncompressedSha256": "815e717660e3489ef5b8eb469b3054895e00f44c640feb5fb0d85464523e59f3",
+        "rows": 90,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0,
+        "shape": "72 rounding contexts + 18 scene timelines"
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapBirth1458.json.gz",
+        "sha256": "9195eacafa63ea8aa2432cb31bd60bfdde07dfe6cdb1b36d5cda90f939451e35",
+        "uncompressedSha256": "07049803dd56a342b408e184d14f274adf03104267729ed51817625cfc3617ee",
+        "rows": 540,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapCircuit1458.json.gz",
+        "sha256": "5d81fb207022fb8b40b0223c9303951afe5a0a670ba94346fbc8e1b0fee4aacf",
+        "uncompressedSha256": "ba205f7909de73f6e85726ef9436616eb51e3f66ab824271099cfecbebd41194",
+        "rows": 810,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapContinuation1458.json.gz",
+        "sha256": "19ea947e20e0869f69c5f9dfc48d62afffa2cc56951651fe7747b6ff7da520f8",
+        "uncompressedSha256": "f79c15a9cd48f97e590325b9f2aa4c8586c884e540b85fd18fe59a8379ce3f2c",
+        "rows": 540,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapNpcDeath1458.json.gz",
+        "sha256": "cd5b33b6f0c6e1de95fbc5d273e0026bbf199350adc532f7a53435ab46b04bc1",
+        "uncompressedSha256": "a165e3bc1dab475d61fbdb99383c800cb308ebc9729b08cd0e2e90a60dc37aaf",
+        "rows": 81,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapNpcHit1458.json.gz",
+        "sha256": "aedc9278dcc9651575c70ee1249d42aafcc223952c9ea40e9d1bc3f763a5967e",
+        "uncompressedSha256": "0cca43d8996a5c54abee7c2445a210094b58d285604fd7aae4ff19fa34aa2e42",
+        "rows": 81,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapPlayerHit1458.json.gz",
+        "sha256": "91e0b01bd73d2e603b2fcdc0cfe3540b330b4b8a8635e00a740f07514501162a",
+        "uncompressedSha256": "6d39f24a888656075d78f332f074b9064ccd3bbc94ca9f6edb7594f1e57ac2e3",
+        "rows": 648,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapPlayerVenomDot1458.json.gz",
+        "sha256": "8ecb39726fd573bd5a6068a817db8572dd1ea4c133bd9431fec8fdc5f338da2f",
+        "uncompressedSha256": "ad6870780cb58c501c31bfde0af9964398b5a5f1626a31aef0b628810470cb26",
+        "rows": 6912,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      },
+      {
+        "path": "tests/TerraRuntime.Tests/Fixtures/WiringTrapVenomDot1458.json.gz",
+        "sha256": "4588b14097f8c1269f2c8e99b69b5ea9bb1d1392c3b985c479993ef2cc554172",
+        "uncompressedSha256": "392762b63412dc98b116c27495496f902241cefd6dffec72f7e1cc64f354dda6",
+        "rows": 3024,
+        "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "exceptions": 0
+      }
+    ],
+    "trapNeighborTerrain": {
+      "rows": 108,
+      "identicalRepeats": 2,
+      "firstChanceExceptions": 0,
+      "rawSha256": "95b9e804afcae2f900233d36e00f6baa92c90ccf83297c5fba6daee2de424eb0"
+    },
+    "trapRetainedNpcDeath": {
+      "rows": 81,
+      "identicalRepeats": 2,
+      "firstChanceExceptions": 0,
+      "rawSha256": "a165e3bc1dab475d61fbdb99383c800cb308ebc9729b08cd0e2e90a60dc37aaf"
+    },
+    "sourceTool": {
+      "kind": "source-semantic-inventory",
+      "analysisOnly": true,
+      "accepted": false,
+      "sourceClosureComplete": false,
+      "observation": "E:\\TerraRuntimeAgentCache\\release-items-20261116\\source-item-flow\\run01\\observation.json"
+    },
+    "earlierLavaReceipt": "lava-slime-death-terrain-managed-20261108.json"
+  },
+  "guards": {
+    "sourceInputs": 5120,
+    "dllPaths": 411,
+    "testDllSha256": "695a65911384babef08699d9639e3bb7c75e209e8a05d007543904cc79b5c35b",
+    "cohortSha256": "7f48f4efea764ed22580d950022ff5bd2fb487b80ab9f8ab89db0c02b763ee50",
+    "afterFull": {
+      "sourceInputs": 5120,
+      "dllPaths": 411,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    }
+  },
+  "smokeProductionDllsUnchangedAfterTestScopeCorrection": true,
+  "testOnlyDllChanges": [
+    "E:\\TerraRuntimeAgentCache\\release-items-20261116\\build\\obj\\TerraRuntime.Tests\\release\\TerraRuntime.Tests.dll",
+    "E:\\TerraRuntimeAgentCache\\release-items-20261116\\build\\obj\\TerraRuntime.Tests\\release\\ref\\TerraRuntime.Tests.dll",
+    "E:\\TerraRuntimeAgentCache\\release-items-20261116\\build\\obj\\TerraRuntime.Tests\\release\\refint\\TerraRuntime.Tests.dll",
+    "E:\\TerraRuntimeAgentCache\\release-items-20261116\\build\\bin\\TerraRuntime.Tests\\release\\TerraRuntime.Tests.dll"
+  ],
+  "managedSmokes": [
+    {
+      "smoke": "loop",
+      "exitCode": 0
+    },
+    {
+      "smoke": "protocol",
+      "exitCode": 0
+    },
+    {
+      "smoke": "network",
+      "exitCode": 0
+    },
+    {
+      "smoke": "world",
+      "exitCode": 0
+    },
+    {
+      "smoke": "tui",
+      "exitCode": 0
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "98048620a08db991ee6ac7c84a573f72968de66338e015093b4caca23fad1701",
+    "smokes": [
+      {
+        "smoke": "loop",
+        "exitCode": 0
+      },
+      {
+        "smoke": "protocol",
+        "exitCode": 0
+      },
+      {
+        "smoke": "network",
+        "exitCode": 0
+      },
+      {
+        "smoke": "world",
+        "exitCode": 0
+      },
+      {
+        "smoke": "tui",
+        "exitCode": 0
+      }
+    ]
+  },
+  "auxiliaryChecks": {
+    "pythonTests": 300,
+    "projects": 15,
+    "references": 29,
+    "cycles": 0,
+    "domainFiles": 481,
+    "mirroredDocumentationPages": 137
+  },
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\release-items-20261116"
+}

@@ -183,7 +183,7 @@ public sealed partial class RuntimeProjectileStore
         {
             birth = default;
             if (!IsCurrentOwned || sourceActor is not null || births.Count == MaximumCalls || update.Spawner != byte.MaxValue ||
-                !IsWorldToolType(update.Type) || !IsValidState(in update) ||
+                !IsWorldSourceType(update.Type) || !IsValidState(in update) ||
                 !TryCreateLifecycle(update.Type, out var lifecycle) ||
                 !TrySelectVanillaAllocationSlot(working.AsSpan(0, owner.Capacity), out ushort slot) ||
                 working[slot].Generation == ulong.MaxValue) return Fail();
@@ -239,8 +239,8 @@ public sealed partial class RuntimeProjectileStore
                 state.CombatTrusted, state.CombatTrustedOwner, state.SourceNpc, state.SourceDirection);
 
         private bool Fail() { failed = true; return false; }
-        private static bool IsWorldToolType(ProjectileTypeId type) => type.Value is
-            28 or 31 or 39 or 56 or 67 or 71 or 75 or 179 or 241 or 411 or 412 or 413 or 414 or
+        private static bool IsWorldSourceType(ProjectileTypeId type) => type.Value is
+            98 or 184 or 980 or 28 or 31 or 39 or 56 or 67 or 71 or 75 or 179 or 241 or 411 or 412 or 413 or 414 or
             655 or 727 or 736 or 737 or 738 or 812;
         private static bool SameSlot(in SlotState before, in SlotState current) =>
             before.Active == current.Active && before.Generation == current.Generation &&

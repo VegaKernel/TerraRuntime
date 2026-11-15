@@ -48,3 +48,13 @@ Independent evidence retains the original `Player.DropSelectedItem` fixture and 
 A sealed but empty character import does not admit speculative cursor reconciliation for later unproved items. A captured unfinished Mana Crystal use owns its exact inventory acknowledgement before a new UI alternative can be started; the original chronology fixture is replayed both with and without initial imported crystal stock.
 
 Managed qualification for this checkpoint passes Release warnings-as-errors, focused regressions, the mandatory fast tier, the unfiltered full suite and five CoreCLR smokes. The [verification record](../verification/ordinary-character-item-drop-managed-20261108.json) binds the exact source/binary guards and effective causal controls. Broader client-session acceptance and unsupported contexts remain open; local NativeAOT is user-deferred.
+
+## Item transfers after a retired player phase
+
+Ordinary contact pickup, proven inventory throws and conserved cursor transfers retain their existing inventory, world-item, reservation and connection owners after an unrelated unsupported player phase retires the `UpdatePlayers` RNG cursor. Storage planning consumes no player RNG; drop creation continues to use the independently owned world-item RNG. A source role and world geometry must already be bound. Retirement remains permanent for operations that actually need the missing player stream.
+
+Pickup still requires the reserved player, physical contact, a living nonghost actor, expired grab delay, supported storage and proven world-item stock. Drops debit proven inventory or the remaining one-use character-import allowance before publication. A retired phase permits only idle drops and cursor transfers. Unknown item-time disables the left-click alternative; the existing conserved right-click transition can still match a completed pair. Favorite cursor return keeps its existing complete storage plan. Unknown ownership, stale generations and replayed requests grant no stock.
+
+Regression coverage includes three repeated pickup/cursor/drop cycles for Wood, Stone, Gel, mana potion and copper/silver coins, the full grab-delay clock, refused repeated drops and stale removal receipts. Controlled contact positions do not claim full item-flight parity. An unmodified client session remains a separate acceptance step.
+
+[Managed checkpoint, 2026-11-16](../verification/net11-stable-item-flow-darts-managed-20261116.json).

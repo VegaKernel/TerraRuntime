@@ -26,7 +26,7 @@ internal sealed partial class PlayerAuthority
         // stored coin sources; two possible source lanes have different full images.
         if (allowNewCandidate && pending?.Inventory is null && pending?.Shop is null &&
             request.SlotId == VanillaPlayerItemSlotCatalog.InventoryMouseItem &&
-            HasOwnedPickupContext && !member.IsDead && member.ItemPhase is not null &&
+            HasItemStorageContext && !member.IsDead && (member.ItemPhase is not null || member.ItemAnimation == 0 && (member.ControlFlags & (1 << 5)) == 0) &&
             TryCursorReport(in request, out var firstCursor))
         {
             RuntimePlayerInventoryStore.CursorMovePreparation? selected = null;
@@ -35,7 +35,7 @@ internal sealed partial class PlayerAuthority
                 if (!inventory.TryGet(command.Connection, coinSlot, out var source) || source.IsEmpty ||
                     !TerraRuntime.Contracts.Gameplay.VanillaCoinFacts.TryGetValue(source.ItemType, out _) ||
                     !inventory.TryPrepareReportedCursorMove(command.Connection, coinSlot, default,
-                        member.ItemAnimation, member.ItemPhase.Value.Selected.ItemTime, out var candidate) ||
+                        member.ItemAnimation, member.ItemPhase?.Selected.ItemTime ?? int.MaxValue, out var candidate) ||
                     candidate is null || !candidate.TrySelectCursorImage(firstCursor)) continue;
                 if (selected is not null) { RejectedEquipmentUpdates++; return true; }
                 selected = candidate;
@@ -70,7 +70,7 @@ internal sealed partial class PlayerAuthority
                 member.TryAdvanceRevision();
                 ObserveAcceptedBankBatchImage(command.Connection, completion);
                 AppliedEquipmentUpdates += pending.Inventory.DebitApplied ||
-                    IsHistoricalAmmoAcknowledgement(member,pending.Inventory.Slot,pending.Inventory.AfterSlot) ? 1 : 2;
+                    IsHistoricalAmmoAcknowledgement(member, pending.Inventory.Slot, pending.Inventory.AfterSlot) ? 1 : 2;
                 Exception? failure = null;
                 cursorMovePublishing = true;
                 try
@@ -93,14 +93,15 @@ internal sealed partial class PlayerAuthority
             }
         }
         if (!allowNewCandidate) return false;
-        if (!HasOwnedPickupContext || member.IsDead || member.ItemPhase is null ||
+        if (!HasItemStorageContext || member.IsDead ||
+            member.ItemPhase is null && (member.ItemAnimation != 0 || (member.ControlFlags & (1 << 5)) != 0) ||
             request.SlotId is < 0 or >= 58 || !TryCursorReport(in request, out var reported) ||
-            !inventory.TryPrepareReportedCursorMove(command.Connection, request.SlotId, reported, member.ItemAnimation, member.ItemPhase.Value.Selected.ItemTime, out var prepared) || prepared is null)
+            !inventory.TryPrepareReportedCursorMove(command.Connection, request.SlotId, reported, member.ItemAnimation, member.ItemPhase?.Selected.ItemTime ?? int.MaxValue, out var prepared) || prepared is null)
             return false;
         // A historical Air ACK can also be the first half of a new cursor
         // move over refilled stock. Retain the existing bounded alternative,
         // but require its exact58 companion before changing that stock.
-        bool historicalAmmoAck=IsHistoricalAmmoAcknowledgement(member,request.SlotId,reported);
+        bool historicalAmmoAck = IsHistoricalAmmoAcknowledgement(member, request.SlotId, reported);
         if (prepared.CanEagerDebit && !historicalAmmoAck)
         {
             var observation = BeginBankBatchAlternative(command, in request);
@@ -125,7 +126,9 @@ internal sealed partial class PlayerAuthority
     {
         // The existing command-input epoch retires receipts on actor writes, while verified
         // owned clocks/movement alone can progress across a fragmented source sync batch.
-        if (!HasOwnedPickupContext || member.ItemPhase is null || member.IsDead ||
+        if (!HasItemStorageContext || member.IsDead ||
+            member.ItemPhase.HasValue != pending.Phase.HasValue ||
+            member.ItemPhase is null && (member.ItemAnimation != 0 || (member.ControlFlags & (1 << 5)) != 0) ||
             member.ProjectileUseInputRevision != pending.InputRevision) return false;
         var current = member.CaptureSnapshot();
         return current.Player == pending.Before.Player && current.SelectedItem == pending.Before.SelectedItem &&

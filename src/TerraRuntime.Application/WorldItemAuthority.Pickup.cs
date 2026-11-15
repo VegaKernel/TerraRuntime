@@ -15,7 +15,7 @@ internal sealed partial class WorldItemAuthority
     internal void TickOwnedHumanPickups()
     {
         if (ownedPickupTickRunning || ownedPickupTransactionRunning || worldItems.ActiveCount == 0 ||
-            !players.HasRemotePlayerPhaseBinding || !players.HasOwnedPickupContext) return;
+            !players.HasRemotePlayerPhaseBinding || !players.HasItemStorageContext) return;
         ownedPickupTickRunning = true;
         try
         {
@@ -53,9 +53,9 @@ internal sealed partial class WorldItemAuthority
             facts.Pickup || facts.NotInventory) return null;
         // Constructor clocks alone do not establish the source-owned pickup role.
         if (!players.HasRemotePlayerPhaseBinding) return null;
-        if (!players.HasOwnedPickupContext) return false;
+        if (!players.HasItemStorageContext) return false;
         if (item.OwnerPlayerId == byte.MaxValue || !players.TryGet(item.OwnerPlayerId, out var member)) return null;
-        if (member.ItemPhase is not { } phase) return false;
+        var phase = member.ItemPhase;
         var state = member.CaptureSnapshot();
         if (requestedBy is { } sender && sender != member.Connection) return false;
         if (players.IsPickupOutOfRange(in state) || state.IsDead || (state.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0 || item.ShimmerTime != 0f ||
@@ -64,7 +64,7 @@ internal sealed partial class WorldItemAuthority
                 ? (double)item.VelocityX * item.VelocityX + (double)item.VelocityY * item.VelocityY
                 : (float)((float)(item.VelocityX * item.VelocityX) + (float)(item.VelocityY * item.VelocityY))) < .2)))) return false;
         if (!players.TryGetInventoryItem(member.Connection, state.SelectedItem, out var held) ||
-            (held.IsEmpty && phase.Selected.Animation > 0)) return false;
+            (held.IsEmpty && (phase?.Selected.Animation ?? member.ItemAnimation) > 0)) return false;
         var body = state.HasMount ? VanillaPlayerMountHitbox1458.Resolve(state.MountType) : (Width: 20f, Height: 42f);
         if (!float.IsFinite(state.PositionX) || !float.IsFinite(state.PositionY) ||
             (int)state.PositionX >= (int)item.PositionX + VanillaWorldItemOwner1458.PhysicalWidth ||

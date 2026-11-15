@@ -70,7 +70,9 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         bool goodWorld,
         RuntimeTileManipulationReplicationRegistry? replication,
         bool plantBossDowned = false,
-        IVanillaTallGateOccupancyProbe? doorOccupancy = null)
+        IVanillaTallGateOccupancyProbe? doorOccupancy = null,
+        bool? skyblockWorld = null,
+        Action? lowTileStateChanged = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
@@ -94,6 +96,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles, sideEffects: this);
         larvaMutations = tiles is null ? null : new VanillaLarvaObjectMutationService1458(tiles);
         InitializeWiring(plantBossDowned);
+        InitializeSkyblockCensus(skyblockWorld, lowTileStateChanged);
 
         if (tiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
@@ -463,14 +466,14 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             before.Wall != 0 || before.Shape != 0 || before.LiquidAmount != 0 ||
             !VanillaTileMiningRequirements1458.CanMine(tiles, x, y, before.TileType, power)) return false;
         for (int nx = x - 1; nx <= x + 1; nx++)
-        for (int ny = y - 1; ny <= y + 1; ny++)
-        {
-            if (!ContainsTile(nx, ny)) return false;
-            WorldTile neighbour = tiles.Get(nx, ny);
-            if (neighbour.LiquidAmount != 0 || (neighbour.Flags & ~WorldTileFlags.Active) != 0 ||
-                (neighbour.IsActive && neighbour.TileType != VanillaTileIds.Dirt && neighbour.TileType != VanillaTileIds.Stone))
-                return false;
-        }
+            for (int ny = y - 1; ny <= y + 1; ny++)
+            {
+                if (!ContainsTile(nx, ny)) return false;
+                WorldTile neighbour = tiles.Get(nx, ny);
+                if (neighbour.LiquidAmount != 0 || (neighbour.Flags & ~WorldTileFlags.Active) != 0 ||
+                    (neighbour.IsActive && neighbour.TileType != VanillaTileIds.Dirt && neighbour.TileType != VanillaTileIds.Stone))
+                    return false;
+            }
         return CommitServerPlayerPick(serverPlayers, botId, bot, actor, x, y, in before);
     }
 
@@ -490,13 +493,13 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         if (!before.IsActive || before.TileType != expectedType || !VanillaBotMiningMaterials1458.IsSingleHitMaterial(expectedType) ||
             before.Wall != 0 || before.LiquidAmount != 0 || before.Flags != WorldTileFlags.Active) return false;
         for (int nx = x - 1; nx <= x + 1; nx++)
-        for (int ny = y - 1; ny <= y + 1; ny++)
-        {
-            if (!ContainsTile(nx, ny)) return false;
-            var neighbour = tiles.Get(nx, ny);
-            if (neighbour.LiquidAmount != 0 || neighbour.Wall != 0 || (neighbour.Flags & ~WorldTileFlags.Active) != 0 ||
-                neighbour.IsActive && !VanillaBotMiningMaterials1458.IsSingleHitMaterial(neighbour.TileType)) return false;
-        }
+            for (int ny = y - 1; ny <= y + 1; ny++)
+            {
+                if (!ContainsTile(nx, ny)) return false;
+                var neighbour = tiles.Get(nx, ny);
+                if (neighbour.LiquidAmount != 0 || neighbour.Wall != 0 || (neighbour.Flags & ~WorldTileFlags.Active) != 0 ||
+                    neighbour.IsActive && !VanillaBotMiningMaterials1458.IsSingleHitMaterial(neighbour.TileType)) return false;
+            }
         return CommitServerPlayerPick(serverPlayers, botId, bot, actor, x, y, in before);
     }
 

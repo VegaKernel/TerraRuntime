@@ -94,6 +94,8 @@ public static class VanillaSkyblockRuntimePolicy1458
         if (!skyblockWorld || totalTileCount <= 0 || activeTileCount < 0 || activeTileCount > totalTileCount)
             return false;
 
-        return (long)activeTileCount * 100L < (long)totalTileCount * LowTilePercent;
+        // Skyblock.Calculate compares a Single quotient with 0.1f. Integer
+        // cross-multiplication differs at large-count rounding boundaries.
+        return (float)activeTileCount / totalTileCount < 0.1f;
     }
 }

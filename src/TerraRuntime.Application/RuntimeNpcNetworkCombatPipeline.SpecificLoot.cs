@@ -28,8 +28,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         worldClock is { } clock ? !clock.DayTime && clock.BloodMoonActive : null,
         worldClock is { } weather ? MathF.Abs(weather.WindSpeedTarget) >= .4f : null);
 
-    private bool? CaptureSpecificLowTiles() => npcSpecificLowTiles is not null
-        ? npcSpecificLowTiles() : skyblockLowTiles ? null : false;
+    private bool? CaptureSpecificLowTiles()
+    {
+        bool? explicitFact = npcSpecificLowTiles?.Invoke();
+        if (explicitFact.HasValue) return explicitFact;
+        if (deathWorldTiles?.TryCaptureSkyblockLowTiles(out bool owned) == true) return owned;
+        // An explicitly unknown fact stays unknown when no owned census resolves it.
+        return npcSpecificLowTiles is not null || skyblockLowTiles ? null : false;
+    }
 
     private bool TryCaptureSpecificLootContext(in NpcSnapshot npc, out VanillaNpcLootContext context)
     {

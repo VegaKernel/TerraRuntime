@@ -428,8 +428,11 @@ public sealed class RuntimeProjectileStateExecutor
 
         // The terminal snapshot includes this physical movement, but Kill and its
         // effects still belong to the earlier lifetime boundary and run only once.
-        tail = normalized with { KillOrigin = death.KillOrigin ?? new ProjectileKillOrigin(
-            death.State.PositionX, death.State.PositionY) };
+        tail = normalized with
+        {
+            KillOrigin = death.KillOrigin ?? new ProjectileKillOrigin(
+            death.State.PositionX, death.State.PositionY)
+        };
         return true;
     }
 
@@ -438,7 +441,7 @@ public sealed class RuntimeProjectileStateExecutor
         out ProjectileSimulationStepResult normalized)
     {
         if ((proposed.SourceWetCountOverride is not null || proposed.ShimmerVisualOffers != 0) &&
-                !VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(proposed.State.Type) ||
+                !VanillaProjectileUpdateFacts.SupportsSourceCollisionOffers1458(proposed.State.Type) ||
             proposed.SourceWetCountOverride is > 10 || proposed.ShimmerVisualOffers is not (0 or 10))
         {
             normalized = default;
@@ -453,7 +456,7 @@ public sealed class RuntimeProjectileStateExecutor
         }
         if (proposed.CollisionTileCutOffer.HasValue &&
             !((proposed.State.Type == VanillaProjectileIds.NurseSyringeHeal && proposed.State.Damage == 0) ||
-                VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(proposed.State.Type) && proposed.State.Damage >= 0))
+                VanillaProjectileUpdateFacts.SupportsSourceCollisionOffers1458(proposed.State.Type) && proposed.State.Damage >= 0))
         {
             normalized = default;
             return false;

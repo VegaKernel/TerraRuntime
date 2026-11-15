@@ -1,5 +1,7 @@
 # Руководство по проекту TerraRuntime
 
+Для сборки нужен стабильный .NET 11 SDK `11.0.100` либо более новый стабильный SDK ветки .NET 11, разрешённый в `global.json`. Выбор предварительных версий SDK отключён. Проекты поставки используют `net11.0`; самостоятельный NativeAOT и расширяемый CoreCLR остаются отдельными профилями поставки.
+
 [English](../en/project-guide.md) · [Документация](README.md) · [Архитектура](architecture.md) · [Host interfaces](host-interfaces.md) · [Roadmap](../roadmap.md)
 
 ## 1. Что такое TerraRuntime
@@ -277,3 +279,5 @@ RU/EN documentation changes являются частью того же implemen
 | new limitation/divergence | user-facing guide + roadmap |
 
 Documentation описывает implemented behavior и явно отделяет его от target design.
+
+[Проверка managed-сборки, 2026-11-16](../verification/net11-stable-item-flow-darts-managed-20261116.json).

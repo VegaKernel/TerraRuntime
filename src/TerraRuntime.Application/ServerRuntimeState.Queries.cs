@@ -12,6 +12,8 @@ namespace TerraRuntime.Application;
 internal sealed partial class ServerRuntimeState
 {
     internal bool IsCurrentPlayerConnection(ConnectionHandle connection) => _runtime.Players.IsCurrent(connection);
+    internal bool TryCaptureSkyblockLowTiles(out bool lowTiles) =>
+        _runtime.WorldTileAuthority.TryCaptureSkyblockLowTiles(out lowTiles);
 
     internal bool TryCapturePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
         => _runtime.Players.TryCapture(player, out snapshot);

@@ -56,6 +56,11 @@ public sealed class VanillaWorldLiquidSimulator1458
     private bool discoveryComplete;
     private bool useInitialPopulationWrites;
     private bool worldGenerationTilesIgnoreWater;
+    // Liquid.ReInit starts at maxLiquid; UpdateLiquid replaces it at each live
+    // scheduler entry. Death/framing preparations must retain the last value,
+    // rather than deriving a different capacity from a later player census.
+    internal int CurrentMaximumLiquid1458 { get; private set; } = 25_000;
+    internal bool OwnsTiles(WorldTileStore candidate) => ReferenceEquals(tiles, candidate);
     private Func<TileTypeId, bool>? generationSolid;
     private Action<TileTypeId, bool>? generationSetSolid;
 
@@ -219,6 +224,7 @@ public sealed class VanillaWorldLiquidSimulator1458
 
         int cycles = 10 + activeServerPlayersInLiquidWindow / DedicatedServerKillPlayerDivisor1458;
         int currentMaximum = 25_000 - activeServerPlayersInLiquidWindow * 250;
+        CurrentMaximumLiquid1458 = currentMaximum;
         int sourceSlice = Math.Max(1, currentMaximum / cycles);
         int liveBudget = Math.Min(workBudget, sourceSlice);
         return TickCore(stableKillUpdates, VanillaLiquidUpdateMode1458.Ordinary, liveBudget, changes);

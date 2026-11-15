@@ -147,7 +147,7 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         ProjectileTypeId outputType = current.Type;
         byte? sourceWetCountOverride = null;
         byte shimmerVisualOffers = 0;
-        if (!definition.IgnoreWater && VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(current.Type))
+        if (!definition.IgnoreWater && VanillaProjectileUpdateFacts.SupportsSourceCollisionOffers1458(current.Type))
         {
             // Projectile.Update uses first-contact WetCollision for honey/shimmer,
             // but an independent full-body LavaCollision. Kind history persists
@@ -228,7 +228,7 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             behaviorPositionY != (behavior.PositionYOverride ?? current.PositionY));
         // HandleMovement treats a slope position correction as an impact even
         // when both velocity components remain unchanged (horizontal overlap).
-        if (VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(current.Type))
+        if (VanillaProjectileUpdateFacts.SupportsSourceCollisionOffers1458(current.Type))
             tileImpact = sourceTileImpact;
         bool nurseCollisionHandled = false;
         int? nursePenetration = null;
@@ -538,7 +538,7 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             KillOrigin: killOrigin,
             PenetrateOverride: nursePenetration,
             CollisionTileCutOffer: current.Type == VanillaProjectileIds.NurseSyringeHeal && tileImpact ||
-                VanillaGroundCombatPlayerHit1458.IsSupported(current.Type) && sourceTileImpact
+                (VanillaGroundCombatPlayerHit1458.IsSupported(current.Type) || VanillaWiringDartTrap1458.IsDart(current.Type)) && sourceTileImpact
                 ? new ProjectileCollisionTileCutOffer() : null)
         {
             SourceWetCountOverride = sourceWetCountOverride,
@@ -548,9 +548,13 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         };
         if (current.Type == VanillaProjectileIds.NurseSyringeHeal &&
             (nursePenetration ?? projectile.Lifecycle.PenetrateOverride ?? 3) == 0)
-            next = next with { TimeLeft = 0, TerminationReason = tileImpact
+            next = next with
+            {
+                TimeLeft = 0,
+                TerminationReason = tileImpact
                 ? ProjectileSimulationTerminationReason.TileCollision
-                : ProjectileSimulationTerminationReason.BehaviorKill };
+                : ProjectileSimulationTerminationReason.BehaviorKill
+            };
         return true;
     }
 

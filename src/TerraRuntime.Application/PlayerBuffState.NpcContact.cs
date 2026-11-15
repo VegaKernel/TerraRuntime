@@ -19,7 +19,10 @@ internal sealed partial class PlayerBuffState
     internal PlayerDebuffSnapshot1458 CaptureOwnedNpcContactDebuffs() =>
         new(ContainsOwnedNpcContact(VanillaBuffIds.OnFire), ContainsOwnedNpcContact(VanillaBuffIds.CursedInferno),
             ContainsOwnedNpcContact(VanillaBuffIds.Poisoned))
-            { Electrified = ContainsOwnedNpcContact(VanillaBuffIds.Electrified) };
+        {
+            Electrified = ContainsOwnedNpcContact(VanillaBuffIds.Electrified),
+            Venom = ContainsOwnedNpcContact(VanillaBuffIds.Venom)
+        };
     internal bool ContainsOwnedNpcContact(BuffTypeId type)
     {
         for (int i = 0; i < Capacity; i++)

@@ -13,13 +13,16 @@ internal sealed partial class PlayerAuthority
 {
     internal bool TryPrepareGroundCombatHits(in ProjectileSnapshot initial, NpcHandle sourceNpc,
         long tick, bool expertMode, bool masterMode, bool goodWorld,
-        VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture terrain,
+        VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain,
         out GroundCombatHitPreparation? preparation)
     {
         preparation = null;
-        if (!sourceNpc.IsAssigned || !VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) ||
+        bool dart = initial.Type.Value is 98 or 184 or 980 && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
+        if (!dart && (!sourceNpc.IsAssigned || !VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type)) ||
+            terrain is null && !dart ||
             expertMode != this.expertMode || masterMode != this.masterMode || currentCombatTick != tick)
             return false;
+        if (!TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var dartDefinition)) return false;
         var token = new GroundCombatHitPreparation(this, initial, sourceNpc, tick, expertMode, masterMode, goodWorld);
         foreach (var member in membership.Members)
         {
@@ -31,8 +34,8 @@ internal sealed partial class PlayerAuthority
             if (snapshot.HasMount && snapshot.MountType > 65) return false;
             var body = snapshot.HasMount ? VanillaPlayerMountHitbox1458.Resolve(snapshot.MountType)
                 : (VanillaPlayerHitboxFacts.BaseWidth, VanillaPlayerHitboxFacts.BaseHeight);
-            if (snapshot.IsDead || initial.Damage <= 0 || !terrain.MayReach(snapshot.PositionX, snapshot.PositionY,
-                    (int)body.Item1, (int)body.Item2)) continue;
+            if (snapshot.IsDead || initial.Damage <= 0 || !(terrain?.MayReach(snapshot.PositionX, snapshot.PositionY,
+                    (int)body.Item1, (int)body.Item2) ?? GroundCombatIntersects(in initial, in dartDefinition, in snapshot))) continue;
             // The source local player's mount body requires a separately owned profile.
             if (snapshot.HasMount || !TryCaptureProjectileUse(member.Connection, out var profile) || profile is null ||
                 !TryCaptureIncomingCombat(snapshot.Player, out var incoming) || !incoming.IsAlive ||
@@ -136,6 +139,7 @@ internal sealed partial class PlayerAuthority
             if (immune[slot]) return true;
             int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(shot.Damage,
                 previewRandom.Next(-15, 16), Math.Min(3, (master ? 3 : expert ? 2 : 1) + (goodWorld ? 1 : 0)));
+            if (initial.Type.Value is 98 or 184 or 980 && capture.Combat.DeadMansSweater) damage = Math.Min((int)(damage * .5f), 300);
             if (damage <= 0) return true;
             evpContact = true;
             if (capture.GodMode)
@@ -145,7 +149,7 @@ internal sealed partial class PlayerAuthority
                 return true;
             }
             int direction = target.PositionX + VanillaBasePlayerWidth / 2 < shot.PositionX + definition.Width / 2 ? -1 : 1;
-            var attack = new AuthoritativeAttackDamage(DamageSource.FromNpcProjectile(sourceNpc, shot.Handle),
+            var attack = new AuthoritativeAttackDamage(sourceNpc.IsAssigned ? DamageSource.FromNpcProjectile(sourceNpc, shot.Handle) : DamageSource.FromEnvironmentProjectile(shot.Handle),
                 damage, 0, false, 4.5f, direction);
             if (!VanillaCombatDamagePipeline.TryResolvePlayerDamage(in attack, capture.Combat, false,
                     out var final, expert || goodWorld, master || expert && goodWorld) || final.Damage <= 0 ||
@@ -155,7 +159,8 @@ internal sealed partial class PlayerAuthority
             NpcContactBuff1458[] effects = [];
             if (life > 0)
             {
-                var status = new ProjectilePlayerHurt1458(shot.Type, capture.Player.DerivedLifeMax!.Value, goodWorld, previewRandom);
+                var status = new ProjectilePlayerHurt1458(shot.Type, capture.Player.DerivedLifeMax!.Value, goodWorld, previewRandom)
+                { DeadMansSweater = capture.Combat.DeadMansSweater };
                 if (status.TryResolveStatusAfterSurvivingHurt(final.Damage, expert, master, out var type, out int duration))
                 {
                     if (next.TryApplyNpcContactBuff(type, duration, capture.Combat.IsImmuneToNpcContactBuff(type)))

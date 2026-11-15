@@ -17,12 +17,14 @@ internal sealed partial class PlayerAuthority
         out CursorReturnPreparation? preparation, bool requireFavorite = true, bool animateResidual = true)
     {
         preparation = null;
-        if (cursorReturnPublishing || !HasOwnedPickupContext || !membership.TryGet(connection, out var member) ||
-            member.ItemPhase is not { } phase || phase.Channel || member.Revision == ulong.MaxValue ||
+        if (cursorReturnPublishing || !HasItemStorageContext || !membership.TryGet(connection, out var member) ||
+            member.ItemPhase is { Channel: true } || member.Revision == ulong.MaxValue ||
             !inventory.TryGet(connection, 58, out var cursor) || cursor.IsEmpty ||
             (requireFavorite && (cursor.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) == 0))
             return false;
+        var phase = member.ItemPhase;
         var state = member.CaptureSnapshot();
+        if (phase is null && (member.ItemAnimation > 0 || (state.ControlFlags & (1 << 5)) != 0)) return false;
         if (state.IsDead || (state.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0 ||
             IsPickupOutOfRange(in state) || !inventory.TryPrepareCursorReturn(connection, receivePrefixWorld, dropResidual, out var items) ||
             items is null || (!dropResidual && !items.Residual.IsEmpty))
@@ -82,7 +84,7 @@ internal sealed partial class PlayerAuthority
         if (firstRequest.PlayerSlot != command.Connection.Player.Slot || firstRequest.SlotId != first || first < 0 ||
             firstRequest != prepared.Items.After[first].ToCommitRequest(command.Connection.Player.Slot, first) ||
             !inventory.TryPrepareReportedCursorMove(command.Connection, first, prepared.Items.After[first],
-                member.ItemAnimation, member.ItemPhase!.Value.Selected.ItemTime, out var pair) || pair is null)
+                member.ItemAnimation, member.ItemPhase?.Selected.ItemTime ?? int.MaxValue, out var pair) || pair is null)
             return false;
         member.CursorMove = new(member.CaptureSnapshot(), member.ItemPhase, member.ProjectileUseInputRevision,
             pair, new(prepared));
@@ -90,7 +92,7 @@ internal sealed partial class PlayerAuthority
     }
 
     internal sealed class CursorReturnPreparation(PlayerAuthority owner, RuntimePlayerMember member,
-        PlayerStateSnapshot before, RuntimePlayerItemPhase1458 phase,
+        PlayerStateSnapshot before, RuntimePlayerItemPhase1458? phase,
         RuntimePlayerInventoryStore.CursorReturnPreparation items, bool throwsResidual)
     {
         private bool adopted;
@@ -99,7 +101,7 @@ internal sealed partial class PlayerAuthority
         internal RuntimePlayerInventoryItem Residual => items.Residual;
         internal short[] ChangedSlots { get; } = Enumerable.Range(0, items.Before.Length)
             .Where(slot => items.Before[slot] != items.After[slot]).Select(slot => checked((short)slot)).ToArray();
-        internal bool IsCurrent => !adopted && owner.HasOwnedPickupContext &&
+        internal bool IsCurrent => !adopted && owner.HasItemStorageContext &&
             owner.membership.TryGet(member.Connection, out var current) && ReferenceEquals(current, member) &&
             member.CaptureSnapshot() == before && member.ItemPhase == phase &&
             member.Revision != ulong.MaxValue && items.IsCurrent;
@@ -114,7 +116,8 @@ internal sealed partial class PlayerAuthority
                 throw new InvalidOperationException("Prepared cursor return lost callback-free adoption.");
             if (throwsResidual)
             {
-                member.ItemPhase = phase with { Selected = phase.Selected with { Animation = 10, AnimationMax = 10 } };
+                if (phase is { } retained)
+                    member.ItemPhase = retained with { Selected = retained.Selected with { Animation = 10, AnimationMax = 10 } };
                 member.ItemAnimation = 10;
             }
             member.CursorMove = null;

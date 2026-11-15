@@ -2,6 +2,8 @@
 
 High-performance clean-room **.NET 11** server runtime for Terraria, focused on vanilla behavioral parity, security, fast startup and scalability.
 
+Build with stable .NET SDK `11.0.100` or a later stable .NET 11 SDK permitted by `global.json`. Prerelease SDKs are excluded.
+
 TerraRuntime deliberately keeps two shipping profiles:
 
 - an extensible CoreCLR host for Vega and ordinary drop-in managed DLL plugins;

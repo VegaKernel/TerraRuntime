@@ -1,5 +1,7 @@
 # TerraRuntime project guide
 
+Builds require the stable .NET 11 SDK `11.0.100` or a newer stable .NET 11 SDK allowed by `global.json`. Prerelease SDK selection is disabled. Shipping projects target `net11.0`; standalone NativeAOT and extensible CoreCLR remain separate deployment profiles.
+
 [Русский](../ru/project-guide.md) · [Documentation](README.md) · [Architecture](architecture.md) · [Host interfaces](host-interfaces.md) · [Roadmap](../roadmap.md)
 
 ## 1. What TerraRuntime is
@@ -277,3 +279,5 @@ RU and EN documentation changes are part of the same implementation work. Archit
 | new limitation/divergence | user-facing guide + roadmap |
 
 Documentation describes implemented behavior and explicitly separates it from target design.
+
+[Managed checkpoint, 2026-11-16](../verification/net11-stable-item-flow-darts-managed-20261116.json).

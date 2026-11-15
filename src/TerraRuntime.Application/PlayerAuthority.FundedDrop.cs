@@ -20,9 +20,13 @@ internal sealed partial class PlayerAuthority
         out FundedDropPreparation? preparation)
     {
         preparation = null;
-        if (!HasOwnedPickupContext || !membership.TryGet(connection, out var member) || member.ItemPhase is not { } phase || phase.Channel ||
-            member.Revision == ulong.MaxValue) return false;
+        if (!HasItemStorageContext || !membership.TryGet(connection, out var member) ||
+            member.ItemPhase is { Channel: true } || member.Revision == ulong.MaxValue) return false;
+        var phase = member.ItemPhase;
         var state = member.CaptureSnapshot();
+        // A retired phase cannot establish a channelled attack or animation tail.
+        // Admit only an idle transfer; the existing scalar animation clock owns its delay.
+        if (phase is null && (member.ItemAnimation > 0 || (state.ControlFlags & (1 << 5)) != 0)) return false;
         if (state.IsDead || (state.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0 ||
             IsPickupOutOfRange(in state) || !inventory.TryGet(connection, 58, out var mouse)) return false;
         short slot = mouse.IsEmpty ? state.SelectedItem : (short)58;
@@ -56,11 +60,11 @@ internal sealed partial class PlayerAuthority
     }
 
     internal sealed class FundedDropPreparation(PlayerAuthority owner, RuntimePlayerMember member,
-        PlayerStateSnapshot before, RuntimePlayerItemPhase1458 phase, RuntimePlayerInventoryStore.FundedDropPreparation? items, CursorReturnPreparation? cursorReturn)
+        PlayerStateSnapshot before, RuntimePlayerItemPhase1458? phase, RuntimePlayerInventoryStore.FundedDropPreparation? items, CursorReturnPreparation? cursorReturn)
     {
         private bool adopted;
         private bool published;
-        internal bool IsCurrent => !adopted && owner.HasOwnedPickupContext && owner.membership.TryGet(member.Connection, out var current) &&
+        internal bool IsCurrent => !adopted && owner.HasItemStorageContext && owner.membership.TryGet(member.Connection, out var current) &&
             ReferenceEquals(current, member) && member.CaptureSnapshot() == before && member.ItemPhase == phase &&
             member.Revision != ulong.MaxValue && (cursorReturn?.IsCurrent ?? items!.IsCurrent);
         internal bool TryAdoptUnpublished()
@@ -74,7 +78,8 @@ internal sealed partial class PlayerAuthority
             }
             if (!member.TryAdvanceRevision() || !items!.TryAdoptUnpublished())
                 throw new InvalidOperationException("Prepared funded drop lost callback-free inventory adoption.");
-            member.ItemPhase = phase with { Selected = phase.Selected with { Animation = 10, AnimationMax = 10 } };
+            if (phase is { } retained)
+                member.ItemPhase = retained with { Selected = retained.Selected with { Animation = 10, AnimationMax = 10 } };
             member.ItemAnimation = 10;
             adopted = true;
             return true;

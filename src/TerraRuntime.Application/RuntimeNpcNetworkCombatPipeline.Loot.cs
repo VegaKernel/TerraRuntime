@@ -52,6 +52,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         {
             // Dedicated Dust.NewDust returns early, but its caller still selects noGravity forty times.
             for (int particle = 0; particle < 40; particle++) random.NextInt32(0, 8);
+            if (IsPreviewingDeath && !TryPrepareLavaDeathTerrain(in npc)) deathPreviewFailed = true;
         }
         VanillaTownNpcDeathHitEffect1458.ConsumeLethalChoices(npc.TypeIdentity, random);
         if (npc.Type == 687) VanillaPoofOfSmoke1458.ConsumeDedicatedSourceOffers(random);
@@ -97,6 +98,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 // Items/RNG and the ledger are already adopted before the first status54.
                 if (!plan.IsAdoptedUnpublished ||
                     !plan.TryPublishPhase(NpcDeathDropPhase1458.Prelude, lootDelivery.Adopt) ||
+                    (plannedLavaDeath is not null && !plannedLavaDeath.TryPublishTileKills()) ||
                     !PublishPreparedDeathPrelude()) return false;
                 return plan.TryPublishPhase(NpcDeathDropPhase1458.Imported, lootDelivery.Adopt);
             }

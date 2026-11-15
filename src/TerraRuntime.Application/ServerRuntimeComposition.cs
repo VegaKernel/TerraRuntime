@@ -325,8 +325,11 @@ internal sealed class ServerRuntimeComposition
             worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
             tileManipulationReplication,
             plantBossDowned: townCommerceWorldFacts?.DownedPlantera ?? false,
-            doorOccupancy: tallGateOccupancy);
+            doorOccupancy: tallGateOccupancy,
+            skyblockWorld: townCommerceWorldFacts?.SkyblockWorld,
+            lowTileStateChanged: () => { worldClock?.RequestWorldInfoSync(); worldStateAdopted?.Invoke(); });
         npcAuthority.PressurePlateContact = worldTileAuthority.ApplyNpcPressurePlate;
+        if (worldTiles is not null) npcAuthority.BindDeathWorldTiles(worldTileAuthority);
         if (serverPlayers is not null) serverPlayers.PressurePlateContact = worldTileAuthority.ApplyPlayerPressurePlate;
         worldClock?.BindToolTreeShakeOwner(worldTileAuthority);
         playersAuthority.BindToolActions(worldTileAuthority, projectileAuthority);
@@ -389,7 +392,8 @@ internal sealed class ServerRuntimeComposition
             progression,
             townCommerceWorldFacts,
             expertMode,
-            masterMode) { ChestCommands = chestCommands };
+            masterMode)
+        { ChestCommands = chestCommands };
     }
 
 }

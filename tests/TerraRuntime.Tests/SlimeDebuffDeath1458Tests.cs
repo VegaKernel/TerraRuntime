@@ -77,6 +77,20 @@ public sealed class SlimeDebuffDeath1458Tests
         Assert.Single(fixture.Drain(), bytes => bytes[2] == 28);
     }
 
+    [Fact]
+    public void Venom_lethal_pulse_adopts_deeper_counter_and_expiry_with_the_existing_death_owner()
+    {
+        var fixture = new Fixture(1458, 0, 1, venom: true);
+        Assert.True(fixture.Status.TryPlan(in fixture.Parent, out var plan, allowLethal: true));
+        Assert.True(plan.Venom);
+        Assert.Equal(-14, plan.LifeAfter);
+        Assert.Equal(-1, plan.CounterAfter);
+        Assert.Equal(1, fixture.Executor.Tick(fixture.Stepper).Applied);
+        Assert.False(fixture.Npcs.TryGet(fixture.Parent.Handle, out _));
+        Assert.Single(fixture.Drain(), bytes => bytes[2] == 28);
+        Assert.Equal(0, fixture.Executor.Tick(fixture.Stepper).Applied);
+    }
+
     private sealed class Fixture : IRuntimePlayerSlotSnapshotLookup
     {
         internal readonly RuntimeNpcStore Npcs;
@@ -88,7 +102,7 @@ public sealed class SlimeDebuffDeath1458Tests
         internal readonly NpcSnapshot Parent;
         private readonly TerrariaConnectionOutboundQueue outbound;
 
-        internal Fixture(int seed, int held, int duration)
+        internal Fixture(int seed, int held, int duration, bool venom = false)
         {
             Random = new(seed);
             var registry = new RuntimeNpcReplicationRegistry();
@@ -96,11 +110,18 @@ public sealed class SlimeDebuffDeath1458Tests
             var random = new SystemVanillaNpcRandom(Random);
             Npcs.SetVanillaSpawnRandomSource(random);
             Assert.True(Npcs.TrySpawn(0, new(1, 1, 800, 462, 0, 0, 0, new(0, held, 0, 0),
-                NpcSimulationState.Initial with { Life = 1, LifeMax = 25, LifeRegenCounter = -119,
-                    Immortal = false, MoneyValue = 0, ExtraMoneyValue = 0 }), out Parent));
+                NpcSimulationState.Initial with
+                {
+                    Life = 1,
+                    LifeMax = 25,
+                    LifeRegenCounter = venom ? -1741 : -119,
+                    Immortal = false,
+                    MoneyValue = 0,
+                    ExtraMoneyValue = 0
+                }), out Parent));
             Status = new(Npcs, registry.PublishNpcBuffs);
             registry.BindNpcBuffStatus(Status);
-            Assert.True(Status.TryApply(Parent.Handle, VanillaBuffIds.OnFire, duration));
+            Assert.True(Status.TryApply(Parent.Handle, venom ? VanillaBuffIds.Venom : VanillaBuffIds.OnFire, duration));
             var pipeline = new RuntimeNpcNetworkCombatPipeline(Npcs, Items, this,
                 new PlayerAuthority(null, null), () => 0, registry, new(Items), null,
                 new RuntimeWorldClock(0, true, 0, 0, 1), new(), false, false,
@@ -127,9 +148,19 @@ public sealed class SlimeDebuffDeath1458Tests
 
         public bool TryGetPlayer(PlayerSlotId slot, out PlayerStateSnapshot player)
         {
-            player = default(PlayerStateSnapshot) with { Player = new(new(0), new(1)), Revision = new(1),
-                PositionX = 820, PositionY = 438, HasHealth = true, Life = 400, MaxLife = 400,
-                HasMana = true, Mana = 200, MaxMana = 200 };
+            player = default(PlayerStateSnapshot) with
+            {
+                Player = new(new(0), new(1)),
+                Revision = new(1),
+                PositionX = 820,
+                PositionY = 438,
+                HasHealth = true,
+                Life = 400,
+                MaxLife = 400,
+                HasMana = true,
+                Mana = 200,
+                MaxMana = 200
+            };
             return slot.Value == 0;
         }
 

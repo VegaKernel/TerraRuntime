@@ -820,6 +820,7 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     }
 
     private static bool IsHostileStraightArrow(ProjectileTypeId type) =>
+        VanillaWiringDartTrap1458.IsDart(type) ||
         type == VanillaProjectileIds.WallOfFleshEyeLaser ||
         type == VanillaProjectileIds.ProbePinkLaser ||
         type == VanillaProjectileIds.GroundFighter243Bolt ||

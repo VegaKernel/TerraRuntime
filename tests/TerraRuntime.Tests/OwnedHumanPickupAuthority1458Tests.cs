@@ -382,8 +382,9 @@ public sealed class OwnedHumanPickupAuthority1458Tests
             Assert.NotNull(f.Member.ItemPhase);
             var item = f.Drop(110, 1);
             f.State.Apply(new WorldItemRemoveRuntimeCommand(f.Connection, item.Handle));
-            Assert.True(f.Items.TryGetActive(item.Handle.Slot, out _));
-            Assert.True(f.ItemImage()[0].IsEmpty);
+            Assert.False(f.Items.TryGetActive(item.Handle.Slot, out _));
+            Assert.Equal(1, f.ItemImage()[0].Stack);
+            Assert.False(f.Players.HasOwnedPickupContext);
         }
     }
 
@@ -671,34 +672,37 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         int compared = 0;
         foreach (string resourceName in new[] { "OwnedCursorMove1458", "OwnedCursorMoveSupplement1458", "OwnedCursorClock1458" })
         {
-        using var resource = typeof(OwnedHumanPickupAuthority1458Tests).Assembly.GetManifestResourceStream(resourceName);
-        Assert.NotNull(resource); using var gzip = new GZipStream(resource, CompressionMode.Decompress);
-        using var document = JsonDocument.Parse(gzip);
-        foreach (string platform in new[] { "linux", "windows" })
-        foreach (var row in document.RootElement.GetProperty(platform).GetProperty("rows").EnumerateArray())
-        {
-            string name = row.GetProperty("spec").GetProperty("Name").GetString()!;
-            // Configured original Item.Prefix retains82; this proves tuple movement, not GetData5 admission.
-            short slot = checked((short)row.GetProperty("spec").GetProperty("Slot").GetInt32());
-            var before = row.GetProperty("before"); var after = row.GetProperty("afterMirror");
-            using var f = new Fixture(platform == "windows");
-            SeedOriginalCursorBefore(f, ReadCursorTuple(before.GetProperty("inventory")[slot]), ReadCursorTuple(before.GetProperty("mouse")), slot);
-            var spec = row.GetProperty("spec");
-            f.Member.ItemAnimation = spec.GetProperty("Animation").GetInt32();
-            if (f.Member.ItemPhase is { } sourcePhase)
-                f.Member.ItemPhase = sourcePhase with { Selected = sourcePhase.Selected with
-                { Animation = f.Member.ItemAnimation, ItemTime = spec.TryGetProperty("Time", out var time) ? time.GetInt32() : 0 } };
-            var nextSlot = ReadCursorTuple(after.GetProperty("inventory")[slot]);
-            var nextCursor = ReadCursorTuple(after.GetProperty("mouse"));
-            f.Set(slot, checked((short)nextSlot.ItemType.Value), nextSlot.Stack, checked((byte)nextSlot.Prefix.Value), nextSlot.ItemFlags);
-            f.Set(58, checked((short)nextCursor.ItemType.Value), nextCursor.Stack, checked((byte)nextCursor.Prefix.Value), nextCursor.ItemFlags);
-            var image = f.ItemImage();
-            for (int index = 0; index < image.Length; index++) Assert.True(ReadCursorTuple(after.GetProperty("inventory")[index]) == image[index], $"{platform}/{name}/slot{index}: wanted={ReadCursorTuple(after.GetProperty("inventory")[index])} actual={image[index]}");
-            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
-            Assert.True(store.TryGetFundedQuantity(f.Connection, slot, out var slotFunding)); Assert.Equal(image[slot].Stack, slotFunding);
-            Assert.True(store.TryGetFundedQuantity(f.Connection, 58, out var cursorFunding)); Assert.Equal(image[58].Stack, cursorFunding);
-            compared++;
-        }
+            using var resource = typeof(OwnedHumanPickupAuthority1458Tests).Assembly.GetManifestResourceStream(resourceName);
+            Assert.NotNull(resource); using var gzip = new GZipStream(resource, CompressionMode.Decompress);
+            using var document = JsonDocument.Parse(gzip);
+            foreach (string platform in new[] { "linux", "windows" })
+                foreach (var row in document.RootElement.GetProperty(platform).GetProperty("rows").EnumerateArray())
+                {
+                    string name = row.GetProperty("spec").GetProperty("Name").GetString()!;
+                    // Configured original Item.Prefix retains82; this proves tuple movement, not GetData5 admission.
+                    short slot = checked((short)row.GetProperty("spec").GetProperty("Slot").GetInt32());
+                    var before = row.GetProperty("before"); var after = row.GetProperty("afterMirror");
+                    using var f = new Fixture(platform == "windows");
+                    SeedOriginalCursorBefore(f, ReadCursorTuple(before.GetProperty("inventory")[slot]), ReadCursorTuple(before.GetProperty("mouse")), slot);
+                    var spec = row.GetProperty("spec");
+                    f.Member.ItemAnimation = spec.GetProperty("Animation").GetInt32();
+                    if (f.Member.ItemPhase is { } sourcePhase)
+                        f.Member.ItemPhase = sourcePhase with
+                        {
+                            Selected = sourcePhase.Selected with
+                            { Animation = f.Member.ItemAnimation, ItemTime = spec.TryGetProperty("Time", out var time) ? time.GetInt32() : 0 }
+                        };
+                    var nextSlot = ReadCursorTuple(after.GetProperty("inventory")[slot]);
+                    var nextCursor = ReadCursorTuple(after.GetProperty("mouse"));
+                    f.Set(slot, checked((short)nextSlot.ItemType.Value), nextSlot.Stack, checked((byte)nextSlot.Prefix.Value), nextSlot.ItemFlags);
+                    f.Set(58, checked((short)nextCursor.ItemType.Value), nextCursor.Stack, checked((byte)nextCursor.Prefix.Value), nextCursor.ItemFlags);
+                    var image = f.ItemImage();
+                    for (int index = 0; index < image.Length; index++) Assert.True(ReadCursorTuple(after.GetProperty("inventory")[index]) == image[index], $"{platform}/{name}/slot{index}: wanted={ReadCursorTuple(after.GetProperty("inventory")[index])} actual={image[index]}");
+                    var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
+                    Assert.True(store.TryGetFundedQuantity(f.Connection, slot, out var slotFunding)); Assert.Equal(image[slot].Stack, slotFunding);
+                    Assert.True(store.TryGetFundedQuantity(f.Connection, 58, out var cursorFunding)); Assert.Equal(image[58].Stack, cursorFunding);
+                    compared++;
+                }
         }
         Assert.Equal(122, compared); // Includes unchanged UI-gated source tuples as ordinary acknowledgements.
     }

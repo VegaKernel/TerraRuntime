@@ -19,7 +19,7 @@ internal sealed partial class WorldTileAuthority
                 hardModeBaseline || progression.IsCompleted(VanillaWorldProgressionId.Hardmode), out var result) && result.CanKill,
             publishDoorToggle: transition => replication?.TryPublishDoorToggle(new TerrariaDoorToggleState(
                 (byte)transition.Action, (short)transition.X, (short)transition.Y, (sbyte)transition.Direction)),
-            applyActuatorTransaction: TryApplyWiringActuator);
+            applyActuatorTransaction: TryApplyWiringActuator, fireTrap: TryFireWiringTrap);
         wiring = new WorldWiringCircuit1458(tiles, devices, PublishWiringSquare);
     }
 
@@ -46,7 +46,11 @@ internal sealed partial class WorldTileAuthority
         replication?.TryPublishHitSwitch(command.Connection.Source, command.State);
     }
 
-    public void TickMechanisms() => wiring?.Tick();
+    public void TickMechanisms()
+    {
+        wiring?.Tick();
+        TickSkyblockCensus();
+    }
 
     public void ApplyPlayerPressurePlate(PlayerStateSnapshot before, PlayerStateSnapshot after)
     {

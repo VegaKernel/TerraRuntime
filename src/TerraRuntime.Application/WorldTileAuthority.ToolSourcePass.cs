@@ -291,7 +291,7 @@ internal sealed partial class WorldTileAuthority
         private bool KillAfterSpecial(in SourceStep step)
         {
             var before = step.SourceTile;
-            if (!clientRole && !step.NoItem && !StageDrops(step.X, step.Y, in before)) return false;
+            if ((!clientRole || deathDrop is not null) && !step.NoItem && !StageDrops(step.X, step.Y, in before)) return false;
             var after = before;
             after.Type = 0;
             after.FrameX = -1; after.FrameY = -1;
@@ -308,6 +308,7 @@ internal sealed partial class WorldTileAuthority
 
         private bool StageDrops(int x, int y, in WorldTile before)
         {
+            if (deathDrop is not null) return TryStageDeathDrop(x, y, in before);
             if (server is null) return false;
             if (IsOrdinaryPlacementFurniture(before.Type) || IsExceptionalFurniture(before.Type) || AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
             if (IsSourcePlant(before.Type)) return TryStagePlantDrops(x, y, in before);
@@ -335,6 +336,8 @@ internal sealed partial class WorldTileAuthority
             if (step.X <= 5 || step.Y <= 5 || step.X >= dimensions.WidthTiles - 5 || step.Y >= dimensions.HeightTiles - 5)
                 return true;
             if (!Overlay.TryRead(step.X, step.Y, out var tile)) return false;
+            if (!TryPrepareDeathFrame(in step, in tile, out bool deferred)) return false;
+            if (deferred) return true;
             // Wet TileFrame calls invoke Liquid.AddWater in the source. Until that operation has a
             // prepared queue participant, actuator framing must reject instead of adopting half a call.
             if (wiringActuationFrame && tile.LiquidAmount != 0) return false;

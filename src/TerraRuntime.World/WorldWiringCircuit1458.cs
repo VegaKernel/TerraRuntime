@@ -67,23 +67,23 @@ public sealed class WorldWiringCircuit1458
                 return true;
             case 132:
             case MomentaryTile:
-            {
-                int left = x - tile.FrameX / SourceFramePitch % 2;
-                int top = y - tile.FrameY / SourceFramePitch;
-                if (!ValidSwitchFootprint(left, top, tile.Type)) return false;
-                short delta = tile.FrameX / SourceFramePitch % 4 >= 2 ? (short)-SwitchFrameWidth : SwitchFrameWidth;
-                if (tile.Type == MomentaryTile) Register(left, top, 60);
-                for (int column = left; column < left + 2; column++)
-                for (int row = top; row < top + 2; row++)
                 {
-                    WorldTile cell = _tiles.Get(column, row);
-                    if (cell.Type is not (132 or MomentaryTile)) continue;
-                    cell.FrameX = (short)(cell.FrameX + delta);
-                    _tiles.Set(column, row, in cell);
+                    int left = x - tile.FrameX / SourceFramePitch % 2;
+                    int top = y - tile.FrameY / SourceFramePitch;
+                    if (!ValidSwitchFootprint(left, top, tile.Type)) return false;
+                    short delta = tile.FrameX / SourceFramePitch % 4 >= 2 ? (short)-SwitchFrameWidth : SwitchFrameWidth;
+                    if (tile.Type == MomentaryTile) Register(left, top, 60);
+                    for (int column = left; column < left + 2; column++)
+                        for (int row = top; row < top + 2; row++)
+                        {
+                            WorldTile cell = _tiles.Get(column, row);
+                            if (cell.Type is not (132 or MomentaryTile)) continue;
+                            cell.FrameX = (short)(cell.FrameX + delta);
+                            _tiles.Set(column, row, in cell);
+                        }
+                    TripWire(left, top, 2, 2);
+                    return true;
                 }
-                TripWire(left, top, 2, 2);
-                return true;
-            }
             default:
                 return false;
         }
@@ -105,14 +105,14 @@ public sealed class WorldWiringCircuit1458
             {
                 WorldWireChannel channel = (WorldWireChannel)color;
                 for (int x = left; x < left + width; x++)
-                for (int y = top; y < top + height; y++)
-                {
-                    if (!HasWire(_tiles.Get(x, y), channel)) continue;
-                    int index = Index(x, y);
-                    _skip.Add(index);
-                    _remainingEntrances.Add(index, 4);
-                    _pending.Enqueue(new WireVisit(x, y, 0));
-                }
+                    for (int y = top; y < top + height; y++)
+                    {
+                        if (!HasWire(_tiles.Get(x, y), channel)) continue;
+                        int index = Index(x, y);
+                        _skip.Add(index);
+                        _remainingEntrances.Add(index, 4);
+                        _pending.Enqueue(new WireVisit(x, y, 0));
+                    }
                 Traverse(channel);
                 _skip.Clear();
                 _remainingEntrances.Clear();
@@ -278,7 +278,7 @@ public sealed class WorldWiringCircuit1458
         if (Contains(x, y)) _skip.Add(Index(x, y));
     }
 
-    private bool Register(int x, int y, int time)
+    internal bool Register(int x, int y, int time)
     {
         foreach (Mechanism mechanism in _mechanisms)
             if (mechanism.X == x && mechanism.Y == y) return false;
@@ -293,13 +293,13 @@ public sealed class WorldWiringCircuit1458
         WorldTile anchor = _tiles.Get(left, top);
         int delta = anchor.FrameX >= SwitchFrameWidth ? -SwitchFrameWidth : SwitchFrameWidth;
         for (int x = left; x < left + 2; x++)
-        for (int y = top; y < top + 2; y++)
-        {
-            if (!Contains(x, y)) continue;
-            WorldTile tile = _tiles.Get(x, y);
-            tile.FrameX = (short)(tile.FrameX + delta);
-            _tiles.Set(x, y, in tile);
-        }
+            for (int y = top; y < top + 2; y++)
+            {
+                if (!Contains(x, y)) continue;
+                WorldTile tile = _tiles.Get(x, y);
+                tile.FrameX = (short)(tile.FrameX + delta);
+                _tiles.Set(x, y, in tile);
+            }
         _publish?.Invoke(left, top, 2, 2);
     }
 
@@ -311,12 +311,12 @@ public sealed class WorldWiringCircuit1458
         // Source-valid TileObjectData132/411 objects contain four matching frames. Reject a damaged
         // or forged footprint before committing any cell, rather than repairing unrelated neighbors.
         for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            WorldTile cell = _tiles.Get(left + dx, top + dy);
-            if (!cell.IsActive || cell.Type != type || cell.FrameX != anchor.FrameX + dx * SourceFramePitch ||
-                cell.FrameY != dy * SourceFramePitch) return false;
-        }
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile cell = _tiles.Get(left + dx, top + dy);
+                if (!cell.IsActive || cell.Type != type || cell.FrameX != anchor.FrameX + dx * SourceFramePitch ||
+                    cell.FrameY != dy * SourceFramePitch) return false;
+            }
         return true;
     }
 

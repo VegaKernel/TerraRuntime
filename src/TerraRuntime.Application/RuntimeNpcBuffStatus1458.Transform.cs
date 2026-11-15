@@ -18,8 +18,13 @@ internal sealed partial class RuntimeNpcBuffStatus1458
             if (expected.Type != 687 && !VanillaTownNpcRescue1458.TryGet(expected.TypeIdentity, out _)) return false;
             ref Entry pending = ref entries[expected.Handle.Slot];
             if (pending.Handle != expected.Handle)
-                pending = new Entry { Handle = expected.Handle, Revision = 1,
-                    DefinitionType = expected.Type, DefinitionNetId = expected.NetId };
+                pending = new Entry
+                {
+                    Handle = expected.Handle,
+                    Revision = 1,
+                    DefinitionType = expected.Type,
+                    DefinitionNetId = expected.NetId
+                };
             if (pending.DefinitionType != expected.Type || pending.DefinitionNetId != expected.NetId) return false;
         }
         ref Entry entry = ref entries[expected.Handle.Slot];
@@ -63,8 +68,15 @@ internal sealed partial class RuntimeNpcBuffStatus1458
             !VanillaNpcDefinitionCatalog.TryGet(initialized.TypeIdentity, initialized.NetIdentity, out _)) return false;
         // NPC.SetDefaults preserves buffType/buffTime, but clears its per-update flag views.
         // The current phase has already aged the slots; never replay UpdateBuffs here.
-        transformed = phase with { Flags = default, Stinky = false, LoveStruck = false,
-            CounterAfter = initialized.Simulation.LifeRegenCounter, TransformedType = initialized.TypeIdentity };
+        transformed = phase with
+        {
+            Flags = default,
+            Stinky = false,
+            Venom = false,
+            LoveStruck = false,
+            CounterAfter = initialized.Simulation.LifeRegenCounter,
+            TransformedType = initialized.TypeIdentity
+        };
         return true;
     }
 

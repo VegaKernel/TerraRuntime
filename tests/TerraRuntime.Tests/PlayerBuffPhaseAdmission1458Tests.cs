@@ -33,7 +33,10 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
         Assert.Contains(new BuffTypeId(id), f.Buffs.CaptureEffectTypes());
         Assert.Equal(represented, f.Member.ItemPhase.HasValue);
         Assert.Equal(!represented, checkpoint.HasSameState(f.Random));
-        if (!represented)
+        // Venom regen is independently admitted by original UpdateLifeRegen gold.
+        // Its unqualified full-player visual phase must still retire shared RNG.
+        bool healthRepresented = represented || id == VanillaBuffIds.Venom.Value;
+        if (!healthRepresented)
         {
             Assert.Null(f.Member.NpcHealth);
             Assert.Equal(false, f.Member.NpcLifeCurrent);
@@ -45,13 +48,13 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
         else
         {
             Assert.True(f.Member.NpcHealth is { SourceProfileKnown: true });
-            if (id is 20 or 24 or 39 or 144)
+            if (id is 20 or 24 or 39 or 70 or 144)
             {
                 // Source UpdateLifeRegen consumes the final positive effect
                 // even when UpdateBuffs has already removed its duration-one slot.
                 // The fixture holds right even at zero velocity; Electrified
                 // reads horizontal controls rather than velocity.
-                int rate = id == 144 ? -40 : id == 20 ? -4 : id == 24 ? -8 : -24;
+                int rate = id == 70 ? -30 : id == 144 ? -40 : id == 20 ? -4 : id == 24 ? -8 : -24;
                 Assert.Equal(rate, f.Member.NpcHealth.Value.RegenCount);
                 Assert.Equal(1f, f.Member.NpcHealth.Value.RegenTime);
             }

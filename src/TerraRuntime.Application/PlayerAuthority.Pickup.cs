@@ -7,6 +7,10 @@ namespace TerraRuntime.Application;
 internal sealed partial class PlayerAuthority
 {
     internal bool HasOwnedPickupContext => playerUpdateRandomOwned && playerUpdateWorld is not null;
+    // Storage planning does not draw UpdatePlayers RNG; drop creation uses the
+    // world-item stream. Retiring an unrelated player phase must not disable them.
+    // A bound world/role remains mandatory; this does not recover player RNG.
+    internal bool HasItemStorageContext => HasRemotePlayerPhaseBinding && playerUpdateWorld is not null;
     internal VanillaItemPrefixWorld1458? PickupWorld => receivePrefixWorld;
     internal bool? PickupWindowsArithmetic => playerUpdateWorld?.WindowsItemPrefixArithmetic;
     internal bool IsPickupOutOfRange(in PlayerStateSnapshot state) => playerUpdateWorld is { } world &&
@@ -16,24 +20,24 @@ internal sealed partial class PlayerAuthority
     {
         prepared = null;
         if (!membership.TryGet(capture.Connection, out var member) || member.CaptureSnapshot() != capture.State ||
-            member.ItemPhase is not { } phase || member.Revision == ulong.MaxValue) return false;
+            member.Revision == ulong.MaxValue) return false;
         var mutations = storage.Mutations.Select(m => new RemotePhaseInventoryMutation(capture.Connection, m.Slot,
             capture.Inventory[m.Slot], incoming.ItemType.Value is >= 71 and <= 74 ? FromStorage(m.After) :
             FromStorage(m.After) with { ItemFlags = capture.Inventory[m.Slot].IsEmpty ? incoming.ItemFlags : capture.Inventory[m.Slot].ItemFlags })).ToArray();
         if (!inventory.TryPreparePickup(capture.Connection, capture.Inventory, mutations, incoming, storage.Taken, out var items, fundedCoinCredit) || items is null) return false;
-        prepared = new(this, member, capture.State, phase, items, mutations);
+        prepared = new(this, member, capture.State, member.ItemPhase, items, mutations);
         return true;
     }
     private static RuntimePlayerInventoryItem FromStorage(WorldItemPickupSlot1458 item) => item.Type == 0 ? default :
         new(new(item.Type), checked((short)item.Stack), new(item.Prefix), item.Favorite ? PlayerEquipmentCommitRequest.FavoriteItemFlag : (byte)0);
 
     internal sealed class OwnedPickupPreparation(PlayerAuthority owner, RuntimePlayerMember member,
-        PlayerStateSnapshot before, RuntimePlayerItemPhase1458 phase,
+        PlayerStateSnapshot before, RuntimePlayerItemPhase1458? phase,
         RuntimePlayerInventoryStore.PickupPreparation items, RemotePhaseInventoryMutation[] mutations)
     {
         private bool adopted;
         private bool published;
-        internal bool IsCurrent => !adopted && owner.membership.TryGet(member.Connection, out var current) &&
+        internal bool IsCurrent => !adopted && owner.HasItemStorageContext && owner.membership.TryGet(member.Connection, out var current) &&
             ReferenceEquals(current, member) && member.CaptureSnapshot() == before && member.ItemPhase == phase &&
             member.Revision != ulong.MaxValue && items.IsCurrent;
         internal bool TryAdoptUnpublished()

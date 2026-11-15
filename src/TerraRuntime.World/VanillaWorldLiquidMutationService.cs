@@ -35,7 +35,7 @@ public readonly record struct WorldLiquidMutationResult(
 /// Authoritative liquid material mutation boundary. Material commits and liquid-simulation scheduling are kept
 /// together, while flow/reaction rules and per-tick budgets remain owned by the liquid simulation subsystem.
 /// </summary>
-public sealed class VanillaWorldLiquidMutationService
+public sealed partial class VanillaWorldLiquidMutationService
 {
     private readonly WorldTileStore _tiles;
 

@@ -161,7 +161,7 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
     internal static void ConsumeGroundCombatOffers(in ProjectileSimulationStepResult step,
         VanillaUnifiedRandom1458 previewRandom)
     {
-        if (!VanillaProjectileUpdateFacts.SupportsGroundCombatCollisionOffers1458(step.State.Type))
+        if (!VanillaProjectileUpdateFacts.SupportsSourceCollisionOffers1458(step.State.Type))
             throw new ArgumentException("The prepared actor does not own this projectile's source offers.", nameof(step));
         ConsumeShimmerOffers(in step, previewRandom);
         RuntimeProjectileCollisionTileCut1458.Evaluate(in step, previewRandom);

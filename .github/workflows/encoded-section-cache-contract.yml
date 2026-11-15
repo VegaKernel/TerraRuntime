@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-          dotnet-quality: 'preview'
+          dotnet-quality: 'ga'
 
       - name: Restore
         run: dotnet restore tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj

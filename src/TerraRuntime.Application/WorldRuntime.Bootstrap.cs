@@ -66,8 +66,10 @@ public sealed partial class WorldRuntime
             InvasionType = invasionKnown ? checked((sbyte)invasion.State.Type) : null,
             ProgressionMutations = prospectiveProgression ?? WorldProgression.CaptureSnapshot()
         };
+        bool lowTiles = State is { } state && state.TryCaptureSkyblockLowTiles(out bool ownedLowTiles)
+            ? ownedLowTiles : bootstrapSkyblockLowTiles;
         var transient = new WorldInfoTransientState(WorldClock.PumpkinMoonActive, WorldClock.SnowMoonActive,
-            toolBuildingPermission.KnownEventOngoing == true, false, bootstrapSkyblockLowTiles, 0);
+            toolBuildingPermission.KnownEventOngoing == true, false, lowTiles, 0);
         TerrariaInvasionProgressState? progress = null;
         // Main.SyncAnInvasion prioritizes Snow Moon, Pumpkin Moon, DD2, then ordinary invasions.
         // DD2 and unsupported loaded invasion identities have no fabricated progress projection here.

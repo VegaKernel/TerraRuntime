@@ -26,7 +26,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private const ushort Torch = 4, ClosedDoor = 10, OpenDoor = 11, Chest = 21, Altar = 26;
     private const ushort Candle = 33, Chandelier = 34, HangingLantern = 42, WaterCandle = 49;
     private const ushort Hellforge = 77, Dresser = 88, LampPost = 92, Lamp = 93, ChineseLantern = 95;
-    private const ushort Candelabra = 100, DiscoBall = 126, Timer = 144, HolidayLight = 149;
+    private const ushort Candelabra = 100, DiscoBall = 126, Trap = 137, Timer = 144, HolidayLight = 149;
     private const ushort PlatinumCandelabra = 173, PlatinumCandle = 174, Campfire = 215, TempleBrick = 226;
     private const ushort TempleAltar = 237, Track = 314, PeaceCandle = 372, Bubble = 379;
     private const ushort OpenTrapdoor = 386, ClosedTrapdoor = 387, ClosedTallGate = 388, OpenTallGate = 389;
@@ -46,6 +46,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private readonly Action<WorldWiringDoorTransition1458>? publishDoorToggle;
     private readonly Func<int, int, bool>? applyActuatorTransaction;
     private readonly double worldSurface;
+    private readonly Func<int, int, bool>? fireTrap;
 
     public WorldWiringDeviceExecutor1458(WorldTileStore tiles,
         VanillaWorldGroundFighterDoorOpeningService? doors = null,
@@ -55,7 +56,8 @@ public sealed class WorldWiringDeviceExecutor1458
         double worldSurface = 0,
         Func<int, int, bool>? canKillTile = null,
         Action<WorldWiringDoorTransition1458>? publishDoorToggle = null,
-        Func<int, int, bool>? applyActuatorTransaction = null)
+        Func<int, int, bool>? applyActuatorTransaction = null,
+        Func<int, int, bool>? fireTrap = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         wiring = new VanillaWorldWiringMutationService(tiles);
@@ -67,6 +69,7 @@ public sealed class WorldWiringDeviceExecutor1458
         this.canKillTile = canKillTile;
         this.publishDoorToggle = publishDoorToggle;
         this.applyActuatorTransaction = applyActuatorTransaction;
+        this.fireTrap = fireTrap;
     }
 
     /// <summary>
@@ -93,6 +96,8 @@ public sealed class WorldWiringDeviceExecutor1458
         // timing. In particular a rejected occupied gate still skips its validated footprint.
         if (tile.Type is ClosedDoor or OpenDoor or OpenTrapdoor or ClosedTrapdoor or ClosedTallGate or OpenTallGate)
             return ToggleDoor(x, y, in tile, skipWire) || changed;
+
+        if (tile.Type == Trap) return fireTrap?.Invoke(x, y) == true || changed;
 
         return tile.Type switch
         {
@@ -189,22 +194,22 @@ public sealed class WorldWiringDeviceExecutor1458
         // Malformed/partially destroyed footprints cannot be repaired by mutating neighboring content.
         // Validate the complete footprint and frame arithmetic before the first authoritative write.
         for (int col = 0; col < width; col++)
-        for (int row = 0; row < height; row++)
-        {
-            WorldTile cell = tiles.Get(left + col, top + row);
-            int frame = (vertical ? cell.FrameY : cell.FrameX) + delta;
-            if (!cell.IsActive || cell.Type != type || frame is < short.MinValue or > short.MaxValue) return false;
-        }
+            for (int row = 0; row < height; row++)
+            {
+                WorldTile cell = tiles.Get(left + col, top + row);
+                int frame = (vertical ? cell.FrameY : cell.FrameX) + delta;
+                if (!cell.IsActive || cell.Type != type || frame is < short.MinValue or > short.MaxValue) return false;
+            }
         for (int col = 0; col < width; col++)
-        for (int row = 0; row < height; row++)
-        {
-            int x = left + col, y = top + row;
-            WorldTile cell = tiles.Get(x, y);
-            if (vertical) cell.FrameY = (short)(cell.FrameY + delta);
-            else cell.FrameX = (short)(cell.FrameX + delta);
-            tiles.Set(x, y, in cell);
-            skipWire?.Invoke(x, y);
-        }
+            for (int row = 0; row < height; row++)
+            {
+                int x = left + col, y = top + row;
+                WorldTile cell = tiles.Get(x, y);
+                if (vertical) cell.FrameY = (short)(cell.FrameY + delta);
+                else cell.FrameX = (short)(cell.FrameX + delta);
+                tiles.Set(x, y, in cell);
+                skipWire?.Invoke(x, y);
+            }
         Publish(left, top, width, height);
         return true;
     }

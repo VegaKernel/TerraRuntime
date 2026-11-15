@@ -1,0 +1,225 @@
+{
+  "checkpoint": "lava-slime-death-terrain-managed-20261108",
+  "baseCommit": "4fa777dbe3c0ede717f5ee9ce5bf077f1929ee73",
+  "issue": 124,
+  "issueComplete": false,
+  "framework": "net11.0 / SDK11.0.100-rc.3.26522.148",
+  "scope": [
+    "Classic ordinary no producer; Expert/Master dry non-solid center amount50..149",
+    "Classic GoodWorld effective Expert; Remix excludes terrain",
+    "Owned mutable Skyblock census: inclusive physical body cells amount255; preserve existing liquid",
+    "Existing tile overlay, passive source framing, ordered AddWater scheduling/buffering, callback-free pending liquid replication and persistence dirtiness",
+    "Wood platform0 KillTile and item94 staged on same death RNG/allocation plan",
+    "Environment, prepared projectile and client28 paths adopt state before observers",
+    "Observer replacement suppresses stale platform KillTile publication; accepted overlay version checked before every notice"
+  ],
+  "remaining": [
+    "Other furniture, plants, falling blocks and nonwood platform styles refuse complete death",
+    "No new continuous unmodified-client session captured",
+    "Other bootstrap-only lowTiles consumers and resource-absence flags are not upgraded by this census"
+  ],
+  "originalTerrain": {
+    "rows": 252,
+    "methods": [
+      "NPC.HitEffect",
+      "WorldGen.SquareTileFrame",
+      "Liquid.AddWater",
+      "WorldGen.KillTile"
+    ],
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "rawObservationSha256": "f0be1defc261c8228cdf5f97788bd01f715d5d50289202e81fd42b75ec2b478e",
+    "identicalRepeats": 2,
+    "firstChanceExceptions": 0,
+    "fixtureSha256": "8423afe67de64e90334aa14b1a3a6888c1250dd1f50ed2d6cbc1e5eb85b96fa1",
+    "state": "all retained128x128tiles, ordered active liquid, pending net cells, platform items, full RNG56/cursor; cosmetic non-important frames/queue bits normalized"
+  },
+  "originalCensus": {
+    "rows": 90,
+    "methods": [
+      "WorldGen.Skyblock.ScanTiles",
+      "WorldGen.CountTiles",
+      "WorldGen.Skyblock.Calculate"
+    ],
+    "rawObservationSha256": "815e717660e3489ef5b8eb469b3054895e00f44c640feb5fb0d85464523e59f3",
+    "identicalRepeats": 2,
+    "firstChanceExceptions": 0,
+    "fixtureSha256": "5b471eb2509bf1c4b3da213769316494105c5677434c7865cb828dff62b33e58",
+    "scope": "sourcefloat rounding; load/live borders; actuated cells; scan history; onecolumn per30updates"
+  },
+  "build": {
+    "log": "E:\\TerraRuntimeAgentCache\\issues-all-20261108\\lava-tests-build17.log",
+    "warnings": 0,
+    "errors": 0
+  },
+  "focused": {
+    "total": "8509",
+    "passed": "8509",
+    "failed": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1447.0836266999831,
+    "tests": {
+      "total": "186320",
+      "passed": "186320",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1444.083",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1969.057002000045,
+    "tests": {
+      "total": "1731635",
+      "passed": "1731635",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1954.982",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "managedSmokes": [
+    {
+      "smoke": "loop",
+      "exitCode": 0,
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/lava-loop-smoke04.log"
+    },
+    {
+      "smoke": "protocol",
+      "exitCode": 0,
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/lava-protocol-smoke04.log"
+    },
+    {
+      "smoke": "network",
+      "exitCode": 0,
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/lava-network-smoke04.log"
+    },
+    {
+      "smoke": "world",
+      "exitCode": 0,
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/lava-world-smoke04.log"
+    },
+    {
+      "smoke": "tui",
+      "exitCode": 0,
+      "log": "E:/TerraRuntimeAgentCache/issues-all-20261108/lava-tui-smoke04.log"
+    }
+  ],
+  "causals": {
+    "sourceInputs": 4938,
+    "controlSourceDifferences": [],
+    "executionInputFiles": 206,
+    "restoredRunnerDifferences": [],
+    "testDllSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08",
+    "controls": [
+      {
+        "control": "old-veto",
+        "exitCode": 1,
+        "total": 399,
+        "failed": 16,
+        "passed": 383,
+        "errors": 0,
+        "skipped": 0,
+        "variantSha256": "5550b29d178e42490990f26ac3c0f9945a9bee2a6f989e453b887cf5144cd2a8",
+        "testSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08"
+      },
+      {
+        "control": "no-queue",
+        "exitCode": 1,
+        "total": 399,
+        "failed": 187,
+        "passed": 212,
+        "errors": 0,
+        "skipped": 0,
+        "variantSha256": "0a22e23151e96cd9ca18e1b09902b95e28f743a48a6a9e7939f336acc2cd0c89",
+        "testSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08"
+      },
+      {
+        "control": "wrong-cadence",
+        "exitCode": 1,
+        "total": 399,
+        "failed": 6,
+        "passed": 393,
+        "errors": 0,
+        "skipped": 0,
+        "variantSha256": "a989a53152857c32dba68e57c1ca845d1d80917756445f5ab88a2f922b384174",
+        "testSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08"
+      },
+      {
+        "control": "no-platform-drop",
+        "exitCode": 1,
+        "total": 399,
+        "failed": 42,
+        "passed": 357,
+        "errors": 0,
+        "skipped": 0,
+        "variantSha256": "e493a055862b929ec0cf5f165e31082120dfe5b57831aa6030e3ec5070605a8d",
+        "testSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08"
+      },
+      {
+        "control": "unknown-fallback",
+        "exitCode": 1,
+        "total": 399,
+        "failed": 5,
+        "passed": 394,
+        "errors": 0,
+        "skipped": 0,
+        "variantSha256": "2a93bd3157ecab9cb7f2432a78a19dedb6021ab7f440c63de5603b08be0624b9",
+        "testSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08"
+      },
+      {
+        "control": "good-world",
+        "exitCode": 1,
+        "total": 399,
+        "failed": 3,
+        "passed": 396,
+        "errors": 0,
+        "skipped": 0,
+        "variantSha256": "630d0636e05db4a28f70d2aac6d953781410e5128222e7c859d2551bdab32a1b",
+        "testSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08"
+      },
+      {
+        "control": "stale-publication",
+        "exitCode": 1,
+        "total": 399,
+        "failed": 1,
+        "passed": 398,
+        "errors": 0,
+        "skipped": 0,
+        "variantSha256": "c10d0fd6e3dd9758abb6df56a27c47ee5d1af2ee6ee2f7f616e0485335ac5fae",
+        "testSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08"
+      }
+    ]
+  },
+  "cohort": {
+    "manifestSha256": "ff8e73eadc639c36692f2f5275ed1eecb91f0e3a42277a0ea14d69b17ef0b8c0",
+    "sourceFiles": 4938,
+    "dllFilePaths": 291,
+    "testDllSha256": "9f802fe66b4e2f176f95462ec47fadc649706415349fef0beedf44291585eb08",
+    "sourceAndDllGuards": "exact after final fast and full"
+  },
+  "otherChecks": {
+    "pythonTests": 300,
+    "documentationPairs": 137,
+    "projectGraph": "15projects/29edges/acyclic",
+    "domainAudit": "passed; no gameplay folder production change in this checkpoint"
+  },
+  "nativeAot": "Local installation/publish deferred by user; no new local NativeAOT claim",
+  "rawDiagnostics": [
+    "fast01 interrupted: six missing fixture directory failures; junction corrected",
+    "fast02 interrupted: five real unknown lowTiles predicate regressions; fixed without redefining goldens",
+    "fast03 green on superseded cohort02; full01 stopped after GoodWorld source gate discovered",
+    "cohort03 full02 passed1731634; concrete stale-publication regression then reproduced and fixed; final candidate exclusively cohort04/build17/focus05/fast05/full03/smokes04/controls04",
+    "focus05 first filter invocation omitted8existingSkyblockpolicycases; complete corrected filter8509 rerun required and accepted separately"
+  ]
+}

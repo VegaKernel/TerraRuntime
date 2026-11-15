@@ -64,6 +64,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (plannedDaily is not null) bossRecoveryDaily.CopyFrom(plannedDaily);
             if (worldClock is not null && plannedUnpublishedClock is not null)
                 worldClock.AdoptDeathProgress(plannedUnpublishedClock);
+            if (plannedLavaDeath is not null && !plannedLavaDeath.TryAdoptUnpublished())
+                throw new InvalidOperationException("Admitted NPC death lost its prepared lava participant.");
         }
         else if (pendingProjectileStrike is { } projectile)
         {
@@ -76,6 +78,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool IsPreparedDeathCurrent() => pendingDeathPlan is null ||
         pendingDeathPlan.CanAdoptUnpublished() && deathPrelude.Revision == plannedPreludeRevision &&
+        (plannedLavaDeath?.IsCurrent ?? true) &&
         progression.CaptureSnapshot() == plannedDeathProgression && CaptureStrikeClock() == plannedStrikeClock &&
         CaptureStrikeDaily() == plannedStrikeDaily;
 }

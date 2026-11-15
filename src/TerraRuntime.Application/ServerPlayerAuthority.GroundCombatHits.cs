@@ -11,7 +11,7 @@ internal sealed partial class ServerPlayerAuthority
 {
     internal bool TryPrepareGroundCombatHits(in ProjectileSnapshot initial, NpcHandle sourceNpc,
         long tick, bool expertMode, bool masterMode, bool goodWorld,
-        VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture terrain,
+        VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain,
         out GroundCombatHitPreparation? preparation)
         => GroundCombatHitPreparation.TryCreate(this, in initial, sourceNpc, tick, expertMode, masterMode, goodWorld,
             terrain, out preparation);
@@ -27,7 +27,7 @@ internal sealed partial class ServerPlayerAuthority
         foreach (var type in buffs.CaptureEffectTypes())
             if (!Represented(type)) return false;
         return true;
-        static bool Represented(BuffTypeId type) => type.Value is 20 or 22 or 24 or 30 or 31 or 32 or 35 or 39 or 144;
+        static bool Represented(BuffTypeId type) => type.Value is 20 or 22 or 24 or 30 or 31 or 32 or 35 or 39 or 70 or 144;
     }
 
     private sealed record GroundCombatBuffImage(PlayerHandle Owner, PlayerBuffState? Reference,
@@ -79,12 +79,14 @@ internal sealed partial class ServerPlayerAuthority
     {
         internal static bool TryCreate(ServerPlayerAuthority owner, in ProjectileSnapshot initial, NpcHandle sourceNpc,
             long tick, bool expertMode, bool masterMode, bool goodWorld,
-            VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture terrain,
+            VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain,
             out GroundCombatHitPreparation? preparation)
         {
             preparation = null;
-            if (!VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) || !sourceNpc.IsAssigned ||
-                masterMode && !expertMode || !terrain.IsCurrent) return false;
+            bool dart = initial.Type.Value is 98 or 184 or 980 && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
+            if (!dart && (!VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) || !sourceNpc.IsAssigned) ||
+                terrain is null && !dart || masterMode && !expertMode || terrain?.IsCurrent == false) return false;
+            if (!TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var dartDefinition)) return false;
             var captured = new PlayerStateSnapshot[owner.states.Capacity];
             int count = owner.states.CopySnapshots(captured);
             var entries = new GroundCombatPlayerImage?[byte.MaxValue + 1];
@@ -93,7 +95,8 @@ internal sealed partial class ServerPlayerAuthority
                 var player = captured[i];
                 if (player.HasMount && player.MountType > 65) return false;
                 var body = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (20, 42);
-                bool reachable = terrain.MayReach(player.PositionX, player.PositionY, (int)body.Item1, (int)body.Item2);
+                bool reachable = terrain?.MayReach(player.PositionX, player.PositionY, (int)body.Item1, (int)body.Item2) ??
+                    PlayerAuthority.GroundCombatIntersects(in initial, in dartDefinition, in player);
                 VanillaPlayerCombatSnapshot combat = default;
                 if (reachable && !player.IsDead && initial.Damage > 0 &&
                     (player.HasMount || !player.HasHealth || player.Life <= 0 || player.Revision.Value > ulong.MaxValue - 2 ||
@@ -116,7 +119,7 @@ internal sealed partial class ServerPlayerAuthority
         private readonly NpcHandle sourceNpc;
         private readonly long tick;
         private readonly bool expert, master, good;
-        private readonly VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture terrain;
+        private readonly VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain;
         private readonly PlayerStateSnapshot[] census;
         private readonly GroundCombatPlayerImage?[] entries;
         private readonly PlayerStateSnapshot[] scratch;
@@ -127,7 +130,7 @@ internal sealed partial class ServerPlayerAuthority
 
         private GroundCombatHitPreparation(ServerPlayerAuthority owner, ProjectileSnapshot initial, NpcHandle sourceNpc,
             long tick, bool expert, bool master, bool good,
-            VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture terrain,
+            VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain,
             PlayerStateSnapshot[] census, GroundCombatPlayerImage?[] entries,
             bool equipmentExpert, bool equipmentMaster, VanillaPlayerLocalVanityArmor1458? vanity)
         {
@@ -146,7 +149,7 @@ internal sealed partial class ServerPlayerAuthority
         {
             get
             {
-                if (adopted || !terrain.IsCurrent || owner.combatEquipmentExpertMode != equipmentExpert ||
+                if (adopted || terrain?.IsCurrent == false || owner.combatEquipmentExpertMode != equipmentExpert ||
                     owner.combatEquipmentMasterMode != equipmentMaster || owner.combatEquipmentLocalVanityArmor != vanity ||
                     owner.states.CopySnapshots(scratch) != census.Length || !scratch.AsSpan(0, census.Length).SequenceEqual(census))
                     return false;
@@ -170,18 +173,20 @@ internal sealed partial class ServerPlayerAuthority
             if (!target.Reachable) return false;
             int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(shot.Damage,
                 previewRandom.Next(-15, 16), Math.Min(3, (master ? 3 : expert ? 2 : 1) + (good ? 1 : 0)));
+            if (initial.Type.Value is 98 or 184 or 980 && target.Combat.DeadMansSweater) damage = Math.Min((int)(damage * .5f), 300);
             if (damage <= 0) return true;
             evpContact = true;
             if (player.GodMode) { GodModeAvoidances++; return true; }
             int direction = player.PositionX + 10f < shot.PositionX + definition.Width / 2 ? -1 : 1;
-            var attack = new AuthoritativeAttackDamage(DamageSource.FromNpcProjectile(sourceNpc, shot.Handle),
+            var attack = new AuthoritativeAttackDamage(sourceNpc.IsAssigned ? DamageSource.FromNpcProjectile(sourceNpc, shot.Handle) : DamageSource.FromEnvironmentProjectile(shot.Handle),
                 damage, 0, false, 4.5f, direction);
             if (!VanillaCombatDamagePipeline.TryResolvePlayerDamage(in attack, target.Combat, false, out var final,
                     expert || good, master || expert && good) || final.Damage <= 0) return false;
             target.HasHit = true; target.Damage = final; target.Direction = direction; target.Immune = true;
             CommittedHits++;
             if (ResolveLifeAfterDamage(in player, in final) == 0) { Kills++; return true; }
-            var status = new ProjectilePlayerHurt1458(shot.Type, player.DerivedLifeMax!.Value, good, previewRandom);
+            var status = new ProjectilePlayerHurt1458(shot.Type, player.DerivedLifeMax!.Value, good, previewRandom)
+            { DeadMansSweater = target.Combat.DeadMansSweater };
             if (status.TryResolveStatusAfterSurvivingHurt(final.Damage, expert, master, out var type, out int duration) &&
                 !target.Combat.IsImmuneToNpcContactBuff(type))
             {
@@ -202,7 +207,7 @@ internal sealed partial class ServerPlayerAuthority
                 var publications = new List<ResolvedDamagePublication>(1);
                 var before = target.Before;
                 var result = owner.CommitResolvedDamage(tick, in before,
-                    DamageSource.FromNpcProjectile(sourceNpc, initial.Handle), initial.Type, in target.Damage,
+                    sourceNpc.IsAssigned ? DamageSource.FromNpcProjectile(sourceNpc, initial.Handle) : DamageSource.FromEnvironmentProjectile(initial.Handle), initial.Type, in target.Damage,
                     target.Direction, VanillaPlayerImmunityChannel1458.General, false, false,
                     out var accepted, targetCombat: target.Combat, expertMode: expert, masterMode: master,
                     deferredPublications: publications, preparedProjectileBuffs: target.PreparedBuffs);

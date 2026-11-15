@@ -4,4 +4,5 @@ namespace TerraRuntime.Contracts.Runtime;
 public readonly record struct PlayerDebuffSnapshot1458(bool OnFire, bool OnFire2, bool Poisoned)
 {
     public bool Electrified { get; init; }
+    public bool Venom { get; init; }
 }

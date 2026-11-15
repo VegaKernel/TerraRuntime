@@ -18,42 +18,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         Func<bool> isCurrent, Action<NpcSnapshot> adoptAndPublish)
     {
         if (projectile.Type.Value != 28 || projectile.Spawner != byte.MaxValue || projectile.Damage != 100 ||
-            projectile.OriginalDamage != 0 || projectile.KnockBack != 8f || hitDirection is not (-1 or 1) ||
-            damageValue <= 0 || target.TypeIdentity.Value is not (1 or 3 or 59) ||
-            !store.IsCombatTrusted(projectile.Handle) || store.TryGetCombatTrustedOwner(projectile.Handle, out _) ||
-            store.TryGetServerNpcSource(projectile.Handle, out _) ||
-            !store.TryGet(projectile.Handle, out var current) || current != projectile ||
+            projectile.OriginalDamage != 0 || projectile.KnockBack != 8f ||
             !store.TryGetLifecycle(projectile.Handle, out var life) || !life.NpcProjectile ||
-            !life.WorldToolBombKillInProgress || life.TimeLeft != 0 ||
-            pendingProjectileStrike is not null || pendingDeathPlan is not null || pendingDebuffPrelude is not null ||
-            !random.SourceRandom.HasSameState(before) || !isCurrent() ||
-            !npcs.TryGet(target.Handle, out var retained) || retained != target)
+            !life.WorldToolBombKillInProgress || life.TimeLeft != 0)
             return RuntimeProjectileNpcDamageResult.Rejected;
-        var strike = new ProjectileStrikePlan1458(before, after, isCurrent, target.Handle, default);
-        pendingProjectileStrike = strike;
-        bool Current() => IsPreparedDeathCurrent() && isCurrent() && random.SourceRandom.HasSameState(before);
-        void Publish(NpcSnapshot committed)
-        {
-            AdoptPreparedStrikeOwners(strike.AcceptedDeath);
-            adoptAndPublish(committed);
-        }
-        var prelude = new NpcDamagePrelude1458(target, null, Current, Publish);
-        try
-        {
-            var result = CommitNonPlayerDamage(target, DamageSource.FromEnvironmentProjectile(projectile.Handle),
-                damageValue, projectile.KnockBack, hitDirection, prelude);
-            return result switch
-            {
-                RuntimeTownNpcMeleeDamageResult1458.Committed => RuntimeProjectileNpcDamageResult.Committed,
-                RuntimeTownNpcMeleeDamageResult1458.Killed => RuntimeProjectileNpcDamageResult.Killed,
-                _ => RuntimeProjectileNpcDamageResult.Rejected
-            };
-        }
-        finally
-        {
-            pendingProjectileStrike = null;
-            preparedDeathPreludePublication = null;
-            CancelPendingDeathPlan();
-        }
+        return TryStrikePreparedEnvironmentProjectile(store, in projectile, in target, hitDirection,
+            damageValue, before, after, isCurrent, adoptAndPublish);
     }
 }

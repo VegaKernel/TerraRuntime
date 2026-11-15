@@ -21,6 +21,7 @@ internal sealed partial class NpcAuthority
         townNpcAuthority.BindNpcInteractionWorldInfoSource(prepareWorldInfo, worldStateAdopted);
 
     internal void BindSpecificLootWorldSource(Func<bool?> source) => combat.BindSpecificLootWorldSource(source);
+    internal void BindDeathWorldTiles(WorldTileAuthority owner) => combat.BindDeathWorldTiles(owner);
     private readonly PlayerAuthority players;
     private readonly RuntimePlayerSnapshotLookup playerSnapshots;
     private readonly RuntimeNpcRawPlayerSlots1458 rawPlayerSlots;
@@ -254,7 +255,7 @@ internal sealed partial class NpcAuthority
                 townCommerceWorldFacts is { SkyblockWorld: true } ? () => null : null,
             requireOwnedPlayerHealth: true, rawPlayerSlots: rawPlayerSlots,
             npcSpecificDropExtraGel: townCommerceWorldFacts is
-                { TenthAnniversaryWorld: true, DrunkWorld: true, RemixWorld: false, NotTheBeesWorld: false },
+            { TenthAnniversaryWorld: true, DrunkWorld: true, RemixWorld: false, NotTheBeesWorld: false },
             npcSpecificGoodWorld: townCommerceWorldFacts?.GoodWorld ?? false,
             townNameSource: townNpcs is null ? null : townNpcs.CaptureResidentName, townLootLanguage: townLootLanguage,
             invasion: invasion, invasionProgressPublisher: invasionProgressPublisher,
@@ -1618,8 +1619,8 @@ internal sealed partial class NpcAuthority
 
         float slots = npc.TypeIdentity switch
         {
-        // TerrariaServer 1.4.5.8 NPC.SetDefaults source weights for the currently admitted natural types.
-        // Other admitted base definitions retain the SetDefaults default of one slot.
+            // TerrariaServer 1.4.5.8 NPC.SetDefaults source weights for the currently admitted natural types.
+            // Other admitted base definitions retain the SetDefaults default of one slot.
             var value when value == VanillaNpcIds.FireImp => 3f,
             var value when value == VanillaNpcIds.BoneSerpentHead => 6f,
             var value when value == VanillaNpcIds.CaveBat || value == VanillaNpcIds.Hellbat || value == VanillaNpcIds.LavaBat => .5f,

@@ -89,7 +89,7 @@ The following remain outside the supported chain:
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Pumps and teleporters, pending full integration with liquid and movement owners.
-- Logic gates, traps, statues and their spawn, projectile, cooldown and nested-pulse effects.
+- Logic gates, statues and their spawn and nested-pulse effects; trap styles `2`, `3`, `4` and trap contacts outside the bounded continuation below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
@@ -97,3 +97,19 @@ The following remain outside the supported chain:
 The next connected block is broader attachment destruction and disposable plates, plus the missing client visual-state owner needed for cutter RNG, followed by pumps/teleporters through their existing authoritative owners.
 
 The shipping `--world-smoke` also exercises authenticated command application, light and actuator mutation, the timer deadline, and the independently captured timer-save bytes. The reference probe is retained under [`tools/reference/wiring1458`](../../tools/reference/wiring1458/README.md).
+
+## Bounded dart-trap continuation
+
+Tile `137` styles `0`, `1` and `5` fire source projectile types `98`, `184` and `980` through the existing wire traversal and projectile store. The observed five frame orientations, source muzzle position, speed, damage and owner `255` are retained. All wire colors share the existing mechanism clock: CheckMech registers a $200\,\text{updates}$ cooldown before projectile allocation, including failed allocation. Switches, ordinary plates and timers reuse their existing trigger paths. No player or NPC owner is fabricated for the environmental projectile.
+
+The same projectile owner supplies creation, movement, tile collision, cleanup and replication. Ordinary and stronger poison darts apply Poisoned for source durations `600`/`900`; the venom dart applies Venom for `300`, before difficulty and equipment adjustments on player contacts. Both connected and server-owned player HP/buff/immunity participants adopt with RNG before observers. Dead Man's Sweater in the functional body slot halves trap damage and status duration before the remaining source adjustments. NPC contacts are admitted for Blue Slime, Zombie and Lava Slime; other NPC families remain outside this qualified slice. Venom retains its distinct NPC regeneration pulses and player regeneration loss, including the final positive buff update. Packet-50 presentation does not grant the owned Venom effect.
+
+Original observations cover births, trigger/cooldown timelines, complete dry flight/termination, NPC contacts/deaths and local-player EVP components. These bounded comparisons do not establish complete `Main.Update`, an unmodified GUI session, arbitrary wet flight or all equipment. Trap styles `2`, `3` and `4`, statues, logic gates, pumps, teleporters and unsupported plate families remain unimplemented; this continuation does not close the complete wiring roadmap.
+
+Venom regeneration is independently represented; its complete player visual phase remains unqualified and retires shared player RNG. Item storage transfers remain available through the separate bound storage context.
+
+Lethal player contacts reuse the existing functional death path; the complete `KillMe`/tombstone RNG continuation is outside this source-qualified slice.
+
+The additive `PlayerDebuffSnapshot1458.Venom` property exposes the owned effect to consumers of player health snapshots.
+
+[Managed checkpoint, 2026-11-16](../verification/net11-stable-item-flow-darts-managed-20261116.json).

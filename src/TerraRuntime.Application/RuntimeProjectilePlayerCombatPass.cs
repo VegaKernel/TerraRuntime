@@ -249,6 +249,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         for (int i = 0; i < activeProjectiles.Length; i++)
         {
             ProjectileSnapshot projectile = activeProjectiles[i];
+            if (projectile.Type.Value is 98 or 184 or 980)
+            {
+                TickWiringDartPlayers(in projectile, tick);
+                continue;
+            }
             if (IsGroundCombatHandled(in projectile) ||
                 groundCombatActorOwnerBound && VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type)) continue;
             if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||

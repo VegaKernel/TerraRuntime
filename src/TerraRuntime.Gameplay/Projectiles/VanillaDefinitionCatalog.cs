@@ -764,7 +764,7 @@ public static class VanillaDefinitionCatalog
         Width: 6, Height: 6, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
         IgnoreWater: false, CanCutTiles: true, CollisionWidth: 6, CollisionHeight: 6);
     // Projectile.SetDefaults 1073: item-containing Slime's hostile dart trap.
-    private static readonly VanillaProjectileDefinition ContainedSlimeTrapDefinition = new(
+    private static readonly VanillaProjectileDefinition DartTrapDefinition = new(
         Width: 10, Height: 10, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
         IgnoreWater: false, CanCutTiles: true, CollisionWidth: 10, CollisionHeight: 10);
 
@@ -1346,7 +1346,7 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.SpikedSlimeSpike) { definition = SpikedSlimeSpikeDefinition; return true; }
         if (type == VanillaProjectileIds.QueenSlimeBlueMinionShard) { definition = QueenSlimeBlueMinionShardDefinition; return true; }
         if (type == VanillaProjectileIds.QueenSlimePinkMinionShard) { definition = QueenSlimePinkMinionShardDefinition; return true; }
-        if (type == VanillaProjectileIds.ContainedSlimeTrap) { definition = ContainedSlimeTrapDefinition; return true; }
+        if (type == VanillaProjectileIds.ContainedSlimeTrap || VanillaWiringDartTrap1458.IsDart(type)) { definition = DartTrapDefinition; return true; }
 
         if (type == VanillaProjectileIds.QueenBeeStinger)
         {

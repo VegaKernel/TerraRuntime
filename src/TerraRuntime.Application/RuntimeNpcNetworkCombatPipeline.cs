@@ -333,7 +333,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             pendingTownStrike = townStrike;
             try
             {
-                applied = UsesPreparedLinkedDeath1458(current.TypeIdentity)
+                applied = (UsesPreparedLinkedDeath1458(current.TypeIdentity) || current.TypeIdentity == VanillaNpcIds.LavaSlime)
                     ? damage.TryApplyUnpublished(in request, out result, out captainCommitted,
                         out captainSpawnTrueEye, out captainForceUpdate, null, townStrike?.Reaction)
                     : damage.TryApplyClient(in request,
@@ -359,11 +359,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 PublishCaptainDeath(in captain, in normalizedWire, connection.Source, clientCaller: true);
                 return RuntimeNpcNetworkDamageResult.Killed;
             }
-            bool maggotHitEffectsApplied = current.Type == 632 && !result.Lethal;
+            if (result.Lethal && plannedLavaDeath is not null) AdoptPreparedStrikeOwners();
+            bool maggotHitEffectsApplied = (current.Type == 632 || current.TypeIdentity == VanillaNpcIds.LavaSlime) && !result.Lethal;
             if (maggotHitEffectsApplied) ExecuteNpcNonlethalHitEffects(in current, result.ResolvedDamage);
             // Linked actors keep their accepted nonlethal HP unpublished until
             // their caller-side HitEffect entropy has been consumed.
-            if (UsesPreparedLinkedDeath1458(current.TypeIdentity) && !result.Lethal &&
+            if ((UsesPreparedLinkedDeath1458(current.TypeIdentity) || current.TypeIdentity == VanillaNpcIds.LavaSlime) && !result.Lethal &&
                 !damage.TryCompleteUnpublished(in captainCommitted, captainSpawnTrueEye,
                     publishUpdate: !captainRetainedBirth, captainForceUpdate))
                 throw new InvalidOperationException("Accepted Captain client strike lost its exact revision.");

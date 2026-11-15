@@ -100,6 +100,12 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 IsOrdinaryArrowHandled(in projectile) ||
                 VanillaGemStaffProjectile1458.IsGemStaffProjectile(projectile.Type))
                 continue;
+            if (projectiles.IsCombatTrusted(projectile.Handle) && projectile.Spawner == byte.MaxValue &&
+                projectile.Type.Value is 98 or 184 or 980)
+            {
+                TickWiringDart(in projectile, npcCount, tick);
+                continue;
+            }
             if (projectiles.IsCombatTrusted(projectile.Handle) && VanillaProjectileOwnership.IsServerOwned(projectile.Spawner) &&
                 VanillaFallingBlock1458.TryGetTile(projectile.Type, out _) &&
                 !(projectile.Type == VanillaProjectileIds.AntlionSand && projectile.Ai.Ai0 == 2f))

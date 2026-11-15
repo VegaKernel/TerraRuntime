@@ -119,6 +119,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedStrikeClock = CaptureStrikeClock();
         plannedStrikeDaily = CaptureStrikeDaily();
         plannedUnpublishedClock = null;
+        plannedLavaDeath = null;
         plannedGlobalLootWorld = CaptureGlobalLootWorld();
         plannedSpecificLowTiles = CaptureSpecificLowTiles();
         plannedSpecificWorld = CaptureSpecificWorldFacts();
@@ -254,15 +255,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 !plan.TryReserve(worldItems, allocationViews[..viewCount]) ||
                 !plan.TryAccept((handle, revision) => IsCurrentDeathOwner(handle, revision) &&
                     (!maggotDeath || ReferenceEquals(plannedMaggotTerrain, capturedMaggotTerrain)))) return false;
-            if (UsesPreparedLinkedDeath1458(dead.TypeIdentity) ||
+            if (plannedLavaDeath is not null || UsesPreparedLinkedDeath1458(dead.TypeIdentity) ||
                 pendingProjectileStrike is not null || pendingDebuffPrelude is not null || pendingGemBunnyDeath is not null ||
                 RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(dead.TypeIdentity) ||
                 RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity))
             {
-                // NPC.HitEffect (1.4.5.8) excludes Remix before its Expert/Skyblock
-                // lava producer. Only that producer needs an owned tile operation.
-                if (dead.TypeIdentity == VanillaNpcIds.LavaSlime &&
-                    lootRemixWorld != true && (expertMode || plannedSpecificLowTiles != false)) return false;
                 if (dead.TypeIdentity == VanillaNpcIds.BlueSlime && dead.Ai.Ai1 == 1345f) return false;
                 var previewProgression = previewDeathProgression.CaptureSnapshot();
                 if ((RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(dead.TypeIdentity)
@@ -293,6 +290,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             previewDeathNpcs = null; previewDeathClock = null; previewDeathProgression = null; previewDaily = null; deathPreviewLiveRandom = null;
             if (!completed)
             {
+                plannedLavaDeath = null;
                 plan.Dispose(); plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
                 plannedOrdinaryInvasionRemoval = null;
                 plannedOrdinaryDeathPublication = null;
@@ -330,6 +328,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private void CancelPendingDeathPlan()
     {
         pendingDeathPlan?.Dispose(); pendingDeathPlan = null; plannedDaily = null;
+        plannedLavaDeath = null;
         plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
         plannedUnpublishedClock = null;
         preparedDeathPreludePublication = null;
@@ -374,11 +373,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         // consulting only the later active flag would let that transition evade validation.
         bool moonDeath = actor.Handle.IsAssigned && RuntimeNpcDeathDropPlan1458.CanOwnMoonDeath(actor.TypeIdentity);
         bool ordinaryInvasion = RuntimeNpcDeathDropPlan1458.CanOwnOrdinaryInvasionDeath(actor.TypeIdentity);
-        bool clockCurrent = (pendingProjectileStrike is null && pendingDebuffPrelude is null && pendingGemBunnyDeath is null && !linkedDeath && !moonDeath && !ordinaryInvasion) ||
+        bool clockCurrent = (plannedLavaDeath is null && pendingProjectileStrike is null && pendingDebuffPrelude is null && pendingGemBunnyDeath is null && !linkedDeath && !moonDeath && !ordinaryInvasion) ||
             CaptureStrikeClock() == plannedStrikeClock && CaptureStrikeDaily() == plannedStrikeDaily;
         // Seal after the final external dependency read, before HP or any other owner write.
         bool captainRecipientsCurrent = SealLinkedBirthRecipients1458();
-        return (plannedMaggotTerrain?.IsCurrent ?? true) && captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && moonCurrent && moonPlayersCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && critterCurrent && clockCurrent && fallbackCurrent &&
+        return (plannedLavaDeath?.IsCurrent ?? true) && (plannedMaggotTerrain?.IsCurrent ?? true) && captainRecipientsCurrent && captainCurrent && ordinaryInvasionCurrent && moonCurrent && moonPlayersCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && critterCurrent && clockCurrent && fallbackCurrent &&
             npcs.TryGet(handle, out var current) && current.Revision == revision &&
             deathPrelude.Revision == plannedPreludeRevision && progression.CaptureSnapshot() == plannedDeathProgression &&
             (plannedDeathSpawnSerial is not { } serial ||
