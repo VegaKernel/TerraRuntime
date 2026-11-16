@@ -56,6 +56,18 @@ internal static class WiringNativeSmoke1458
         if (tiles.Get(21, 30).Type != 11) return false;
         state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, doorPress));
         if (tiles.Get(21, 30).Type != 10) return false;
+        // Exercise actual authenticated input -> logic wave -> tile publication in shipping smokes.
+        tiles.Set(45, 50, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+        for (int x = 46; x <= 51; x++) tiles.Set(x, 50, new WorldTile { Flags = WorldTileFlags.WireBlue });
+        tiles.Set(51, 50, new WorldTile { Type = 419, Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+        tiles.Set(51, 51, new WorldTile { Type = 420, FrameY = 18, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        tiles.Set(52, 51, new WorldTile { Flags = WorldTileFlags.WireRed });
+        tiles.Set(53, 51, new WorldTile { Type = 149, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        var logicPress = new TerrariaHitSwitchState1458(45, 50);
+        state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, logicPress));
+        if (tiles.Get(51, 50).FrameX != 18 || tiles.Get(51, 51).FrameX != 18 || tiles.Get(53, 51).FrameX != 54) return false;
+        state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, logicPress));
+        if (tiles.Get(51, 50).FrameX != 0 || tiles.Get(51, 51).FrameX != 0 || tiles.Get(53, 51).FrameX != 0) return false;
         byte[] importance = new byte[(VanillaWorldFormat326.TileTypeCount + 7) / 8];
         importance[144 >> 3] |= 1 << (144 & 7);
         var timerOnly = new WorldTileStore(new WorldDimensions(1, 1));

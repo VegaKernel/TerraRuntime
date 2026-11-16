@@ -4,7 +4,7 @@ namespace TerraRuntime.World;
 /// Owns one world's transient wire traversal and mechanism clocks. All entry points run on the
 /// authoritative thread; tile storage and its section/persistence invalidation remain in WorldTileStore.
 /// </summary>
-public sealed class WorldWiringCircuit1458
+public sealed partial class WorldWiringCircuit1458
 {
     // TerrariaServer 1.4.5.8 Wiring.HitSwitch/UpdateMech and TileObjectData132/411 frame facts.
     private const ushort TimerTile = 144;
@@ -27,11 +27,14 @@ public sealed class WorldWiringCircuit1458
     public WorldWiringCircuit1458(
         WorldTileStore tiles,
         WorldWiringDeviceExecutor1458 devices,
-        Action<int, int, byte, byte>? publishTileSquare = null)
+        Action<int, int, byte, byte>? publishTileSquare = null,
+        Func<int, int>? nextLogicSample = null, Action<int, int>? publishLogicSmoke = null)
     {
         _tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         _devices = devices ?? throw new ArgumentNullException(nameof(devices));
         _publish = publishTileSquare;
+        _nextLogicSample = nextLogicSample;
+        _logicSmoke = publishLogicSmoke;
     }
 
     public int RegisteredMechanismCount => _mechanisms.Count;
@@ -99,47 +102,58 @@ public sealed class WorldWiringCircuit1458
             (long)left + width > _tiles.Dimensions.WidthTiles ||
             (long)top + height > _tiles.Dimensions.HeightTiles) return false;
         _running = true;
+        BeginLogicPulse();
         try
         {
-            for (int color = 1; color <= 4; color++)
-            {
-                WorldWireChannel channel = (WorldWireChannel)color;
-                for (int x = left; x < left + width; x++)
-                    for (int y = top; y < top + height; y++)
-                    {
-                        if (!HasWire(_tiles.Get(x, y), channel)) continue;
-                        int index = Index(x, y);
-                        _skip.Add(index);
-                        _remainingEntrances.Add(index, 4);
-                        _pending.Enqueue(new WireVisit(x, y, 0));
-                    }
-                Traverse(channel);
-                _skip.Clear();
-                _remainingEntrances.Clear();
-                _routerEntrances.Clear();
-            }
-            // Wiring.PixelBoxPass runs once, after all four colors, and requires both axes.
-            foreach ((int index, byte axes) in _pixelTriggers)
-            {
-                if (axes != 3) continue;
-                int x = index / _tiles.Dimensions.HeightTiles;
-                int y = index % _tiles.Dimensions.HeightTiles;
-                WorldTile tile = _tiles.Get(x, y);
-                tile.FrameX = tile.FrameX == SourceFramePitch ? (short)0 : SourceFramePitch;
-                _tiles.Set(x, y, in tile);
-                _publish?.Invoke(x, y, 1, 1);
-            }
+            RunWirePulse(left, top, width, height);
+            DrainLogicGates();
             return true;
         }
-        finally
+        finally { ClearPulseState(); }
+    }
+
+    private void RunWirePulse(int left, int top, int width, int height)
+    {
+        for (int color = 1; color <= 4; color++)
         {
-            _pending.Clear();
-            _remainingEntrances.Clear();
+            WorldWireChannel channel = (WorldWireChannel)color;
+            for (int x = left; x < left + width; x++)
+                for (int y = top; y < top + height; y++)
+                {
+                    if (!HasWire(_tiles.Get(x, y), channel)) continue;
+                    int index = Index(x, y);
+                    _skip.Add(index);
+                    _remainingEntrances.Add(index, 4);
+                    _pending.Enqueue(new WireVisit(x, y, 0));
+                }
+            Traverse(channel);
             _skip.Clear();
+            _remainingEntrances.Clear();
             _routerEntrances.Clear();
-            _pixelTriggers.Clear();
-            _running = false;
         }
+        // Wiring.PixelBoxPass runs once, after all four colors, and requires both axes.
+        foreach ((int index, byte axes) in _pixelTriggers)
+        {
+            if (axes != 3) continue;
+            int x = index / _tiles.Dimensions.HeightTiles;
+            int y = index % _tiles.Dimensions.HeightTiles;
+            WorldTile tile = _tiles.Get(x, y);
+            tile.FrameX = tile.FrameX == SourceFramePitch ? (short)0 : SourceFramePitch;
+            _tiles.Set(x, y, in tile);
+            _publish?.Invoke(x, y, 1, 1);
+        }
+        _pixelTriggers.Clear();
+    }
+
+    private void ClearPulseState()
+    {
+        _pending.Clear();
+        _remainingEntrances.Clear();
+        _skip.Clear();
+        _routerEntrances.Clear();
+        _pixelTriggers.Clear();
+        ClearLogicQueues();
+        _running = false;
     }
 
     /// <summary>Runs Wiring.UpdateMech's decrement-before-fire order and reverse registration order.</summary>
@@ -215,7 +229,7 @@ public sealed class WorldWiringCircuit1458
         {
             int index = Index(visit.X, visit.Y);
             if (!_skip.Contains(index))
-                _devices.Hit(visit.X, visit.Y, channel, SkipWire, HitSwitchFromWire);
+                _devices.Hit(visit.X, visit.Y, channel, SkipWire, HitSwitchFromWire, HitLogicLamp);
             WorldTile current = _tiles.Get(visit.X, visit.Y);
             for (byte direction = 0; direction < 4; direction++)
             {

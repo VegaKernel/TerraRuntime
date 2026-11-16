@@ -32,6 +32,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private const ushort OpenTrapdoor = 386, ClosedTrapdoor = 387, ClosedTallGate = 388, OpenTallGate = 389;
     private const ushort Fireplace = 405, MomentarySwitch = 411, FakeChest = 441, SecondChest = 467;
     private const ushort SecondFakeChest = 468, DisplayDoll = 470, HatRack = 475, GolfHole = 476;
+    private const ushort LogicLamp = 419;
     private const ushort PlasmaLamp = 564, Pylon = 597, ShadowCandle = 646;
     private const int FramePitch = 18, DoubleFrameWidth = 36, TripleFrameWidth = 54;
     private const int ChandelierStyleWidth = 108, TorchStateStride = 66;
@@ -77,7 +78,7 @@ public sealed class WorldWiringDeviceExecutor1458
     /// Timer144 delegates to the circuit's existing switch/timer owner.
     /// </summary>
     public bool Hit(int x, int y, WorldWireChannel channel, Action<int, int> skipWire,
-        Action<int, int>? hitSwitch = null)
+        Action<int, int>? hitSwitch = null, Func<int, int, bool>? hitLogicLamp = null)
     {
         ArgumentNullException.ThrowIfNull(skipWire);
         if (!Contains(x, y) || channel is < WorldWireChannel.Red or > WorldWireChannel.Yellow) return false;
@@ -96,6 +97,8 @@ public sealed class WorldWiringDeviceExecutor1458
         // timing. In particular a rejected occupied gate still skips its validated footprint.
         if (tile.Type is ClosedDoor or OpenDoor or OpenTrapdoor or ClosedTrapdoor or ClosedTallGate or OpenTallGate)
             return ToggleDoor(x, y, in tile, skipWire) || changed;
+
+        if (tile.Type == LogicLamp) return hitLogicLamp?.Invoke(x, y) == true || changed;
 
         if (tile.Type == Trap) return fireTrap?.Invoke(x, y) == true || changed;
 

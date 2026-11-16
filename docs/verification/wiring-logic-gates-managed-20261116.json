@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "wiring-logic-gates-managed-20261116",
+  "accepted": true,
+  "allIssuesComplete": false,
+  "baseCommit": "361437616b31533db2b89a01a882f90ca3007453",
+  "sdk": "11.0.100",
+  "runtime": "11.0.0",
+  "newProductionDependencies": false,
+  "scope": [
+    "Tile419 normal/faulty lamps and tile420 six truth rules through the existing authoritative circuit/device owners.",
+    "Four-color and pixel-box completion precedes lamp checks; ordered gate waves and one emitted gate pulse per cascade preserve source feedback semantics.",
+    "Faulty sampling includes source Next(0); feedback uses existing dedicated PoofOfSmoke RNG offers and packet106 codec with no particle simulation.",
+    "Existing shared RNG, trap registration/birth owner, source tile-square publication and authenticated command59/peer relay remain authoritative.",
+    "Public optional nextLogicSample/publishLogicSmoke capability, guarded PokeLogicGate, bounded65536logical-event work and resettable LastLogicBudgetExceeded.",
+    "Actual authenticated two-client tile/smoke ordering, existing shipping WiringNativeSmoke logic path, absent capability/refused framing, reentry and stale gate image controls."
+  ],
+  "limits": [
+    "Intact dry logic-only or empty framing neighborhoods are admitted. Unsupported neighbors, malformed frames, wet framing and full destruction/drop/placement-triggered reevaluation remain unqualified.",
+    "When logical work exceeds65536events, the cascade stops and reports LastLogicBudgetExceeded. Already committed input/device changes are retained; this safety ceiling is not a vanilla wire-length rule.",
+    "Hosts with an unqualified custom random adapter do not gain source logic capability. No new RNG stream, fake player/NPC or separate simulation owner is introduced.",
+    "Original source gold runs under Windows CoreCLR against the unmodified official Linux-edition binary. It is not Linux process execution, whole Main.Update or a real GUI-client session.",
+    "2448source scenarios each capture4controlled pulses. Both direct World and composed Application projections compare cells, full RNG and physical projectile births. Tile20/smoke106 bytes are independently compared; packet27 stays on its previously qualified publisher, physical birth comparison is not fresh packet27-network acceptance.",
+    "Statues, pumps, teleporters, unsupported plate producers and full wiring/client acceptance remain open; issue125 is partial.",
+    "Issue126 still requires absent affected/unaffected stop logs; no timeout or abuse limits were weakened.",
+    "Local NativeAOT and C++ toolchain installation remain user-deferred. Previous main CI43787133682 fully succeeded incl both NativeAOT platforms; no new local native acceptance is asserted."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\logic-gates-20261116\\build-final03.log",
+    "logSha256": "857d033bc51ddc658e2bb4460b247f1eac0ac97858c1102d9a25f133bb1cbd8c"
+  },
+  "focused": {
+    "total": 47716,
+    "passed": 47716,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1238.017242299975,
+    "tests": {
+      "total": "225321",
+      "passed": "225321",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1235.047",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1977.9972337000072,
+    "tests": {
+      "total": "1770636",
+      "passed": "1770636",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1966.175",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6058,
+  "independentEvidence": {
+    "capture": {
+      "rows": 2448,
+      "identicalRepeats": 2,
+      "firstChanceExceptions": 0,
+      "sha256": "40d579942df4fb7ad9d470e38392a8829f7693db0596fcf1fb9aa3d3934108b4",
+      "raw": "E:\\TerraRuntimeAgentCache\\logic-gates-20261116\\original\\observations04.json",
+      "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034"
+    },
+    "embeddedFixture": {
+      "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringLogicGate1458.json.gz",
+      "sha256": "ba7eb0585c2be07f304575deb010f4d094d5af8efdda3096bf030a4c130bd55f",
+      "bytes": 1536971
+    },
+    "packetCounts": {
+      "20": 30672,
+      "106": 864,
+      "27": 90
+    },
+    "sourceAnalysis": {
+      "analysisOnly": true,
+      "accepted": false,
+      "sourceClosureComplete": false,
+      "observationSha256": "f1308a133a3da5f081b728de0964584f38fa06d47422aabe7b25ab08f6f92137"
+    }
+  },
+  "causalControls": {
+    "sourceInputs": 5138,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab",
+    "controls": [
+      {
+        "control": "nand-truth",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 4175,
+        "failed": 726,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      },
+      {
+        "control": "faulty-probability",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 3641,
+        "failed": 1260,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      },
+      {
+        "control": "zero-count-entropy",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 4793,
+        "failed": 108,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      },
+      {
+        "control": "gate-output-pulse",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 1444,
+        "failed": 3457,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      },
+      {
+        "control": "feedback-smoke-position",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 4577,
+        "failed": 324,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      },
+      {
+        "control": "gate-currentness",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 4900,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      },
+      {
+        "control": "logical-work-ceiling",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 4900,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      },
+      {
+        "control": "server-rng-binding",
+        "exitCode": 1,
+        "total": 4901,
+        "passed": 4577,
+        "failed": 324,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5138,
+    "dllPaths": 411,
+    "testDllSha256": "4ea22a7ecd83e9964d8037e04e28933835e78f501bf8226d5453476c4c280cab",
+    "afterFull": {
+      "sourceInputs": 5138,
+      "dllPaths": 411,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5138,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 1.17148650001036,
+      "logSha256": "8fb050c5142d1fad33ed9f515ab270ffbc91d9c035f99b0ec9aafba98a5e0c28"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 1.1563309999764897,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.17545420001260936,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 0.997991300013382,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 5.493328999960795,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "c3542f4f8ecd715f26a268fb4d3adfe200e21fb7deb9dde2b10a523ba82ae10a",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.410001399985049,
+        "logSha256": "e438fb08c86fe388834a3d45ce38ed62961c1c110e3f2d6f7650b94f7ccb49fa"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 0.9910377999767661,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.13370959996245801,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 0.7841879000188783,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 5.043802400003187,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 10.488815700053237,
+      "logSha256": "201ed304860ed2daaf9fe86f4eda7d943c11f97541bbf2ecaa08129be5c8ceb2"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.1926858999649994,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 3.6891233999631368,
+      "logSha256": "b69d3582c27cdcb0cc1260024310a087f741657723ae3ae49da5aa8a1aeb7e8e"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 1.0865216000238433,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\logic-gates-20261116",
+  "rejectedIntermediateEvidence": [
+    "Early original probes lacked wire-only cells or section ownership for packet20; only repeated observations04/05 back the final fixture.",
+    "First focused failure compared boxed int and uint RNG cursors. Later peer test incorrectly parsed an existing message-ID helper as raw frames. Both oracle errors were corrected without weakening production checks."
+  ]
+}

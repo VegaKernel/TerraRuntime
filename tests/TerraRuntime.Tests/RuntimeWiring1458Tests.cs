@@ -13,7 +13,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class RuntimeWiring1458Tests
+public sealed partial class RuntimeWiring1458Tests
 {
     [Fact]
     public void Real_packet59_decode_queue_apply_mutates_only_on_writer_and_publishes_authoritative_light_before_relay()

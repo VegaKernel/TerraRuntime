@@ -20,7 +20,14 @@ internal sealed partial class WorldTileAuthority
             publishDoorToggle: transition => replication?.TryPublishDoorToggle(new TerrariaDoorToggleState(
                 (byte)transition.Action, (short)transition.X, (short)transition.Y, (sbyte)transition.Direction)),
             applyActuatorTransaction: TryApplyWiringActuator, fireTrap: TryFireWiringTrap);
-        wiring = new WorldWiringCircuit1458(tiles, devices, PublishWiringSquare);
+        var source = worldItemSpawnRandom as TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom;
+        wiring = new WorldWiringCircuit1458(tiles, devices, PublishWiringSquare,
+            source is null ? null : maximum => source.SourceRandom.Next(maximum),
+            source is null ? null : (x, y) =>
+            {
+                VanillaPoofOfSmoke1458.ConsumeDedicatedSourceOffers(new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(source.SourceRandom));
+                replication?.TryPublishLogicSmoke(x, y);
+            });
     }
 
     private void PublishWiringSquare(int x, int y, byte width, byte height)

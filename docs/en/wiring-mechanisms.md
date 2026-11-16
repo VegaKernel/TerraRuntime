@@ -89,7 +89,7 @@ The following remain outside the supported chain:
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Pumps and teleporters, pending full integration with liquid and movement owners.
-- Logic gates, statues and their spawn and nested-pulse effects; trap contexts outside the bounded continuation below.
+- Statues and their spawn effects; trap and logic contexts outside the bounded continuations below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
@@ -130,3 +130,20 @@ Ten independent original-server captures repeat byte-identically across $20\,865
 Self-displacement of an updating emitter when the physical projectile pool is saturated remains a conservative refusal: neither a partial child nor a stale parent afterimage is published. Other source-qualified allocation paths retain their existing replacement rules. Complete player visual RNG and the `KillMe`/tombstone tail remain unqualified; the separate health and storage owners keep their existing scope.
 
 [Remaining-trap managed receipt, 2026-11-16](../verification/wiring-remaining-traps-managed-20261116.json). Local NativeAOT remains user-deferred.
+
+
+## Logic lamps and gates: managed checkpoint
+
+Tile `419` now toggles ordinary lamps and checks faulty lamps through the existing device and circuit owners. Tile `420` supports the six source rules: AND, OR, NAND, NOR, exactly one and not exactly one. Gate evaluation follows all four wire colors and the pixel-box pass. Queued gate waves retain source ordering; a gate emits at most once in one cascade, and further feedback uses the existing dedicated-server smoke RNG offers and packet `106` codec.
+
+`WorldWiringCircuit1458` adds optional `nextLogicSample` and `publishLogicSmoke` constructor callbacks. A logic-capable host supplies both; the sample callback mirrors `UnifiedRandom.Next(maximum)`, including its draw for `maximum == 0`. Existing server composition binds its owned shared source stream. Missing source capability refuses logic operations. `PokeLogicGate` evaluates an existing column without toggling a lamp; external reentry into an active pulse is rejected.
+
+The circuit caps retained logical work at $65\,536\,\text{events/pulse}$. `LastLogicBudgetExceeded` reports a stopped logical cascade and resets on the next admitted pulse. Already committed input/device changes remain visible; ordinary wire traversal retains its existing world bound. This is an explicit runtime safety ceiling, not a vanilla wire-length rule.
+
+This continuation admits intact dry framing neighborhoods containing only empty cells and supported logic tiles. Malformed frames, unsupported neighbors and destruction/drop/placement-triggered reevaluation still require the existing full framing transaction before admission. It does not add statues, pumps, teleporters, unsupported plate producers or whole-client acceptance.
+
+The independently repeated original capture covers $2\,448$ scenarios: normal/faulty/empty/repaired columns, four-color input, multi-gate waves, feedback and trap births. Both world-circuit and server-composition projections match state and complete RNG. Tile and smoke packet bytes are compared; projectile births are compared physically through their existing qualified owner. Managed gates pass: focused $47\,716$, fast $225\,321$ and complete unfiltered full $1\,770\,636$ cases, plus eight effective causal controls and ordinary/fresh CoreCLR smokes.
+
+Gate and lamp frames stay in the existing tile store, section invalidation and world-file representation. Lamp/gate queues and per-cascade visitation are transient; they are cleared on completion or exception and are not restored as pending pulses after reload.
+
+[Logic-gate managed receipt, 2026-11-16](../verification/wiring-logic-gates-managed-20261116.json). Local NativeAOT remains user-deferred.
