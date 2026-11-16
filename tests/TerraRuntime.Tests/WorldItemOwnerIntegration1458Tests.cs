@@ -126,8 +126,8 @@ public sealed class WorldItemOwnerIntegration1458Tests
         var wire = new WorldItemDropStateUpdate(1000,1000,2.5f,-3.75f,1,
             row.GetProperty("prefix").GetByte(), (WorldItemOwnershipMode)row.GetProperty("mode").GetByte(),
             row.GetProperty("type").GetInt16(),false,0,0);
-        object?[] args = [wire, null, null, null, null, null];
-        var method = typeof(WorldItemAuthority).GetMethod("TryPrepareClientCreation", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        object?[] args = [wire, null, null, null, null, null, true];
+        var method = typeof(WorldItemAuthority).GetMethod("TryPrepareSourceCreation", BindingFlags.Instance | BindingFlags.NonPublic)!;
         Assert.True((bool)method.Invoke(f.Graph.WorldItems,args)!);
         var created = Assert.IsType<WorldItemDropStateUpdate>(args[1]);
         using var allocation = f.Items.CreateAllocationPreview([new(0,1000,1000,20,42)]);

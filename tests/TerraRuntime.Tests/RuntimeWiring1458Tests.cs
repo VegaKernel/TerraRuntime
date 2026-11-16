@@ -275,9 +275,12 @@ public sealed partial class RuntimeWiring1458Tests
         public ProjectileLifecycleFrameSink Sink { get; }
         public ConnectionHandle Owner { get; private set; }
 
-        public Scene(int sourceId = 8000, ServerPlayerAuthority? serverPlayers = null, PlayerSlotPool? playerSlots = null)
+        public Scene(int sourceId = 8000, ServerPlayerAuthority? serverPlayers = null, PlayerSlotPool? playerSlots = null, RuntimePlayerUpdateWorld1458? sourceWorld = null,
+            RuntimeTownCommerceWorldFacts1458? calendar = null, TerraRuntime.Core.Worlds.RuntimeWorldItemStore? items = null,
+            RuntimeWorldItemReplicationRegistry? itemReplication = null)
         {
-            State = new(worldTiles: Tiles, tileManipulationReplication: Replication, serverPlayers: serverPlayers);
+            State = new(worldTiles: Tiles, tileManipulationReplication: Replication, serverPlayers: serverPlayers,
+                sourcePlayerWorld: sourceWorld, townCommerceWorldFacts: calendar, worldItems: items, worldItemReplication: itemReplication);
             var source = GameCommandSourceId.FromConnection(sourceId);
             Bootstrap = new(playerSlots ?? new PlayerSlotPool(1), Outbound(), PlayerBootstrapPacketSet.CreateForTesting(
                 new byte[] { 3, 0, 7 }, Array.Empty<ReadOnlyMemory<byte>>(), new byte[] { 3, 0, 49 }), source, this);

@@ -9,9 +9,9 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class WorldItemAuthority
 {
-    private bool TryPrepareClientCreation(in WorldItemDropStateUpdate wire, out WorldItemDropStateUpdate created,
+    private bool TryPrepareSourceCreation(in WorldItemDropStateUpdate wire, out WorldItemDropStateUpdate created,
         out VanillaUnifiedRandom1458? live, out VanillaUnifiedRandom1458? before, out VanillaUnifiedRandom1458? after,
-        out VanillaSeasonalItemDropContext1458 calendar)
+        out VanillaSeasonalItemDropContext1458 calendar, bool useSuppliedVelocity = true)
     {
         created = default; before = after = null; calendar = default;
         live = (SpawnRandom as SystemWorldItemSpawnRandom)?.SourceRandom;
@@ -22,7 +22,7 @@ internal sealed partial class WorldItemAuthority
         if (seasonal && seasonalContext is null) return false;
         calendar = seasonalContext?.Invoke() ?? default;
         before = live.Clone(); after = live.Clone();
-        var random = new ClientCreationRolls(after);
+        var random = new SourceCreationRolls(after);
         ItemTypeId type = VanillaSeasonalItemDropFacts1458.Resolve(requested, calendar, random);
         if (!VanillaWorldItemOwner1458.TryGetSourceCreationNoGravity(type, out bool noGravity)) return false;
         var initial = new WorldItemDropStateUpdate(wire.PositionX, wire.PositionY,
@@ -40,15 +40,16 @@ internal sealed partial class WorldItemAuthority
         }
         // MessageBuffer21 overlays the transmitted fields after actual NewItem materialization, including its
         // two velocity draws. The seasonal-created type is retained by the source flag4 branch.
-        created = initial with { VelocityX = wire.VelocityX, VelocityY = wire.VelocityY, Prefix = prefix,
+        // World-origin callers retain the generated velocity instead of overlaying a client tuple.
+        created = initial with { VelocityX = useSuppliedVelocity ? wire.VelocityX : initial.VelocityX, VelocityY = useSuppliedVelocity ? wire.VelocityY : initial.VelocityY, Prefix = prefix,
             Ownership = wire.Ownership, Shimmered = wire.Shimmered, ShimmerTime = wire.ShimmerTime,
             EnemyGrabDelayTime = wire.EnemyGrabDelayTime };
         return true;
     }
 
-    private sealed class ClientCreationRolls(VanillaUnifiedRandom1458 random) : INpcLootRollSource
+    private sealed class SourceCreationRolls(VanillaUnifiedRandom1458 random) : INpcLootRollSource
     {
         public int NextInt32(int inclusiveMin, int exclusiveMax) => random.Next(inclusiveMin, exclusiveMax);
-        public int RollLuck(int chanceDenominator) => throw new InvalidOperationException("Client NewItem does not call RollLuck.");
+        public int RollLuck(int chanceDenominator) => throw new InvalidOperationException("Source NewItem does not call RollLuck.");
     }
 }

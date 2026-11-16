@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "wiring-item-statues-managed-20261116",
+  "accepted": true,
+  "allIssuesComplete": false,
+  "baseCommit": "187e62787dbba32415560814a6cf0763b9416d9d",
+  "sdk": "11.0.100",
+  "runtime": "11.0.0",
+  "newProductionDependencies": false,
+  "scope": [
+    "Tile105 item-producing styles2/17/37 use existing circuit, world tile and world-item authority. Validated dry nonactuated2x3 footprints skip six cells per wire color.",
+    "Source CheckMech600 commits before item population eligibility. Independent per-identity limits count physical occupied slots, not stack quantity:3within300px,6within800px,10global; strict distance from item top-left to statue bottom-center.",
+    "Existing seasonal resolver selects heart/star variants including tenth-anniversary before source velocity sampling. Existing source creation serves world generated velocity and unchanged client overlay behavior.",
+    "Existing detached allocation owns free/oldest/sentinel cases, owner selection, one-use funding and packet21/151/owner publication. No new item writer or RNG stream.",
+    "Source capability, player/owner/calendar/RNG/clock/retained footprint guards finish before callback-free item adoption and shared RNG commit; publication follows.",
+    "Existing authenticated command59/bootstrap and two outbound endpoint projections receive item birth before switch relay. All three statues are exercised by the existing shipping WiringNativeSmoke path."
+  ],
+  "limits": [
+    "NPC statues, King/Queen town teleports, arbitrary wet or actuated statue footprints and wider wiring/client acceptance remain open; issue125 is not closed.",
+    "Canonical source traces have no active players and compare original full physical item/RNG/cooldown state plus packet21/151 bytes. Controlled stock clearing and physical ages are explicit inputs; only mechanism clocks advance, not item physics or Main.Update.",
+    "Authenticated endpoint/funding tests are in-process authority/queue projections, not a newly captured unmodified GUI or real TCP-client playthrough. Existing ordinary pickup owners are reused; no direct inventory credit is granted.",
+    "Heart/star require an owned calendar and all births require the existing qualified source RNG and item-owner facts. Unknown dependencies and protected transient allocations refuse without speculative item/RNG adoption.",
+    "Source cooldown registration precedes population/birth checks and is retained when the subsequent allocation or owner transaction refuses.",
+    "Local NativeAOT and system C++ installation remain user-deferred. Previous mainCI43813502610 Windows/LinuxNative and CoreCLR jobs succeeded; new local native acceptance is not asserted.",
+    "Issue126 still awaits absent affected/unaffected connection stop logs; no timeout/abuse policy was loosened."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\item-statues-20261116\\build-final.log",
+    "logSha256": "abf2a683173c76cf81b2984c395d02e678f6af50783e24d8ce0d14d7d32541cf"
+  },
+  "focused": {
+    "total": 55447,
+    "passed": 55447,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1092.80187570001,
+    "tests": {
+      "total": "228606",
+      "passed": "228606",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1089.917",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1878.0775093000266,
+    "tests": {
+      "total": "1773921",
+      "passed": "1773921",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1864.845",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6065,
+  "independentEvidence": {
+    "capture": {
+      "rows": 3267,
+      "identicalRepeats": 2,
+      "firstChanceExceptions": 0,
+      "sha256": "12a174fc7fc1e69c07d3935c285321f7ee720873e90b558a337cf1d4cd223b78",
+      "raw": "E:\\TerraRuntimeAgentCache\\item-statues-20261116\\original\\observations01.json",
+      "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034"
+    },
+    "embeddedFixture": {
+      "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringItemStatue1458.json.gz",
+      "sha256": "86c8fadbbe8d0f3ab63bc62de21d08577d376894accab4482fdcfdaea3862b1d",
+      "bytes": 686752
+    },
+    "packetCounts": {
+      "21": 12332,
+      "151": 9
+    },
+    "sourceAnalysis": {
+      "analysisOnly": true,
+      "accepted": false,
+      "sourceClosureComplete": false,
+      "observationSha256": "89e0e68996655c8e14c3218fa762ada7672959a67519071479744fe2ba11a9fe"
+    }
+  },
+  "causalControls": {
+    "sourceInputs": 5145,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28",
+    "controls": [
+      {
+        "control": "radius-boundary",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 3138,
+        "failed": 144,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "slot-not-stack",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 3210,
+        "failed": 72,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "seasonal-alias-cap",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 2959,
+        "failed": 323,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "source-cooldown",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 42,
+        "failed": 3240,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "bomb-origin",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 2196,
+        "failed": 1086,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "world-velocity",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 24,
+        "failed": 3258,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "last-source-guard",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 3280,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "calendar-guard",
+        "exitCode": 1,
+        "total": 3282,
+        "passed": 3281,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      },
+      {
+        "control": "item-custody",
+        "exitCode": 1,
+        "total": 16,
+        "passed": 13,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5145,
+    "dllPaths": 411,
+    "testDllSha256": "e5b394bdaba41f91da723aafe1525d1fe78ba7389d476091a18a653e443fae28",
+    "afterFull": {
+      "sourceInputs": 5145,
+      "dllPaths": 411,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5145,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 1.1410902999923564,
+      "logSha256": "fe4e306f24156665330cfd6c52af15f46de88b924775fee64390fc6869247c1c"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 1.0209221000550315,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.1635243000346236,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 0.9642231999896467,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 5.838820500008296,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "adb2f0b55a6ee3f0fc3534d0259c9e1339b6cea5c95d40721b111ae1a60afe3d",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.4845170000335202,
+        "logSha256": "5a69d619704755155637c3bddaee4e271d92cdab23376fd6ae9821dab382cab2"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 0.9668830999871716,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.15611209999769926,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 0.8219900000258349,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 4.956736899970565,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 12.166426900017541,
+      "logSha256": "ba8a8006353752dc2f223b57bd566d8810f7006fcefadf6691cdbfceddcef484"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.0876929999794811,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 3.748133899993263,
+      "logSha256": "80a84ab844df729ef0d6cc3d16eb179fec9f5b7e091f0007017884a837b52aaa"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 1.0001725999754854,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\item-statues-20261116",
+  "rejectedIntermediateEvidence": [
+    "Initial world creation reused the client velocity overlay; source comparison exposed the zero velocity and the explicit world-only generated-velocity option fixed it.",
+    "Initial stock fixture omitted allocation TryClaim, and first RPC fixtures had mismatched world surfaces. Both test setup issues were corrected with the original item/owner guards retained.",
+    "The first cooldown mutant rebuilt only the defining assembly and left the consumer-inlined const unchanged; it produced no failures and was rejected. The effective rerun rebuilds the application dependency closure before replacing the isolated runner assemblies."
+  ]
+}

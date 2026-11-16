@@ -89,7 +89,7 @@ The following remain outside the supported chain:
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Pumps and teleporters, pending full integration with liquid and movement owners.
-- Statues and their spawn effects; trap and logic contexts outside the bounded continuations below.
+- NPC-spawning and town-teleport statues; trap, logic and item-statue contexts outside the bounded continuations below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
@@ -147,3 +147,20 @@ The independently repeated original capture covers $2\,448$ scenarios: normal/fa
 Gate and lamp frames stay in the existing tile store, section invalidation and world-file representation. Lamp/gate queues and per-cascade visitation are transient; they are cleared on completion or exception and are not restored as pending pulses after reload.
 
 [Logic-gate managed receipt, 2026-11-16](../verification/wiring-logic-gates-managed-20261116.json). Local NativeAOT remains user-deferred.
+
+
+## Item-producing statues: managed checkpoint
+
+Tile `105` styles `2`, `17` and `37` now create a mana star, bomb and heart through the existing world-item authority. The device validates the complete $2\times3$ footprint and skips its six cells for each wire color. The circuit registers the source cooldown of $600\,\text{updates}$ before checking population, so a blocked attempt still consumes its cooldown. Unsupported NPC and town-teleport statues remain outside this continuation.
+
+`WorldWiringDeviceExecutor1458` accepts the optional `fireStatue(left, top, style)` callback. It runs after validation and marking all six footprint cells as visited for that wire color, including when the callback refuses the action. A host without the callback does not create statue items; server composition binds the existing world-item owner.
+
+`Item.MechSpawn` counts occupied physical item slots, independently of stack quantity: fewer than $3$ matching items within $300\,\mathrm{px}$, fewer than $6$ within $800\,\mathrm{px}$, and fewer than $10$ globally. Distance uses the item's top-left and the statue's bottom-center; both radial comparisons are strict. Heart/star seasonal identities each have their own limit. The existing calendar rule selects seasonal and tenth-anniversary replacements before the source velocity draws.
+
+The existing allocation preview owns free/oldest/sentinel selection, publication and one-use item funding. The source creation owner now serves both world actions and client-funded creation: world births retain generated velocity, while the existing client path still overlays its transmitted velocity after consuming the original draws. Player/owner facts, calendar, shared RNG, clock and the retained statue image are checked before adopting and publishing the item. No second item writer or new RNG stream is introduced.
+
+This continuation admits intact dry non-actuated statue footprints and a qualified source RNG/calendar. Births use the normal item representation, owner and pickup paths; they do not grant inventory stock directly. Tile frames and wiring retain their existing persistence path; mechanism cooldowns remain transient. Arbitrary wet/actuated statues, NPC statues, King/Queen teleports and real GUI-client acceptance remain open.
+
+The independent original capture repeats byte-identically across $3\,267$ scenarios without observed exceptions. It covers all six contact cells, wire colors, eight calendar combinations, radius/slot/stack/alias caps, repeated/capped/cleared cooldown traces, full item allocation and packet `21`/`151` bytes. These controlled traces advance mechanisms only; item physics is not advanced, and stock clearing/initial ages are explicit fixture inputs. Managed gates pass: focused $55\,447$, fast $228\,606$ and unfiltered full $1\,773\,921$ cases; nine effective causal controls and ordinary/fresh CoreCLR smokes also pass.
+
+[Item-statue managed receipt, 2026-11-16](../verification/wiring-item-statues-managed-20261116.json). Local NativeAOT remains user-deferred.

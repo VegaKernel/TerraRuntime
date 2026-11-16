@@ -22,7 +22,8 @@ internal static class WiringNativeSmoke1458
             DualDungeonsSeed = false, JourneyMode = false, HallowBackground = 0,
             OnlyShimmerOceanWorlds = false
         };
-        var state = new ServerRuntimeState(worldTiles: tiles, sourcePlayerWorld: sourceWorld,
+        var statueItems = new TerraRuntime.Core.Worlds.RuntimeWorldItemStore();
+        var state = new ServerRuntimeState(worldTiles: tiles, worldItems: statueItems, sourcePlayerWorld: sourceWorld,
             worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
             townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 60 },
             townSpawnWorldFacts: default(TerraRuntime.Gameplay.Npcs.VanillaTownSpawnWorldFacts1458));
@@ -32,6 +33,7 @@ internal static class WiringNativeSmoke1458
         session.ObserveWorldRequest(); session.ObserveSectionRequest();
         var owner = new ConnectionHandle(GameCommandSourceId.FromConnection(145859), session.Handle);
         state.Apply(new PlayerHealthRuntimeCommand(owner, new(owner.Player.Slot, 100, 100)));
+        state.Apply(new PlayerManaRuntimeCommand(owner, new(owner.Player.Slot, 0, 20)));
         state.Apply(new PlayerEquipmentRuntimeCommand(owner, new(owner.Player.Slot, 0, 0, 0, 0, 0)));
         var spawn = new PlayerSpawnCommitRequest(owner.Player.Slot, 20, 20, 0, 0, 0, 0, 0);
         state.Apply(new PlayerSpawnRuntimeCommand(owner, session, spawn));
@@ -68,6 +70,17 @@ internal static class WiringNativeSmoke1458
         if (tiles.Get(51, 50).FrameX != 18 || tiles.Get(51, 51).FrameX != 18 || tiles.Get(53, 51).FrameX != 54) return false;
         state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, logicPress));
         if (tiles.Get(51, 50).FrameX != 0 || tiles.Get(51, 51).FrameX != 0 || tiles.Get(53, 51).FrameX != 0) return false;
+        foreach (int style in new[] { 2, 17, 37 })
+        {
+            int top = style == 2 ? 65 : style == 17 ? 70 : 75;
+            for (int x = 55; x <= 60; x++) tiles.Set(x, top, new WorldTile { Flags = WorldTileFlags.WireBlue });
+            tiles.Set(55, top, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+            for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++)
+                tiles.Set(60 + dx, top + dy, new WorldTile { Type = 105, FrameX = (short)(style * 36 + dx * 18),
+                    FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+            state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(55, (short)top)));
+        }
+        if (statueItems.ActiveCount != 3) return false;
         byte[] importance = new byte[(VanillaWorldFormat326.TileTypeCount + 7) / 8];
         importance[144 >> 3] |= 1 << (144 & 7);
         var timerOnly = new WorldTileStore(new WorldDimensions(1, 1));

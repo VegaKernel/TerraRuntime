@@ -24,7 +24,7 @@ internal sealed partial class WorldItemAuthority
             }).ToArray();
             var prefixWorld = players.PickupWorld;
             var prefixArithmetic = players.PickupWindowsArithmetic;
-            if (!TryPrepareClientCreation(command.State, out var created, out var liveRandom, out var beforeRandom, out var afterRandom, out var calendar)) return false;
+            if (!TryPrepareSourceCreation(command.State, out var created, out var liveRandom, out var beforeRandom, out var afterRandom, out var calendar)) return false;
             using var allocation = worldItems.CreateAllocationPreview(views);
             if (!allocation.TrySpawnSource(in created, 0, out var slot, command.Connection.Player.Slot.Value,
                     WorldItemCreationSource1458.InventoryDrop) || slot >= worldItems.Capacity || !allocation.TryClaim() ||

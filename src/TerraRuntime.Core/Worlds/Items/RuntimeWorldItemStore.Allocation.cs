@@ -217,6 +217,15 @@ public sealed partial class RuntimeWorldItemStore
 
         public int Count => steps.Count;
 
+        internal bool AllowsItemStatue(ItemTypeId requested, float x, float y)
+        {
+            if (!IsCurrentOwned) return false;
+            Span<WorldItemAllocationState1458> scan = stackalloc WorldItemAllocationState1458[VanillaCapacity];
+            CaptureItems(scan);
+            return VanillaItemStatue1458.CanSpawn(scan, x, y, requested);
+        }
+
+
         // Source WorldItem.VoodooDollLavaDeath turns the whole item to air BEFORE NPC loot allocates.
         // Retain that exact-generation removal in the same claim as the following NewItem operations.
         internal bool TryRemoveSource(in WorldItemSnapshot item)

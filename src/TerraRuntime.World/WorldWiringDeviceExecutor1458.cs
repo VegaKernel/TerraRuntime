@@ -32,9 +32,10 @@ public sealed class WorldWiringDeviceExecutor1458
     private const ushort OpenTrapdoor = 386, ClosedTrapdoor = 387, ClosedTallGate = 388, OpenTallGate = 389;
     private const ushort Fireplace = 405, MomentarySwitch = 411, FakeChest = 441, SecondChest = 467;
     private const ushort SecondFakeChest = 468, DisplayDoll = 470, HatRack = 475, GolfHole = 476;
-    private const ushort LogicLamp = 419;
+    private const ushort LogicLamp = 419, Statue = 105;
     private const ushort PlasmaLamp = 564, Pylon = 597, ShadowCandle = 646;
     private const int FramePitch = 18, DoubleFrameWidth = 36, TripleFrameWidth = 54;
+    private const int StatueStylesPerRow = 55, StatueStyleRows = 3;
     private const int ChandelierStyleWidth = 108, TorchStateStride = 66;
 
     private readonly WorldTileStore tiles;
@@ -48,6 +49,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private readonly Func<int, int, bool>? applyActuatorTransaction;
     private readonly double worldSurface;
     private readonly Func<int, int, bool>? fireTrap;
+    private readonly Func<int, int, int, bool>? fireStatue;
 
     public WorldWiringDeviceExecutor1458(WorldTileStore tiles,
         VanillaWorldGroundFighterDoorOpeningService? doors = null,
@@ -58,7 +60,7 @@ public sealed class WorldWiringDeviceExecutor1458
         Func<int, int, bool>? canKillTile = null,
         Action<WorldWiringDoorTransition1458>? publishDoorToggle = null,
         Func<int, int, bool>? applyActuatorTransaction = null,
-        Func<int, int, bool>? fireTrap = null)
+        Func<int, int, bool>? fireTrap = null, Func<int, int, int, bool>? fireStatue = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         wiring = new VanillaWorldWiringMutationService(tiles);
@@ -71,6 +73,7 @@ public sealed class WorldWiringDeviceExecutor1458
         this.publishDoorToggle = publishDoorToggle;
         this.applyActuatorTransaction = applyActuatorTransaction;
         this.fireTrap = fireTrap;
+        this.fireStatue = fireStatue;
     }
 
     /// <summary>
@@ -100,6 +103,7 @@ public sealed class WorldWiringDeviceExecutor1458
 
         if (tile.Type == LogicLamp) return hitLogicLamp?.Invoke(x, y) == true || changed;
 
+        if (tile.Type == Statue) return FireStatue(x, y, in tile, skipWire) || changed;
         if (tile.Type == Trap) return fireTrap?.Invoke(x, y) == true || changed;
 
         return tile.Type switch
@@ -119,6 +123,24 @@ public sealed class WorldWiringDeviceExecutor1458
             MomentarySwitch => ToggleMomentarySwitch(x, y, in tile, skipWire) || changed,
             _ => changed
         };
+    }
+
+    private bool FireStatue(int x, int y, in WorldTile tile, Action<int, int> skipWire)
+    {
+        if (fireStatue is null || tile.FrameX % FramePitch != 0 || tile.FrameY % FramePitch != 0) return false;
+        int left = x - tile.FrameX % DoubleFrameWidth / FramePitch;
+        int top = y - tile.FrameY % TripleFrameWidth / FramePitch;
+        int style = tile.FrameX / DoubleFrameWidth + tile.FrameY / TripleFrameWidth % StatueStyleRows * StatueStylesPerRow;
+        if (style < 0 || style >= StatueStylesPerRow * StatueStyleRows || tile.FrameX >= StatueStylesPerRow * DoubleFrameWidth || tile.FrameY >= StatueStyleRows * TripleFrameWidth ||
+            !Contains(left, top) || !Contains(left + 1, top + 2)) return false;
+        for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++)
+        {
+            var cell = tiles.Get(left + dx, top + dy);
+            if (!cell.IsActive || cell.Type != Statue || cell.HasActuator || cell.IsActuated || cell.LiquidAmount != 0 ||
+                cell.FrameX != style % StatueStylesPerRow * DoubleFrameWidth + dx * FramePitch || cell.FrameY != style / StatueStylesPerRow * TripleFrameWidth + dy * FramePitch) return false;
+        }
+        for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++) skipWire(left + dx, top + dy);
+        return fireStatue(left, top, style);
     }
 
     private bool ToggleActuator(int x, int y, in WorldTile tile)
