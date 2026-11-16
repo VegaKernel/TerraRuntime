@@ -12,8 +12,10 @@ namespace TerraRuntime.Core.Npcs;
 internal static partial class RuntimeNpcStateOwnershipPolicy
 {
     private static bool IsOwnedGroundCritter(int type, int netId) => VanillaNonresidentGroundCritterCatalog1458.IsSupported(type) && type == netId;
-    private static int? GroundCritterProtectionAtSpawn(int type, int netId) =>
-        IsOwnedGroundCritter(type, netId) ? VanillaNonresidentGroundCritterCatalog1458.HasCatchProtection(type) ? 90 : 0 : null;
+    private static int? CatchProtectionAtSpawn(int type, int netId) =>
+        // NPC.SetDefaults includes Explosive Bunny in Main.npcCatchable.
+        type == VanillaNpcIds.ExplosiveBunny.Value && netId == type ? 90 :
+            IsOwnedGroundCritter(type, netId) ? VanillaNonresidentGroundCritterCatalog1458.HasCatchProtection(type) ? 90 : 0 : null;
 
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
@@ -37,7 +39,7 @@ internal static partial class RuntimeNpcStateOwnershipPolicy
             HomeTileY = update.Simulation.HomeTileY ?? -1,
             Homeless = update.Simulation.Homeless ?? false,
             CatchableNpcTempImmunityCounter = update.Simulation.CatchableNpcTempImmunityCounter ??
-                (GroundCritterProtectionAtSpawn(update.Type, update.NetId) ??
+                (CatchProtectionAtSpawn(update.Type, update.NetId) ??
                     (ownsPhase || ownsFreshTransform
                         ? VanillaNpcPhaseAccepted1458.HasCatchProtection(new(update.Type)) ? 90 : 0 : null)),
             ReleaseOwner = update.Simulation.ReleaseOwner ??
@@ -152,7 +154,7 @@ internal static partial class RuntimeNpcStateOwnershipPolicy
             HomeTileY = simulation.HomeTileY ?? (sameDefinition ? previous.Simulation.HomeTileY : -1),
             Homeless = simulation.Homeless ?? (sameDefinition ? previous.Simulation.Homeless : false),
             CatchableNpcTempImmunityCounter = simulation.CatchableNpcTempImmunityCounter ??
-                (sameDefinition ? previous.Simulation.CatchableNpcTempImmunityCounter : GroundCritterProtectionAtSpawn(update.Type, update.NetId)),
+                (sameDefinition ? previous.Simulation.CatchableNpcTempImmunityCounter : CatchProtectionAtSpawn(update.Type, update.NetId)),
             ReleaseOwner = simulation.ReleaseOwner ??
                 (sameDefinition ? previous.Simulation.ReleaseOwner : IsOwnedGroundCritter(update.Type, update.NetId) ? (short)255 : null),
             ShimmerTransparency = sameDefinition ? simulation.ShimmerTransparency : previous.Simulation.ShimmerTransparency,
@@ -161,6 +163,7 @@ internal static partial class RuntimeNpcStateOwnershipPolicy
             SpawnDifficulty = sameDefinition ? simulation.SpawnDifficulty ?? previous.Simulation.SpawnDifficulty ?? 1f : 1f,
             MoneyValue = simulation.MoneyValue ?? (sameDefinition ? previous.Simulation.MoneyValue :
                 ResolveMoney(update.Type, update.NetId, 1f)),
+            SpawnSlotCost = simulation.SpawnSlotCost ?? (sameDefinition ? previous.Simulation.SpawnSlotCost : null),
             ExtraMoneyValue = simulation.ExtraMoneyValue ?? (sameDefinition ? previous.Simulation.ExtraMoneyValue : 0),
             Midas = simulation.Midas ?? (sameDefinition ? previous.Simulation.Midas : false),
             Rotation = sameDefinition ? simulation.Rotation ?? previous.Simulation.Rotation ?? 0f : 0f,

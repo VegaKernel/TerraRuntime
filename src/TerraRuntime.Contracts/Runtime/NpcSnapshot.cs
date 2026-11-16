@@ -216,6 +216,8 @@ public readonly record struct NpcSimulationState(
 
     /// <summary>Server-owned NPC.value. Null means monetary defaults have not been admitted.</summary>
     public float? MoneyValue { get; init; }
+    /// <summary>Owned NPC.npcSlots override; null retains the existing definition-based census rule.</summary>
+    public float? SpawnSlotCost { get; init; }
     /// <summary>NPC.extraValue, owned coin-pickup/revenge additions; a fresh NPC starts at zero.</summary>
     public int? ExtraMoneyValue { get; init; }
     /// <summary>NPC.midas from owned status facts; a fresh NPC starts false.</summary>
@@ -279,6 +281,7 @@ public readonly record struct NpcSimulationState(
         FriendlyRegenerationCounter is >= 0 and <= 180 &&
         (!Breath.HasValue || Breath.Value is >= 0 and <= 200) &&
         (BreathCounter is null || BreathCounter.Value is >= 0 and <= 6) &&
+        (SpawnSlotCost is null || float.IsFinite(SpawnSlotCost.Value) && SpawnSlotCost.Value >= 0f) &&
         (MoneyValue is null || float.IsFinite(MoneyValue.Value) && MoneyValue.Value >= 0f) &&
         (ExtraMoneyValue is null || ExtraMoneyValue.Value >= 0) &&
         (Rotation is null || float.IsFinite(Rotation.Value)) &&

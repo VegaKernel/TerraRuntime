@@ -23,7 +23,8 @@ internal static class WiringNativeSmoke1458
             OnlyShimmerOceanWorlds = false
         };
         var statueItems = new TerraRuntime.Core.Worlds.RuntimeWorldItemStore();
-        var state = new ServerRuntimeState(worldTiles: tiles, worldItems: statueItems, sourcePlayerWorld: sourceWorld,
+        var statueNpcs = new TerraRuntime.Core.Npcs.RuntimeNpcStore();
+        var state = new ServerRuntimeState(npcs: statueNpcs, worldTiles: tiles, worldItems: statueItems, sourcePlayerWorld: sourceWorld,
             worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
             townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 60 },
             townSpawnWorldFacts: default(TerraRuntime.Gameplay.Npcs.VanillaTownSpawnWorldFacts1458));
@@ -81,6 +82,28 @@ internal static class WiringNativeSmoke1458
             state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(55, (short)top)));
         }
         if (statueItems.ActiveCount != 3) return false;
+        state.Tick();
+        // One authenticated input exercises all twelve devices before an outer NPC update.
+        // It also preserves the existing per-player edit budget rather than bypassing admission.
+        for (int y = 80; y <= 92; y++) tiles.Set(5, y, new WorldTile { Flags = WorldTileFlags.WireYellow });
+        foreach (int y in new[] { 82, 87, 92 })
+            for (int x = 5; x <= 71; x++) tiles.Set(x, y, new WorldTile { Flags = WorldTileFlags.WireYellow });
+        tiles.Set(5, 80, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireYellow });
+        int statueIndex = 0;
+        foreach (int style in new[] { 4, 5, 7, 8, 9, 10, 13, 18, 27, 30, 35, 42 })
+        {
+            int left = 10 + statueIndex % 4 * 20, top = 82 + statueIndex / 4 * 5;
+            statueIndex++;
+            for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++)
+                tiles.Set(left + dx, top + dy, new WorldTile { Type = 105, FrameX = (short)(style * 36 + dx * 18),
+                    FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active | WorldTileFlags.WireYellow });
+        }
+        state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(5, 80)));
+        if (statueNpcs.ActiveCount != 12) return false;
+        for (byte slot = 0; slot < 12; slot++)
+            if (!statueNpcs.TryGetActive(slot, out var born) || !born.Simulation.SpawnedFromStatue ||
+                born.Simulation.MoneyValue != 0f || born.Simulation.SpawnSlotCost != 0f || !statueNpcs.HasPendingBirth(born.Handle)) return false;
+
         byte[] importance = new byte[(VanillaWorldFormat326.TileTypeCount + 7) / 8];
         importance[144 >> 3] |= 1 << (144 & 7);
         var timerOnly = new WorldTileStore(new WorldDimensions(1, 1));

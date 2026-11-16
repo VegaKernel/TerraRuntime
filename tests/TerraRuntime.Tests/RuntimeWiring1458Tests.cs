@@ -277,9 +277,10 @@ public sealed partial class RuntimeWiring1458Tests
 
         public Scene(int sourceId = 8000, ServerPlayerAuthority? serverPlayers = null, PlayerSlotPool? playerSlots = null, RuntimePlayerUpdateWorld1458? sourceWorld = null,
             RuntimeTownCommerceWorldFacts1458? calendar = null, TerraRuntime.Core.Worlds.RuntimeWorldItemStore? items = null,
-            RuntimeWorldItemReplicationRegistry? itemReplication = null)
+            RuntimeWorldItemReplicationRegistry? itemReplication = null, TerraRuntime.Core.Npcs.RuntimeNpcStore? npcs = null,
+            RuntimeNpcReplicationRegistry? npcReplication = null)
         {
-            State = new(worldTiles: Tiles, tileManipulationReplication: Replication, serverPlayers: serverPlayers,
+            State = new(npcs: npcs, npcReplication: npcReplication, worldTiles: Tiles, tileManipulationReplication: Replication, serverPlayers: serverPlayers,
                 sourcePlayerWorld: sourceWorld, townCommerceWorldFacts: calendar, worldItems: items, worldItemReplication: itemReplication);
             var source = GameCommandSourceId.FromConnection(sourceId);
             Bootstrap = new(playerSlots ?? new PlayerSlotPool(1), Outbound(), PlayerBootstrapPacketSet.CreateForTesting(

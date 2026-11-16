@@ -1,0 +1,347 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "wiring-npc-statues-managed-20261116",
+  "accepted": true,
+  "allIssuesComplete": false,
+  "baseCommit": "5f0efaf3975fd26ca460b486efed22fa2804115d",
+  "sdk": "11.0.100",
+  "runtime": "11.0.0",
+  "newProductionDependencies": false,
+  "scope": [
+    "Tile105 styles4/5/7/8/9/10/13/18/27/30/35/42 enter the existing world circuit and NPC owner. Intact dry nonactuated2x3 footprints retain the existing per-color six-cell skip.",
+    "CheckMech30 registers before NPC.MechSpawn eligibility: physical200-slot3/6/10 caps, strict200/600px radii from NPC top-left to statue bottom-center, shared bunny identities46/540/303/337 and goldfish55/230. GoodWorld substitution happens later inside original-order NewNPC.",
+    "Existing detached parentless allocation and the same world/NPC source RNG own free/protected/replaced/full-table births and caller-side GoodWorld entropy. Money0, owned SpawnSlotCost0, SpawnedFromStatue and replacement flags precede retention.",
+    "Birth remains pending, matching Wiring/NewNPC; existing outer NPC updates, replacement or strike publish23. Actual authenticated switch59 projections exercise all12styles and two endpoints; represented bunny/fish catches remove the creature with23/106 and no item.",
+    "SpawnSlotCost is an optional owned override used by the existing natural spawn census, preserved by same-identity updates and cleared by Transform independently of statue provenance/zero value.",
+    "Shared creation6/24/49/58 gains source ordinary stats and represented Remix/Good/boss-minion behavior; owned SpawnContext captures active Eater/Wall flags from physical NPC slots. Explosive Bunny source catch protection90 is materialized.",
+    "Parentless preview retains wet-query identity; statue transaction checks retained terrain sections/footprint/clock, live NPC table/RNG and owned constructor facts before callback-free adoption.",
+    "Original Windows(CLR4x86) and Linux-edition(CoreCLR11) captures each repeat exactly across3168 scenarios;1452 pure constructor cases compare both platform arithmetic modes. Shipping WiringNativeSmoke exercises all12 NPC births in one authenticated pulse."
+  ],
+  "limits": [
+    "Issue125 remains partial: other NPC statue styles, blocked-spawn smoke devices, King/Queen town teleports, tile-conversion statues, arbitrary wet/actuated/damaged footprints and full-client wiring acceptance remain open.",
+    "Traces explicitly advance Wiring.UpdateMech and source spawn synchronization, not whole NPC AI/Main.Update. Stock identities/generations/protection, clearing and boss preimages are controlled inputs; inactive sentinel200 fields are not a new authoritative NPC.",
+    "Authenticated queue projections/catch tests and CLI smokes are not a newly captured real TCP/GUI playthrough or blanket NPC AI/loot parity. Existing owners and previously qualified source catch/death/protocol paths are reused.",
+    "NPC body guard128px per dimension and retained16-tile surrounding section set are conservative runtime transaction policies. A nearby section edit can refuse even when outside the eventual hitbox.",
+    "Party choice uses owned world metadata and adds no live party controller. Missing source/RNG alias or party facts refuse before speculative creation. Arbitrary mutable host delegates are outside the source-equivalence claim.",
+    "Local NativeAOT and C++ system installation remain explicitly user-deferred. App-local XNA/VC10/DirectX files on E support only independent unmodified Windows reference capture; they were not system-installed and are not shipping dependencies.",
+    "Issue126 still awaits absent connection-stop logs; no networking limits or timeout policy changed."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\npc-statues-20261116\\build-final04.log",
+    "sha256": "5213283feb4a6d71ea122b7998cabd939e45d6000e78b1466739c83f287d69e4"
+  },
+  "focused": {
+    "total": 60334,
+    "passed": 60334,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1389.057573899976,
+    "tests": {
+      "total": "233252",
+      "passed": "233252",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1385.342",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1940.5819883000222,
+    "tests": {
+      "total": "1778567",
+      "passed": "1778567",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1928.101",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6072,
+  "independentEvidence": {
+    "editions": [
+      {
+        "platform": "Linux",
+        "rows": 3168,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "raw": "E:\\TerraRuntimeAgentCache\\npc-statues-20261116\\original\\observations04.json",
+        "repeat": "E:\\TerraRuntimeAgentCache\\npc-statues-20261116\\original\\observations05.json",
+        "sha256": "c3ee498ea6e3c2d4d59d38cf3420b29ac7b6b52898fb564269235c118b09cc74",
+        "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "fixture": {
+          "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringNpcStatueLinux1458.json.gz",
+          "bytes": 1347081,
+          "sha256": "1af835680eb12fc97d90f1a1aa8601f26a2be62d9778e7d6e2b9c16fb61421c0"
+        }
+      },
+      {
+        "platform": "Windows",
+        "rows": 3168,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "raw": "E:\\TerraRuntimeAgentCache\\npc-statues-20261116\\original-windows\\observations02.json",
+        "repeat": "E:\\TerraRuntimeAgentCache\\npc-statues-20261116\\original-windows\\observations03.json",
+        "sha256": "9b96e07ae4ec2e8dbfdec8b670f256e1e668cba6ba8a72288b4cf3334d527235",
+        "officialSha256": "D87E3FAF08637F6BE8882C63E7F11FB7E792B0230006309618473ECE0F863E1E",
+        "fixture": {
+          "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringNpcStatueWindows1458.json.gz",
+          "bytes": 1351732,
+          "sha256": "5952217dd26ebd40672926618aeb44ab2b88b4e621d8e101688b767bbc32d67e"
+        }
+      }
+    ],
+    "constructorCases": 1452,
+    "sourceAnalysis": {
+      "analysisOnly": true,
+      "accepted": false,
+      "sourceClosureComplete": false,
+      "observationSha256": "4e6a99d12ec7ea87b3fa99ed5473bd637d01fbbf0c3e8e0a6642fb7c27cd53d4"
+    },
+    "appLocalReferenceDependencies": {
+      "installed": false,
+      "xnaManifestSha256": "69158a92e132f9d7526300d8c1581f5261bef203424a5a011cac9b99e6a1ea8c",
+      "directxManifestSha256": "8f48055a36a96a5fe4de0fc4d275f5da78a1a54e7fdbee2741e319e603c3231b"
+    }
+  },
+  "causalControls": {
+    "sourceInputs": 5155,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69",
+    "controls": [
+      {
+        "control": "radius-boundary",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 4562,
+        "failed": 72,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "source-cooldown",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 1715,
+        "failed": 2919,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "fish-alias-cap",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 4631,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "statue-provenance",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 1625,
+        "failed": 3009,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "zero-spawn-cost",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 1624,
+        "failed": 3010,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "full-pool-entropy",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 4616,
+        "failed": 18,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "last-source-guard",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 4631,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "wet-provider-guard",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 4633,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "pending-announcement",
+        "exitCode": 1,
+        "total": 28,
+        "passed": 15,
+        "failed": 13,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      },
+      {
+        "control": "shared-rng-capability",
+        "exitCode": 1,
+        "total": 4634,
+        "passed": 4633,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5155,
+    "dllPaths": 404,
+    "testDllSha256": "7ecea4e125e65d94b491ff3ffd3d4c4b29f30376388aba4cb912371d791e0d69",
+    "afterFull": {
+      "sourceInputs": 5155,
+      "dllPaths": 404,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5155,
+      "sourceDifferences": [],
+      "indexDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 1.4118901999900118,
+      "logSha256": "67b18d31cff677bacc2ef679a1592038e722f1f0c2cad2d8b1f184daf1b297f6"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 1.4214458000496961,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.7076615000260063,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 1.5330061999848112,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 7.453395699965768,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "d1528f8a5921249f8a7ab0fcbec8bf389315c051131ac16fdb199f64be09eb1c",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.4724000000278465,
+        "logSha256": "3ba6f6c53e00ac99f75874f16203b774cedb8db14869ead0774cdecd79a97774"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 0.9590774000389501,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.13464400003431365,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 1.092377899971325,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 5.444363399990834,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 10.844082800031174,
+      "logSha256": "b18062e951a7d08ad3181ef915f9c824a30169dd1abe905d16ae5933058fdda5"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.1443682000390254,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 4.603020500042476,
+      "logSha256": "57fb00d9bfdcb6df3319e32b94f310b58b07e3a0b8981de83a1c646a67eee1d1"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 1.381424400024116,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\npc-statues-20261116",
+  "rejectedIntermediateEvidence": [
+    "Cohort02 fast exposed the pre-extension schema hash including the new nullable SpawnSlotCost. The historical expected hash was preserved: its existing schema-extension exclusion now covers that field, with separate null-default assertions. Cohort03 reruns all gates on the final test assembly.",
+    "Cohort01 was abandoned after the domain audit rejected raw NPC identity decisions; named typed catalog identities fixed it without suppression. A duplicate cohort01 launcher was stopped; no cohort01 fast/full result qualifies this checkpoint.",
+    "An initial Linux-only differential was unsuitable for Windows CLR4 x86 rounding. Separate unchanged original-edition captures now select runtime platform evidence and directly exercise both constructor arithmetic modes.",
+    "Initial fixture difficulty omitted GoodWorld effective strength, and imported boss stock scale was rematerialized by raw TrySpawn. Actual composition difficulty/clock and an explicit trusted stock update corrected the fixture.",
+    "Focused captures exposed missing shared creation rules6/24/49/58 and fresh614 protection. These were corrected at the shared gameplay/state owners, not hidden with statue-only expected values.",
+    "Initial shipping smoke exceeded the existing edit budget and then advanced NPC state between births. The final scenario uses one authenticated pulse for all12 devices and asserts pending births before an outer NPC update."
+  ]
+}

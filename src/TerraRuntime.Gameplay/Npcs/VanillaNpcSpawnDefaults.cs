@@ -8,6 +8,8 @@ public readonly record struct VanillaNpcSpawnContext(float Difficulty, int Activ
     public bool HardMode { get; init; }
     public bool DownedPlantera { get; init; }
     public bool SkeletronActive { get; init; }
+    public bool EaterOfWorldsActive { get; init; }
+    public bool WallOfFleshActive { get; init; }
     public bool TenthAnniversaryWorld { get; init; }
     public bool RemixWorld { get; init; }
     /// <summary>Source Main.Difficulty, independently of an explicit per-spawn strength override.</summary>
@@ -113,6 +115,11 @@ public readonly partial record struct VanillaNpcSpawnDefaults(
             // ScaleStats does not enter its scaling block for these five-life, zero-damage critters.
             defaults = new(new(definition.Width, definition.Height), definition.Scale, definition.LifeMax, definition.Damage, definition.Defense)
             { KnockBackResist = definition.KnockBackResist, Difficulty = 1f };
+            return true;
+        }
+        if (context.IsValid && definition.Type.Value is 6 or 24 or 49 or 58)
+        {
+            defaults = ResolveEarlyHostiles(in definition, in context, windowsArithmetic);
             return true;
         }
         if (context.IsValid && (definition.Type == VanillaNpcIds.DarkCaster || definition.Type == VanillaNpcIds.WaterSphere ||
@@ -258,10 +265,13 @@ public readonly partial record struct VanillaNpcSpawnDefaults(
     {
         bool sphere = definition.Type == VanillaNpcIds.WaterSphere;
         bool skeletron = (sphere || definition.Type == VanillaNpcIds.DarkCaster) && context.GoodWorld && context.SkeletronActive;
+        bool eater = definition.Type.Value == 6 && context.GoodWorld && context.EaterOfWorldsActive;
+        bool imp = definition.Type.Value == 24 && context.GoodWorld && context.WallOfFleshActive;
+        bool bossMinion = skeletron || eater || imp;
         float difficulty = context.Difficulty;
         int life = definition.LifeMax, damage = definition.Damage, defense = definition.Defense;
         // ScaleStats_ForExpertHardmode uses integer division before converting the budget ratio to float.
-        if (difficulty >= 2f && context.HardMode && !skeletron)
+        if (difficulty >= 2f && context.HardMode && !bossMinion)
         {
             int budget = Math.Max(1, damage + defense + life / 4);
             int threshold = context.DownedPlantera ? 100 : 80;
@@ -279,11 +289,11 @@ public readonly partial record struct VanillaNpcSpawnDefaults(
         if (!sphere) life = windowsArithmetic ? (int)(life * (double)difficulty) : (int)(life * difficulty);
         double damageMultiplier = DamageMultiplier(difficulty, windowsArithmetic);
         damage = windowsArithmetic ? (int)(damage * damageMultiplier) : (int)(damage * (float)damageMultiplier);
-        if (!sphere && skeletron)
+        if (!sphere && bossMinion)
         {
             float tweak = (float)(Ramp(difficulty, 1f, 2f, 1.5f, windowsArithmetic) * Ramp(difficulty, 2f, 3f, .85f, windowsArithmetic));
             life = (int)Math.Round(windowsArithmetic ? life * (double)tweak : life * tweak);
-            if (difficulty >= 2f) defense += 6;
+            if (difficulty >= 2f) defense += eater ? 2 : imp ? 10 : 6;
         }
         if (!sphere) life = Math.Max(6, life);
         return new(new(definition.Width, definition.Height), definition.Scale, life, damage, defense)

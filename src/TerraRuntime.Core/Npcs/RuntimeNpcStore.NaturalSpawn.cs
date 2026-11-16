@@ -12,9 +12,10 @@ public sealed partial class RuntimeNpcStore
             return false;
         ulong serial = mutationSerial;
         var before = random.Clone();
+        var wetSource = spawnWetCollision;
         var context = _spawnContext?.Invoke();
         if (context is { IsValid: false } || mutationSerial != serial || !IsSpawnRandomSource(random) ||
-            !random.HasSameState(before))
+            !random.HasSameState(before) || !ReferenceEquals(wetSource, spawnWetCollision))
             return false;
         preview = new(this, serial, context, random, before);
         return true;
@@ -22,13 +23,14 @@ public sealed partial class RuntimeNpcStore
 
     // Parentless birth uses the existing physical allocator on a detached table. Admission and RNG
     // adoption complete before retention/publication callbacks; no speculative slot is externally visible.
-    internal sealed class NaturalSpawnPreview
+    internal sealed partial class NaturalSpawnPreview
     {
         private readonly RuntimeNpcStore owner;
         private readonly ulong serial;
         private readonly VanillaNpcSpawnContext? context;
         private readonly VanillaUnifiedRandom1458 live;
         private readonly VanillaUnifiedRandom1458 before;
+        private readonly Func<float, float, int, int, bool>? wetSource;
         private RuntimeNpcStore? detached;
         private NpcSnapshot? child;
         private bool completed;
@@ -37,6 +39,7 @@ public sealed partial class RuntimeNpcStore
             VanillaUnifiedRandom1458 live, VanillaUnifiedRandom1458 before)
         {
             this.owner = owner;
+            wetSource = owner.spawnWetCollision;
             this.serial = serial;
             this.context = context;
             this.live = live;
@@ -47,7 +50,8 @@ public sealed partial class RuntimeNpcStore
         internal VanillaUnifiedRandom1458 Random { get; }
         internal bool ValidateContext() => !completed && owner._spawnContext?.Invoke() == context && IsCurrentOwned();
         internal bool IsCurrentOwned() => !completed && !owner.mutationSerialExhausted &&
-            owner.mutationSerial == serial && owner.IsSpawnRandomSource(live) && live.HasSameState(before);
+            owner.mutationSerial == serial && owner.IsSpawnRandomSource(live) && live.HasSameState(before) &&
+            ReferenceEquals(wetSource, owner.spawnWetCollision);
 
         internal bool TryStage(in NpcStateUpdate update, float centerX, float bottomY, out NpcSnapshot birth,
             byte startSlot = 0)
@@ -59,7 +63,7 @@ public sealed partial class RuntimeNpcStore
             owner._slots.CopyTo(detached._slots, 0);
             detached._activeCount = owner._activeCount;
             detached._spawnRandom = new SystemVanillaNpcRandom(Random);
-            detached.spawnWetCollision = owner.spawnWetCollision;
+            detached.spawnWetCollision = wetSource;
             if (context is { } captured)
                 detached._spawnContext = () => captured;
             if (!float.IsFinite(centerX) || !float.IsFinite(bottomY) || centerX != (int)centerX || bottomY != (int)bottomY)

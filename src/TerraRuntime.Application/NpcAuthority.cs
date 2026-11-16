@@ -1612,6 +1612,8 @@ internal sealed partial class NpcAuthority
 
     private float GetNaturalSpawnSlots(in NpcSnapshot npc)
     {
+        // Wiring.HitWireSingle overwrites npcSlots after NewNPC.
+        if (npc.Simulation.SpawnSlotCost is float ownedSlots) return ownedSlots;
         // SetDefaultsFromNetId: Big Boned owns two slots independently of visual scale;
         // the signed zombie/skeleton pairs multiply the default slot by the final source scale.
         if (npc.NetId == -14) return 2f;
@@ -2072,12 +2074,13 @@ internal sealed partial class NpcAuthority
         // Hardcore ghost state and Journey difficulty control still need their own authoritative projection.
         for (int slot = 0; slot < byte.MaxValue; slot++)
             if (playerSnapshots.TryGetPlayer(new PlayerSlotId((byte)slot), out _)) activePlayers++;
-        bool skeletronActive = false;
+        bool skeletronActive = false, eaterActive = false, wallActive = false;
         for (int slot = 0; slot < npcs.Capacity && slot < VanillaNpcSpawnRules.PhysicalSlotCount; slot++)
-            if (npcs.TryGetActive((byte)slot, out var npc) && npc.TypeIdentity == VanillaNpcIds.SkeletronHead)
+            if (npcs.TryGetActive((byte)slot, out var npc))
             {
-                skeletronActive = true;
-                break;
+                skeletronActive |= npc.TypeIdentity == VanillaNpcIds.SkeletronHead;
+                eaterActive |= npc.Type == 13;
+                wallActive |= npc.Type == 113;
             }
         return new(CaptureDifficulty(), activePlayers, worldClock?.GetGoodWorld == true)
         {
@@ -2092,7 +2095,7 @@ internal sealed partial class NpcAuthority
             DownedGolem = naturalSpawnWorldFacts is { } golemFacts
                 ? golemFacts.DownedGolemBoss || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Golem)
                 : naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Golem) ? true : null,
-            SkeletronActive = skeletronActive,
+            SkeletronActive = skeletronActive, EaterOfWorldsActive = eaterActive, WallOfFleshActive = wallActive,
             TenthAnniversaryWorld = naturalSpawnWorldFacts?.TenthAnniversaryWorld ?? false,
             RemixWorld = naturalSpawnWorldFacts?.RemixWorld ?? false
         };

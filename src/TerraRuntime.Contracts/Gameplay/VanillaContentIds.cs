@@ -25,6 +25,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId TorchGod = new(664);
     public static readonly NpcTypeId Shimmerfly = new(677);
     public static readonly NpcTypeId Bunny = new(46);
+    public static readonly NpcTypeId PartyBunny = new(540);
+    public static readonly NpcTypeId BunnySlimed = new(303);
+    public static readonly NpcTypeId BunnyXmas = new(337);
     public static readonly NpcTypeId CorruptBunny = new(47);
     public static readonly NpcTypeId Crab = new(67);
     public static readonly NpcTypeId ExplosiveBunny = new(614);
@@ -151,6 +154,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId KingSlime = new(50);
     public static readonly NpcTypeId JungleBat = new(51);
     public static readonly NpcTypeId Goldfish = new(55);
+    public static readonly NpcTypeId GoldfishWalker = new(230);
     public static readonly NpcTypeId CorruptGoldfish = new(57);
     public static readonly NpcTypeId Piranha = new(58);
     public static readonly NpcTypeId LavaSlime = new(59);

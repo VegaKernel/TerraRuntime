@@ -123,11 +123,15 @@ public sealed class NpcTransformMaterialization1458Tests
     public void Fish_transform_uses_destination_catch_protection_and_integer_rectangle_facing()
     {
         var source = Actor(230) with { Simulation = Actor(230).Simulation with
-            { Life = 1, LifeMax = 5, HitboxOverride = new(18, 20), Friendly = false } };
+            { Life = 1, LifeMax = 5, HitboxOverride = new(18, 20), Friendly = false,
+                SpawnedFromStatue = true, SpawnSlotCost = 0f } };
         var context = new VanillaNpcSpawnContext(1f, 1, false);
         var targeting = Targeting(new(0, true, false, false, 100.5f, 90.5f, 20, 42, 0, false, 0));
         Assert.True(RuntimeNpcStateOwnershipPolicy.TryMaterializeTransform(in source, new(55),
             in context, default, targeting, out var result));
+        Assert.True(result.Simulation.SpawnedFromStatue);
+        Assert.Null(result.Simulation.SpawnSlotCost); // SetDefaults restores the destination definition cost.
+        Assert.Equal(0f, result.Simulation.MoneyValue);
         Assert.Equal(102.25f, result.PositionY);
         Assert.Equal(new NpcHitboxDimensions(20, 18), result.Simulation.HitboxOverride);
         Assert.Equal(1, result.Simulation.Life);

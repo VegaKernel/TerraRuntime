@@ -82,6 +82,7 @@ internal static partial class RuntimeNpcStateOwnershipPolicy
             BaseLifeMax = defaults.LifeMax,
             SpawnDifficulty = defaults.Difficulty ?? context.Difficulty,
             MoneyValue = previousMoney == 0f ? 0f : targetMoney,
+            SpawnSlotCost = null, // SetDefaults resets npcSlots; statue provenance survives separately.
             Midas = false,
             KnockBackResist = defaults.KnockBackResist ?? targetDefinition.KnockBackResist,
             Rotation = 0f,

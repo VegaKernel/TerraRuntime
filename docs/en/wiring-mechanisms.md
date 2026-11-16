@@ -89,7 +89,7 @@ The following remain outside the supported chain:
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Pumps and teleporters, pending full integration with liquid and movement owners.
-- NPC-spawning and town-teleport statues; trap, logic and item-statue contexts outside the bounded continuations below.
+- Other NPC-spawning and town-teleport statues; contexts outside the bounded trap, logic, item-statue and NPC-statue continuations below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
@@ -164,3 +164,39 @@ This continuation admits intact dry non-actuated statue footprints and a qualifi
 The independent original capture repeats byte-identically across $3\,267$ scenarios without observed exceptions. It covers all six contact cells, wire colors, eight calendar combinations, radius/slot/stack/alias caps, repeated/capped/cleared cooldown traces, full item allocation and packet `21`/`151` bytes. These controlled traces advance mechanisms only; item physics is not advanced, and stock clearing/initial ages are explicit fixture inputs. Managed gates pass: focused $55\,447$, fast $228\,606$ and unfiltered full $1\,773\,921$ cases; nine effective causal controls and ordinary/fresh CoreCLR smokes also pass.
 
 [Item-statue managed receipt, 2026-11-16](../verification/wiring-item-statues-managed-20261116.json). Local NativeAOT remains user-deferred.
+
+
+## NPC-producing statues: managed checkpoint
+
+Tile `105` now connects twelve additional styles to the existing NPC authority:
+
+| Statue style | NPC type before NewNPC seed substitution |
+| --- | --- |
+| `4` | `1` |
+| `5` | `73` |
+| `7` | `49` |
+| `8` | `55` |
+| `9` | `46`, or `540` while the owned party fact is true |
+| `10` | `21` |
+| `13` | `24` |
+| `18` | `67` |
+| `27` | `85` |
+| `30` | `6` |
+| `35` | `2` |
+| `42` | `58` |
+
+The existing circuit registers $30\,\text{updates}$ before the population test. `NPC.MechSpawn` counts active physical slots: fewer than $3$ nearby within $200\,\mathrm{px}$, fewer than $6$ within $600\,\mathrm{px}$ and fewer than $10$ globally. Distances are strict and use the NPC top-left and statue bottom-center. Bunny identities `46`/`540`/`303`/`337` share the count; goldfish requests also count `230`. Good World's `46` to `614` substitution happens afterward, inside the existing source constructor, including its unconditional draw on a full table.
+
+Births use the existing detached physical allocator, protection, replacement and shared RNG. Before retention they receive zero money, zero spawn-slot cost, `SpawnedFromStatue` and replacement eligibility. The source sentinel represents no new authoritative entity. `NewNPC` leaves the birth pending: the existing NPC update, replacement or strike publishes packet `23` later. The ordinary catch owner removes statue creatures with smoke instead of granting an item; the existing death/loot owner consumes statue provenance.
+
+The pool aliases have typed identifiers `VanillaNpcIds.PartyBunny`, `BunnySlimed`, `BunnyXmas` and `GoldfishWalker`.
+
+`NpcSimulationState.SpawnSlotCost` is an optional owned override; null uses the existing definition-based population rule. Same-identity updates preserve it. `Transform` resets the override independently of the retained statue flag and zero money. Shared creation for NPC `6`, `24`, `49` and `58` now includes their ordinary scaling, Remix/Good body rules and represented boss-minion adjustments. `VanillaNpcSpawnContext.EaterOfWorldsActive` and `WallOfFleshActive` mean current active bosses, not defeated progression; composition captures physical NPC slots. These constructor corrections also serve ordinary creation.
+
+Admission requires an intact dry non-actuated footprint and the same owned NPC/world source RNG. NPC birth validation retains surrounding terrain section versions and the wet-query identity; changed terrain, clock, NPC table, constructor context or RNG refuses speculative adoption while retaining the already registered cooldown. The bounded body guard is $128\,\mathrm{px}$ per dimension, inside the retained $16\,\text{tile}$ neighborhood. This conservative transaction guard is runtime policy, not a vanilla size rule. The party branch uses the owned world metadata fact; it adds no party controller.
+
+Each unmodified original edition was captured twice across $3\,168$ controlled scenarios without observed exceptions: Linux edition on CoreCLR and Windows edition on CLR4 x86. They cover the admitted styles, wire contacts/colors, difficulty, Good World, Hardmode, Remix, anniversary, boss presence, slot/radius/alias caps, replacement and protection, and complete RNG plus pending/public packet bytes. Another $1\,452$ constructor cases check both platform arithmetic modes directly. These traces advance mechanism clocks and explicit spawn synchronization only; stock preimages and clearing are controlled inputs, with no whole NPC AI or Main.Update trace. Managed gates pass: focused $60\,334$, fast $233\,252$ and unfiltered full $1\,778\,567$ cases; ten effective causal controls and ordinary/fresh CoreCLR smokes pass.
+
+Other NPC styles, blocked-spawn smoke devices, town teleports, tile-conversion statues, wet/actuated footprints and a real GUI-client playthrough remain open. This continuation does not close issue `125` or claim complete NPC AI, loot or wiring parity.
+
+[Managed NPC-statue receipt, 2026-11-16](../verification/wiring-npc-statues-managed-20261116.json). Local NativeAOT remains user-deferred.
