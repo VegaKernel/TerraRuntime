@@ -19,13 +19,22 @@ internal sealed partial class RuntimeTileManipulationReplicationRegistry : IRunt
 {
     // A liquid simulation slice may touch 2,500 cells. Never turn that implementation budget directly
     // into a client-controlled outbound burst: retain the latest state per cell and drain a small, fixed
-    // transport budget on the authoritative world loop. Section resends remain the eventual full-state path.
+    // transport budget on the authoritative world loop. Bound worlds resolve material at flush;
+    // unbound bootstrap hosts retain their supplied snapshots. Section resends remain the eventual full-state path.
     internal const int MaxLiquidFramesPerAuthoritativeTick = 16;
     internal const int MaxPendingLiquidUpdates = 16 * 1024;
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly Dictionary<int, TerrariaLiquidState> pendingLiquids = [];
     private readonly Queue<int> pendingLiquidOrder = new();
+    private WorldTileStore? liquidStateSource;
+
+    internal void BindLiquidStateSource(WorldTileStore tiles)
+    {
+        if (liquidStateSource is not null && !ReferenceEquals(liquidStateSource, tiles))
+            throw new InvalidOperationException("Liquid publication is already bound to another world.");
+        liquidStateSource = tiles;
+    }
     private long relayedFrames;
     private long rejectedFrames;
     private long encodeFailures;
@@ -238,6 +247,15 @@ internal sealed partial class RuntimeTileManipulationReplicationRegistry : IRunt
         {
             TerrariaLiquidState state = pendingLiquids[key];
             _ = pendingLiquids.Remove(key);
+            // Liquid._netChangeSet retains coordinates, not old material. Pumps
+            // can drain a queued cell without issuing another AddWater offer.
+            if (liquidStateSource is { } tiles)
+            {
+                if ((uint)state.TileX >= tiles.Dimensions.WidthTiles || (uint)state.TileY >= tiles.Dimensions.HeightTiles)
+                { Interlocked.Increment(ref encodeFailures); continue; }
+                var tile = tiles.Get(state.TileX, state.TileY);
+                state = state with { Amount = tile.LiquidAmount, LiquidKind = (byte)tile.LiquidKind };
+            }
             if (!TerrariaLiquidCodec.TryEncode(in state, out byte[] encoded))
             {
                 Interlocked.Increment(ref encodeFailures);

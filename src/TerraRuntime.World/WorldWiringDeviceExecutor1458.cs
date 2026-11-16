@@ -33,6 +33,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private const ushort Fireplace = 405, MomentarySwitch = 411, FakeChest = 441, SecondChest = 467;
     private const ushort SecondFakeChest = 468, DisplayDoll = 470, HatRack = 475, GolfHole = 476;
     private const ushort LogicLamp = 419, Statue = 105;
+    private const ushort InletPump = 142, OutletPump = 143;
     private const ushort PlasmaLamp = 564, Pylon = 597, ShadowCandle = 646;
     private const int FramePitch = 18, DoubleFrameWidth = 36, TripleFrameWidth = 54;
     private const int StatueStylesPerRow = 55, StatueStyleRows = 3;
@@ -81,7 +82,8 @@ public sealed class WorldWiringDeviceExecutor1458
     /// Timer144 delegates to the circuit's existing switch/timer owner.
     /// </summary>
     public bool Hit(int x, int y, WorldWireChannel channel, Action<int, int> skipWire,
-        Action<int, int>? hitSwitch = null, Func<int, int, bool>? hitLogicLamp = null)
+        Action<int, int>? hitSwitch = null, Func<int, int, bool>? hitLogicLamp = null,
+        Action<int, int, bool>? registerPump = null)
     {
         ArgumentNullException.ThrowIfNull(skipWire);
         if (!Contains(x, y) || channel is < WorldWireChannel.Red or > WorldWireChannel.Yellow) return false;
@@ -95,6 +97,23 @@ public sealed class WorldWiringDeviceExecutor1458
             return changed || hitSwitch is not null;
         }
         if (tile.FrameX < 0 || tile.FrameY < 0) return changed;
+        if (tile.Type is InletPump or OutletPump)
+        {
+            if (registerPump is null || tile.FrameX % FramePitch != 0 || tile.FrameY % FramePitch != 0 ||
+                tile.FrameX > DoubleFrameWidth + FramePitch || tile.FrameY > FramePitch) return changed;
+            int left = x - tile.FrameX % DoubleFrameWidth / FramePitch, top = y - tile.FrameY / FramePitch;
+            if (!Contains(left, top) || !Contains(left + 1, top + 1)) return changed;
+            int style = tile.FrameX / DoubleFrameWidth;
+            for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 2; dy++)
+            {
+                var cell = tiles.Get(left + dx, top + dy);
+                if (!cell.IsActive || cell.Type != tile.Type || cell.HasActuator || cell.IsActuated ||
+                    cell.FrameX != style * DoubleFrameWidth + dx * FramePitch || cell.FrameY != dy * FramePitch) return changed;
+            }
+            for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 2; dy++) skipWire(left + dx, top + dy);
+            registerPump(left, top, tile.Type == InletPump);
+            return true;
+        }
 
         // The delegated WorldGen door operations own their source-specific SkipWire geometry and
         // timing. In particular a rejected occupied gate still skips its validated footprint.

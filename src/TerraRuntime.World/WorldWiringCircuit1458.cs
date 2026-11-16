@@ -23,18 +23,21 @@ public sealed partial class WorldWiringCircuit1458
     private readonly HashSet<long> _routerEntrances = new();
     private readonly Dictionary<int, byte> _pixelTriggers = new();
     private bool _running;
+    private readonly WorldWiringPumpTransfer1458? transferPumps;
 
     public WorldWiringCircuit1458(
         WorldTileStore tiles,
         WorldWiringDeviceExecutor1458 devices,
         Action<int, int, byte, byte>? publishTileSquare = null,
-        Func<int, int>? nextLogicSample = null, Action<int, int>? publishLogicSmoke = null)
+        Func<int, int>? nextLogicSample = null, Action<int, int>? publishLogicSmoke = null,
+        WorldWiringPumpTransfer1458? transferPumps = null)
     {
         _tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         _devices = devices ?? throw new ArgumentNullException(nameof(devices));
         _publish = publishTileSquare;
         _nextLogicSample = nextLogicSample;
         _logicSmoke = publishLogicSmoke;
+        this.transferPumps = transferPumps;
     }
 
     public int RegisteredMechanismCount => _mechanisms.Count;
@@ -116,6 +119,7 @@ public sealed partial class WorldWiringCircuit1458
     {
         for (int color = 1; color <= 4; color++)
         {
+            intakePumps.Clear(); outletPumps.Clear();
             WorldWireChannel channel = (WorldWireChannel)color;
             for (int x = left; x < left + width; x++)
                 for (int y = top; y < top + height; y++)
@@ -127,6 +131,9 @@ public sealed partial class WorldWiringCircuit1458
                     _pending.Enqueue(new WireVisit(x, y, 0));
                 }
             Traverse(channel);
+            if (intakePumps.Count != 0 && outletPumps.Count != 0)
+                transferPumps?.Invoke(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(intakePumps),
+                    System.Runtime.InteropServices.CollectionsMarshal.AsSpan(outletPumps));
             _skip.Clear();
             _remainingEntrances.Clear();
             _routerEntrances.Clear();
@@ -147,6 +154,7 @@ public sealed partial class WorldWiringCircuit1458
 
     private void ClearPulseState()
     {
+        intakePumps.Clear(); outletPumps.Clear();
         _pending.Clear();
         _remainingEntrances.Clear();
         _skip.Clear();
@@ -229,7 +237,8 @@ public sealed partial class WorldWiringCircuit1458
         {
             int index = Index(visit.X, visit.Y);
             if (!_skip.Contains(index))
-                _devices.Hit(visit.X, visit.Y, channel, SkipWire, HitSwitchFromWire, HitLogicLamp);
+                _devices.Hit(visit.X, visit.Y, channel, SkipWire, HitSwitchFromWire, HitLogicLamp,
+                    transferPumps is null ? null : RegisterPump);
             WorldTile current = _tiles.Get(visit.X, visit.Y);
             for (byte direction = 0; direction < 4; direction++)
             {

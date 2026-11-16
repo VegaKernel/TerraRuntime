@@ -206,3 +206,5 @@ Still incomplete are production movement suppression, complete enter/leave outbo
 ## 20. Change checklist
 
 A synchronization change is incomplete unless authoritative and replication state remain separate, join work/queues are bounded globally, transition/resync behavior is tested before suppression, invalid state fails open, slot reuse cannot inherit stale visibility, protocol-sensitive transitions have live evidence, diagrams use Mermaid, dimensional quantities use LaTeX, and this page changes together with `docs/ru/synchronization.md`.
+
+For a registry bound to a world, the pending liquid set retains coordinates and reads current liquid amount/kind at flush, like source `Liquid._netChangeSet`. A drained queued pump cell therefore cannot replay an old material snapshot. A registry cannot bind to another world; unbound bootstrap hosts keep their supplied snapshots.

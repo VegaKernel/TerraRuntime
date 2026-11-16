@@ -87,6 +87,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         this.hardModeBaseline = hardModeBaseline;
         this.goodWorld = goodWorld;
         this.replication = replication;
+        if (tiles is not null) replication?.BindLiquidStateSource(tiles);
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
         playerDoorOpenings = tiles is null ? null : new VanillaWorldGroundFighterDoorOpeningService(
             tiles,

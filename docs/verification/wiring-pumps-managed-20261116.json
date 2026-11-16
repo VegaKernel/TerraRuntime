@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "wiring-pumps-managed-20261116",
+  "accepted": true,
+  "allIssuesComplete": false,
+  "baseCommit": "079a194a388e10078bce1326d992a22ec8c3b1cd",
+  "sdk": "11.0.100",
+  "runtime": "11.0.0",
+  "newProductionDependencies": false,
+  "scope": [
+    "Tiles142/143 use existing wire circuit traversal and validated intact nonactuated2x2 footprints. Both frame variants skip all4cells; first19cells per inlet/outlet list are retained bottom-left/bottom-right/top-left/top-right, in encounter order. Lists reset and transfer after each source color, including nested logic waves and timers.",
+    "Existing World liquid mutation owner plans compatible bounded transfers. Empty outlets adopt the intake kind; mixed nonempty kinds and full outlets refuse; drained input clears kind toWater. Source amount cap255 and all4materials are retained. No intercolor flow tick or pump-specific reaction is inserted.",
+    "Existing detached overlay/shared liquid framing/SourceWaterPreparation jointly adopt terrain, queue and source RNG. Source SquareTileFrame/AddWater order includes duplicate empty-intake framing and nonempty intake framing when no outlet accepted. Active/buffered queue ordering, checking/skip flags and deferred changes reuse existing owners.",
+    "Canonical liquid replication binds to one world and reads current material at flush, like source NetSendLiquid coordinate sets, including queued cells drained without a new offer. Existing legacy48 frame budget16, pending cap16384, coalescing/eviction and section filters remain. Unbound bootstrap hosts retain their supplied snapshots; invalid bound coordinates drop safely.",
+    "Extracted the existing lava-death framing participant into LiquidFraming and generalized its internal retained-liquid square path; existing lava semantics remain. Pump Check2x2 verifies anchors and frames, and the existing Main.tileTable fact moved to Gameplay tilecatalog with old singlecell callers migrated. No new writer, production package/project edge or persistent format.",
+    "Unmodified original Linux-edition208 wire traces repeat exactly with no observed exceptions, including4kinds, empty-kind flags, full/mixed/empty, contacts/colors, frame variants,19cell cutoff, disjoint colors, logic wave, table anchors, repeat pulses and queue/buffer limits. Tests compare physical material/object state, queues/flags, full RNG, source pending coordinates and original legacy48 serialization. Authenticated cases deliver current liquid to both peers; shipping smoke exercises4materials."
+  ],
+  "limits": [
+    "Issue125 remains partial: teleporters, further statues/trigger contexts and complete wiring acceptance remain open. Actuated/damaged pumps, invalid anchors and unadmitted neighboring objects/plants/falling tiles or framing requiring item/drop participants refuse before speculative material adoption.",
+    "Reference traces isolate Wiring/framing/AddWater and explicit original legacy48 serialization of the source coordinate change set. They do not capture whole Liquid.UpdateLiquid/Main.Update, source82 chunk batching, a real TCP/GUI session or complete liquid-flow parity. Existing legacy transport projection remains explicit.",
+    "Nonimportant cosmetic tile frames, the visual map-update queue and rendering are not new world state. Comparisons retain liquid/object state and important pump frames; cosmetic floor frames are excluded deliberately.",
+    "Existing4096 query/step/offer and64-section overlay bounds are conservative runtime transaction policy, not new vanilla pump limits. The source pump list cap is19cells per side/color, not19objects.",
+    "Local NativeAOT/C++ installation remains explicitly user-deferred. Ordinary managed and fresh self-contained CoreCLR smokes qualify separately. Source analysis is inventory-only, accepted=false/analysisOnly=true/closurefalse; no automatic port acceptance or copied game code/assets/text.",
+    "Issue126 awaits unavailable stop logs. No connection limits/timeouts changed and no repeated log request."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\pumps-20261116\\build-final.log",
+    "sha256": "7eecbfbf14d4ecd71920e24b7437a074b8631496fcfc2dad68bd91d63ec8427a"
+  },
+  "focused": {
+    "total": 13904,
+    "passed": 13904,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1009.9134119999944,
+    "tests": {
+      "total": "233765",
+      "passed": "233765",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1005.843",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1701.8778505999944,
+    "tests": {
+      "total": "1779080",
+      "passed": "1779080",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1688.896",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6084,
+  "independentEvidence": {
+    "rows": 208,
+    "raw": "E:\\TerraRuntimeAgentCache\\pumps-20261116\\original\\observations06.json",
+    "repeat": "E:\\TerraRuntimeAgentCache\\pumps-20261116\\original\\observations07.json",
+    "sha256": "660ccb1bfceba3167fec7117ec96d3824a44db05bc7ee0a69ba5f8ab29dc19ba",
+    "firstChanceExceptions": 0,
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "transportPolicy": "Source NetSendLiquid coordinate set projected through original legacy48 serializer; not original82 chunk batching or whole Liquid.Update.",
+    "fixtureSha256": "01fff243b9cfeae2961b465e1fd0a5a823e65a387f3a02dae643c4b07abb0e6e"
+  },
+  "sourceAnalysis": {
+    "analysisOnly": true,
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "observationSha256": "6d98395e31dec352e1fb6115f63d17c53ebf4773707829c6f733d779d004f52a"
+  },
+  "causalControls": {
+    "sourceInputs": 5169,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08",
+    "controls": [
+      {
+        "control": "cell-cap",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 209,
+        "failed": 4,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "cell-order",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 92,
+        "failed": 121,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "mixed-kinds",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 177,
+        "failed": 36,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "drained-kind",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 144,
+        "failed": 69,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "empty-outlet-kind",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 153,
+        "failed": 60,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "per-color-pools",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 212,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "blocked-intake-framing",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 129,
+        "failed": 84,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "current-flush-state",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 200,
+        "failed": 13,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "table-anchor-fact",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 212,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      },
+      {
+        "control": "anchor-admission",
+        "exitCode": 1,
+        "total": 213,
+        "passed": 212,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5169,
+    "dllPaths": 404,
+    "testDllSha256": "b2c52f2b5c03a233027bb571891824f21e7f6e136824e357eb437a42ae8e0c08",
+    "afterFull": {
+      "sourceInputs": 5169,
+      "dllPaths": 404,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5169,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 0.915188999962993,
+      "logSha256": "983a16aa0af5b775080a75a50f7b80b8198fb8eb520cadcddb7b34dab3801144"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 0.7753186000045389,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.12835409998660907,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 1.035483399988152,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 4.795501300017349,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "ee515e09d71a4140e4b5997f8dbe18afead6e0ce7c24c27ba992b26573fdf286",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.2889436000259593,
+        "logSha256": "c91ab7ccebfbb30afe72860a1f848dacb5ad5f28323210be7a54397b1e8675ef"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 1.168874200026039,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.1898003999958746,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 1.1922283999738283,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 7.446713000012096,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 9.188436299969908,
+      "logSha256": "de67a3c43a9244c70d040a02cd82ed2b2012ac8e1c7bb6b132e5379477aea705"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.0916581999626942,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 4.300301500014029,
+      "logSha256": "77984ba072e27ad879511ffa746feda6a51901c49affc1e38a1a0d69926c0350"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 0.6884919999865815,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\pumps-20261116",
+  "testRunnerMaxThreads": 8,
+  "rejectedIntermediateEvidence": [
+    "Prequalification build01 lacked the shared table fact API and build05 had an ambiguous test RNG constructor. These were fixed before the frozen cohort; stale debug test invocations are not acceptance. All final gates use the exact frozen assembly and source index.",
+    "The initial204 source rows were extended before freezing to cover disjoint colors, logic waves, alternate frames and table anchors; final208 captures repeat exactly."
+  ]
+}

@@ -88,7 +88,7 @@ The following remain outside the supported chain:
 
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
-- Pumps and teleporters, pending full integration with liquid and movement owners.
+- Teleporters and pump contexts outside the bounded continuation below.
 - Other NPC-spawning statues and contexts outside the bounded trap, logic, item-statue and NPC-statue continuations below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
@@ -214,3 +214,19 @@ Before packet `65`, an owned persisted resident also updates its existing save i
 This block does not admit wet, actuated or damaged statues, new NPC AI, a real GUI-client playthrough or the remaining NPC-producing/tile-converting statues. Issue `125` remains open.
 
 [Managed acceptance](../verification/wiring-town-statues-managed-20261116.json).
+
+## Inlet and outlet pumps
+
+Tiles `142` and `143` now collect intact $2\times2$ pump footprints into the existing wire circuit. For each color, cell lists reset before traversal and transfer runs after that color finishes, including logic-gate waves and timer pulses. Each list admits at most $19\,\text{cells}$, in bottom-left, bottom-right, top-left, top-right order; this is not a limit of nineteen pump objects. Both horizontal frame variants are admitted. Source wire traversal still owns encounter order and the four-cell skip.
+
+The existing liquid mutation owner plans compatible cell transfers over the bounded detached terrain image. Empty outlets adopt the intake kind; nonempty outlets accept only the same kind, up to $255\,\text{units/cell}$. Drained intakes reset their liquid kind to water. Water, lava, honey and shimmer retain source ordering without reactions in the pump transfer itself. Existing source `SquareTileFrame` and prepared `Liquid.AddWater` scheduling run in source order, including duplicate intake framing and framing when all outlets are full or incompatible. This preserves active/buffered queue order, checking/skip flags and source RNG. No liquid flow tick is inserted between colors.
+
+Terrain and queued liquid work adopt together through the existing owners before publication. Unsupported framing or changed terrain/queue/RNG refuses speculative adoption. The existing $4\,096$ query/step/offer bounds remain runtime transaction policy. Persistent liquid fields use normal `WorldTileStore` section invalidation and checkpoint encoding; per-color pump lists are transient. A shared `Main.tileTable` fact now belongs to `VanillaToolTileCatalog1458`, reused by single-cell framing and pump anchor validation.
+
+Liquid publication retains coordinates and resolves their current material when a bound world's pending set drains. This is necessary when a pump drains a cell already queued for sending without producing another `AddWater` offer. A registry binds to one world; unbound bootstrap hosts retain supplied snapshots. Existing packet `48` budgets, bounded coalescing/eviction and section visibility remain in force. This is the existing legacy-48 projection of source liquid change coordinates; it does not claim original module-`82` chunk batching.
+
+The unchanged official Linux-edition server repeats exactly across $208$ scenarios without observed exceptions: all four materials and stale empty-kind flags, full/incompatible outlets, all contacts/colors, both frame variants, first-$19$ cutoffs, disjoint color circuits, a logic wave, repeated pulses and active/buffered queue boundaries. Tests compare material/object state, queue order and flags, complete RNG, pending source coordinates and original legacy-48 serializer bytes. Authenticated switch tests verify both peer queues; shipping smokes exercise all four materials. Traces isolate mechanism/framing/queue operations and explicit legacy serialization, not whole `Liquid.UpdateLiquid`, `Main.Update` or a real GUI/TCP playthrough. Managed qualification passes: focused $13\,904$, fast $233\,765$, unfiltered full $1\,779\,080$ cases; ten effective causal controls and ordinary/fresh CoreCLR smokes.
+
+Actuated or damaged pump objects, broken anchors, unadmitted neighboring objects/plants/falling tiles and framing that would require item drops remain refused. Teleporters, other NPC statues and complete wiring acceptance remain open; issue `125` is partial.
+
+[Managed acceptance](../verification/wiring-pumps-managed-20261116.json).

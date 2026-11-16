@@ -27,7 +27,7 @@ internal sealed partial class WorldTileAuthority
             {
                 VanillaPoofOfSmoke1458.ConsumeDedicatedSourceOffers(new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(source.SourceRandom));
                 replication?.TryPublishLogicSmoke(x, y);
-            });
+            }, transferPumps: TryTransferWiringPumps);
     }
 
     private void PublishWiringSquare(int x, int y, byte width, byte height)

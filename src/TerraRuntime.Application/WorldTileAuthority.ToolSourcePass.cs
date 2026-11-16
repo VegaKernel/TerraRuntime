@@ -336,7 +336,7 @@ internal sealed partial class WorldTileAuthority
             if (step.X <= 5 || step.Y <= 5 || step.X >= dimensions.WidthTiles - 5 || step.Y >= dimensions.HeightTiles - 5)
                 return true;
             if (!Overlay.TryRead(step.X, step.Y, out var tile)) return false;
-            if (!TryPrepareDeathFrame(in step, in tile, out bool deferred)) return false;
+            if (!TryPrepareLiquidFrame(in step, in tile, out bool deferred)) return false;
             if (deferred) return true;
             // Wet TileFrame calls invoke Liquid.AddWater in the source. Until that operation has a
             // prepared queue participant, actuator framing must reject instead of adopting half a call.
@@ -349,6 +349,7 @@ internal sealed partial class WorldTileAuthority
                 return tile.Equals(cleared) || Stage(WorldTileMutationKind.TransformTile, step.X, step.Y, in tile, in cleared);
             }
             if (!VanillaTileDefinitionCatalog.TryGet(tile.TileType, out var definition)) return false;
+            if (wiringPumpFrame && tile.Type is 142 or 143) return TryVerifyWiringPump(step.X, step.Y, tile.Type);
             if (IsFramedTree(tile.Type)) return FrameTree(step.X, step.Y, in tile);
             if (tile.Type == 80) return FrameCactus(step.X, step.Y, in tile);
             if (!VanillaToolTileCatalog1458.TryGet(tile.TileType, out var sourceFacts)) return false;

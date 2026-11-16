@@ -206,3 +206,5 @@ Incomplete: production movement suppression, complete enter/leave outbound wirin
 ## 20. Checklist изменения synchronization
 
 Synchronization change не завершён, пока authoritative/replication state separated, join work/queues globally bounded, transitions/resync tested до suppression, invalid state fail-open, slot reuse не наследует stale visibility, protocol-sensitive transitions имеют live evidence, diagrams используют Mermaid, dimensional quantities используют LaTeX, и эта page изменена вместе с `docs/en/synchronization.md`.
+
+У реестра, привязанного к миру, ожидающий набор жидкости сохраняет координаты и считывает текущие объём/вид при отправке, как исходный `Liquid._netChangeSet`. Поэтому опустевшая клетка насоса не воспроизводит старый снимок материала. Реестр нельзя привязать к другому миру; непривязанные bootstrap-хосты сохраняют переданные снимки.

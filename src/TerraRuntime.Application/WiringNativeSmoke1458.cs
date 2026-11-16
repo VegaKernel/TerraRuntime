@@ -120,6 +120,30 @@ internal static class WiringNativeSmoke1458
                 moved.Simulation.TeleportTime != 1f || moved.PositionY == resident.PositionY || moved.Simulation.SpawnedFromStatue) return false;
         }
 
+        for (int kind = 0; kind < 4; kind++)
+        {
+            int top = 10 + kind * 5;
+            for (int x = 5; x <= 15; x++) tiles.Set(x, top, new WorldTile { Flags = WorldTileFlags.WireRed });
+            tiles.Set(5, top, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+            foreach (int left in new[] { 8, 14 })
+            for (int dx = 0; dx < 2; dx++)
+            {
+                for (int dy = 0; dy < 2; dy++)
+                    tiles.Set(left + dx, top + dy, new WorldTile { Type = (ushort)(left == 8 ? 142 : 143),
+                        FrameX = (short)(dx * 18), FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active | WorldTileFlags.WireRed,
+                        LiquidAmount = (byte)(left == 8 ? 100 : 0), LiquidKind = (WorldLiquidKind)kind });
+                tiles.Set(left + dx, top + 2, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+            }
+            state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(5, (short)top)));
+            int volume = 0;
+            for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 2; dy++)
+            {
+                if (tiles.Get(8 + dx, top + dy).LiquidAmount != 0) return false;
+                volume += tiles.Get(14 + dx, top + dy).LiquidAmount;
+            }
+            if (volume != 400) return false;
+        }
+
         byte[] importance = new byte[(VanillaWorldFormat326.TileTypeCount + 7) / 8];
         importance[144 >> 3] |= 1 << (144 & 7);
         var timerOnly = new WorldTileStore(new WorldDimensions(1, 1));
