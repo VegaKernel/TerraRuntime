@@ -50,7 +50,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458
             if (entry.Slots[i].Type != 0 && entry.Slots[i].Type != VanillaBuffIds.OnFire.Value &&
                 entry.Slots[i].Type != VanillaBuffIds.Poisoned.Value &&
                 entry.Slots[i].Type != VanillaBuffIds.Stinky.Value &&
-                entry.Slots[i].Type != VanillaBuffIds.Venom.Value) return false;
+                entry.Slots[i].Type != VanillaBuffIds.Venom.Value && entry.Slots[i].Type != VanillaBuffIds.OnFire3.Value) return false;
         var checkpoint = CaptureAdditionCheckpoint(in entry);
         plan = new(this, in expected, in checkpoint);
         return true;
@@ -60,10 +60,10 @@ internal sealed partial class RuntimeNpcBuffStatus1458
         out RuntimeNpcBuffAdditionPlan1458 plan)
     {
         plan = default!;
-        if ((type != VanillaBuffIds.OnFire && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.Venom) ||
+        if ((type != VanillaBuffIds.OnFire && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.Venom && type != VanillaBuffIds.OnFire3) ||
             duration is <= 0 or > short.MaxValue || !CaptureAddition(in expected, out plan)) return false;
-        bool immune = type != VanillaBuffIds.Venom && expected.TypeIdentity != VanillaNpcIds.Zombie &&
-            (type == VanillaBuffIds.Poisoned || expected.TypeIdentity == VanillaNpcIds.LavaSlime);
+        bool immune = false;
+        if (expected.TypeIdentity != VanillaNpcIds.Zombie && !TryGetTorchImmunity(expected.Handle, type, out immune)) return false;
         if (immune) return true;
         int free = -1;
         for (int i = 0; i < Capacity; i++)

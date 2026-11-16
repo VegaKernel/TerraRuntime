@@ -21,7 +21,8 @@ internal sealed partial class PlayerBuffState
             ContainsOwnedNpcContact(VanillaBuffIds.Poisoned))
         {
             Electrified = ContainsOwnedNpcContact(VanillaBuffIds.Electrified),
-            Venom = ContainsOwnedNpcContact(VanillaBuffIds.Venom)
+            Venom = ContainsOwnedNpcContact(VanillaBuffIds.Venom),
+            OnFire3 = ContainsOwnedNpcContact(VanillaBuffIds.OnFire3)
         };
     internal bool ContainsOwnedNpcContact(BuffTypeId type)
     {
@@ -32,7 +33,7 @@ internal sealed partial class PlayerBuffState
 
     internal bool TryApplyNpcContactBuff(BuffTypeId type, int duration, bool immune = false)
     {
-        if (immune || duration <= 0 || !VanillaNpcContactBuffs1458.IsContactBuffType(type)) return false;
+        if (immune || duration <= 0 || !(VanillaNpcContactBuffs1458.IsContactBuffType(type) || type == VanillaBuffIds.OnFire3)) return false;
         int previous = Array.IndexOf(types, type);
         // A packet50 presentation timer is not an earned AddBuff duration to carry forward.
         if (previous >= 0 && !ownedNpcContact[previous]) durations[previous] = 0;

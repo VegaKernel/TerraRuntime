@@ -298,14 +298,14 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
         }
 
         bool thornBallCollisionHandled = false;
-        if (tileImpact && current.Type == VanillaProjectileIds.PlanteraThornBall &&
+        if (tileImpact && (current.Type == VanillaProjectileIds.PlanteraThornBall || current.Type.Value == 185) &&
             definition.AiStyle == VanillaProjectileAiStyles.BouncyBall)
         {
             // Projectile.Update aiStyle-14 type 277 rebounds horizontal impacts at 90%. Downward impacts
             // above 3 px/update rebound Y at 90%; gentler vertical contacts retain the collision-clamped Y.
             if (collideX)
                 collidedVelocityX = velocityX * -0.9f;
-            if (collideY && velocityY > 3f)
+            if (collideY && velocityY > (current.Type.Value == 185 ? 1f : 3f))
                 collidedVelocityY = velocityY * -0.9f;
             thornBallCollisionHandled = true;
         }
@@ -538,7 +538,7 @@ internal sealed partial class VanillaProjectileWorldMotionResolver
             KillOrigin: killOrigin,
             PenetrateOverride: nursePenetration,
             CollisionTileCutOffer: current.Type == VanillaProjectileIds.NurseSyringeHeal && tileImpact ||
-                (VanillaGroundCombatPlayerHit1458.IsSupported(current.Type) || VanillaWiringDartTrap1458.IsDart(current.Type)) && sourceTileImpact
+                (VanillaGroundCombatPlayerHit1458.IsSupported(current.Type) || (VanillaWiringTrap1458.IsDart(current.Type) || current.Type.Value is 185 or 188)) && sourceTileImpact
                 ? new ProjectileCollisionTileCutOffer() : null)
         {
             SourceWetCountOverride = sourceWetCountOverride,

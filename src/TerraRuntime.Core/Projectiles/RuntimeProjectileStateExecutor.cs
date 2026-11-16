@@ -64,6 +64,8 @@ public readonly record struct ProjectileSimulationStepResult(
     public byte? SourceWetCountOverride { get; init; }
     /// <summary>Dedicated-server Shimmer splash arguments; evaluated on the accepted shared stream.</summary>
     public byte ShimmerVisualOffers { get; init; }
+    /// <summary>AI_023 type188 evaluated its dedicated visual argument before movement.</summary>
+    public bool WiringFlameSourceUpdate { get; init; }
 }
 
 /// <summary>Runtime-only top-left at the source Kill boundary before a remaining position-update tail.</summary>
@@ -198,6 +200,36 @@ public sealed class RuntimeProjectileStateExecutor
         _stepBuffer = new ProjectileSimulationStepResult[VanillaProjectileUpdateFacts.MaximumExtraUpdates + 1];
     }
 
+    private bool tickActive;
+    private int scheduledCount;
+    private int currentIndex;
+
+    // A qualified source emitter can fill a later physical slot during this census.
+    // Earlier slots wait until the next tick, exactly as Main.UpdateProjectiles does.
+    internal bool TryScheduleWiringFlameBirth(in ProjectileSnapshot birth)
+    {
+        if (!tickActive || _snapshotBuffer[currentIndex].Type.Value != 187 ||
+            birth.Type.Value != 188 || birth.Spawner != byte.MaxValue ||
+            birth.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
+            !_projectiles.IsCombatTrusted(birth.Handle) ||
+            _projectiles.TryGetServerNpcSource(birth.Handle, out _) ||
+            _projectiles.TryGetCombatTrustedOwner(birth.Handle, out _) ||
+            !_projectiles.TryGet(birth.Handle, out var current) || current != birth) return false;
+        if (birth.Handle.Slot <= _snapshotBuffer[currentIndex].Handle.Slot) return true;
+        int at = currentIndex + 1;
+        while (at < scheduledCount && _snapshotBuffer[at].Handle.Slot < birth.Handle.Slot) at++;
+        if (at < scheduledCount && _snapshotBuffer[at].Handle.Slot == birth.Handle.Slot)
+            _snapshotBuffer[at] = birth;
+        else
+        {
+            if (scheduledCount == _snapshotBuffer.Length) return false;
+            Array.Copy(_snapshotBuffer, at, _snapshotBuffer, at + 1, scheduledCount - at);
+            _snapshotBuffer[at] = birth;
+            scheduledCount++;
+        }
+        return true;
+    }
+
     public ProjectileStateTickSummary Tick(IProjectileStateStepper stepper) => Tick(stepper, null);
 
     // The concrete Application arrow owner may prepare/adopt this actor before the generic motion lane.
@@ -207,193 +239,201 @@ public sealed class RuntimeProjectileStateExecutor
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
+        if (tickActive) throw new InvalidOperationException("Projectile census cannot be reentered.");
         int captured = _projectiles.CopyActive(_snapshotBuffer);
         int examined = 0;
         int proposed = 0;
         int applied = 0;
         int rejected = 0;
 
-        for (int index = 0; index < captured; index++)
+        scheduledCount = captured;
+        tickActive = true;
+        try
         {
-            ProjectileSnapshot projectile = _snapshotBuffer[index];
-            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount)
-                continue;
-
-            examined++;
-            if (!_projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle))
+            for (int index = 0; index < scheduledCount; index++)
             {
-                rejected++;
-                continue;
-            }
+                currentIndex = index;
+                ProjectileSnapshot projectile = _snapshotBuffer[index];
+                if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount)
+                    continue;
 
-            if (simulateActor is not null)
-            {
-                ProjectileActorSimulationResult actorResult = simulateActor(projectile);
-                if (actorResult != ProjectileActorSimulationResult.NotApplicable)
+                examined++;
+                if (!_projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle))
                 {
-                    proposed++;
-                    if (actorResult == ProjectileActorSimulationResult.Applied)
-                        applied++;
-                    else
-                        rejected++;
+                    rejected++;
                     continue;
                 }
-            }
 
-            int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectile.Type, projectile.Ai);
-            ProjectileSnapshot currentProjectile = projectile;
-            ProjectileLifecycleState currentLifecycle = lifecycle;
-            ProjectileSimulationStepResult finalResult = default;
-            int recordedSubupdates = 0;
-            bool hasProposal = false;
-            bool invalid = false;
-
-            for (int subupdate = 0; subupdate < subupdates; subupdate++)
-            {
-                var context = new ProjectileSimulationStepContext(
-                    currentProjectile,
-                    currentLifecycle,
-                    subupdate,
-                    subupdates);
-
-                if (!stepper.TryStepState(in context, out ProjectileSimulationStepResult proposedResult))
+                if (simulateActor is not null)
                 {
-                    if (hasProposal)
-                        invalid = true;
-                    break;
+                    ProjectileActorSimulationResult actorResult = simulateActor(projectile);
+                    if (actorResult != ProjectileActorSimulationResult.NotApplicable)
+                    {
+                        proposed++;
+                        if (actorResult == ProjectileActorSimulationResult.Applied)
+                            applied++;
+                        else
+                            rejected++;
+                        continue;
+                    }
                 }
 
-                if (!TryNormalizeTermination(in proposedResult, out ProjectileSimulationStepResult next))
-                {
-                    invalid = true;
-                    break;
-                }
+                int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectile.Type, projectile.Ai);
+                ProjectileSnapshot currentProjectile = projectile;
+                ProjectileLifecycleState currentLifecycle = lifecycle;
+                ProjectileSimulationStepResult finalResult = default;
+                int recordedSubupdates = 0;
+                bool hasProposal = false;
+                bool invalid = false;
 
-                ProjectileStateUpdate nextState = next.State;
-                if (!RuntimeProjectileStore.IsValidState(in nextState) || !IsCurrentHealing(in next) ||
-                    next.OrdinaryAmmoSourceUpdate &&
-                        _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsOrdinaryAmmoSourceOffers: true } ||
-                    next.CollisionTileCutOffer.HasValue &&
-                        _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsCollisionTileCutOffers: true } ||
-                    next.ShimmerVisualOffers > 0 &&
-                        _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsShimmerVisualOffers: true } ||
-                    !TryProjectLifecycle(
-                        currentProjectile.Type,
-                        nextState.Type,
+                for (int subupdate = 0; subupdate < subupdates; subupdate++)
+                {
+                    var context = new ProjectileSimulationStepContext(
+                        currentProjectile,
                         currentLifecycle,
-                        next.TimeLeft,
-                        next.Liquid,
-                        next.LocalAi,
-                        next.PenetrateOverride,
-                        next.SourceWetCountOverride,
-                        out ProjectileLifecycleState nextLifecycle))
-                {
-                    invalid = true;
-                    break;
+                        subupdate,
+                        subupdates);
+
+                    if (!stepper.TryStepState(in context, out ProjectileSimulationStepResult proposedResult))
+                    {
+                        if (hasProposal)
+                            invalid = true;
+                        break;
+                    }
+
+                    if (!TryNormalizeTermination(in proposedResult, out ProjectileSimulationStepResult next))
+                    {
+                        invalid = true;
+                        break;
+                    }
+
+                    ProjectileStateUpdate nextState = next.State;
+                    if (!RuntimeProjectileStore.IsValidState(in nextState) || !IsCurrentHealing(in next) ||
+                        next.OrdinaryAmmoSourceUpdate &&
+                            _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsOrdinaryAmmoSourceOffers: true } ||
+                        next.CollisionTileCutOffer.HasValue &&
+                            _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsCollisionTileCutOffers: true } ||
+                        next.ShimmerVisualOffers > 0 &&
+                            _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsShimmerVisualOffers: true } ||
+                        !TryProjectLifecycle(
+                            currentProjectile.Type,
+                            nextState.Type,
+                            currentLifecycle,
+                            next.TimeLeft,
+                            next.Liquid,
+                            next.LocalAi,
+                            next.PenetrateOverride,
+                            next.SourceWetCountOverride,
+                            out ProjectileLifecycleState nextLifecycle))
+                    {
+                        invalid = true;
+                        break;
+                    }
+
+                    if (!hasProposal)
+                    {
+                        hasProposal = true;
+                        proposed++;
+                    }
+
+                    _stepBuffer[recordedSubupdates++] = next;
+                    finalResult = next;
+                    currentProjectile = Project(in currentProjectile, in nextState);
+                    currentLifecycle = nextLifecycle;
+
+                    if (next.TimeLeft <= 0)
+                    {
+                        if (next.TerminationReason == ProjectileSimulationTerminationReason.LifetimeExpired &&
+                            subupdate + 1 < subupdates &&
+                            VanillaProjectileUpdateFacts.SupportsInactiveLifetimeMotion1458(currentProjectile.Type) &&
+                            stepper is IProjectileInactiveLifetimeMotionStepper inactive &&
+                            inactive.SupportsInactiveLifetimeMotion(currentProjectile.Type))
+                        {
+                            if (!TryPlanInactiveLifetimeMotion(inactive, in currentProjectile, in currentLifecycle,
+                                    subupdate + 1, subupdates, in next, out var tail, out var tailLifecycle))
+                            {
+                                invalid = true;
+                                break;
+                            }
+                            _stepBuffer[recordedSubupdates++] = tail;
+                            finalResult = tail;
+                            currentLifecycle = tailLifecycle;
+                        }
+                        break;
+                    }
                 }
 
                 if (!hasProposal)
+                    continue;
+
+                if (invalid)
                 {
-                    hasProposal = true;
-                    proposed++;
+                    rejected++;
+                    continue;
                 }
 
-                _stepBuffer[recordedSubupdates++] = next;
-                finalResult = next;
-                currentProjectile = Project(in currentProjectile, in nextState);
-                currentLifecycle = nextLifecycle;
+                bool wasCombatTrusted = _projectiles.IsCombatTrusted(projectile.Handle);
+                PlayerHandle trustedOwner = default;
+                if (wasCombatTrusted)
+                    _projectiles.TryGetCombatTrustedOwner(projectile.Handle, out trustedOwner);
+                NpcHandle sourceNpc = default;
+                _projectiles.TryGetServerNpcSource(projectile.Handle, out sourceNpc);
 
-                if (next.TimeLeft <= 0)
+                ProjectileStateUpdate finalState = finalResult.State;
+                if (IsCurrentHealing(in finalResult) && _projectiles.TryGet(projectile.Handle, out var retainedProjectile) &&
+                    retainedProjectile.Revision == projectile.Revision &&
+                    _projectiles.TryGetLifecycle(projectile.Handle, out var retainedLifecycle) && retainedLifecycle == lifecycle &&
+                    _projectiles.TryCommitSimulationStepUnpublished(
+                        projectile.Handle,
+                        in finalState,
+                        finalResult.TimeLeft,
+                        currentLifecycle.Liquid,
+                        currentLifecycle.LocalAi,
+                        out ProjectileSnapshot committed,
+                        out bool expired,
+                        currentLifecycle.PenetrateOverride, currentLifecycle.SourceWetCount))
                 {
-                    if (next.TerminationReason == ProjectileSimulationTerminationReason.LifetimeExpired &&
-                        subupdate + 1 < subupdates &&
-                        VanillaProjectileUpdateFacts.SupportsInactiveLifetimeMotion1458(currentProjectile.Type) &&
-                        stepper is IProjectileInactiveLifetimeMotionStepper inactive &&
-                        inactive.SupportsInactiveLifetimeMotion(currentProjectile.Type))
+                    if (finalResult.TerminationReason != ProjectileSimulationTerminationReason.WorldBounds &&
+                        !_projectiles.TrySetSourceDirectionAfterSimulation(in committed, expired, finalResult.SourceDirection))
+                        throw new InvalidOperationException("Accepted simulation lost its source direction owner.");
+                    applied++;
+                    if (_commitSink is IProjectileSimulationPrePublicationCommitSink beforePublication)
+                        beforePublication.ProjectileSimulationCommittedBeforePublication(_stepBuffer.AsSpan(0, recordedSubupdates));
+                    _projectiles.TryPublishSimulationCommit(in committed, expired);
+                    if (_commitSink is not null)
                     {
-                        if (!TryPlanInactiveLifetimeMotion(inactive, in currentProjectile, in currentLifecycle,
-                                subupdate + 1, subupdates, in next, out var tail, out var tailLifecycle))
-                        {
-                            invalid = true;
-                            break;
-                        }
-                        _stepBuffer[recordedSubupdates++] = tail;
-                        finalResult = tail;
-                        currentLifecycle = tailLifecycle;
+                        _commitSink.ProjectileSimulationCommitted(
+                            in projectile,
+                            in lifecycle,
+                            _stepBuffer.AsSpan(0, recordedSubupdates),
+                            in committed,
+                            expired);
                     }
-                    break;
-                }
-            }
 
-            if (!hasProposal)
-                continue;
-
-            if (invalid)
-            {
-                rejected++;
-                continue;
-            }
-
-            bool wasCombatTrusted = _projectiles.IsCombatTrusted(projectile.Handle);
-            PlayerHandle trustedOwner = default;
-            if (wasCombatTrusted)
-                _projectiles.TryGetCombatTrustedOwner(projectile.Handle, out trustedOwner);
-            NpcHandle sourceNpc = default;
-            _projectiles.TryGetServerNpcSource(projectile.Handle, out sourceNpc);
-
-            ProjectileStateUpdate finalState = finalResult.State;
-            if (IsCurrentHealing(in finalResult) && _projectiles.TryGet(projectile.Handle, out var retainedProjectile) &&
-                retainedProjectile.Revision == projectile.Revision &&
-                _projectiles.TryGetLifecycle(projectile.Handle, out var retainedLifecycle) && retainedLifecycle == lifecycle &&
-                _projectiles.TryCommitSimulationStepUnpublished(
-                    projectile.Handle,
-                    in finalState,
-                    finalResult.TimeLeft,
-                    currentLifecycle.Liquid,
-                    currentLifecycle.LocalAi,
-                    out ProjectileSnapshot committed,
-                    out bool expired,
-                    currentLifecycle.PenetrateOverride, currentLifecycle.SourceWetCount))
-            {
-                if (finalResult.TerminationReason != ProjectileSimulationTerminationReason.WorldBounds &&
-                    !_projectiles.TrySetSourceDirectionAfterSimulation(in committed, expired, finalResult.SourceDirection))
-                    throw new InvalidOperationException("Accepted simulation lost its source direction owner.");
-                applied++;
-                if (_commitSink is IProjectileSimulationPrePublicationCommitSink beforePublication)
-                    beforePublication.ProjectileSimulationCommittedBeforePublication(_stepBuffer.AsSpan(0, recordedSubupdates));
-                _projectiles.TryPublishSimulationCommit(in committed, expired);
-                if (_commitSink is not null)
-                {
-                    _commitSink.ProjectileSimulationCommitted(
-                        in projectile,
-                        in lifecycle,
-                        _stepBuffer.AsSpan(0, recordedSubupdates),
-                        in committed,
-                        expired);
-                }
-
-                if (expired && _terminationSink is not null)
-                {
-                    var termination = new ProjectileTerminationCommit(
-                        projectile,
-                        committed,
-                        finalResult.TerminationReason,
-                        wasCombatTrusted,
-                        trustedOwner,
-                        sourceNpc,
-                        finalResult.KillOrigin)
+                    if (expired && _terminationSink is not null)
                     {
-                        NpcProjectile = lifecycle.NpcProjectile
-                    };
-                    _terminationSink.ProjectileTerminated(in termination);
+                        var termination = new ProjectileTerminationCommit(
+                            projectile,
+                            committed,
+                            finalResult.TerminationReason,
+                            wasCombatTrusted,
+                            trustedOwner,
+                            sourceNpc,
+                            finalResult.KillOrigin)
+                        {
+                            NpcProjectile = lifecycle.NpcProjectile
+                        };
+                        _terminationSink.ProjectileTerminated(in termination);
+                    }
+                }
+                else
+                {
+                    rejected++;
                 }
             }
-            else
-            {
-                rejected++;
-            }
-        }
 
+        }
+        finally { tickActive = false; scheduledCount = 0; }
         return new ProjectileStateTickSummary(examined, proposed, applied, rejected);
     }
 
@@ -443,6 +483,13 @@ public sealed class RuntimeProjectileStateExecutor
         if ((proposed.SourceWetCountOverride is not null || proposed.ShimmerVisualOffers != 0) &&
                 !VanillaProjectileUpdateFacts.SupportsSourceCollisionOffers1458(proposed.State.Type) ||
             proposed.SourceWetCountOverride is > 10 || proposed.ShimmerVisualOffers is not (0 or 10))
+        {
+            normalized = default;
+            return false;
+        }
+        if (proposed.WiringFlameSourceUpdate &&
+            (proposed.State.Type.Value != 188 ||
+             proposed.TerminationReason is ProjectileSimulationTerminationReason.WorldBounds or ProjectileSimulationTerminationReason.BehaviorKill))
         {
             normalized = default;
             return false;

@@ -65,7 +65,10 @@ internal enum VanillaProjectileBehaviorFamily : byte
     MartianLaser = 52,
     HopliteJavelin = 53,
     GigaZapperSpear = 54,
-    RockGolemRock = 55
+    RockGolemRock = 55,
+    WiringSpikyBall = 56,
+    WiringSpear = 57,
+    WiringFlame = 58
 }
 
 /// <summary>
@@ -488,6 +491,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         ProjectileTypeId type,
         out VanillaProjectileBehaviorProfile profile)
     {
+        if (type.Value is 185 or 186 or 188)
+        {
+            profile = new(type.Value == 185 ? VanillaProjectileBehaviorFamily.WiringSpikyBall :
+                type.Value == 186 ? VanillaProjectileBehaviorFamily.WiringSpear : VanillaProjectileBehaviorFamily.WiringFlame,
+                new(type.Value == 185 ? 14 : type.Value == 186 ? 37 : 23), true, true, false, false);
+            return true;
+        }
+
         if (VanillaFallingBlock1458.TryGetTile(type, out _))
         {
             profile = new(VanillaProjectileBehaviorFamily.FallingBlock, VanillaProjectileAiStyles.FallingBlock, true, true, false, false);
@@ -820,7 +831,7 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     }
 
     private static bool IsHostileStraightArrow(ProjectileTypeId type) =>
-        VanillaWiringDartTrap1458.IsDart(type) ||
+        VanillaWiringTrap1458.IsDart(type) ||
         type == VanillaProjectileIds.WallOfFleshEyeLaser ||
         type == VanillaProjectileIds.ProbePinkLaser ||
         type == VanillaProjectileIds.GroundFighter243Bolt ||

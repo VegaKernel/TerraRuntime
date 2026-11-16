@@ -9,6 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/WiringTrapFlameContactFlight1458.json.gz" LogicalName="WiringTrapFlameContactFlight1458" />
+    <EmbeddedResource Include="Fixtures/WiringTrapLowerSlot1458.json.gz" LogicalName="WiringTrapLowerSlot1458" />
+    <EmbeddedResource Include="Fixtures/WiringRemainingCircuit1458.json.gz" LogicalName="WiringRemainingCircuit1458" />
+    <EmbeddedResource Include="Fixtures/WiringRemainingTrapNpcHit1458.json.gz" LogicalName="WiringRemainingTrapNpcHit1458" />
+    <EmbeddedResource Include="Fixtures/WiringRemainingTrapNpcDeath1458.json.gz" LogicalName="WiringRemainingTrapNpcDeath1458" />
+    <EmbeddedResource Include="Fixtures/WiringRemainingTrapPlayerHit1458.json.gz" LogicalName="WiringRemainingTrapPlayerHit1458" />
+    <EmbeddedResource Include="Fixtures/WiringTrapHellfireNpcDot1458.json.gz" LogicalName="WiringTrapHellfireNpcDot1458" />
+    <EmbeddedResource Include="Fixtures/WiringTrapHellfirePlayerDot1458.json.gz" LogicalName="WiringTrapHellfirePlayerDot1458" />
+    <EmbeddedResource Include="Fixtures/WiringRemainingTrapFlight1458.json.gz" LogicalName="WiringRemainingTrapFlight1458" />
+    <EmbeddedResource Include="Fixtures/WiringRemainingTrapRoom1458.json.gz" LogicalName="WiringRemainingTrapRoom1458" />
     <EmbeddedResource Include="Fixtures/LavaSlimeTrapTerrain1458.json.gz" LogicalName="LavaSlimeTrapTerrain1458" />
     <EmbeddedResource Include="Fixtures/LavaSlimeHitEffectTerrain1458.json.gz" LogicalName="LavaSlimeHitEffectTerrain1458" />
     <EmbeddedResource Include="Fixtures/SkyblockCensus1458.json.gz" LogicalName="SkyblockCensus1458" />

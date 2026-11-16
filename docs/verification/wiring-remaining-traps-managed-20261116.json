@@ -1,0 +1,427 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "wiring-remaining-traps-managed-20261116",
+  "baseCommit": "256d274192c64122dcaa5d6d27e6306f7a72bbb2",
+  "accepted": true,
+  "allIssuesComplete": false,
+  "sdk": "11.0.100",
+  "runtime": "11.0.0",
+  "targetFramework": "net11.0",
+  "newProductionDependencies": false,
+  "scope": [
+    "Tile137 styles2/3/4 through existing circuit/trigger owners, source cardinal launch geometry, ball launch entropy and cooldown200/300/90. Existing styles0/1/5 retained.",
+    "185 ball AI, gravity, rolling, bounce and lifetime900;186 spear source anchor, outbound/reverse/return and lifetime300;187 stationary emitter lifetime60, every-six-update188 child births.",
+    "Physical-slot census schedules later188 children during this frame and earlier slots next frame through the existing bounded projectile executor; parent+child use existing detached world spawn owners.",
+    "188 three subupdates per frame, source AI/lifetime/RNG argument, localAI warm-up>=5 and expanded damage hitbox. NPC and player contact is evaluated per subupdate with suppression of the outer duplicate pass.",
+    "Owned OnFire3 buff323, source duration1200, player trap sweater adjustments, independent player regen loss8 and represented NPC combined regen/pulses/VFX. Display packet50 cannot grant the physical effect.",
+    "Existing supported NPC1/3/59 joint death/loot/cleanup once and existing human/server player combat boundaries. Trusted source provenance, currentness/clock/terrain/RNG and publication guards retained."
+  ],
+  "limits": [
+    "No whole Main.Update or new unmodified GUI-client/network session acceptance; issue125 remains open for other mechanisms and unsupported contexts.",
+    "Original local-player Damage_EVP gold is a controlled component projection; dedicated netMode2 dispatch does not call EVP. Immunity70 rows with absent equipment witness are excluded from runtime projection.",
+    "Original54 contact-flight rows intentionally advance projectile updates only: stationary NPC targets, no NPC simulation, immunity decay or buff ticking between captured frames.",
+    "Self-displacement of the updating emitter under a saturated physical pool refuses atomically; no partial child or stale parent publication. Other existing source allocation rules are retained.",
+    "Arbitrary wet/cuttable-content flight, all NPC identities/equipment/seed conditions, statues, logic gates, pumps, teleporters and unsupported plate families are not qualified.",
+    "Complete OnFire3 player visual phase remains unqualified and retires player RNG; separate health/storage roles remain available. Full KillMe/tombstone RNG continuation is unqualified.",
+    "No game source bodies/assets committed. The source-analysis tool is analysisOnly, acceptedfalse, incomplete closure; it is not automatic port/parity acceptance.",
+    "Issue126 awaits absent affected/unaffected stop logs; no disconnect cause or weakened timeout/anti-abuse policy is asserted.",
+    "Local NativeAOT and C++ installation remain user-deferred. Prior base CI43773015745 succeeded incl Windows/Linux NativeAOT; that is not NativeAOT acceptance of this new commit."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\build-final03.log",
+    "logSha256": "98009af21c409242a9fa27899b08db8f938bdadee59e76f7c33a8e6cd71d92e5"
+  },
+  "focused": {
+    "total": 42754,
+    "passed": 42754,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1147.9342177999788,
+    "tests": {
+      "total": "220418",
+      "passed": "220418",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1144.277",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1820.2705459999852,
+    "tests": {
+      "total": "1765733",
+      "passed": "1765733",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1807.153",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6052,
+  "independentEvidence": {
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "captures": [
+      {
+        "capture": "lifecycle",
+        "rows": 90,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "5302c200d7497148f41308a5aab716366eaa528202a6364cbc027b4b84f958bd",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-lifecycle\\observations02.json"
+      },
+      {
+        "capture": "room",
+        "rows": 90,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "a126452430ebec4b09fb1c16e561d55aca3f4c186a428757eb3b5c831f7d740b",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-room\\observations02.json"
+      },
+      {
+        "capture": "npc-hit",
+        "rows": 81,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "fa917f34b675de553c449fb75cd7be5a71f6242df01b94f04009ffa8430e3072",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-npc-hit\\observations03.json"
+      },
+      {
+        "capture": "player-hit",
+        "rows": 648,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "5287ebcc09a6241a082a5c06dc191571e0d59e6c6a0ed8f7d46c8eb49bcff86b",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-player-hit\\observations03.json"
+      },
+      {
+        "capture": "venom-dot",
+        "rows": 12096,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "68713e8c78fec6e890775fe59967e732dc01d4a36012612b2f3e76a3af410138",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-venom-dot\\observations02.json"
+      },
+      {
+        "capture": "player-venom-dot",
+        "rows": 6912,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "7ebc0d21f48cadbf878533913af474d1f1f0f07341c8dce69c3b60fa568ecb46",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-player-venom-dot\\observations02.json"
+      },
+      {
+        "capture": "contact-flight",
+        "rows": 54,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "b7e103b412a35b12ef47b17f9a5dd0e82ce5fdd431850cc9ed355d18ce8499de",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-contact-flight\\observations03.json"
+      },
+      {
+        "capture": "lower-slot",
+        "rows": 3,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "80469bea71db06d92c2af24f7ad10be0a0788b1c9192e70c034621e693167abf",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-lower-slot\\observations02.json"
+      },
+      {
+        "capture": "circuit",
+        "rows": 810,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "1fa945dbbfd7b81e11e521d10a363de25d4cf0b61e339895f2eaae9d7da6c64b",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-circuit\\observations02.json"
+      },
+      {
+        "capture": "npc-death",
+        "rows": 81,
+        "identicalRepeats": 2,
+        "firstChanceExceptions": 0,
+        "sha256": "a3e356a739fee2cf42b658c7f05c1a4d1d7701b4ce8888b42f5d68b6c07d9dab",
+        "raw": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\original-npc-death\\observations02.json"
+      }
+    ],
+    "embeddedFixtures": [
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringRemainingCircuit1458.json.gz",
+        "sha256": "519514537db2ffdd9a434eac2824a9ce35d0600935b6567eaea353ed078a58a5",
+        "bytes": 384035
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringRemainingTrapFlight1458.json.gz",
+        "sha256": "17fb820f5857e9ac633b8061e8d637980d9cb595879663be6f83522521f7f0bd",
+        "bytes": 630221
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringRemainingTrapNpcDeath1458.json.gz",
+        "sha256": "7aff2d10f13ffa39c12f9ed9375cddb58ba5168455175b40d1809915b50e17ea",
+        "bytes": 17895
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringRemainingTrapNpcHit1458.json.gz",
+        "sha256": "b390e54131a081c7f1af01f5d75998116bc0544f688c1074e41005c9dca7fdb5",
+        "bytes": 13520
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringRemainingTrapPlayerHit1458.json.gz",
+        "sha256": "fd59819a0465d54c2628ce7626dd699ee6a84c59f639cc0ecfa2b73a2f60128d",
+        "bytes": 39221
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringRemainingTrapRoom1458.json.gz",
+        "sha256": "e444028d34d85592f3d04b941f40988e50993dfe266d8af617f45530ddd08baf",
+        "bytes": 730098
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringTrapFlameContactFlight1458.json.gz",
+        "sha256": "981b3e983aae25a28f34919cab50e78dc871b4af20f8173ff5ca57801e954538",
+        "bytes": 38952
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringTrapHellfireNpcDot1458.json.gz",
+        "sha256": "f5b0f832be67edb7288b72d76007665d3546418c23fe7c3c258b9b0866f1b8f4",
+        "bytes": 108803
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringTrapHellfirePlayerDot1458.json.gz",
+        "sha256": "b3cfad48305a21eb2362713ecd021227336982b16164b4f3986d94e73ade26e2",
+        "bytes": 37554
+      },
+      {
+        "path": "tests\\TerraRuntime.Tests\\Fixtures\\WiringTrapLowerSlot1458.json.gz",
+        "sha256": "f87b3d359abbfa13063729b99886f840166ebc32b9754ac9f337842caf85cde4",
+        "bytes": 49807
+      }
+    ],
+    "sourceAnalysis": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116\\source-analysis"
+  },
+  "causalControls": {
+    "sourceInputs": 5134,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831",
+    "controls": [
+      {
+        "control": "remaining-launch",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 16915,
+        "failed": 1481,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "child-census",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 18279,
+        "failed": 117,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "flame-entropy",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 18279,
+        "failed": 117,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "spear-return",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 18339,
+        "failed": 57,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "ball-gravity",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 18336,
+        "failed": 60,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "hellfire-pulse",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 17400,
+        "failed": 996,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "hellfire-duration",
+        "exitCode": 1,
+        "total": 15579,
+        "passed": 15291,
+        "failed": 288,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "emitter-clock",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 18395,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      },
+      {
+        "control": "trap-trust",
+        "exitCode": 1,
+        "total": 18396,
+        "passed": 18394,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5134,
+    "dllPaths": 411,
+    "testDllSha256": "aad71b2a4de95859d3e3aee243ed86824951383d091f56d91b8f8eeae1903831",
+    "cohortSha256": "126ba6f334a335931bd0d75ad89f882c46e8d6236a244df7b89e11f992ff342e",
+    "afterFull": {
+      "sourceInputs": 5134,
+      "dllPaths": 411,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5134,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 0.9925507999723777,
+      "logSha256": "6da108eec9b6605779bebf1c86fea28184e81e4dcea3fe9a11ac3f7f9817d314"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 0.7775959999999031,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.14505029999418184,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 0.7021516999811865,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 5.976818699971773,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "2cb199c4273b52507e18340ecf7ead6a606b3bf1d83d74ff0751de94c5ab578b",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.2982087999698706,
+        "logSha256": "c622f808ba3dfc36f445adc116a49bf06d9ae3723cea143950d2f9e6ef9625d5"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 0.9251454999903217,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.1455889000208117,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 0.8072792000020854,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 5.483699600037653,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 8.886934400012251,
+      "logSha256": "a41f786a3eb2be461d69bf46db632f55ba442d3a97fd020f79ad1cdb2bf07b4c"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.12151359999552369,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 3.596858000033535,
+      "logSha256": "052c10645a5ed7af625204f31a9d169ba5081da9cad25a8c5ba7e02cc4f2e0e4"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 0.8889194999937899,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\remaining-traps-20261116",
+  "rejectedIntermediateEvidence": [
+    "contact-flight observations01 used live buff arrays; corrected/deep-copied observations02/03 are the fixture source",
+    "cohort02 interrupted for LF normalization before final qualification; only final cohort03 is accepted"
+  ]
+}

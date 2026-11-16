@@ -25,7 +25,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         usesSourceRandom && ReferenceEquals(sourceRandom, random) && ReferenceEquals(players, playerStore);
 
     internal bool CanMarkOrdinaryArrowHandled(in ProjectileSnapshot projectile) =>
-        ordinaryArrowSimulationActive && projectile.Type.Value is 4 or 5 && projectile.Handle.IsAssigned &&
+        ordinaryArrowSimulationActive && projectile.Type.Value is 4 or 5 or 188 && projectile.Handle.IsAssigned &&
         projectile.Handle.Slot < RuntimeProjectileStore.VanillaPhysicalSlotCount &&
         projectile.Handle.Slot < ordinaryArrowHandledGenerations.Length;
 
@@ -37,7 +37,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
     }
 
     internal bool IsOrdinaryArrowHandled(in ProjectileSnapshot projectile) =>
-        projectile.Type.Value is 4 or 5 && projectile.Handle.IsAssigned &&
+        projectile.Type.Value is 4 or 5 or 188 && projectile.Handle.IsAssigned &&
         projectile.Handle.Slot < ordinaryArrowHandledGenerations.Length &&
         ordinaryArrowHandledGenerations[projectile.Handle.Slot] == projectile.Handle.Generation;
 }

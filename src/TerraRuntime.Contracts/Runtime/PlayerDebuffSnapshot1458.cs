@@ -5,4 +5,5 @@ public readonly record struct PlayerDebuffSnapshot1458(bool OnFire, bool OnFire2
 {
     public bool Electrified { get; init; }
     public bool Venom { get; init; }
+    public bool OnFire3 { get; init; }
 }

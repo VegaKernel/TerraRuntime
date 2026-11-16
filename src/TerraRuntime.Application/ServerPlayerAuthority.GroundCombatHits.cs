@@ -27,7 +27,7 @@ internal sealed partial class ServerPlayerAuthority
         foreach (var type in buffs.CaptureEffectTypes())
             if (!Represented(type)) return false;
         return true;
-        static bool Represented(BuffTypeId type) => type.Value is 20 or 22 or 24 or 30 or 31 or 32 or 35 or 39 or 70 or 144;
+        static bool Represented(BuffTypeId type) => type.Value is 20 or 22 or 24 or 30 or 31 or 32 or 35 or 39 or 70 or 144 or 323;
     }
 
     private sealed record GroundCombatBuffImage(PlayerHandle Owner, PlayerBuffState? Reference,
@@ -83,7 +83,7 @@ internal sealed partial class ServerPlayerAuthority
             out GroundCombatHitPreparation? preparation)
         {
             preparation = null;
-            bool dart = initial.Type.Value is 98 or 184 or 980 && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
+            bool dart = TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(initial.Type) && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
             if (!dart && (!VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) || !sourceNpc.IsAssigned) ||
                 terrain is null && !dart || masterMode && !expertMode || terrain?.IsCurrent == false) return false;
             if (!TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var dartDefinition)) return false;
@@ -173,7 +173,7 @@ internal sealed partial class ServerPlayerAuthority
             if (!target.Reachable) return false;
             int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(shot.Damage,
                 previewRandom.Next(-15, 16), Math.Min(3, (master ? 3 : expert ? 2 : 1) + (good ? 1 : 0)));
-            if (initial.Type.Value is 98 or 184 or 980 && target.Combat.DeadMansSweater) damage = Math.Min((int)(damage * .5f), 300);
+            if (TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(initial.Type) && target.Combat.DeadMansSweater) damage = Math.Min((int)(damage * .5f), 300);
             if (damage <= 0) return true;
             evpContact = true;
             if (player.GodMode) { GodModeAvoidances++; return true; }

@@ -40,7 +40,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
     internal bool MarkGroundCombatHandled(in ProjectileSnapshot projectile)
     {
-        if (!groundCombatSimulationActive || !VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type) ||
+        if (!groundCombatSimulationActive || !(VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type) || projectile.Type.Value == 188) ||
             !projectile.Handle.IsAssigned || projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
             projectile.Handle.Slot >= groundCombatHandledGenerations.Length) return false;
         groundCombatHandledGenerations[projectile.Handle.Slot] = projectile.Handle.Generation;
@@ -48,7 +48,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     }
 
     private bool IsGroundCombatHandled(in ProjectileSnapshot projectile) =>
-        VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type) && projectile.Handle.IsAssigned &&
+        (VanillaGroundCombatPlayerHit1458.IsSupported(projectile.Type) || projectile.Type.Value == 188) && projectile.Handle.IsAssigned &&
         projectile.Handle.Slot < groundCombatHandledGenerations.Length &&
         groundCombatHandledGenerations[projectile.Handle.Slot] == projectile.Handle.Generation;
 

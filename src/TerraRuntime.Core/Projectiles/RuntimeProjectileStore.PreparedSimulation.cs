@@ -184,6 +184,17 @@ public sealed partial class RuntimeProjectileStore
 
         internal bool TryQueueGemStaffDespawn() => TryQueueGemStaffDespawn(null);
 
+        internal bool TryQueueWiringTrapDespawn(ProjectileKillOrigin? origin)
+        {
+            if (adopted || shadow.Active || terminalPublicationQueued || !before.CombatTrusted ||
+                before.Update.Spawner != byte.MaxValue || before.Update.Type.Value is not (187 or 188) ||
+                before.SourceNpc.IsAssigned || before.CombatTrustedOwner.IsAssigned || origin is { IsValid: false }) return false;
+            var state = origin is { } point ? Snapshot with { PositionX = point.X, PositionY = point.Y } : Snapshot;
+            publications.Add((ProjectileStateCommitKind.Despawn, state));
+            terminalPublicationQueued = true;
+            return true;
+        }
+
         internal bool TryQueueGroundCombatDespawn(ProjectileKillOrigin? sourceKillOrigin)
         {
             if (adopted || shadow.Active || terminalPublicationQueued ||

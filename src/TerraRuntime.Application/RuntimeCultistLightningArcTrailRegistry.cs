@@ -137,6 +137,7 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
     {
         foreach (ref readonly ProjectileSimulationStepResult step in subupdates)
         {
+            if (step.WiringFlameSourceUpdate) ordinaryAmmoRandom?.Next(3);
             // Liquid transition arguments precede HandleMovement's collision offer.
             if (ordinaryAmmoRandom is not null) ConsumeShimmerOffers(in step, ordinaryAmmoRandom);
             collisionTileCuts?.Evaluate(in step);

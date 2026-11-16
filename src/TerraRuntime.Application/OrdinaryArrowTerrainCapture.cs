@@ -53,7 +53,7 @@ internal sealed class OrdinaryArrowTerrainCapture
         in VanillaProjectileBehaviorContext wind, out OrdinaryArrowTerrainCapture? capture)
     {
         capture = null;
-        if (!VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) ||
+        if (!(VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) || initial.Type.Value == 188) ||
             !float.IsFinite(initial.PositionX) || !float.IsFinite(initial.PositionY) ||
             !float.IsFinite(initial.VelocityX) || !float.IsFinite(initial.VelocityY) ||
             !float.IsFinite(wind.WindSpeedCurrent) || !float.IsFinite(wind.WindPhysicsStrength)) return false;
@@ -99,14 +99,14 @@ internal sealed class OrdinaryArrowTerrainCapture
         var versions = new (WorldSectionId, long)[(int)sectionCount];
         int index = 0;
         for (int y = first.Y; y <= last.Y; y++)
-        for (int x = first.X; x <= last.X; x++)
-        {
-            var section = new WorldSectionId(x, y);
-            long version = tiles.GetSectionVersion(section);
-            if ((version & 1L) != 0)
-                return false;
-            versions[index++] = (section, version);
-        }
+            for (int x = first.X; x <= last.X; x++)
+            {
+                var section = new WorldSectionId(x, y);
+                long version = tiles.GetSectionVersion(section);
+                if ((version & 1L) != 0)
+                    return false;
+                versions[index++] = (section, version);
+            }
         var prepared = new OrdinaryArrowTerrainCapture(tiles, versions, left, top, right, bottom);
         // Source-local owner0/my0 reaches Damage.CutTiles too. Until its effects are owned, refuse candidates.
         if (definition.CanCutTiles && initial.Damage > 0 &&

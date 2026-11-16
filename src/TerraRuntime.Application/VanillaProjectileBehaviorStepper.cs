@@ -1084,6 +1084,23 @@ internal static partial class VanillaProjectileBehaviorStepper
                 if (ai0 == 1f) { velocityY = MathF.Min(3f, velocityY + .1f); velocityX *= .99f; }
                 break;
 
+            case VanillaProjectileBehaviorFamily.WiringSpikyBall:
+                ai0 = Math.Min(5f, ai0 + 1f);
+                if (current.Ai.Ai0 >= 5f)
+                {
+                    if (velocityY == 0 && velocityX != 0)
+                    {
+                        velocityX *= .97f;
+                        if ((double)velocityX > -.01 && (double)velocityX < .01) velocityX = 0;
+                    }
+                    velocityY = Math.Min(16f, velocityY + .2f);
+                }
+                break;
+            case VanillaProjectileBehaviorFamily.WiringFlame:
+                ai0 = Math.Max(8f, ai0) + 1f;
+                next = new(velocityX, velocityY, ai0, TimeLeftOverride: Math.Min(context.CurrentTimeLeft, 60),
+                    LocalAiOverride: context.LocalAi with { Ai0 = context.LocalAi.Ai0 + 1 });
+                return true;
             case VanillaProjectileBehaviorFamily.IceQueenIceSpike:
                 velocityY -= .5f;
                 break;

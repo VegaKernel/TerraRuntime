@@ -21,7 +21,7 @@ public static class VanillaProjectileUpdateFacts
 
     /// <summary>Explicit 1458 HandleMovement collision-offer admission.</summary>
     public static bool SupportsSourceCollisionOffers1458(ProjectileTypeId type) =>
-        VanillaGroundCombatPlayerHit1458.IsSupported(type) || VanillaWiringDartTrap1458.IsDart(type);
+        VanillaGroundCombatPlayerHit1458.IsSupported(type) || VanillaWiringTrap1458.IsDart(type) || type.Value is 185 or 188;
 
     /// <summary>Qualified extra-update lasers with one movement-only pass after lifetime Kill.</summary>
     public static bool SupportsInactiveLifetimeMotion1458(ProjectileTypeId type) =>

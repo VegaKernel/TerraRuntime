@@ -17,7 +17,7 @@ internal sealed partial class PlayerAuthority
         out GroundCombatHitPreparation? preparation)
     {
         preparation = null;
-        bool dart = initial.Type.Value is 98 or 184 or 980 && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
+        bool dart = TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(initial.Type) && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
         if (!dart && (!sourceNpc.IsAssigned || !VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type)) ||
             terrain is null && !dart ||
             expertMode != this.expertMode || masterMode != this.masterMode || currentCombatTick != tick)
@@ -139,7 +139,7 @@ internal sealed partial class PlayerAuthority
             if (immune[slot]) return true;
             int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(shot.Damage,
                 previewRandom.Next(-15, 16), Math.Min(3, (master ? 3 : expert ? 2 : 1) + (goodWorld ? 1 : 0)));
-            if (initial.Type.Value is 98 or 184 or 980 && capture.Combat.DeadMansSweater) damage = Math.Min((int)(damage * .5f), 300);
+            if (TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(initial.Type) && capture.Combat.DeadMansSweater) damage = Math.Min((int)(damage * .5f), 300);
             if (damage <= 0) return true;
             evpContact = true;
             if (capture.GodMode)
@@ -233,8 +233,8 @@ internal sealed partial class PlayerAuthority
 
     internal static bool GroundCombatIntersects(in ProjectileSnapshot shot, in VanillaProjectileDefinition definition,
         in PlayerStateSnapshot target) =>
-        (int)shot.PositionX < (int)target.PositionX + VanillaBasePlayerWidth &&
-        (int)shot.PositionX + definition.Width > (int)target.PositionX &&
-        (int)shot.PositionY < (int)target.PositionY + VanillaBasePlayerHeight &&
-        (int)shot.PositionY + definition.Height > (int)target.PositionY;
+        (int)shot.PositionX - (shot.Type.Value == 188 ? 20 : 0) < (int)target.PositionX + VanillaBasePlayerWidth &&
+        (int)shot.PositionX + definition.Width + (shot.Type.Value == 188 ? 20 : 0) > (int)target.PositionX &&
+        (int)shot.PositionY - (shot.Type.Value == 188 ? 20 : 0) < (int)target.PositionY + VanillaBasePlayerHeight &&
+        (int)shot.PositionY + definition.Height + (shot.Type.Value == 188 ? 20 : 0) > (int)target.PositionY;
 }

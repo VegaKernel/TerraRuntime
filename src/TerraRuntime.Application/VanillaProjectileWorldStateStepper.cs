@@ -119,12 +119,38 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
             projectile.Lifecycle.TimeLeft,
             projectile.Lifecycle.LocalAi,
             projectile.Lifecycle.Liquid.Wet, previewRandom);
-        if (!VanillaProjectileBehaviorStepper.TryStep(
+        VanillaProjectileBehaviorResult behavior;
+        if (current.Type.Value == 186)
+        {
+            var local = projectile.Lifecycle.LocalAi;
+            float ai1 = current.Ai.Ai1;
+            if (ai1 == 0)
+            {
+                ai1 = 1;
+                local = local with
+                {
+                    Ai0 = current.PositionX + 5 - current.VelocityX * 1.5f,
+                    Ai1 = current.PositionY + 7 - current.VelocityY * 1.5f
+                };
+            }
+            float dx = current.PositionX + 5 - local.Ai0, dy = current.PositionY + 7 - local.Ai1;
+            float distance = (float)Math.Sqrt(dx * dx + dy * dy);
+            bool solid = TerraRuntime.World.VanillaWorldSolidCollision.Intersects(ordinaryTiles,
+                current.PositionX, current.PositionY, definition.Width, definition.Height);
+            bool outbound = current.Ai.Ai0 == 0;
+            bool reverse = outbound && (solid || distance > 300);
+            float speed = (float)Math.Sqrt(current.VelocityX * current.VelocityX + current.VelocityY * current.VelocityY);
+            behavior = new(reverse ? -current.VelocityX : current.VelocityX,
+                reverse ? -current.VelocityY : current.VelocityY,
+                reverse ? current.Ai.Ai0 + 1 : current.Ai.Ai0, ai1,
+                Kill: !outbound && (solid || distance < speed), LocalAiOverride: local);
+        }
+        else if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,
                 in profile,
                 in behaviorContext,
-                out VanillaProjectileBehaviorResult behavior))
+                out behavior))
         {
             next = default;
             return false;
@@ -138,6 +164,7 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
             out next);
         if (resolved) next = next with
         {
+            WiringFlameSourceUpdate = current.Type.Value == 188,
             PlayerBuff = behavior.PlayerBuff,
             NpcHealing = behavior.NpcHealing,
             OrdinaryAmmoSourceUpdate = current.Type.Value is 4 or 5 or 981 ||
@@ -162,7 +189,7 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
         capture = null!;
         if (!TerraRuntime.Application.OrdinaryArrowTerrainCapture.TryCapture(ordinaryTiles,
                 in projectile, windPhysics, out var terrain) || terrain is null) return false;
-        capture = new(this,terrain);
+        capture = new(this, terrain);
         return true;
     }
     internal bool TryCaptureGroundCombatTerrain(in ProjectileSnapshot projectile,
@@ -197,7 +224,7 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
                 return terrain.IsCurrent;
             }
         }
-        internal bool MayReach(float x,float y,int width,int height) => terrain.MayReach(x,y,width,height);
+        internal bool MayReach(float x, float y, int width, int height) => terrain.MayReach(x, y, width, height);
     }
 
 }

@@ -42,7 +42,7 @@ internal sealed partial class ServerPlayerAuthority
             if (burning) lava.BurningTicks--;
             PlayerDebuffSnapshot1458 contactEffects = npcContactBuffOwners[player.Player.Slot.Value] == player.Player
                 ? npcContactDebuffEffects[player.Player.Slot.Value] : default;
-            int regenLoss = (burning ? 8 : 0) + (contactEffects.Poisoned ? 4 : 0) + (contactEffects.Venom ? 30 : 0) + (contactEffects.OnFire2 ? 24 : 0) +
+            int regenLoss = (burning ? 8 : 0) + (contactEffects.Poisoned ? 4 : 0) + (contactEffects.Venom ? 30 : 0) + (contactEffects.OnFire3 ? 8 : 0) + (contactEffects.OnFire2 ? 24 : 0) +
                 (contactEffects.Electrified ? ((player.ControlFlags & 12) != 0 ? 40 : 8) : 0);
             if (regenLoss > 0)
             {

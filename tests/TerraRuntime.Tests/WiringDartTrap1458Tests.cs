@@ -10,7 +10,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class WiringDartTrap1458Tests
+public sealed partial class WiringDartTrap1458Tests
 {
     public static IEnumerable<object[]> Births() => Rows("WiringTrapBirth1458");
     public static IEnumerable<object[]> Circuits() => Rows("WiringTrapCircuit1458");
@@ -29,13 +29,13 @@ public sealed class WiringDartTrap1458Tests
     }
 
     [Theory, MemberData(nameof(Births))]
-    public void Source_dart_birth_and_duplicate_match_original_other_families_remain_unadmitted(string observation)
+    public void Source_trap_birth_and_duplicate_match_original(string observation)
     {
         using var json = JsonDocument.Parse(observation); var row = json.RootElement;
         Assert.Empty(row.GetProperty("exceptions").EnumerateArray());
         var fixture = new Fixture(row, 65, 136);
         var device = new WorldWiringDeviceExecutor1458(fixture.Tiles, fireTrap: (x, y) => fixture.Fire(x, y));
-        bool supported = row.GetProperty("style").GetInt32() is 0 or 1 or 5;
+        bool supported = row.GetProperty("style").GetInt32() is >= 0 and <= 5;
         Assert.Equal(supported, device.Hit(65, 65, WorldWireChannel.Red, (_, _) => { }));
         if (supported) EqualProjectiles(row.GetProperty("first"), fixture.Shots);
         else Assert.Equal(0, fixture.Shots.ActiveCount);
@@ -59,7 +59,10 @@ public sealed class WiringDartTrap1458Tests
             while (tick < point.GetProperty("tick").GetInt32()) { fixture.Authority.TickMechanisms(); tick++; }
             EqualProjectiles(point.GetProperty("projectiles"), fixture.Shots);
             Assert.Equal(point.GetProperty("mechs").GetInt32(), fixture.Circuit.RegisteredMechanismCount);
-            Assert.True(fixture.Random.HasSameState(new(row.GetProperty("seed").GetInt32())));
+            var rng = point.GetProperty("rng"); const BindingFlags access = BindingFlags.Instance | BindingFlags.NonPublic;
+            Assert.Equal(rng.GetProperty("inext").GetUInt32(), (uint)typeof(VanillaUnifiedRandom1458).GetField("inext", access)!.GetValue(fixture.Random)!);
+            Assert.Equal(rng.GetProperty("SeedArray").EnumerateArray().Select(x => x.GetInt32()),
+                (int[])typeof(VanillaUnifiedRandom1458).GetField("seedArray", access)!.GetValue(fixture.Random)!);
         }
     }
 
@@ -136,7 +139,7 @@ public sealed class WiringDartTrap1458Tests
                 DontTakeDamage = row.GetProperty("protection").GetInt32() == 2,
                 Immortal = row.GetProperty("protection").GetInt32() == 1
             }), out var npc));
-        Assert.True(TerraRuntime.Gameplay.Npcs.VanillaNpcVenomRegeneration1458.TryStep(in npc, row.GetProperty("good").GetBoolean(),
+        Assert.True(TerraRuntime.Gameplay.Npcs.VanillaNpcDebuffRegeneration1458.TryStep(in npc, row.GetProperty("good").GetBoolean(),
             (mask & 2) != 0, (mask & 4) != 0, (mask & 1) != 0, out var result));
         Assert.Equal(row.GetProperty("life").GetInt32(), result.Life);
         Assert.Equal(row.GetProperty("afterCounter").GetInt32(), result.Counter);
@@ -201,7 +204,7 @@ public sealed class WiringDartTrap1458Tests
                 Midas = false,
                 Immortal = false
             }), out var npc));
-        Assert.True(fixture.Fire(65, 65)); fixture.Random.CopyStateFrom(new(row.GetProperty("seed").GetInt32()));
+        Assert.True(fixture.Fire(65, 65)); fixture.PrepareCapturedContact(row); fixture.Random.CopyStateFrom(new(row.GetProperty("seed").GetInt32()));
         fixture.Combat.Tick();
         Assert.False(fixture.Npcs.TryGet(npc.Handle, out _));
         Assert.Equal(1, fixture.Combat.Kills); Assert.Equal(1, fixture.Combat.CommittedHits);
@@ -261,6 +264,20 @@ public sealed class WiringDartTrap1458Tests
             Status = (RuntimeNpcBuffStatus1458)typeof(NpcAuthority).GetField("npcBuffStatus", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(graph.Npcs)!;
             Circuit = (WorldWiringCircuit1458)typeof(WorldTileAuthority).GetField("wiring", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Authority)!;
         }
+        internal void PrepareCapturedContact(JsonElement row)
+        {
+            if (!row.TryGetProperty("projectile", out var image) || image.GetProperty("type").GetInt32() != 188) return;
+            for (int i = 0; i < 6; i++) Assert.True(Actors.TryTickState());
+            Assert.True(Shots.TryGetActive(1, out var current));
+            Assert.True(Shots.TryGetLifecycle(current.Handle, out var life));
+            var pos = image.GetProperty("position"); var vel = image.GetProperty("velocity");
+            var update = new ProjectileStateUpdate(current.Type, current.Spawner, pos.GetProperty("X").GetSingle(), pos.GetProperty("Y").GetSingle(),
+                vel.GetProperty("X").GetSingle(), vel.GetProperty("Y").GetSingle(), default, 0, current.Damage, current.KnockBack, 0);
+            var local = image.GetProperty("localAI");
+            life = life with { TimeLeft = image.GetProperty("timeLeft").GetInt32(), LocalAi = new(local[0].GetSingle(), local[1].GetSingle(), local[2].GetSingle()) };
+            Assert.True(Shots.TryPrepareSimulation(in current, out var actor)); Assert.NotNull(actor);
+            Assert.True(actor.TryStageMotion(in update, in life)); Assert.True(actor.TryAdoptUnpublished(out _, out _));
+        }
         internal bool Fire(int x, int y) => (bool)typeof(WorldTileAuthority).GetMethod("TryFireWiringTrap", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(Authority, [x, y])!;
     }
 
@@ -292,7 +309,7 @@ public sealed class WiringDartTrap1458Tests
                 Midas = false,
                 Immortal = false
             }), out var npc));
-        Assert.True(fixture.Fire(65, 65)); fixture.Random.CopyStateFrom(new(row.GetProperty("seed").GetInt32()));
+        Assert.True(fixture.Fire(65, 65)); fixture.PrepareCapturedContact(row); fixture.Random.CopyStateFrom(new(row.GetProperty("seed").GetInt32()));
         fixture.Combat.Tick();
         Assert.True(fixture.Npcs.TryGet(npc.Handle, out var after)); var expected = row.GetProperty("first");
         Assert.Equal(expected.GetProperty("life").GetInt32(), after.Simulation.Life);

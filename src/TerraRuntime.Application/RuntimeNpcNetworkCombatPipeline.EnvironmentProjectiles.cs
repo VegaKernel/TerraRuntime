@@ -14,8 +14,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         int hitDirection, int damageValue, VanillaUnifiedRandom1458 before, VanillaUnifiedRandom1458 after,
         Func<bool> isCurrent, Action<NpcSnapshot> adoptAndPublish)
     {
-        if (projectile.Type.Value is not (98 or 184 or 980) || projectile.OriginalDamage != 0 || projectile.KnockBack != 2f ||
-            projectile.Damage != (projectile.Type.Value == 98 ? 20 : projectile.Type.Value == 184 ? 40 : 30) ||
+        if (!TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(projectile.Type) || projectile.OriginalDamage != 0 || projectile.KnockBack != 2f ||
+            projectile.Damage != TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.Damage(projectile.Type) ||
             !store.TryGetLifecycle(projectile.Handle, out var life) || life.NpcProjectile || life.TimeLeft <= 0)
             return RuntimeProjectileNpcDamageResult.Rejected;
         return TryStrikePreparedEnvironmentProjectile(store, in projectile, in target, hitDirection,

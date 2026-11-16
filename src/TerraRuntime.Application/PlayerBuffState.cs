@@ -78,7 +78,8 @@ internal sealed partial class PlayerBuffState
         {
             Electrified = HasCurrentEffect(VanillaBuffIds.Electrified.Value) || contactDebuffsForUpdate.Electrified,
             // Packet50 presentation does not grant a physical Venom effect.
-            Venom = ContainsOwnedNpcContact(VanillaBuffIds.Venom) || contactDebuffsForUpdate.Venom
+            Venom = ContainsOwnedNpcContact(VanillaBuffIds.Venom) || contactDebuffsForUpdate.Venom,
+            OnFire3 = ContainsOwnedNpcContact(VanillaBuffIds.OnFire3) || contactDebuffsForUpdate.OnFire3
         };
 
     public bool HasNonPersistentBuffs()

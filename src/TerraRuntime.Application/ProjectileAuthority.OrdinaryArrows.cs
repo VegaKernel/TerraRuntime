@@ -10,6 +10,15 @@ internal sealed partial class ProjectileAuthority
 
     private ProjectileActorSimulationResult TrySimulateOrdinaryArrowActor(ProjectileSnapshot initial)
     {
+        if (initial.Type.Value is 185 or 186 or 187 or 188)
+        {
+            if (initial.Spawner != byte.MaxValue || !projectiles.IsCombatTrusted(initial.Handle) ||
+                projectiles.TryGetCombatTrustedOwner(initial.Handle, out _) || projectiles.TryGetServerNpcSource(initial.Handle, out _) ||
+                !projectiles.TryGetLifecycle(initial.Handle, out var trapLife) || trapLife.NpcProjectile || trapLife.Reflected)
+                return ProjectileActorSimulationResult.Rejected;
+        }
+        if (initial.Type.Value == 188) return TrySimulateWiringFlame(in initial);
+        if (initial.Type.Value == 187) return TrySimulateWiringEmitter(in initial);
         var groundCombat = TrySimulateGroundCombatActor(initial);
         if (groundCombat != ProjectileActorSimulationResult.NotApplicable) return groundCombat;
         // Other existing actors retain their concrete-world-stepper admission.

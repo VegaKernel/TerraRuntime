@@ -13,6 +13,8 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
             if (VanillaNpcContactBuffs1458.IsContactBuffType(new BuffTypeId(id)))
                 foreach (int duration in new[] { 1, 2 })
                     yield return [id, duration];
+        yield return [323, 1];
+        yield return [323, 2];
     }
 
     [Theory, MemberData(nameof(ContactEffects))]
@@ -35,7 +37,7 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
         Assert.Equal(!represented, checkpoint.HasSameState(f.Random));
         // Venom regen is independently admitted by original UpdateLifeRegen gold.
         // Its unqualified full-player visual phase must still retire shared RNG.
-        bool healthRepresented = represented || id == VanillaBuffIds.Venom.Value;
+        bool healthRepresented = represented || id == VanillaBuffIds.Venom.Value || id == VanillaBuffIds.OnFire3.Value;
         if (!healthRepresented)
         {
             Assert.Null(f.Member.NpcHealth);
@@ -48,13 +50,13 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
         else
         {
             Assert.True(f.Member.NpcHealth is { SourceProfileKnown: true });
-            if (id is 20 or 24 or 39 or 70 or 144)
+            if (id is 20 or 24 or 39 or 70 or 144 or 323)
             {
                 // Source UpdateLifeRegen consumes the final positive effect
                 // even when UpdateBuffs has already removed its duration-one slot.
                 // The fixture holds right even at zero velocity; Electrified
                 // reads horizontal controls rather than velocity.
-                int rate = id == 70 ? -30 : id == 144 ? -40 : id == 20 ? -4 : id == 24 ? -8 : -24;
+                int rate = id == 323 ? -8 : id == 70 ? -30 : id == 144 ? -40 : id == 20 ? -4 : id == 24 ? -8 : -24;
                 Assert.Equal(rate, f.Member.NpcHealth.Value.RegenCount);
                 Assert.Equal(1f, f.Member.NpcHealth.Value.RegenTime);
             }
@@ -72,7 +74,8 @@ public sealed class PlayerBuffPhaseAdmission1458Tests
         Assert.Equal(0, f.Buffs.GetDuration(new BuffTypeId(20)));
         Assert.Contains(new BuffTypeId(20), f.Buffs.CaptureEffectTypes());
         var health = f.Member.NpcHealth; var random = f.Random.Clone(); int reads = 0;
-        f.Players.SetNpcHealthWorldFacts(() => {
+        f.Players.SetNpcHealthWorldFacts(() =>
+        {
             reads++;
             var current = f.Buffs;
             current.CaptureSlots(out var types, out var durations);

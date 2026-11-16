@@ -30,7 +30,7 @@ public static class VanillaRemotePlayerHealth1458
     public static PlayerNpcHealthState1458? Step(PlayerNpcHealthState1458? previous, int maximum,
         bool outside, bool ghost, bool dead, bool supported, bool expert, bool moving,
         int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno, bool aegisCrystal, bool wellFed, bool bleeding,
-        bool electrified, bool horizontalControls, bool venom = false)
+        bool electrified, bool horizontalControls, bool venom = false, bool onFire3 = false)
     {
         // Player.Update returns outside the world before Ghost/UpdateDead and before regeneration.
         if (outside || ghost) return previous;
@@ -45,6 +45,7 @@ public static class VanillaRemotePlayerHealth1458
         if (poisoned) ApplyDot(ref rate, ref time, 4);
         if (venom) ApplyDot(ref rate, ref time, 30);
         if (onFire) ApplyDot(ref rate, ref time, 8);
+        if (onFire3) ApplyDot(ref rate, ref time, 8);
         if (cursedInferno) ApplyDot(ref rate, ref time, 24);
         if (electrified) ApplyDot(ref rate, ref time, horizontalControls ? 40 : 8);
         time++;

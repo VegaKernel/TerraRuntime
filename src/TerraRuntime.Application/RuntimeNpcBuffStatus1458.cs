@@ -60,6 +60,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         if (plan.Flags.Poisoned) _ = random.Next(30);
         if (plan.Venom) _ = random.Next(10);
         if (plan.Flags.OnFire && random.Next(4) < 3) _ = random.Next(4);
+        if (plan.Flags.OnFire3 && random.Next(4) < 3) _ = random.Next(4);
         // NPC.UpdateNPC_BuffApplyVFX119 evaluates arguments even when dedicated Gore.NewGore returns600.
         if (plan.LoveStruck && random.Next(5) == 0 &&
             VanillaNpcDefinitionCatalog.TryGet(plan.Expected.TypeIdentity, plan.Expected.NetIdentity, out var definition) &&
@@ -120,9 +121,9 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
             before.Ai.Ai1 == VanillaItemIds.Torch.Value && goodWorld;
         bool slime = before.TypeIdentity == VanillaNpcIds.BlueSlime || before.TypeIdentity == VanillaNpcIds.LavaSlime;
         bool venom = ReadVenom(in entry.Slots);
-        if (venom || counter is < -119)
+        if (venom || flags.OnFire3 || counter is < -119)
         {
-            if (!VanillaNpcVenomRegeneration1458.TryStep(in before, goodWorld, flags.Poisoned, flags.OnFire, venom, out var regen))
+            if (!VanillaNpcDebuffRegeneration1458.TryStep(in before, goodWorld, flags.Poisoned, flags.OnFire, venom, out var regen, flags.OnFire3))
                 return false;
             life = regen.Life; counter = regen.Counter; damage = regen.Damage;
             if (life <= 0 && !allowLethal) return false;
@@ -191,14 +192,15 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
     internal bool TryApply(NpcHandle handle, BuffTypeId type, int duration)
     {
         if (duration is < 0 or > short.MaxValue || !EnsureGeneration(handle) || !npcs.TryGet(handle, out var npc) ||
-            type != VanillaBuffIds.Stinky && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.OnFire && type != VanillaBuffIds.Venom &&
+            type != VanillaBuffIds.Stinky && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.OnFire && type != VanillaBuffIds.OnFire3 && type != VanillaBuffIds.Venom &&
             type.Value != LoveStruckBuffType) return false;
-        if (type == VanillaBuffIds.Venom && npc.Type is not (1 or 3 or 59)) return false;
+        if ((type == VanillaBuffIds.Venom || type == VanillaBuffIds.OnFire3) && npc.Type is not (1 or 3 or 59)) return false;
         if (type.Value == LoveStruckBuffType && !HasVerifiedShoppingStatus(npc.Type)) return false;
         if (type != VanillaBuffIds.Stinky && type.Value != LoveStruckBuffType && !IsDotResident(npc.Type)) return false;
         if ((npc.TypeIdentity == VanillaNpcIds.BlueSlime || npc.TypeIdentity == VanillaNpcIds.LavaSlime) &&
             (type == VanillaBuffIds.Poisoned || type == VanillaBuffIds.OnFire && npc.TypeIdentity == VanillaNpcIds.LavaSlime))
             return true;
+        if (type == VanillaBuffIds.OnFire3 && TryGetTorchImmunity(handle, type, out bool fireImmune) && fireImmune) return true;
         if (type == VanillaBuffIds.Stinky && VanillaNpcStinkyCatalog1458.IsImmune(npc.Type)) return true;
         ref Entry entry = ref entries[handle.Slot];
         if (entry.Revision == ulong.MaxValue) return false;
@@ -319,10 +321,10 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         type == VanillaNpcIds.BlueSlime.Value || type == VanillaNpcIds.LavaSlime.Value;
     private static void ReadFlags(in RuntimeNpcBuffSlots1458 slots, out PlayerDebuffSnapshot1458 flags, out bool stinky)
     {
-        bool fire = false, poison = false; stinky = false;
+        bool fire = false, poison = false, fire3 = false; stinky = false;
         for (int i = 0; i < Capacity; i++) if (slots[i].Duration > 0)
-        { fire |= slots[i].Type == VanillaBuffIds.OnFire.Value; poison |= slots[i].Type == VanillaBuffIds.Poisoned.Value; stinky |= slots[i].Type == VanillaBuffIds.Stinky.Value; }
-        flags = new(fire, false, poison);
+        { fire3 |= slots[i].Type == VanillaBuffIds.OnFire3.Value; fire |= slots[i].Type == VanillaBuffIds.OnFire.Value; poison |= slots[i].Type == VanillaBuffIds.Poisoned.Value; stinky |= slots[i].Type == VanillaBuffIds.Stinky.Value; }
+        flags = new(fire, false, poison) { OnFire3 = fire3 };
     }
     private static void RemoveAt(ref RuntimeNpcBuffSlots1458 slots, int index)
     { for (int i = index; i < Capacity - 1; i++) slots[i] = slots[i + 1]; slots[Capacity - 1] = default; }

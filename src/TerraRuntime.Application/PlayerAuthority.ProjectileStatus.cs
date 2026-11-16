@@ -20,6 +20,7 @@ internal readonly record struct ProjectilePlayerHurt1458(
         int sourceDuration;
         switch (Type.Value)
         {
+            case 188: type = new(323); sourceDuration = 1200; break;
             case 98: type = new(20); sourceDuration = 600; break;
             case 980: type = new(70); sourceDuration = 300; break;
             case 184: type = new(20); sourceDuration = 900; break;
@@ -33,7 +34,7 @@ internal readonly record struct ProjectilePlayerHurt1458(
                 type = new(144); sourceDuration = 60 * Random.Next(4, 9); break;
             default: type = default; duration = 0; return false;
         }
-        if (DeadMansSweater && Type.Value is 98 or 184 or 980) sourceDuration /= 2;
+        if (DeadMansSweater && TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(Type)) sourceDuration /= 2;
         duration = VanillaNpcContactBuffs1458.ResolveDuration(type, sourceDuration,
             expert || GoodWorld, master || expert && GoodWorld, resistCold: false);
         return true;

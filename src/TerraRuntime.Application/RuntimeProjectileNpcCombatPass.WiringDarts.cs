@@ -7,10 +7,15 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeProjectileNpcCombatPass
 {
-    private void TickWiringDart(in ProjectileSnapshot initial, int npcCount, long tick)
+    private bool TickWiringDart(in ProjectileSnapshot initial, int npcCount, long tick)
     {
         if (!usesSourceRandom || status is null ||
-            !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var definition)) return;
+            !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var definition)) return false;
+        if (initial.Type.Value == 188)
+        {
+            if (!projectiles.TryGetLifecycle(initial.Handle, out var flameLife)) return false;
+            if (flameLife.LocalAi.Ai0 < 5) return true;
+        }
         var shot = initial;
         int ownerRow = byte.MaxValue * npcs.Capacity;
         for (int i = 0; i < npcCount; i++)
@@ -22,7 +27,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 target.Simulation.Immortal != false ||
                 target.TypeIdentity.Value == 3 && (target.Simulation.ShimmerTransparency != 0 || target.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer) ||
                 target.TypeIdentity.Value == 1 && target.Ai.Ai1 == 1345f ||
-                !status.TryPlanAddition(in target, shot.Type.Value == 980 ? VanillaBuffIds.Venom : VanillaBuffIds.Poisoned, shot.Type.Value == 980 ? 300 : shot.Type.Value == 98 ? 600 : 900, out var buffPlan) ||
+                !TryPlanTrapStatus(in target, shot, out var buffPlan) ||
                 !projectiles.TryGetLifecycle(shot.Handle, out var life) || life.NpcProjectile ||
                 !projectiles.TryPrepareSimulation(in shot, out var actor) || actor is null) continue;
             // SimulationPreparation is a detached journal; it holds no allocation claim.
@@ -52,8 +57,25 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 if (combat.TryStrikePreparedWiringDart(projectiles, in shot, in target, direction, damage, before, after, Current, Adopt) == RuntimeProjectileNpcDamageResult.Rejected)
                     continue;
                 shot = current;
-                if (acceptedRandom is null || !sourceRandom.HasSameState(acceptedRandom) || !actor.IsPublicationCurrent) return;
+                if (acceptedRandom is null || !sourceRandom.HasSameState(acceptedRandom) || !actor.IsPublicationCurrent) return false;
             }
         }
+        return true;
     }
+    internal bool TickWiringFlameContact(in ProjectileSnapshot shot)
+    {
+        if (!ordinaryArrowSimulationActive || !MarkOrdinaryArrowHandled(in shot)) return false;
+        long tick = tickProvider();
+        int count = npcs.CopyActive(npcBuffer);
+        return TickWiringDart(in shot, count, tick);
+    }
+
+    private bool TryPlanTrapStatus(in NpcSnapshot target, ProjectileSnapshot shot, out RuntimeNpcBuffAdditionPlan1458 plan)
+    {
+        if (shot.Type.Value is 185 or 186) return status!.CaptureAddition(in target, out plan);
+        return status!.TryPlanAddition(in target,
+            shot.Type.Value == 188 ? VanillaBuffIds.OnFire3 : shot.Type.Value == 980 ? VanillaBuffIds.Venom : VanillaBuffIds.Poisoned,
+            shot.Type.Value == 188 ? 1200 : shot.Type.Value == 980 ? 300 : shot.Type.Value == 98 ? 600 : 900, out plan);
+    }
+
 }

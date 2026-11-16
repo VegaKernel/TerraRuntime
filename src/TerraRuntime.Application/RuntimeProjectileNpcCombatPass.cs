@@ -101,7 +101,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 VanillaGemStaffProjectile1458.IsGemStaffProjectile(projectile.Type))
                 continue;
             if (projectiles.IsCombatTrusted(projectile.Handle) && projectile.Spawner == byte.MaxValue &&
-                projectile.Type.Value is 98 or 184 or 980)
+                TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(projectile.Type))
             {
                 TickWiringDart(in projectile, npcCount, tick);
                 continue;
@@ -375,6 +375,15 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         float projectileTop = projectile.PositionY + projectileDefinition.CollisionOffsetY;
         float projectileRight = projectileLeft + projectileDefinition.CollisionWidth;
         float projectileBottom = projectileTop + projectileDefinition.CollisionHeight;
+        if (projectile.Type.Value == 188)
+        {
+            projectileLeft = (int)projectile.PositionX - 20;
+            projectileTop = (int)projectile.PositionY - 20;
+            projectileRight = projectileLeft + 46;
+            projectileBottom = projectileTop + 46;
+            return projectileLeft < (int)npc.PositionX + npcHitbox.Width && projectileRight > (int)npc.PositionX &&
+                projectileTop < (int)npc.PositionY + npcHitbox.Height && projectileBottom > (int)npc.PositionY;
+        }
         float npcRight = npc.PositionX + npcHitbox.Width;
         float npcBottom = npc.PositionY + npcHitbox.Height;
         return projectileLeft < npcRight && projectileRight > npc.PositionX &&

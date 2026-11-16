@@ -240,7 +240,7 @@ public sealed partial class RuntimeProjectileStore
 
         private bool Fail() { failed = true; return false; }
         private static bool IsWorldSourceType(ProjectileTypeId type) => type.Value is
-            98 or 184 or 980 or 28 or 31 or 39 or 56 or 67 or 71 or 75 or 179 or 241 or 411 or 412 or 413 or 414 or
+            98 or 184 or 185 or 186 or 187 or 188 or 980 or 28 or 31 or 39 or 56 or 67 or 71 or 75 or 179 or 241 or 411 or 412 or 413 or 414 or
             655 or 727 or 736 or 737 or 738 or 812;
         private static bool SameSlot(in SlotState before, in SlotState current) =>
             before.Active == current.Active && before.Generation == current.Generation &&

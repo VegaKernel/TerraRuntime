@@ -137,7 +137,7 @@ Catalog содержит только facts, реально нужные current
 | Loot/drops | partial | complete 1.4.5.8 simple-cell tile drop classification и пять contextual simple-cell identities definition-driven; frame/object drops и complete NPC loot/RNG пока incomplete |
 | Housing/town NPCs | incomplete | target architecture есть, broad behavior отсутствует |
 | Events/invasions/progression | incomplete | production parity пока нет |
-| Wiring/liquids/growth | foundation/partial | world/liquid primitives существуют; full vanilla simulation отсутствует |
+| Wiring/liquids/growth | partial | выбранные механизмы и [стили0–5 ловушки137](wiring-mechanisms.md) имеют ограниченную поддержку по оригиналу; остальные устройства и полная симуляция жидкости/роста остаются открытыми |
 | Vanilla world generation | incomplete | extensible worldgen framework есть; built-in flat generator не vanilla WorldGen |
 
 Если таблица расходится с executable evidence или newer roadmap item, обновляется документ, а не сохраняется stale status.

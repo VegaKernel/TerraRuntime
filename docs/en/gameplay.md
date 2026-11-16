@@ -137,7 +137,7 @@ The following table is deliberately conservative.
 | Loot/drops | partial | the complete 1.4.5.8 simple-cell tile drop classification plus its five contextual simple-cell identities are definition-driven; frame/object drops and complete NPC loot/RNG remain incomplete |
 | Housing/town NPCs | incomplete | target architecture exists; broad behavior not implemented |
 | Events/invasions/progression | incomplete | not production-parity yet |
-| Wiring/liquids/growth | foundation/partial | world/liquid primitives exist; full vanilla simulation is not complete |
+| Wiring/liquids/growth | partial | selected mechanisms and [tile137 trap styles0–5](wiring-mechanisms.md) have bounded source-backed support; remaining devices and full liquid/growth simulation stay open |
 | Vanilla world generation | incomplete | extensible worldgen framework exists; built-in flat generator is not vanilla WorldGen |
 
 When this table conflicts with executable evidence or a newer roadmap item, update this document immediately rather than preserving a stale percentage.

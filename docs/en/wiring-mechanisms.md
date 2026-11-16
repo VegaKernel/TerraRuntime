@@ -89,7 +89,7 @@ The following remain outside the supported chain:
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Pumps and teleporters, pending full integration with liquid and movement owners.
-- Logic gates, statues and their spawn and nested-pulse effects; trap styles `2`, `3`, `4` and trap contacts outside the bounded continuation below.
+- Logic gates, statues and their spawn and nested-pulse effects; trap contexts outside the bounded continuation below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
@@ -104,7 +104,7 @@ Tile `137` styles `0`, `1` and `5` fire source projectile types `98`, `184` and 
 
 The same projectile owner supplies creation, movement, tile collision, cleanup and replication. Ordinary and stronger poison darts apply Poisoned for source durations `600`/`900`; the venom dart applies Venom for `300`, before difficulty and equipment adjustments on player contacts. Both connected and server-owned player HP/buff/immunity participants adopt with RNG before observers. Dead Man's Sweater in the functional body slot halves trap damage and status duration before the remaining source adjustments. NPC contacts are admitted for Blue Slime, Zombie and Lava Slime; other NPC families remain outside this qualified slice. Venom retains its distinct NPC regeneration pulses and player regeneration loss, including the final positive buff update. Packet-50 presentation does not grant the owned Venom effect.
 
-Original observations cover births, trigger/cooldown timelines, complete dry flight/termination, NPC contacts/deaths and local-player EVP components. These bounded comparisons do not establish complete `Main.Update`, an unmodified GUI session, arbitrary wet flight or all equipment. Trap styles `2`, `3` and `4`, statues, logic gates, pumps, teleporters and unsupported plate families remain unimplemented; this continuation does not close the complete wiring roadmap.
+Original observations cover births, trigger/cooldown timelines, complete dry flight/termination, NPC contacts/deaths and local-player EVP components. These bounded comparisons do not establish complete `Main.Update`, an unmodified GUI session, arbitrary wet flight or all equipment. The following checkpoint adds trap styles `2`, `3` and `4`. Statues, logic gates, pumps, teleporters and unsupported plate families remain unimplemented; this does not close the complete wiring roadmap.
 
 Venom regeneration is independently represented; its complete player visual phase remains unqualified and retires shared player RNG. Item storage transfers remain available through the separate bound storage context.
 
@@ -113,3 +113,20 @@ Lethal player contacts reuse the existing functional death path; the complete `K
 The additive `PlayerDebuffSnapshot1458.Venom` property exposes the owned effect to consumers of player health snapshots.
 
 [Managed checkpoint, 2026-11-16](../verification/net11-stable-item-flow-darts-managed-20261116.json).
+
+## Remaining trap families: managed checkpoint
+
+Tile `137` styles `2`, `3`, `4` now enter the same circuit and authoritative projectile store. This continuation uses source cooldowns of $200$, $300$, and $90\,\text{updates}$ respectively. The spike ball samples its two launch components from the existing gameplay RNG; its cardinal frames differ from dart frames. The spear retains its source anchor, reverses on solid contact or after $300\,\mathrm{px}$, and ends on return.
+
+The stationary flame emitter (`187`) creates flame children (`188`) every $6\,\text{updates}$. The projectile executor schedules a child in the current census only when its physical slot is later than the emitting slot; earlier slots wait for the next census. Child creation and parent state use the existing detached world-spawn preparation. `WiringFlameSourceUpdate` is a runtime-only step marker for its dedicated source visual RNG argument.
+
+Flame contacts use the original expanded hitbox and warm-up gate. `On Fire 3` (`323`) has its own owned timer/effect and regeneration loss; `PlayerDebuffSnapshot1458.OnFire3` exposes it to snapshot consumers. Packet `50` supplies display state. The existing contact slot owner grants the physical effect only from admitted combat. The pure NPC debuff-regeneration owner is now `VanillaNpcDebuffRegeneration1458`; it combines the represented damage-over-time effects.
+
+Ten independent original-server captures repeat byte-identically across $20\,865$ scenarios with no observed exceptions. They cover full dry flight/room lifetimes, source circuit cooldowns, NPC contact/death/loot, flame subupdate contacts and lower-slot child scheduling, and owned damage-over-time rules. Managed gates pass: focused $42\,754$, fast $220\,418$ and unfiltered full $1\,765\,733$ cases. Nine effective causal controls, ordinary and fresh CoreCLR smokes also pass. This managed checkpoint does not close the entire wiring issue; statues, logic gates, pumps, teleporters, other NPC families, unqualified cuttable/wet contexts and a real GUI session remain outside accepted scope.
+
+
+`VanillaWiringTrap1458.TryResolve` replaces the former dart-only rule and returns `WiringTrapLaunch1458`: projectile identity, damage, cardinal direction, speed, muzzle offset and cooldown. `IsDart` retains its original narrow meaning; `IsContact` includes the damaging children, balls and spears. Emitter `187` itself does not deal contact damage.
+
+Self-displacement of an updating emitter when the physical projectile pool is saturated remains a conservative refusal: neither a partial child nor a stale parent afterimage is published. Other source-qualified allocation paths retain their existing replacement rules. Complete player visual RNG and the `KillMe`/tombstone tail remain unqualified; the separate health and storage owners keep their existing scope.
+
+[Remaining-trap managed receipt, 2026-11-16](../verification/wiring-remaining-traps-managed-20261116.json). Local NativeAOT remains user-deferred.

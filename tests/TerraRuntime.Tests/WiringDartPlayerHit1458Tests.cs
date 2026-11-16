@@ -11,7 +11,7 @@ using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Tests;
 
-public sealed class WiringDartPlayerHit1458Tests
+public sealed partial class WiringDartPlayerHit1458Tests
 {
     public static IEnumerable<object[]> SourceCases()
     {
@@ -99,7 +99,7 @@ public sealed class WiringDartPlayerHit1458Tests
         Assert.Equal(0, owner.GetNpcContactBuffDuration(player, new(70)));
     }
 
-    private static void RunSourceRow(JsonElement row, bool server, int sabotage = -1)
+    private static void RunSourceRow(JsonElement row, bool server, int sabotage = -1, short maximum = 1000)
     {
         Assert.Empty(row.GetProperty("exceptions").EnumerateArray());
         int mode = row.GetProperty("mode").GetInt32(); bool good = row.GetProperty("good").GetBoolean();
@@ -113,16 +113,16 @@ public sealed class WiringDartPlayerHit1458Tests
         if (server)
         {
             var created = servers.Create(id, 1040, 1040); Assert.True(created.IsCreated); player = created.Player;
-            Assert.True(servers.SetVitals(id, new(1000, 1000, 20, 20)));
-            Assert.True(servers.TryGet(player, out var current)); Assert.True(states.TrySetDerivedLifeMax(in current, 1000));
+            Assert.True(servers.SetVitals(id, new(maximum, maximum, 20, 20)));
+            Assert.True(servers.TryGet(player, out var current)); Assert.True(states.TrySetDerivedLifeMax(in current, maximum));
         }
         else
         {
             Assert.True(slots.TryAcquireConnection(out var lease)); session = new(lease!);
             session.ObserveWorldRequest(); session.ObserveSectionRequest(); connection = new(GameCommandSourceId.FromConnection(92125), session.Handle);
             Assert.True(humans.TryApply(new PlayerSpawnRuntimeCommand(connection, session, new(session.Slot, 65, 65, 0, 0, 0, 0, 0))));
-            Assert.True(humans.TryApply(new PlayerHealthRuntimeCommand(connection, new(session.Slot, 1000, 1000))));
-            Assert.True(humans.TryGet(connection, out var member)); member.DerivedLifeMax = 1000; player = connection.Player;
+            Assert.True(humans.TryApply(new PlayerHealthRuntimeCommand(connection, new(session.Slot, maximum, maximum))));
+            Assert.True(humans.TryGet(connection, out var member)); member.DerivedLifeMax = maximum; player = connection.Player;
             Assert.True(humans.TryApply(new PlayerMovementRuntimeCommand(connection,
                 new(session.Slot, 0, 0, 0, 0, 0, 1040, 1040, false, 0, 0, false, 0, false, 0, 0, 0, 0, false, 0, 0))));
         }
@@ -149,11 +149,25 @@ public sealed class WiringDartPlayerHit1458Tests
             Assert.Equal(row.GetProperty("defense").GetInt32(), capturedCombat.Defense);
             Assert.Equal(row.GetProperty("sweater").GetBoolean(), capturedCombat.DeadMansSweater);
             var random = new VanillaUnifiedRandom1458(row.GetProperty("seed").GetInt32()); var store = new RuntimeProjectileStore(2);
-            int style = row.GetProperty("style").GetInt32(); var shot = new ProjectileStateUpdate(new(style == 0 ? 98 : style == 1 ? 184 : 980), 255, 1053, 1043, 12, 0,
+            int style = row.GetProperty("style").GetInt32();
+            var shot = new ProjectileStateUpdate(new(style == 0 ? 98 : style == 1 ? 184 : 980), 255, 1053, 1043, 12, 0,
                 default, 0, (short)(style == 0 ? 20 : style == 1 ? 40 : 30), 2, 0);
+            if (row.TryGetProperty("projectile", out var image))
+            {
+                var pos = image.GetProperty("position"); var vel = image.GetProperty("velocity");
+                shot = new(new(image.GetProperty("type").GetInt32()), 255, pos.GetProperty("X").GetSingle(), pos.GetProperty("Y").GetSingle(),
+                    vel.GetProperty("X").GetSingle(), vel.GetProperty("Y").GetSingle(), default, 0, image.GetProperty("damage").GetInt16(), 2, 0);
+            }
             if (sabotage == 1) Assert.True(store.TrySpawn(0, in shot, out _));
             else using (var birth = store.CreateWorldSpawnPreparation())
             { Assert.True(birth.TryStage(in shot, false, out _)); Assert.True(birth.TryAdoptUnpublished(out _)); }
+            if (shot.Type.Value == 188)
+            {
+                Assert.True(store.TryGetActive(0, out var current)); Assert.True(store.TryGetLifecycle(current.Handle, out var life));
+                life = life with { LocalAi = new(5, 0, 0) };
+                Assert.True(store.TryPrepareSimulation(in current, out var actor)); Assert.NotNull(actor);
+                Assert.True(actor.TryStageMotion(in shot, in life)); Assert.True(actor.TryAdoptUnpublished(out _, out _));
+            }
             var retainedRandom = random.Clone(); int clockCalls = 0;
             long Clock()
             {
@@ -201,7 +215,7 @@ public sealed class WiringDartPlayerHit1458Tests
             }
             Assert.Equal(row.GetProperty("life").GetInt32(), actual.Life);
             Assert.Equal(row.GetProperty("vx").GetSingle(), actual.VelocityX); Assert.Equal(row.GetProperty("vy").GetSingle(), actual.VelocityY);
-            int buffType = style == 5 ? 70 : 20; int duration = 0; var types = row.GetProperty("buffType"); var times = row.GetProperty("buffTime");
+            int buffType = style == 2 ? 323 : style is 3 or 4 ? 0 : style == 5 ? 70 : 20; int duration = 0; var types = row.GetProperty("buffType"); var times = row.GetProperty("buffTime");
             for (int i = 0; i < types.GetArrayLength(); i++) if (types[i].GetInt32() == buffType) duration = times[i].GetInt32();
             Assert.Equal(duration, server ? servers.GetNpcContactBuffDuration(player, new(buffType)) : humans.GetBuffDuration(player, new(buffType)));
             var rng = row.GetProperty("rng"); const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;

@@ -1346,7 +1346,18 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.SpikedSlimeSpike) { definition = SpikedSlimeSpikeDefinition; return true; }
         if (type == VanillaProjectileIds.QueenSlimeBlueMinionShard) { definition = QueenSlimeBlueMinionShardDefinition; return true; }
         if (type == VanillaProjectileIds.QueenSlimePinkMinionShard) { definition = QueenSlimePinkMinionShardDefinition; return true; }
-        if (type == VanillaProjectileIds.ContainedSlimeTrap || VanillaWiringDartTrap1458.IsDart(type)) { definition = DartTrapDefinition; return true; }
+        if (type.Value is 185 or 186 or 187 or 188)
+        {
+            definition = type.Value switch
+            {
+                185 => new(14, 14, new(14), true, false, true, 14, 14),
+                186 => new(10, 14, new(37), false, true, true, 10, 14),
+                187 => new(6, 6, new(38), false, true, true, 6, 6),
+                _ => new(6, 6, new(23), true, false, true, 6, 6)
+            };
+            return true;
+        }
+        if (type == VanillaProjectileIds.ContainedSlimeTrap || VanillaWiringTrap1458.IsDart(type)) { definition = DartTrapDefinition; return true; }
 
         if (type == VanillaProjectileIds.QueenBeeStinger)
         {
