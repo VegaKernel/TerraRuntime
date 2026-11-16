@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.World;
 
@@ -44,13 +45,32 @@ internal sealed partial class WorldTileAuthority
         }
         int cooldown = style is 40 or 41 ? TerraRuntime.Gameplay.Npcs.VanillaTownStatue1458.Cooldown :
             itemStatue ? VanillaItemStatue1458.Cooldown : TerraRuntime.Gameplay.Npcs.VanillaNpcStatue1458.Cooldown;
-        if (!Current() || !wiring.Register(x, y, cooldown)) return false;
+        if (!Current()) return false;
+        int selected = 0;
+        bool extraAllowed = true;
+        if (!itemStatue && style is not (40 or 41))
+            selected = npcAuthority.SelectWiringStatue(style, x * 16 + 16, (y + 3) * 16, out extraAllowed);
+        if (!wiring.Register(x, y, cooldown)) return false;
         if (style is 40 or 41)
             return npcAuthority.TryTeleportWiringResident(style, x * 16 + 16, (y + 3) * 16, Current);
         // Source CheckMech commits before population checks: a crowded statue
         // consumes its cooldown, including when the subsequent entity birth refuses.
-        return itemStatue
-            ? statueItems.TryCreateWiringStatue(item, x * 16 + 16, (y + 3) * 16, offset, Current)
-            : npcAuthority.TryCreateWiringStatue(style, x * 16 + 16, (y + 3) * 16, Current);
+        if (itemStatue)
+            return statueItems.TryCreateWiringStatue(item, x * 16 + 16, (y + 3) * 16, offset, Current);
+        bool Blocked()
+        {
+            VanillaNpcStatue1458.NeedsClearance(style, out int left, out int right, out int bottom);
+            if (x + left < 0 || x + right >= tiles.Dimensions.WidthTiles || y < 0 || y + bottom >= tiles.Dimensions.HeightTiles - 40) return true;
+            for (int cx = x + left; cx <= x + right; cx++) for (int cy = y; cy <= y + bottom; cy++)
+            {
+                var tile = tiles.Get(cx, cy);
+                if (tile.IsActive && !tile.IsActuated && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+                    !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) return true;
+            }
+            return false;
+        }
+        bool created = npcAuthority.TryCreateWiringStatue(style, selected, extraAllowed, x * 16 + 16, (y + 3) * 16, Blocked, Current, out bool smoke);
+        if (smoke) replication?.TryPublishPoofOfSmoke(x * 16 + 2, (y + 3) * 16 - 32);
+        return created;
     }
 }

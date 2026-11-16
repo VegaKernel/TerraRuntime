@@ -13,9 +13,8 @@ internal static partial class RuntimeNpcStateOwnershipPolicy
 {
     private static bool IsOwnedGroundCritter(int type, int netId) => VanillaNonresidentGroundCritterCatalog1458.IsSupported(type) && type == netId;
     private static int? CatchProtectionAtSpawn(int type, int netId) =>
-        // NPC.SetDefaults includes Explosive Bunny in Main.npcCatchable.
-        type == VanillaNpcIds.ExplosiveBunny.Value && netId == type ? 90 :
-            IsOwnedGroundCritter(type, netId) ? VanillaNonresidentGroundCritterCatalog1458.HasCatchProtection(type) ? 90 : 0 : null;
+        type == netId && VanillaNpcCatchCatalog1458.HasCatchProtection(new(type)) ? 90 :
+            IsOwnedGroundCritter(type, netId) ? 0 : null;
 
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {

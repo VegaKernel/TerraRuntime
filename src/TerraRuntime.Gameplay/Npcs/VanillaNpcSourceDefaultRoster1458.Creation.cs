@@ -11,6 +11,11 @@ public static partial class VanillaNpcSourceDefaultRoster1458
 
     private static readonly CreationRow[] CreationRows =
     [
+        // Original 1.4.5.8 constructor rows; statue births reuse the shared difficulty owner.
+        new(42, 34, 32, 5, 48, 26, 12, 1, 0.5f, 200, 0, true, false, false, false, false, false, false, false, false, false, 0),
+        new(48, 24, 34, 14, 100, 25, 8, 1, 0.6f, 300, 0, false, false, false, false, false, false, false, false, false, false, 0),
+        new(65, 100, 24, 16, 300, 40, 2, 1, 0.7f, 400, 0, true, false, false, false, false, false, false, false, false, false, 0),
+        new(82, 24, 44, 22, 160, 65, 16, 1, 0.7f, 500, 100, true, true, false, false, false, false, false, false, false, false, 0),
         // Existing AI016 identities also need exact SetDefaults when a retained
         // rain/Blood Moon transform reaches them. This adds scaling metadata,
         // independently of their already registered lifecycle capabilities.

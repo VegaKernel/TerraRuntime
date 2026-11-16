@@ -26,7 +26,7 @@ internal sealed partial class WorldTileAuthority
             source is null ? null : (x, y) =>
             {
                 VanillaPoofOfSmoke1458.ConsumeDedicatedSourceOffers(new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(source.SourceRandom));
-                replication?.TryPublishLogicSmoke(x, y);
+                replication?.TryPublishPoofOfSmoke(x, y);
             }, transferPumps: TryTransferWiringPumps);
     }
 

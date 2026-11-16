@@ -1965,7 +1965,7 @@ internal sealed partial class NpcAuthority
             !npcs.TryGetActive(checked((byte)command.State.NpcSlot), out NpcSnapshot npc) ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out var catchDefinition) ||
-            !catchDefinition.SupportsRuntimeLifecycle ||
+            (!catchDefinition.SupportsRuntimeLifecycle && !npc.Simulation.SpawnedFromStatue) ||
             !VanillaNpcCatchCatalog1458.TryGetCatchItem(npcType, out ItemTypeId catchItem))
         {
             return;

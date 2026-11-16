@@ -19,6 +19,16 @@ public static class VanillaNpcCatchCatalog1458
         661, 669, 671, 672, 673, 674, 675, 677, 687, 688
     ];
 
+    // Main.Initialize_TileAndNPCData1; independent of CountsAsCritter and catchItem.
+    public static bool HasCatchProtection(NpcTypeId type) => type.Value is
+        46 or 55 or 74 or 148 or 149 or 297 or 298 or 299 or 300 or 355 or 356 or 357 or 358 or 359 or
+        360 or 361 or 362 or 363 or 364 or 365 or 366 or 367 or 374 or 377 or 442 or 443 or 444 or 445 or
+        446 or 447 or 448 or 484 or 485 or 486 or 487 or 538 or 539 or 583 or 584 or 585 or 592 or 593 or
+        595 or 596 or 597 or 598 or 599 or 600 or 601 or 602 or 603 or 604 or 605 or 606 or 607 or 608 or
+        609 or 610 or 611 or 612 or 613 or 614 or 616 or 617 or 626 or 627 or 639 or 640 or 641 or 642 or
+        643 or 644 or 645 or 646 or 647 or 648 or 649 or 650 or 651 or 652 or 653 or 654 or 655 or 661 or
+        669 or 671 or 672 or 673 or 674 or 675 or 677 or 688;
+
     public static bool CountsAsCritter(NpcTypeId type) => type.IsAssigned && Critters.Contains(type.Value);
 
     public static bool TryGetCatchItem(NpcTypeId type, out ItemTypeId itemType)

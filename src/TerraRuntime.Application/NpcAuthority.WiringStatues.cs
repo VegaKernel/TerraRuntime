@@ -17,13 +17,34 @@ internal sealed partial class NpcAuthority
         VanillaNpcStatue1458.TryResolve(style, naturalSpawnWorldFacts?.PartyIsUp == true, out _, out _, out _) &&
         naturalSpawnRandom is SystemVanillaNpcRandom adapter && npcs.IsSpawnRandomSource(adapter.SourceRandom);
 
-    internal bool TryCreateWiringStatue(int style, int x, int y, Func<bool> currentSource)
+    internal int SelectWiringStatue(int style, int x, int y, out bool extraAllowed)
     {
+        extraAllowed = false;
+        if (!CanCreateWiringStatue(style) || naturalSpawnRandom is not SystemVanillaNpcRandom adapter) return 0;
+        int type = VanillaNpcStatue1458.SelectBeforeCooldown(style, naturalSpawnWorldFacts?.PartyIsUp == true, adapter);
+        extraAllowed = style != 63 || npcs.AllowsStatue(165, x, y);
+        return type;
+    }
+
+    internal bool TryCreateWiringStatue(int style, int type, bool extraAllowed, int x, int y,
+        Func<bool> blocked, Func<bool> currentSource, out bool smoke)
+    {
+        smoke = false;
         var context = CaptureSpawnContext();
         if (!CanCreateWiringStatue(style) || naturalSpawnRandom is not SystemVanillaNpcRandom adapter ||
-            !VanillaNpcStatue1458.TryResolve(style, naturalSpawnWorldFacts?.PartyIsUp == true, out int type, out int dx, out int dy) ||
+            !VanillaNpcStatue1458.TryResolve(style, naturalSpawnWorldFacts?.PartyIsUp == true, out _, out int dx, out int dy) ||
             !npcs.TryCreateNaturalSpawnPreview(adapter.SourceRandom, out var preview) || preview is null ||
-            !preview.AllowsStatue(type, x, y)) return false;
+            !preview.AllowsStatue(type, x, y) || !extraAllowed) return false;
+        if (VanillaNpcStatue1458.NeedsClearance(style, out _, out _, out _) && blocked())
+        {
+            VanillaPoofOfSmoke1458.ConsumeDedicatedSourceOffers(new SystemVanillaNpcRandom(preview.Random));
+            if (!preview.ValidateContext() || !currentSource() || CaptureSpawnContext() != context || !preview.IsCurrentOwned() ||
+                !preview.TryAdoptUnpublished(out var empty, out var retained) || empty is not null || retained is null) return false;
+            retained.PublishRetention();
+            smoke = true;
+            return true;
+        }
+        if (style == 28) type = VanillaNpcStatue1458.SelectBird(new SystemVanillaNpcRandom(preview.Random));
         var update = new NpcStateUpdate(type, checked((short)type), 0, 0, 0, 0,
             byte.MaxValue, default, NpcSimulationState.Initial);
         if (!preview.TryStageStatue(in update, x + dx, y + dy, out var staged) ||

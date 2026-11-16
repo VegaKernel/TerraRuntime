@@ -11,12 +11,20 @@ namespace TerraRuntime.Tests;
 
 public sealed partial class WiringNpcStatue1458Tests
 {
-    [Theory]
-    [InlineData("clock")] [InlineData("frame")] [InlineData("terrain")]
-    [InlineData("entropy")] [InlineData("npc")] [InlineData("wet-source")]
-    public void Final_clock_query_cannot_adopt_a_stale_statue_birth_or_entropy(string mutation)
+    public static IEnumerable<object[]> StaleRosterCases()
     {
-        var f = new Fixture(); int reads = 0; var expected = f.Random.Clone();
+        foreach (int style in new[] { 4, 16, 28, 51, 63, 64, 71, 78 })
+            foreach (bool blocked in style is 16 or 64 or 71 ? new[] { false, true } : new[] { false })
+                foreach (string mutation in new[] { "clock", "frame", "terrain", "entropy", "npc", "wet-source" })
+                    yield return [style, blocked, mutation];
+    }
+
+    [Theory, MemberData(nameof(StaleRosterCases))]
+    public void Final_clock_query_cannot_adopt_a_stale_statue_birth_or_entropy(int style, bool blocked, string mutation)
+    {
+        var f = new Fixture(style: style, blocked: blocked); int reads = 0; var expected = f.Random.Clone();
+        // Generic choices are source-committed before cooldown. Bird choice and smoke remain speculative.
+        if (style is 51 or 71 or 78) expected.Next();
         if (mutation == "entropy") expected.Next();
         typeof(WorldTileAuthority).GetField("statueTick", Access)!.SetValue(f.TilesOwner, (Func<long>)(() =>
         {
@@ -75,7 +83,7 @@ public sealed partial class WiringNpcStatue1458Tests
         internal readonly WorldTileAuthority TilesOwner;
         internal readonly NpcAuthority Owner;
         internal readonly WorldWiringCircuit1458 Circuit;
-        internal Fixture(bool sharedRandom = true)
+        internal Fixture(bool sharedRandom = true, int style = 4, bool blocked = false)
         {
             var state = new ServerRuntimeState(npcs: Npcs, worldTiles: Tiles, naturalSpawnRandom: new SystemVanillaNpcRandom(Random),
                 worldItemSpawnRandom: new SystemWorldItemSpawnRandom(sharedRandom ? Random : new(1458)), townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458));
@@ -85,7 +93,8 @@ public sealed partial class WiringNpcStatue1458Tests
             for (int x = 20; x <= 30; x++) Tiles.Set(x, 30, new WorldTile { Flags = WorldTileFlags.WireRed });
             Tiles.Set(20, 30, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
             for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++)
-                Tiles.Set(30 + dx, 30 + dy, new WorldTile { Type = 105, FrameX = (short)(4 * 36 + dx * 18), FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+                Tiles.Set(30 + dx, 30 + dy, new WorldTile { Type = 105, FrameX = (short)(style % 55 * 36 + dx * 18), FrameY = (short)(style / 55 * 54 + dy * 18), Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+            if (blocked) Tiles.Set(29, 30, new WorldTile { Type = 1, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
         }
         internal bool Fire() => Circuit.HitSwitch(20, 30);
     }

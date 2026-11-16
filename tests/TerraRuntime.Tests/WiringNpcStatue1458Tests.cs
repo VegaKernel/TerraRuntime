@@ -34,7 +34,8 @@ public sealed partial class WiringNpcStatue1458Tests
         Assert.True(registry.TryRegister(connection.Source, queue));
         var spawn = new PlayerSpawnCommitRequest(connection.Player.Slot, 20, 20, 0, 0, 0, 0, 0); registry.PlayerSpawned(connection, in spawn);
         int mode = row.GetProperty("mode").GetInt32(), mask = row.GetProperty("world").GetInt32();
-        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles, npcReplication: registry,
+        var tileReplication = new RuntimeTileManipulationReplicationRegistry();
+        var state = new ServerRuntimeState(tileManipulationReplication: tileReplication, npcs: npcs, worldTiles: tiles, npcReplication: registry,
             expertMode: mode > 0, masterMode: mode == 2, worldClock: new RuntimeWorldClock(1000, true, default, 0, 0, getGoodWorld: row.GetProperty("good").GetBoolean()),
             naturalSpawnRandom: new SystemVanillaNpcRandom(random), worldItemSpawnRandom: new SystemWorldItemSpawnRandom(random),
             townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { PartyIsUp = row.GetProperty("party").GetBoolean(), GameMode = (byte)mode, HardMode = (mask & 1) != 0, RemixWorld = (mask & 2) != 0,
@@ -43,7 +44,11 @@ public sealed partial class WiringNpcStatue1458Tests
         var circuit = (WorldWiringCircuit1458)typeof(WorldTileAuthority).GetField("wiring", Access)!.GetValue(graph.WorldTileAuthority)!;
         foreach (var cell in row.GetProperty("before").GetProperty("cells").EnumerateArray())
         {
-            var tile = WiringLogicGate1458Tests.Decode(cell.GetProperty("tile"));
+            var image = cell.GetProperty("tile");
+            var tile = WiringLogicGate1458Tests.Decode(image);
+            // Supplementary original captures preserve obstruction shape independently of activity/wires.
+            if (image.TryGetProperty("halfBrick", out var half))
+                Assert.True(tile.TrySetSourceShape(half.GetBoolean(), image.GetProperty("slope").GetByte()));
             tiles.Set(cell.GetProperty("x").GetInt32(), cell.GetProperty("y").GetInt32(), in tile);
         }
         foreach (var npc in row.GetProperty("before").GetProperty("state").GetProperty("npcs").EnumerateArray())
@@ -59,6 +64,8 @@ public sealed partial class WiringNpcStatue1458Tests
         if (row.GetProperty("kind").GetString() == "mech-full")
             for (int x = 2; x < 78; x++) for (int y = 2; y < 98; y++)
                 if ((x != 30 || y != 30) && circuit.RegisteredMechanismCount < 999) Assert.True(circuit.Register(x, y, 30));
+        Assert.True(tileReplication.TryRegister(connection.Source, queue));
+        tileReplication.PlayerSpawned(connection, in spawn);
         Drain(queue); int tick = 0; var scan = new NpcSnapshot[256];
         foreach (var point in row.GetProperty("points").EnumerateArray())
         {

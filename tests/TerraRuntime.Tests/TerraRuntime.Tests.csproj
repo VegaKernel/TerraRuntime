@@ -13,6 +13,8 @@
     <EmbeddedResource Include="Fixtures/WiringTrapLowerSlot1458.json.gz" LogicalName="WiringTrapLowerSlot1458" />
     <EmbeddedResource Include="Fixtures/WiringRemainingCircuit1458.json.gz" LogicalName="WiringRemainingCircuit1458" />
     <EmbeddedResource Include="Fixtures/WiringLogicGate1458.json.gz" LogicalName="WiringLogicGate1458" />
+    <EmbeddedResource Include="Fixtures/WiringNpcStatueRosterWindows1458.json.gz" LogicalName="WiringNpcStatueRosterWindows1458" />
+    <EmbeddedResource Include="Fixtures/WiringNpcStatueRosterLinux1458.json.gz" LogicalName="WiringNpcStatueRosterLinux1458" />
     <EmbeddedResource Include="Fixtures/WiringNpcStatueWindows1458.json.gz" LogicalName="WiringNpcStatueWindows1458" />
     <EmbeddedResource Include="Fixtures/WiringPump1458.json.gz" LogicalName="WiringPump1458" />
     <EmbeddedResource Include="Fixtures/WiringTownStatue1458.json.gz" LogicalName="WiringTownStatue1458" />

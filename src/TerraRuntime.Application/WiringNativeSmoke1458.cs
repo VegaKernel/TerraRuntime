@@ -150,9 +150,49 @@ internal static class WiringNativeSmoke1458
         timerOnly.Set(0, 0, new WorldTile { Type = 144, FrameX = 54, FrameY = 18,
             Flags = WorldTileFlags.Active | WorldTileFlagMasks.Wires | WorldTileFlags.Actuator | WorldTileFlags.Inactive });
         using var payload = new MemoryStream();
-        return WorldFileTileEncoder.TryEncode(timerOnly, VanillaWorldFormat326.TileTypeCount, importance,
+        return RunNpcRoster() && WorldFileTileEncoder.TryEncode(timerOnly, VanillaWorldFormat326.TileTypeCount, importance,
             payload, out _) == WorldFileTileEncodeResult.Encoded &&
             payload.ToArray().AsSpan().SequenceEqual(Convert.FromBase64String("Aw8mkDYAEgA="));
+    }
+
+    private static bool RunNpcRoster()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(160, 120));
+        var npcs = new TerraRuntime.Core.Npcs.RuntimeNpcStore();
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 60 });
+        var slots = new PlayerSlotPool(1);
+        if (!slots.TryAcquireConnection(out var lease) || lease is null) return false;
+        using var session = new PlayerJoinSession(lease);
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var owner = new ConnectionHandle(GameCommandSourceId.FromConnection(145851), session.Handle);
+        state.Apply(new PlayerHealthRuntimeCommand(owner, new(owner.Player.Slot, 100, 100)));
+        state.Apply(new PlayerManaRuntimeCommand(owner, new(owner.Player.Slot, 0, 20)));
+        state.Apply(new PlayerEquipmentRuntimeCommand(owner, new(owner.Player.Slot, 0, 0, 0, 0, 0)));
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session, new(owner.Player.Slot, 20, 20, 0, 0, 0, 0, 0)));
+        if (state.LastSpawnCommitResult != PlayerSpawnCommitResult.Committed) return false;
+        for (int y = 10; y <= 70; y++) tiles.Set(5, y, new WorldTile { Flags = WorldTileFlags.WireBlue });
+        for (int row = 0; row < 6; row++) for (int x = 5; x <= 121; x++)
+            tiles.Set(x, 20 + row * 10, new WorldTile { Flags = WorldTileFlags.WireBlue });
+        tiles.Set(5, 10, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+        int index = 0;
+        foreach (int style in new[] { 16, 23, 28, 50 }.Concat(Enumerable.Range(51, 32)))
+        {
+            int left = 20 + index % 6 * 20, top = 20 + index / 6 * 10;
+            index++;
+            for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++)
+                tiles.Set(left + dx, top + dy, new WorldTile { Type = 105,
+                    FrameX = (short)(style % 55 * 36 + dx * 18), FrameY = (short)(style / 55 * 54 + dy * 18),
+                    Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+        }
+        state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(5, 10)));
+        if (npcs.ActiveCount != 36) return false;
+        for (byte slot = 0; slot < 36; slot++)
+            if (!npcs.TryGetActive(slot, out var born) || !born.Simulation.SpawnedFromStatue ||
+                !born.Simulation.CanBeReplacedByOtherNpcs || born.Simulation.MoneyValue != 0f ||
+                born.Simulation.SpawnSlotCost != 0f || !npcs.HasPendingBirth(born.Handle)) return false;
+        return true;
     }
 
     private static void Put(WorldTileStore tiles, int x, int y, ushort type, bool actuator = false) =>

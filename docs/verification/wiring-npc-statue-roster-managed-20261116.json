@@ -1,0 +1,609 @@
+{
+  "accepted": true,
+  "date": "2026-11-16",
+  "scope": "Managed extended NPC statue roster, Terraria 1.4.5.8 / protocol326",
+  "baseCommit": "2db005f52964c3b9e3e0d45faba79930a45eccb0",
+  "behavior": [
+    "36 additional NPC-producing styles16/23/28/50/51..82;48 total through existing circuit, cooldown, NPC allocator, RNG and pending-birth replication owners.",
+    "Generic random choices precede cooldown; legacy bird choice follows its shared population check. Weighted snail selection, additional165 population, bird/duck/dragonfly/seagull/turtle groups and strict source distances retain source ordering.",
+    "Four clearance rectangles honor active solid non-platform tiles, including slopes/half blocks. Blocked attempts adopt dedicated PoofOfSmoke caller entropy before packet106, without an NPC birth.",
+    "Shared Hornet/Harpy/Shark/Wraith creation scaling and Remix Wraith constructor stats/hitbox; initialized Main.npcCatchable fact separately owns initial temporary protection and friendliness.",
+    "Existing statue catch/removal transaction also admits source-created catchable statues without claiming their complete AI lifecycle; zero item yield, existing inactive23/smoke106 publication.",
+    "New authenticated cases cover all36 styles and both peer queues; the shipping smoke triggers all36 through one admitted switch command before an outer NPC phase."
+  ],
+  "limits": [
+    "Issue125 remains partial. Tile-converting statue34, teleporters, other trigger contexts, broad object framing and whole-client acceptance remain open.",
+    "No newly accepted complete NPC AI or whole Main.Update. Wet/actuated/damaged statue footprints remain refused. Reference captures isolate mechanisms, creation and explicit pending-birth serialization.",
+    "Local NativeAOT and C++ installation remain explicitly user-deferred. Ordinary managed and fresh self-contained CoreCLR smokes qualify separately; no local AOT claim.",
+    "The source conversion tool supplies semantic inventory only: analysisOnly=true, accepted=false and incomplete source closure. Original bodies, game assets and app-local capture dependencies are not shipped.",
+    "Issue126 still awaits unavailable connection stop logs. No repeated log request or connection timeout/rate relaxation."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\statue-roster-20261116\\qualification04\\build-final.log",
+    "sha256": "4f1b84c10a31761daf6d82bed1bd6cc19749667df718a798fcbeefbeef32b80d"
+  },
+  "focused": {
+    "total": 22533,
+    "passed": 22533,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1240.1846949000028,
+    "tests": {
+      "total": "242783",
+      "passed": "242783",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1236.919",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1695.7876373000327,
+    "tests": {
+      "total": "1788098",
+      "passed": "1788098",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1681.839",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6086,
+  "independentEvidence": {
+    "version": "TerrariaServer 1.4.5.8",
+    "scope": "Wiring.HitWireSingle(105), NPC.MechSpawn, SetDefaults/NewNPC and explicit pending-birth serialization; no Main.Update or NPC AI tick",
+    "captureHost": "Windows; Linux edition under CoreCLR 11 x64; Windows edition under CLR4 x86 with app-local original dependencies",
+    "curation": "Keep all cases except repeated full/replacement/protected pools; retain these on seed 1 for styles 16,28,51,63,64,71,78. No expected values rewritten. Supplement120 obstruction scenes per platform with repeated direct Tile.halfBrick/slope observations; all pre-existing captured inputs and outputs must match exactly. No expected result rewritten.",
+    "sourceInventory": "Analysis-only semantic inventory; not accepted translation or complete source closure.",
+    "platforms": {
+      "Linux": {
+        "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+        "rawObservationsSha256": "5295823cd97bc0279c1cb19f9f097f2f2524e14e2227c263b448b5d636dcc814",
+        "rawRows": 6873,
+        "rawRepeatedExactly": true,
+        "fixture": "WiringNpcStatueRosterLinux1458.json.gz",
+        "fixtureGzipSha256": "6946a032d03546eb4fe3108db1827300c49a0c8da35a693303e1b9cf0d456db0",
+        "fixtureJsonSha256": "def41a5740b9cc0ba11b0cc8c0bc9d487a688f8fc81c7dafbfd0f89d5cfbd1dd",
+        "rows": 6246,
+        "observedExceptions": 0,
+        "birthTypesByStyle": {
+          "16": [
+            42
+          ],
+          "23": [
+            63
+          ],
+          "28": [
+            74,
+            297,
+            298
+          ],
+          "50": [
+            65
+          ],
+          "51": [
+            299,
+            538
+          ],
+          "52": [
+            356
+          ],
+          "53": [
+            357
+          ],
+          "54": [
+            355,
+            358
+          ],
+          "55": [
+            366,
+            367
+          ],
+          "56": [
+            359,
+            360
+          ],
+          "57": [
+            377
+          ],
+          "58": [
+            300
+          ],
+          "59": [
+            362,
+            364
+          ],
+          "60": [
+            148
+          ],
+          "61": [
+            361
+          ],
+          "62": [
+            485,
+            486,
+            487
+          ],
+          "63": [
+            164
+          ],
+          "64": [
+            86
+          ],
+          "65": [
+            490
+          ],
+          "66": [
+            82
+          ],
+          "67": [
+            449
+          ],
+          "68": [
+            167
+          ],
+          "69": [
+            480
+          ],
+          "70": [
+            48
+          ],
+          "71": [
+            170,
+            171,
+            180
+          ],
+          "72": [
+            481
+          ],
+          "73": [
+            482
+          ],
+          "74": [
+            430
+          ],
+          "75": [
+            489
+          ],
+          "76": [
+            611
+          ],
+          "77": [
+            602
+          ],
+          "78": [
+            595,
+            596,
+            597,
+            598,
+            599,
+            600
+          ],
+          "79": [
+            616,
+            617
+          ],
+          "80": [
+            671,
+            672
+          ],
+          "81": [
+            673
+          ],
+          "82": [
+            674,
+            675
+          ]
+        },
+        "obstructionShapeCapture": {
+          "rows": 120,
+          "rawSha256": "e2f03e51982d002dd67be22b45fa4cb98e08d5209380b23d62c70cad9001102c",
+          "repeatedExactly": true,
+          "observedExceptions": 0,
+          "allExistingInputsAndOutputsUnchanged": true,
+          "onlyAddedInputFields": [
+            "halfBrick",
+            "slope"
+          ]
+        }
+      },
+      "Windows": {
+        "officialSha256": "D87E3FAF08637F6BE8882C63E7F11FB7E792B0230006309618473ECE0F863E1E",
+        "rawObservationsSha256": "7172f803beb842b9a780ee7f316e78a815137dbfdcf60ffe9ac0304ab41e3cde",
+        "rawRows": 6873,
+        "rawRepeatedExactly": true,
+        "fixture": "WiringNpcStatueRosterWindows1458.json.gz",
+        "fixtureGzipSha256": "a411344e0ec55ca392dfbd83cb5e1a7abf8f3bb2a160c2ff665303ba38ace0f5",
+        "fixtureJsonSha256": "185bb7fa40f22942ac3584c3f44812f742e108f4d5eb5d3e259e3a8e27dd9ea2",
+        "rows": 6246,
+        "observedExceptions": 0,
+        "birthTypesByStyle": {
+          "16": [
+            42
+          ],
+          "23": [
+            63
+          ],
+          "28": [
+            74,
+            297,
+            298
+          ],
+          "50": [
+            65
+          ],
+          "51": [
+            299,
+            538
+          ],
+          "52": [
+            356
+          ],
+          "53": [
+            357
+          ],
+          "54": [
+            355,
+            358
+          ],
+          "55": [
+            366,
+            367
+          ],
+          "56": [
+            359,
+            360
+          ],
+          "57": [
+            377
+          ],
+          "58": [
+            300
+          ],
+          "59": [
+            362,
+            364
+          ],
+          "60": [
+            148
+          ],
+          "61": [
+            361
+          ],
+          "62": [
+            485,
+            486,
+            487
+          ],
+          "63": [
+            164
+          ],
+          "64": [
+            86
+          ],
+          "65": [
+            490
+          ],
+          "66": [
+            82
+          ],
+          "67": [
+            449
+          ],
+          "68": [
+            167
+          ],
+          "69": [
+            480
+          ],
+          "70": [
+            48
+          ],
+          "71": [
+            170,
+            171,
+            180
+          ],
+          "72": [
+            481
+          ],
+          "73": [
+            482
+          ],
+          "74": [
+            430
+          ],
+          "75": [
+            489
+          ],
+          "76": [
+            611
+          ],
+          "77": [
+            602
+          ],
+          "78": [
+            595,
+            596,
+            597,
+            598,
+            599,
+            600
+          ],
+          "79": [
+            616,
+            617
+          ],
+          "80": [
+            671,
+            672
+          ],
+          "81": [
+            673
+          ],
+          "82": [
+            674,
+            675
+          ]
+        },
+        "obstructionShapeCapture": {
+          "rows": 120,
+          "rawSha256": "70b09343e309f04d13affe33b425451e8e6d4d7b5bc9d8f416c3e19cb074f3c6",
+          "repeatedExactly": true,
+          "observedExceptions": 0,
+          "allExistingInputsAndOutputsUnchanged": true,
+          "onlyAddedInputFields": [
+            "halfBrick",
+            "slope"
+          ]
+        }
+      }
+    }
+  },
+  "sourceAnalysis": {
+    "analysisOnly": true,
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "observationSha256": "b7dc9b62cc2bc6064484857be418ce342e7c49b7be385e79306d1dacffa58d00"
+  },
+  "causalControls": {
+    "sourceInputs": 5173,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca",
+    "controls": [
+      {
+        "control": "half-block-clearance",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 13592,
+        "failed": 24,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "generic-rng",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 11666,
+        "failed": 1950,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "weighted-choice",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 13448,
+        "failed": 168,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "bird-choice",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 13463,
+        "failed": 153,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "extra-population",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 13613,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "gold-dragonfly-group",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 13613,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "smoke-entropy",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 13544,
+        "failed": 72,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "statue-catch-admission",
+        "exitCode": 1,
+        "total": 70,
+        "passed": 56,
+        "failed": 14,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "constructor-protection",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 10040,
+        "failed": 3576,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      },
+      {
+        "control": "wraith-remix",
+        "exitCode": 1,
+        "total": 13616,
+        "passed": 13406,
+        "failed": 210,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5173,
+    "dllPaths": 411,
+    "testDllSha256": "99a9f42d6ecc4ca570f75badbd6d7e1d3a572e8d947aa9f2c533596e8982bbca",
+    "afterFull": {
+      "sourceInputs": 5173,
+      "dllPaths": 411,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5173,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 1.058712399972137,
+      "logSha256": "af0a44a0954b10d4d798b15ff6d876cb2fb29df34e1e09a667742a1287e6bd58"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 0.9529852000414394,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.1476008000317961,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 1.9508140999823809,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 7.982745299988892,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "6f6d98a6ccf3d0be27e40011c27ff5dc06f1ad6232f45d7e48ef99923bd48b13",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.4578174999915063,
+        "logSha256": "7a2c95cb4f32ae44ba37c50eb00ede1210258634c10dad808d28819953a32806"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 1.0948819000041112,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.16743250004947186,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 1.395239399978891,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 6.10314359999029,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 9.605070499994326,
+      "logSha256": "79bb7b044883f3a6c9387c01770557fb38a0a888da964a925e60a9959f5da2d4"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.11627960001351312,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 5.185508000024129,
+      "logSha256": "77984ba072e27ad879511ffa746feda6a51901c49affc1e38a1a0d69926c0350"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 1.0584772999864072,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\statue-roster-20261116\\qualification04",
+  "testRunnerMaxThreads": 8,
+  "rejectedIntermediateEvidence": [
+    "Exploratory focus01 used temporary Linux expected data on Windows; focus02 exposed missing shared constructor/protection facts. These runs are not acceptance.",
+    "Focus03 exposed fourteen statue catch lifecycle admission refusals. Both existing application/store guards were corrected before qualification.",
+    "Qualification01 stopped on18 new boundary fixture setup failures: its solid obstruction replaced a wired cell without preserving the wire. No production workaround was made; the fixture now preserves its wire, matching the independent source harness. Qualification02 was stopped when the wire-oracle case count expanded from392 to400 after four shared constructor admissions. Only the count assertion was updated; byte equality remains required for all400. Qualification03 was stopped after the half-block control exposed missing obstruction shapes in the legacy input projection. Supplementary repeated unchanged-original captures now provide the exact shape fields; no production workaround. Qualification04 alone qualifies.",
+    "The initial32-bit Windows source harness exhausted memory retaining all6873 observations. A developer-only streaming writer fixed capture; final Windows02/03 and Linux01/02 raw observations repeat exactly. No source exception occurred in accepted captures."
+  ]
+}

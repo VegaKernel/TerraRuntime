@@ -15,6 +15,17 @@ public readonly partial record struct VanillaNpcSpawnDefaults
         float scale = row.Scale, money = row.Money, knockback = row.KnockBack;
         int life = row.Life, damage = row.Damage, defense = row.Defense;
         int type = row.Type;
+        // Wraith's Remix constructor adjusts both stats and the eventual scaled hitbox before difficulty.
+        if (definition.Type == VanillaNpcIds.Wraith && context.RemixWorld)
+        {
+            scale *= 1.2f;
+            damage = windowsArithmetic ? (int)(damage * (double)scale) : (int)(damage * scale);
+            defense = windowsArithmetic ? (int)(defense * (double)scale) : (int)(defense * scale);
+            life = windowsArithmetic ? (int)(life * (double)scale) : (int)(life * scale);
+            money = windowsArithmetic ? (int)(money * (double)scale) : (int)(money * scale);
+            width = windowsArithmetic ? (int)(row.Width * (double)scale) : (int)(row.Width * scale);
+            height = windowsArithmetic ? (int)(row.Height * (double)scale) : (int)(row.Height * scale);
+        }
         bool variant = type == 183 && definition.SourceNetId.Value is -25 or -24;
         if (variant)
         {

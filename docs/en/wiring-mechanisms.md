@@ -89,7 +89,7 @@ The following remain outside the supported chain:
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Teleporters and pump contexts outside the bounded continuation below.
-- Other NPC-spawning statues and contexts outside the bounded trap, logic, item-statue and NPC-statue continuations below.
+- Tile-converting statue style `34` and contexts outside the bounded trap, logic, item-statue and NPC-statue continuations below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
@@ -230,3 +230,15 @@ The unchanged official Linux-edition server repeats exactly across $208$ scenari
 Actuated or damaged pump objects, broken anchors, unadmitted neighboring objects/plants/falling tiles and framing that would require item drops remain refused. Teleporters, other NPC statues and complete wiring acceptance remain open; issue `125` is partial.
 
 [Managed acceptance](../verification/wiring-pumps-managed-20261116.json).
+
+## Extended NPC statue roster
+
+The existing NPC statue path also admits styles `16`, `23`, `28`, `50` and `51`–`82`, bringing the supported NPC-producing roster to $48\,\text{styles}$. Generic random choices happen before the mechanism cooldown check; the bird statue checks the shared bird population before choosing a variant. The weighted snail choice and source order across wire colors retain the common world/NPC RNG. Style `63` checks the additional NPC `165` population before registering its cooldown; a failed extra check still consumes an otherwise available cooldown.
+
+Birds, ducks, dragonflies (including the gold variant), seagulls and turtles share their source population groups. Styles `16`, `50`, `64` and `71` check inclusive solid-tile rectangles after population admission. Platforms and actuated tiles do not obstruct them; slopes and half blocks do. Obstructed attempts consume the dedicated-server `Utils.PoofOfSmoke` caller randomness and publish packet `106` through the existing tile replication owner, without creating an NPC. Cooldown remains committed when population or physical allocation refuses a birth.
+
+Shared creation defaults now cover Hornet, Harpy, Shark and Wraith difficulty scaling, including Remix Wraith stats and hitbox. `Main.npcCatchable` is represented separately from catch items and critter classification, so initial temporary protection and friendliness follow the initialized source table. An owned statue-born catchable NPC uses the existing removal/publication transaction even when its complete AI lifecycle remains outside accepted support: catching removes it and publishes the inactive NPC plus smoke, without yielding an item. Ordinary catches retain their lifecycle admission rule.
+
+This checkpoint concerns creation, mechanism ordering, population, obstruction, provenance, catching and pending network publication. It does not accept new complete NPC AI, wet/actuated/damaged statue footprints, tile-converting style `34`, whole `Main.Update` or a GUI-client playthrough. Issue `125` remains partial. Numeric differential fixtures come from unchanged official Windows and Linux `1.4.5.8` editions; developer capture harnesses and original game bodies are not production dependencies.
+
+Managed qualification passes: focused $22\,533$, fast $242\,783$, unfiltered full $1\,788\,098$ cases across all $6\,086$ methods; ten effective causal controls, five ordinary and five fresh self-contained CoreCLR smokes. [Managed acceptance](../verification/wiring-npc-statue-roster-managed-20261116.json). Local NativeAOT remains user-deferred.

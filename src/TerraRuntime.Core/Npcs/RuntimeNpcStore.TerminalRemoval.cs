@@ -9,7 +9,7 @@ public sealed partial class RuntimeNpcStore
         removal = null;
         if (!MatchesSource(in expected) ||
             !TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(expected.TypeIdentity, expected.NetIdentity, out var definition) ||
-            !definition.SupportsRuntimeLifecycle ||
+            (!definition.SupportsRuntimeLifecycle && !expected.Simulation.SpawnedFromStatue) ||
             !TerraRuntime.Gameplay.Npcs.VanillaNpcCatchCatalog1458.TryGetCatchItem(expected.TypeIdentity, out _)) return false;
         removal = new(this, expected, singleInactiveAnnouncement: true);
         return true;

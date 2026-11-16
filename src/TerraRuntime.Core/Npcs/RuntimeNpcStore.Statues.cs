@@ -5,17 +5,18 @@ namespace TerraRuntime.Core.Npcs;
 
 public sealed partial class RuntimeNpcStore
 {
+    internal bool AllowsStatue(int type, int x, int y)
+    {
+        Span<NpcSnapshot> scan = stackalloc NpcSnapshot[VanillaNpcSpawnRules.PhysicalSlotCount];
+        int count = 0;
+        for (int i = 0; i < Math.Min(Capacity, 200); i++)
+            if (TryGetActive((byte)i, out var npc)) scan[count++] = npc;
+        return VanillaNpcStatue1458.CanSpawn(scan[..count], x, y, type);
+    }
+
     internal sealed partial class NaturalSpawnPreview
     {
-        internal bool AllowsStatue(int type, int x, int y)
-        {
-            if (!IsCurrentOwned()) return false;
-            Span<NpcSnapshot> scan = stackalloc NpcSnapshot[VanillaNpcSpawnRules.PhysicalSlotCount];
-            int count = 0;
-            for (int i = 0; i < Math.Min(owner.Capacity, 200); i++)
-                if (owner.TryGetActive((byte)i, out var npc)) scan[count++] = npc;
-            return VanillaNpcStatue1458.CanSpawn(scan[..count], x, y, type);
-        }
+        internal bool AllowsStatue(int type, int x, int y) => IsCurrentOwned() && owner.AllowsStatue(type, x, y);
 
         internal bool TryStageStatue(in NpcStateUpdate update, int centerX, int bottomY, out NpcSnapshot? birth)
         {
