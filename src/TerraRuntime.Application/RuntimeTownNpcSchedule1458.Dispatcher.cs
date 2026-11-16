@@ -67,6 +67,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             RuntimeNpcStinkyVisualOffer1458 visualOffer = combat.PlanBuffVisualOffers(in buffPlan);
             var statusInput = before with { Simulation = before.Simulation with {
                 Life = buffPlan.LifeAfter, LifeRegenCounter = buffPlan.CounterAfter } };
+            if (statusInput.Simulation.TeleportStyle == 14 && statusInput.Simulation.TeleportTime is > 0f)
+                statusInput = statusInput with { Simulation = statusInput.Simulation with {
+                    TeleportTime = VanillaTownStatue1458.AdvanceTeleportTime(statusInput.Simulation.TeleportTime.Value) } };
             bool localHomeChanged = false;
             bool homeUpdatedByAi = false;
             if (sourceHomeResident)
@@ -82,7 +85,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     Status = homeless ? TerrariaNpcHomeStatus.Homeless : home.Status };
                 if ((sourceResident || localHomeChanged) && townNpcs.CaptureResidentName(before.Handle) is null)
                 { rejected++; continue; }
-                if (sourceResident && statusInput.Simulation.TeleportTime == 1f)
+                if (sourceResident && statusInput.Simulation.TeleportTime == 1f && statusInput.Simulation.TeleportStyle == 13)
                     statusInput = statusInput with { Simulation = statusInput.Simulation with { TeleportTime = 0f } };
             }
             socialNpcBuffFlags = buffPlan.Flags;

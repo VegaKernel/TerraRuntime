@@ -14,6 +14,7 @@
     <EmbeddedResource Include="Fixtures/WiringRemainingCircuit1458.json.gz" LogicalName="WiringRemainingCircuit1458" />
     <EmbeddedResource Include="Fixtures/WiringLogicGate1458.json.gz" LogicalName="WiringLogicGate1458" />
     <EmbeddedResource Include="Fixtures/WiringNpcStatueWindows1458.json.gz" LogicalName="WiringNpcStatueWindows1458" />
+    <EmbeddedResource Include="Fixtures/WiringTownStatue1458.json.gz" LogicalName="WiringTownStatue1458" />
     <EmbeddedResource Include="Fixtures/WiringNpcStatueLinux1458.json.gz" LogicalName="WiringNpcStatueLinux1458" />
     <EmbeddedResource Include="Fixtures/WiringItemStatue1458.json.gz" LogicalName="WiringItemStatue1458" />
     <EmbeddedResource Include="Fixtures/WiringRemainingTrapNpcHit1458.json.gz" LogicalName="WiringRemainingTrapNpcHit1458" />

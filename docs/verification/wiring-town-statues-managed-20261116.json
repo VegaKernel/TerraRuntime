@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "wiring-town-statues-managed-20261116",
+  "accepted": true,
+  "allIssuesComplete": false,
+  "baseCommit": "54558ce0aca5cdf6f6d26a7d1ae9c0178d80ba87",
+  "sdk": "11.0.100",
+  "runtime": "11.0.0",
+  "newProductionDependencies": false,
+  "scope": [
+    "Tile105 styles40/41 reuse existing dry intact nonactuated2x3 device footprint, six-cell per-color skip and world circuit; CheckMech300 precedes eligibility, including empty pools.",
+    "NPC owner scans physical slots0..199 ascending and retains the first50 members of each fixed source identity list. Housing, distance and gender metadata do not replace source lists. Nonempty pool consumes exactly one shared Next(count), including count1; empty pool draws nothing.",
+    "Existing AiSpawnPreview adopts position at statue bottom-center minus integer half-width/height+1 and teleportTime1/style14. It preserves generation, pending birth, velocity, AI, life, buffs, homes, money and statue provenance. Source Main.TeleportEffect has no style14 branch or particle RNG.",
+    "Existing retained recipient/baseline publication sends immediate65 only; it does not force23 or consume pending birth or reset source23 proximity clocks. Existing outer NPC update owns pending sync. Existing join-reset policy retains updated position; no new network writer.",
+    "Persisted residents adopt their existing save-image position before65, so a checkpoint in the same command batch observes the teleport. Existing WorldFile.SaveNPCs source writes current NPC position; name/home/variation remain unchanged. Canonical resident identity and whole save-row preimages are guarded before NPC/RNG adoption. No persistence format or second writer is added.",
+    "Existing admitted NPC/resident continuations age style14 history by0.005/update with a zero clamp and no particle RNG; style13 retains its distinct immediate reset. Source visual method directly captured2440 updates from8 preimages. Source/context/RNG/clock/footprint/terrain/NPC currentness guards precede callback-free adoption. Shipping wiring smoke exercises both King/Queen through authenticated input.",
+    "Unmodified original Linux-edition capture repeats268 controlled scenarios exactly with zero observed exceptions, including all source identities and exclusions, first50 cutoff,0/1/2/49/50/51/100/200 pools, wire contacts/colors, cooldown boundaries, pending births, RNG and immediate/pending packet bytes. Authenticated input verifies65 to both peers and cooldown rejection."
+  ],
+  "limits": [
+    "Issue125 remains partial: other NPC-producing/tile-converting statues, blocked-spawn devices, pumps/teleporters and unadmitted trigger contexts remain open. No whole NPC AI/Main.Update/GUI/TCP playthrough is claimed.",
+    "Wire traces explicitly advance mechanisms and spawn synchronization; separate visual traces invoke UpdateNPC_TeleportVisuals. Source preimages control physical occupation/velocity/history/pending state. Additional source23 serialization with pending=true checks the existing runtime join-reset representation; this is not a real original joining-session trace or whole NPC.UpdateNPC capture.",
+    "Statue footprints remain dry/intact/nonactuated. Existing16-tile surrounding-section guard is conservative transaction policy, not a new vanilla collision rule. No collision-safe landing search is added: source King/Queen teleports do not perform one.",
+    "Source-analysis tool output is inventory-only, analysisOnly=true, accepted=false, sourceClosureComplete=false. No automatic translation acceptance or copied game code/assets/text is shipped.",
+    "Local NativeAOT and C++ system installation remain explicitly user-deferred. Managed self-contained CoreCLR smokes are qualified separately; no new production dependencies/projects/edges.",
+    "Issue126 still awaits unavailable connection-stop logs; no timeout or networking limits changed."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\town-statues-20261116\\build-final03.log",
+    "sha256": "291e4532fe1abe5672836343ec48920e73c6b1848132a496a576334c8486db40"
+  },
+  "focused": {
+    "total": 13279,
+    "passed": 13279,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 978.7308318999712,
+    "tests": {
+      "total": "233548",
+      "passed": "233548",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "974.508",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1678.8661968999659,
+    "tests": {
+      "total": "1778863",
+      "passed": "1778863",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1666.734",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6080,
+  "independentEvidence": {
+    "raw": "E:\\TerraRuntimeAgentCache\\town-statues-20261116\\original\\observations07.json",
+    "repeat": "E:\\TerraRuntimeAgentCache\\town-statues-20261116\\original\\observations08.json",
+    "rows": 268,
+    "sha256": "b24f5f584893ee97cda8ba0f15ccd46449db8acf63a17f5cf28749eb1e36f242",
+    "firstChanceExceptions": 0,
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "baselinePolicy": "Additional original serializer calls temporarily set pending=true to check existing runtime join reset policy; stock flag is restored. This is not an actual original join trace.",
+    "visualCases": 8,
+    "visualSteps": 2440,
+    "fixtureSha256": "612abef4b22cc68c2f4975a25e355cd0ae54e408006bf60472cb1cbfb90a6a27"
+  },
+  "sourceAnalysis": {
+    "analysisOnly": true,
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "observationSha256": "5afac282791d71f33330ade451c064a9e66b83b5a71bc7f1693d3a7e3e4abb6b"
+  },
+  "causalControls": {
+    "sourceInputs": 5161,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d",
+    "controls": [
+      {
+        "control": "first-fifty",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 278,
+        "failed": 12,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "fixed-king-list",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 288,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "source-cooldown",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 132,
+        "failed": 158,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "single-candidate-entropy",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 228,
+        "failed": 62,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "bottom-pixel",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 132,
+        "failed": 158,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "packet65-only",
+        "exitCode": 1,
+        "total": 320,
+        "passed": 160,
+        "failed": 160,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "last-source-guard",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 286,
+        "failed": 4,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "resident-continuation",
+        "exitCode": 1,
+        "total": 13,
+        "passed": 11,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "teleport-decay",
+        "exitCode": 1,
+        "total": 303,
+        "passed": 294,
+        "failed": 9,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "resident-save-position",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 289,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      },
+      {
+        "control": "resident-preimage",
+        "exitCode": 1,
+        "total": 290,
+        "passed": 289,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5161,
+    "dllPaths": 404,
+    "testDllSha256": "f3fb439eb5adea6167b2b783c02539b2760118c7a1d0d76d6cbe2656b4cf1d8d",
+    "afterFull": {
+      "sourceInputs": 5161,
+      "dllPaths": 404,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5161,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 1.3184677999815904,
+      "logSha256": "fd10dac4246c8c026e4b48a5fae4caf1e027c8894eb86f5d4987cd668c237941"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 1.5958774000173435,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.8011215000296943,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 1.6809971000184305,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 7.8806623999844305,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "02e3ec6094410196065297a08b03e7a7bafb5957500475d024fb74ad63a5556c",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.9450209999922663,
+        "logSha256": "d0e45168446f745bc285baa5296fd51c802a1a5a6b12f86fcd69f460e9302534"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 1.4854449999984354,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.5887059000087902,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 1.406576200039126,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 4.371552500000689,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 10.76850129995728,
+      "logSha256": "043c355594346a3a91293700f5e06bc4ea014cdeb03db85aa36220ce45bd9ea6"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.11514180002268404,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 4.78392580000218,
+      "logSha256": "fa4d80a58ee0b8541e535b0ae2be66e0fe365d9684494a8af5d292280f17939a"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 1.1683463000226766,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\town-statues-20261116",
+  "testRunnerMaxThreads": 8,
+  "acceptedCohort": "03",
+  "rejectedIntermediateEvidence": [
+    "Cohort02 was stopped before broad acceptance to add source-backed resident save-image adoption before65 and changed-resident preimage guards; cohort03 reruns every gate with two causal controls for these boundaries. No cohort02 result qualifies this checkpoint.",
+    "Cohort01 was stopped after source review found that style14 history must decay by0.005/update rather than reset like13. Cohort03 reruns every gate on the corrected source and final test assembly. Eight original visual preimages plus ordinary and strict town continuation tests cover the correction. No cohort01 result qualifies this checkpoint.",
+    "Initial packet65/source-guard causal mutant setups failed nullable/unused-local compilation; their setups were corrected without credit for build refusals. Cohort03 uses the compilable mutant and requires assertion failures on the unchanged final test assembly.",
+    "Initial independent baseline comparison used ordinary source23 without the runtime join-reset pending bit; explicit original serializer preimages now capture this existing runtime policy, without claiming original join-session parity.",
+    "Join baseline assertions initially omitted the existing54 buff list and60 home metadata; NPC23 goldens are now compared separately while these existing companion packet IDs are admitted. No production behavior was changed to hide these fixture failures."
+  ]
+}

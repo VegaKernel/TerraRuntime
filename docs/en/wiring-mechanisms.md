@@ -89,7 +89,7 @@ The following remain outside the supported chain:
 - Client tool removal and mass wiring. Ordinary paid installation by four wrenches and selected actuators is described in [paid wiring installation](wiring-tool-installation-1458.md).
 - Plate style `7`, whose pulse must be followed by the actual destruction/drop transaction; weighted plates and projectile/boulder plate producers.
 - Pumps and teleporters, pending full integration with liquid and movement owners.
-- Other NPC-spawning and town-teleport statues; contexts outside the bounded trap, logic, item-statue and NPC-statue continuations below.
+- Other NPC-spawning statues and contexts outside the bounded trap, logic, item-statue and NPC-statue continuations below.
 - General `SquareTileFrame` propagation and object-removal side effects beyond the admitted owners. Circuit actuation now uses the existing transaction for its nine-cell frame pass, supported switch removal/drop and torch support. Unsupported neighbors reject before adoption; complete attachment framing parity is not claimed.
 - Trapdoor opening into cuttable content: the existing service rejects this until a complete cut/drop/metadata transaction is connected. Occupied tall gates and closing trapdoors retain their source actor checks.
 - Whole vanilla wiring compatibility, arbitrary unsupported devices/styles, official GUI playthrough and unavailable platform validation.
@@ -200,3 +200,17 @@ Each unmodified original edition was captured twice across $3\,168$ controlled s
 Other NPC styles, blocked-spawn smoke devices, town teleports, tile-conversion statues, wet/actuated footprints and a real GUI-client playthrough remain open. This continuation does not close issue `125` or claim complete NPC AI, loot or wiring parity.
 
 [Managed NPC-statue receipt, 2026-11-16](../verification/wiring-npc-statues-managed-20261116.json). Local NativeAOT remains user-deferred.
+
+## King and Queen statue teleports
+
+Tile `105` styles `40` and `41` now use the existing world circuit and NPC owner. An intact dry non-actuated $2\times3$ footprint registers $300\,\text{updates}$ of cooldown before looking for an NPC. Empty pools consume the cooldown without drawing RNG. The source scans active physical slots in ascending order, retaining at most $50$ identities from the fixed King or Queen list; housing, distance, gender metadata and town-pet classification do not replace these lists. A nonempty pool always consumes one shared `Next(count)`, even for a single candidate.
+
+The selected NPC keeps its generation, velocity, AI, life, buffs, housing, money and statue provenance. Its top-left moves to the statue bottom-center minus integer half-width, height and one pixel; teleport history becomes time `1`, style `14`. Source `Main.TeleportEffect` has no style `14` branch and draws no particle RNG here. The immediate source publication is packet `65`, without an extra packet `23` or consumption of a pending birth. Existing outer NPC synchronization still owns a later pending appearance. Retained join baselines receive the new position through the existing recipient-occupation guards. Existing admitted NPC/resident continuations age style `14` history by $0.005\,\text{per update}$, clamped at zero, without particle draws; style `13` retains its distinct immediate reset; this adds no new town AI families.
+
+The unchanged original Linux-edition dedicated server repeats exactly across $268$ controlled scenarios without observed exceptions: both fixed lists and excluded identities, empty/single/large pools, the first-$50$ cutoff, all six contacts/four colors, cooldown boundaries, pending births, preserved physical fields, full RNG and packet bytes. Additional original serializer calls with controlled `spawnNeedsSyncing=true` verify the runtime's existing join-reset representation; these are not an original joining-session trace. Authenticated switch input tests cover packet `65` to both peers and cooldown rejection. Source/RNG/terrain changes during staging refuse adoption without committing speculative entropy. Eight additional original visual-history preimages cover $2\,440$ explicit updates and exact zero RNG consumption, including fractional and zero-crossing boundaries. Managed qualification passes: focused $13\,279$, fast $233\,548$, unfiltered full $1\,778\,863$ cases, eleven effective causal controls and ordinary/fresh CoreCLR smokes.
+
+Before packet `65`, an owned persisted resident also updates its existing save image; a checkpoint command immediately after the switch therefore sees the new coordinates while name, housing and variation remain unchanged. A changed resident preimage refuses the teleport and speculative RNG adoption. This reuses the existing NPC persistence format.
+
+This block does not admit wet, actuated or damaged statues, new NPC AI, a real GUI-client playthrough or the remaining NPC-producing/tile-converting statues. Issue `125` remains open.
+
+[Managed acceptance](../verification/wiring-town-statues-managed-20261116.json).

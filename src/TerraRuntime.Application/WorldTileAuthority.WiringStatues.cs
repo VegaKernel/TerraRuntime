@@ -19,7 +19,7 @@ internal sealed partial class WorldTileAuthority
     private bool TryFireStatue(int x, int y, int style)
     {
         if (tiles is null || wiring is null || statueItems is null || statueTick is null ||
-            !VanillaItemStatue1458.TryResolve(style, out var item, out int offset) && !npcAuthority.CanCreateWiringStatue(style)) return false;
+            !VanillaItemStatue1458.TryResolve(style, out var item, out int offset) && style is not (40 or 41) && !npcAuthority.CanCreateWiringStatue(style)) return false;
         bool itemStatue = !item.IsNone;
         if (itemStatue ? !statueItems.CanCreateWiringStatue(item) : !npcAuthority.OwnsWiringRandom(worldItemSpawnRandom)) return false;
         var footprint = new WorldTile[6];
@@ -42,7 +42,11 @@ internal sealed partial class WorldTileAuthority
                 if (!tiles.Get(x + dx, y + dy).Equals(footprint[dx * 3 + dy])) return false;
             return true;
         }
-        if (!Current() || !wiring.Register(x, y, itemStatue ? VanillaItemStatue1458.Cooldown : TerraRuntime.Gameplay.Npcs.VanillaNpcStatue1458.Cooldown)) return false;
+        int cooldown = style is 40 or 41 ? TerraRuntime.Gameplay.Npcs.VanillaTownStatue1458.Cooldown :
+            itemStatue ? VanillaItemStatue1458.Cooldown : TerraRuntime.Gameplay.Npcs.VanillaNpcStatue1458.Cooldown;
+        if (!Current() || !wiring.Register(x, y, cooldown)) return false;
+        if (style is 40 or 41)
+            return npcAuthority.TryTeleportWiringResident(style, x * 16 + 16, (y + 3) * 16, Current);
         // Source CheckMech commits before population checks: a crowded statue
         // consumes its cooldown, including when the subsequent entity birth refuses.
         return itemStatue

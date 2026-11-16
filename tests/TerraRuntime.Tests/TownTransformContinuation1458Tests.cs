@@ -51,9 +51,13 @@ public sealed class TownTransformContinuation1458Tests
     }
 
     [Theory]
-    [InlineData(441)]
-    [InlineData(683)]
-    public void Grounded_local_home_initialization_preserves_identity_and_room_preferences(int type)
+    [InlineData(441, 0)]
+    [InlineData(441, 14)]
+    [InlineData(683, 0)]
+    [InlineData(683, 14)]
+    [InlineData(18, 14)]
+    [InlineData(22, 14)]
+    public void Grounded_local_home_initialization_preserves_identity_and_room_preferences(int type, int teleportStyle)
     {
         var tiles = new WorldTileStore(new WorldDimensions(128, 160));
         for (int x = 1; x < 127; x++)
@@ -70,7 +74,7 @@ public sealed class TownTransformContinuation1458Tests
             0f, 0f, before.Target, new(0f, 60f, 0f, 0f), before.Simulation with {
                 Homeless = true, HomeTileX = -1, HomeTileY = -1, BreathCounter = 0,
                 WetCount = 0, LavaWet = false, HoneyWet = false, ShimmerWet = false,
-                ShimmerTransparency = 0f, TeleportTime = 0f, TeleportStyle = 0 });
+                ShimmerTransparency = 0f, TeleportTime = teleportStyle == 14 ? 1f : 0f, TeleportStyle = teleportStyle });
         Assert.True(npcs.TryUpdate(before.Handle, in input, out _));
         var source = new SystemVanillaNpcRandom(1458);
         var schedule = new RuntimeTownNpcSchedule1458(town, npcs, tiles, new NpcRuntimeTownScheduleRandom1458(source));
@@ -82,15 +86,24 @@ public sealed class TownTransformContinuation1458Tests
         var summary = schedule.Tick(in conditions, [], status, combat);
         Assert.Equal(0, summary.RejectedCommits);
         Assert.True(npcs.TryGet(before.Handle, out var accepted));
-        Assert.Equal(64, accepted.Simulation.HomeTileX);
-        Assert.Equal(100, accepted.Simulation.HomeTileY);
+        Assert.Equal(teleportStyle == 14 ? .995f : 0f, accepted.Simulation.TeleportTime);
+        Assert.Equal(type is 441 or 683 ? 64 : -1, accepted.Simulation.HomeTileX);
+        Assert.Equal(type is 441 or 683 ? 100 : -1, accepted.Simulation.HomeTileY);
         Assert.True(town.TryGet(0, out var saved));
         Assert.Equal("Oracle", saved.GivenName);
         Assert.Equal(2, saved.TownNpcVariationIndex);
         Assert.True(saved.Homeless);
-        Assert.Equal(64, saved.HomeTileX);
-        Assert.Equal(100, saved.HomeTileY);
+        Assert.Equal(type is 441 or 683 ? 64 : -1, saved.HomeTileX);
+        Assert.Equal(type is 441 or 683 ? 100 : -1, saved.HomeTileY);
         Assert.True(town.TryGetRoom(new(type), out var retainedRoom));
         Assert.Equal(room, retainedRoom);
+        if (teleportStyle == 14)
+        {
+            status.BeginWorldTick();
+            var following = schedule.Tick(in conditions, [], status, combat);
+            Assert.Equal(0, following.RejectedCommits);
+            Assert.True(npcs.TryGet(before.Handle, out var next));
+            Assert.Equal(.99f, next.Simulation.TeleportTime);
+        }
     }
 }

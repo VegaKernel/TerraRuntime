@@ -186,6 +186,16 @@ internal sealed partial class RuntimeNpcReplicationRegistry
         private bool published;
         private bool headAttempted;
         private Func<bool>? tailCurrent;
+        private bool teleportOnly;
+
+        // NPC.Teleport sends65 without forcing23 or consuming spawnNeedsSyncing.
+        // Reuse recipient occupation guards and retained join/despawn baselines.
+        internal bool UseTeleportFrame(byte[] frame)
+        {
+            if (sealedRecipients || adopted || published || frame.Length < 3 || frame[2] != 65) return false;
+            head = frame; tails = []; prefixes = null; teleportOnly = true;
+            return true;
+        }
 
         internal bool TrySealRecipients()
         {
@@ -254,8 +264,8 @@ internal sealed partial class RuntimeNpcReplicationRegistry
             if (!adopted || headAttempted) return false;
             headAttempted = true;
             foreach (var prefix in prefixes ?? []) PublishFrame(prefix, checkTail: true);
-            if (IsCurrent()) owner.ResetSourcePacket23Streams(in checkpoint, spawnNeedsSyncing, retiredSource is not null);
-            PublishFrame(head, checkTail: false, resetRecipientStream: true);
+            if (!teleportOnly && IsCurrent()) owner.ResetSourcePacket23Streams(in checkpoint, spawnNeedsSyncing, retiredSource is not null);
+            PublishFrame(head, checkTail: false, resetRecipientStream: !teleportOnly);
             return true;
         }
 

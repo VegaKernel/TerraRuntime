@@ -104,6 +104,22 @@ internal static class WiringNativeSmoke1458
             if (!statueNpcs.TryGetActive(slot, out var born) || !born.Simulation.SpawnedFromStatue ||
                 born.Simulation.MoneyValue != 0f || born.Simulation.SpawnSlotCost != 0f || !statueNpcs.HasPendingBirth(born.Handle)) return false;
 
+        foreach (int style in new[] { 40, 41 })
+        {
+            int type = style == 40 ? 22 : 18;
+            var input = new NpcStateUpdate(type, (short)type, 200, 200, 0, 0, 255, default, NpcSimulationState.Initial);
+            if (!statueNpcs.TrySpawn((byte)(style - 28), in input, out var resident)) return false;
+            int top = style == 40 ? 20 : 25;
+            for (int x = 60; x <= 65; x++) tiles.Set(x, top, new WorldTile { Flags = WorldTileFlags.WireBlue });
+            tiles.Set(60, top, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+            for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++)
+                tiles.Set(65 + dx, top + dy, new WorldTile { Type = 105, FrameX = (short)(style * 36 + dx * 18),
+                    FrameY = (short)(dy * 18), Flags = WorldTileFlags.Active | WorldTileFlags.WireBlue });
+            state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(60, (short)top)));
+            if (!statueNpcs.TryGet(resident.Handle, out var moved) || moved.Simulation.TeleportStyle != 14 ||
+                moved.Simulation.TeleportTime != 1f || moved.PositionY == resident.PositionY || moved.Simulation.SpawnedFromStatue) return false;
+        }
+
         byte[] importance = new byte[(VanillaWorldFormat326.TileTypeCount + 7) / 8];
         importance[144 >> 3] |= 1 << (144 & 7);
         var timerOnly = new WorldTileStore(new WorldDimensions(1, 1));

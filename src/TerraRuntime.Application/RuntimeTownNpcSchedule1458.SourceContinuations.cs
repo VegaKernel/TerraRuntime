@@ -19,7 +19,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         npc.Simulation.Breath is >= 0 and <= 200 && npc.Simulation.LavaWet is false &&
         npc.Simulation.HoneyWet.HasValue && npc.Simulation.ShimmerWet is false &&
         npc.Simulation.ShimmerTransparency == 0f &&
-        (npc.Simulation.TeleportTime is 0f || npc.Simulation.TeleportTime == 1f && npc.Simulation.TeleportStyle == 13);
+        (npc.Simulation.TeleportTime is 0f || npc.Simulation.TeleportTime == 1f && npc.Simulation.TeleportStyle == 13 ||
+            npc.Simulation.TeleportTime is > 0f and <= 1f && npc.Simulation.TeleportStyle == 14);
 
     private bool HasTransactionalResidentTerrain(in NpcSnapshot npc)
     {
