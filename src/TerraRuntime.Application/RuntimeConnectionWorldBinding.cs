@@ -113,7 +113,7 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         if (Interlocked.CompareExchange(ref registered, 1, 0) != 0)
             return true;
 
-        if (!Runtime.RuntimeConnections.TryRegister(source, outbound))
+        if (!Runtime.RuntimeConnections.TryRegister(source, outbound, Bootstrap.PrepareServerTeleportSections, Bootstrap.CommitServerTeleport))
             return FailRegistration();
         if (!Runtime.NpcReplication.TryRegister(source, outbound))
         {

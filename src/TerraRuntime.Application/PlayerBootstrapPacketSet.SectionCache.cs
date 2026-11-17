@@ -63,6 +63,17 @@ public sealed partial class PlayerBootstrapPacketSet
         return true;
     }
 
+    // Writer-side teleport preparation must never enter the receive path's rebuild wait or
+    // synchronous compression fallback. Missing current frames retry through normal ack13 streaming.
+    internal bool TryGetCurrentCachedSectionFrame(WorldSectionId section, out ReadOnlyMemory<byte> frame)
+    {
+        frame = default;
+        if (_world is not { } world) return false;
+        long revision = world.Tiles.GetSectionVersion(section);
+        return (revision & 1L) == 0 && TryGetCachedSectionFrame(section, revision, out frame) &&
+            world.Tiles.GetSectionVersion(section) == revision;
+    }
+
     internal bool TryGetCachedSectionFrame(
         WorldSectionId section,
         long revision,

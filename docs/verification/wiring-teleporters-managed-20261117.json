@@ -1,0 +1,380 @@
+{
+  "accepted": true,
+  "date": "2026-11-17",
+  "baseCommit": "46428a02d3c4296c5d42400cc582351f598b49e9",
+  "scope": "Managed canonical dry wiring teleporters, Terraria1.4.5.8 / protocol326",
+  "behavior": [
+    "Tile235 first/last-contact endpoint pairs per color, half-brick contact height and same-pad comparison without SkipWire. All four traversals/pump transfers precede teleports, then pixel boxes and logic waves.",
+    "Asymmetric overlap rejection, inclusive integer body intersection, player-before-NPC physical slot order and once-per-pair protection. Repeated colors/pulses can move actors again; velocity and NPC AI/state remain intact.",
+    "Existing player/NPC authorities and packet65 own commits. NPC source life/boss/noTileCollide/immune filters, retained pending births and resident save positions precede publication. No extra forced23.",
+    "Dedicated Main.TeleportEffect entry/exit caller draws and style0 visual-clock draws remain on canonical shared RNG, without server particle allocation/rendering. Known-catalog fresh NPC constructor teleport clock0 is independent of AI admission; unknown extension identities retain nullable state and explicit history persists.",
+    "Destination section3x3 warmup reuses bounded asynchronous cache/outbound budgets and atomic completion marks. Failed/unavailable frames remain unseen and retry on ack13. Immutable receive landing and writer movement gate prevent old coordinates undoing a warp.",
+    "Independent unchanged Linux-edition940four-pulse scenes repeat exactly/noexceptions; normal remote and server-owned players share literal65/RNG comparisons. Twenty visual histories yield4100exact ticks, and696original constructors prove fresh clock defaults. Shipping smoke exercises both actors and repeats with pending birth retained."
+  ],
+  "limits": [
+    "Issue125 remains partial. Represented NPC bodies bounded128px per axis. Intact dry unactuated3x1 pads and ordinary dry unmounted players with known absence of grapples only. Unknown/grapple/mount/liquid contexts fail represented admission; residual shimmer/full Player.Teleport cleanup and full fall/environment gameplay are not qualified.",
+    "Section preparation is an asynchronous bounded projection, not original synchronous9/10 batch or spectator-loading guarantee. No complete Main.Update, actual GUI session, Linux host execution or new NPC AI acceptance claim.",
+    "Local NativeAOT/C++ remains explicitly user-deferred; ordinary managed and fresh self-contained CoreCLR smokes qualify separately. No new dependencies, projects, edges or live writers.",
+    "Source conversion tool produced method-span inventory only: analysisOnly=true,accepted=false,incomplete source closure. No original game bodies/assets/text or capture-only dependencies ship.",
+    "Issue126 connection stop logs remain unavailable; no renewed request, timeout or rate relaxation."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "logSha256": "4ab7ae89e9caf49d7d49f8ce241798521e2fa187906a23a16feb0d889adaabba"
+  },
+  "focused": {
+    "total": 27301,
+    "passed": 27301,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1154.1678015999496,
+    "tests": {
+      "total": "247615",
+      "passed": "247615",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1151.143",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1925.9382203000132,
+    "tests": {
+      "total": "1792930",
+      "passed": "1792930",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1906.498",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6108,
+  "independentEvidence": {
+    "edition": "Official Linux 1.4.5.8 binary invoked on Windows CoreCLR",
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "scope": "Isolated Wiring.TripWire/HitSwitch and teleport visual methods; not whole Main.Update or a GUI session",
+    "captures": [
+      {
+        "family": "pulses",
+        "first": "original/observations01.json",
+        "repeat": "original/observations02.json",
+        "rawSha256": "d0f01ccc9adbb03f22266453b4efa9e27242dc21d1ca958407016edd5e189f20",
+        "fixture": "WiringTeleporterLinux1458.json.gz",
+        "gzipSha256": "cf093d0761f5dbbbbad396e9271df0d671b3aac095756a75ebe695f33328e695",
+        "rows": 940,
+        "constructorRows": 0,
+        "exceptions": 0
+      },
+      {
+        "family": "visuals-constructors",
+        "first": "original-visual/observations03.json",
+        "repeat": "original-visual/observations04.json",
+        "rawSha256": "97aa68b51b2df2cb5ed033f906d0ee19c4e67970b6f9c7bd30e44d0711fc9faa",
+        "fixture": "WiringTeleportVisualLinux1458.json.gz",
+        "gzipSha256": "d6b31d4f6c0819d743ae58f3e8a32196f6e8631b42491f21bbbec818e0c64c40",
+        "rows": 20,
+        "constructorRows": 696,
+        "exceptions": 0
+      }
+    ]
+  },
+  "sourceAnalysis": {
+    "analysisOnly": true,
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "observationSha256": "c96e41e063c57440e321f7022336f6a79dff8ee75ff261fb25f65920c3ba2785"
+  },
+  "causalControls": {
+    "sourceInputs": 5194,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6",
+    "controls": [
+      {
+        "control": "disable-teleport",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 1214,
+        "failed": 968,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "second-endpoint",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 1882,
+        "failed": 300,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "half-height",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2082,
+        "failed": 100,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "asymmetric-overlap",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2082,
+        "failed": 100,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "effect-draws",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 1222,
+        "failed": 960,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "repeat-npc-multiplier",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 1566,
+        "failed": 616,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "npc-velocity",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 1566,
+        "failed": 616,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "queued-old13",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2181,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "pending-birth",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2177,
+        "failed": 5,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "section-mark",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2181,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "npc-visual-draw",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2174,
+        "failed": 8,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "player-visual-draw",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2174,
+        "failed": 8,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "border-clamp",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2179,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "cache-only-warmup",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2181,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "landing-lifecycle",
+        "exitCode": 1,
+        "total": 2182,
+        "passed": 2179,
+        "failed": 3,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      },
+      {
+        "control": "unknown-npc-clock",
+        "exitCode": 1,
+        "total": 2193,
+        "passed": 2187,
+        "failed": 6,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5194,
+    "dllPaths": 404,
+    "testDllSha256": "d2faa038c87b78e37669e9b54952050f37861910d862f0ca21f828e0029760a6",
+    "afterFull": {
+      "sourceInputs": 5194,
+      "dllPaths": 404,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5194,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "auxiliary": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 12.255679700057954,
+      "logSha256": "264a444719d18124cf21f132eda9d60b8a3587c52f666a83657c6c7627ad87a8"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.1163937000092119,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 5.13617479999084,
+      "logSha256": "68682ab83f5b04d7d200e011024d2c86927be262586813bba3f42b38aa80a49a"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 1.7397014999296516,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "ordinaryManagedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 1.7081867000088096,
+      "logSha256": "60ea1545059f8b87ae8774f65841d93bc0696c2ad3705b15612d73fd3d04060e"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 1.5221850000089034,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.15057810000143945,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 1.8554791000206023,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 7.532057299977168,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClrSmokes": {
+    "executableSha256": "bb286bbe2cd358880863e9fb43b0e298210d2c3ad82732d285f8e0ff158ea569",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.5062053999863565,
+        "logSha256": "7d5dc671b2b21c87dd45540239a370a1730b1030dd4c840158efe7672886db7f"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 1.1123069999739528,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.14576169999781996,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 1.47844920004718,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 5.6909019000595436,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "rejectedExploration": "Prequalification fixture fixes retained input velocity presence bits, imported synthetic official player midstates without relaxing vanilla bounds, registered observer endpoints and explicitly retained smoke pending births. A copied old control launch after a failed preflight was stopped and remains unaccepted. Qualification01 was rejected/stopped for a border-clamped landing acknowledgement gap. Qualification02 was rejected/stopped because writer warmup entered the existing receive resolver, which can wait or compress synchronously; final warmup is cache-only and its old-resolver control fails. Qualification03 was rejected/stopped for a pending landing surviving spawn, transfer or session adoption; all three transitions now clear it and the no-clear control fails. Qualification04 was rejected/stopped after mandatory fast detected unknown extension NPC76 acquiring zero defaults; the existing lifecycle baseline test is unchanged, known-catalog/phase/transform identities own defaults and unknown state remains nullable. Only qualification05/build24, its frozen source and final test DLL accept: focused, mandatory fast, unfiltered full, sixteen effective controls with restored isolated inputs, ordinary/fresh CoreCLR smokes and source/DLL/index guards all pass. No stale acceptance source or assembly is reused.",
+  "publication": "Reviewed authorized fast-forward main/push and dedicated Documentation CI are verified separately against resulting commit; external publication.json and git/CI history hold their IDs."
+}

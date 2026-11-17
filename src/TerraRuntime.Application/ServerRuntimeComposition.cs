@@ -329,6 +329,7 @@ internal sealed class ServerRuntimeComposition
             skyblockWorld: townCommerceWorldFacts?.SkyblockWorld,
             lowTileStateChanged: () => { worldClock?.RequestWorldInfoSync(); worldStateAdopted?.Invoke(); });
         worldTileAuthority.BindWiringStatues(worldItemAuthority, () => updates.Current);
+        worldTileAuthority.BindWiringTeleporters(serverPlayers, projectileStore);
         npcAuthority.PressurePlateContact = worldTileAuthority.ApplyNpcPressurePlate;
         if (worldTiles is not null) npcAuthority.BindDeathWorldTiles(worldTileAuthority);
         if (serverPlayers is not null) serverPlayers.PressurePlateContact = worldTileAuthority.ApplyPlayerPressurePlate;

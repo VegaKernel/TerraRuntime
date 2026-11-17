@@ -25,10 +25,13 @@ internal static partial class RuntimeNpcStateOwnershipPolicy
              VanillaMartianChildAi1458.IsSupported(new(update.Type), new(update.NetId)) ||
              update.Type == VanillaNpcIds.Maggot.Value || update.Type == VanillaNpcIds.Scutlix.Value ||
              update.Type is 379 or 380 or 383 or 386 or 389 or 631 or 632);
+        bool ownsTeleportClock = ownsPhase || ownsFreshTransform || TryGetDefinition(update.Type, update.NetId, out _);
         NpcSimulationState simulation = update.Simulation with {
             StairFall = update.Simulation.StairFall ?? false,
-            TeleportTime = update.Simulation.TeleportTime ?? (ownsFreshTransform ? 0f : null),
-            TeleportStyle = update.Simulation.TeleportStyle ?? (ownsFreshTransform ? 0 : null),
+            // Known vanilla constructors initialize this independently of AI admission.
+            // Unknown extension identities keep their existing nullable state contract.
+            TeleportTime = update.Simulation.TeleportTime ?? (ownsTeleportClock ? 0f : null),
+            TeleportStyle = update.Simulation.TeleportStyle ?? (ownsTeleportClock ? 0 : null),
             BreathCounter = update.Simulation.BreathCounter ?? (ownsFreshTransform ? 0 : null),
             WetCount = update.Simulation.WetCount ?? (ownsPhase || ownsFreshTransform ? 0 : null),
             LavaWet = update.Simulation.LavaWet ?? (ownsPhase || ownsFreshTransform ? false : null),

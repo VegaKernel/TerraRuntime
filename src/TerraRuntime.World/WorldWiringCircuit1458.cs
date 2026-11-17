@@ -30,7 +30,8 @@ public sealed partial class WorldWiringCircuit1458
         WorldWiringDeviceExecutor1458 devices,
         Action<int, int, byte, byte>? publishTileSquare = null,
         Func<int, int>? nextLogicSample = null, Action<int, int>? publishLogicSmoke = null,
-        WorldWiringPumpTransfer1458? transferPumps = null)
+        WorldWiringPumpTransfer1458? transferPumps = null,
+        Action<WorldWiringTeleporter1458, WorldWiringTeleporter1458, bool>? teleport = null)
     {
         _tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         _devices = devices ?? throw new ArgumentNullException(nameof(devices));
@@ -38,6 +39,7 @@ public sealed partial class WorldWiringCircuit1458
         _nextLogicSample = nextLogicSample;
         _logicSmoke = publishLogicSmoke;
         this.transferPumps = transferPumps;
+        this.teleport = teleport;
     }
 
     public int RegisteredMechanismCount => _mechanisms.Count;
@@ -117,8 +119,10 @@ public sealed partial class WorldWiringCircuit1458
 
     private void RunWirePulse(int left, int top, int width, int height)
     {
+        Span<WorldWiringTeleporterPair1458> pairs = stackalloc WorldWiringTeleporterPair1458[4];
         for (int color = 1; color <= 4; color++)
         {
+            firstTeleporter = secondTeleporter = null;
             intakePumps.Clear(); outletPumps.Clear();
             WorldWireChannel channel = (WorldWireChannel)color;
             for (int x = left; x < left + width; x++)
@@ -134,10 +138,13 @@ public sealed partial class WorldWiringCircuit1458
             if (intakePumps.Count != 0 && outletPumps.Count != 0)
                 transferPumps?.Invoke(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(intakePumps),
                     System.Runtime.InteropServices.CollectionsMarshal.AsSpan(outletPumps));
+            pairs[color - 1] = new(firstTeleporter, secondTeleporter);
             _skip.Clear();
             _remainingEntrances.Clear();
             _routerEntrances.Clear();
         }
+        foreach (var pair in pairs)
+            if (pair.First is { } first && pair.Second is { } second) teleport?.Invoke(first, second, blockPlayerTeleportation);
         // Wiring.PixelBoxPass runs once, after all four colors, and requires both axes.
         foreach ((int index, byte axes) in _pixelTriggers)
         {
@@ -161,6 +168,8 @@ public sealed partial class WorldWiringCircuit1458
         _routerEntrances.Clear();
         _pixelTriggers.Clear();
         ClearLogicQueues();
+        firstTeleporter = secondTeleporter = null;
+        blockPlayerTeleportation = false;
         _running = false;
     }
 
@@ -238,7 +247,7 @@ public sealed partial class WorldWiringCircuit1458
             int index = Index(visit.X, visit.Y);
             if (!_skip.Contains(index))
                 _devices.Hit(visit.X, visit.Y, channel, SkipWire, HitSwitchFromWire, HitLogicLamp,
-                    transferPumps is null ? null : RegisterPump);
+                    transferPumps is null ? null : RegisterPump, teleport is null ? null : RegisterTeleporter);
             WorldTile current = _tiles.Get(visit.X, visit.Y);
             for (byte direction = 0; direction < 4; direction++)
             {

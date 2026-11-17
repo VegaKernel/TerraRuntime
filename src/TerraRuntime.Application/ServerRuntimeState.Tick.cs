@@ -15,6 +15,7 @@ internal sealed partial class ServerRuntimeState
     {
         _runtime.WorldClock?.UpdateWindyDayState();
         _runtime.Npcs.AdvanceWorldTick();
+        _runtime.WorldTileAuthority.TickWiringTeleportPresentation();
         _runtime.Players.AdvanceCombatTick(Updates);
         _runtime.WorldTileAuthority.AdvanceTo(Updates);
         _runtime.WorldTileAuthority.TickLiquids();

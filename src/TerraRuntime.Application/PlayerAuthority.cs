@@ -908,6 +908,9 @@ internal sealed partial class PlayerAuthority
         player.NpcLifeCurrent = false;
         ApplyNpcHealthSpawn(player, request.SpawnContext);
         damageImmunity.ResetPvp(request.ClaimedSlot);
+        var teleportHistory = CaptureWiringTeleport(player.Connection.Player);
+        if (teleportHistory.Owner.IsAssigned)
+            wiringTeleports[player.Slot.Value] = teleportHistory with { AwaitingLanding = false };
         events?.PlayerRespawned(respawn.Connection, in request);
     }
 
@@ -930,6 +933,7 @@ internal sealed partial class PlayerAuthority
         player.PositionY = positionY;
         player.VelocityX = 0f;
         player.VelocityY = 0f;
+        wiringTeleports[player.Slot.Value] = new(player.Connection.Player, 1f, style, (int)(positionY / 16f), 4, AwaitingLanding: true);
         events?.PlayerTeleported(teleport.Connection, positionX, positionY, style, failed: false);
     }
 
@@ -1046,6 +1050,18 @@ internal sealed partial class PlayerAuthority
             }
         }
 
+        // Samples already queued before the writer committed a warp must not undo it.
+        // Use the same bounded landing acknowledgement as the receive-side transfer gate.
+        var teleportHistory = CaptureWiringTeleport(player.Connection.Player);
+        if (teleportHistory.AwaitingLanding)
+        {
+            float dx = request.PositionX - player.PositionX, dy = request.PositionY - player.PositionY;
+            bool nearLanding = worldTiles is { } world
+                ? VanillaPlayerWorldBounds1458.IsNearLanding(world.Dimensions, player.PositionX, player.PositionY, request.PositionX, request.PositionY)
+                : float.IsFinite(dx) && float.IsFinite(dy) && dx * dx + dy * dy <= 128f * 128f;
+            if (!nearLanding) { RejectedMovements++; return; }
+        }
+
         var placementSelection = CapturePlacementSelection(player, in request);
         var orderedMagicMovement=CaptureOrderedMagicMovement(player,in request);
         var orderedAmmoMovement=CaptureOrderedAmmoMovement(player);
@@ -1055,6 +1071,9 @@ internal sealed partial class PlayerAuthority
             RejectedMovements++;
             return;
         }
+
+        if (teleportHistory.AwaitingLanding)
+            wiringTeleports[player.Slot.Value] = teleportHistory with { AwaitingLanding = false };
 
         if (player.ItemPhase is { MagicPayment: { } payment } paymentPhase &&
             ((request.ControlFlags & 32) == 0 || player.SelectedItem != request.SelectedItem))

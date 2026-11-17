@@ -1,5 +1,7 @@
 # Synchronization, bootstrap and interest management
 
+The teleporter continuation uses the existing player event chain to prepare bounded destination sections, then commits motion and emits packet `65`. Connection registration retains optional section-preparation and immutable landing callbacks. Preparation may enqueue available cache frames but never blocks the world writer on compression or I/O. Section completion marks are atomic because ordinary receive-side streaming and writer-side warmup can complete the same section. A failed enqueue remains unseen and retries. The receive owner alone updates its mutable correction fields; the writer publishes an immutable landing. Both receive and authoritative movement gates reject pre-teleport coordinates until a nearby landing acknowledgement. These internal hooks do not add client teleport authority; the complete source synchronous section batch and spectator path remain outside this bounded continuation. See [teleporter scope](wiring-mechanisms.md).
+
 [Русский](../ru/synchronization.md) · [Documentation](README.md) · [Architecture](architecture.md) · [Performance roadmap](../roadmap/performance-tick-stability.md)
 
 ## 1. Scope
@@ -212,3 +214,7 @@ For a registry bound to a world, the pending liquid set retains coordinates and 
 NPC statue continuation: styles `16`, `23`, `28`, `50`, `51`–`82` reuse the existing world/NPC RNG, pending-birth publisher and inactive-NPC catch transaction. Generic selection is committed before cooldown; obstruction smoke consumes preview RNG and adopts before packet `106`. A statue catch produces no item and does not require admission of unrelated complete AI. See [wiring mechanisms](wiring-mechanisms.md) for the source scope.
 
 Animated wiring devices publish source-ordered `20`/`77` events through the existing tile registry. Packet `77` reaches all playing endpoints; tile squares retain section filtering. Mushroom conversion sends `77` before `20`, subsequent toggles send `20` before `77`, and volcanoes retain the two source `77` sends. Material mutation finishes before any publication; client-only intermediate frames add no server cache or join replay.
+
+Writer-side section preparation reads only current, already-published cache frames. It never calls the receive resolver that may wait for a rebuild or perform its synchronous startup fallback. Cache misses and stale revisions remain unseen until the ordinary network acknowledgement path resolves them.
+
+Session adoption, an explicit world-transfer landing and an ordinary spawn/respawn discard any older pending teleport landing before establishing the new position. A later lifecycle transition therefore cannot be overwritten by a teleport acknowledgement from the previous state.

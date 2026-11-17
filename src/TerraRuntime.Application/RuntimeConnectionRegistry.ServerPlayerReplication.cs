@@ -121,6 +121,14 @@ internal sealed partial class RuntimeConnectionRegistry
             Interlocked.Add(ref _relayedEquipmentFrames, BroadcastToPlaying(encoded));
     }
 
+    public void ServerPlayerTeleported(in PlayerStateSnapshot player)
+    {
+        // Retain the discontinuous motion baseline without emitting an extra13 before65.
+        _serverPlayers.TryUpdateMovement(in player, out _);
+        BroadcastToPlaying(TerrariaPlayerReplicationFrameEncoder.EncodeTeleport(player.Player.Slot,
+            player.PositionX, player.PositionY, 0, false));
+    }
+
     public void ServerPlayerMoved(in PlayerStateSnapshot player)
     {
         if (_serverPlayers.TryUpdateMovement(in player, out byte[] encoded))

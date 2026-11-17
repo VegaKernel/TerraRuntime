@@ -1249,4 +1249,6 @@
   <EmbeddedResource Include="Fixtures/GenerationDungeonPressureFrame1458.json.gz" LogicalName="GenerationDungeonPressureFrame1458" />
 </ItemGroup>
 
+  <ItemGroup><EmbeddedResource Include="Fixtures/WiringTeleporterLinux1458.json.gz" LogicalName="WiringTeleporterLinux1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/WiringTeleportVisualLinux1458.json.gz" LogicalName="WiringTeleportVisualLinux1458" /></ItemGroup>
 </Project>

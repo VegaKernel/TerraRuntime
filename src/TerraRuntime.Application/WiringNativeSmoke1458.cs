@@ -150,7 +150,7 @@ internal static class WiringNativeSmoke1458
         timerOnly.Set(0, 0, new WorldTile { Type = 144, FrameX = 54, FrameY = 18,
             Flags = WorldTileFlags.Active | WorldTileFlagMasks.Wires | WorldTileFlags.Actuator | WorldTileFlags.Inactive });
         using var payload = new MemoryStream();
-        return RunAnimatedDevices() && RunNpcRoster() && WorldFileTileEncoder.TryEncode(timerOnly, VanillaWorldFormat326.TileTypeCount, importance,
+        return RunTeleporters() && RunAnimatedDevices() && RunNpcRoster() && WorldFileTileEncoder.TryEncode(timerOnly, VanillaWorldFormat326.TileTypeCount, importance,
             payload, out _) == WorldFileTileEncodeResult.Encoded &&
             payload.ToArray().AsSpan().SequenceEqual(Convert.FromBase64String("Aw8mkDYAEgA="));
     }
@@ -225,6 +225,41 @@ internal static class WiringNativeSmoke1458
             if (!npcs.TryGetActive(slot, out var born) || !born.Simulation.SpawnedFromStatue ||
                 !born.Simulation.CanBeReplacedByOtherNpcs || born.Simulation.MoneyValue != 0f ||
                 born.Simulation.SpawnSlotCost != 0f || !npcs.HasPendingBirth(born.Handle)) return false;
+        return true;
+    }
+
+    internal static bool RunTeleporters()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(80, 80));
+        var random = new VanillaUnifiedRandom1458(1458);
+        var npcs = new TerraRuntime.Core.Npcs.RuntimeNpcStore();
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            naturalSpawnRandom: new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(random),
+            worldItemSpawnRandom: new TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom(random));
+        var slots = new PlayerSlotPool(1);
+        if (!slots.TryAcquireConnection(out var lease) || lease is null) return false;
+        using var session = new PlayerJoinSession(lease);
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var owner = new ConnectionHandle(GameCommandSourceId.FromConnection(1458235), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session, new(owner.Player.Slot, 20, 40, 0, 0, 0, 0, 0)));
+        state.Apply(new PlayerMovementRuntimeCommand(owner, new(owner.Player.Slot, 0, 4, 0, 0, 0,
+            318f, 598f, true, 2.25f, -1.5f, false, 0, false, 0, 0, 0, 0, false, 0, 0)));
+        var birth = new TerraRuntime.Core.Npcs.NpcStateUpdate(3, 3, 324f, 598f, 2.25f, -1.5f, 255,
+            default, NpcSimulationState.Initial);
+        if (!npcs.TrySpawn(0, in birth, out var before) || !npcs.TryRetainPendingBirth(in before)) return false;
+        for (int x = 10; x <= 57; x++) tiles.Set(x, 40, new WorldTile { Flags = WorldTileFlags.WireRed });
+        tiles.Set(10, 40, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        foreach (int left in new[] { 20, 55 }) for (int dx = 0; dx < 3; dx++)
+            tiles.Set(left + dx, 40, new WorldTile { Type = 235, FrameX = (short)(dx * 18), Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        for (int pulse = 0; pulse < 2; pulse++)
+        {
+            state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(10, 40)));
+            if (!state.TryCapturePlayerSnapshot(owner.Player, out var player) ||
+                player.PositionX != (pulse == 0 ? 878f : 318f) || player.PositionY != 598f || player.VelocityX != 2.25f || player.VelocityY != -1.5f ||
+                !npcs.TryGet(before.Handle, out var npc) || npc.PositionX != (pulse == 0 ? 884f : 324f) || npc.PositionY != 598f ||
+                npc.VelocityX != 2.25f || npc.VelocityY != -1.5f || npc.Simulation.TeleportTime != 1f || npc.Simulation.TeleportStyle != 0 ||
+                !npcs.HasPendingBirth(before.Handle)) return false;
+        }
         return true;
     }
 

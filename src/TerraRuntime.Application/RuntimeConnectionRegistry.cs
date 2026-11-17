@@ -142,13 +142,13 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
         _movementVisibilityReadiness.IsReady(observer, subject);
 
 
-    public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
+    public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound, Action<float, float>? teleportSections = null, Action<float, float>? teleportCommitted = null)
     {
         ArgumentNullException.ThrowIfNull(outbound);
         if (source.IsSystem)
             return false;
 
-        return _endpoints.TryAdd(source, new RuntimeConnectionEndpoint(outbound));
+        return _endpoints.TryAdd(source, new RuntimeConnectionEndpoint(outbound) { TeleportSections = teleportSections, TeleportCommitted = teleportCommitted });
     }
 
     public bool TryUnregister(GameCommandSourceId source, out PlayerHandle? playingPlayer)

@@ -1,0 +1,29 @@
+{
+  "edition": "Official Linux 1.4.5.8 binary invoked on Windows CoreCLR",
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "scope": "Isolated Wiring.TripWire/HitSwitch and teleport visual methods; not whole Main.Update or a GUI session",
+  "captures": [
+    {
+      "family": "pulses",
+      "first": "original/observations01.json",
+      "repeat": "original/observations02.json",
+      "rawSha256": "d0f01ccc9adbb03f22266453b4efa9e27242dc21d1ca958407016edd5e189f20",
+      "fixture": "WiringTeleporterLinux1458.json.gz",
+      "gzipSha256": "cf093d0761f5dbbbbad396e9271df0d671b3aac095756a75ebe695f33328e695",
+      "rows": 940,
+      "constructorRows": 0,
+      "exceptions": 0
+    },
+    {
+      "family": "visuals-constructors",
+      "first": "original-visual/observations03.json",
+      "repeat": "original-visual/observations04.json",
+      "rawSha256": "97aa68b51b2df2cb5ed033f906d0ee19c4e67970b6f9c7bd30e44d0711fc9faa",
+      "fixture": "WiringTeleportVisualLinux1458.json.gz",
+      "gzipSha256": "d6b31d4f6c0819d743ae58f3e8a32196f6e8631b42491f21bbbec818e0c64c40",
+      "rows": 20,
+      "constructorRows": 696,
+      "exceptions": 0
+    }
+  ]
+}

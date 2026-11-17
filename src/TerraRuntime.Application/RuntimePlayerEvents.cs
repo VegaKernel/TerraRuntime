@@ -44,6 +44,8 @@ internal interface IRuntimePlayerEventSink
     {
     }
 
+    void PreparePlayerTeleport(ConnectionHandle connection, float x, float y) { }
+
     void PlayerTeleported(ConnectionHandle connection, float positionX, float positionY, byte style, bool failed)
     {
     }

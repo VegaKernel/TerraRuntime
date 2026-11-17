@@ -25,6 +25,8 @@ internal interface IRuntimeServerPlayerEventSink
 
     void ServerPlayerMoved(in PlayerStateSnapshot player);
 
+    void ServerPlayerTeleported(in PlayerStateSnapshot player) => ServerPlayerMoved(in player);
+
     void ServerPlayerItemUsePresented(PlayerHandle player, float rotation, short animationTicks);
 
     void ServerPlayerRecallPresented(in PlayerStateSnapshot player, short floorX, short floorY);

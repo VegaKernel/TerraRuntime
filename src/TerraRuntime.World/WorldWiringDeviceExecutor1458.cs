@@ -34,7 +34,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
     private const ushort SecondFakeChest = 468, DisplayDoll = 470, HatRack = 475, GolfHole = 476;
     private const ushort LogicLamp = 419, Statue = 105;
     private const ushort MushroomStatue = 349, SmallVolcano = 593, LargeVolcano = 594;
-    private const ushort InletPump = 142, OutletPump = 143;
+    private const ushort InletPump = 142, OutletPump = 143, Teleporter = 235, UnsafeTempleWall = 87;
     private const ushort PlasmaLamp = 564, Pylon = 597, ShadowCandle = 646;
     private const int FramePitch = 18, DoubleFrameWidth = 36, TripleFrameWidth = 54;
     private const int StatueStylesPerRow = 55, StatueStyleRows = 3;
@@ -87,7 +87,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
     /// </summary>
     public bool Hit(int x, int y, WorldWireChannel channel, Action<int, int> skipWire,
         Action<int, int>? hitSwitch = null, Func<int, int, bool>? hitLogicLamp = null,
-        Action<int, int, bool>? registerPump = null)
+        Action<int, int, bool>? registerPump = null, Action<int, int, bool>? registerTeleporter = null)
     {
         ArgumentNullException.ThrowIfNull(skipWire);
         if (!Contains(x, y) || channel is < WorldWireChannel.Red or > WorldWireChannel.Yellow) return false;
@@ -116,6 +116,24 @@ public sealed partial class WorldWiringDeviceExecutor1458
             }
             for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 2; dy++) skipWire(left + dx, top + dy);
             registerPump(left, top, tile.Type == InletPump);
+            return true;
+        }
+
+        if (tile.Type == Teleporter)
+        {
+            if (registerTeleporter is null || tile.FrameY != 0 || tile.FrameX < 0 || tile.FrameX % FramePitch != 0 || tile.FrameX > 2 * FramePitch) return changed;
+            int left = x - tile.FrameX / FramePitch;
+            if ((uint)left > short.MaxValue || (uint)y > short.MaxValue || !Contains(left, y) || !Contains(left + 2, y) ||
+                tile.Wall == UnsafeTempleWall && y > worldSurface && plantBossDowned?.Invoke() != true) return changed;
+            for (int dx = 0; dx < 3; dx++)
+            {
+                var part = tiles.Get(left + dx, y);
+                if (!part.IsActive || part.Type != Teleporter || part.FrameX != dx * FramePitch || part.FrameY != 0 ||
+                    part.HasActuator || part.IsActuated || part.LiquidAmount != 0) return changed;
+            }
+            // Source does not SkipWire here: each reached cell may replace the second endpoint,
+            // including the half-brick comparison against the unadjusted row.
+            registerTeleporter(left, y, tile.IsHalfBrick);
             return true;
         }
 

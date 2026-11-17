@@ -17,17 +17,17 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
         (HorizontalRadiusSections * 2 + 1) * (VerticalRadiusSections * 2 + 1);
 
     private readonly WorldDimensions dimensions;
-    private readonly bool[] sent;
+    private readonly int[] sent;
     private int sentCount;
 
     public PlayerSectionStreamingState(WorldDimensions dimensions)
     {
         ArgumentNullException.ThrowIfNull(dimensions);
         this.dimensions = dimensions;
-        sent = new bool[dimensions.SectionCount];
+        sent = new int[dimensions.SectionCount];
     }
 
-    internal int SentSectionCount => sentCount;
+    internal int SentSectionCount => Volatile.Read(ref sentCount);
 
     public void ObserveBootstrap(
         ReadOnlySpan<WorldSectionId> baseSections,
@@ -87,7 +87,7 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
             {
                 var section = new WorldSectionId(x, y);
                 int index = TerrariaSectionGeometry.ToLinearIndex(dimensions, section);
-                if (!sent[index])
+                if (Volatile.Read(ref sent[index]) == 0)
                     destination[count++] = section;
             }
         }
@@ -109,18 +109,15 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
 
         int index = ((tileY / TerrariaSectionGeometry.HeightTiles) * dimensions.SectionColumns) +
             (tileX / TerrariaSectionGeometry.WidthTiles);
-        return Volatile.Read(ref sent[index]);
+        return Volatile.Read(ref sent[index]) != 0;
     }
 
     public void MarkSent(WorldSectionId section)
     {
         TerrariaSectionGeometry.ValidateSection(dimensions, section);
         int index = TerrariaSectionGeometry.ToLinearIndex(dimensions, section);
-        if (sent[index])
-            return;
-
-        sentCount++;
-        Volatile.Write(ref sent[index], true);
+        // Network movement and writer-owned teleport warmup may complete the same section concurrently.
+        if (Interlocked.Exchange(ref sent[index], 1) == 0) Interlocked.Increment(ref sentCount);
     }
 
     private void MarkSent(ReadOnlySpan<WorldSectionId> sections)

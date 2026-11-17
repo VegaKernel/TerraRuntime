@@ -77,6 +77,9 @@ internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
         _operationsObserver?.PlayerRespawned(connection, in request);
     }
 
+    public void PreparePlayerTeleport(ConnectionHandle connection, float x, float y) =>
+        _connections.PreparePlayerTeleport(connection, x, y);
+
     public void PlayerTeleported(ConnectionHandle connection, float positionX, float positionY, byte style, bool failed)
     {
         _connections.PlayerTeleported(connection, positionX, positionY, style, failed);

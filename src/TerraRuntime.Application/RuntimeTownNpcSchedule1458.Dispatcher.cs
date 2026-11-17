@@ -64,9 +64,13 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             }
             bool selfStinky = buffPlan.Stinky;
             using var randomScope = combat.BeginRandomScope(random);
+            if (before.Simulation.TeleportStyle == 0 && before.Simulation.TeleportTime is > 0f && randomScope is null) { rejected++; continue; }
+            var teleportedTime = before.Simulation.TeleportStyle == 0 && before.Simulation.TeleportTime is > 0f
+                ? VanillaWiringTeleport1458.AdvanceNpcVisual(new SystemVanillaNpcRandom(randomScope!.Random), before.Simulation.TeleportTime.Value, 0)
+                : before.Simulation.TeleportTime;
             RuntimeNpcStinkyVisualOffer1458 visualOffer = combat.PlanBuffVisualOffers(in buffPlan);
             var statusInput = before with { Simulation = before.Simulation with {
-                Life = buffPlan.LifeAfter, LifeRegenCounter = buffPlan.CounterAfter } };
+                Life = buffPlan.LifeAfter, LifeRegenCounter = buffPlan.CounterAfter, TeleportTime = teleportedTime } };
             if (statusInput.Simulation.TeleportStyle == 14 && statusInput.Simulation.TeleportTime is > 0f)
                 statusInput = statusInput with { Simulation = statusInput.Simulation with {
                     TeleportTime = VanillaTownStatue1458.AdvanceTeleportTime(statusInput.Simulation.TeleportTime.Value) } };

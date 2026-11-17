@@ -84,7 +84,7 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
     private static bool SupportsTeleportHistory(in NpcSnapshot source) =>
         source.Simulation.TeleportTime is null or 0f ||
         source.Simulation.TeleportTime == 1f && source.Simulation.TeleportStyle == 13 ||
-        source.Simulation.TeleportTime is > 0f and <= 1f && source.Simulation.TeleportStyle == 14;
+        source.Simulation.TeleportTime is > 0f and <= 1f && source.Simulation.TeleportStyle is 0 or 14;
 
     private sealed partial class Capture(WorldTileStore tiles, RuntimeNpcStore npcs, RuntimeProjectileStore projectiles, RuntimeNpcBuffStatus1458 status,
         VanillaNpcWorldMotionAiStepper motion, Func<NpcPhaseWorldFacts1458> factsOwner,
@@ -140,12 +140,15 @@ internal sealed partial class VanillaNpcPhaseEnvironment1458(WorldTileStore tile
         {
             staged = source with { Simulation = source.Simulation with { LifeRegenCounter = phase.CounterAfter } };
             if (!IsCurrent) return false;
+            if (staged.Simulation.TeleportStyle == 0 && staged.Simulation.TeleportTime is > 0f)
+                staged = staged with { Simulation = staged.Simulation with {
+                    TeleportTime = VanillaWiringTeleport1458.AdvanceNpcVisual(random, staged.Simulation.TeleportTime.Value, 0) } };
             visual = RuntimeNpcBuffStatus1458.PlanVisualOffers(in phase,
                 new NpcRuntimeTownCombatRandom1458(random), facts.Good);
             if (staged.Simulation.TeleportStyle == 14 && staged.Simulation.TeleportTime is > 0f)
                 staged = staged with { Simulation = staged.Simulation with {
                     TeleportTime = VanillaTownStatue1458.AdvanceTeleportTime(staged.Simulation.TeleportTime.Value) } };
-            else if (staged.Simulation.TeleportTime == 1f)
+            else if (staged.Simulation.TeleportTime == 1f && staged.Simulation.TeleportStyle != 0)
                 staged = staged with { Simulation = staged.Simulation with { TeleportTime = 0f } };
             if (facts.BloodMoon == true && source.Type is 55 or 230 or 592 or 593)
             {

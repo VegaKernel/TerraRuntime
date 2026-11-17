@@ -35,7 +35,7 @@ public enum PlayerBootstrapStopReason : byte
 /// authoritative gameplay handoff:
 /// Hello -> packet 3 -> player sync -> packet 6/7 -> packet 8/7/9/10/.../49 -> packet 12/129 -> packet 13.
 /// </summary>
-public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
+public sealed partial class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 {
     /// <summary>
     /// The server's reply to the client's latency probe: the same empty packet 154 sent straight back, exactly
@@ -256,6 +256,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (session.State != PlayerJoinState.Playing)
             throw new ArgumentException("Transferred connection session must already be in Playing state.", nameof(session));
 
+        ForgetServerTeleportLanding();
         _session = session;
         _assignedPlayerHandle = session.Handle;
         _playerName = playerName;
@@ -266,6 +267,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     internal void BeginWorldTransferLanding(in PlayerSpawnCommitRequest spawn)
     {
+        ForgetServerTeleportLanding();
         VanillaPlayerSpawnPosition1458.FromFloorTile(
             spawn.SpawnX,
             spawn.SpawnY,
@@ -594,6 +596,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private TerrariaFrameSinkResult HandlePlayerMovement(in TerrariaFrame frame)
     {
+        ObserveServerTeleportLanding();
         PlayerJoinSession session = _session!;
         if (!_spawnSubmitted && session.State != PlayerJoinState.Playing)
             return TerrariaFrameSinkResult.Continue;
@@ -673,6 +676,11 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private bool IsNearTransferLanding(in PlayerMovementCommitRequest movement)
     {
+        if (_packets.StreamingDimensions is WorldDimensions dimensions)
+        {
+            var world = new WorldTileDimensions(dimensions.WidthTiles, dimensions.HeightTiles);
+            return VanillaPlayerWorldBounds1458.IsNearLanding(in world, _correctionPositionX, _correctionPositionY, movement.PositionX, movement.PositionY);
+        }
         const float tolerancePixels = 128f;
         float dx = movement.PositionX - _correctionPositionX;
         float dy = movement.PositionY - _correctionPositionY;
@@ -697,6 +705,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private void RememberSpawnPosition(in PlayerSpawnCommitRequest spawn)
     {
+        ForgetServerTeleportLanding();
         VanillaPlayerSpawnPosition1458.FromFloorTile(
             spawn.SpawnX,
             spawn.SpawnY,

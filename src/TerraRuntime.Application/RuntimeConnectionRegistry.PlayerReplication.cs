@@ -170,6 +170,12 @@ internal sealed partial class RuntimeConnectionRegistry
         Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlayingExcept(connection.Source, encoded));
     }
 
+    public void PreparePlayerTeleport(ConnectionHandle connection, float x, float y)
+    {
+        if (_endpoints.TryGetValue(connection.Source, out var endpoint) && endpoint.TryGetPlayingPlayer(out var player) && player == connection.Player)
+            endpoint.TeleportSections?.Invoke(x, y);
+    }
+
     public void PlayerTeleported(ConnectionHandle connection, float positionX, float positionY, byte style, bool failed)
     {
         if (!float.IsFinite(positionX) || !float.IsFinite(positionY) ||
@@ -179,6 +185,7 @@ internal sealed partial class RuntimeConnectionRegistry
 
         // Packet 65 establishes the discontinuous teleport position. Do not let an older retained packet 13
         // become a future AOI resync baseline and pull an observer back toward the pre-teleport position.
+        if (!failed) endpoint.TeleportCommitted?.Invoke(positionX, positionY);
         endpoint.ClearLatestMovementFrame(player);
         endpoint.UpdatePosition(positionX, positionY);
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];

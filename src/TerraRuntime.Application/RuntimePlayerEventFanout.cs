@@ -87,6 +87,12 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerRespawned(connection, in request);
     }
 
+    public void PreparePlayerTeleport(ConnectionHandle connection, float x, float y)
+    {
+        first.PreparePlayerTeleport(connection, x, y);
+        second.PreparePlayerTeleport(connection, x, y);
+    }
+
     public void PlayerTeleported(ConnectionHandle connection, float positionX, float positionY, byte style, bool failed)
     {
         first.PlayerTeleported(connection, positionX, positionY, style, failed);

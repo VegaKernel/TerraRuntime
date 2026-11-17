@@ -29,6 +29,8 @@ internal sealed class RuntimeConnectionEndpoint
     }
 
     public TerrariaConnectionOutboundQueue Outbound { get; }
+    internal Action<float, float>? TeleportSections { get; init; }
+    internal Action<float, float>? TeleportCommitted { get; init; }
 
     public void MarkPlaying(PlayerHandle player)
     {
