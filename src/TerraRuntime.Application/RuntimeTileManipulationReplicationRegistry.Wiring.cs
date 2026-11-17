@@ -9,6 +9,9 @@ internal sealed partial class RuntimeTileManipulationReplicationRegistry
     internal bool TryPublishPoofOfSmoke(int x, int y) =>
         TerrariaPoofOfSmokeCodec1458.TryEncode(x, y, out var frame) && TryPublishFrameToAll(frame);
 
+    internal bool TryPublishTemporaryAnimation(short animation, ushort tile, int x, int y) =>
+        TerrariaTemporaryAnimationCodec1458.TryEncode(animation, tile, x, y, out var frame) && TryPublishFrameToAll(frame);
+
     public bool TryPublishHitSwitch(GameCommandSourceId excludedSource, in TerrariaHitSwitchState1458 state) =>
         TryPublishFrame(excludedSource, TerrariaHitSwitchCodec1458.Encode(in state));
 }

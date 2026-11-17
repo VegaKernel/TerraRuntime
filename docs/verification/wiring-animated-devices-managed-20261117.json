@@ -1,0 +1,310 @@
+{
+  "accepted": true,
+  "date": "2026-11-17",
+  "scope": "Managed animated wiring devices, Terraria1.4.5.8 / protocol326",
+  "baseCommit": "b543b77248ac5e390a6a01a7cef685087b9dccd0",
+  "behavior": [
+    "Statue105/style34 converts canonical2x3 material to349/frame216. Existing349 toggles0/216; volcano593(1x1) and594(2x2) toggle source frame states through the existing World device executor.",
+    "Complete dry/nonactuated canonical footprint validation, captured cell/section preimage and post-Skip ABA guard precede callback-free material writes. Paint/wall/coatings/shape/wires persist; every publication sees the complete committed footprint.",
+    "Source event order: conversion77/20;349toggle20/77;volcano20/77/77, retaining the explicit duplicate source animation. Existing replication owner retains section filtering for20 and all-playing delivery for77. No client77 authority is introduced.",
+    "Multiplicity typed CreateTemporaryAnimation owns serialization. Unrepresentable signed16-bit origins refuse before mutation. No package/project edge or new live writer.",
+    "No server presentation scheduler/cache: original Animation.UpdateAll only advances TileDrawing frames for these devices. Material identity/frames persist through actual .wld checkpoint and .runtime-world cache; resume/join does not replay transient animation.",
+    "Unchanged official Linux-edition1260 scenarios repeat exactly/noexceptions under Windows CoreCLR, comparing cells/full RNG/original20+77 bytes across contacts/colors/states/metadata/shape/switches/timers/logic. Authenticated cases verify owner/peer/hidden-playing/nonplaying delivery, forged77 refusal, and shipping smoke exercises all4families."
+  ],
+  "limits": [
+    "Issue125 remains partial: teleporters, remaining trigger/framing contexts and complete wiring/client acceptance remain open. Existing canonical dry/unactuated footprint admission is conservative runtime policy; damaged/wet/actuated/actuator-bearing objects and other frames are not newly accepted. Existing actuator processing still precedes device dispatch.",
+    "Logic devices are separated from animated objects by an air/wire gap; no expansion of the existing bounded logic-framing admission. Source traces isolate Wiring/Animation updates and serializers, not whole Main.Update, a real TCP/GUI playthrough or execution on a Linux host.",
+    "Local NativeAOT/C++ remains explicitly user-deferred. Ordinary managed and fresh self-contained CoreCLR smokes qualify separately. No new dependency requiring NativeAOT admission.",
+    "Source conversion tool is semantic inventory only: analysisOnly=true,accepted=false,incomplete source closure. No copied original game bodies/assets/text or developer capture dependencies ship.",
+    "Issue126 still awaits unavailable connection stop logs; no repeated log request and no timeout/rate relaxation."
+  ],
+  "managedBuild": {
+    "warningsAsErrors": true,
+    "warnings": 0,
+    "errors": 0,
+    "log": "E:\\TerraRuntimeAgentCache\\animated-wiring-20261117\\qualification01\\build-final.log",
+    "sha256": "ba9302c7ae89d21d2db696d1186201b92882c261b0c6b58327d8e272cbbc433c"
+  },
+  "focused": {
+    "total": 25064,
+    "passed": 25064,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fast": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1066.972262199968,
+    "tests": {
+      "total": "245433",
+      "passed": "245433",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1063.799",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "full": {
+    "executed": true,
+    "exit_code": 0,
+    "wall_seconds": 1817.9246167000383,
+    "tests": {
+      "total": "1790748",
+      "passed": "1790748",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1799.434",
+      "skipped_tests": []
+    },
+    "accepted": true
+  },
+  "discoveredMethods": 6093,
+  "independentEvidence": {
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "rawSha256": "395be3bd871847227b11255be56bb8ea64c8d4a51fee90353705409cca9f0b25",
+    "gzipSha256": "bb9671dd2ff5bb75775053732519fbe3e1587298866d8a6f221795e83de1ac81",
+    "rows": 1260,
+    "repeatedExactly": true,
+    "exceptions": 0,
+    "captureHost": "Unmodified official Linux edition under Windows CoreCLR 11",
+    "scope": "Wiring switches/timers/logic, material cells, complete RNG and original packets20/77. Animation.UpdateAll advances between timed points; no Main.Update or GUI parity.",
+    "acceptedCaptures": [
+      "observations03.json",
+      "observations04.json"
+    ],
+    "logicFraming": "Logic gate is separated from animated object by an air/wire gap, retaining existing bounded logic framing admission."
+  },
+  "sourceAnalysis": {
+    "analysisOnly": true,
+    "accepted": false,
+    "sourceClosureComplete": false,
+    "observationSha256": "59570a1fd82912f42c1c572ac116ea577fef679c2a709f27ba56a699ce88e014"
+  },
+  "causalControls": {
+    "sourceInputs": 5181,
+    "sourceDifferences": [],
+    "executionInputFiles": 182,
+    "executionDifferences": [],
+    "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904",
+    "controls": [
+      {
+        "control": "conversion-type",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 2105,
+        "failed": 537,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "conversion-frame",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 2105,
+        "failed": 537,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "conversion-order",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 2105,
+        "failed": 537,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "volcano-duplicate",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 1728,
+        "failed": 914,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "mushroom-direction",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 1034,
+        "failed": 1608,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "animation-tile-id",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 1730,
+        "failed": 912,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "wet-admission",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 2631,
+        "failed": 11,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "aba-guard",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 2634,
+        "failed": 8,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "metadata-retention",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 1382,
+        "failed": 1260,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      },
+      {
+        "control": "coordinate-guard",
+        "exitCode": 1,
+        "total": 2642,
+        "passed": 2638,
+        "failed": 4,
+        "errors": 0,
+        "skipped": 0,
+        "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904"
+      }
+    ]
+  },
+  "guards": {
+    "sourceInputs": 5181,
+    "dllPaths": 411,
+    "testDllSha256": "9f36c1c972e9c41d3be16995a24510024934801361e709d130645d93e50df904",
+    "afterFull": {
+      "sourceInputs": 5181,
+      "dllPaths": 411,
+      "sourceDifferences": [],
+      "dllDifferences": []
+    },
+    "stagedSourceIndex": {
+      "sourceInputs": 5181,
+      "indexDifferences": [],
+      "sourceDifferences": []
+    }
+  },
+  "managedSmokes": [
+    {
+      "name": "managed-loop",
+      "exitCode": 0,
+      "elapsedSeconds": 0.8860901000443846,
+      "logSha256": "c26fa5bf789c73b77b16d9bbfa5bb91a5545431a4a68cf237536fad209e51edc"
+    },
+    {
+      "name": "managed-protocol",
+      "exitCode": 0,
+      "elapsedSeconds": 0.7911732000065967,
+      "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+    },
+    {
+      "name": "managed-network",
+      "exitCode": 0,
+      "elapsedSeconds": 0.3772704000584781,
+      "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+    },
+    {
+      "name": "managed-world",
+      "exitCode": 0,
+      "elapsedSeconds": 1.575009600026533,
+      "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+    },
+    {
+      "name": "managed-tui",
+      "exitCode": 0,
+      "elapsedSeconds": 6.715990100055933,
+      "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+    }
+  ],
+  "freshCoreClr": {
+    "executableSha256": "32365d74425fb036d9bb2aa161f999fb3df1c07b90c5404f55a647cb4d1c3528",
+    "smokes": [
+      {
+        "name": "published-loop",
+        "exitCode": 0,
+        "elapsedSeconds": 1.2054583000717685,
+        "logSha256": "3bdd3b744bdac72d0519568e2f7e6f5f6ab6a47a4a2d4f36f4a8385ab0248a1f"
+      },
+      {
+        "name": "published-protocol",
+        "exitCode": 0,
+        "elapsedSeconds": 0.8033755000215024,
+        "logSha256": "50dbbc8a94bbc03602bbef390cb0437c92ccbaee5624f60fc282d07e809ec0c0"
+      },
+      {
+        "name": "published-network",
+        "exitCode": 0,
+        "elapsedSeconds": 0.10478399996645749,
+        "logSha256": "154fa37110c8089b9258e9356b133ee37f00676353f97248cab1d276d0540a1c"
+      },
+      {
+        "name": "published-world",
+        "exitCode": 0,
+        "elapsedSeconds": 0.9770040999865159,
+        "logSha256": "f7ac24ecf21287c326525279629d9269df002a352c49ac4ec7990d5395cb6745"
+      },
+      {
+        "name": "published-tui",
+        "exitCode": 0,
+        "elapsedSeconds": 4.854760900023393,
+        "logSha256": "d4ed2ea42a0d77918d3d3a943971a191304b4a4913130e07243ddc4550b5b061"
+      }
+    ]
+  },
+  "auxiliaryChecks": [
+    {
+      "name": "python-tests",
+      "exitCode": 0,
+      "elapsedSeconds": 9.553555799997412,
+      "logSha256": "2256f79bf39bc4d24afab5c37d3e94757c170440618f7c5a1ab920860e8131f4"
+    },
+    {
+      "name": "project-graph",
+      "exitCode": 0,
+      "elapsedSeconds": 0.11944849998690188,
+      "logSha256": "80795d578f5ad8519fded93f9c1d1307fb8bd88513cdfd2c9138158ab8074053"
+    },
+    {
+      "name": "domain-audit",
+      "exitCode": 0,
+      "elapsedSeconds": 5.219837800017558,
+      "logSha256": "81d2b2ed7a7eba194afe0bc4570c77c3990d458ebfd728e6dcd1df2d767f6208"
+    },
+    {
+      "name": "documentation",
+      "exitCode": 0,
+      "elapsedSeconds": 0.8494053999893367,
+      "logSha256": "f8d7d03f8682d68301ee3a5aef37553e38dfa3cfccbcf09f21e2be3029415fe9"
+    }
+  ],
+  "artifactRoot": "E:\\TerraRuntimeAgentCache\\animated-wiring-20261117\\qualification01",
+  "testRunnerMaxThreads": 8,
+  "rejectedIntermediateEvidence": [
+    "Exploratory focus01/02 exposed reference logic objects adjacent to an unadmitted framing neighborhood and missing logic-smoke capability in component test composition. The source scenes moved across an air/wire gap and repeated as03/04; component composition supplied the existing smoke owner. No production framing-admission relaxation. Only final frozen qualification01 source/DLL/index qualifies."
+  ]
+}

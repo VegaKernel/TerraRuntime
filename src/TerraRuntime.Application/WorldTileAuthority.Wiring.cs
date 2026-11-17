@@ -19,7 +19,8 @@ internal sealed partial class WorldTileAuthority
                 hardModeBaseline || progression.IsCompleted(VanillaWorldProgressionId.Hardmode), out var result) && result.CanKill,
             publishDoorToggle: transition => replication?.TryPublishDoorToggle(new TerrariaDoorToggleState(
                 (byte)transition.Action, (short)transition.X, (short)transition.Y, (sbyte)transition.Direction)),
-            applyActuatorTransaction: TryApplyWiringActuator, fireTrap: TryFireWiringTrap, fireStatue: TryFireStatue);
+            applyActuatorTransaction: TryApplyWiringActuator, fireTrap: TryFireWiringTrap, fireStatue: TryFireStatue,
+            publishTemporaryAnimation: (animation, tile, x, y) => replication?.TryPublishTemporaryAnimation(animation, tile, x, y));
         var source = worldItemSpawnRandom as TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom;
         wiring = new WorldWiringCircuit1458(tiles, devices, PublishWiringSquare,
             source is null ? null : maximum => source.SourceRandom.Next(maximum),

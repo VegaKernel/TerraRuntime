@@ -20,7 +20,7 @@ public readonly record struct WorldWiringDoorTransition1458(
 /// Source-pinned wire device mutations over the authoritative tile store. Circuit traversal owns the
 /// per-color skip set; this owner only supplies the object footprints for devices that vanilla skips.
 /// </summary>
-public sealed class WorldWiringDeviceExecutor1458
+public sealed partial class WorldWiringDeviceExecutor1458
 {
     // Terraria1458 Wiring/TileID identities and source frame units, not configurable runtime policy.
     private const ushort Torch = 4, ClosedDoor = 10, OpenDoor = 11, Chest = 21, Altar = 26;
@@ -33,6 +33,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private const ushort Fireplace = 405, MomentarySwitch = 411, FakeChest = 441, SecondChest = 467;
     private const ushort SecondFakeChest = 468, DisplayDoll = 470, HatRack = 475, GolfHole = 476;
     private const ushort LogicLamp = 419, Statue = 105;
+    private const ushort MushroomStatue = 349, SmallVolcano = 593, LargeVolcano = 594;
     private const ushort InletPump = 142, OutletPump = 143;
     private const ushort PlasmaLamp = 564, Pylon = 597, ShadowCandle = 646;
     private const int FramePitch = 18, DoubleFrameWidth = 36, TripleFrameWidth = 54;
@@ -51,6 +52,7 @@ public sealed class WorldWiringDeviceExecutor1458
     private readonly double worldSurface;
     private readonly Func<int, int, bool>? fireTrap;
     private readonly Func<int, int, int, bool>? fireStatue;
+    private readonly Action<short, ushort, int, int>? publishTemporaryAnimation;
 
     public WorldWiringDeviceExecutor1458(WorldTileStore tiles,
         VanillaWorldGroundFighterDoorOpeningService? doors = null,
@@ -61,7 +63,8 @@ public sealed class WorldWiringDeviceExecutor1458
         Func<int, int, bool>? canKillTile = null,
         Action<WorldWiringDoorTransition1458>? publishDoorToggle = null,
         Func<int, int, bool>? applyActuatorTransaction = null,
-        Func<int, int, bool>? fireTrap = null, Func<int, int, int, bool>? fireStatue = null)
+        Func<int, int, bool>? fireTrap = null, Func<int, int, int, bool>? fireStatue = null,
+        Action<short, ushort, int, int>? publishTemporaryAnimation = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         wiring = new VanillaWorldWiringMutationService(tiles);
@@ -75,6 +78,7 @@ public sealed class WorldWiringDeviceExecutor1458
         this.applyActuatorTransaction = applyActuatorTransaction;
         this.fireTrap = fireTrap;
         this.fireStatue = fireStatue;
+        this.publishTemporaryAnimation = publishTemporaryAnimation;
     }
 
     /// <summary>
@@ -122,6 +126,8 @@ public sealed class WorldWiringDeviceExecutor1458
 
         if (tile.Type == LogicLamp) return hitLogicLamp?.Invoke(x, y) == true || changed;
 
+        if (tile.Type is MushroomStatue or SmallVolcano or LargeVolcano)
+            return ToggleAnimatedDevice(x, y, in tile, skipWire) || changed;
         if (tile.Type == Statue) return FireStatue(x, y, in tile, skipWire) || changed;
         if (tile.Type == Trap) return fireTrap?.Invoke(x, y) == true || changed;
 
@@ -146,7 +152,7 @@ public sealed class WorldWiringDeviceExecutor1458
 
     private bool FireStatue(int x, int y, in WorldTile tile, Action<int, int> skipWire)
     {
-        if (fireStatue is null || tile.FrameX % FramePitch != 0 || tile.FrameY % FramePitch != 0) return false;
+        if (tile.FrameX % FramePitch != 0 || tile.FrameY % FramePitch != 0) return false;
         int left = x - tile.FrameX % DoubleFrameWidth / FramePitch;
         int top = y - tile.FrameY % TripleFrameWidth / FramePitch;
         int style = tile.FrameX / DoubleFrameWidth + tile.FrameY / TripleFrameWidth % StatueStyleRows * StatueStylesPerRow;
@@ -158,6 +164,10 @@ public sealed class WorldWiringDeviceExecutor1458
             if (!cell.IsActive || cell.Type != Statue || cell.HasActuator || cell.IsActuated || cell.LiquidAmount != 0 ||
                 cell.FrameX != style % StatueStylesPerRow * DoubleFrameWidth + dx * FramePitch || cell.FrameY != style / StatueStylesPerRow * TripleFrameWidth + dy * FramePitch) return false;
         }
+        if (style == 34)
+            return ChangeAnimatedFootprint(left, top, 2, 3, Statue, 34 * DoubleFrameWidth, MushroomStatue,
+                216, 0, true, false, skipWire);
+        if (fireStatue is null) return false;
         for (int dx = 0; dx < 2; dx++) for (int dy = 0; dy < 3; dy++) skipWire(left + dx, top + dy);
         return fireStatue(left, top, style);
     }

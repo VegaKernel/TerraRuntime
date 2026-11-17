@@ -150,9 +150,42 @@ internal static class WiringNativeSmoke1458
         timerOnly.Set(0, 0, new WorldTile { Type = 144, FrameX = 54, FrameY = 18,
             Flags = WorldTileFlags.Active | WorldTileFlagMasks.Wires | WorldTileFlags.Actuator | WorldTileFlags.Inactive });
         using var payload = new MemoryStream();
-        return RunNpcRoster() && WorldFileTileEncoder.TryEncode(timerOnly, VanillaWorldFormat326.TileTypeCount, importance,
+        return RunAnimatedDevices() && RunNpcRoster() && WorldFileTileEncoder.TryEncode(timerOnly, VanillaWorldFormat326.TileTypeCount, importance,
             payload, out _) == WorldFileTileEncodeResult.Encoded &&
             payload.ToArray().AsSpan().SequenceEqual(Convert.FromBase64String("Aw8mkDYAEgA="));
+    }
+
+    private static bool RunAnimatedDevices()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var state = new ServerRuntimeState(worldTiles: tiles);
+        var slots = new PlayerSlotPool(1);
+        if (!slots.TryAcquireConnection(out var lease) || lease is null) return false;
+        using var session = new PlayerJoinSession(lease);
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var owner = new ConnectionHandle(GameCommandSourceId.FromConnection(145877), session.Handle);
+        state.Apply(new PlayerHealthRuntimeCommand(owner, new(owner.Player.Slot, 100, 100)));
+        state.Apply(new PlayerManaRuntimeCommand(owner, new(owner.Player.Slot, 0, 20)));
+        state.Apply(new PlayerEquipmentRuntimeCommand(owner, new(owner.Player.Slot, 0, 0, 0, 0, 0)));
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session, new(owner.Player.Slot, 20, 20, 0, 0, 0, 0, 0)));
+        if (state.LastSpawnCommitResult != PlayerSpawnCommitResult.Committed) return false;
+        for (int x = 5; x <= 66; x++) tiles.Set(x, 40, new WorldTile { Flags = WorldTileFlags.WireRed });
+        tiles.Set(5, 40, new WorldTile { Type = 136, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        int index = 0;
+        foreach (ushort type in new ushort[] { 105, 349, 593, 594 })
+        {
+            int left = 20 + index++ * 15, width = type == 593 ? 1 : 2, height = type == 593 ? 1 : type == 594 ? 2 : 3;
+            for (int dx = 0; dx < width; dx++) for (int dy = 0; dy < height; dy++)
+                tiles.Set(left + dx, 40 + dy, new WorldTile { Type = type,
+                    FrameX = (short)((type == 105 ? 34 * 36 : 0) + dx * 18), FrameY = (short)(dy * 18),
+                    Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        }
+        state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(5, 40)));
+        if (tiles.Get(20, 40).Type != 349 || tiles.Get(20, 40).FrameX != 216 || tiles.Get(35, 40).FrameX != 216 ||
+            tiles.Get(50, 40).FrameX != 18 || tiles.Get(65, 40).FrameX != 36) return false;
+        state.Apply(new ClientHitSwitchRuntimeCommand1458(owner, new(5, 40)));
+        foreach (int x in new[] { 20, 35, 50, 65 }) if (tiles.Get(x, 40).FrameX != 0) return false;
+        return true;
     }
 
     private static bool RunNpcRoster()

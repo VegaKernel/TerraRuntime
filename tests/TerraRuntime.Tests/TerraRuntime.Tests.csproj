@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/WiringAnimatedDevice1458.json.gz" LogicalName="WiringAnimatedDevice1458" />
     <EmbeddedResource Include="Fixtures/WiringTrapFlameContactFlight1458.json.gz" LogicalName="WiringTrapFlameContactFlight1458" />
     <EmbeddedResource Include="Fixtures/WiringTrapLowerSlot1458.json.gz" LogicalName="WiringTrapLowerSlot1458" />
     <EmbeddedResource Include="Fixtures/WiringRemainingCircuit1458.json.gz" LogicalName="WiringRemainingCircuit1458" />

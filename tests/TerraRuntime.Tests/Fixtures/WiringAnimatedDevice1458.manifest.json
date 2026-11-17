@@ -1,0 +1,15 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawSha256": "395be3bd871847227b11255be56bb8ea64c8d4a51fee90353705409cca9f0b25",
+  "gzipSha256": "bb9671dd2ff5bb75775053732519fbe3e1587298866d8a6f221795e83de1ac81",
+  "rows": 1260,
+  "repeatedExactly": true,
+  "exceptions": 0,
+  "captureHost": "Unmodified official Linux edition under Windows CoreCLR 11",
+  "scope": "Wiring switches/timers/logic, material cells, complete RNG and original packets20/77. Animation.UpdateAll advances between timed points; no Main.Update or GUI parity.",
+  "acceptedCaptures": [
+    "observations03.json",
+    "observations04.json"
+  ],
+  "logicFraming": "Logic gate is separated from animated object by an air/wire gap, retaining existing bounded logic framing admission."
+}

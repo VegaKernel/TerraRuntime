@@ -5,7 +5,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class WorldWiringPersistence1458Tests
+public sealed partial class WorldWiringPersistence1458Tests
 {
     [Fact]
     public async Task Authorized_switch_effects_survive_real_checkpoint_and_reload_without_live_timer_clocks()
@@ -117,7 +117,7 @@ public sealed class WorldWiringPersistence1458Tests
     private static byte[] Importance()
     {
         var importance = new byte[(VanillaWorldFormat326.TileTypeCount + 7) / 8];
-        foreach (int type in new[] { 4, 136, 144 }) importance[type >> 3] |= (byte)(1 << (type & 7));
+        foreach (int type in new[] { 4, 105, 136, 144, 349, 593, 594 }) importance[type >> 3] |= (byte)(1 << (type & 7));
         return importance;
     }
 
