@@ -1,0 +1,11 @@
+{
+  "sourceParameter": "npc",
+  "targetParameter": "state",
+  "targetType": "PortedActor",
+  "targetClass": "PortedMotion",
+  "members": {
+    "npc.X": "state.Position",
+    "npc.Velocity": "state.Speed",
+    "npc.Acceleration": "state.DoSomething()"
+  }
+}
