@@ -105,6 +105,46 @@ public sealed partial class RuntimeWiring1458Tests
     }
 
     [Fact]
+    public void Mounted_player_crossing_a_mine_and_geyser_offers_both_in_source_scan_order()
+    {
+        var random = new VanillaUnifiedRandom1458(1458);
+        var replication = new RuntimeProjectileReplicationRegistry();
+        var shots = new RuntimeProjectileStore(1001, replication);
+        using var scene = CreateLandMineScene(random, shots, replication);
+        var solid = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        scene.Tiles.Set(30, 40, solid with { Type = 210 });
+        scene.Tiles.Set(30, 41, solid);
+        scene.Tiles.Set(31, 41, solid);
+        scene.Tiles.Set(30, 42, solid with { Type = 443, FrameX = 72 });
+        scene.Tiles.Set(31, 42, solid with { Type = 443, FrameX = 90 });
+        _ = GemBunnyWire1458Tests.Drain(scene.PeerOutbound);
+        random.CopyStateFrom(new VanillaUnifiedRandom1458(1458));
+
+        var before = default(PlayerStateSnapshot) with
+        {
+            Player = scene.Owner.Player, PositionX = 450, PositionY = 611,
+            HasMount = true, MountType = 10
+        };
+        Graph(scene).WorldTileAuthority.ApplyPlayerPressurePlate(before, before with { PositionX = 487 });
+
+        // Two exact Collision.SwitchTiles captures with the pinned original Linux server.
+        // Mine clears and births first. Both geyser contacts send 59 with one shared birth.
+        string[] original =
+        [
+            "0D00141E002800010100000000",
+            "20001BFF0004000000D443000012440000000000000000A40030FA0000002041",
+            "07003B1E002800",
+            "20001BFF0104000080F0430040284400000000000000418E0230140000000040",
+            "07003B1E002A00",
+            "07003B1F002A00"
+        ];
+        Assert.Equal(original, GemBunnyWire1458Tests.Drain(scene.PeerOutbound).Select(Convert.ToHexString));
+        Assert.False(scene.Tiles.Get(30, 40).IsActive);
+        Assert.Equal(2, shots.ActiveCount);
+        Assert.True(random.HasSameState(new VanillaUnifiedRandom1458(1458)));
+    }
+
+    [Fact]
     public void Land_mine_rejects_an_unqualified_detonation_without_clearing_or_spawning()
     {
         var random = new VanillaUnifiedRandom1458(1458);

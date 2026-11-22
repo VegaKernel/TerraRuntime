@@ -2,6 +2,19 @@
 
 [Русский](../ru/wiring-mechanisms.md) · [Architecture](architecture.md) · [Networking](networking-protocol.md)
 
+## Current managed scope
+
+| Mechanism | Runtime coverage |
+| --- | --- |
+| Pressure and sensors | Ordinary, directional, weighted and disposable plates, with source-specific actor rules. The seven logic-sensor styles use funded placement, canonical tile entities and source update order. Live release during destruction admits wireless origins and chains with ordinary torches. |
+| Traps | Dart variants, spiky balls, flame traps and spears through existing projectile owners. Geysers and mines use the contact scan, wire and authenticated switch paths in the represented geometry and combat contexts. Moon Lord boulders admit qualified dry single-step contacts. |
+| Wiring and actuation | Switches, timers, light and door devices, logic gates, statues, pumps and teleporters use the shared circuit. The server handles wire removal, mass wiring and Actuation Rod framing through the existing tile, inventory and item owners. |
+| Teleporters | Supported mounts, water, lava, honey, shimmer and owned hooks use the existing player transfer path. Ready destination sections precede the teleport packet. Cold or stale sections reuse background rebuild and landing acknowledgement. |
+
+The remaining scope includes multi-segment and wet projectile contacts, other boulder families, destructive effects in unsupported neighborhoods, active release into circuits that can change actors, and complete cold-section and spectator ordering. The verified branch scope and independent source receipts appear in the continuations below.
+
+## Initial checkpoint
+
 This block connects admitted Terraria `1.4.5.8` switch requests and ordinary pressure-plate contacts to the existing authoritative world, replication and persistence owners. It does not establish compatibility for the complete vanilla wiring system. Local acceptance is complete: Release has zero warnings/errors, focused `164/164`, fast `25335/25336` and unfiltered full `1566748/1566749` pass with zero failures/errors and the same one known liquid skip. All `5250` discovered methods executed; `3897` inputs and `60` DLLs remained exact. Windows NativeAOT passes five shipping smokes. See the [verification record](../verification/wiring-mechanisms-1458.json); Linux Native and official GUI remain unverified.
 
 ## Ownership and execution
