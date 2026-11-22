@@ -4,7 +4,10 @@ namespace TerraRuntime.Gameplay.Players;
 
 /// <summary>Fresh-use clock capability, not raw unused Item.useAnimation metadata.</summary>
 public readonly record struct PlayerRemotePassiveItemDefinition1458(
-    bool PermitsUse, int FreshAnimationTicks, bool AutoReuse);
+    bool PermitsUse, int FreshAnimationTicks, bool AutoReuse)
+{
+    public bool IdleOnly { get; init; }
+}
 
 /// <summary>Original dedicated whole-phase passive selected items and source-bounded placeable items, with no prefix effects.</summary>
 public static class VanillaRemotePassiveItemCatalog1458
@@ -12,7 +15,7 @@ public static class VanillaRemotePassiveItemCatalog1458
     public const int InertCount = 1418;
     public const int PlaceableCount = 3368;
     public const int ManualPlaceableCount = 71;
-    public const int Count = InertCount + PlaceableCount;
+    public const int Count = InertCount + PlaceableCount + 1;
 
     // TerrariaServer 1.4.5.8 SetDefaults plus independent whole UpdatePlayers for every ID.
     // Aliased requested IDs, other selected styles and held-light/tool/channel writers are excluded.
@@ -343,6 +346,14 @@ public static class VanillaRemotePassiveItemCatalog1458
         if (prefix.Value != 0 || item.Value is <= 0 or > 6195)
             return false;
         ushort id = unchecked((ushort)item.Value);
+        // Item.SetDefaults gives Rod of Discord style1 and animation20.
+        // ItemCheck_UseTeleportRod is local-owner-only. This entry represents
+        // its idle clocks and carries no authorization for an active use.
+        if (id == 1326)
+        {
+            definition = new(true, 20, false) { IdleOnly = true };
+            return true;
+        }
         if (InertItems.BinarySearch(id) >= 0)
         {
             // useStyle0 cannot start a fresh use; raw unused animations20/100 are not zeroed defaults.

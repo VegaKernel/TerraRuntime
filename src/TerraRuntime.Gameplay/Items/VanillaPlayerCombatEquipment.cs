@@ -30,6 +30,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     /// <summary>Player.ApplyEquipFunctional: represented lava protection, separate from fireWalk.</summary>
     public int LavaProtectionTicks { get; init; }
     public bool LavaRose { get; init; }
+    public bool DeadMansSweater { get; init; }
     public bool AnkhShield { get; init; }
     public VanillaPlayerBuffImmunity1458 BuffImmunity { get; init; }
     // Player.ApplyEquipFunctional 1.4.5.8: Ankh Shield includes Chilled, but not Frozen.
@@ -307,6 +308,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 1)
         {
+            // Player.GrantArmorBenefits 1.4.5.8, functional body slot only.
+            if (type.Value == 5007) { snapshot = snapshot with { DeadMansSweater = true }; return true; }
             if (VanillaGemStaff1458.TryGetRobe(type, out var robe))
             {
                 snapshot = snapshot with { Defense = snapshot.Defense + robe.Defense,

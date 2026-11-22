@@ -12,3 +12,10 @@ The bounded stationary `-=GOOD=-` equipment profile has only synthetic focused c
 
 All live tests used a copy under `.cache/good-live-20261120/`; the original player/world files were not modified by the diagnostic server. Temporary diagnostic code was removed from the working source after the observations. The test server was stopped.
 
+## Managed follow-up, 2026-11-22
+
+A grounded Journey player can keep the first represented phase with an unprefixed Rod of Discord selected and idle. The existing item-clock owner retains that phase across selection of the Solar Flare Pickaxe. The connected regression enters with the recorded functional, social, dye and misc equipment, switches to the pickaxe, sends the tile edit through the packet decoder and observes the target become inactive. The same test against a control with the old equipment-selection gate fails at the initial equipment check. The separate paid Journey placement replay passes through the existing inventory and tile owners.
+
+The pinned original Linux TerrariaServer 1.4.5.8 assembly produced 24 idle `ItemCheck` steps across three seeds and both original local and dedicated remote roles. Both captures are byte-identical (SHA-256 `0d9f474da52080f6c37d1fe3791d08c9f8a45962d0b2759f99ad410a74fba01e`). The runtime passive-item transition matches the clock fields and full RNG state. Active rod use remains outside this profile.
+
+The original character and world copies were unavailable for a repeat client session. The managed regression is scoped to the recorded equipment, an idle grounded entry, an ordinary mining action and the separate funded placement replay. Wing and boot movement and auto-paint remain open.

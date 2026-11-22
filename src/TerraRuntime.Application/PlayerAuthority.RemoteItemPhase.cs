@@ -1635,7 +1635,11 @@ internal sealed partial class PlayerAuthority
             (uint)plan.Member.SelectedItem >= (uint)plan.InventoryBefore.Length)
             return false;
         var selected = plan.InventoryBefore[plan.Member.SelectedItem];
-        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
+        bool idleSelection = (plan.Member.ControlFlags & 32) == 0 &&
+            plan.Item?.Selected is { Animation: 0, ItemTime: 0 } &&
+            VanillaRemotePassiveItemCatalog1458.TryGet(selected.ItemType, selected.Prefix, out var passive) &&
+            passive.IdleOnly;
+        if (!idleSelection && !VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
             !VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out _))
             return false;
         // The dry, grounded subset has no horizontal acceleration, jump, wing

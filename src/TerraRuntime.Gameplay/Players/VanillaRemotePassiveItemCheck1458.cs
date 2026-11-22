@@ -25,6 +25,9 @@ public static class VanillaRemotePassiveItemCheck1458
         transition = default;
         if (!VanillaRemotePassiveItemCatalog1458.TryGet(facts.Item, facts.Prefix, out var item))
             return false;
+        if (item.IdleOnly && (facts.ControlUseItem ||
+            previous is not { Animation: 0, ItemTime: 0 }))
+            return false;
         if (!float.IsFinite(placementAnimationMultiplier) || placementAnimationMultiplier <= 0f ||
             placementAnimationMultiplier > 1f)
             return false;

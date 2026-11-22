@@ -40,13 +40,13 @@ internal static partial class ToolPlayerBoundaryChecks
         Lucy141();
     }
 
-    internal static void GoodGroundedPickaxeEquipment()
+    internal static void GoodGroundedPickaxeEquipment(bool joinsWithIdleRod)
     {
         using var control = new Fixture(1, journeyMode: true);
         control.Move(0, false);
         Assert.True(control.Players.TryTickRemotePlayerPhase());
 
-        using var good = new Fixture(1, journeyMode: true);
+        using var good = new Fixture(joinsWithIdleRod ? (short)1326 : (short)1, journeyMode: true);
         good.Move(0, false);
         (short Slot, short Type, byte Prefix)[] equipment =
         [
@@ -68,7 +68,8 @@ internal static partial class ToolPlayerBoundaryChecks
         foreach (var item in equipment)
             good.Apply(new PlayerEquipmentRuntimeCommand(good.Connection,
                 new(good.Connection.Player.Slot, item.Slot, 1, item.Prefix, item.Type, 0)));
-        bool admitted = good.Players.TryTickRemotePlayerPhase();
+        if (joinsWithIdleRod) good.Equip(2, 2786);
+        bool admitted = good.Players.TickRemotePlayerPhase();
         var failure = RuntimeTileManipulationTelemetry.Shared.Capture();
         var member = good.Member;
         Assert.True(good.Players.TryGetInventoryItem(good.Connection, member.SelectedItem, out var selected));
@@ -85,6 +86,23 @@ internal static partial class ToolPlayerBoundaryChecks
             $"ground={ground.VelocityY}, world={phaseWorld?.JourneyMode}, " +
             $"selected={member.SelectedItem}/{selected.ItemType.Value}, dead={member.CaptureSnapshot().IsDead}, " +
             $"mount={member.HasMount}");
+
+        if (joinsWithIdleRod)
+        {
+            good.Move(2, false);
+            good.Tick();
+            Assert.True(good.Member.ItemPhase?.ToolUse?.LocalClocksKnown);
+
+            good.Tiles.Set(98, 102, new WorldTile { Type = 0, Flags = WorldTileFlags.Active });
+            good.Move(2, true);
+            using var transport = new PlacementTransport(good);
+            transport.Post([11, 0, 17, 0, 98, 0, 102, 0, 0, 0, 0]);
+            good.Tick();
+            var miningFailure = RuntimeTileManipulationTelemetry.Shared.Capture();
+            Assert.False(good.Tiles.Get(98, 102).IsActive,
+                $"Mining after the rod: phase={miningFailure.RemotePhaseLastFailure}/{miningFailure.RemotePhaseLastLine}, " +
+                $"itemPhase={good.Member.ItemPhase is not null}, actions={Composition(good.State).WorldTileAuthority.CommittedToolActions}");
+        }
 
         using var moving = new Fixture(1, journeyMode: true);
         moving.Move(0, false);
