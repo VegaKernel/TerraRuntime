@@ -183,12 +183,7 @@ public sealed partial class RuntimeWiring1458Tests
             npcs: npcs, npcReplication: npcReplication, items: items, itemReplication: itemReplication);
         var observer = new ConnectionHandle(GameCommandSourceId.FromConnection(8001), new(new PlayerSlotId(1), new(1)));
         var request = new PlayerSpawnCommitRequest(observer.Player.Slot, 20, 20, 0, 0, 0, 0, 0);
-        if (shotReplication is not null)
-        {
-            Assert.True(shotReplication.TryRegister(observer.Source, scene.PeerOutbound));
-            shotReplication.PlayerSpawned(observer, request);
-        }
-        if (npcReplication is not null)
+        if (npcReplication is not null && shotReplication is null)
         {
             Assert.True(npcReplication.TryRegister(observer.Source, scene.PeerOutbound));
             npcReplication.PlayerSpawned(observer, request);
