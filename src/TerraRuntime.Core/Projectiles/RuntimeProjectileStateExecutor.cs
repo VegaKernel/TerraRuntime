@@ -214,7 +214,7 @@ public sealed class RuntimeProjectileStateExecutor
     }
 
     internal bool TryScheduleWiringTrapBirth(in ProjectileSnapshot birth) =>
-        birth.Type.Value is 98 or 184 or 185 or 186 or 187 or 980 &&
+        birth.Type.Value is 98 or 184 or 185 or 186 or 187 or 980 or VanillaWiringTrap1458.GeyserProjectileType &&
         (!tickActive || TryScheduleWiringBirth(in birth));
 
     private bool TryScheduleWiringBirth(in ProjectileSnapshot birth)

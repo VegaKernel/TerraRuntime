@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Players;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Application;
 
@@ -10,11 +11,11 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
     private bool TickWiringDart(in ProjectileSnapshot initial, int npcCount, long tick)
     {
         if (!usesSourceRandom || status is null ||
-            !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var definition)) return false;
+            !projectiles.TryGetLifecycle(initial.Handle, out var initialLife) ||
+            !RuntimeWiringTrapBody.TryGet(initial.Type, in initialLife, out var definition)) return false;
         if (initial.Type.Value == 188)
         {
-            if (!projectiles.TryGetLifecycle(initial.Handle, out var flameLife)) return false;
-            if (flameLife.LocalAi.Ai0 < 5) return true;
+            if (initialLife.LocalAi.Ai0 < 5) return true;
         }
         var shot = initial;
         int ownerRow = byte.MaxValue * npcs.Capacity;
@@ -33,7 +34,10 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             // SimulationPreparation is a detached journal; it holds no allocation claim.
             {
                 var current = shot;
-                int direction = target.PositionX + body.Width * .5f < shot.PositionX + definition.Width * .5f ? -1 : 1;
+                // Projectile.Update sets direction from horizontal velocity. AI-126 keeps it zero,
+                // and Damage_PVE has no later geyser direction override.
+                int direction = shot.Type.Value == VanillaWiringTrap1458.GeyserProjectileType ||
+                    target.PositionX + body.Width * .5f >= shot.PositionX + definition.Width * .5f ? 1 : -1;
                 if (!actor.TryStageSourceDirection(direction)) continue;
                 var before = sourceRandom.Clone(); var after = before.Clone();
                 int damage = VanillaIncomingPlayerDamageFacts1458.ApplyDamageVariation(shot.Damage, after.Next(-15, 16));
@@ -62,7 +66,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         }
         return true;
     }
-    internal bool TickWiringFlameContact(in ProjectileSnapshot shot)
+    internal bool TickOwnedWiringTrapContact(in ProjectileSnapshot shot)
     {
         if (!ordinaryArrowSimulationActive || !MarkOrdinaryArrowHandled(in shot)) return false;
         long tick = tickProvider();
@@ -72,7 +76,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
 
     private bool TryPlanTrapStatus(in NpcSnapshot target, ProjectileSnapshot shot, out RuntimeNpcBuffAdditionPlan1458 plan)
     {
-        if (shot.Type.Value is 185 or 186) return status!.CaptureAddition(in target, out plan);
+        if (shot.Type.Value is 185 or 186 or VanillaWiringTrap1458.GeyserProjectileType) return status!.CaptureAddition(in target, out plan);
         return status!.TryPlanAddition(in target,
             shot.Type.Value == 188 ? VanillaBuffIds.OnFire3 : shot.Type.Value == 980 ? VanillaBuffIds.Venom : VanillaBuffIds.Poisoned,
             shot.Type.Value == 188 ? 1200 : shot.Type.Value == 980 ? 300 : shot.Type.Value == 98 ? 600 : 900, out plan);

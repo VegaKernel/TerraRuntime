@@ -19,5 +19,5 @@ public static class VanillaProjectileReplicationFacts
         type != VanillaProjectileIds.RetinazerDeathLaser &&
         // Projectile.AI styles 14, 38 and 23 do not request an ordinary update for these traps.
         // HandleMovement's spiky-ball bounce also has no netUpdate offer. Flame Kill still sends 29.
-        type.Value is not (185 or 187 or 188);
+        type.Value is not (185 or 187 or 188 or VanillaWiringTrap1458.GeyserProjectileType);
 }

@@ -249,7 +249,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         for (int i = 0; i < activeProjectiles.Length; i++)
         {
             ProjectileSnapshot projectile = activeProjectiles[i];
-            if (projectile.Type.Value == 188 && IsGroundCombatHandled(in projectile)) continue;
+            if (VanillaWiringTrap1458.UsesOrderedContact(projectile.Type) && IsGroundCombatHandled(in projectile)) continue;
             if (VanillaWiringTrap1458.IsContact(projectile.Type))
             {
                 TickWiringDartPlayers(in projectile, tick);

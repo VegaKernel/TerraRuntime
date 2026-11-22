@@ -63,6 +63,8 @@ public sealed partial class WorldWiringCircuit1458
             case 442:
             case 476:
                 return TripWire(x, y, 1, 1);
+            case WorldWiringDeviceExecutor1458.GeyserTileType:
+                return _devices.TryHitGeyserSwitch(x, y);
             case 440: // GemLocks expose a three-by-three pulse area.
                 return TripWire(x, y, 3, 3);
             case 136:

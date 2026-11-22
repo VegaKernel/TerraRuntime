@@ -68,6 +68,18 @@ internal sealed partial class RuntimeProjectileReplicationRegistry
         finally { toolActorPublication = previous; }
     }
 
+    internal bool TryPublishGeyserBounds(RuntimeProjectileStore.SimulationPreparation publication)
+    {
+        if (!publication.CombatTrusted || publication.TrustedOwner.IsAssigned || publication.SourceNpc.IsAssigned ||
+            publication.PublicationCount != 1 || !publication.TryGetPublication(0, out var kind, out var snapshot) ||
+            kind != ProjectileStateCommitKind.Despawn || snapshot.Type.Value != VanillaWiringTrap1458.GeyserProjectileType ||
+            snapshot.Spawner != byte.MaxValue) return false;
+        var previous = toolActorPublication;
+        toolActorPublication = new(publication, kind, snapshot, SourceNetUpdate: false, WorldBounds: true);
+        try { return publication.TryPublishNext(); }
+        finally { toolActorPublication = previous; }
+    }
+
     private bool IsToolActorPublication(ProjectileStateCommitKind kind, in ProjectileSnapshot snapshot) =>
         toolActorPublication is { } entry && entry.Kind == kind && entry.Snapshot == snapshot;
 

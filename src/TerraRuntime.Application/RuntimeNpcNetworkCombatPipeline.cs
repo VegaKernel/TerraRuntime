@@ -671,7 +671,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
     private RuntimeTownNpcMeleeDamageResult1458 CommitNonPlayerDamage(
         NpcSnapshot liveTarget, DamageSource source, int baseDamage, float knockBack, int hitDirection,
-        NpcDamagePrelude1458? prelude = null)
+        NpcDamagePrelude1458? prelude = null, bool deferOrdinaryUpdate = false)
     {
         if (!CanAcceptBossDeathCapacity(in liveTarget))
             return RuntimeTownNpcMeleeDamageResult1458.Rejected;
@@ -687,7 +687,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             KnockBack: knockBack,
             HitDirection: hitDirection);
         if (!TryApplyServerStrike(in request, out NpcDamageResult result,
-                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
+                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude,
+                deferOrdinaryUpdate: deferOrdinaryUpdate))
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
         if (result.Lethal && (UsesPreparedLinkedDeath1458(liveTarget.TypeIdentity) ||

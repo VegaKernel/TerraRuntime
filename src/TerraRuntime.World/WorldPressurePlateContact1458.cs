@@ -14,7 +14,7 @@ public readonly record struct WorldPressurePlateContact1458(int X, int Y, bool D
 
 /// <summary>
 /// Contact admission for ordinary and projectile pressure plates. Callers own movement and pulses.
-/// Weighted plates, mines and geysers have separate source behavior.
+/// Weighted plates and mines have separate source behavior.
 /// </summary>
 public static class WorldPressurePlateContacts1458
 {
@@ -52,7 +52,12 @@ public static class WorldPressurePlateContacts1458
         float x, float y, int width, int height,
         float oldX, float oldY,
         WorldPressurePlateActor1458 actor,
-        out WorldPressurePlateContact1458 contact)
+        out WorldPressurePlateContact1458 contact) =>
+        TryFindContact(tiles, x, y, width, height, oldX, oldY, actor, out contact, null);
+
+    internal static bool TryFindContact(WorldTileStore tiles, float x, float y, int width, int height,
+        float oldX, float oldY, WorldPressurePlateActor1458 actor, out WorldPressurePlateContact1458 contact,
+        Action<int, int>? geyserContact)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         contact = default;
@@ -73,7 +78,9 @@ public static class WorldPressurePlateContacts1458
                     contact = new(tileX, tileY, false);
                     return true;
                 }
-                if (tile.Type != OrdinaryPlateTileType || !IsEligible(tile.FrameY, actor)) continue;
+                bool geyser = tile.Type == WorldWiringDeviceExecutor1458.GeyserTileType;
+                if (geyser ? geyserContact is null || actor is not (WorldPressurePlateActor1458.Other or WorldPressurePlateActor1458.Player)
+                    : tile.Type != OrdinaryPlateTileType || !IsEligible(tile.FrameY, actor)) continue;
                 float plateX = tileX * 16;
                 float plateY = tileY * 16 + 12;
                 // The asymmetric old/new vertical edges (16.01 versus 4.01) prevent stationary retriggers.
@@ -82,6 +89,11 @@ public static class WorldPressurePlateContacts1458
                     !(oldX + width > plateX && oldX < plateX + 16f && oldY + height > plateY &&
                         (double)oldY < (double)plateY + 16.01))
                 {
+                    if (geyser)
+                    {
+                        geyserContact!(tileX, tileY);
+                        continue;
+                    }
                     contact = new(tileX, tileY, tile.FrameY / StyleFrameHeight == 7);
                     return true;
                 }

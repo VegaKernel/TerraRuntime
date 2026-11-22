@@ -19,12 +19,12 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             !projectiles.TryGetLifecycle(shot.Handle, out var life) || life.NpcProjectile || life.Reflected || life.TimeLeft <= 0 ||
             shot.Type.Value == 188 && life.LocalAi.Ai0 < 5 ||
             shot.OriginalDamage != 0 || shot.KnockBack != 2f || shot.Damage != VanillaWiringTrap1458.Damage(shot.Type) ||
-            !VanillaDefinitionCatalog.TryGet(shot.Type, out var definition) ||
-            !players.TryPrepareGroundCombatHits(in shot, default, tick, expertMode, masterMode, goodWorld, null, out var humans) ||
+            !RuntimeWiringTrapBody.TryGet(shot.Type, in life, out var definition) ||
+            !players.TryPrepareGroundCombatHits(in shot, default, tick, expertMode, masterMode, goodWorld, null, out var humans, definition) ||
             humans is null) return false;
         ServerPlayerAuthority.GroundCombatHitPreparation? servers = null;
         if (serverPlayers is not null &&
-            (!serverPlayers.TryPrepareGroundCombatHits(in shot, default, tick, expertMode, masterMode, goodWorld, null, out servers) ||
+            (!serverPlayers.TryPrepareGroundCombatHits(in shot, default, tick, expertMode, masterMode, goodWorld, null, out servers, definition) ||
              servers is null)) return false;
         var before = sourceRandom.Clone(); var after = before.Clone();
         for (int slot = 0; slot < byte.MaxValue; slot++)
@@ -53,11 +53,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         failure?.Throw();
         return sourceRandom.HasSameState(after);
     }
-    internal bool TickWiringFlameContact(in ProjectileSnapshot shot)
+    internal bool TickOwnedWiringTrapContact(in ProjectileSnapshot shot)
     {
         if (!groundCombatSimulationActive || !MarkGroundCombatHandled(in shot) || !IsGroundCombatClockCurrent) return false;
         if (!projectiles.TryGetLifecycle(shot.Handle, out var life)) return false;
-        if (life.LocalAi.Ai0 < 5) return true;
+        if (shot.Type.Value == 188 && life.LocalAi.Ai0 < 5) return true;
         return TickWiringDartPlayers(in shot, groundCombatTick);
     }
 

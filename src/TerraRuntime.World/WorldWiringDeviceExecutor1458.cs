@@ -33,6 +33,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
     private const ushort Fireplace = 405, MomentarySwitch = 411, FakeChest = 441, SecondChest = 467;
     private const ushort SecondFakeChest = 468, DisplayDoll = 470, HatRack = 475, GolfHole = 476;
     private const ushort LogicLamp = 419, Statue = 105;
+    internal const ushort GeyserTileType = 443;
     private const ushort MushroomStatue = 349, SmallVolcano = 593, LargeVolcano = 594;
     private const ushort InletPump = 142, OutletPump = 143, Teleporter = 235, UnsafeTempleWall = 87;
     private const ushort PlasmaLamp = 564, Pylon = 597, ShadowCandle = 646;
@@ -150,7 +151,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
         if (tile.Type is MushroomStatue or SmallVolcano or LargeVolcano)
             return ToggleAnimatedDevice(x, y, in tile, skipWire) || changed;
         if (tile.Type == Statue) return FireStatue(x, y, in tile, skipWire) || changed;
-        if (tile.Type == Trap) return fireTrap?.Invoke(x, y) == true || changed;
+        if (tile.Type is Trap or GeyserTileType) return fireTrap?.Invoke(x, y) == true || changed;
 
         return tile.Type switch
         {

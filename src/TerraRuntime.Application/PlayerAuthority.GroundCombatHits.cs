@@ -14,7 +14,7 @@ internal sealed partial class PlayerAuthority
     internal bool TryPrepareGroundCombatHits(in ProjectileSnapshot initial, NpcHandle sourceNpc,
         long tick, bool expertMode, bool masterMode, bool goodWorld,
         VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain,
-        out GroundCombatHitPreparation? preparation)
+        out GroundCombatHitPreparation? preparation, VanillaProjectileDefinition? wiringBody = null)
     {
         preparation = null;
         bool dart = TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(initial.Type) && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
@@ -22,7 +22,8 @@ internal sealed partial class PlayerAuthority
             terrain is null && !dart ||
             expertMode != this.expertMode || masterMode != this.masterMode || currentCombatTick != tick)
             return false;
-        if (!TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var dartDefinition)) return false;
+        var dartDefinition = wiringBody.GetValueOrDefault();
+        if (!wiringBody.HasValue && !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out dartDefinition)) return false;
         var token = new GroundCombatHitPreparation(this, initial, sourceNpc, tick, expertMode, masterMode, goodWorld);
         foreach (var member in membership.Members)
         {

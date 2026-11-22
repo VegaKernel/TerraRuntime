@@ -140,11 +140,11 @@ internal sealed partial class ProjectileAuthority
                     ApplyWiringMovementContact(in current, in next);
                     continueFrame = projectiles.TryGet(accepted.Handle, out var contactActor) && contactActor == accepted;
                     if (continueFrame && activeOrdinaryArrowCombat is not null)
-                        continueFrame = activeOrdinaryArrowCombat.TickWiringFlameContact(in accepted);
+                        continueFrame = activeOrdinaryArrowCombat.TickOwnedWiringTrapContact(in accepted);
                     if (continueFrame && projectiles.TryGet(initial.Handle, out var afterNpc) && projectiles.TryGetLifecycle(initial.Handle, out var afterNpcLife))
                     {
                         phaseImage = afterNpc; phaseLife = afterNpcLife;
-                        if (groundCombatPlayerCombat is not null) continueFrame &= groundCombatPlayerCombat.TickWiringFlameContact(in afterNpc);
+                        if (groundCombatPlayerCombat is not null) continueFrame &= groundCombatPlayerCombat.TickOwnedWiringTrapContact(in afterNpc);
                     }
                     else continueFrame = false;
                 }

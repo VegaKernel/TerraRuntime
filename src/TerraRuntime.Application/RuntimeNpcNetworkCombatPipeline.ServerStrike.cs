@@ -9,7 +9,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
     private bool TryApplyServerStrike(in NpcDamageRequest request, out NpcDamageResult result,
         NpcSnapshot? sharedLifeOwner = null, NpcDamagePrelude1458? prelude = null,
-        bool drainPreparedNonlethalPublication = false)
+        bool drainPreparedNonlethalPublication = false, bool deferOrdinaryUpdate = false)
     {
         if (!npcs.TryGet(request.Target, out var before))
         {
@@ -117,7 +117,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
         // A lethal actor is published by the final despawn, after owned loot/death effects. Publishing the
         // intermediate Life=0 state here would insert another packet 23 ahead of those effects.
-        if (!damage.TryCompleteUnpublished(in committed, spawnTrueEye, publishUpdate: !result.Lethal, forceUpdate))
+        bool published = deferOrdinaryUpdate && !result.Lethal && !forceUpdate && !spawnTrueEye &&
+            npcReplication is not null
+            ? npcReplication.TryRetainGeyserStrikeState(npcs, in committed)
+            : damage.TryCompleteUnpublished(in committed, spawnTrueEye, publishUpdate: !result.Lethal, forceUpdate);
+        if (!published)
         {
             if (prelude is not null) return true;
             throw new InvalidOperationException("An accepted server strike lost its exact NPC revision before publication.");

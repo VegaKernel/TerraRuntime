@@ -22,6 +22,8 @@ internal sealed partial class ProjectileAuthority
         if (initial.Type.Value == 187) return TrySimulateWiringEmitter(in initial);
         if (initial.Type == VanillaProjectileIds.MoonBoulder)
             return TrySimulateMoonBoulderWiring(in initial);
+        if (initial.Type.Value == TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.GeyserProjectileType)
+            return TrySimulateGeyser(in initial);
         var groundCombat = TrySimulateGroundCombatActor(initial);
         if (groundCombat != ProjectileActorSimulationResult.NotApplicable) return groundCombat;
         // Other existing actors retain their concrete-world-stepper admission.

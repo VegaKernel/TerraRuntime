@@ -1,0 +1,10 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "89bf63e3dea4b008aab52b80d65954babee9b368be1678b20c2892ffe1fb4d71",
+  "fixtureSha256": "ccc25aeffc1e10a96659e29bc5ac5dfa35354174bb216d0250b94711ead49420",
+  "repeatExact": true,
+  "exceptionRows": 0,
+  "rowCount": 72,
+  "recordedPoints": 1356,
+  "scope": "Original headless 1.4.5.8 MessageBuffer59, Wiring and Projectile.Update lifecycle and literal packets. Four orientations, both cells, raw and wired switch and local collision; air, stone blocker and water; 263 ticks per row."
+}

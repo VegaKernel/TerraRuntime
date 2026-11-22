@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Core.Npcs;
 using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Application;
 
@@ -48,7 +49,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         try
         {
             var result = CommitNonPlayerDamage(target, DamageSource.FromEnvironmentProjectile(projectile.Handle),
-                damageValue, projectile.KnockBack, hitDirection, prelude);
+                damageValue, projectile.KnockBack, hitDirection, prelude,
+                deferOrdinaryUpdate: projectile.Type.Value == VanillaWiringTrap1458.GeyserProjectileType);
             return result switch
             {
                 RuntimeTownNpcMeleeDamageResult1458.Committed => RuntimeProjectileNpcDamageResult.Committed,

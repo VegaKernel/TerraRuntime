@@ -12,9 +12,9 @@ internal sealed partial class ServerPlayerAuthority
     internal bool TryPrepareGroundCombatHits(in ProjectileSnapshot initial, NpcHandle sourceNpc,
         long tick, bool expertMode, bool masterMode, bool goodWorld,
         VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain,
-        out GroundCombatHitPreparation? preparation)
+        out GroundCombatHitPreparation? preparation, VanillaProjectileDefinition? wiringBody = null)
         => GroundCombatHitPreparation.TryCreate(this, in initial, sourceNpc, tick, expertMode, masterMode, goodWorld,
-            terrain, out preparation);
+            terrain, out preparation, wiringBody);
 
     private bool HasRepresentedGroundCombatEffects(PlayerHandle player)
     {
@@ -80,13 +80,14 @@ internal sealed partial class ServerPlayerAuthority
         internal static bool TryCreate(ServerPlayerAuthority owner, in ProjectileSnapshot initial, NpcHandle sourceNpc,
             long tick, bool expertMode, bool masterMode, bool goodWorld,
             VanillaProjectileWorldStateStepper.OrdinaryArrowTerrainCapture? terrain,
-            out GroundCombatHitPreparation? preparation)
+            out GroundCombatHitPreparation? preparation, VanillaProjectileDefinition? wiringBody)
         {
             preparation = null;
             bool dart = TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.IsContact(initial.Type) && initial.Spawner == byte.MaxValue && !sourceNpc.IsAssigned;
             if (!dart && (!VanillaGroundCombatPlayerHit1458.IsSupported(initial.Type) || !sourceNpc.IsAssigned) ||
                 terrain is null && !dart || masterMode && !expertMode || terrain?.IsCurrent == false) return false;
-            if (!TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out var dartDefinition)) return false;
+            var dartDefinition = wiringBody.GetValueOrDefault();
+            if (!wiringBody.HasValue && !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(initial.Type, out dartDefinition)) return false;
             var captured = new PlayerStateSnapshot[owner.states.Capacity];
             int count = owner.states.CopySnapshots(captured);
             var entries = new GroundCombatPlayerImage?[byte.MaxValue + 1];

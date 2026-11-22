@@ -87,6 +87,9 @@ public readonly record struct ProjectileLifecycleState(
     /// <summary>Source Projectile.wetCount; SetDefaults starts at zero and packet27 cannot write it.</summary>
     public byte SourceWetCount { get; init; }
 
+    /// <summary>Current AI-126 geyser body height. Zero identifies the initial SetDefaults body.</summary>
+    internal ushort GeyserHeight { get; init; }
+
     /// <summary>Source-owned held-tool birth/AI state; packet27 cannot initialize this field.</summary>
     public HeldToolProjectileState1458? HeldTool { get; init; }
 

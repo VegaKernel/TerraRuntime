@@ -5,6 +5,7 @@ using TerraRuntime.Application;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Players;
+using TerraRuntime.Core.Projectiles;
 using TerraRuntime.HostContracts;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
@@ -279,10 +280,12 @@ public sealed partial class RuntimeWiring1458Tests
             RuntimeTownCommerceWorldFacts1458? calendar = null, TerraRuntime.Core.Worlds.RuntimeWorldItemStore? items = null,
             RuntimeWorldItemReplicationRegistry? itemReplication = null, TerraRuntime.Core.Npcs.RuntimeNpcStore? npcs = null,
             RuntimeNpcReplicationRegistry? npcReplication = null, VanillaUnifiedRandom1458? wiringRandom = null, RuntimeWorldClock? clock = null,
-            WorldTileStore? worldTiles = null)
+            WorldTileStore? worldTiles = null, RuntimeProjectileStore? projectiles = null,
+            RuntimeProjectileReplicationRegistry? projectileReplication = null)
         {
             Tiles = worldTiles ?? new(new WorldDimensions(100, 100));
             State = new(npcs: npcs, npcReplication: npcReplication, worldTiles: Tiles, tileManipulationReplication: Replication, serverPlayers: serverPlayers,
+                projectiles: projectiles, projectileReplication: projectileReplication,
                 sourcePlayerWorld: sourceWorld, townCommerceWorldFacts: calendar, worldItems: items, worldItemReplication: itemReplication, worldClock: clock,
                 worldItemSpawnRandom: wiringRandom is null ? null : new TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom(wiringRandom),
                 naturalSpawnRandom: wiringRandom is null ? null : new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(wiringRandom));
@@ -304,6 +307,18 @@ public sealed partial class RuntimeWiring1458Tests
             Replication.PlayerSpawned(Owner, in request);
             var peerRequest = request with { ClaimedSlot = peer.Player.Slot };
             Replication.PlayerSpawned(peer, in peerRequest);
+            if (projectileReplication is not null)
+            {
+                Assert.True(projectileReplication.TryRegister(Owner.Source, OwnerOutbound));
+                Assert.True(projectileReplication.TryRegister(peer.Source, PeerOutbound));
+                projectileReplication.PlayerSpawned(Owner, in request);
+                projectileReplication.PlayerSpawned(peer, in peerRequest);
+            }
+            if (projectileReplication is not null && npcReplication is not null)
+            {
+                Assert.True(npcReplication.TryRegister(peer.Source, PeerOutbound));
+                npcReplication.PlayerSpawned(peer, in peerRequest);
+            }
             Sink = new(source, Bootstrap, new PassingSink(), new RuntimeProjectileNetworkIngress(Commands));
         }
 

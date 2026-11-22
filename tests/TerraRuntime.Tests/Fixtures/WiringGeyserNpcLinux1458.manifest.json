@@ -1,0 +1,10 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "31e94878871988ccafb7dc9a8349ff6dba151333e43e52bf54f97238437c4f88",
+  "fixtureSha256": "d81049021983180277388ae09105c1a593957c1596624f43bfe6f3b711334276",
+  "repeatExact": true,
+  "exceptionRows": 0,
+  "rowCount": 12,
+  "recordedPoints": 48,
+  "scope": "Original 1.4.5.8 real NPC.NewNPC and initial sync, then MessageBuffer59/Wiring and Projectile.Update. Six damage contacts and six solid-truncated misses against slime, zombie and lava slime at the extended body; four ticks per row."
+}

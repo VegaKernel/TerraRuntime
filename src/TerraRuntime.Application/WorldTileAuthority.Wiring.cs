@@ -61,6 +61,14 @@ internal sealed partial class WorldTileAuthority
         TickSkyblockCensus();
     }
 
+    private Action<int, int>? geyserContact;
+
+    private void ApplyGeyserContact(int x, int y)
+    {
+        if (x <= short.MaxValue && y <= short.MaxValue && wiring?.HitSwitch(x, y) == true)
+            replication?.TryPublishHitSwitch(default, new((short)x, (short)y));
+    }
+
     public void ApplyPlayerPressurePlate(PlayerStateSnapshot before, PlayerStateSnapshot after)
     {
         if (tiles is null || wiring is null || before.Player != after.Player || after.IsDead ||
@@ -68,7 +76,8 @@ internal sealed partial class WorldTileAuthority
         (float width, float height) = after.HasMount
             ? VanillaPlayerMountHitbox1458.Resolve(after.MountType) : (20, 42);
         if (!WorldPressurePlateContacts1458.TryFindContact(tiles, after.PositionX, after.PositionY,
-            (int)width, (int)height, before.PositionX, before.PositionY, WorldPressurePlateActor1458.Player, out var contact)) return;
+            (int)width, (int)height, before.PositionX, before.PositionY, WorldPressurePlateActor1458.Player, out var contact,
+            geyserContact ??= ApplyGeyserContact)) return;
         if (contact.DestroyAfterPulse)
         {
             ApplyServerDisposablePlate(contact.X, contact.Y);

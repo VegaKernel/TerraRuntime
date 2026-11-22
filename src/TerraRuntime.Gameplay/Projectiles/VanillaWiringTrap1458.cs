@@ -5,10 +5,13 @@ namespace TerraRuntime.Gameplay.Projectiles;
 /// <summary>Cardinal trap frames in Wiring.HitWireSingle(137), TerrariaServer 1.4.5.8.</summary>
 public static class VanillaWiringTrap1458
 {
+    public const ushort GeyserProjectileType = 654;
+    public const int GeyserWidth = 30, GeyserInitialHeight = 30, GeyserMaximumHeight = 320;
+    public static bool UsesOrderedContact(ProjectileTypeId type) => type.Value is 188 or GeyserProjectileType;
     public static bool IsDart(ProjectileTypeId type) => type.Value is 98 or 184 or 980;
-    public static bool IsContact(ProjectileTypeId type) => IsDart(type) || type.Value is 185 or 186 or 188;
+    public static bool IsContact(ProjectileTypeId type) => IsDart(type) || type.Value is 185 or 186 || UsesOrderedContact(type);
     public static int Damage(ProjectileTypeId type) => type.Value switch
-    { 98 => 20, 184 or 185 or 187 or 188 => 40, 186 => 60, 980 => 30, _ => 0 };
+    { 98 or GeyserProjectileType => 20, 184 or 185 or 187 or 188 => 40, 186 => 60, 980 => 30, _ => 0 };
 
     public static bool TryResolve(short frameX, short frameY, out WiringTrapLaunch1458 launch)
     {
