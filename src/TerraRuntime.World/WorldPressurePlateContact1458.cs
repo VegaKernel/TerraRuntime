@@ -13,13 +13,14 @@ public enum WorldPressurePlateActor1458 : byte
 public readonly record struct WorldPressurePlateContact1458(int X, int Y, bool DestroyAfterPulse);
 
 /// <summary>
-/// Pure contact admission for ordinary type135 plates. The caller owns actor movement, pulse execution
-/// and the source style7 destruction. Weighted plates, mines, geysers and projectile pads need other owners.
+/// Contact admission for ordinary and projectile pressure plates. Callers own movement and pulses.
+/// Weighted plates, mines and geysers have separate source behavior.
 /// </summary>
 public static class WorldPressurePlateContacts1458
 {
     // Collision.SwitchTiles 1.4.5.8: type135, each actor/style frame is eighteen pixels apart.
     private const ushort OrdinaryPlateTileType = 135;
+    private const ushort ProjectilePlateTileType = 442;
     private const int StyleFrameHeight = 18;
     public static bool IsEligible(short frameY, WorldPressurePlateActor1458 actor)
     {
@@ -57,8 +58,14 @@ public static class WorldPressurePlateContacts1458
             for (int tileY = top; tileY < bottom; tileY++)
             {
                 WorldTile tile = tiles.Get(tileX, tileY);
-                if (!tile.IsActive || tile.Type != OrdinaryPlateTileType || !IsEligible(tile.FrameY, actor))
-                    continue;
+                if (!tile.IsActive) continue;
+                if (tile.Type == ProjectilePlateTileType && actor == WorldPressurePlateActor1458.ProjectileOrBoulder &&
+                    TouchesProjectilePad(tileX, tileY, tile.FrameX, x, y, width, height, oldX, oldY))
+                {
+                    contact = new(tileX, tileY, false);
+                    return true;
+                }
+                if (tile.Type != OrdinaryPlateTileType || !IsEligible(tile.FrameY, actor)) continue;
                 float plateX = tileX * 16;
                 float plateY = tileY * 16 + 12;
                 // The asymmetric old/new vertical edges (16.01 versus 4.01) prevent stationary retriggers.
@@ -73,6 +80,21 @@ public static class WorldPressurePlateContacts1458
             }
         }
         return false;
+    }
+
+    private static bool TouchesProjectilePad(int tileX, int tileY, short frameX,
+        float x, float y, int width, int height, float oldX, float oldY)
+    {
+        int orientation = frameX / 22;
+        if ((uint)orientation > 3) return false;
+        float left = tileX * 16 + (orientation == 3 ? 6 : 0);
+        float top = tileY * 16 + (orientation == 0 ? 6 : 0);
+        float right = left + (orientation < 2 ? 16 : 10);
+        float bottom = top + (orientation < 2 ? 10 : 16);
+        // FloatIntersect accepts touching edges for type442.
+        bool Intersects(float bodyX, float bodyY) =>
+            bodyX <= right && bodyX + width >= left && bodyY <= bottom && bodyY + height >= top;
+        return Intersects(x, y) && !Intersects(oldX, oldY);
     }
 
     // Clamp before converting to int so finite outlying actor positions cannot overflow scan bounds.

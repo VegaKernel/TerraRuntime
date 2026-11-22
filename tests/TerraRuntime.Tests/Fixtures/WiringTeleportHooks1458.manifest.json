@@ -1,0 +1,10 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "3fcc83d3092bdcb50a8404ebfe639e7afe2bb8f0f2617b3b55e31d1e937e6d0a",
+  "fixtureSha256": "cd2146c897c9e994984328580271d1b412bc5cf6339193eb8973c3c1abf49b67",
+  "rows": 160,
+  "pulses": 320,
+  "hookTypes": 32,
+  "repeatExact": true,
+  "scope": "Dedicated Wiring.HitSwitch with every default AI style 7 projectile, retained player flags for all liquid types, wet pad cells, own/other/server projectile slots, complete RNG and literal peer packets."
+}

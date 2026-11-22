@@ -1,0 +1,10 @@
+{
+  "repeatExact": true,
+  "rows": 32,
+  "ticks": 256,
+  "exceptionRows": 0,
+  "rawCaptureSha256": "30dbf274f1cd93e255cadda59b34b5a0f5b7a6efe61a78ced6b06eb0ecab6286",
+  "scope": "Original full Projectile.Update for source traps 185 and 188, four tile442 orientations, one or four wires and optional emitter birth in the same physical-slot census. Dry single-move scenes.",
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "fixtureSha256": "5bb2888f9028f9956f5f3b76c09270c00035deb70762190418c607df05cdb621"
+}

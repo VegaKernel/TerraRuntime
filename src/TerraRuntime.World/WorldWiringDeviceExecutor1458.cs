@@ -129,7 +129,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
             {
                 var part = tiles.Get(left + dx, y);
                 if (!part.IsActive || part.Type != Teleporter || part.FrameX != dx * FramePitch || part.FrameY != 0 ||
-                    part.HasActuator || part.IsActuated || part.LiquidAmount != 0) return changed;
+                    part.HasActuator || part.IsActuated) return changed;
             }
             // Source does not SkipWire here: each reached cell may replace the second endpoint,
             // including the half-brick comparison against the unadjusted row.
@@ -190,9 +190,12 @@ public sealed partial class WorldWiringDeviceExecutor1458
         return fireStatue(left, top, style);
     }
 
-    private bool ToggleActuator(int x, int y, in WorldTile tile)
+    internal bool CanToggleActuator(int x, int y) =>
+        Contains(x, y) && CanToggleActuator(x, y, tiles.Get(x, y));
+
+    private bool CanToggleActuator(int x, int y, in WorldTile tile)
     {
-        if (!tile.IsActive) return false;
+        if (!tile.IsActive || !tile.HasActuator) return false;
         if (!tile.IsActuated)
         {
             // Wiring.DeActive: progression is Plantera, not Golem. NotReallySolid has 10,387,388;
@@ -204,6 +207,12 @@ public sealed partial class WorldWiringDeviceExecutor1458
             if (above.IsActive && (PreventsActuationUnder(above.Type) || canKillTile?.Invoke(x, y) != true))
                 return false;
         }
+        return true;
+    }
+
+    private bool ToggleActuator(int x, int y, in WorldTile tile)
+    {
+        if (!CanToggleActuator(x, y, in tile)) return false;
         // Production composition prepares framing, drops and the existing RNG together. An unsupported
         // frame rejects that transaction; it must never fall back to an already-visible raw bit change.
         if (applyActuatorTransaction is not null) return applyActuatorTransaction(x, y);

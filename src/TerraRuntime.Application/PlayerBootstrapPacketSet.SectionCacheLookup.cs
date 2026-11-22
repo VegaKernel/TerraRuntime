@@ -53,6 +53,14 @@ public sealed partial class PlayerBootstrapPacketSet
         out ReadOnlyMemory<byte> frame) =>
         ResolveSectionFrame(section, out frame) == SectionFrameLookupResult.Available;
 
+    internal void RequestSectionFrameInBackground(WorldSectionId section)
+    {
+        var requester = Volatile.Read(ref _sectionRebuildRequester);
+        if (_world is not { } world || requester is null) return;
+        int index = TerrariaSectionGeometry.ToLinearIndex(world.Header.Dimensions, section);
+        _sectionRebuildGlobalBudget.Request(index, section, requester);
+    }
+
     internal SectionFrameLookupResult ResolveSectionFrame(
         WorldSectionId section,
         out ReadOnlyMemory<byte> frame) =>

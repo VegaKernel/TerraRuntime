@@ -6,5 +6,5 @@
   "pulses": 6432,
   "mountTypes": 66,
   "repeatExact": true,
-  "scope": "Original Wiring.HitSwitch and actual Mount.SetMount for all66 types, weighted entry/exit, water/shimmer, optional zombie, complete RNG and literal server frames. Current runtime replay admits dry human mounts and dry unmounted server-owned players; wet/shimmer closure remains pending; not whole Main or GUI."
+  "scope": "Original Wiring.HitSwitch and actual Mount.SetMount for all 66 types, weighted entry/exit, water/shimmer, optional zombie, complete RNG and literal server frames. Replay covers connected players and unmounted server-owned players. Direct mechanism probe; no full game loop."
 }

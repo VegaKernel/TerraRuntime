@@ -12,6 +12,8 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
     private const float TileSizePixels = 16f;
     private const int HorizontalRadiusSections = 2;
     private const int VerticalRadiusSections = 1;
+    private const int TeleportRadiusSections = 1;
+    internal const int MaximumTeleportWindowSectionCount = (TeleportRadiusSections * 2 + 1) * (TeleportRadiusSections * 2 + 1);
 
     public const int MaximumWindowSectionCount =
         (HorizontalRadiusSections * 2 + 1) * (VerticalRadiusSections * 2 + 1);
@@ -28,6 +30,7 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
     }
 
     internal int SentSectionCount => Volatile.Read(ref sentCount);
+    internal object SectionPublicationGate { get; } = new();
 
     public void ObserveBootstrap(
         ReadOnlySpan<WorldSectionId> baseSections,
@@ -54,12 +57,19 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
     public int PlanUnsent(
         float positionX,
         float positionY,
-        Span<WorldSectionId> destination)
+        Span<WorldSectionId> destination) =>
+        PlanUnsent(positionX, positionY, HorizontalRadiusSections, VerticalRadiusSections, destination);
+
+    internal int PlanTeleportUnsent(float positionX, float positionY, Span<WorldSectionId> destination) =>
+        PlanUnsent(positionX, positionY, TeleportRadiusSections, TeleportRadiusSections, destination);
+
+    private int PlanUnsent(float positionX, float positionY, int radiusX, int radiusY, Span<WorldSectionId> destination)
     {
-        if (destination.Length < MaximumWindowSectionCount)
+        int maximumCount = (radiusX * 2 + 1) * (radiusY * 2 + 1);
+        if (destination.Length < maximumCount)
         {
             throw new ArgumentException(
-                $"Destination must hold at least {MaximumWindowSectionCount} sections.",
+                $"Destination must hold at least {maximumCount} sections.",
                 nameof(destination));
         }
 
@@ -75,10 +85,10 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
         }
 
         WorldSectionId center = TerrariaSectionGeometry.FromTile(dimensions, tileX, tileY);
-        int minX = Math.Max(0, center.X - HorizontalRadiusSections);
-        int maxX = Math.Min(dimensions.SectionColumns - 1, center.X + HorizontalRadiusSections);
-        int minY = Math.Max(0, center.Y - VerticalRadiusSections);
-        int maxY = Math.Min(dimensions.SectionRows - 1, center.Y + VerticalRadiusSections);
+        int minX = Math.Max(0, center.X - radiusX);
+        int maxX = Math.Min(dimensions.SectionColumns - 1, center.X + radiusX);
+        int minY = Math.Max(0, center.Y - radiusY);
+        int maxY = Math.Min(dimensions.SectionRows - 1, center.Y + radiusY);
 
         int count = 0;
         for (int x = minX; x <= maxX; x++)
@@ -86,8 +96,7 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
             for (int y = minY; y <= maxY; y++)
             {
                 var section = new WorldSectionId(x, y);
-                int index = TerrariaSectionGeometry.ToLinearIndex(dimensions, section);
-                if (Volatile.Read(ref sent[index]) == 0)
+                if (!IsSent(section))
                     destination[count++] = section;
             }
         }
@@ -111,6 +120,9 @@ internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
             (tileX / TerrariaSectionGeometry.WidthTiles);
         return Volatile.Read(ref sent[index]) != 0;
     }
+
+    internal bool IsSent(WorldSectionId section) =>
+        Volatile.Read(ref sent[TerrariaSectionGeometry.ToLinearIndex(dimensions, section)]) != 0;
 
     public void MarkSent(WorldSectionId section)
     {

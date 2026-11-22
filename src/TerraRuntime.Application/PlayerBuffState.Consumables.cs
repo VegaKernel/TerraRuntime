@@ -148,7 +148,7 @@ internal sealed partial class PlayerBuffState
         if (type.Value is 26 or 206 or 207)
             for (int i = 0; i < Capacity; i++)
                 if (types[i].Value is 26 or 206 or 207 or 332 or 333 or 334)
-                    RemoveFedStateSlot(i);
+                    RemoveBuffSlot(i);
         for (int i = 0; i < Capacity; i++)
             if (types[i] == type)
             {
@@ -202,7 +202,20 @@ internal sealed partial class PlayerBuffState
         }
         return false;
     }
-    private void RemoveFedStateSlot(int slot)
+    internal bool ClearShimmerForTeleport()
+    {
+        bool cleared = false;
+        // Player.ClearBuff walks forward through the same DelBuff compaction as consumables.
+        for (int slot = 0; slot < Capacity; slot++)
+            if (types[slot] == VanillaBuffIds.Shimmer)
+            {
+                RemoveBuffSlot(slot);
+                cleared = true;
+            }
+        return cleared;
+    }
+
+    private void RemoveBuffSlot(int slot)
     {
         types[slot] = VanillaBuffIds.None;
         durations[slot] = 0;
@@ -243,7 +256,7 @@ internal sealed partial class PlayerBuffState
             if (ownedFood[i] && durations[i] > 0 && --durations[i] == 0) expired = true;
         if (compactExpired)
             for (int i = 0; i < Capacity; i++)
-                if (ownedFood[i] && durations[i] <= 0) RemoveFedStateSlot(i);
+                if (ownedFood[i] && durations[i] <= 0) RemoveBuffSlot(i);
         return expired;
     }
 
@@ -259,7 +272,7 @@ internal sealed partial class PlayerBuffState
     {
         InvalidateFoodClockLineage();
         for (int i = Capacity - 1; i >= 0; i--)
-            if (ownedFood[i]) RemoveFedStateSlot(i);
+            if (ownedFood[i]) RemoveBuffSlot(i);
         ownedFoodEffectAtTick = false;
         ownedFishingEffectsAtTick = 0;
     }

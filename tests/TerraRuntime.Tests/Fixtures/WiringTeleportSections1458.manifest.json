@@ -1,0 +1,8 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "031cbe7490991c184b62d21a4333f28603b2e1cf5f02eca429ba2071c24cf2bd",
+  "fixtureSha256": "e785d1cd84219794ad3f16a9442e1fd242d65e63d8e95cf507949309c99fd545",
+  "rows": 6,
+  "repeatExact": true,
+  "scope": "Dedicated Wiring.HitSwitch using a frame-stable pressure plate to a three-by-three interior or clipped edge adjacency with none, some, or all destination sections seen. Literal status and teleport frames, and decoded section positions, dimensions, and order."
+}

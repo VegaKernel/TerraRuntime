@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Core.Worlds;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Players;
@@ -11,10 +12,13 @@ internal sealed partial class WorldTileAuthority
     private ServerPlayerAuthority? teleporterServerPlayers;
     private readonly HashSet<PlayerHandle> wiringTeleportingPlayers = [];
     private readonly HashSet<NpcHandle> wiringTeleportingNpcs = [];
-    private TerraRuntime.Core.Projectiles.RuntimeProjectileStore? teleporterProjectiles;
+    private RuntimeProjectileStore? teleporterProjectiles;
 
-    internal void BindWiringTeleporters(ServerPlayerAuthority? ownedPlayers, TerraRuntime.Core.Projectiles.RuntimeProjectileStore projectiles)
-    { teleporterServerPlayers = ownedPlayers; teleporterProjectiles = projectiles; }
+    internal void BindWiringTeleporters(ServerPlayerAuthority? ownedPlayers, RuntimeProjectileStore projectiles)
+    {
+        teleporterServerPlayers = ownedPlayers;
+        teleporterProjectiles = projectiles;
+    }
 
     internal void TickWiringTeleportPresentation()
     {
@@ -38,7 +42,7 @@ internal sealed partial class WorldTileAuthority
                 (uint)point.Row >= (uint)tiles.Dimensions.HeightTiles) return;
             images[i] = tiles.Get(point.Left + i % 3, point.Row);
             if (!images[i].IsActive || images[i].Type != 235 || images[i].FrameX != i % 3 * 18 || images[i].FrameY != 0 ||
-                images[i].HasActuator || images[i].IsActuated || images[i].LiquidAmount != 0) return;
+                images[i].HasActuator || images[i].IsActuated) return;
             versions[i] = tiles.GetSectionVersion(TerrariaSectionGeometry.FromTile(tiles.Dimensions, point.Left + i % 3, point.Row));
         }
         bool Current()
@@ -81,12 +85,13 @@ internal sealed partial class WorldTileAuthority
                     int width = (int)bodyWidth, height = (int)bodyHeight;
                     if (player.IsDead || movedPlayers.Contains(player.Player) ||
                         !VanillaWiringTeleport1458.Touches(from.PixelX, from.PixelY, player.PositionX, player.PositionY, width, height) ||
-                        teleporterProjectiles is null || PlayerAuthority.CaptureNpcHealthGrappling(teleporterProjectiles, player.Player) != false ||
-                        !DryBody(player.PositionX, player.PositionY, width, height) || !DryBody(player.PositionX + dx, player.PositionY + dy, width, height)) continue;
+                        teleporterProjectiles is not { } projectiles ||
+                        !BodyWithinWorld(player.PositionX, player.PositionY, width, height) ||
+                        !BodyWithinWorld(player.PositionX + dx, player.PositionY + dy, width, height)) continue;
                     movedPlayers.Add(player.Player);
                     bool committed = member is not null
-                        ? players.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, Current)
-                        : teleporterServerPlayers!.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, Current);
+                        ? players.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, projectiles, Current)
+                        : teleporterServerPlayers!.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, projectiles, Current);
                     if (!committed) movedPlayers.Remove(player.Player);
                     else if (!RebasePadVersions()) return;
                 }
@@ -100,14 +105,7 @@ internal sealed partial class WorldTileAuthority
         }
         finally { movedPlayers.Clear(); movedNpcs.Clear(); }
     }
-    private bool DryBody(float x, float y, int width, int height)
-    {
-        if (tiles is null || !float.IsFinite(x) || !float.IsFinite(y) || x < 0 || y < 0 ||
-            x + width > tiles.Dimensions.WidthTiles * 16f || y + height > tiles.Dimensions.HeightTiles * 16f) return false;
-        for (int tx = (int)x / 16; tx <= (int)(x + width - 1) / 16; tx++)
-        for (int ty = (int)y / 16; ty <= (int)(y + height - 1) / 16; ty++)
-            if (tiles.Get(tx, ty).LiquidAmount != 0) return false;
-        return true;
-    }
-
+    private bool BodyWithinWorld(float x, float y, int width, int height) =>
+        tiles is not null && float.IsFinite(x) && float.IsFinite(y) && x >= 0 && y >= 0 &&
+        x + width <= tiles.Dimensions.WidthTiles * 16f && y + height <= tiles.Dimensions.HeightTiles * 16f;
 }

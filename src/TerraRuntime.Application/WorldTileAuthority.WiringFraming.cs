@@ -5,7 +5,35 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class WorldTileAuthority
 {
-    private bool TryApplyWiringActuator(int x, int y)
+    private bool TryObserveClientActuationRod(ClientTileManipulationRuntimeCommand command)
+    {
+        // MessageBuffer.GetData17.action19 calls Actuate directly. The selected rod,
+        // drag lock and item clock belong to the client ItemCheck, while the server
+        // owns the actuator target, framing and any resulting drops.
+        if (command.State.Action != 19) return false;
+        ValidatedClientManipulations++;
+        int x = command.State.TileX, y = command.State.TileY;
+        if (wiringDevices is null || tiles is null || !players.TryGet(command.Connection, out _) ||
+            !editBudget.TryConsume(command.Connection.Player.Slot))
+        {
+            RejectedClientManipulations++;
+            return true;
+        }
+
+        if (!wiringDevices.CanToggleActuator(x, y)) return true;
+        if (TryApplyWiringActuator(x, y, command.Connection.Player.Slot.Value))
+            AppliedClientManipulations++;
+        else
+        {
+            RejectedClientManipulations++;
+            replication?.TryPublishAuthoritativeCorrection(command.Connection.Source, tiles, x, y);
+        }
+        return true;
+    }
+
+    private bool TryApplyWiringActuator(int x, int y) => TryApplyWiringActuator(x, y, null);
+
+    private bool TryApplyWiringActuator(int x, int y, byte? sourcePlayerSlot)
     {
         // This source transaction is also used without a human item phase. Missing world/RNG/actor
         // prerequisites reject before the inactive bit becomes visible; there is no raw setter fallback.
@@ -16,9 +44,17 @@ internal sealed partial class WorldTileAuthority
         using (plan)
         {
             if (!TryCreateToolSourcePass(overlay, plan.SourceRandom, false, context.HardMode,
-                    context.Facts, actors.Actors, plan, out var source) || source is null ||
-                !source.TryStageWiringActuation(x, y) || !plan.PreserveLiquidQueueAfterDryWiringFrames() ||
-                !plan.TryStageSourceTileSquare(x, y)) return false;
+                    context.Facts, actors.Actors, plan, out var source) || source is null) return false;
+            if (sourcePlayerSlot is byte slot && !plan.TryBeginSourceDefaultItemOwner(slot)) return false;
+            try
+            {
+                if (!source.TryStageWiringActuation(x, y) || !plan.PreserveLiquidQueueAfterDryWiringFrames() ||
+                    !plan.TryStageSourceTileSquare(x, y)) return false;
+            }
+            finally
+            {
+                if (sourcePlayerSlot.HasValue) plan.EndSourceDefaultItemOwner();
+            }
             var end = plan.CapturePublicationOffset();
             if (!plan.TrySeal() || !context.IsCurrent || !actors.IsCurrent || !source.IsCurrentOwned ||
                 !plan.TryAdoptWholeUnpublished(out var publication) || publication is null) return false;

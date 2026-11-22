@@ -1,0 +1,9 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "d4c3eb87fd6c3405d0e9d93b649723f6a36d8da58e79ddb897deceb0abf5c906",
+  "fixtureSha256": "f2579599b2acb32885301494ff24c67d0ef8fb69faa0d03c5ceb148639ac083a",
+  "rows": 54,
+  "actions": 108,
+  "repeatExact": true,
+  "scope": "Dedicated MessageBuffer.GetData packet 17 action 19. Two requests per row, both initial actuator states where represented, both data values, fourteen dry layouts. Minecart tables are initialized, and chest rows start with protected intact support. Peer bytes, 5-by-5 cells, item reservations and full source RNG captured."
+}

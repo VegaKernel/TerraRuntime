@@ -19,7 +19,7 @@ internal sealed partial class PlayerBuffState
         for (int slot = 0; slot < Capacity; slot++)
             if (types[slot].Value > 0 && durations[slot] > 0 && combat.IsImmuneToNpcContactBuff(types[slot]))
             {
-                RemoveFedStateSlot(slot);
+                RemoveBuffSlot(slot);
                 changed = true;
             }
         if (!changed) return false;

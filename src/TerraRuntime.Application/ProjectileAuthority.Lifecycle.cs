@@ -39,7 +39,8 @@ internal sealed partial class ProjectileAuthority
             childSpawns.Reset();
             liveChildSpawns.Reset();
             SynchronizeControlledProjectileReleaseInputs();
-            LastTick = executor.Tick(stepper, ordinaryArrowActor ??= TrySimulateOrdinaryArrowActor);
+            LastTick = executor.Tick(stepper, ordinaryArrowActor ??= TrySimulateOrdinaryArrowActor,
+                wiringContact ??= ApplySingleStepWiringContact);
             replication?.AdvanceNetSpamBudget();
             FallingBlocks.ForgetDisplaced(projectiles);
             ApplyPendingLiveChildSpawns();

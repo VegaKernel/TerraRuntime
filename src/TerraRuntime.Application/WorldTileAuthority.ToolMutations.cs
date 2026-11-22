@@ -319,7 +319,7 @@ internal sealed partial class WorldTileAuthority
             (allocation is null || allocation.IsCurrent) && AreLarvaBossOwnersCurrent && IsCurrentOwned;
 
         public bool IsCurrentOwned => !failed && !disposed && !adopted && Overlay.IsCurrentOwned &&
-            random.IsCurrent && IsFurnitureCurrent && AreLarvaBossOwnersCurrent && IsTreeShakeBeforeCurrent && IsContainerMetadataCurrent && owner.npcs.TryCaptureDeathMutationSerial(out ulong currentNpcSerial) &&
+            random.IsCurrent && IsFurnitureCurrent && ArePressurePlatesUnpressed && AreLarvaBossOwnersCurrent && IsTreeShakeBeforeCurrent && IsContainerMetadataCurrent && owner.npcs.TryCaptureDeathMutationSerial(out ulong currentNpcSerial) &&
             currentNpcSerial == npcBeforeSerial && (allocation is null || allocation.IsCurrentOwned) &&
             (npcSpawns is null || npcSpawns.IsCurrentOwned) &&
             (projectileSpawns is null || projectileSpawns.IsCurrentOwned) &&
@@ -352,6 +352,7 @@ internal sealed partial class WorldTileAuthority
             AdoptContainerMetadata();
             if (!Overlay.TryAdoptUnpublished(furniture))
                 throw new InvalidOperationException("Prepared tool overlay changed during callback-free adoption.");
+            AdoptTriggerRemovalState();
             AdoptTreeShakeMarks();
             random.Commit();
             AdoptLarvaBosses();

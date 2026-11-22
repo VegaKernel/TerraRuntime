@@ -29,8 +29,8 @@ internal sealed partial class WorldTileAuthority
             y * 16 + 8 + launch.DirectionY * launch.MuzzleOffset - definition.Height * .5f,
             vx, vy, default, 0, checked((short)launch.Damage), 2f, 0);
         using var prepared = shots.CreateWorldSpawnPreparation();
-        if (!prepared.TryStage(in state, false, out _) || !prepared.TryAdoptUnpublished(out var publication)) return false;
-        if (publication?.TryPublishNext() != true)
+        if (!prepared.TryStage(in state, false, out var birth) || !prepared.TryAdoptUnpublished(out var publication)) return false;
+        if (toolProjectileAuthority?.TryScheduleWiringTrapBirth(in birth) == false || publication?.TryPublishNext() != true)
             throw new InvalidOperationException("Adopted wiring trap lost its source projectile publication.");
         return true;
     }

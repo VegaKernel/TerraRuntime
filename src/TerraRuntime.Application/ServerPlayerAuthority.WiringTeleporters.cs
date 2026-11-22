@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Npcs;
+using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Application;
@@ -12,7 +13,8 @@ internal sealed partial class ServerPlayerAuthority
     internal WiringPlayerTeleport1458 CaptureWiringTeleport(PlayerHandle player) =>
         wiringTeleports[player.Slot.Value].Owner == player ? wiringTeleports[player.Slot.Value] : default;
 
-    internal bool TryWiringTeleport(in PlayerStateSnapshot before, int dx, int dy, VanillaUnifiedRandom1458 random, Func<bool> current)
+    internal bool TryWiringTeleport(in PlayerStateSnapshot before, int dx, int dy, VanillaUnifiedRandom1458 random,
+        RuntimeProjectileStore projectiles, Func<bool> current)
     {
         if (before.IsDead || before.HasMount || before.Revision.Value == ulong.MaxValue || !states.TryGet(before.Player, out var actual) || actual != before) return false;
         float x = before.PositionX + dx, y = before.PositionY + dy;
@@ -20,6 +22,10 @@ internal sealed partial class ServerPlayerAuthority
         var history = CaptureWiringTeleport(before.Player);
         VanillaWiringTeleport1458.ConsumePlayerEffectSide(new SystemVanillaNpcRandom(prepared), 20, 42, history.Time);
         if (!current() || !states.TryGet(before.Player, out actual) || actual != before || !random.HasSameState(source)) return false;
+        PlayerAuthority.RemoveWiringTeleportHooks(projectiles, before.Player);
+        int slot = before.Player.Slot.Value;
+        if (liquidOwners[slot] == before.Player && liquidContacts[slot].Shimmer)
+            liquidContacts[slot] = liquidContacts[slot] with { Shimmer = false, Wet = false };
         random.CopyStateFrom(prepared);
         WeightedTeleportContact?.Invoke(before, before.PositionX, before.PositionY);
         if (!states.TrySetMotion(before.Player, x, y, before.VelocityX, before.VelocityY, out var committed))

@@ -1,11 +1,44 @@
 using System.Runtime.ExceptionServices;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Projectiles;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Application;
 
 internal sealed partial class ProjectileAuthority
 {
+    private Action<ProjectileSnapshot, ProjectileSimulationStepResult>? wiringContact;
+
+    internal bool TryScheduleWiringTrapBirth(in ProjectileSnapshot birth) =>
+        executor.TryScheduleWiringTrapBirth(in birth);
+
+    private void ApplySingleStepWiringContact(ProjectileSnapshot before, ProjectileSimulationStepResult step)
+    {
+        if (before.Type.Value != 185 || stepper is not VanillaProjectileWorldStateStepper ||
+            before.Spawner != byte.MaxValue || !projectiles.IsCombatTrusted(before.Handle) ||
+            projectiles.TryGetCombatTrustedOwner(before.Handle, out _) ||
+            projectiles.TryGetServerNpcSource(before.Handle, out _) ||
+            !projectiles.TryGetLifecycle(before.Handle, out var life) || life.Reflected || life.NpcProjectile) return;
+        ApplyWiringMovementContact(in before, in step);
+    }
+
+    private void ApplyWiringMovementContact(in ProjectileSnapshot before, in ProjectileSimulationStepResult step)
+    {
+        if (toolActorWorld is null || step.Liquid is not { Wet: false } || step.CollisionTileCutOffer is not null ||
+            !VanillaDefinitionCatalog.TryGet(before.Type, out var body)) return;
+        var after = step.State;
+        float vx = after.VelocityX, vy = after.VelocityY;
+        int segmentLength = Math.Clamp(Math.Min(body.CollisionWidth, body.CollisionHeight), 3, 16);
+        // HandleMovement offers each segment separately above this speed. The
+        // endpoint offer below is only valid for the original single move.
+        if (vx * vx + vy * vy > segmentLength * segmentLength ||
+            after.PositionX != before.PositionX + vx || after.PositionY != before.PositionY + vy ||
+            after.PositionX == before.PositionX && after.PositionY == before.PositionY) return;
+        toolActorWorld.ApplyProjectilePressurePlate(after.PositionX + body.CollisionOffsetX,
+            after.PositionY + body.CollisionOffsetY, body.CollisionWidth, body.CollisionHeight,
+            before.PositionX + body.CollisionOffsetX, before.PositionY + body.CollisionOffsetY);
+    }
+
     private ProjectileActorSimulationResult TrySimulateWiringEmitter(in ProjectileSnapshot initial)
     {
         if (stepper is not VanillaProjectileWorldStateStepper || worldTiles is null ||
@@ -97,7 +130,10 @@ internal sealed partial class ProjectileAuthority
             {
                 try
                 {
-                    if (activeOrdinaryArrowCombat is not null) continueFrame &= activeOrdinaryArrowCombat.TickWiringFlameContact(in accepted);
+                    ApplyWiringMovementContact(in current, in next);
+                    continueFrame = projectiles.TryGet(accepted.Handle, out var contactActor) && contactActor == accepted;
+                    if (continueFrame && activeOrdinaryArrowCombat is not null)
+                        continueFrame = activeOrdinaryArrowCombat.TickWiringFlameContact(in accepted);
                     if (continueFrame && projectiles.TryGet(initial.Handle, out var afterNpc) && projectiles.TryGetLifecycle(initial.Handle, out var afterNpcLife))
                     {
                         phaseImage = afterNpc; phaseLife = afterNpcLife;

@@ -52,8 +52,13 @@ public sealed class BoundedOutboundQueue
     /// Atomically admits a bounded frame batch. Either every frame is published in order or none is.
     /// Runtime world transfer uses this so a client cannot observe half of a replacement-world bootstrap.
     /// </summary>
-    public OutboundEnqueueResult TryEnqueueBatch(ReadOnlySpan<OutboundFrame> frames)
+    public OutboundEnqueueResult TryEnqueueBatch(ReadOnlySpan<OutboundFrame> frames) =>
+        TryEnqueueBatch(frames, headroomFrames: 0, headroomBytes: 0);
+
+    internal OutboundEnqueueResult TryEnqueueBatch(ReadOnlySpan<OutboundFrame> frames, int headroomFrames, int headroomBytes)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(headroomFrames);
+        ArgumentOutOfRangeException.ThrowIfNegative(headroomBytes);
         if (frames.Length == 0)
             return OutboundEnqueueResult.Enqueued;
 
@@ -79,12 +84,12 @@ public sealed class BoundedOutboundQueue
 
             int currentFrames = Volatile.Read(ref _queuedFrames);
             long currentBytes = Interlocked.Read(ref _queuedBytes);
-            if ((long)currentFrames + frames.Length > _options.MaxFrames)
+            if ((long)currentFrames + frames.Length + headroomFrames > _options.MaxFrames)
             {
                 RejectBatch(frames.Length);
                 return OutboundEnqueueResult.FrameBudgetExceeded;
             }
-            if (currentBytes + addedBytes > _options.MaxQueuedBytes)
+            if (currentBytes + addedBytes + headroomBytes > _options.MaxQueuedBytes)
             {
                 RejectBatch(frames.Length);
                 return OutboundEnqueueResult.ByteBudgetExceeded;

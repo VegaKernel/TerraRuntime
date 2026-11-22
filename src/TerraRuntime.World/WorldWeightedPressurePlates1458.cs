@@ -19,6 +19,8 @@ public sealed class WorldWeightedPressurePlates1458
 
     public WorldPressurePlate[] CaptureSnapshot() => pressed.Keys.Select(p => new WorldPressurePlate(p.X, p.Y)).ToArray();
 
+    internal bool IsPressed(int x, int y) => pressed.ContainsKey((x, y));
+
     public void FirstUpdate(Action<int, int> pulse)
     {
         if (!needsFirstUpdate) return;

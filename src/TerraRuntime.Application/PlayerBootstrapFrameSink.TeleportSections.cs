@@ -1,3 +1,5 @@
+using TerraRuntime.Network;
+using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
@@ -23,23 +25,51 @@ public sealed partial class PlayerBootstrapFrameSink
         _awaitingWorldTransferLanding = true;
     }
 
-    // RemoteClient.CheckSection uses a3x3 destination window. Reuse the existing asynchronous
-    // cache/rebuild and opportunistic queue budgets; unavailable sections retry on the teleport ack13.
+    // Style-0 entity teleport without extra info is a 15-byte packet 65.
+    private const int WiringTeleportFrameLength = 15;
+    private static readonly byte[][] TeleportSectionStatusFrames = Enumerable.Range(0, PlayerSectionStreamingState.MaximumTeleportWindowSectionCount + 1)
+        .Select(PlayerJoinFrameEncoder.EncodeStatus).ToArray();
+
+    // CheckSection visits a 3x3 landing window in X-major order and precedes packet 65.
+    // Cold sections request background rebuilds through the ordinary bounded budget. Section
+    // delivery retries on the landing movement if the frame or outbound space is unavailable.
     internal void PrepareServerTeleportSections(float x, float y)
     {
         var streaming = _sectionStreaming;
-        if (streaming is null || !float.IsFinite(x) || !float.IsFinite(y)) return;
-        int tileX = (int)(x / 16f), tileY = (int)(y / 16f);
-        if (tileX < 0 || tileY < 0) return;
-        int sectionX = tileX / TerrariaSectionGeometry.WidthTiles, sectionY = tileY / TerrariaSectionGeometry.HeightTiles;
-        Span<WorldSectionId> pending = stackalloc WorldSectionId[PlayerSectionStreamingState.MaximumWindowSectionCount];
-        int count = streaming.PlanUnsent(x, y, pending);
-        for (int i = 0; i < count; i++)
+        if (streaming is null) return;
+
+        Span<WorldSectionId> sections = stackalloc WorldSectionId[PlayerSectionStreamingState.MaximumTeleportWindowSectionCount];
+        Span<WorldSectionId> cold = stackalloc WorldSectionId[PlayerSectionStreamingState.MaximumTeleportWindowSectionCount];
+        int coldCount = 0;
+        lock (streaming.SectionPublicationGate)
         {
-            var section = pending[i];
-            if (Math.Abs(section.X - sectionX) > 1 || Math.Abs(section.Y - sectionY) > 1) continue;
-            if (!_packets.TryGetCurrentCachedSectionFrame(section, out var frame) || !TryQueueOpportunistic(frame)) continue;
-            streaming.MarkSent(section);
+            int count = streaming.PlanTeleportUnsent(x, y, sections);
+            OutboundFrame[]? batch = null;
+            int ready = 0;
+            for (int i = 0; i < count; i++)
+            {
+                var section = sections[i];
+                if (!_packets.TryGetCurrentCachedSectionFrame(section, out var frame))
+                {
+                    cold[coldCount++] = section;
+                    continue;
+                }
+                batch ??= new OutboundFrame[count + 1];
+                sections[ready++] = section;
+                batch[ready] = new(frame);
+            }
+
+            if (batch is not null)
+            {
+                batch[0] = new(TeleportSectionStatusFrames[ready]);
+                if (_outbound.TryEnqueueOpportunisticBatch(batch.AsSpan(0, ready + 1), remainingFrames: 1, remainingBytes: WiringTeleportFrameLength) ==
+                    OutboundEnqueueResult.Enqueued)
+                    for (int i = 0; i < ready; i++)
+                        streaming.MarkSent(sections[i]);
+            }
         }
+
+        for (int i = 0; i < coldCount; i++)
+            _packets.RequestSectionFrameInBackground(cold[i]);
     }
 }

@@ -36,7 +36,7 @@ public sealed partial class WiringTeleporter1458Tests
     }
 
     [Theory]
-    [InlineData("frame")] [InlineData("missing")] [InlineData("wet")] [InlineData("actuator")] [InlineData("inactive")]
+    [InlineData("frame")] [InlineData("missing")] [InlineData("actuator")] [InlineData("inactive")]
     public void Unsupported_pad_refuses_without_motion_entropy_or65(string kind)
     {
         using var f = new TeleportFixture(); var tile = f.Tiles.Get(56, 40);
@@ -44,7 +44,6 @@ public sealed partial class WiringTeleporter1458Tests
         {
             case "frame": tile.FrameX++; break;
             case "missing": tile.Flags &= ~WorldTileFlags.Active; break;
-            case "wet": tile.LiquidAmount = 1; break;
             case "actuator": tile.Flags |= WorldTileFlags.Actuator; break;
             case "inactive": tile.Flags |= WorldTileFlags.Inactive; break;
         }
@@ -55,13 +54,12 @@ public sealed partial class WiringTeleporter1458Tests
     }
 
     [Theory]
-    [InlineData("unknown-mount")] [InlineData("wet-source")] [InlineData("wet-destination")] [InlineData("dead")]
+    [InlineData("unknown-mount")] [InlineData("dead")]
     public void Unsupported_player_context_does_not_block_eligible_npc(string kind)
     {
         using var f = new TeleportFixture(); Assert.True(f.Graph.Players.TryGet(f.Connection, out var member));
         if (kind == "unknown-mount") { member.HasMount = true; member.MountType = ushort.MaxValue; }
         if (kind == "dead") member.IsDead = true;
-        if (kind.StartsWith("wet")) { int x = kind == "wet-source" ? 19 : 54; var tile = f.Tiles.Get(x, 38); tile.LiquidAmount = 1; f.Tiles.Set(x, 38, in tile); }
         f.Press();
         Assert.Equal(318f, member.PositionX); Assert.True(f.Npcs.TryGetActive(0, out var npc)); Assert.Equal(884f, npc.PositionX);
         Assert.Equal(new[] { "0F004101000000005D440080154400" }, Drain(f.Peer));
@@ -140,14 +138,24 @@ public sealed partial class WiringTeleporter1458Tests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
-    public void Section_warmup_marks_only_frames_that_entered_the_queue_and_retries(bool available)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Section_warmup_marks_only_frames_that_entered_the_queue_and_retries(bool available, bool bytePressure)
     {
         var worldBytes = (byte[])typeof(WorldFileLoaderTests).GetMethod("CreateCompleteCurrentWorld", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.Invoke(null, null)!;
         var limits = (WorldFileLoadLimits)typeof(WorldFileLoaderTests).GetMethod("CreateLimits", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.Invoke(null, null)!;
         Assert.True(WorldFileLoader.TryLoad(worldBytes, limits, out var world).IsLoaded);
         var packets = available ? PlayerBootstrapPacketSet.Create(world!) : PlayerBootstrapPacketSet.CreateForTesting(new byte[] { 3, 0, 7 }, [], new byte[] { 3, 0, 49 });
-        var output = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(1, 65536, 16384));
+        var teleportFrame = TerrariaPlayerReplicationFrameEncoder.EncodeTeleport(new PlayerSlotId(0), 0, 0, style: 0, failed: false);
+        int byteBudget = 65536;
+        if (bytePressure)
+        {
+            Assert.True(packets.TryGetCurrentCachedSectionFrame(new(0, 0), out var sectionFrame));
+            int statusLength = TerraRuntime.Protocol.Multiplicity.PlayerJoinFrameEncoder.EncodeStatus(1).Length;
+            byteBudget = statusLength + sectionFrame.Length + teleportFrame.Length;
+        }
+        var output = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(bytePressure ? 8 : 3, byteBudget, byteBudget));
         using var sink = new PlayerBootstrapFrameSink(new PlayerSlotPool(1), output, packets);
         var streaming = new PlayerSectionStreamingState(world!.Header.Dimensions);
         typeof(PlayerBootstrapFrameSink).GetField("_sectionStreaming", Hidden)!.SetValue(sink, streaming);
@@ -155,8 +163,10 @@ public sealed partial class WiringTeleporter1458Tests
         sink.PrepareServerTeleportSections(0, 0); Assert.Equal(0, streaming.SentSectionCount); Assert.Single(Drain(output));
         sink.PrepareServerTeleportSections(0, 0);
         Assert.Equal(available ? 1 : 0, streaming.SentSectionCount);
-        var frames = Drain(output); Assert.Equal(available ? 1 : 0, frames.Length);
-        if (available) Assert.Equal((byte)10, Convert.FromHexString(frames[0])[2]);
+        Assert.False(output.IsSlowClient);
+        Assert.Equal(OutboundEnqueueResult.Enqueued, output.TryEnqueue(new(teleportFrame)));
+        var frames = Drain(output).Select(Convert.FromHexString).Select(bytes => bytes[2]).ToArray();
+        Assert.Equal(available ? new byte[] { 9, 10, 65 } : new byte[] { 65 }, frames);
         sink.PrepareServerTeleportSections(0, 0); Assert.Empty(Drain(output));
     }
 
@@ -174,19 +184,48 @@ public sealed partial class WiringTeleporter1458Tests
     }
 
     [Fact]
-    public void Writer_warmup_does_not_request_rebuild_wait_or_publish_stale_cached_sections()
+    public void Writer_warmup_requests_background_rebuild_and_skips_stale_cached_sections()
     {
         var worldBytes = (byte[])typeof(WorldFileLoaderTests).GetMethod("CreateCompleteCurrentWorld", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.Invoke(null, null)!;
         var limits = (WorldFileLoadLimits)typeof(WorldFileLoaderTests).GetMethod("CreateLimits", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.Invoke(null, null)!;
         Assert.True(WorldFileLoader.TryLoad(worldBytes, limits, out var world).IsLoaded);
-        var packets = PlayerBootstrapPacketSet.Create(world!);
+        var loaded = Assert.IsType<WorldFileData>(world);
+        var packets = PlayerBootstrapPacketSet.Create(loaded);
         var output = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(64, 65536, 16384));
-        using var sink = new PlayerBootstrapFrameSink(new PlayerSlotPool(1), output, packets);
-        var tile = world!.Tiles.Get(0, 0); tile.FrameX++;
-        world.Tiles.Set(0, 0, in tile);
-        packets.AttachSectionRebuildRequester(_ => throw new InvalidOperationException("Writer entered blocking section resolution."));
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(lease!);
+        session.ObserveWorldRequest();
+        session.ObserveSectionRequest();
+        Assert.Equal(PlayerSpawnCommitResult.Committed, session.TryCommitSpawn(session.Slot));
+        var ingress = new LandingIngress();
+        using var sink = new PlayerBootstrapFrameSink(slots, output, packets, GameCommandSourceId.FromConnection(896), ingress, ingress);
+        sink.AdoptPlayingSession(session, null);
+        var tile = loaded.Tiles.Get(0, 0);
+        tile.FrameX++;
+        loaded.Tiles.Set(0, 0, in tile);
+        var requests = new List<WorldSectionId>();
+        packets.AttachSectionRebuildRequester(section =>
+        {
+            requests.Add(section);
+            return new(true, 1);
+        });
         sink.PrepareServerTeleportSections(0, 0);
-        Assert.Empty(Drain(output)); Assert.False(((PlayerSectionStreamingState)typeof(PlayerBootstrapFrameSink).GetField("_sectionStreaming", Hidden)!.GetValue(sink)!).OwnsSectionAtTile(0, 0));
+        var expected = new WorldSectionId(0, 0);
+        Assert.Equal(expected, Assert.Single(requests));
+        Assert.Equal(0, packets.CaptureSectionCacheSnapshot().Waits);
+        Assert.Empty(Drain(output));
+        var streaming = (PlayerSectionStreamingState)typeof(PlayerBootstrapFrameSink).GetField("_sectionStreaming", Hidden)!.GetValue(sink)!;
+        Assert.False(streaming.IsSent(expected));
+
+        // The later ordinary movement path sees only the rebuilt, current revision.
+        byte[] refreshedFrame = { 4, 0, 10, 1 };
+        Assert.True(packets.TryPublishSectionFrame(expected, loaded.Tiles.GetSectionVersion(expected), refreshedFrame));
+        sink.CommitServerTeleport(0, 0);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(MovementFrame(0, 0)));
+        Assert.Equal(1, ingress.Count);
+        Assert.Equal(Convert.ToHexString(refreshedFrame), Assert.Single(Drain(output)));
+        Assert.True(streaming.IsSent(expected));
     }
 
     [Theory]

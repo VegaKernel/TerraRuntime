@@ -125,6 +125,9 @@ internal sealed class RuntimePlayerTransferProfileStore
     public int GetBuffDuration(ConnectionHandle connection, BuffTypeId type) =>
         Get(connection)?.Buffs?.GetDuration(type) ?? 0;
 
+    internal bool ClearShimmerForTeleport(ConnectionHandle connection) =>
+        Get(connection)?.Buffs?.ClearShimmerForTeleport() ?? false;
+
     internal PlayerBuffState? CaptureBuffState(ConnectionHandle connection) => Get(connection)?.Buffs?.Clone();
 
     internal bool HasOwnedNpcContactBuffs(ConnectionHandle connection) =>

@@ -9,10 +9,11 @@ namespace TerraRuntime.Application;
 internal sealed partial class WorldTileAuthority
 {
     private WorldWiringCircuit1458? wiring;
+    private WorldWiringDeviceExecutor1458? wiringDevices;
     private void InitializeWiring(bool plantBossDowned)
     {
         if (tiles is null) return;
-        var devices = new WorldWiringDeviceExecutor1458(tiles, playerDoorOpenings, PublishWiringSquare,
+        wiringDevices = new WorldWiringDeviceExecutor1458(tiles, playerDoorOpenings, PublishWiringSquare,
             () => worldItemSpawnRandom.NextInt32(0, 2) == 0 ? -1 : 1,
             () => plantBossDowned || progression.IsCompleted(VanillaWorldProgressionId.Plantera),
             canKillTile: (x, y) => VanillaToolWorldRules1458.TryEvaluate(tiles, x, y,
@@ -22,7 +23,7 @@ internal sealed partial class WorldTileAuthority
             applyActuatorTransaction: TryApplyWiringActuator, fireTrap: TryFireWiringTrap, fireStatue: TryFireStatue,
             publishTemporaryAnimation: (animation, tile, x, y) => replication?.TryPublishTemporaryAnimation(animation, tile, x, y));
         var source = worldItemSpawnRandom as TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom;
-        wiring = new WorldWiringCircuit1458(tiles, devices, PublishWiringSquare,
+        wiring = new WorldWiringCircuit1458(tiles, wiringDevices, PublishWiringSquare,
             source is null ? null : maximum => source.SourceRandom.Next(maximum),
             source is null ? null : (x, y) =>
             {
@@ -68,9 +69,21 @@ internal sealed partial class WorldTileAuthority
             ? VanillaPlayerMountHitbox1458.Resolve(after.MountType) : (20, 42);
         if (!WorldPressurePlateContacts1458.TryFindContact(tiles, after.PositionX, after.PositionY,
             (int)width, (int)height, before.PositionX, before.PositionY, WorldPressurePlateActor1458.Player, out var contact)) return;
-        // Style7 must destroy the plate after its impulse. That path needs the full source kill/drop
-        // transaction; leave it unadmitted until that owner is connected rather than retain a spent plate.
-        if (contact.DestroyAfterPulse) return;
+        if (contact.DestroyAfterPulse)
+        {
+            ApplyServerDisposablePlate(contact.X, contact.Y);
+            return;
+        }
+        if (wiring.HitSwitch(contact.X, contact.Y))
+            replication?.TryPublishHitSwitch(default, new((short)contact.X, (short)contact.Y));
+    }
+
+    internal void ApplyProjectilePressurePlate(float x, float y, int width, int height, float oldX, float oldY)
+    {
+        if (tiles is null || wiring is null ||
+            !WorldPressurePlateContacts1458.TryFindContact(tiles, x, y, width, height, oldX, oldY,
+                WorldPressurePlateActor1458.ProjectileOrBoulder, out var contact) ||
+            contact.X > short.MaxValue || contact.Y > short.MaxValue) return;
         if (wiring.HitSwitch(contact.X, contact.Y))
             replication?.TryPublishHitSwitch(default, new((short)contact.X, (short)contact.Y));
     }

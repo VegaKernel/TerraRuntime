@@ -209,7 +209,17 @@ public sealed class RuntimeProjectileStateExecutor
     internal bool TryScheduleWiringFlameBirth(in ProjectileSnapshot birth)
     {
         if (!tickActive || _snapshotBuffer[currentIndex].Type.Value != 187 ||
-            birth.Type.Value != 188 || birth.Spawner != byte.MaxValue ||
+            birth.Type.Value != 188) return false;
+        return TryScheduleWiringBirth(in birth);
+    }
+
+    internal bool TryScheduleWiringTrapBirth(in ProjectileSnapshot birth) =>
+        birth.Type.Value is 98 or 184 or 185 or 186 or 187 or 980 &&
+        (!tickActive || TryScheduleWiringBirth(in birth));
+
+    private bool TryScheduleWiringBirth(in ProjectileSnapshot birth)
+    {
+        if (birth.Spawner != byte.MaxValue ||
             birth.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
             !_projectiles.IsCombatTrusted(birth.Handle) ||
             _projectiles.TryGetServerNpcSource(birth.Handle, out _) ||
@@ -235,7 +245,8 @@ public sealed class RuntimeProjectileStateExecutor
     // The concrete Application arrow owner may prepare/adopt this actor before the generic motion lane.
     // A handled refusal is final for this pass; it never falls through to speculative legacy motion.
     internal ProjectileStateTickSummary Tick(IProjectileStateStepper stepper,
-        Func<ProjectileSnapshot, ProjectileActorSimulationResult>? simulateActor)
+        Func<ProjectileSnapshot, ProjectileActorSimulationResult>? simulateActor,
+        Action<ProjectileSnapshot, ProjectileSimulationStepResult>? singleStepBeforePublication = null)
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
@@ -399,6 +410,8 @@ public sealed class RuntimeProjectileStateExecutor
                     applied++;
                     if (_commitSink is IProjectileSimulationPrePublicationCommitSink beforePublication)
                         beforePublication.ProjectileSimulationCommittedBeforePublication(_stepBuffer.AsSpan(0, recordedSubupdates));
+                    if (!expired && subupdates == 1 && recordedSubupdates == 1)
+                        singleStepBeforePublication?.Invoke(projectile, finalResult);
                     _projectiles.TryPublishSimulationCommit(in committed, expired);
                     if (_commitSink is not null)
                     {

@@ -66,7 +66,7 @@ internal sealed partial class PlayerBuffState
             if (ownedNpcContact[slot] && durations[slot] == 0)
             {
                 // DelBuff's unusual final-slot rule is shared with the existing food owner.
-                RemoveFedStateSlot(slot);
+                RemoveBuffSlot(slot);
                 changed = true;
             }
         // A pending food transaction may not rewind a contact timer that advanced meanwhile.

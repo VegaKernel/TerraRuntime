@@ -59,6 +59,10 @@ public sealed class TerrariaConnectionOutboundQueue
     public OutboundEnqueueResult TryEnqueueOpportunistic(OutboundFrame frame) =>
         _queue.TryEnqueue(frame);
 
+    /// <summary>Admits replaceable frames only when the batch leaves the requested headroom at enqueue time.</summary>
+    internal OutboundEnqueueResult TryEnqueueOpportunisticBatch(ReadOnlySpan<OutboundFrame> frames, int remainingFrames, int remainingBytes) =>
+        _queue.TryEnqueueBatch(frames, remainingFrames, remainingBytes);
+
     public OutboundEnqueueResult TryEnqueueBatch(ReadOnlySpan<OutboundFrame> frames)
     {
         OutboundEnqueueResult result = _queue.TryEnqueueBatch(frames);

@@ -291,6 +291,7 @@ internal sealed partial class WorldTileAuthority
         private bool KillAfterSpecial(in SourceStep step)
         {
             var before = step.SourceTile;
+            if (before.Type == 423 && !TryRemoveLogicSensor(step.X, step.Y)) return false;
             if ((!clientRole || deathDrop is not null) && !step.NoItem && !StageDrops(step.X, step.Y, in before)) return false;
             var after = before;
             after.Type = 0;
@@ -310,9 +311,7 @@ internal sealed partial class WorldTileAuthority
         {
             if (deathDrop is not null) return TryStageDeathDrop(x, y, in before);
             if (server is null) return false;
-            // KillTile_GetItemDrops has no style7 case for type135. Its successful
-            // destruction still executes the ordinary dust and neighbor frame pass.
-            if (before.Type == 135 && before.FrameY / 18 == 7) return true;
+            if (before.Type is 135 or 423 or 428) return TryStageWiringTriggerDrop(x, y, in before);
             if (IsOrdinaryPlacementFurniture(before.Type) || IsExceptionalFurniture(before.Type) || AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
             if (IsSourcePlant(before.Type)) return TryStagePlantDrops(x, y, in before);
             if (before.Type is 5 or 72 or 80 or 323 or >= 583 and <= 589 or 596 or 616 or 634)
@@ -367,6 +366,9 @@ internal sealed partial class WorldTileAuthority
             if (tile.Type is 21 or 467 or 88) return FrameContainer(step.X, step.Y, in tile);
             if (tile.Type == 26) return TryVerifyIntactAltar(step.X, step.Y, in tile);
             if (tile.Type is 49 or 136) return FrameSingleCell(step.X, step.Y, in tile);
+            if (tile.Type is 135 or 428) return FramePressurePlate(step.X, step.Y);
+            if (tile.Type == 423)
+                return tile.FrameX % 18 == 0 && tile.FrameY % 18 == 0 || Push(new(StepKind.Kill, step.X, step.Y));
             if (wiringActuationFrame && tile.Type == WiringTorchTile) return FrameWiringTorch(step.X, step.Y, in tile);
             if (tile.Type is 137 or 424 or 442) return TryFrameToolFurniture(step.X, step.Y, in tile);
             if (tile.Type == LarvaTile) return FrameLarva(step.X, step.Y, in tile);
@@ -496,7 +498,7 @@ internal sealed partial class WorldTileAuthority
         private static bool IsCactus(in WorldTile tile) => tile.IsActive && tile.Type == 80;
         private static bool IsFramedTree(ushort type) => type is 5 or 72 or 323 or >= 583 and <= 589 or 596 or 616 or 634;
         private static bool HasStoredOrProgressionEffect(ushort type) =>
-            type is 21 or 26 or 31 or 88 or 128 or 269 or 334 or 395 or 423 or 441 or 467 or 470 or 471 or
+            type is 21 or 26 or 31 or 88 or 128 or 269 or 334 or 395 or 441 or 467 or 470 or 471 or
             475 or 488 or 520 or 597 or 619 or 621 or 695 or 696 or 698 or 704 or 723 or 724;
     }
 }

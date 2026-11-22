@@ -735,16 +735,14 @@ public sealed partial class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisp
                 // unmarked, so a later movement sample retries it. Initial packet-8 bootstrap stays strict.
                 continue;
             }
-            if (!TryQueueOpportunistic(frame))
+            lock (streaming.SectionPublicationGate)
             {
-                // Post-join section streaming is replaceable/opportunistic state too. Do not use the normal
-                // enqueue path here: its overflow policy permanently marks the peer as a slow client and the
-                // socket loop disconnects it even if this method merely returns Continue. Leave the section
-                // unmarked so a later movement sample retries it. Initial bootstrap remains strict.
-                continue;
+                // The world writer may have sent this section before a server teleport while the
+                // receive thread was resolving the cache miss. Mark ownership once, after enqueue.
+                if (streaming.IsSent(section)) continue;
+                // A full opportunistic queue leaves the section unsent so the next movement retries it.
+                if (TryQueueOpportunistic(frame)) streaming.MarkSent(section);
             }
-
-            streaming.MarkSent(section);
         }
 
         return PlayerBootstrapStopReason.None;

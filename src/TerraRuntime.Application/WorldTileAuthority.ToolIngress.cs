@@ -17,6 +17,7 @@ internal sealed partial class WorldTileAuthority
     {
         if (TryObserveClientDisposablePlate(command)) return true;
         if (TryObserveClientWireRemoval(command)) return true;
+        if (TryObserveClientActuationRod(command)) return true;
         if (TryObserveClientWiringTile(command)) return true;
         if (TryObserveClientPlacementTile(command)) return true;
         if (toolProjectileAuthority is null) return false;

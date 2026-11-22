@@ -21,6 +21,13 @@ public static class VanillaProjectileLifecycleFacts
         457, 458, 832, 924, 925
     ];
 
+    // Complete Linux-edition Projectile.SetDefaults AI-style 7 roster from the wiring teleport capture.
+    private static readonly int[] GrapplingHookTypes =
+    [
+        13, 32, 73, 74, 165, 230, 231, 232, 233, 234, 235, 256, 315, 322, 331, 332,
+        372, 396, 403, 446, 486, 487, 488, 489, 646, 647, 648, 649, 652, 753, 865, 935
+    ];
+
     private static readonly ushort[] NetImportantTypes =
     [
         13, 18, 25, 26, 32, 35, 50, 53, 63, 72, 73, 74, 86, 87, 111, 112, 127, 154, 155, 163,
@@ -39,6 +46,8 @@ public static class VanillaProjectileLifecycleFacts
         1056, 1058, 1059, 1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068, 1069, 1070, 1071, 1072, 1074, 1075, 1076, 1078,
         1089, 1090, 1091, 1093, 1094, 1095, 1096, 1098, 1101, 1102, 1112, 1113, 1118, 1119, 1123
     ];
+
+    public static bool IsGrapplingHook(ProjectileTypeId type) => Array.BinarySearch(GrapplingHookTypes, type.Value) >= 0;
 
     /// <summary>Returns true only when SetDefaults leaves a nonzero protocol-range type active.</summary>
     public static bool IsDefinedLiveType(ProjectileTypeId type) => IsDefinedLiveTypeValue(type.Value);

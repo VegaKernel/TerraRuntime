@@ -265,7 +265,7 @@ public sealed partial class RuntimeWiring1458Tests
 
     private sealed class Scene : IDisposable, IPlayerSpawnCommitIngress
     {
-        public WorldTileStore Tiles { get; } = new(new WorldDimensions(100, 100));
+        public WorldTileStore Tiles { get; }
         public RuntimeTileManipulationReplicationRegistry Replication { get; } = new();
         public ServerRuntimeState State { get; }
         public TerrariaConnectionOutboundQueue OwnerOutbound { get; } = Outbound();
@@ -278,8 +278,10 @@ public sealed partial class RuntimeWiring1458Tests
         public Scene(int sourceId = 8000, ServerPlayerAuthority? serverPlayers = null, PlayerSlotPool? playerSlots = null, RuntimePlayerUpdateWorld1458? sourceWorld = null,
             RuntimeTownCommerceWorldFacts1458? calendar = null, TerraRuntime.Core.Worlds.RuntimeWorldItemStore? items = null,
             RuntimeWorldItemReplicationRegistry? itemReplication = null, TerraRuntime.Core.Npcs.RuntimeNpcStore? npcs = null,
-            RuntimeNpcReplicationRegistry? npcReplication = null, VanillaUnifiedRandom1458? wiringRandom = null, RuntimeWorldClock? clock = null)
+            RuntimeNpcReplicationRegistry? npcReplication = null, VanillaUnifiedRandom1458? wiringRandom = null, RuntimeWorldClock? clock = null,
+            WorldTileStore? worldTiles = null)
         {
+            Tiles = worldTiles ?? new(new WorldDimensions(100, 100));
             State = new(npcs: npcs, npcReplication: npcReplication, worldTiles: Tiles, tileManipulationReplication: Replication, serverPlayers: serverPlayers,
                 sourcePlayerWorld: sourceWorld, townCommerceWorldFacts: calendar, worldItems: items, worldItemReplication: itemReplication, worldClock: clock,
                 worldItemSpawnRandom: wiringRandom is null ? null : new TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom(wiringRandom),
