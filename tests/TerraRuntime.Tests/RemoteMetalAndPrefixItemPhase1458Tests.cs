@@ -100,6 +100,128 @@ public sealed class RemoteMetalAndPrefixItemPhase1458Tests
     }
 
     [Fact]
+    public void Good_vanity_head_body_and_legs_do_not_block_the_owned_player_phase()
+    {
+        using var source = Read("NeutralMetalPlayerPhase1458");
+        var row = source.RootElement.EnumerateArray().First(row =>
+            row.GetProperty("mode").GetString() == "baseline" && I(row, "weapon") == 0);
+        foreach (var equipped in new[]
+        {
+            new[] { (Slot: (short)69, Type: (short)4955) },
+            new[] { (Slot: (short)70, Type: (short)3267) },
+            new[] { (Slot: (short)71, Type: (short)844) },
+            new[] { (Slot: (short)69, Type: (short)4955), (Slot: (short)70, Type: (short)3267),
+                (Slot: (short)71, Type: (short)844) }
+        })
+        {
+            using var f = new Fixture(row);
+            foreach (var item in equipped) f.Equipment(item.Slot, item.Type, 1);
+            Assert.True(f.Players.TryTickRemotePlayerPhase());
+            Assert.True(f.Players.TryCaptureCombatSnapshot(f.Connection, out var combat));
+            Assert.Equal(VanillaPlayerCombatSnapshot.Baseline, combat);
+        }
+    }
+
+    [Fact]
+    public void Good_neutral_social_accessories_do_not_block_the_owned_player_phase()
+    {
+        using var source = Read("NeutralMetalPlayerPhase1458");
+        var row = source.RootElement.EnumerateArray().First(row =>
+            row.GetProperty("mode").GetString() == "baseline" && I(row, "weapon") == 0);
+        var social = new[]
+        {
+            (Slot: (short)74, Type: (short)4771),
+            (Slot: (short)76, Type: (short)1921),
+            (Slot: (short)77, Type: (short)1323),
+            (Slot: (short)78, Type: (short)554)
+        };
+        for (int count = 1; count <= social.Length; count++)
+        {
+            using var f = new Fixture(row);
+            for (int i = 0; i < count; i++) f.Equipment(social[i].Slot, social[i].Type, 1);
+            Assert.True(f.Players.TryTickRemotePlayerPhase());
+            Assert.True(f.Players.TryCaptureCombatSnapshot(f.Connection, out var combat));
+            Assert.Equal(VanillaPlayerCombatSnapshot.Baseline, combat);
+        }
+    }
+
+    [Fact]
+    public void Good_dyes_do_not_block_the_owned_player_phase()
+    {
+        using var source = Read("NeutralMetalPlayerPhase1458");
+        var row = source.RootElement.EnumerateArray().First(row =>
+            row.GetProperty("mode").GetString() == "baseline" && I(row, "weapon") == 0);
+        var dyes = new[]
+        {
+            (Slot: (short)79, Type: (short)2872),
+            (Slot: (short)80, Type: (short)3557),
+            (Slot: (short)81, Type: (short)3557),
+            (Slot: (short)82, Type: (short)3557),
+            (Slot: (short)83, Type: (short)3529),
+            (Slot: (short)84, Type: (short)3557),
+            (Slot: (short)85, Type: (short)3557),
+            (Slot: (short)86, Type: (short)3557),
+            (Slot: (short)87, Type: (short)1030),
+            (Slot: (short)88, Type: (short)3557),
+            (Slot: (short)96, Type: (short)3557),
+            (Slot: (short)98, Type: (short)2883)
+        };
+        using var f = new Fixture(row);
+        foreach (var dye in dyes) f.Equipment(dye.Slot, dye.Type, 1);
+        Assert.True(f.Players.TryTickRemotePlayerPhase());
+        Assert.True(f.Players.TryCaptureCombatSnapshot(f.Connection, out var combat));
+        Assert.Equal(VanillaPlayerCombatSnapshot.Baseline, combat);
+    }
+
+    [Fact]
+    public void Good_dormant_cart_mount_and_hook_slots_do_not_block_the_owned_player_phase()
+    {
+        using var source = Read("NeutralMetalPlayerPhase1458");
+        var row = source.RootElement.EnumerateArray().First(row =>
+            row.GetProperty("mode").GetString() == "baseline" && I(row, "weapon") == 0);
+        var misc = new[]
+        {
+            (Slot: (short)91, Type: (short)3353),
+            (Slot: (short)92, Type: (short)4444),
+            (Slot: (short)93, Type: (short)939)
+        };
+        for (int count = 1; count <= misc.Length; count++)
+        {
+            using var f = new Fixture(row);
+            for (int i = 0; i < count; i++) f.Equipment(misc[i].Slot, misc[i].Type, 1);
+            Assert.False(f.Member.HasMount);
+            Assert.True(f.Players.TryTickRemotePlayerPhase());
+            Assert.True(f.Players.TryCaptureCombatSnapshot(f.Connection, out var combat));
+            Assert.Equal(VanillaPlayerCombatSnapshot.Baseline, combat);
+        }
+    }
+
+    [Fact]
+    public void Good_horn_and_darkness_social_visuals_leave_baseline_phase_rng_unchanged()
+    {
+        using var source = Read("NeutralMetalPlayerPhase1458");
+        var row = source.RootElement.EnumerateArray().First(row =>
+            row.GetProperty("mode").GetString() == "baseline" && I(row, "weapon") == 0);
+        using var control = new Fixture(row);
+        Assert.True(control.Players.TryTickRemotePlayerPhase());
+
+        var social = new[]
+        {
+            (Slot: (short)73, Type: (short)4563),
+            (Slot: (short)75, Type: (short)3581)
+        };
+        for (int count = 1; count <= social.Length; count++)
+        {
+            using var f = new Fixture(row);
+            for (int i = 0; i < count; i++) f.Equipment(social[i].Slot, social[i].Type, 1);
+            Assert.True(f.Players.TryTickRemotePlayerPhase());
+            Assert.True(f.Random.HasSameState(control.Random));
+            Assert.True(f.Players.TryCaptureCombatSnapshot(f.Connection, out var combat));
+            Assert.Equal(VanillaPlayerCombatSnapshot.Baseline, combat);
+        }
+    }
+
+    [Fact]
     public void Windows_framework_prefix_arithmetic_preserves_original_full_remote_clocks()
     {
         using var source = Read("RemotePrefixedBulletWindowsPhase1458");

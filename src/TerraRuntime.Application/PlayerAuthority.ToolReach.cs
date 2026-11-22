@@ -42,28 +42,43 @@ internal sealed partial class PlayerAuthority
             member.RemotePhaseSnapshot != capture.Actor.Player || member.RemotePhaseItem != capture.Actor.ItemPhase ||
             member.RemotePhaseInputRevision != capture.Actor.InputRevision ||
             capture.Phase.ToolUse is not { Reach: { } owned } ||
-            capture.World.JourneyMode is not false) return false;
+            capture.World.JourneyMode is null) return false;
         reach = owned;
         return true;
     }
 
-    private bool TryResolveToolReach(in RuntimePlayerUpdateWorld1458 world,
+    internal static bool TryResolveToolReach(in RuntimePlayerUpdateWorld1458 world,
         in ToolDefinition1458 tool, ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+        in VanillaPlayerCombatEquipmentContext context,
         out RuntimePlayerToolReach1458 reach)
     {
         reach = default;
-        // No represented owner of Journey FarPlacementRange exists. Unknown is
-        // not disabled. Range accessories likewise stay outside this projection.
-        if (world.JourneyMode is not false) return false;
-        foreach (var item in equipment)
-        {
-            int index = item.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
-            if (item.Stack > 0 && index is >= 3 and <= 9 &&
-                item.ItemNetId is 2215 or 3061 or 5126) return false;
-        }
-        // The proven whole-phase equipment census has already excluded active
-        // inherited/loadout range writers. No Artisan Loaf expansion is applied.
-        reach = new(5, 3, tool.TileBoost);
+        if (world.JourneyMode is null ||
+            !VanillaPlayerCombatEquipmentCatalog.TryCaptureToolAccessories(equipment, in context,
+                out var accessories)) return false;
+        // TerrariaServer 1.4.5.8 Player.UpdateEquips raises the owner's global
+        // tileRangeX/Y once when any tile-range accessory is equipped. ItemCheck
+        // then applies the selected tool's tileBoost after Simple's range cap.
+        // The proven whole-phase census still owns which equipment is usable.
+        // Unowned Journey FarPlacementRange power is not inferred from this item.
+        reach = new(accessories.TileRange ? 8 : 5, accessories.TileRange ? 5 : 3, tool.TileBoost);
+        return true;
+    }
+
+    internal static bool TryResolvePlacementReach(in RuntimePlayerUpdateWorld1458 world,
+        in LocalPlacementDefinition1458 placement, ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+        in VanillaPlayerCombatEquipmentContext context,
+        out RuntimePlayerToolReach1458 reach)
+    {
+        reach = default;
+        if (world.JourneyMode is null ||
+            !VanillaPlayerCombatEquipmentCatalog.TryCaptureToolAccessories(equipment, in context,
+                out var accessories)) return false;
+        // Player.PlaceThing_Tiles/Walls passes item.tileBoost + blockRange to
+        // TileReachCheckSettings.Simple after UpdateEquips' one-time range bonus.
+        // Journey's unowned Far Placement Range power is not inferred.
+        reach = new(accessories.TileRange ? 8 : 5, accessories.TileRange ? 5 : 3,
+            checked(placement.TileBoost + accessories.BlockRange));
         return true;
     }
 }

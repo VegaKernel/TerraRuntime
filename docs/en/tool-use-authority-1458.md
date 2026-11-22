@@ -8,6 +8,20 @@ The source-backed catalog covers 106 tool items. Runtime paths cover ordinary mi
 
 Authenticated commands enter the existing player item phase. A bounded observation cohort records the source sequence; it grants no damage, inventory credit or extra simulation update. The complete action must agree with selected item/prefix, reach, building permission, hit cache, clock, inventory, player generation and the captured world.
 
+For a qualified local tool phase, an equipped tile-range accessory (`2215`, `3061` or `5126`) increases mining reach by $3\,\text{tiles}$ horizontally and $2\,\text{tiles}$ vertically, once even if several are equipped. Vanity or empty slots grant no reach. The whole equipment phase must still be admitted before this source rule can authorize an edit; this range rule alone does not qualify a character's other accessories or placement speed.
+
+The combat equipment catalog can project the functional `-=GOOD=-` accessory set's bounded combat fields, including Shackle defense and Terraspark protection when its slot is usable. In ordinary Journey difficulty, slots `67` and `68` do not grant the Terraspark and Toolbelt effects. A narrowly scoped network player phase admits the first observed equipment census while a Journey player stands still on solid ground with a selected tool or represented placement item. It refuses movement, jumping, flight, mounts and changed equipment identities; wing and boot movement remain outside this phase. This admission has a focused synthetic regression, but an official-client block edit has not yet been observed.
+
+An unsupported **first** player tick retires the shared `UpdatePlayers` RNG ownership and clears the player's item and physics phases for the session. Selecting the pickaxe afterward cannot restart the stationary subset. In a second official-client probe, the selected pickaxe sent 31 mining reports; all were rejected because no item phase was retained. Initial selected-item, equipment and movement admission must be completed before this character can mine or place blocks.
+
+The existing effective-slot selector also captures whether a usable functional accessory supplies tile speed, wall speed or automatic painting. For Architect Gizmo Pack `3061`, all three flags are present in slot `66`; vanity and difficulty-locked equipment slots supply none through this selector. Terraria also scans carried inventory slots `0`–`57` for mechanical accessory effects, which this equipment result does not represent. For equipment admitted by the whole player phase, the raw speed input follows the selected non-torch tile rule and feeds the existing permanent-booster and reciprocal-speed transition. Automatic paint and its inventory source remain unmodeled.
+
+The owned player phase recognizes the character's social head `4955`, body `3267` and legs `844` in their matching vanity slots. It also recognizes the phase-neutral social accessories `4771`, `1921`, `1323` and `554` in their observed slots. The observed horn `4563` and darkness `3581` in social slots `73` and `75` set display flags only. These pieces grant no functional combat or tool benefit there. The exact functional wings and social wing `4746` participate only in the stationary grounded profile above.
+
+The observed `-=GOOD=-` dye slots `79`–`88`, `96` and `98` are admitted by exact slot/item identity with no prefix. Terraria's `Player.UpdateDyes` reads them into visual shader fields, so they do not grant tool or movement authority. Other dye identities have not been qualified by this census.
+
+The observed cart `3353`, mount `4444` and hook `939` are also recognized only in their matching misc slots while they are stored there. Active mount, cart and grapple movement remain subject to their separate state and physics checks; recognition of these items does not enable those actions.
+
 ```mermaid
 flowchart LR
     Input["Authenticated tool observations"] --> Phase["Existing player item phase"]

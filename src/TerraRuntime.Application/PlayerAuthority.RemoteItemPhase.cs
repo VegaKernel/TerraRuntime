@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -450,37 +451,57 @@ internal sealed partial class PlayerAuthority
         VanillaUnifiedRandom1458 random)
     {
         plan.SourceRandom = random;
+        bool RejectRemotePhase(int line)
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Unknown, line);
+            return false;
+        }
         var member = plan.Member;
         var effectTypes = plan.BeforeBuffs.CaptureEffectTypes();
-        if (plan.Item is not { } item ||
-            (item.ShopDiscountStates & ~15) != 0 ||
-            item.ClientUiPriceArithmeticMask > 3 ||
-            plan.Physics is not { } physical ||
-            item.DeadTime is < 0 or >= int.MaxValue ||
-            item.RespawnTimer < 0 ||
-            item.ManaPotionDelay < 0 ||
-            member.NpcHealth is not { SourceProfileKnown: true } ||
-            member.HasMount ||
-            plan.GodMode ||
-            ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & ~127) != 0 ||
-            !TryCaptureProvenRemoteEquipment(plan.Equipment,
-            plan.Appearance,
-            out var equipmentCombat,
-            out int manaMaximumBonus,
-            plan.VoidStorageOpen, item.AmmoCycling is not null) ||
-            plan.Buffs.IsItemUseCrowdControlled ||
+        if (plan.Item is not { } item || plan.Physics is not { } physical)
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ItemState);
+            return RejectRemotePhase(462);
+        }
+        if ((item.ShopDiscountStates & ~15) != 0 || item.ClientUiPriceArithmeticMask > 3 ||
+            item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
+            member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
+            ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & ~127) != 0)
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ItemState);
+            return RejectRemotePhase(470);
+        }
+        bool stationaryToolProfile = CanUseStationaryToolEquipment(plan, in world, in physical);
+        if (!TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat,
+            out int manaMaximumBonus, plan.VoidStorageOpen, item.AmmoCycling is not null,
+            stationaryToolProfile))
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Combat);
+            return RejectRemotePhase(476);
+        }
+        bool? extraAccessory = plan.Appearance is { } ownedAppearance
+            ? (ownedAppearance.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0
+            : null;
+        var toolEquipmentContext = new VanillaPlayerCombatEquipmentContext(extraAccessory,
+            combatEquipmentExpertMode, combatEquipmentMasterMode)
+        {
+            LocalVanityArmor = combatEquipmentLocalVanityArmor
+        };
+        if (plan.Buffs.IsItemUseCrowdControlled ||
             plan.BuffTypes.Any(static type => !IsRepresentedOrdinaryPlayerBuff1458(type)) ||
-            // A duration-one slot can already be gone while UpdateBuffs still
-            // supplies its current effect. Expiration cannot grant admission.
             effectTypes.Any(static type => !IsRepresentedOrdinaryPlayerBuff1458(type)) ||
-            HasUnownedLocalElectrifiedControls(member, plan.Buffs) ||
-            member.MiscFlags1 != 0 ||
-            (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
-            (member.ControlFlags & ~0x7c) != 0 ||
-            (member.MovementFlags & ~0x54) != 0 ||
-            physical.GravityDirection is not (1f or -1f) ||
-            item.Selected.Animation != member.ItemAnimation)
-            return false;
+            HasUnownedLocalElectrifiedControls(member, plan.Buffs))
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ItemState);
+            return RejectRemotePhase(484);
+        }
+        if (member.MiscFlags1 != 0 || (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
+            (member.ControlFlags & ~0x7c) != 0 || (member.MovementFlags & ~0x54) != 0 ||
+            physical.GravityDirection is not (1f or -1f) || item.Selected.Animation != member.ItemAnimation)
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.InitialState);
+            return RejectRemotePhase(491);
+        }
         // Source-local Update_AmmoCycler precedes ghost/dead exits and does
         // not depend on which item is selected or whether equipment was removed.
         if (plan.BeforeItemUseCaller == RuntimeItemUseCaller1458.LocalOwnerProjection && item.AmmoCycling is { } cycling)
@@ -500,7 +521,10 @@ internal sealed partial class PlayerAuthority
         // Outside UpdateBuffs runs on the retained, unreset fields. The six
         // scalar continuations below qualify the ordinary in-world phase only.
         if (outside && effectTypes.Any(static type => type.Value is 22 or 30 or 32 or 33 or 35 or 36))
-            return false;
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.OutsideEffects);
+            return RejectRemotePhase(514);
+        }
         bool ghost = (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0;
         if (member.IsDead && plan.Buffs.HasOwnedFoodSlots)
         {
@@ -534,7 +558,7 @@ internal sealed partial class PlayerAuthority
                     effectTypes,
                     out var compounded) ||
                     !IsValidDerivedCombat(in compounded))
-                    return false;
+                    return RejectRemotePhase(549);
                 item = item with
                 {
                     DerivedCombat = compounded
@@ -568,9 +592,15 @@ internal sealed partial class PlayerAuthority
 
         if (!VanillaSelectedConsumable1458.TryStepHeat(item.ManaHeat, random.NextDouble, random.Next, out float heat,
             plan.BeforeItemUseCaller == RuntimeItemUseCaller1458.LocalOwnerProjection))
-            return false;
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.HeatOrCooldown);
+            return RejectRemotePhase(585);
+        }
         if (item.ToolTime is not >= 0 || !VanillaRemoteMeleeItemCheck1458.TryStepAttackCooldown(item.AttackCD, item.Selected.Animation, out int attackCD))
-            return false;
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.HeatOrCooldown);
+            return RejectRemotePhase(590);
+        }
         delay = Math.Max(0, delay - 1);
         item = item with
         {
@@ -597,11 +627,11 @@ internal sealed partial class PlayerAuthority
             // Stationary ghost/dead profiles with retained nonconstructor clocks are independently captured.
             // Moving ghosts and respawn side effects require their own retained state.
             if (ghost && (plan.Vx != 0f || plan.Vy != 0f || (member.ControlFlags & 0x1c) != 0))
-                return false;
+                return RejectRemotePhase(618);
             // Dedicated UpdateDead can turn a hardcore player into a ghost when the respawn
             // clock expires. This slice does not own surviveHardcoreDeath or the ghost transition.
             if (!ghost && plan.Appearance is { DifficultyFlags: var difficulty } && (difficulty & 2) != 0 && (difficulty & 8) == 0)
-                return false;
+                return RejectRemotePhase(622);
             if (member.IsDead && !ghost)
             {
                 plan.Buffs.ClearNonPersistentOnDeath();
@@ -655,7 +685,10 @@ internal sealed partial class PlayerAuthority
         }
 
         if (!inventory.TryGet(member.Connection, member.SelectedItem, out var selected))
-            return false;
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Inventory);
+            return RejectRemotePhase(678);
+        }
         if (item.SelectedPotionUse is { Completed: false } provisional &&
             provisional.Slot == member.SelectedItem &&
             provisional.Player == member.Connection.Player &&
@@ -666,7 +699,11 @@ internal sealed partial class PlayerAuthority
             out _) &&
             originalPotion == provisional.Before)
             selected = originalPotion;
-        if (!TryChoosePlacementAlternative(plan, world, random, ref item)) return false;
+        if (!TryChoosePlacementAlternative(plan, world, random, ref item))
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Placement);
+            return RejectRemotePhase(693);
+        }
         if (!selected.IsCanonical ||
             (!(selected.Prefix == VanillaPrefixIds.None &&
             VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType,
@@ -686,14 +723,20 @@ internal sealed partial class PlayerAuthority
             out _) && !VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
             !(selected.Prefix.Value == 0 && (VanillaWiringToolCatalog1458.TryGet(selected.ItemType, out _) ||
                 FishingRules1458.TryGetPole(selected.ItemType.Value, out _)))))
-            return false;
+            {
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Selection);
+                return RejectRemotePhase(716);
+            }
         if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType,
             selected.Prefix,
             world.WindowsItemPrefixArithmetic) &&
             (item.BaseManaMaximum <= 0 ||
             item.MagicPayment is { } malformedPayment &&
             !malformedPayment.IsValid))
-            return false;
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Mana);
+            return RejectRemotePhase(726);
+        }
         if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
             !VanillaWiringToolCatalog1458.TryGet(selected.ItemType, out _) &&
             !VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out _) && item.ToolUse is { } unusedTools &&
@@ -712,7 +755,10 @@ internal sealed partial class PlayerAuthority
             };
         var critArithmetic = world.WindowsItemPrefixArithmetic ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
         if (!VanillaSelectedItemCrit1458.TryResolve(selected.ItemType, selected.Prefix, critArithmetic, world.RemixWorld, out int itemCrit))
-            return false;
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Combat);
+            return RejectRemotePhase(748);
+        }
         // ResetEffects derives all three fields from this phase's selected Item.crit.
         // Later selection/equipment reports must not reconstruct these retained values.
         // UpdateBuffs precedes the final magic-damage heat/sickness writer; ItemCheck's
@@ -723,12 +769,15 @@ internal sealed partial class PlayerAuthority
         if (foodEffects || effectTypes.Any(static type => type.Value == 33) || equipmentCombat.AmmoCyclerDamage)
         {
             if (!TryBuildSourceOrderedBuffCombat(plan.Equipment, plan.Appearance, effectTypes, out buffCombat, item.AmmoCycling is not null))
-                return false;
+{
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Combat);
+                return RejectRemotePhase(762);
+            }
         }
         else if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, effectTypes, out buffCombat))
-            return false;
+            return RejectRemotePhase(766);
         if (!VanillaPlayerCombatBuffs1458.TryResolveMagicDamage(buffCombat.MagicDamage, sicknessDuration, heat, world.WindowsItemPrefixArithmetic, out float magicDamage))
-            return false;
+            return RejectRemotePhase(768);
         var derivedCombat = buffCombat with
         {
             Defense = buffCombat.Defense,
@@ -737,15 +786,26 @@ internal sealed partial class PlayerAuthority
             MagicCrit = buffCombat.MagicCrit + itemCrit,
             MagicDamage = magicDamage
         };
+        VanillaPlayerToolAccessoryFacts1458 builderAccessories = default;
+        // Preserve the existing phase path for equipment with no tile/wall
+        // speed writer; the whole-equipment gate still owns new admissions.
+        if (plan.Equipment.Any(static equipped => equipped.Stack > 0 &&
+                equipped.ItemNetId is 2214 or 2217 or 3061 or 5126) &&
+            !VanillaPlayerCombatEquipmentCatalog.TryCaptureToolAccessories(plan.Equipment,
+                in toolEquipmentContext, out builderAccessories))
+            return RejectRemotePhase(788);
+        var rawBuilderSpeeds = builderAccessories.ResolveRawSpeeds(selected.ItemType);
         var capturedUnlocks = new PlayerPermanentUnlockState1458(plan.Appearance is { } phaseAppearance ? PermanentUpgradeFlags(in phaseAppearance) : (byte)0);
         if (member.OwnedPermanentUpgradeMask != 0)
             item = item with
             {
                 PermanentPhaseFlags = capturedUnlocks.Flags
             };
-        if (capturedUnlocks.Flags != 0 || item.PermanentBoosters is not null || member.OwnedPermanentUpgradeMask != 0 || buffCombat.WellFed)
+        if (capturedUnlocks.Flags != 0 || item.PermanentBoosters is not null || member.OwnedPermanentUpgradeMask != 0 || buffCombat.WellFed ||
+            rawBuilderSpeeds.Tile != 1f || rawBuilderSpeeds.Wall != 1f)
         {
-            var resetBoosters = new PlayerPermanentBoosterState1458(derivedCombat.Defense, 0, buffCombat.PickSpeed, 1f, 1f);
+            var resetBoosters = new PlayerPermanentBoosterState1458(derivedCombat.Defense, 0, buffCombat.PickSpeed,
+                rawBuilderSpeeds.Tile, rawBuilderSpeeds.Wall);
             if (!VanillaSelectedConsumable1458.TryApplyPermanentBoosters(in resetBoosters,
                 in capturedUnlocks,
                 out var boosters) ||
@@ -759,7 +819,7 @@ internal sealed partial class PlayerAuthority
                 3,
                 in capturedUnlocks,
                 out var craftingRegion))
-                return false;
+                return RejectRemotePhase(799);
             derivedCombat = derivedCombat with
             {
                 Defense = boosters.Defense
@@ -781,7 +841,7 @@ internal sealed partial class PlayerAuthority
         buffCombat = buffCombat with { MoveSpeed = buffCombat.MoveSpeed * movementDebuff };
         derivedCombat = derivedCombat with { MoveSpeed = buffCombat.MoveSpeed };
         if (!IsValidDerivedCombat(in derivedCombat))
-            return false;
+            return RejectRemotePhase(821);
         // UpdateEquips precedes this writer in original Player.Update. An open
         // shop retains the prior availability even when functional gear changes.
         item = (item with
@@ -799,10 +859,14 @@ internal sealed partial class PlayerAuthority
         {
             if (item.ToolUse is not { } toolBefore ||
                 !TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
-                    plan.Y + VanillaBasePlayerHeight * 0.5f, out var permission)) return false;
+                    plan.Y + VanillaBasePlayerHeight * 0.5f, out var permission))
+            {
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.BuildingContext);
+                return RejectRemotePhase(842);
+            }
             item = item with { ToolUse = toolBefore with { BuildingPermission = permission } };
         }
-        else if (toolWorld is not null && selected.Prefix.Value == 0 && world.JourneyMode is false &&
+        else if (toolWorld is not null && selected.Prefix.Value == 0 && world.JourneyMode is not null &&
             !capturedUnlocks.ArtisanLoaf && item.ToolUse is { } wiringShadow &&
             VanillaWiringToolCatalog1458.TryGet(selected.ItemType, out _) &&
             TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
@@ -813,7 +877,7 @@ internal sealed partial class PlayerAuthority
             localWiringContext = true;
         }
         else if (toolWorld is not null && selected.Prefix.Value == 0 &&
-            world.JourneyMode is false && item.ToolUse is { } placementShadow &&
+            world.JourneyMode is not null && item.ToolUse is { } placementShadow &&
             VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out var localPlacement) &&
             WorldTileAuthority.SupportsLocalPlacementDefinition(localPlacement) &&
             TryCaptureToolBuildingBeforeMovement(plan.X + VanillaBasePlayerWidth * 0.5f,
@@ -824,18 +888,29 @@ internal sealed partial class PlayerAuthority
             item = item with { ToolUse = placementShadow with { BuildingPermission = placementPermission } };
             localPlacementContext = true;
         }
-        if (plan.Maximum is not { } maximum ||
-            plan.HealthWorld is not { } capturedHealthWorld ||
-            !TryPlanNpcHealth(member,
+        if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld)
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Health, 870);
+            return false;
+        }
+        if (!TryPlanNpcHealth(member,
             maximum,
             false,
             false,
             out var health,
             selectedItemPhase: true,
             selectedHealthInputs: (capturedHealthWorld, plan.Grappling),
-            selectedVoidStorageOpen: plan.VoidStorageOpen) ||
-            health is not { SourceProfileKnown: true } knownHealth)
+            selectedVoidStorageOpen: plan.VoidStorageOpen,
+            stationaryToolProfile: stationaryToolProfile))
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Health, 872);
             return false;
+        }
+        if (health is not { SourceProfileKnown: true } knownHealth)
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Health, 880);
+            return false;
+        }
         int potionDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(21));
         if (potionDuration > 0)
             delay = potionDuration;
@@ -847,7 +922,7 @@ internal sealed partial class PlayerAuthority
             in manaFacts,
             out mana,
             out _))
-            return false;
+            return RejectRemotePhase(891);
         mana = mana with
         {
             Mana = Math.Min(mana.Mana, mana.Maximum),
@@ -871,7 +946,11 @@ internal sealed partial class PlayerAuthority
             VanillaServerPlayerHorizontalControl.RunSlowdown,
             false);
         var horizontal = ResolveRemoteHorizontalIntent(left, right, plan.Vx, foodHorizontal.MaximumRunSpeed);
-        if (!TryAdvanceLocalTilePrefix(plan, in world, random)) return false;
+        if (!TryAdvanceLocalTilePrefix(plan, in world, random))
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.TilePrefix);
+            return RejectRemotePhase(918);
+        }
         if (!physics.TryStep(in source,
             horizontal,
             jump,
@@ -882,7 +961,10 @@ internal sealed partial class PlayerAuthority
             out var motion,
             out var nextJump) ||
             motion.LiquidContacts != default)
-            return false;
+        {
+            RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.Physics);
+            return RejectRemotePhase(932);
+        }
         plan.X = motion.PositionX;
         plan.Y = motion.PositionY;
         plan.Vx = motion.VelocityX;
@@ -917,16 +999,28 @@ internal sealed partial class PlayerAuthority
         if (toolProjectiles is not null && FishingRules1458.TryGetPole(selected.ItemType.Value, out _))
         {
             if (!TryPlanFishingItemCheck(plan, in selected, in facts, in clocks, ref item, random, out use))
-                return false;
+                return RejectRemotePhase(968);
             trackedLocalPlacement = true; // Already advanced the common local-clock owner.
             beganActualUse = false;
         }
         else if (toolWorld is not null && VanillaToolCatalog1458.TryGet(selected.ItemType, out _))
         {
-            if (item.ToolUse is not { } tools || item.ToolTime is not { } remoteToolTime ||
-                !VanillaToolCatalog1458.TryResolve(selected.ItemType, selected.Prefix,
-                    world.RemixWorld, world.WindowsItemPrefixArithmetic, out var tool))
-                return false;
+            if (item.ToolUse is not { } tools)
+            {
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ToolUseState);
+                return RejectRemotePhase(977);
+            }
+            if (item.ToolTime is not { } remoteToolTime)
+            {
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ToolTimeState);
+                return RejectRemotePhase(982);
+            }
+            if (!VanillaToolCatalog1458.TryResolve(selected.ItemType, selected.Prefix,
+                world.RemixWorld, world.WindowsItemPrefixArithmetic, out var tool))
+            {
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ToolResolve);
+                return RejectRemotePhase(988);
+            }
             bool sourceAllowed = true;
             if (tool.Shoot == 1052)
             {
@@ -946,12 +1040,20 @@ internal sealed partial class PlayerAuthority
                 PositionX = plan.X, PositionY = plan.Y,
                 VelocityX = plan.Vx, VelocityY = plan.Vy
             }, (int)VanillaBasePlayerWidth, (int)VanillaBasePlayerHeight, physical.GravityDirection);
-            if (!TryResolveToolReach(in world, in tool, plan.Equipment, out var toolReach)) return false;
+            if (!TryResolveToolReach(in world, in tool, plan.Equipment,
+                    in toolEquipmentContext, out var toolReach))
+            {
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ToolReach);
+                return RejectRemotePhase(1012);
+            }
             var remoteToolClocks = new ToolClockState1458(clocks, remoteToolTime, false, item.Channel);
             int critRoll = random.Next(3);
             if (!TryAdvanceToolFrame(in tool, tools, in remoteToolClocks, in toolFacts,
                 in sourceToolPose, currentCombatTick, critRoll, out var toolAfter, out var remoteTool))
-                return false;
+            {
+                RuntimeTileManipulationTelemetry.Shared.RecordRemotePhaseFailure(RemotePhaseFailureKind.ToolStage);
+                return RejectRemotePhase(1020);
+            }
             toolAfter = toolAfter with { Reach = toolReach };
             var releasedClockAlternative = CaptureReleasedBufferedToolClock(tool, tools, toolAfter,
                 toolFacts, critRoll, member, plan.Buffs, world, random, remoteTool.State.Selected.RevolverCritBonus);
@@ -1013,7 +1115,7 @@ internal sealed partial class PlayerAuthority
             VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out var placementDefinition))
         {
             if (item.ToolUse is not { } placementBefore || item.ToolTime is not { } remoteTime ||
-                world.JourneyMode is not false) return false;
+                world.JourneyMode is null) return false;
             // Captured owned permanent boosters use the same source caps as
             // Update; placementDefinition does not borrow mining's PickSpeed or Artisan range.
             float speed = placementDefinition.IsWall ? item.PermanentSpeeds?.WallAnimationMultiplier ?? 1f :
@@ -1032,9 +1134,12 @@ internal sealed partial class PlayerAuthority
             placementCommonFacts = placementFacts;
             if (!TryAdvancePlacementFrame(placementDefinition, placementBefore, remoteClocks, placementFacts,
                 sourcePose, speed, currentCombatTick, critRoll, out var placementAfter, out var remotePlacement))
-                return false;
+                return RejectRemotePhase(1102);
             trackedLocalPlacement = true;
-            placementAfter = placementAfter with { Reach = new(5, 3, placementDefinition.TileBoost) };
+            if (!TryResolvePlacementReach(in world, in placementDefinition, plan.Equipment,
+                    in toolEquipmentContext,
+                    out var placementReach)) return RejectRemotePhase(1116);
+            placementAfter = placementAfter with { Reach = placementReach };
             item = item with { ToolUse = placementAfter, ToolTime = remotePlacement.State.ToolTime,
                 Channel = remotePlacement.State.Channel };
             use = new(remotePlacement.State.Selected, facts.Life, facts.Mana, false, 0, 0)
@@ -1045,7 +1150,7 @@ internal sealed partial class PlayerAuthority
         else if (VanillaManaCrystalUse1458.IsSupported(selected.ItemType, selected.Prefix))
         {
             if (!TryPlanManaCrystal(plan, selected, item, clocks, in facts, random, out use, out item))
-                return false;
+                return RejectRemotePhase(1115);
             if (plan.PublishMana)
                 mana = mana with
                 {
@@ -1057,21 +1162,21 @@ internal sealed partial class PlayerAuthority
         else if (selected.ItemType.Value == 5043)
         {
             if (!TryPlanOwnedTorchFavor(plan, selected, item, clocks, in facts, random, out use, out item))
-                return false;
+                return RejectRemotePhase(1127);
             beganActualUse = use.BeganUse;
             ownedConsumableClock = true;
         }
         else if (PermanentUpgradeBit(selected.ItemType.Value) != 0)
         {
             if (!TryPlanOwnedPermanentUpgrade(plan, selected, item, clocks, in facts, random, out use, out item))
-                return false;
+                return RejectRemotePhase(1134);
             beganActualUse = use.BeganUse;
             ownedConsumableClock = true;
         }
         else if (VanillaGemStaff1458.TryGetWeapon(selected.ItemType, out _))
         {
             if (item.BaseManaMaximum <= 0 || item.MagicPayment is { } invalid && !invalid.IsValid || item.DerivedCombat is not { } gemCombat)
-                return false;
+                return RejectRemotePhase(1141);
             bool? extra = plan.Appearance is { } gemAppearance ? (gemAppearance.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
             var gemContext = new VanillaPlayerCombatEquipmentContext(extra, combatEquipmentExpertMode, combatEquipmentMasterMode)
             {
@@ -1088,7 +1193,7 @@ internal sealed partial class PlayerAuthority
                 world.WindowsItemPrefixArithmetic,
                 out var gemWeapon,
                 out _))
-                return false;
+                return RejectRemotePhase(1158);
             var previous = item.MagicPayment;
             bool same = previous is { GemStaff: true } old &&
                 old.Matches(member.Connection.Player,
@@ -1135,7 +1240,7 @@ internal sealed partial class PlayerAuthority
                     plan.Buffs,
                     out available,
                     out refill))
-                    return false;
+                    return RejectRemotePhase(1205);
                 if (refill is { } restored)
                 {
                     plan.InventoryMutations.Add(new(member.Connection, restored.Slot, restored.Before, restored.After) { ConsumeFundedQuantity = true });
@@ -1165,7 +1270,7 @@ internal sealed partial class PlayerAuthority
             int? critDraw = null;
             int SharedCrit(int min, int max) => critDraw ??= random.Next(min, max);
             if (!VanillaGemStaffUse1458.TryStep(localClocks, in gemFacts, SharedCrit, out var localUse))
-                return false;
+                return RejectRemotePhase(1235);
             if(ownedGemPreimage && !deferredGem)plan.LocalGemFrame=localUse;
             var remoteFacts = gemFacts with
             {
@@ -1175,11 +1280,11 @@ internal sealed partial class PlayerAuthority
                 PrepaidSlowMagicUse = localUse.SlowMagicUse
             };
             if (!VanillaGemStaffUse1458.TryStep(clocks, in remoteFacts, SharedCrit, out var remoteUse))
-                return false;
+                return RejectRemotePhase(1245);
             if (localUse.BeganActualUse)
             {
                 if (previous is { Attempt: ulong.MaxValue })
-                    return false;
+                    return RejectRemotePhase(1249);
                 item = item with
                 {
                     MagicPayment = new(member.Connection.Player,
@@ -1272,7 +1377,7 @@ internal sealed partial class PlayerAuthority
                 !VanillaRemoteChannelledMagic1458.TryResolveManaCost(magicWeapon.ManaCost,
                 magicCombat.ManaCostMultiplier,
                 out int cost))
-                return false;
+                return RejectRemotePhase(1342);
             if (attempt && !prepaid && magicCombat.ManaFlower && available < cost)
             {
                 if (priorPayment is { Attempt: ulong.MaxValue } ||
@@ -1285,7 +1390,7 @@ internal sealed partial class PlayerAuthority
                     plan.Buffs,
                     out available,
                     out refill))
-                    return false;
+                    return RejectRemotePhase(1355);
                 if (refill is { } restored)
                 {
                     plan.InventoryMutations.Add(new(member.Connection, restored.Slot, restored.Before, restored.After) { ConsumeFundedQuantity = true });
@@ -1314,7 +1419,7 @@ internal sealed partial class PlayerAuthority
             int? magicCrit=null;
             int SharedMagicCrit(int min,int max)=>magicCrit??=random.Next(min,max);
             if (!VanillaRemoteChannelledMagic1458.TryStep(localMagicClocks, in magicFacts, SharedMagicCrit, out var magicUse))
-                return false;
+                return RejectRemotePhase(1384);
             var remoteMagicFacts=magicFacts with {Mana=magicUse.Mana,Prepaid=true,PrepaidSlowMagicUse=magicUse.SlowMagicUse};
             if(!VanillaRemoteChannelledMagic1458.TryStep(clocks,in remoteMagicFacts,SharedMagicCrit,out var remoteMagicUse))return false;
             if (magicUse.AttemptedUse)
@@ -1330,7 +1435,7 @@ internal sealed partial class PlayerAuthority
                 else
                 {
                     if (priorPayment is { Attempt: ulong.MaxValue })
-                        return false;
+                        return RejectRemotePhase(1400);
                     item = item with
                     {
                         MagicPayment = new(member.Connection.Player,
@@ -1392,7 +1497,7 @@ internal sealed partial class PlayerAuthority
                 selected.Prefix,
                 world.WindowsItemPrefixArithmetic);
             if (!VanillaRemoteRangedItemCheck1458.TryStep(clocks, in rangedFacts, random.Next, out var rangedUse))
-                return false;
+                return RejectRemotePhase(1462);
             use = new(rangedUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
                 PendingItemReuse = rangedUse.PendingItemReuse
@@ -1410,7 +1515,7 @@ internal sealed partial class PlayerAuthority
                 selected.Prefix,
                 world.WindowsItemPrefixArithmetic);
             if (!VanillaRemoteMeleeItemCheck1458.TryStep(clocks, in meleeFacts, random.Next, out var meleeUse, derivedCombat.MeleeAnimationMultiplier))
-                return false;
+                return RejectRemotePhase(1480);
             use = new(meleeUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
                 PendingItemReuse = meleeUse.PendingItemReuse,
@@ -1440,7 +1545,7 @@ internal sealed partial class PlayerAuthority
             }
 
             if (!VanillaRemotePassiveItemCheck1458.TryStep(clocks, in passiveFacts, random.Next, out var passiveUse, placementAnimationMultiplier))
-                return false;
+                return RejectRemotePhase(1510);
             use = new(passiveUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
                 PendingItemReuse = passiveUse.PendingItemReuse,
@@ -1456,14 +1561,14 @@ internal sealed partial class PlayerAuthority
             selected.ItemType.Value is 29 or 1291))
         {
             if (!TryPlanOwnedSelectedPotion(plan, selected, item, clocks, in facts, random, out use, out item))
-                return false;
+                return RejectRemotePhase(1526);
             beganActualUse = use.BeganUse;
             ownedConsumableClock = true;
         }
         else
         {
             if (!VanillaSelectedConsumable1458.TryStep(clocks, in facts, random.Next, random.NextDouble, out use))
-                return false;
+                return RejectRemotePhase(1533);
             beganActualUse = use.BeganUse;
         }
 
@@ -1518,6 +1623,30 @@ internal sealed partial class PlayerAuthority
             AdvancePlacementAlternative(plan, world, placementBeforeCommon, random, placementCrit, placementCommonFacts);
         plan.Changed = true;
         return true;
+    }
+
+    private bool CanUseStationaryToolEquipment(RemoteItemPhasePlan1458 plan,
+        in RuntimePlayerUpdateWorld1458 world, in RuntimePlayerPhysicsPhase1458 physical)
+    {
+        if (world.JourneyMode != true || worldTiles is null || plan.Member.HasMount ||
+            plan.Before.IsDead || plan.Vx != 0f || plan.Vy != 0f ||
+            (plan.Member.ControlFlags & (4 | 8 | 16)) != 0 ||
+            physical.Jump.RemainingTicks != 0 ||
+            (uint)plan.Member.SelectedItem >= (uint)plan.InventoryBefore.Length)
+            return false;
+        var selected = plan.InventoryBefore[plan.Member.SelectedItem];
+        if (!VanillaToolCatalog1458.TryGet(selected.ItemType, out _) &&
+            !VanillaLocalPlacementCatalog1458.TryGet(selected.ItemType, out _))
+            return false;
+        // The dry, grounded subset has no horizontal acceleration, jump, wing
+        // flight or rocket transition. A moving player must wait for the full
+        // source wing/boot phase instead of borrowing these inert-gear facts.
+        var ground = VanillaWorldCollision.TileCollision(worldTiles, plan.X, plan.Y,
+            0f, VanillaServerPlayerDryPhysicsStepper.Gravity,
+            VanillaServerPlayerDryPhysicsStepper.PlayerWidth,
+            VanillaServerPlayerDryPhysicsStepper.PlayerHeight,
+            fallThrough: false, fall2: false);
+        return ground.VelocityY == 0f;
     }
 
     private bool? CaptureRemoteRangedAmmo(RuntimePlayerMember member, VanillaProjectileAmmoFamily family)

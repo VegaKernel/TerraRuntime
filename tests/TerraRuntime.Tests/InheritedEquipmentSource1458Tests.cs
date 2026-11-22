@@ -56,6 +56,20 @@ public sealed class InheritedEquipmentSource1458Tests
     }
 
     [Fact]
+    public void Eyebrella_head_vanity_is_admitted_without_combat_benefits()
+    {
+        var context = new VanillaPlayerCombatEquipmentContext(false, false, false);
+        var equipment = new[]
+        {
+            new PlayerEquipmentCommitRequest(default, VanillaPlayerItemSlotCatalog.ArmorStart, 1, 0,
+                checked((short)VanillaDeerclopsItemIds.Eyebrella.Value), 0)
+        };
+
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out var combat));
+        Assert.Equal(VanillaPlayerCombatSnapshot.Baseline, combat);
+    }
+
+    [Fact]
     public void Unknown_selected_sharing_facts_refuse_without_rejecting_irrelevant_or_locked_favorites()
     {
         var unknown = new VanillaPlayerCombatEquipmentContext(false, false, false);

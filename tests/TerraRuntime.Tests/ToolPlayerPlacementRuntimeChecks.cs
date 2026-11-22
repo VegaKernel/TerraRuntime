@@ -35,9 +35,11 @@ internal static partial class ToolPlayerBoundaryChecks
         foreach (var row in ownWall.RootElement.EnumerateArray())
         { PlacementPaidRow(row); if (row.GetProperty("stack").GetInt32() == 6) PlacementPaidRow(row, 5); }
         PlacementDeniedCosts(ownWall.RootElement[2]);
+        PlacementDeniedCosts(ownWall.RootElement[2], journeyMode: true);
         using var ownEdge = PlacementSource("PlacementEdge" + ownPlatform + "1458");
         using var gray = PlacementSource("PlacementGrayBrick" + ownPlatform + "1458");
         PlacementPaidRow(gray.RootElement[0]);
+        PlacementPaidRow(gray.RootElement[0], journeyMode: true);
         PlacementPaidRow(ownEdge.RootElement[6]);
         PlacementUnknownLocalRefusal(ownEdge.RootElement[6]);
         PlacementUnknownLocalRefusal(ownEdge.RootElement[6], unknownWorldContext: true);
@@ -87,9 +89,10 @@ internal static partial class ToolPlayerBoundaryChecks
         .EnumerateArray().Select(x => Convert.FromHexString(x.GetString()!)).ToArray();
 
     private static Fixture PlacementScene(short item, short stock, bool knownLocalContext = true,
-        IWorldItemStateCommitSink? worldItemSink = null)
+        IWorldItemStateCommitSink? worldItemSink = null, bool journeyMode = false)
     {
-        var f = new Fixture(item, worldItemSink, initialStack: stock, playerSeed: 7, worldSeed: 19, knownLocalContext: knownLocalContext);
+        var f = new Fixture(item, worldItemSink, initialStack: stock, playerSeed: 7, worldSeed: 19,
+            knownLocalContext: knownLocalContext, journeyMode: journeyMode);
         for (int x = 0; x < 400; x++)
         {
             f.Tiles.Set(x, 103, default);
@@ -103,12 +106,12 @@ internal static partial class ToolPlayerBoundaryChecks
         return f;
     }
 
-    private static void PlacementPaidRow(JsonElement row, short? availableFunding = null)
+    private static void PlacementPaidRow(JsonElement row, short? availableFunding = null, bool journeyMode = false)
     {
         short item = row.GetProperty("item").GetInt16();
         short stock = row.GetProperty("stack").GetInt16();
         short funded = availableFunding ?? stock;
-        using var f = PlacementScene(item, stock);
+        using var f = PlacementScene(item, stock, journeyMode: journeyMode);
         int wall = item == 26 ? 1 : item == 93 ? 4 : 0;
         if (wall != 0)
             foreach (var (x, y) in new[] { (48,50),(49,49),(49,51),(52,50),(51,49),(51,51),(50,48),(50,52) })
@@ -198,13 +201,13 @@ internal static partial class ToolPlayerBoundaryChecks
         Assert.Equal(Enumerable.Repeat((byte)17,cells), DrainLucyFrames(peers.Peer));
     }
 
-    private static void PlacementDeniedCosts(JsonElement row)
+    private static void PlacementDeniedCosts(JsonElement row, bool journeyMode = false)
     {
         Assert.Equal(26, row.GetProperty("item").GetInt32());
         Assert.Equal(3, row.GetProperty("stack").GetInt32());
         foreach (short funded in new short[] { 0, 2, 3 })
         {
-            using var f = PlacementScene(26, 3);
+            using var f = PlacementScene(26, 3, journeyMode: journeyMode);
             foreach (var (x,y) in new[] { (48,50),(49,49),(49,51),(52,50),(51,49),(51,51),(50,48),(50,52) })
             { var t=f.Tiles.Get(x,y);t.Wall=1;f.Tiles.Set(x,y,t); }
             PlacementFunding(Inventory(f.Players))[f.Connection.Player.Slot.Value * 59] = funded;

@@ -40,6 +40,71 @@ internal static partial class ToolPlayerBoundaryChecks
         Lucy141();
     }
 
+    internal static void GoodGroundedPickaxeEquipment()
+    {
+        using var control = new Fixture(1, journeyMode: true);
+        control.Move(0, false);
+        Assert.True(control.Players.TryTickRemotePlayerPhase());
+
+        using var good = new Fixture(1, journeyMode: true);
+        good.Move(0, false);
+        (short Slot, short Type, byte Prefix)[] equipment =
+        [
+            (59, 5101, 0),
+            (62, 4954, 74), (63, 2423, 0), (64, 216, 75),
+            (65, 4989, 0), (66, 3061, 0), (67, 5000, 0),
+            (68, 407, 0),
+            (69, 4955, 0), (70, 3267, 0), (71, 844, 0),
+            (72, 4746, 0), (73, 4563, 0), (74, 4771, 0),
+            (75, 3581, 0), (76, 1921, 0), (77, 1323, 0), (78, 554, 0),
+            (79, 2872, 0), (80, 3557, 0), (81, 3557, 0),
+            (82, 3557, 0), (83, 3529, 0), (84, 3557, 0),
+            (85, 3557, 0), (86, 3557, 0), (87, 1030, 0),
+            (88, 3557, 0), (91, 3353, 0), (92, 4444, 0),
+            (93, 939, 0), (96, 3557, 0), (98, 2883, 0),
+            (700, 4935, 0), (701, 4934, 0),
+            (702, 4950, 0), (703, 4806, 0)
+        ];
+        foreach (var item in equipment)
+            good.Apply(new PlayerEquipmentRuntimeCommand(good.Connection,
+                new(good.Connection.Player.Slot, item.Slot, 1, item.Prefix, item.Type, 0)));
+        bool admitted = good.Players.TryTickRemotePlayerPhase();
+        var failure = RuntimeTileManipulationTelemetry.Shared.Capture();
+        var member = good.Member;
+        Assert.True(good.Players.TryGetInventoryItem(good.Connection, member.SelectedItem, out var selected));
+        var phaseWorld = (RuntimePlayerUpdateWorld1458?)typeof(PlayerAuthority)
+            .GetField("playerUpdateWorld", System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic)!.GetValue(good.Players);
+        var ground = VanillaWorldCollision.TileCollision(good.Tiles, member.PositionX, member.PositionY,
+            0f, VanillaServerPlayerDryPhysicsStepper.Gravity, 20, 42, false, false);
+        Assert.True(admitted, $"phase={failure.RemotePhaseLastFailure}/{failure.RemotePhaseLastLine}, " +
+            $"equipment={failure.RemoteEquipmentLastFailure}/{failure.RemoteEquipmentLastSlot}/" +
+            $"{failure.RemoteEquipmentLastItem}/{failure.RemoteEquipmentLastPrefix}, " +
+            $"motion={member.PositionX}/{member.PositionY}/{member.VelocityX}/{member.VelocityY}, " +
+            $"controls={member.ControlFlags}, jump={member.PhysicsPhase?.Jump.RemainingTicks}, " +
+            $"ground={ground.VelocityY}, world={phaseWorld?.JourneyMode}, " +
+            $"selected={member.SelectedItem}/{selected.ItemType.Value}, dead={member.CaptureSnapshot().IsDead}, " +
+            $"mount={member.HasMount}");
+
+        using var moving = new Fixture(1, journeyMode: true);
+        moving.Move(0, false);
+        foreach (var item in equipment)
+            moving.Apply(new PlayerEquipmentRuntimeCommand(moving.Connection,
+                new(moving.Connection.Player.Slot, item.Slot, 1, item.Prefix, item.Type, 0)));
+        var actor = moving.Member;
+        moving.Apply(new PlayerMovementRuntimeCommand(moving.Connection,
+            new(moving.Connection.Player.Slot, 64 | 4, 16, 0, 64, 0,
+                actor.PositionX, actor.PositionY, false, 0, 0, false, 0,
+                false, 0, 0, 0, 0, false, 0, 0)));
+        Assert.False(moving.Players.TryTickRemotePlayerPhase());
+
+        using var wrongSlot = new Fixture(1, journeyMode: true);
+        wrongSlot.Move(0, false);
+        wrongSlot.Apply(new PlayerEquipmentRuntimeCommand(wrongSlot.Connection,
+            new(wrongSlot.Connection.Player.Slot, 63, 1, 74, 4954, 0)));
+        Assert.False(wrongSlot.Players.TryTickRemotePlayerPhase());
+    }
+
     private static JsonDocument Source(string platform)
     {
         using var input = typeof(ToolPlayerBoundaryChecks).Assembly.GetManifestResourceStream("ToolPlayerSource" + platform + "1458")
@@ -314,7 +379,8 @@ internal static partial class ToolPlayerBoundaryChecks
         internal RuntimePlayerToolUse1458 Tools => Member.ItemPhase?.ToolUse ?? throw new InvalidOperationException("Missing represented tool owner.");
         internal int Life => Member.NpcHealth?.Life ?? Member.Life;
         internal Fixture(short item, IWorldItemStateCommitSink? worldItemSink = null,
-            short initialStack = 1, int playerSeed = 0, int worldSeed = 0, bool knownLocalContext = true)
+            short initialStack = 1, int playerSeed = 0, int worldSeed = 0, bool knownLocalContext = true,
+            bool journeyMode = false)
         {
             initialTool = item;
             this.initialStack = initialStack;
@@ -333,7 +399,7 @@ internal static partial class ToolPlayerBoundaryChecks
             {
                 GetGoodWorld = false, InfectedSeed = false, NotTheBeesWorld = false,
                 NoTrapsWorld = false, TenthAnniversaryWorld = false, DontStarveWorld = false,
-                DrunkWorld = false, JourneyMode = knownLocalContext ? false : null, HallowBackground = 0,
+                DrunkWorld = false, JourneyMode = knownLocalContext ? journeyMode : null, HallowBackground = 0,
                 WindowsItemPrefixArithmetic = OperatingSystem.IsWindows()
             };
             var main = new VanillaUnifiedRandom1458(worldSeed);

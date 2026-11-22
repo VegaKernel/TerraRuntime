@@ -30,7 +30,6 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     /// <summary>Player.ApplyEquipFunctional: represented lava protection, separate from fireWalk.</summary>
     public int LavaProtectionTicks { get; init; }
     public bool LavaRose { get; init; }
-    public bool DeadMansSweater { get; init; }
     public bool AnkhShield { get; init; }
     public VanillaPlayerBuffImmunity1458 BuffImmunity { get; init; }
     // Player.ApplyEquipFunctional 1.4.5.8: Ankh Shield includes Chilled, but not Frozen.
@@ -79,8 +78,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         ArmorPenetration: 0,
         MeleeArmorPenetration: 0,
         NoKnockback: false,
-        MagicQuiver: false)
-    { Archery = false, MinionDamage = 1f, ManaFlower = false, ManaCostMultiplier = 1f };
+        MagicQuiver: false) { Archery = false, MinionDamage = 1f, ManaFlower = false, ManaCostMultiplier = 1f };
 
     /// <summary>Player.CapAttackSpeeds / TurnAttackSpeedToUseTimeMultiplier.</summary>
     public float MeleeAnimationMultiplier
@@ -295,6 +293,9 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 0)
         {
+            // Eyebrella (5101) is a head-slot vanity item. Vanilla's only dedicated
+            // effect is the visual rain/cloud state; it contributes no combat snapshot fields.
+            if (type == VanillaDeerclopsItemIds.Eyebrella) return true;
             if (type.Value == 1002) { snapshot = snapshot with { Defense = snapshot.Defense + 13, RangedDamage = snapshot.RangedDamage + 0.16f, ChloroAmmoCost80 = true }; return true; }
             if (type == VanillaItemIds.SolarFlareHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 24, MeleeCrit = snapshot.MeleeCrit + 26 }; return true; }
             if (type == VanillaItemIds.VortexHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 14, RangedCrit = snapshot.RangedCrit + 7, RangedDamage = snapshot.RangedDamage + 0.16f }; return true; }
@@ -306,15 +307,10 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 1)
         {
-            // Player.GrantArmorBenefits 1.4.5.8, functional body slot only.
-            if (type.Value == 5007) { snapshot = snapshot with { DeadMansSweater = true }; return true; }
             if (VanillaGemStaff1458.TryGetRobe(type, out var robe))
             {
-                snapshot = snapshot with
-                {
-                    Defense = snapshot.Defense + robe.Defense,
-                    ManaCostMultiplier = snapshot.ManaCostMultiplier - robe.ManaCostReduction
-                };
+                snapshot = snapshot with { Defense = snapshot.Defense + robe.Defense,
+                    ManaCostMultiplier = snapshot.ManaCostMultiplier - robe.ManaCostReduction };
                 return true;
             }
             if (type.Value == 3804) { snapshot = snapshot with { Defense = snapshot.Defense + 17, RangedDamage = snapshot.RangedDamage + 0.2f, MinionDamage = snapshot.MinionDamage + 0.2f, HuntressAmmoCost90 = true }; return true; }
@@ -377,6 +373,9 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
             case 156: // Cobalt Shield
                 snapshot = snapshot with { Defense = snapshot.Defense + 1, NoKnockback = true };
                 break;
+            case 216: // Shackle: Item.SetDefaults defense=1; prefix is applied above.
+                snapshot = snapshot with { Defense = snapshot.Defense + 1 };
+                break;
             case 489: // Sorcerer Emblem: Player.UpdateEquips adds 15% magic damage.
                 snapshot = snapshot with { MagicDamage = snapshot.MagicDamage + 0.15f };
                 break;
@@ -424,6 +423,10 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
                 skyStoneEffects = true;
                 break;
             case 2609: // Fishron Wings: movement only for the represented combat slice.
+            case 4954: // Long Rainbow Trail Wings: wingSlot 45, no combat grant.
+            case 2423: // Frog Leg: jump/auto-jump/extra-fall only.
+            case 3061: // Architect Gizmo Pack: tile/wall speed, range and auto-paint only.
+            case 407: // Toolbelt: blockRange only.
             case 4989: // Soaring Insignia: movement/jump/flight only, no combat modifier.
             case 5107: // Magiluminescence: movement/light only here.
                 break;
