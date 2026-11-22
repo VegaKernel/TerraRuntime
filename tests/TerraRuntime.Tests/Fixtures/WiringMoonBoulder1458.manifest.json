@@ -1,0 +1,10 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "33210c4b999816b281cb275f4f8f4f04c71fc7736643744d06993634e0abba78",
+  "fixtureSha256": "5b827cacfee038110aa6751666f83ea5a6835f48805bd3ecc44e9e1754b03564",
+  "repeatExact": true,
+  "rows": 20,
+  "ticks": 160,
+  "exceptionRows": 0,
+  "scope": "TerrariaServer 1.4.5.8 NewProjectile with the Moon Lord head parent source, followed by its two original Update subupdates and Wiring.UpdateMech. Four orientations of 442 and ordinary style 5, one or four wires, optional flame emitter in an adjacent wired row. Actor position/localAI[2] at the emitter birth packet in 10 rows."
+}

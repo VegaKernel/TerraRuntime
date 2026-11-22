@@ -26,17 +26,24 @@ internal sealed partial class ProjectileAuthority
     {
         if (toolActorWorld is null || step.Liquid is not { Wet: false } || step.CollisionTileCutOffer is not null ||
             !VanillaDefinitionCatalog.TryGet(before.Type, out var body)) return;
+        if (!IsSingleWiringMovement(in before, in step, in body)) return;
+        var after = step.State;
+        toolActorWorld.ApplyProjectilePressurePlate(after.PositionX + body.CollisionOffsetX,
+            after.PositionY + body.CollisionOffsetY, body.CollisionWidth, body.CollisionHeight,
+            before.PositionX + body.CollisionOffsetX, before.PositionY + body.CollisionOffsetY);
+    }
+
+    private static bool IsSingleWiringMovement(in ProjectileSnapshot before, in ProjectileSimulationStepResult step,
+        in VanillaProjectileDefinition body)
+    {
         var after = step.State;
         float vx = after.VelocityX, vy = after.VelocityY;
         int segmentLength = Math.Clamp(Math.Min(body.CollisionWidth, body.CollisionHeight), 3, 16);
         // HandleMovement offers each segment separately above this speed. The
         // endpoint offer below is only valid for the original single move.
-        if (vx * vx + vy * vy > segmentLength * segmentLength ||
-            after.PositionX != before.PositionX + vx || after.PositionY != before.PositionY + vy ||
-            after.PositionX == before.PositionX && after.PositionY == before.PositionY) return;
-        toolActorWorld.ApplyProjectilePressurePlate(after.PositionX + body.CollisionOffsetX,
-            after.PositionY + body.CollisionOffsetY, body.CollisionWidth, body.CollisionHeight,
-            before.PositionX + body.CollisionOffsetX, before.PositionY + body.CollisionOffsetY);
+        return vx * vx + vy * vy <= segmentLength * segmentLength &&
+            after.PositionX == before.PositionX + vx && after.PositionY == before.PositionY + vy &&
+            (after.PositionX != before.PositionX || after.PositionY != before.PositionY);
     }
 
     private ProjectileActorSimulationResult TrySimulateWiringEmitter(in ProjectileSnapshot initial)

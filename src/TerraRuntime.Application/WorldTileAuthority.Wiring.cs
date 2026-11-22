@@ -84,7 +84,23 @@ internal sealed partial class WorldTileAuthority
             !WorldPressurePlateContacts1458.TryFindContact(tiles, x, y, width, height, oldX, oldY,
                 WorldPressurePlateActor1458.ProjectileOrBoulder, out var contact) ||
             contact.X > short.MaxValue || contact.Y > short.MaxValue) return;
-        if (wiring.HitSwitch(contact.X, contact.Y))
+        PulseProjectilePressurePlate(in contact);
+    }
+
+    internal bool TryFindBoulderPressurePlate(float x, float y, int width, int height, float oldX, float oldY,
+        WorldPressurePlateActor1458 actor, out WorldPressurePlateContact1458 contact)
+    {
+        contact = default;
+        return tiles is not null && wiring is not null &&
+            WorldPressurePlateContacts1458.TryFindContact(tiles, x, y, width, height, oldX, oldY, actor, out contact) &&
+            contact.X <= short.MaxValue && contact.Y <= short.MaxValue &&
+            !WorldPressurePlateContacts1458.HasLandMineInContactScan(tiles, x, y, width, height) &&
+            wiring.CanPulseWithoutActorChanges(contact.X, contact.Y);
+    }
+
+    internal void PulseProjectilePressurePlate(in WorldPressurePlateContact1458 contact)
+    {
+        if (wiring?.HitSwitch(contact.X, contact.Y) == true)
             replication?.TryPublishHitSwitch(default, new((short)contact.X, (short)contact.Y));
     }
 

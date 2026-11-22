@@ -62,15 +62,20 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
     public bool TryStepState(
         in ProjectileSimulationStepContext projectile,
         out ProjectileSimulationStepResult next)
-        => TryStepStateCore(in projectile, null, out next);
+        => TryStepStateCore(in projectile, null, out next, out _);
 
     internal bool TryStepGroundCombatState(in ProjectileSimulationStepContext projectile,
         VanillaUnifiedRandom1458 previewRandom, out ProjectileSimulationStepResult next) =>
-        TryStepStateCore(in projectile, previewRandom, out next);
+        TryStepStateCore(in projectile, previewRandom, out next, out _);
+
+    internal bool TryStepMoonBoulder(in ProjectileSimulationStepContext projectile,
+        out ProjectileSimulationStepResult next, out bool sourceTileImpact) =>
+        TryStepStateCore(in projectile, null, out next, out sourceTileImpact);
 
     private bool TryStepStateCore(in ProjectileSimulationStepContext projectile,
-        VanillaUnifiedRandom1458? previewRandom, out ProjectileSimulationStepResult next)
+        VanillaUnifiedRandom1458? previewRandom, out ProjectileSimulationStepResult next, out bool sourceTileImpact)
     {
+        sourceTileImpact = false;
         ProjectileSnapshot current = projectile.Projectile;
         if (current.Type == VanillaProjectileIds.NurseSyringeHeal && current.Damage != 0)
         { next = default; return false; }
@@ -161,7 +166,7 @@ internal sealed partial class VanillaProjectileWorldStateStepper : IProjectileSt
             in definition,
             in behavior,
             in behaviorContext,
-            out next);
+            out next, out sourceTileImpact);
         if (resolved) next = next with
         {
             WiringFlameSourceUpdate = current.Type.Value == 188,

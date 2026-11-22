@@ -81,6 +81,9 @@ public sealed partial class WorldWiringDeviceExecutor1458
         this.publishTemporaryAnimation = publishTemporaryAnimation;
     }
 
+    internal static bool CanPulseDuringBoulderContact(in WorldTile tile) =>
+        !tile.HasActuator && (!tile.IsActive || tile.Type is Torch or Trap || WorldPressurePlateContacts1458.IsPlate(tile.Type));
+
     /// <summary>
     /// Executes one reached cell in Terraria1458 Wiring.HitWireSingle order: actuator first, then device.
     /// Timer144 delegates to the circuit's existing switch/timer owner.

@@ -21,7 +21,19 @@ public static class WorldPressurePlateContacts1458
     // Collision.SwitchTiles 1.4.5.8: type135, each actor/style frame is eighteen pixels apart.
     private const ushort OrdinaryPlateTileType = 135;
     private const ushort ProjectilePlateTileType = 442;
+    private const ushort LandMineTileType = 210;
     private const int StyleFrameHeight = 18;
+
+    internal static bool IsPlate(ushort type) => type is OrdinaryPlateTileType or ProjectilePlateTileType;
+
+    internal static bool HasLandMineInContactScan(WorldTileStore tiles, float x, float y, int width, int height)
+    {
+        var (left, right, top, bottom) = GetScanBounds(tiles, x, y, width, height);
+        for (int tileX = left; tileX < right; tileX++)
+            for (int tileY = top; tileY < bottom; tileY++)
+                if (tiles.Get(tileX, tileY) is { IsActive: true, Type: LandMineTileType }) return true;
+        return false;
+    }
     public static bool IsEligible(short frameY, WorldPressurePlateActor1458 actor)
     {
         if (actor is < WorldPressurePlateActor1458.Other or > WorldPressurePlateActor1458.Player)
@@ -48,11 +60,7 @@ public static class WorldPressurePlateContacts1458
             !float.IsFinite(oldX) || !float.IsFinite(oldY))
             return false;
 
-        // Source Collision.SwitchTiles scans X then Y, excluding the world's bottom forty rows.
-        int left = ScanEdge(x, -1, tiles.Dimensions.WidthTiles);
-        int right = ScanEdge(x + width, 2, tiles.Dimensions.WidthTiles);
-        int top = ScanEdge(y, -1, tiles.Dimensions.HeightTiles);
-        int bottom = ScanEdge(y + height, 2, Math.Max(0, tiles.Dimensions.HeightTiles - 40));
+        var (left, right, top, bottom) = GetScanBounds(tiles, x, y, width, height);
         for (int tileX = left; tileX < right; tileX++)
         {
             for (int tileY = top; tileY < bottom; tileY++)
@@ -81,6 +89,12 @@ public static class WorldPressurePlateContacts1458
         }
         return false;
     }
+
+    // Source Collision.SwitchTiles scans X then Y, excluding the world's bottom forty rows.
+    private static (int Left, int Right, int Top, int Bottom) GetScanBounds(
+        WorldTileStore tiles, float x, float y, int width, int height) =>
+        (ScanEdge(x, -1, tiles.Dimensions.WidthTiles), ScanEdge(x + width, 2, tiles.Dimensions.WidthTiles),
+            ScanEdge(y, -1, tiles.Dimensions.HeightTiles), ScanEdge(y + height, 2, Math.Max(0, tiles.Dimensions.HeightTiles - 40)));
 
     private static bool TouchesProjectilePad(int tileX, int tileY, short frameX,
         float x, float y, int width, int height, float oldX, float oldY)

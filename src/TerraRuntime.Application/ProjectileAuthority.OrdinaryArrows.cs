@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core.Projectiles;
 
 namespace TerraRuntime.Application;
@@ -19,6 +20,8 @@ internal sealed partial class ProjectileAuthority
         }
         if (initial.Type.Value == 188) return TrySimulateWiringFlame(in initial);
         if (initial.Type.Value == 187) return TrySimulateWiringEmitter(in initial);
+        if (initial.Type == VanillaProjectileIds.MoonBoulder)
+            return TrySimulateMoonBoulderWiring(in initial);
         var groundCombat = TrySimulateGroundCombatActor(initial);
         if (groundCombat != ProjectileActorSimulationResult.NotApplicable) return groundCombat;
         // Other existing actors retain their concrete-world-stepper admission.

@@ -154,7 +154,7 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
                 for (int index = 0; index < 60; index++) ordinaryAmmoRandom.Next(3);
         }
     }
-    private static void ConsumeShimmerOffers(in ProjectileSimulationStepResult step, VanillaUnifiedRandom1458 random)
+    internal static void ConsumeShimmerOffers(in ProjectileSimulationStepResult step, VanillaUnifiedRandom1458 random)
     {
         for (int i = 0; i < step.ShimmerVisualOffers; i++) random.Next(6);
     }
