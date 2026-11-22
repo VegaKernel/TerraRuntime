@@ -22,7 +22,7 @@ internal sealed partial class PlayerAuthority
         (member.ControlFlags & 12) == 12 && buffs.CaptureDebuffFlags().Electrified;
 
     private static bool IsRepresentedNpcHealthBuff1458(BuffTypeId buff, bool selectedItemPhase) =>
-        buff == VanillaBuffIds.Regeneration || buff == VanillaBuffIds.Poisoned || buff == VanillaBuffIds.OnFire ||
+        buff == VanillaBuffIds.Regeneration || buff == VanillaBuffIds.Poisoned || buff == VanillaBuffIds.Venom || buff == VanillaBuffIds.OnFire3 || buff == VanillaBuffIds.OnFire ||
         buff == VanillaBuffIds.CursedInferno || buff == VanillaBuffIds.Electrified || buff == VanillaBuffIds.Lifeforce || buff.Value is 26 or 206 or 207 ||
         selectedItemPhase && buff.Value is 5 or 16 or 21 or 22 or 23 or 30 or 32 or 33 or 35 or 36 or 93 or 94 or
             112 or 114 or 115 or 117 or 321 or 121 or 122 or 123;
@@ -99,7 +99,7 @@ internal sealed partial class PlayerAuthority
         bool moving = member.VelocityX != 0f;
         if (moving && grappling is null && member.NpcHealth?.RegenTime >= 299f &&
             !effects.Any(static b => b == VanillaBuffIds.Poisoned || b == VanillaBuffIds.OnFire ||
-                b == VanillaBuffIds.CursedInferno || b == VanillaBuffIds.Electrified))
+                b == VanillaBuffIds.CursedInferno || b == VanillaBuffIds.Electrified || b == VanillaBuffIds.Venom || b == VanillaBuffIds.OnFire3))
             supported = false;
         if (world is { VampireSeed: true }) supported = false;
         if (serial == ulong.MaxValue || inventorySerial == ulong.MaxValue || serial != membership.Serial ||
@@ -124,7 +124,8 @@ internal sealed partial class PlayerAuthority
             ((appearance?.ConsumableUnlockFlags ?? 0) & 1) != 0,
             foodBefore?.HadOwnedFoodEffect(currentCombatTick) == true,
             selectedItemPhase && foodBefore?.HasBleedingEffect == true,
-            effects.Contains(VanillaBuffIds.Electrified), (member.ControlFlags & 12) != 0);
+            effects.Contains(VanillaBuffIds.Electrified), (member.ControlFlags & 12) != 0,
+            venom: foodBefore?.CaptureDebuffFlags().Venom == true, onFire3: foodBefore?.CaptureDebuffFlags().OnFire3 == true);
         return true;
     }
 
