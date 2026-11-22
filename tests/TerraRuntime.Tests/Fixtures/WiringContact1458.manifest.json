@@ -1,0 +1,8 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "2ea6d55b45c5e11d9d0cabf8b1cd3b901df5e21f1a480df2d1867a26015688b1",
+  "fixtureSha256": "163a049c6e5aa22f0fd94f44119a0ca4526aa7c4f9df8c94c6aacd9a7ca19dfd",
+  "rows": 246,
+  "repeatExact": true,
+  "scope": "Original Collision.SwitchTiles ordinary135 all8styles/5actorids/1or4colors/3supportlayouts, plus dedicated MessageBuffer59 then17 style7 destruction; full RNG and literal peer frames. Repeated arbitrary packet59 on an already absent tile is captured but not qualified by this cohort."
+}

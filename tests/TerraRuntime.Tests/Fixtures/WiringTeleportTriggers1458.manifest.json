@@ -1,0 +1,10 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "0ca96bfaf7faa97fa0f29c943196229084c374cb5bffe585a4838e44c09dabea",
+  "fixtureSha256": "14d4789f27ab8ba02d461ea693bd76b3c4776693dfd5d29a306c2d5425d9a1e6",
+  "rows": 3216,
+  "pulses": 6432,
+  "mountTypes": 66,
+  "repeatExact": true,
+  "scope": "Original Wiring.HitSwitch and actual Mount.SetMount for all66 types, weighted entry/exit, water/shimmer, optional zombie, complete RNG and literal server frames. Current runtime replay admits dry human mounts and dry unmounted server-owned players; wet/shimmer closure remains pending; not whole Main or GUI."
+}

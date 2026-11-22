@@ -330,6 +330,9 @@ internal sealed class ServerRuntimeComposition
             lowTileStateChanged: () => { worldClock?.RequestWorldInfoSync(); worldStateAdopted?.Invoke(); });
         worldTileAuthority.BindWiringStatues(worldItemAuthority, () => updates.Current);
         worldTileAuthority.BindWiringTeleporters(serverPlayers, projectileStore);
+        worldTileAuthority.BindWiringTriggers(playerSnapshots, worldClock);
+        if (serverPlayers is not null) serverPlayers.WeightedTeleportContact = worldTileAuthority.UpdateWeightedTeleportPosition;
+        if (serverPlayers is not null) serverPlayers.WiringPlayerLifecycleReset = worldTileAuthority.ReleaseWeightedPlayer;
         npcAuthority.PressurePlateContact = worldTileAuthority.ApplyNpcPressurePlate;
         if (worldTiles is not null) npcAuthority.BindDeathWorldTiles(worldTileAuthority);
         if (serverPlayers is not null) serverPlayers.PressurePlateContact = worldTileAuthority.ApplyPlayerPressurePlate;

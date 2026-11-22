@@ -431,6 +431,9 @@ internal sealed partial class RuntimeTileManipulationReplicationRegistry : IRunt
         public bool IsPlaying =>
             Volatile.Read(ref playingSlot) >= 0 && Volatile.Read(ref playingGeneration) != 0;
 
+        public bool IsPlayingFor(PlayerHandle player) =>
+            Volatile.Read(ref playingSlot) == player.Slot.Value && Volatile.Read(ref playingGeneration) == player.Generation.Value;
+
         public void MarkPlaying(PlayerHandle player)
         {
             Volatile.Write(ref playingGeneration, player.Generation.Value);

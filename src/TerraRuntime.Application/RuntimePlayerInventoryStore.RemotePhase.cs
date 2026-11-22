@@ -10,8 +10,9 @@ internal readonly record struct RemotePhaseInventoryMutation(
 {
     internal bool ConsumeFundedQuantity { get; init; }
     internal bool SourceAmmoConsumption { get; init; }
-    // Exact single-unit Wire/Actuator debit owned by the qualified wiring clock/world operation.
+    // Wire/Actuator debit owned by the wiring world operation; ordinary wrench debits remain one unit.
     internal bool WiringResourceDebit { get; init; }
+    internal short WiringResourceQuantity { get; init; } = 1;
     internal bool FishingBait { get; init; }
     // Set only by the qualified placement world/clock participant. A wall fill
     // may place five cells while exhausting two units; it cannot credit stock.
@@ -148,7 +149,9 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (!mutation.ConsumeFundedQuantity || mutation.PlacementQuantity != 0 || mutation.CursorSourceDebit is not null ||
                 !before.IsCanonical || before.IsEmpty || before.Prefix.Value != 0 ||
                 !VanillaWiringToolCatalog1458.IsResource(before.ItemType)) return false;
-            return mutation.After == (before.Stack == 1 ? default : before with { Stack = (short)(before.Stack - 1) });
+            int quantity = mutation.WiringResourceQuantity;
+            return quantity >= 1 && quantity <= before.Stack &&
+                mutation.After == (before.Stack == quantity ? default : before with { Stack = (short)(before.Stack - quantity) });
         }
         if (mutation.PlacementQuantity != 0)
         {
@@ -175,7 +178,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         if(mutation.SourceAmmoConsumption)
             return IsOwnedConsumption(mutation) && fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value,mutation.Slot)]>=0;
         if (mutation.WiringResourceDebit)
-            return IsOwnedConsumption(mutation) && fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] > 0;
+            return IsOwnedConsumption(mutation) && fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] >= mutation.WiringResourceQuantity;
         if (mutation.PlacementQuantity != 0)
             return IsOwnedConsumption(mutation) && fundedQuantities[
                 GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] >= mutation.PlacementQuantity;
@@ -237,7 +240,7 @@ internal sealed partial class RuntimePlayerInventoryStore
                 {
                     int offset = GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot);
                     owner.fundedQuantities[offset] = (short)Math.Max(0, owner.fundedQuantities[offset] -
-                        (mutation.PlacementQuantity > 0 ? mutation.PlacementQuantity : 1));
+                        (mutation.PlacementQuantity > 0 ? mutation.PlacementQuantity : mutation.WiringResourceDebit ? mutation.WiringResourceQuantity : 1));
                 }
                 owner.PreserveReportedFunding(mutation.Connection.Player.Slot.Value, mutation.Slot, mutation.After);
                 owner.items[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] = mutation.After;

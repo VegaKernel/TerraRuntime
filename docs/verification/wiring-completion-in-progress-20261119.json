@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "status": "in-progress",
+  "accepted": false,
+  "sourceClosureComplete": false,
+  "baseCommit": "7a7ea02fe971d0b80861044e0b212dcf18986700",
+  "scope": "Development continuation for issue125. This receipt records focused evidence, not a frozen full acceptance, complete wiring parity, or publication.",
+  "managedBuild": {
+    "artifact": "build20.log",
+    "sha256": "52b7e698c1c5da7df79b0f87e2846a94322803ef16156fe61931a3d5ab99ae65",
+    "warnings": 0,
+    "errors": 0
+  },
+  "focused": {
+    "artifact": "focus06.xml",
+    "sha256": "a1e5e0b54b405bab07a4a1a80480ba640948faf4b40554ab30a7b3630700b1d7",
+    "total": "64490",
+    "passed": "64490",
+    "failed": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "173.369"
+  },
+  "disposableRegression": {
+    "testSha256": "cb3199f4121a106626cb33bd2d5110bc936f7963eb58a16f520891c2eca473c5",
+    "beforeApplicationSha256": "8460d6d8584ca74bb1ea95dc35428fd9a7b7a17bea9527b937ec28c2e8e0a855",
+    "afterApplicationSha256": "4228bfb5f6c57c051ef3567bd17227a6efac25bce0383cf10fa439230466d7dd",
+    "runs": [
+      {
+        "label": "before",
+        "exitCode": 1,
+        "total": "246",
+        "passed": "240",
+        "failed": "6",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "label": "after",
+        "exitCode": 0,
+        "total": "246",
+        "passed": "246",
+        "failed": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ]
+  },
+  "independentContactCapture": {
+    "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+    "rawCaptureSha256": "2ea6d55b45c5e11d9d0cabf8b1cd3b901df5e21f1a480df2d1867a26015688b1",
+    "fixtureSha256": "163a049c6e5aa22f0fd94f44119a0ca4526aa7c4f9df8c94c6aacd9a7ca19dfd",
+    "rows": 246,
+    "repeatExact": true,
+    "scope": "Original Collision.SwitchTiles ordinary135 all8styles/5actorids/1or4colors/3supportlayouts, plus dedicated MessageBuffer59 then17 style7 destruction; full RNG and literal peer frames. Repeated arbitrary packet59 on an already absent tile is captured but not qualified by this cohort."
+  },
+  "projectileContactResearch": {
+    "repeatExact": true,
+    "rows": 32,
+    "ticks": 256,
+    "exceptionRows": 0,
+    "rawCaptureSha256": "30dbf274f1cd93e255cadda59b34b5a0f5b7a6efe61a78ced6b06eb0ecab6286",
+    "scope": "Original full Projectile.Update185/188,4 directional442 pads,1/4 wire colors, optional187birth during the live physical-slot census. Research evidence only: runtime contacts not ported. Slow fixtures do not qualify >min(width,height) segmented HandleMovement contacts."
+  },
+  "sourceInventory": {
+    "artifact": "source-analysis03/result.json",
+    "sha256": "adb7f4de372baf62a84dd94204135775d196ab3919b70cfbdde44a82ae7e3421",
+    "entries": 8,
+    "analysisOnly": true,
+    "accepted": false
+  },
+  "changedSourceHashes": {
+    "src/TerraRuntime.Application/WorldTileAuthority.DisposablePlates.cs": "a2681036b09b8258d91616e6aad16dcfbaa3a1a0d60cc5c57328b7636a2f0468",
+    "src/TerraRuntime.Application/WorldTileAuthority.ToolIngress.cs": "a5de05f5eca5a434bb5da87e82b7379227d00e50662bdb1de7e438cbd51a3042",
+    "src/TerraRuntime.Application/WorldTileAuthority.ToolSourcePass.cs": "ca49a7e0331bc7aa4c09da4daeb3b872821ec4958a4cce08ba856345d5e3b5a6",
+    "tests/TerraRuntime.Tests/RuntimeWiring1458Tests.DisposablePlates.cs": "1f1a6f0807b6cb4e8e90540a2f6bbdcf3d7aa403ed234fa99e98d1c404932d3f"
+  },
+  "ordinaryClient": {
+    "mainMenuReached": true,
+    "isolatedPlayerLoaded": true,
+    "gameplayVerified": false,
+    "clientAndTestServerClosed": true
+  },
+  "nativeAot": "Local native verification deferred by the user; current continuation checks managed builds only.",
+  "pending": [
+    "Server-owned player disposable contact destruction",
+    "Projectile/boulder contact owner with source movement segments and live later-slot births",
+    "Sensor and weighted-plate destruction/framing lifecycle",
+    "Wet/shimmer/grapple teleporter state and full destination-section behavior",
+    "Ordinary unmodified-client gameplay",
+    "Frozen fast/full suites, complete causal controls, final shipping smokes and publication"
+  ],
+  "publication": "No new merge or push. Fresh origin/main is still the recorded base."
+}

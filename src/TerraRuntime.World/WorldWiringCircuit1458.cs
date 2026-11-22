@@ -53,7 +53,7 @@ public sealed partial class WorldWiringCircuit1458
     {
         if ((_running && !fromWire) || !Contains(x, y)) return false;
         WorldTile tile = _tiles.Get(x, y);
-        if (!tile.IsActive) return false;
+        // HitSwitch1458 uses the retained type even for an inactive/deleted trigger.
         switch (tile.Type)
         {
             case 135: // Eligibility for actor contact belongs to the caller, not raw packet59.
@@ -63,6 +63,8 @@ public sealed partial class WorldWiringCircuit1458
             case 442:
             case 476:
                 return TripWire(x, y, 1, 1);
+            case 440: // GemLocks expose a three-by-three pulse area.
+                return TripWire(x, y, 3, 3);
             case 136:
                 tile.FrameY = tile.FrameY == 0 ? SourceFramePitch : (short)0;
                 _tiles.Set(x, y, in tile);
@@ -120,31 +122,41 @@ public sealed partial class WorldWiringCircuit1458
     private void RunWirePulse(int left, int top, int width, int height)
     {
         Span<WorldWiringTeleporterPair1458> pairs = stackalloc WorldWiringTeleporterPair1458[4];
-        for (int color = 1; color <= 4; color++)
+        traversingWires = true;
+        try
         {
-            firstTeleporter = secondTeleporter = null;
-            intakePumps.Clear(); outletPumps.Clear();
-            WorldWireChannel channel = (WorldWireChannel)color;
-            for (int x = left; x < left + width; x++)
-                for (int y = top; y < top + height; y++)
-                {
-                    if (!HasWire(_tiles.Get(x, y), channel)) continue;
-                    int index = Index(x, y);
-                    _skip.Add(index);
-                    _remainingEntrances.Add(index, 4);
-                    _pending.Enqueue(new WireVisit(x, y, 0));
-                }
-            Traverse(channel);
-            if (intakePumps.Count != 0 && outletPumps.Count != 0)
-                transferPumps?.Invoke(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(intakePumps),
-                    System.Runtime.InteropServices.CollectionsMarshal.AsSpan(outletPumps));
-            pairs[color - 1] = new(firstTeleporter, secondTeleporter);
-            _skip.Clear();
-            _remainingEntrances.Clear();
-            _routerEntrances.Clear();
+            for (int color = 1; color <= 4; color++)
+            {
+                firstTeleporter = secondTeleporter = null;
+                intakePumps.Clear(); outletPumps.Clear();
+                WorldWireChannel channel = (WorldWireChannel)color;
+                for (int x = left; x < left + width; x++)
+                    for (int y = top; y < top + height; y++)
+                    {
+                        if (!HasWire(_tiles.Get(x, y), channel)) continue;
+                        int index = Index(x, y);
+                        _skip.Add(index);
+                        _remainingEntrances.Add(index, 4);
+                        _pending.Enqueue(new WireVisit(x, y, 0));
+                    }
+                Traverse(channel);
+                if (intakePumps.Count != 0 && outletPumps.Count != 0)
+                    transferPumps?.Invoke(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(intakePumps),
+                        System.Runtime.InteropServices.CollectionsMarshal.AsSpan(outletPumps));
+                pairs[color - 1] = new(firstTeleporter, secondTeleporter);
+                _skip.Clear();
+                _remainingEntrances.Clear();
+                _routerEntrances.Clear();
+            }
         }
+        finally { traversingWires = false; }
         foreach (var pair in pairs)
-            if (pair.First is { } first && pair.Second is { } second) teleport?.Invoke(first, second, blockPlayerTeleportation);
+            if (pair.First is { } first && pair.Second is { } second)
+            {
+                teleportCallbackDepth++;
+                try { teleport?.Invoke(first, second, blockPlayerTeleportation); }
+                finally { teleportCallbackDepth--; }
+            }
         // Wiring.PixelBoxPass runs once, after all four colors, and requires both axes.
         foreach ((int index, byte axes) in _pixelTriggers)
         {

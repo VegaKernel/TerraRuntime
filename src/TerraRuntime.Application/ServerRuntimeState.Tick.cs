@@ -41,6 +41,7 @@ internal sealed partial class ServerRuntimeState
         // Original Main.UpdateWorld_Players runs GrabItems before UpdateWorld_Items decrements
         // grab delay/reservations or discovers a new owner. Do not grant a newly eligible body early.
         _runtime.WorldItems.TickOwnedHumanPickups();
+        _runtime.WorldTileAuthority.TickWeightedPlates();
         _runtime.Npcs.TickSimulation();
         _runtime.NpcPlayerCombat.Tick(Updates);
         if (_runtime.Projectiles.TryTickState(_runtime.Npcs.ProjectileNpcCombat))
@@ -62,6 +63,7 @@ internal sealed partial class ServerRuntimeState
         _runtime.WorldClock?.Tick();
         // Main.DoUpdateInWorld_Inner runs time before WorldGen.UpdateWorld/Wiring.UpdateMech.
         _runtime.WorldTileAuthority.TickMechanisms();
+        _runtime.WorldTileAuthority.TickLogicSensors();
         _runtime.Updates.Advance();
     }
 

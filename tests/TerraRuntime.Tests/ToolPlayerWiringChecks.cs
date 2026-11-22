@@ -24,7 +24,7 @@ public sealed class OwnedWiringTools1458Tests
         ToolPlayerBoundaryChecks.WiringRefusals();
 
     [Fact]
-    public void Cutter_reports_remain_closed_without_an_owned_client_visual_random_projection() =>
+    public void Dedicated_cutter_reports_remove_requested_bits_without_borrowing_client_visual_random_state() =>
         ToolPlayerBoundaryChecks.WiringCutter();
 
     [Fact]
@@ -165,12 +165,13 @@ internal static partial class ToolPlayerBoundaryChecks
         f.Tiles.Set(50,50,original);
         using var transport = new PlacementTransport(f);
         var before = f.CaptureInventory();
-        transport.Post(Wiring17(17)); f.Tick(); // Wrong first removal cannot skip an actuator.
-        Assert.Equal(original, f.Tiles.Get(50,50)); Assert.Equal(0UL, f.Member.ItemPhase?.ToolUse?.ActionSerial ?? 0UL);
-        transport.Post(Wiring17(9)); f.Tick();
-        Assert.Equal(original, f.Tiles.Get(50,50));
+        transport.Post(Wiring17(17));
+        var expected = original; expected.TrySetFlags(WorldTileFlags.WireYellow, false);
+        Assert.Equal(expected, f.Tiles.Get(50, 50));
+        transport.Post(Wiring17(9)); expected.TrySetFlags(WorldTileFlags.Actuator, false);
+        Assert.Equal(expected, f.Tiles.Get(50, 50));
         Assert.Equal(0UL, f.Member.ItemPhase?.ToolUse?.ActionSerial ?? 0UL); f.AssertInventory(before);
-        Assert.Equal(0, Composition(f.State).WorldTileAuthority.AppliedWorldItemAllocations);
+        Assert.Equal(2, MassWiringItems(f).ActiveCount);
     }
 
     internal static void WiringConnectedPulse()

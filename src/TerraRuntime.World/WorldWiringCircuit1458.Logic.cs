@@ -12,6 +12,7 @@ public sealed partial class WorldWiringCircuit1458
     private Queue<int> _gatesCurrent = new(), _gatesNext = new();
     private readonly HashSet<int> _gatesDone = new();
     private int _logicEvents;
+    private bool drainingLogic;
 
     public bool LastLogicBudgetExceeded { get; private set; }
 
@@ -59,22 +60,30 @@ public sealed partial class WorldWiringCircuit1458
 
     private void DrainLogicGates()
     {
-        // Wiring.LogicGatePass 1.4.5.8 drains lamps before a gate wave. A gate's
-        // nested four-color pulse only queues lamps; the next wave sees their final state.
-        while (!LastLogicBudgetExceeded && _logicLamps.Count != 0)
+        // Source leaves its active gate at the queue head until its pulse returns.
+        // Retain that recursion guard even though this runtime dequeues before dispatch.
+        if (drainingLogic) return;
+        drainingLogic = true;
+        try
         {
-            while (!LastLogicBudgetExceeded && _logicLamps.TryDequeue(out int lamp)) CheckLogicGate(lamp);
-            while (!LastLogicBudgetExceeded && _gatesNext.Count != 0)
+            // Wiring.LogicGatePass 1.4.5.8 drains lamps before a gate wave. A gate's
+            // nested four-color pulse only queues lamps; the next wave sees their final state.
+            while (!LastLogicBudgetExceeded && _logicLamps.Count != 0)
             {
-                (_gatesCurrent, _gatesNext) = (_gatesNext, _gatesCurrent);
-                while (!LastLogicBudgetExceeded && _gatesCurrent.TryDequeue(out int gate))
+                while (!LastLogicBudgetExceeded && _logicLamps.TryDequeue(out int lamp)) CheckLogicGate(lamp);
+                while (!LastLogicBudgetExceeded && _gatesNext.Count != 0)
                 {
-                    if (!_gatesDone.Add(gate)) continue;
-                    int x = gate / _tiles.Dimensions.HeightTiles, y = gate % _tiles.Dimensions.HeightTiles;
-                    RunWirePulse(x, y, 1, 1);
+                    (_gatesCurrent, _gatesNext) = (_gatesNext, _gatesCurrent);
+                    while (!LastLogicBudgetExceeded && _gatesCurrent.TryDequeue(out int gate))
+                    {
+                        if (!_gatesDone.Add(gate)) continue;
+                        int x = gate / _tiles.Dimensions.HeightTiles, y = gate % _tiles.Dimensions.HeightTiles;
+                        RunWirePulse(x, y, 1, 1);
+                    }
                 }
             }
         }
+        finally { drainingLogic = false; }
     }
 
     private void CheckLogicGate(int lamp)

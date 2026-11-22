@@ -1,0 +1,8 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "18a6bd10ff57aad1534c58a37cf26254c9238dc13100b891d9fd9c609cfd3b20",
+  "fixtureSha256": "add3a8b636264c5e2e0b56999b9bd24b76c42ff15219f1299a84b3d762913c06",
+  "rows": 160,
+  "repeatExact": true,
+  "scope": "Actual original MessageBuffer.GetData17 dedicated receiver, client0 active and joined; fake peer1 records complete server output. Not a client ItemCheck/dust projection."
+}

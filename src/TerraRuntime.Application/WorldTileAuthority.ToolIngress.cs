@@ -15,6 +15,8 @@ internal sealed partial class WorldTileAuthority
     // echo consumer, before the legacy packet17 action filter/edit budget.
     internal bool TryObserveClientToolTile(ClientTileManipulationRuntimeCommand command)
     {
+        if (TryObserveClientDisposablePlate(command)) return true;
+        if (TryObserveClientWireRemoval(command)) return true;
         if (TryObserveClientWiringTile(command)) return true;
         if (TryObserveClientPlacementTile(command)) return true;
         if (toolProjectileAuthority is null) return false;

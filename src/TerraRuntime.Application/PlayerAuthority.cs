@@ -851,6 +851,7 @@ internal sealed partial class PlayerAuthority
         };
         if (hasPending && pending!.HasHealth) ApplyNpcHealthSpawn(member, request.SpawnContext);
         membership.Commit(member);
+        toolWorld?.ReleaseWeightedPlayer(spawn.Connection.Player);
         transferProfiles.InitializeSourceBuffs(spawn.Connection);
         AttachNpcRawSlot(spawn.Connection.Player);
         events?.PlayerSpawned(spawn.Connection, in request);

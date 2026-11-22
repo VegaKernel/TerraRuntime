@@ -329,6 +329,7 @@ internal sealed partial class ServerPlayerAuthority
         }
 
         leases.Add(id, lease);
+        WiringPlayerLifecycleReset?.Invoke(snapshot.Player);
         AttachNpcRawSlot(snapshot.Player);
         events?.ServerPlayerCreated(in snapshot);
         return new ServerPlayerCreateResult(ServerPlayerCreateStatus.Created, snapshot.Player);
@@ -575,6 +576,8 @@ internal sealed partial class ServerPlayerAuthority
             jumpStates[player] = state;
     }
 
+    internal Action<PlayerHandle>? WiringPlayerLifecycleReset { get; set; }
+
     public bool Despawn(ServerPlayerId id)
     {
         if (!id.IsAssigned || !leases.TryGetValue(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease))
@@ -594,6 +597,7 @@ internal sealed partial class ServerPlayerAuthority
         leases.Remove(id);
         moonLeechOwners[lease.Player.Slot.Value] = default;
         moonLeechTicks[lease.Player.Slot.Value] = 0;
+        WiringPlayerLifecycleReset?.Invoke(lease.Player);
         events?.ServerPlayerDespawned(lease.Player);
         lease.Dispose();
         return true;

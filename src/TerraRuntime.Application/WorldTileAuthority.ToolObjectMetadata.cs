@@ -35,7 +35,7 @@ internal sealed partial class WorldTileAuthority
         internal bool TryStageSourceItemRectangle(TerraRuntime.Contracts.Gameplay.ItemTypeId item,
             short stack, int x, int y, int width, int height)
         {
-            if (!IsCurrentOwned || sealedPlan || item.IsNone || stack <= 0 || width <= 0 || height <= 0) return Fail();
+            if (!IsCurrentOwned || sealedPlan || item.IsNone || stack <= 0 || width < 0 || height < 0) return Fail();
             var drop = new TerraRuntime.Core.Worlds.WorldItemDropStateUpdate(
                 x + width / 2 - 8, y + height / 2 - 8,
                 Random.NextInt32(-30, 31) * .1f, Random.NextInt32(-40, -15) * .1f,

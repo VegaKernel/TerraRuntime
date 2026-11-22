@@ -35,6 +35,7 @@ internal sealed record RuntimeWorldCheckpointSnapshot(
     RuntimeWorldCustodyCheckpoint? Custody = null)
 {
     public WorldTileEntity[]? TileEntities { get; init; }
+    public WorldPressurePlate[]? PressurePlates { get; init; }
     public WorldAnglerQuestData1458? AnglerQuest { get; init; }
 }
 
@@ -142,6 +143,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
             invasionSaveStateSource?.Invoke(), custody)
         {
             TileEntities = tileOwner.RuntimeTileEntities?.CaptureSnapshot(),
+            PressurePlates = tileOwner.RuntimePressurePlates?.CaptureSnapshot(),
             AnglerQuest = anglerSaveStateSource?.Invoke()
         };
         return true;

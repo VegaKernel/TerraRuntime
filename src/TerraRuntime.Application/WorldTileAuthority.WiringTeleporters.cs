@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Worlds;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
@@ -8,6 +9,8 @@ namespace TerraRuntime.Application;
 internal sealed partial class WorldTileAuthority
 {
     private ServerPlayerAuthority? teleporterServerPlayers;
+    private readonly HashSet<PlayerHandle> wiringTeleportingPlayers = [];
+    private readonly HashSet<NpcHandle> wiringTeleportingNpcs = [];
     private TerraRuntime.Core.Projectiles.RuntimeProjectileStore? teleporterProjectiles;
 
     internal void BindWiringTeleporters(ServerPlayerAuthority? ownedPlayers, TerraRuntime.Core.Projectiles.RuntimeProjectileStore projectiles)
@@ -48,38 +51,61 @@ internal sealed partial class WorldTileAuthority
             }
             return npcAuthority.OwnsWiringRandom(worldItemSpawnRandom);
         }
-        var movedPlayers = new HashSet<PlayerHandle>();
-        var movedNpcs = new HashSet<NpcHandle>();
-        for (int side = 0; side < 2; side++)
+        bool RebasePadVersions()
         {
-            var from = side == 0 ? first : second; var to = side == 0 ? second : first;
-            int dx = to.PixelX - from.PixelX, dy = to.PixelY - from.PixelY;
-            if (!blockPlayers)
-            for (int slot = 0; slot < 255; slot++)
+            for (int i = 0; i < 6; i++)
             {
-                PlayerStateSnapshot player;
-                if (players.TryGet(new PlayerSlotId((byte)slot), out var member)) player = member.CaptureSnapshot();
-                else if (teleporterServerPlayers?.TryGet(new PlayerSlotId((byte)slot), out player) != true) continue;
-                if (player.IsDead || movedPlayers.Contains(player.Player) || player.HasMount ||
-                    !VanillaWiringTeleport1458.Touches(from.PixelX, from.PixelY, player.PositionX, player.PositionY, 20, 42) ||
-                    teleporterProjectiles is null || PlayerAuthority.CaptureNpcHealthGrappling(teleporterProjectiles, player.Player) != false ||
-                    !DryBody(player.PositionX, player.PositionY) || !DryBody(player.PositionX + dx, player.PositionY + dy)) continue;
-                bool committed = member is not null
-                    ? players.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, Current)
-                    : teleporterServerPlayers!.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, Current);
-                if (committed) movedPlayers.Add(player.Player);
+                var point = i < 3 ? first : second;
+                if (!images[i].Equals(tiles.Get(point.Left + i % 3, point.Row))) return false;
+                versions[i] = tiles.GetSectionVersion(TerrariaSectionGeometry.FromTile(tiles.Dimensions, point.Left + i % 3, point.Row));
             }
-            for (int slot = 0; slot < Math.Min(200, npcs.Capacity); slot++)
-                if (npcs.TryGetActive((byte)slot, out var npc) && !movedNpcs.Contains(npc.Handle) &&
-                    npcAuthority.TryWiringTeleport(in npc, from.PixelX, from.PixelY, dx, dy, Current)) movedNpcs.Add(npc.Handle);
+            return true;
         }
+        // Original teleporting flags are shared, and every nested pair clears all flags.
+        var movedPlayers = wiringTeleportingPlayers;
+        var movedNpcs = wiringTeleportingNpcs;
+        try
+        {
+            for (int side = 0; side < 2; side++)
+            {
+                var from = side == 0 ? first : second; var to = side == 0 ? second : first;
+                int dx = to.PixelX - from.PixelX, dy = to.PixelY - from.PixelY;
+                if (!(wiring?.PlayerTeleportationBlocked ?? blockPlayers))
+                for (int slot = 0; slot < 255; slot++)
+                {
+                    PlayerStateSnapshot player;
+                    if (players.TryGet(new PlayerSlotId((byte)slot), out var member)) player = member.CaptureSnapshot();
+                    else if (teleporterServerPlayers?.TryGet(new PlayerSlotId((byte)slot), out player) != true) continue;
+                    if (player.HasMount && player.MountType >= VanillaPlayerMountHitbox1458.MountTypeCount) continue;
+                    var (bodyWidth, bodyHeight) = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (20f, 42f);
+                    int width = (int)bodyWidth, height = (int)bodyHeight;
+                    if (player.IsDead || movedPlayers.Contains(player.Player) ||
+                        !VanillaWiringTeleport1458.Touches(from.PixelX, from.PixelY, player.PositionX, player.PositionY, width, height) ||
+                        teleporterProjectiles is null || PlayerAuthority.CaptureNpcHealthGrappling(teleporterProjectiles, player.Player) != false ||
+                        !DryBody(player.PositionX, player.PositionY, width, height) || !DryBody(player.PositionX + dx, player.PositionY + dy, width, height)) continue;
+                    movedPlayers.Add(player.Player);
+                    bool committed = member is not null
+                        ? players.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, Current)
+                        : teleporterServerPlayers!.TryWiringTeleport(in player, dx, dy, adapter.SourceRandom, Current);
+                    if (!committed) movedPlayers.Remove(player.Player);
+                    else if (!RebasePadVersions()) return;
+                }
+                for (int slot = 0; slot < Math.Min(200, npcs.Capacity); slot++)
+                    if (npcs.TryGetActive((byte)slot, out var npc) && movedNpcs.Add(npc.Handle))
+                    {
+                        if (!npcAuthority.TryWiringTeleport(in npc, from.PixelX, from.PixelY, dx, dy, Current)) movedNpcs.Remove(npc.Handle);
+                        else if (!RebasePadVersions()) return;
+                    }
+            }
+        }
+        finally { movedPlayers.Clear(); movedNpcs.Clear(); }
     }
-    private bool DryBody(float x, float y)
+    private bool DryBody(float x, float y, int width, int height)
     {
         if (tiles is null || !float.IsFinite(x) || !float.IsFinite(y) || x < 0 || y < 0 ||
-            x + 20 > tiles.Dimensions.WidthTiles * 16f || y + 42 > tiles.Dimensions.HeightTiles * 16f) return false;
-        for (int tx = (int)x / 16; tx <= (int)(x + 19) / 16; tx++)
-        for (int ty = (int)y / 16; ty <= (int)(y + 41) / 16; ty++)
+            x + width > tiles.Dimensions.WidthTiles * 16f || y + height > tiles.Dimensions.HeightTiles * 16f) return false;
+        for (int tx = (int)x / 16; tx <= (int)(x + width - 1) / 16; tx++)
+        for (int ty = (int)y / 16; ty <= (int)(y + height - 1) / 16; ty++)
             if (tiles.Get(tx, ty).LiquidAmount != 0) return false;
         return true;
     }

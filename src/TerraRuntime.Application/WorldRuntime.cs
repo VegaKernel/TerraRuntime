@@ -82,6 +82,9 @@ public sealed partial class WorldRuntime : IDisposable
         if (world.Tiles.RuntimeTileEntities is null &&
             !world.Tiles.TryAttachLoadedTileEntities(world.TileEntities, ServerWorldLoadPolicy.CreateLimits().MaxTileEntities))
             throw new InvalidDataException("Failed to import canonical world tile entities.");
+        if (world.Tiles.RuntimePressurePlates is null &&
+            !world.Tiles.TryAttachPressurePlates(world.PressurePlates, ServerWorldLoadPolicy.CreateLimits().MaxPressurePlates, fromWorldFile: true))
+            throw new InvalidDataException("Failed to import canonical weighted pressure plates.");
         GameLoopOptions loopOptions = options.CreateLoopOptions();
         Identity = identity;
         Source = source;

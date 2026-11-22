@@ -1,0 +1,11 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawSha256": "85de38f328770bdda9805fc3fd48e26df07015979b4eb8c89dda50933af4cf44",
+  "fixtureSha256": "ca806a88361821e364b634c3001b302836c16143fbe47ab563e7d359383b7d40",
+  "weightedScenarios": 96,
+  "weightedSteps": 1200,
+  "sensorScenarios": 252,
+  "sensorSteps": 10080,
+  "repeatExact": true,
+  "scope": "PressurePlateHelper and TELogicSensor direct original-server updates; not whole Main/client playthrough"
+}

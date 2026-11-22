@@ -15,6 +15,19 @@ internal sealed class HitSwitchFrameSink1458(GameCommandSourceId source, PlayerB
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
         if (RejectionCategory != TerrariaFrameRejectionCategory.None) return TerrariaFrameSinkResult.Stop;
+        if (frame.MessageId == (byte)TerrariaMessageId.MassWireOperation)
+        {
+            if (!TerrariaMassWiringCodec1458.TryDecode(in frame, out var mass))
+                RejectionCategory = TerrariaFrameRejectionCategory.MalformedProtocol;
+            else if (bootstrap.JoinState != PlayerJoinState.Playing || bootstrap.AssignedPlayerHandle is not PlayerHandle)
+                RejectionCategory = TerrariaFrameRejectionCategory.InvalidState;
+            else
+            {
+                _ = ingress.TryPostMassWiring(new ConnectionHandle(source, bootstrap.AssignedPlayerHandle.Value), in mass);
+                return TerrariaFrameSinkResult.Continue;
+            }
+            return TerrariaFrameSinkResult.Stop;
+        }
         if (frame.MessageId != (byte)TerrariaMessageId.HitSwitch) return inner.OnFrame(in frame);
         if (!TerrariaHitSwitchCodec1458.TryDecode(in frame, out var state))
             RejectionCategory = TerrariaFrameRejectionCategory.MalformedProtocol;

@@ -55,11 +55,11 @@ public sealed partial class WiringTeleporter1458Tests
     }
 
     [Theory]
-    [InlineData("mounted")] [InlineData("wet-source")] [InlineData("wet-destination")] [InlineData("dead")]
+    [InlineData("unknown-mount")] [InlineData("wet-source")] [InlineData("wet-destination")] [InlineData("dead")]
     public void Unsupported_player_context_does_not_block_eligible_npc(string kind)
     {
         using var f = new TeleportFixture(); Assert.True(f.Graph.Players.TryGet(f.Connection, out var member));
-        if (kind == "mounted") member.HasMount = true;
+        if (kind == "unknown-mount") { member.HasMount = true; member.MountType = ushort.MaxValue; }
         if (kind == "dead") member.IsDead = true;
         if (kind.StartsWith("wet")) { int x = kind == "wet-source" ? 19 : 54; var tile = f.Tiles.Get(x, 38); tile.LiquidAmount = 1; f.Tiles.Set(x, 38, in tile); }
         f.Press();

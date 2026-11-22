@@ -18,7 +18,8 @@ public enum WorldFileTileChestRewriteResult : byte
     InvalidHeaderSection = 13,
     InvalidSignSection = 14,
     InvalidNpcSection = 15,
-    InvalidTownRoomSection = 16
+    InvalidTownRoomSection = 16,
+    InvalidPressurePlateSection = 17
 }
 
 /// <summary>
@@ -137,7 +138,8 @@ public static class WorldFileTileChestRewriter
         WorldFilePreservedSections preserved, WorldTileSaveImage tiles, ReadOnlySpan<WorldChest> chests,
         ReadOnlySpan<byte> signSection, ReadOnlySpan<byte> npcSection, ReadOnlySpan<byte> townRoomSection,
         Stream destination, out long bytesWritten, WorldBannerData1458? banners,
-        ReadOnlyMemory<byte>? bestiarySection, ReadOnlyMemory<byte>? tileEntitySection)
+        ReadOnlyMemory<byte>? bestiarySection, ReadOnlyMemory<byte>? tileEntitySection,
+        ReadOnlyMemory<byte>? pressurePlateSection = null)
     {
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
         ArgumentNullException.ThrowIfNull(header);
@@ -174,6 +176,12 @@ public static class WorldFileTileChestRewriter
             return WorldFileTileChestRewriteResult.InvalidNpcSection;
         if (townRoomSection.IsEmpty)
             return WorldFileTileChestRewriteResult.InvalidTownRoomSection;
+        if (pressurePlateSection is { } pressureSection &&
+            WorldFilePressurePlateDecoder.TryDecodeSection(pressureSection.Span, header.Dimensions,
+                header.Dimensions.WidthTiles * (long)header.Dimensions.HeightTiles > int.MaxValue
+                    ? int.MaxValue : header.Dimensions.WidthTiles * header.Dimensions.HeightTiles,
+                out _, out _) != WorldFilePressurePlateDecodeResult.Decoded)
+            return WorldFileTileChestRewriteResult.InvalidPressurePlateSection;
         if (!destination.CanWrite)
             return WorldFileTileChestRewriteResult.DestinationNotWritable;
         if (!destination.CanSeek)
@@ -232,7 +240,7 @@ public static class WorldFileTileChestRewriter
             destination.Write(tileEntitySection.HasValue ? tileEntitySection.Value.Span : preserved.TileEntities.Span);
             if (!TryRecordOffset(destination, offsets, 6))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
-            destination.Write(preserved.PressurePlates.Span);
+            destination.Write(pressurePlateSection.HasValue ? pressurePlateSection.Value.Span : preserved.PressurePlates.Span);
             if (!TryRecordOffset(destination, offsets, 7))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
             destination.Write(townRoomSection);

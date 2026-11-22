@@ -474,6 +474,17 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             encodedTileEntities = entityStream.ToArray();
         }
 
+        byte[]? encodedPressurePlates = null;
+        if (snapshot.PressurePlates is { } pressurePlates)
+        {
+            using var pressureStream = new MemoryStream();
+            if (pressurePlates.Length > ServerWorldLoadPolicy.CreateLimits().MaxPressurePlates ||
+                WorldFilePressurePlateEncoder.TryEncode(pressurePlates, sourceHeader.Dimensions,
+                    pressureStream, out _) != WorldFilePressurePlateEncodeResult.Encoded)
+                throw new InvalidDataException("Authoritative pressure-plate encoding failed.");
+            encodedPressurePlates = pressureStream.ToArray();
+        }
+
         WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
             snapshot.Custody is { } custody ? sourceEnvelope.WithRevision(custody.Revision.Value) : sourceEnvelope,
             sourceHeader,
@@ -487,7 +498,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             destination,
             out _, banners: snapshot.Banners,
             bestiarySection: encodedBestiary is null ? (ReadOnlyMemory<byte>?)null : encodedBestiary,
-            tileEntitySection: encodedTileEntities is null ? (ReadOnlyMemory<byte>?)null : encodedTileEntities);
+            tileEntitySection: encodedTileEntities is null ? (ReadOnlyMemory<byte>?)null : encodedTileEntities,
+            pressurePlateSection: encodedPressurePlates is null ? (ReadOnlyMemory<byte>?)null : encodedPressurePlates);
         if (result != WorldFileTileChestRewriteResult.Rewritten)
             throw new InvalidDataException($"Authoritative tile/chest/sign/town world save failed: {result}.");
 

@@ -310,6 +310,9 @@ internal sealed partial class WorldTileAuthority
         {
             if (deathDrop is not null) return TryStageDeathDrop(x, y, in before);
             if (server is null) return false;
+            // KillTile_GetItemDrops has no style7 case for type135. Its successful
+            // destruction still executes the ordinary dust and neighbor frame pass.
+            if (before.Type == 135 && before.FrameY / 18 == 7) return true;
             if (IsOrdinaryPlacementFurniture(before.Type) || IsExceptionalFurniture(before.Type) || AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
             if (IsSourcePlant(before.Type)) return TryStagePlantDrops(x, y, in before);
             if (before.Type is 5 or 72 or 80 or 323 or >= 583 and <= 589 or 596 or 616 or 634)

@@ -139,6 +139,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
     public bool TryApply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (command is ClientMassWiringRuntimeCommand1458 massWiring) { ApplyMassWiring(massWiring); return true; }
         if (command is ClientHitSwitchRuntimeCommand1458 hitSwitch) { ApplyHitSwitch(hitSwitch); return true; }
         if (TryApplyToolObservation(command)) return true;
 

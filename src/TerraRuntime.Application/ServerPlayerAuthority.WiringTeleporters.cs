@@ -7,20 +7,26 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ServerPlayerAuthority
 {
+    internal Action<PlayerStateSnapshot, float, float>? WeightedTeleportContact { get; set; }
     private readonly WiringPlayerTeleport1458[] wiringTeleports = new WiringPlayerTeleport1458[256];
     internal WiringPlayerTeleport1458 CaptureWiringTeleport(PlayerHandle player) =>
         wiringTeleports[player.Slot.Value].Owner == player ? wiringTeleports[player.Slot.Value] : default;
 
     internal bool TryWiringTeleport(in PlayerStateSnapshot before, int dx, int dy, VanillaUnifiedRandom1458 random, Func<bool> current)
     {
-        if (before.IsDead || before.HasMount || !states.TryGet(before.Player, out var actual) || actual != before) return false;
+        if (before.IsDead || before.HasMount || before.Revision.Value == ulong.MaxValue || !states.TryGet(before.Player, out var actual) || actual != before) return false;
         float x = before.PositionX + dx, y = before.PositionY + dy;
         var source = random.Clone(); var prepared = source.Clone();
-        VanillaWiringTeleport1458.ConsumePlayerEffects(new SystemVanillaNpcRandom(prepared), 20, 42, CaptureWiringTeleport(before.Player).Time);
-        if (!current() || !states.TryGet(before.Player, out actual) || actual != before || !random.HasSameState(source) ||
-            !states.TrySetMotion(before.Player, x, y, before.VelocityX, before.VelocityY, out var committed)) return false;
-        wiringTeleports[before.Player.Slot.Value] = new(before.Player, 1f, 0, (int)(y / 16f), 4);
+        var history = CaptureWiringTeleport(before.Player);
+        VanillaWiringTeleport1458.ConsumePlayerEffectSide(new SystemVanillaNpcRandom(prepared), 20, 42, history.Time);
+        if (!current() || !states.TryGet(before.Player, out actual) || actual != before || !random.HasSameState(source)) return false;
         random.CopyStateFrom(prepared);
+        WeightedTeleportContact?.Invoke(before, before.PositionX, before.PositionY);
+        if (!states.TrySetMotion(before.Player, x, y, before.VelocityX, before.VelocityY, out var committed))
+            throw new InvalidOperationException("Prepared teleport motion changed during source contact continuation.");
+        WeightedTeleportContact?.Invoke(before, x, y);
+        VanillaWiringTeleport1458.ConsumePlayerEffectSide(new SystemVanillaNpcRandom(random), 20, 42, history.Time);
+        wiringTeleports[before.Player.Slot.Value] = new(before.Player, 1f, 0, (int)(y / 16f), 4);
         events?.ServerPlayerTeleported(in committed);
         return true;
     }

@@ -13,6 +13,8 @@ public static class VanillaPlayerHitboxFacts
 /// <summary>Source-pinned Player dimensions after Mount.SetMount in TerrariaServer 1.4.5.8.</summary>
 public static class VanillaPlayerMountHitbox1458
 {
+    public const int MountTypeCount = 66; // MountID.Count, official1458.
+
     public static (float Width, float Height) Resolve(ushort mountType) => mountType switch
     {
         55 => (14f, 14f), // RatPlayerSize

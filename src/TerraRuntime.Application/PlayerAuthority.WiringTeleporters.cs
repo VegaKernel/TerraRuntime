@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Application;
 
@@ -15,18 +16,23 @@ internal sealed partial class PlayerAuthority
 
     internal bool TryWiringTeleport(in PlayerStateSnapshot before, int dx, int dy, VanillaUnifiedRandom1458 random, Func<bool> current)
     {
-        if (before.IsDead || before.HasMount || !TryGet(before.Player, out var member) || member.CaptureSnapshot() != before ||
+        if (before.IsDead || before.HasMount && before.MountType >= VanillaPlayerMountHitbox1458.MountTypeCount || !TryGet(before.Player, out var member) || member.CaptureSnapshot() != before ||
             npcHealthGrapplingFacts?.Invoke(before.Player) != false) return false;
+        var (bodyWidth, bodyHeight) = before.HasMount ? VanillaPlayerMountHitbox1458.Resolve(before.MountType) : (20f, 42f);
+        int width = (int)bodyWidth, height = (int)bodyHeight;
         float x = before.PositionX + dx, y = before.PositionY + dy;
         var source = random.Clone(); var prepared = source.Clone();
         var history = CaptureWiringTeleport(before.Player);
         events?.PreparePlayerTeleport(member.Connection, x, y);
-        VanillaWiringTeleport1458.ConsumePlayerEffects(new SystemVanillaNpcRandom(prepared), 20, 42, history.Time);
+        VanillaWiringTeleport1458.ConsumePlayerEffectSide(new SystemVanillaNpcRandom(prepared), width, height, history.Time);
         if (!current() || member.CaptureSnapshot() != before || !membership.IsCurrent(member.Connection) ||
             !random.HasSameState(source) || !member.TryAdvanceRevision()) return false;
-        member.PositionX = x; member.PositionY = y;
-        wiringTeleports[before.Player.Slot.Value] = new(before.Player, 1f, 0, (int)(y / 16f), 4, AwaitingLanding: true);
         random.CopyStateFrom(prepared);
+        toolWorld?.UpdateWeightedTeleportPosition(before, before.PositionX, before.PositionY);
+        member.PositionX = x; member.PositionY = y;
+        toolWorld?.UpdateWeightedTeleportPosition(before, x, y);
+        VanillaWiringTeleport1458.ConsumePlayerEffectSide(new SystemVanillaNpcRandom(random), width, height, history.Time);
+        wiringTeleports[before.Player.Slot.Value] = new(before.Player, 1f, 0, (int)(y / 16f), 4, AwaitingLanding: true);
         events?.PlayerTeleported(member.Connection, x, y, 0, false);
         return true;
     }

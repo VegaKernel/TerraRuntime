@@ -3,7 +3,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class WorldFileTileChestRewriterTests
+public sealed partial class WorldFileTileChestRewriterTests
 {
     [Fact]
     public void Rewritten_tile_chest_slice_loads_and_preserves_opaque_sections_byte_for_byte()

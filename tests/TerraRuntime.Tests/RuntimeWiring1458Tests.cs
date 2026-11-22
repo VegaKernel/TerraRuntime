@@ -278,10 +278,12 @@ public sealed partial class RuntimeWiring1458Tests
         public Scene(int sourceId = 8000, ServerPlayerAuthority? serverPlayers = null, PlayerSlotPool? playerSlots = null, RuntimePlayerUpdateWorld1458? sourceWorld = null,
             RuntimeTownCommerceWorldFacts1458? calendar = null, TerraRuntime.Core.Worlds.RuntimeWorldItemStore? items = null,
             RuntimeWorldItemReplicationRegistry? itemReplication = null, TerraRuntime.Core.Npcs.RuntimeNpcStore? npcs = null,
-            RuntimeNpcReplicationRegistry? npcReplication = null)
+            RuntimeNpcReplicationRegistry? npcReplication = null, VanillaUnifiedRandom1458? wiringRandom = null, RuntimeWorldClock? clock = null)
         {
             State = new(npcs: npcs, npcReplication: npcReplication, worldTiles: Tiles, tileManipulationReplication: Replication, serverPlayers: serverPlayers,
-                sourcePlayerWorld: sourceWorld, townCommerceWorldFacts: calendar, worldItems: items, worldItemReplication: itemReplication);
+                sourcePlayerWorld: sourceWorld, townCommerceWorldFacts: calendar, worldItems: items, worldItemReplication: itemReplication, worldClock: clock,
+                worldItemSpawnRandom: wiringRandom is null ? null : new TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom(wiringRandom),
+                naturalSpawnRandom: wiringRandom is null ? null : new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(wiringRandom));
             var source = GameCommandSourceId.FromConnection(sourceId);
             Bootstrap = new(playerSlots ?? new PlayerSlotPool(1), Outbound(), PlayerBootstrapPacketSet.CreateForTesting(
                 new byte[] { 3, 0, 7 }, Array.Empty<ReadOnlyMemory<byte>>(), new byte[] { 3, 0, 49 }), source, this);

@@ -1,0 +1,8 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "2c24632a56dff4982d73a462c6224ef21748c3fb79c08be1b5609532ebda23f3",
+  "fixtureSha256": "52bc1b40f4864d9b2c28078b878c458cb2532d856e37f95691ecaa6873277c10",
+  "rows": 1152,
+  "repeatExact": true,
+  "projection": "Only L-path cells retained; every non-path before/after cell verified unchanged in both complete source captures. Packet bytes, drops and complete RNG retained. Direct actuator and wall observation includes actuator-only empty cells."
+}

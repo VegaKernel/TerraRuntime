@@ -1,0 +1,8 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "647065ed76d11095a0e3e33f039086c46ab9dfd373eb5ee6a79dcc0878f661ca",
+  "fixtureSha256": "334f75d4aea97fcb33c6f45ec8c6543a4ebf825624fbaae7dbaa8ba55c8bac6e",
+  "rows": 88,
+  "repeatExact": true,
+  "scope": "Original loaded-key update/reset then empty TELogicSensor.UpdateEndInternal; live active/inactive raw trigger types, full RNG and literal frames."
+}

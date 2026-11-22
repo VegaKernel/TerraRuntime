@@ -4,7 +4,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class RuntimeWorldCheckpointSnapshotSourceTests
+public sealed partial class RuntimeWorldCheckpointSnapshotSourceTests
 {
     [Fact]
     public void Snapshot_retains_the_live_wind_target_for_the_world_header()

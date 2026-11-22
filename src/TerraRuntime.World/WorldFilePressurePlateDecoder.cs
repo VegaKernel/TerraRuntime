@@ -30,6 +30,15 @@ public static class WorldFilePressurePlateDecoder
             return WorldFilePressurePlateDecodeResult.InvalidSectionBounds;
 
         ReadOnlySpan<byte> section = file.Slice(sectionStart, sectionEnd - sectionStart);
+        return TryDecodeSection(section, header.Dimensions, maxPressurePlates, out pressurePlates, out bytesConsumed);
+    }
+
+    internal static WorldFilePressurePlateDecodeResult TryDecodeSection(
+        ReadOnlySpan<byte> section, WorldDimensions dimensions, int maxPressurePlates,
+        out WorldPressurePlate[] pressurePlates, out int bytesConsumed)
+    {
+        pressurePlates = [];
+        bytesConsumed = 0;
         if (section.Length < sizeof(int))
             return WorldFilePressurePlateDecodeResult.Truncated;
 
@@ -56,7 +65,7 @@ public static class WorldFilePressurePlateDecoder
             int y = BinaryPrimitives.ReadInt32LittleEndian(section[offset..]);
             offset += sizeof(int);
 
-            if ((uint)x >= (uint)header.Dimensions.WidthTiles || (uint)y >= (uint)header.Dimensions.HeightTiles)
+            if ((uint)x >= (uint)dimensions.WidthTiles || (uint)y >= (uint)dimensions.HeightTiles)
             {
                 bytesConsumed = offset;
                 return WorldFilePressurePlateDecodeResult.InvalidCoordinates;

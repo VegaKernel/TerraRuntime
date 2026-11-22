@@ -67,6 +67,8 @@ public enum TerrariaMessageId : byte
     LoadNetModule = 82,
     PlayerStealth = 84,
     WorldItemTweaker = 88,
+    MassWireOperation = 109,
+    MassWireOperationPay = 110,
     PlayerHurt = 117,
     PlayerDeathV2 = 118,
     // MessageBuffer case125 relays bounded visual pick progress, never tool permission.

@@ -25,6 +25,7 @@ internal sealed partial class PlayerAuthority
         try
         {
             ResetNpcRawSlot(connection.Player);
+            toolWorld?.ReleaseWeightedPlayer(connection.Player);
             DisconnectedPlayers++;
             chestCommands?.ReleasePlayer(connection);
             events?.PlayerDisconnected(connection);
@@ -111,6 +112,7 @@ internal sealed partial class PlayerAuthority
         if (!membership.TryRemove(connection, out _))
             throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
         ResetNpcRawSlot(connection.Player);
+        toolWorld?.ReleaseWeightedPlayer(connection.Player);
         // Live transport shutdown uses this same detach transaction as world transfer.
         // Release world-owned interactions before completion can admit a replacement session.
         chestCommands?.ReleasePlayer(connection);

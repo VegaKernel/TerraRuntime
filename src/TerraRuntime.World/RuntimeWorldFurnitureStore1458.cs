@@ -196,6 +196,16 @@ public sealed partial class RuntimeWorldFurnitureStore1458
             workingSlots![slot] = null; workingFreeSlots!.Add(slot);
             return IsCurrentOwned;
         }
+        internal bool TryStageLogicSensorState(int x, int y, WorldLogicSensorPayload expected, bool on)
+        {
+            if (sealedPreparation || !TryGetAt(x, y, out var row) || row is null ||
+                row.Kind != WorldTileEntityKind.LogicSensor || row.Payload != expected ||
+                changes.Count == maximumChanges && !changes.ContainsKey(row.PersistedId)) return Fail();
+            changes[row.PersistedId] = row with { Payload = expected with { IsOn = on } };
+            SetWorkingRow(changes[row.PersistedId]!);
+            return IsCurrentOwned;
+        }
+
         internal bool TryStageDisplayDollPose(int x, int y, int id, byte expectedPose, byte sourcePose)
         {
             if (sealedPreparation || !TryGetAt(x, y, out var row) || row is null || row.PersistedId != id ||

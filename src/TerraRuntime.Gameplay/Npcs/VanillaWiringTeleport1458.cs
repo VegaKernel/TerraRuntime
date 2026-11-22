@@ -21,6 +21,13 @@ public static class VanillaWiringTeleport1458
     public static void ConsumePlayerEffects(IVanillaNpcRandom random, int width, int height, float teleportTime) =>
         ConsumeEffects(random, width, height, Math.Clamp(1f - teleportTime * .99f, .01f, 1f));
 
+    /// <summary>One original Main.TeleportEffect entry or exit; contacts may consume RNG between them.</summary>
+    public static void ConsumePlayerEffectSide(IVanillaNpcRandom random, int width, int height, float teleportTime)
+    {
+        int count = (int)((width * height / 5) * Math.Clamp(1f - teleportTime * .99f, .01f, 1f));
+        for (int i = 0; i < count; i++) _ = random.NextInt32(20, 70);
+    }
+
     public static float AdvanceNpcVisual(IVanillaNpcRandom random, float time, int style)
     {
         if (!(time > 0f)) return time;
