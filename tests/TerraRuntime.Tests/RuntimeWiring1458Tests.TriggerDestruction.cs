@@ -12,15 +12,18 @@ public sealed partial class RuntimeWiring1458Tests
 {
     public static IEnumerable<object[]> OriginalWiringTriggerDestruction()
     {
-        using var input = typeof(RuntimeWiring1458Tests).Assembly.GetManifestResourceStream("WiringTriggerDestructionLinux1458")!;
-        using var gzip = new GZipStream(input, CompressionMode.Decompress);
-        using var json = JsonDocument.Parse(gzip);
-        foreach (var row in json.RootElement.GetProperty("rows").EnumerateArray())
-            yield return [row.GetRawText()];
+        foreach (string resource in new[] { "WiringTriggerDestructionLinux1458", "WiringLiveTriggerDestructionLinux1458" })
+        {
+            using var input = typeof(RuntimeWiring1458Tests).Assembly.GetManifestResourceStream(resource)!;
+            using var gzip = new GZipStream(input, CompressionMode.Decompress);
+            using var json = JsonDocument.Parse(gzip);
+            foreach (var row in json.RootElement.GetProperty("rows").EnumerateArray())
+                yield return [row.GetRawText()];
+        }
     }
 
     [Theory, MemberData(nameof(OriginalWiringTriggerDestruction))]
-    public void Dedicated_kill_transaction_matches_source_drops_and_metadata_when_no_release_pulse_is_required(string observation)
+    public void Dedicated_kill_transaction_matches_source_wire_release_drops_and_metadata(string observation)
     {
         using var json = JsonDocument.Parse(observation);
         var row = json.RootElement;
@@ -29,6 +32,9 @@ public sealed partial class RuntimeWiring1458Tests
         int style = row.GetProperty("style").GetInt32();
         bool on = row.GetProperty("on").GetBoolean();
         bool noItem = row.GetProperty("noItem").GetBoolean();
+        bool occupiedCapture = type == 428 && row.TryGetProperty("beforePressed", out _);
+        bool reloaded = occupiedCapture && row.GetProperty("reload").GetBoolean();
+        int colors = row.GetProperty("colors").GetInt32();
         int killY = row.GetProperty("supportOnly").GetBoolean() ? 41 : 40;
         var random = new VanillaUnifiedRandom1458(1458);
         var itemReplication = new RuntimeWorldItemReplicationRegistry();
@@ -36,7 +42,7 @@ public sealed partial class RuntimeWiring1458Tests
         using var scene = CreateDisposableScene(random, items, itemReplication: itemReplication);
         // The dedicated capture has a packet recorder but no active item-owner
         // candidates. Keep the observation endpoint separate from actor state.
-        scene.State.Apply(new PlayerDisconnectRuntimeCommand(scene.Owner));
+        if (!occupiedCapture) scene.State.Apply(new PlayerDisconnectRuntimeCommand(scene.Owner));
         var observer = new ConnectionHandle(GameCommandSourceId.FromConnection(8001), new(new PlayerSlotId(1), new(1)));
         Assert.True(itemReplication.TryRegister(observer.Source, scene.PeerOutbound));
         var spawn = new PlayerSpawnCommitRequest(observer.Player.Slot, 20, 20, 0, 0, 0, 0, 0);
@@ -49,40 +55,35 @@ public sealed partial class RuntimeWiring1458Tests
             Flags = WorldTileFlags.Active
         };
         scene.Tiles.Set(30, 40, in plate);
-        Put(scene.Tiles, 33, 40, 4);
+        scene.Tiles.Set(33, 40, new WorldTile { Type = 4, Flags = WorldTileFlags.Active });
         scene.Tiles.Set(30, 41, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         for (int x = 30; x <= 33; x++)
         {
             var tile = scene.Tiles.Get(x, 40);
-            tile.TrySetFlags(WorldTileFlags.WireRed, true);
-            if (row.GetProperty("colors").GetInt32() == 15)
+            if (colors != 0) tile.TrySetFlags(WorldTileFlags.WireRed, true);
+            if (colors == 15)
                 tile.TrySetFlags(WorldTileFlags.WireBlue | WorldTileFlags.WireGreen | WorldTileFlags.WireYellow, true);
             scene.Tiles.Set(x, 40, tile);
         }
-        WorldPressurePlate[] pressure = type == 428 && on ? [new(30, 40)] : [];
+        WorldPressurePlate[] pressure = type == 428 && on && (!occupiedCapture || reloaded) ? [new(30, 40)] : [];
         WorldTileEntity[] entities = type == 423
             ? [new(0, 30, 40, WorldTileEntityKind.LogicSensor, new WorldLogicSensorPayload((byte)(style + 1), on))]
             : [];
-        Assert.True(scene.Tiles.TryAttachPressurePlates(pressure, 16));
+        Assert.True(scene.Tiles.TryAttachPressurePlates(pressure, 16, fromWorldFile: reloaded));
+        if (occupiedCapture)
+        {
+            Assert.True(Graph(scene).Players.TryGet(scene.Owner, out var player));
+            player.PositionX = 481;
+            player.PositionY = 613;
+            if (!reloaded)
+                Assert.True(scene.Tiles.RuntimePressurePlates!.Update(scene.Owner.Player, 481, 613, 20, 42, static (_, _) => { }));
+        }
         Assert.True(scene.Tiles.TryAttachTileEntities(entities, 16));
         scene.DrainFrames(scene.PeerOutbound);
         random.CopyStateFrom(new VanillaUnifiedRandom1458(1458));
         var (plan, source) = PrepareTriggerDestruction(scene);
         using (plan)
         {
-            bool releaseRequired = on && (type == 423 && style >= 2 || type == 428 && !noItem);
-            if (releaseRequired)
-            {
-                var before = scene.Tiles.Get(30, 40);
-                Assert.False(source.TryKillTile(30, 40, false, false, noItem, out _));
-                Assert.Equal(before, scene.Tiles.Get(30, 40));
-                Assert.Equal(pressure, scene.Tiles.RuntimePressurePlates!.CaptureSnapshot());
-                Assert.Equal(entities, scene.Tiles.RuntimeTileEntities!.CaptureSnapshot());
-                Assert.Empty(scene.DrainFrames(scene.PeerOutbound));
-                Assert.Equal(0, items.ActiveCount);
-                Assert.True(random.HasSameState(new VanillaUnifiedRandom1458(1458)));
-                return;
-            }
             Assert.True(source.TryKillTile(30, killY, false, false, noItem, out var result));
             Assert.True(result.Changed);
             Assert.True(plan.TrySeal());
@@ -135,6 +136,104 @@ public sealed partial class RuntimeWiring1458Tests
         Assert.True(scene.Tiles.Get(30, 40).IsActive);
         Assert.Equal(0, items.ActiveCount);
         Assert.Single(scene.Tiles.RuntimePressurePlates!.CaptureSnapshot());
+    }
+
+    [Theory]
+    [InlineData(423)]
+    [InlineData(428)]
+    public void Unsupported_device_after_a_torch_rejects_the_whole_release(ushort type)
+    {
+        var random = new VanillaUnifiedRandom1458(1458);
+        var items = new RuntimeWorldItemStore();
+        using var scene = CreateDisposableScene(random, items);
+        var root = new WorldTile { Type = type, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed,
+            FrameX = (short)(type == 423 ? 18 : 0), FrameY = (short)(type == 423 ? 36 : 0) };
+        var torch = new WorldTile { Type = 4, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed };
+        scene.Tiles.Set(30, 40, in root);
+        scene.Tiles.Set(31, 40, new WorldTile { Flags = WorldTileFlags.WireRed });
+        scene.Tiles.Set(32, 40, new WorldTile { Flags = WorldTileFlags.WireRed });
+        scene.Tiles.Set(33, 40, in torch);
+        scene.Tiles.Set(34, 40, new WorldTile { Type = 137, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed });
+        WorldPressurePlate[] pressure = type == 428 ? [new(30, 40)] : [];
+        WorldTileEntity[] entities = type == 423
+            ? [new(0, 30, 40, WorldTileEntityKind.LogicSensor, new WorldLogicSensorPayload(3, true))] : [];
+        Assert.True(scene.Tiles.TryAttachPressurePlates(pressure, 16));
+        Assert.True(scene.Tiles.TryAttachTileEntities(entities, 16));
+        scene.DrainFrames(scene.PeerOutbound);
+        var beforeRandom = random.Clone();
+        var (plan, source) = PrepareTriggerDestruction(scene);
+        using (plan)
+        {
+            Assert.False(source.TryKillTile(30, 40, false, false, false, out _));
+            Assert.False(plan.TrySeal());
+        }
+        Assert.Equal(root, scene.Tiles.Get(30, 40));
+        Assert.Equal(torch, scene.Tiles.Get(33, 40));
+        Assert.Equal(pressure, scene.Tiles.RuntimePressurePlates!.CaptureSnapshot());
+        Assert.Equal(entities, scene.Tiles.RuntimeTileEntities!.CaptureSnapshot());
+        Assert.Empty(scene.DrainFrames(scene.PeerOutbound));
+        Assert.Equal(0, items.ActiveCount);
+        Assert.True(random.HasSameState(beforeRandom));
+    }
+
+    [Fact]
+    public void A_loaded_key_acquiring_a_live_occupant_refuses_a_prepared_release()
+    {
+        var random = new VanillaUnifiedRandom1458(1458);
+        var items = new RuntimeWorldItemStore();
+        using var scene = CreateDisposableScene(random, items);
+        var root = new WorldTile { Type = 428, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed };
+        var torch = new WorldTile { Type = 4, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed };
+        scene.Tiles.Set(30, 40, in root);
+        scene.Tiles.Set(31, 40, new WorldTile { Flags = WorldTileFlags.WireRed });
+        scene.Tiles.Set(32, 40, new WorldTile { Flags = WorldTileFlags.WireRed });
+        scene.Tiles.Set(33, 40, in torch);
+        Assert.True(scene.Tiles.TryAttachPressurePlates([new(30, 40)], 16, fromWorldFile: true));
+        scene.DrainFrames(scene.PeerOutbound);
+        var beforeRandom = random.Clone();
+        var (plan, source) = PrepareTriggerDestruction(scene);
+        using (plan)
+        {
+            Assert.True(source.TryKillTile(30, 40, false, false, false, out var result));
+            Assert.True(result.Changed);
+            Assert.True(plan.TrySeal());
+            Assert.True(scene.Tiles.RuntimePressurePlates!.Update(scene.Owner.Player, 481, 613, 20, 42, static (_, _) => { }));
+            Assert.False(plan.TryAdoptWholeUnpublished(out _));
+        }
+        Assert.Equal(root, scene.Tiles.Get(30, 40));
+        Assert.Equal(torch, scene.Tiles.Get(33, 40));
+        Assert.Single(scene.Tiles.RuntimePressurePlates!.CaptureSnapshot());
+        Assert.Empty(scene.DrainFrames(scene.PeerOutbound));
+        Assert.Equal(0, items.ActiveCount);
+        Assert.True(random.HasSameState(beforeRandom));
+    }
+
+    [Fact]
+    public void Failed_framing_invalidates_a_release_already_staged_in_the_tool_plan()
+    {
+        var random = new VanillaUnifiedRandom1458(1458);
+        var items = new RuntimeWorldItemStore();
+        using var scene = CreateDisposableScene(random, items);
+        var root = new WorldTile { Type = 428, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed };
+        var torch = new WorldTile { Type = 4, Flags = WorldTileFlags.Active | WorldTileFlags.WireRed };
+        scene.Tiles.Set(30, 40, in root);
+        scene.Tiles.Set(31, 40, in torch);
+        Assert.True(scene.Tiles.TryAttachPressurePlates([new(30, 40)], 16));
+        scene.DrainFrames(scene.PeerOutbound);
+        var beforeRandom = random.Clone();
+        var (plan, source) = PrepareTriggerDestruction(scene);
+        using (plan)
+        {
+            Assert.False(source.TryKillTile(30, 40, false, false, false, out _));
+            Assert.False(plan.TrySeal());
+            Assert.False(plan.TryAdoptWholeUnpublished(out _));
+        }
+        Assert.Equal(root, scene.Tiles.Get(30, 40));
+        Assert.Equal(torch, scene.Tiles.Get(31, 40));
+        Assert.Single(scene.Tiles.RuntimePressurePlates!.CaptureSnapshot());
+        Assert.Empty(scene.DrainFrames(scene.PeerOutbound));
+        Assert.Equal(0, items.ActiveCount);
+        Assert.True(random.HasSameState(beforeRandom));
     }
 
     private static (WorldTileAuthority.ToolWorldMutationPlan Plan, WorldTileAuthority.ToolWorldSourcePass1458 Source)

@@ -57,6 +57,15 @@ internal sealed partial class WorldTileAuthority
             publicationOrder.Add(ToolWorldPublicationKind1458.TileSquare);
             return true;
         }
+        internal bool TryStageSourceHitSwitch(int x, int y)
+        {
+            if (!IsCurrentOwned || sealedPlan || publicationOrder.Count == ToolWorldTileOverlay1458.MaximumChangedCells ||
+                (uint)x > short.MaxValue || (uint)y > short.MaxValue || !Overlay.TryRead(x, y, out var tile)) return Fail();
+            WireEffects.Add(new(ToolWorldPublicationKind1458.HitSwitch, x, y, tile, default));
+            publicationOrder.Add(ToolWorldPublicationKind1458.HitSwitch);
+            return true;
+        }
+
         internal bool TryStageSourceTileManipulation(int x, int y, byte action, short data = 0)
         {
             if (!IsCurrentOwned || sealedPlan || publicationOrder.Count == ToolWorldTileOverlay1458.MaximumChangedCells ||
@@ -109,6 +118,8 @@ internal sealed partial class WorldTileAuthority
             var effect = wire[index];
             if (wireOwner.tiles is null || !wireOwner.tiles.Get(effect.X, effect.Y).Equals(acceptedWireTargets[index])) return true;
             if (wireOwner.replication is null) return true;
+            if (kind == ToolWorldPublicationKind1458.HitSwitch)
+                return wireOwner.replication.TryPublishHitSwitch(default, new((short)effect.X, (short)effect.Y));
             if (kind == ToolWorldPublicationKind1458.ChestUpdate)
                 return acceptedContainers is not null && (!acceptedContainers.IsAcceptedImageCurrent ||
                     wireOwner.replication.TryPublishToolChestUpdate(effect.Chest));

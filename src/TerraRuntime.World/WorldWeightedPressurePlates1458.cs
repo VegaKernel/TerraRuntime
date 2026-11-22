@@ -21,6 +21,35 @@ public sealed class WorldWeightedPressurePlates1458
 
     internal bool IsPressed(int x, int y) => pressed.ContainsKey((x, y));
 
+    internal Destruction? PrepareDestruction(int x, int y)
+    {
+        var location = (X: x, Y: y);
+        return pressed.TryGetValue(location, out var occupants)
+            ? new(this, location, occupants is null ? null : new HashSet<PlayerHandle>(occupants))
+            : null;
+    }
+
+    internal sealed class Destruction(
+        WorldWeightedPressurePlates1458 owner, (int X, int Y) location, HashSet<PlayerHandle>? occupants)
+    {
+        internal bool IsCurrent => owner.pressed.TryGetValue(location, out var value) &&
+            (occupants is null ? value is null : value is not null && occupants.SetEquals(value));
+
+        internal bool Matches(Destruction other) =>
+            ReferenceEquals(owner, other.Owner) && location == other.Location &&
+            (occupants is null ? other.Occupants is null : other.Occupants is { } expected && occupants.SetEquals(expected));
+
+        internal void Adopt()
+        {
+            if (!IsCurrent || !owner.pressed.Remove(location))
+                throw new InvalidOperationException("Prepared weighted-plate occupancy changed during adoption.");
+        }
+
+        private WorldWeightedPressurePlates1458 Owner => owner;
+        private (int X, int Y) Location => location;
+        private HashSet<PlayerHandle>? Occupants => occupants;
+    }
+
     public void FirstUpdate(Action<int, int> pulse)
     {
         if (!needsFirstUpdate) return;

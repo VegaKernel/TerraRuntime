@@ -1262,6 +1262,7 @@
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringContactLinux1458.json.gz" LogicalName="WiringContactLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringSensorPlacementLinux1458.json.gz" LogicalName="WiringSensorPlacementLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringTriggerDestructionLinux1458.json.gz" LogicalName="WiringTriggerDestructionLinux1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/WiringLiveTriggerDestructionLinux1458.json.gz" LogicalName="WiringLiveTriggerDestructionLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringProjectileContactsLinux1458.json.gz" LogicalName="WiringProjectileContactsLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringMoonBoulderLinux1458.json.gz" LogicalName="WiringMoonBoulderLinux1458" /></ItemGroup>
 </Project>

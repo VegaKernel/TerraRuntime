@@ -27,7 +27,7 @@ internal readonly record struct ToolWorldMutationStep1458(
 }
 
 internal readonly record struct ToolWorldPublicationOffset1458(int End, int Items, int Npcs, int Projectiles);
-internal enum ToolWorldPublicationKind1458 : byte { Item, Npc, Projectile, TileSquare, TreeEffect, TileManipulation, ChestUpdate, LarvaBoss }
+internal enum ToolWorldPublicationKind1458 : byte { Item, Npc, Projectile, TileSquare, TreeEffect, TileManipulation, ChestUpdate, LarvaBoss, HitSwitch }
 
 internal sealed partial class WorldTileAuthority
 {
@@ -319,7 +319,7 @@ internal sealed partial class WorldTileAuthority
             (allocation is null || allocation.IsCurrent) && AreLarvaBossOwnersCurrent && IsCurrentOwned;
 
         public bool IsCurrentOwned => !failed && !disposed && !adopted && Overlay.IsCurrentOwned &&
-            random.IsCurrent && IsFurnitureCurrent && ArePressurePlatesUnpressed && AreLarvaBossOwnersCurrent && IsTreeShakeBeforeCurrent && IsContainerMetadataCurrent && owner.npcs.TryCaptureDeathMutationSerial(out ulong currentNpcSerial) &&
+            random.IsCurrent && IsFurnitureCurrent && AreWiringTriggerReadsCurrent && AreLarvaBossOwnersCurrent && IsTreeShakeBeforeCurrent && IsContainerMetadataCurrent && owner.npcs.TryCaptureDeathMutationSerial(out ulong currentNpcSerial) &&
             currentNpcSerial == npcBeforeSerial && (allocation is null || allocation.IsCurrentOwned) &&
             (npcSpawns is null || npcSpawns.IsCurrentOwned) &&
             (projectileSpawns is null || projectileSpawns.IsCurrentOwned) &&
@@ -446,6 +446,7 @@ internal sealed partial class WorldTileAuthority
                                         ? sourceOwner.TryPublishToolWorldBirth(projectiles) : projectiles.TryPublishNext()); break;
                             case ToolWorldPublicationKind1458.LarvaBoss:
                                 accepted = TryPublishLarvaBoss(); break;
+                            case ToolWorldPublicationKind1458.HitSwitch:
                             case ToolWorldPublicationKind1458.TileSquare:
                             case ToolWorldPublicationKind1458.TreeEffect:
                             case ToolWorldPublicationKind1458.TileManipulation:

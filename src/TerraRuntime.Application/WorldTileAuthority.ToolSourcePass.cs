@@ -494,7 +494,12 @@ internal sealed partial class WorldTileAuthority
             if (work.Count >= MaximumSteps) return Reject();
             work.Push(step); return true;
         }
-        private bool Reject() { failed = true; return false; }
+        private bool Reject()
+        {
+            failed = true;
+            server?.RejectStagedDestructionRelease();
+            return false;
+        }
         private static bool IsCactus(in WorldTile tile) => tile.IsActive && tile.Type == 80;
         private static bool IsFramedTree(ushort type) => type is 5 or 72 or 323 or >= 583 and <= 589 or 596 or 616 or 634;
         private static bool HasStoredOrProgressionEffect(ushort type) =>

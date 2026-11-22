@@ -154,7 +154,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
 
         return tile.Type switch
         {
-            Torch => ShiftFrames(x, y, 1, 1, tile.Type, tile.FrameX >= TorchStateStride ? -TorchStateStride : TorchStateStride, false, null) || changed,
+            Torch => ShiftFrames(x, y, 1, 1, tile.Type, TorchFrameShift(tile.FrameX), false, null) || changed,
             Candle or WaterCandle or PlatinumCandle or PeaceCandle or ShadowCandle =>
                 ShiftFrames(x, y, 1, 1, tile.Type, tile.FrameX > 0 ? -FramePitch : FramePitch, false, null) || changed,
             HolidayLight => ShiftFrames(x, y, 1, 1, tile.Type, tile.FrameX >= TripleFrameWidth ? -TripleFrameWidth : TripleFrameWidth, false, null) || changed,
@@ -270,6 +270,16 @@ public sealed partial class WorldWiringDeviceExecutor1458
         // A wire changes only411's frames. HitSwitch's clock registration and nested pulse are absent.
         return ShiftFrames(left, top, 2, 2, tile.Type, delta, false, skipWire);
     }
+
+    internal static bool TryTurnTorch(in WorldTile before, out WorldTile after)
+    {
+        after = before;
+        if (!before.IsActive || before.Type != Torch || before.FrameX < 0 || before.FrameY < 0) return false;
+        after.FrameX = (short)(before.FrameX + TorchFrameShift(before.FrameX));
+        return true;
+    }
+
+    private static int TorchFrameShift(short frame) => frame < TorchStateStride ? TorchStateStride : -TorchStateStride;
 
     private bool ShiftFrames(int left, int top, byte width, byte height, ushort type,
         int delta, bool vertical, Action<int, int>? skipWire)

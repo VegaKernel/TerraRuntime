@@ -28,10 +28,11 @@ internal sealed partial class WorldTileAuthority
             if (server is null || !server.TryGetFurniture(out var metadata) || metadata is null ||
                 !metadata.TryGetAt(x, y, out var sensor)) return false;
             if (sensor is null) return true;
-            // TELogicSensor.Kill would pulse while the tile and entity still exist.
-            // The detached tool action has no live wiring participant for this boundary.
             if (sensor.Kind != WorldTileEntityKind.LogicSensor || sensor.Payload is not WorldLogicSensorPayload logic ||
-                logic.LogicCheck is < 1 or > 7 || logic is { IsOn: true, LogicCheck: >= 3 }) return false;
+                logic.LogicCheck is < 1 or > 7) return false;
+            // TELogicSensor.Kill pulses before removing the entity. Our admitted
+            // circuit has no devices that consult actor or sensor state during traversal.
+            if (logic.IsOn && logic.LogicCheck >= 3 && !server.TryStageDestructionRelease(x, y)) return false;
             if (!metadata.TryStageRemoval(x, y, WorldTileEntityKind.LogicSensor)) return false;
             server.RecordLogicSensorRemoval();
             return true;
@@ -51,7 +52,7 @@ internal sealed partial class WorldTileAuthority
             };
             // The source routes a pressed plate's release through HitSwitch before
             // allocating the item, including when the observed frame has no item.
-            if (before.Type == 428 && !server.TryRequireUnpressedPressurePlate(x, y)) return false;
+            if (before.Type == 428 && !server.TryStageWeightedPlateRemoval(x, y)) return false;
             return item == 0 || server.TryStageSourceItem(new ItemTypeId((ushort)item), 1, x, y);
         }
     }
@@ -59,7 +60,9 @@ internal sealed partial class WorldTileAuthority
     internal sealed partial class ToolWorldMutationPlan
     {
         private List<(int X, int Y)>? unpressedPressurePlates;
+        private List<WorldWeightedPressurePlates1458.Destruction>? pressedPressurePlates;
         private bool removesLogicSensor;
+        private bool hasDestructionRelease;
 
         internal void RecordLogicSensorRemoval() => removesLogicSensor = true;
 
@@ -67,13 +70,20 @@ internal sealed partial class WorldTileAuthority
         {
             // TELogicSensor.Kill clears the existing teleportation block even
             // when this sensor's current state does not trip its wire.
-            if (removesLogicSensor) owner.wiring?.EndLogicSensorUpdate();
+            if (pressedPressurePlates is not null)
+                foreach (var removal in pressedPressurePlates) removal.Adopt();
+            if (hasDestructionRelease) owner.wiring!.AdoptDetachedRelease();
+            else if (removesLogicSensor) owner.wiring?.EndLogicSensorUpdate();
         }
 
-        private bool ArePressurePlatesUnpressed
+        private bool AreWiringTriggerReadsCurrent
         {
             get
             {
+                if (hasDestructionRelease && owner.wiring?.CanStageDetachedRelease != true) return false;
+                if (pressedPressurePlates is not null)
+                    foreach (var removal in pressedPressurePlates)
+                        if (!removal.IsCurrent) return false;
                 if (unpressedPressurePlates is null || Overlay.Tiles.RuntimePressurePlates is not { } pressure) return true;
                 foreach (var (x, y) in unpressedPressurePlates)
                     if (pressure.IsPressed(x, y)) return false;
@@ -81,16 +91,45 @@ internal sealed partial class WorldTileAuthority
             }
         }
 
-        internal bool TryRequireUnpressedPressurePlate(int x, int y)
+        internal bool TryStageWeightedPlateRemoval(int x, int y)
         {
-            if (Overlay.Tiles.RuntimePressurePlates?.IsPressed(x, y) == true) return false;
-            unpressedPressurePlates ??= [];
-            unpressedPressurePlates.Add((x, y));
+            if (Overlay.Tiles.RuntimePressurePlates?.PrepareDestruction(x, y) is { } removal)
+            {
+                if (!TryStageDestructionRelease(x, y)) return false;
+                (pressedPressurePlates ??= []).Add(removal);
+            }
+            else (unpressedPressurePlates ??= []).Add((x, y));
             return true;
         }
 
-        private bool HasSamePressurePlateReads(ToolWorldMutationPlan other) =>
-            unpressedPressurePlates is null ? other.unpressedPressurePlates is null :
-            other.unpressedPressurePlates is not null && unpressedPressurePlates.SequenceEqual(other.unpressedPressurePlates);
+        internal bool TryStageDestructionRelease(int x, int y)
+        {
+            if (owner.wiring is not { } wiring ||
+                !wiring.TryStageDetachedRelease(x, y, Overlay.TryRead, StageReleaseTorch) ||
+                !TryStageSourceHitSwitch(x, y)) return Fail();
+            hasDestructionRelease = true;
+            return true;
+        }
+
+        internal void RejectStagedDestructionRelease()
+        {
+            if (hasDestructionRelease) _ = Fail();
+        }
+
+        private bool StageReleaseTorch(int x, int y, in WorldTile before, in WorldTile after) =>
+            TryStageSourceWiringCell(x, y, in before, in after) && TryStageSourceTileSquare(x, y);
+
+        private bool HasSameWiringTriggerReads(ToolWorldMutationPlan other)
+        {
+            if (removesLogicSensor != other.removesLogicSensor || hasDestructionRelease != other.hasDestructionRelease ||
+                (unpressedPressurePlates is null ? other.unpressedPressurePlates is not null :
+                    other.unpressedPressurePlates is null || !unpressedPressurePlates.SequenceEqual(other.unpressedPressurePlates)))
+                return false;
+            if (pressedPressurePlates is null) return other.pressedPressurePlates is null;
+            if (other.pressedPressurePlates is not { } expected || expected.Count != pressedPressurePlates.Count) return false;
+            for (int i = 0; i < expected.Count; i++)
+                if (!pressedPressurePlates[i].Matches(expected[i])) return false;
+            return true;
+        }
     }
 }

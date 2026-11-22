@@ -252,15 +252,21 @@ public sealed partial class WorldWiringCircuit1458
         _pixelTriggers.Clear();
     }
 
-    private void Traverse(WorldWireChannel channel)
+    private bool Traverse(WorldWireChannel channel, DetachedRelease? release = null)
     {
-        while (_pending.TryDequeue(out WireVisit visit))
+        var pending = release?.Pending ?? _pending;
+        var entrances = release?.RemainingEntrances ?? _remainingEntrances;
+        while (pending.TryDequeue(out WireVisit visit))
         {
             int index = Index(visit.X, visit.Y);
-            if (!_skip.Contains(index))
-                _devices.Hit(visit.X, visit.Y, channel, SkipWire, HitSwitchFromWire, HitLogicLamp,
-                    transferPumps is null ? null : RegisterPump, teleport is null ? null : RegisterTeleporter);
-            WorldTile current = _tiles.Get(visit.X, visit.Y);
+            if (release is null)
+            {
+                if (!_skip.Contains(index))
+                    _devices.Hit(visit.X, visit.Y, channel, SkipWire, HitSwitchFromWire, HitLogicLamp,
+                        transferPumps is null ? null : RegisterPump, teleport is null ? null : RegisterTeleporter);
+            }
+            else if (index != release.Seed && !release.TryHit(visit.X, visit.Y)) return false;
+            if (!TryReadTraversalTile(visit.X, visit.Y, release, out var current)) return false;
             for (byte direction = 0; direction < 4; direction++)
             {
                 if (!Routes(current, visit.Direction, direction)) continue;
@@ -268,31 +274,40 @@ public sealed partial class WorldWiringCircuit1458
                 int y = visit.Y + (direction == 0 ? 1 : direction == 1 ? -1 : 0);
                 if (x < 2 || y < 2 || x >= _tiles.Dimensions.WidthTiles - 2 ||
                     y >= _tiles.Dimensions.HeightTiles - 2) continue;
-                WorldTile next = _tiles.Get(x, y);
-                if (current.Type == 445)
+                if (!TryReadTraversalTile(x, y, release, out var next)) return false;
+                if (release is null && current.Type == 445)
                 {
                     _pixelTriggers.TryGetValue(index, out byte axes);
                     _pixelTriggers[index] = (byte)(axes | (direction < 2 ? 2 : 1));
                 }
                 if (!HasWire(next, channel)) continue;
                 int nextIndex = Index(x, y);
-                if (_remainingEntrances.TryGetValue(nextIndex, out byte remaining))
+                if (entrances.TryGetValue(nextIndex, out byte remaining))
                 {
-                    if (remaining == 1) _remainingEntrances.Remove(nextIndex);
-                    else _remainingEntrances[nextIndex] = (byte)(remaining - 1);
+                    if (remaining == 1) entrances.Remove(nextIndex);
+                    else entrances[nextIndex] = (byte)(remaining - 1);
                     continue;
                 }
                 if (next.Type is 424 or 445)
                 {
+                    if (release is not null) return false;
                     // Each router has four directed entrances. The set places a world-size bound on
                     // repeated directed visits while retaining independent crossing directions.
                     // Suppression of a repeated entrance is a safety policy, not a wire-length cutoff.
                     if (!_routerEntrances.Add((long)nextIndex * 4 + direction)) continue;
                 }
-                else _remainingEntrances.Add(nextIndex, 3);
-                _pending.Enqueue(new WireVisit(x, y, direction));
+                else entrances.Add(nextIndex, 3);
+                pending.Enqueue(new WireVisit(x, y, direction));
             }
         }
+        return true;
+    }
+
+    private bool TryReadTraversalTile(int x, int y, DetachedRelease? release, out WorldTile tile)
+    {
+        if (release is not null) return release.Read(x, y, out tile);
+        tile = _tiles.Get(x, y);
+        return true;
     }
 
     private static bool Routes(WorldTile tile, byte entered, byte exit) => tile.Type switch

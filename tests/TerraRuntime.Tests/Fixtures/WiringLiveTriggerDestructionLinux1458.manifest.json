@@ -1,0 +1,8 @@
+{
+  "officialSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "rawCaptureSha256": "b46a16f848d1740a2dc8e134d2d9a177e9fba08034153d3381ac187161123d63",
+  "fixtureSha256": "4ce4fe4294f8d428f8cd49ff0f66c7334b9b101802c01267540d3875b009713b",
+  "rows": 156,
+  "repeatExact": true,
+  "scope": "Dedicated WorldGen.KillTile for occupied weighted plates, actual source pressure-section save and reload, and On player/liquid sensors. Direct or support-only removal, noItem and no/one/four connected colors. Captures full RNG, tile, pressure key and metadata outcomes, item births and literal server frames."
+}
