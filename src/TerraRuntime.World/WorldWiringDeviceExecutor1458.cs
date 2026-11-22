@@ -23,6 +23,7 @@ public readonly record struct WorldWiringDoorTransition1458(
 public sealed partial class WorldWiringDeviceExecutor1458
 {
     // Terraria1458 Wiring/TileID identities and source frame units, not configurable runtime policy.
+    internal const ushort LandMineTileType = 210;
     private const ushort Torch = 4, ClosedDoor = 10, OpenDoor = 11, Chest = 21, Altar = 26;
     private const ushort Candle = 33, Chandelier = 34, HangingLantern = 42, WaterCandle = 49;
     private const ushort Hellforge = 77, Dresser = 88, LampPost = 92, Lamp = 93, ChineseLantern = 95;
@@ -52,6 +53,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
     private readonly Func<int, int, bool>? applyActuatorTransaction;
     private readonly double worldSurface;
     private readonly Func<int, int, bool>? fireTrap;
+    private readonly Func<int, int, bool>? explodeMine;
     private readonly Func<int, int, int, bool>? fireStatue;
     private readonly Action<short, ushort, int, int>? publishTemporaryAnimation;
 
@@ -65,7 +67,8 @@ public sealed partial class WorldWiringDeviceExecutor1458
         Action<WorldWiringDoorTransition1458>? publishDoorToggle = null,
         Func<int, int, bool>? applyActuatorTransaction = null,
         Func<int, int, bool>? fireTrap = null, Func<int, int, int, bool>? fireStatue = null,
-        Action<short, ushort, int, int>? publishTemporaryAnimation = null)
+        Action<short, ushort, int, int>? publishTemporaryAnimation = null,
+        Func<int, int, bool>? explodeMine = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         wiring = new VanillaWorldWiringMutationService(tiles);
@@ -78,12 +81,15 @@ public sealed partial class WorldWiringDeviceExecutor1458
         this.publishDoorToggle = publishDoorToggle;
         this.applyActuatorTransaction = applyActuatorTransaction;
         this.fireTrap = fireTrap;
+        this.explodeMine = explodeMine;
         this.fireStatue = fireStatue;
         this.publishTemporaryAnimation = publishTemporaryAnimation;
     }
 
     internal static bool CanPulseDuringBoulderContact(in WorldTile tile) =>
         !tile.HasActuator && (!tile.IsActive || tile.Type is Torch or Trap || WorldPressurePlateContacts1458.IsPlate(tile.Type));
+
+    internal bool TryExplodeMine(int x, int y) => explodeMine?.Invoke(x, y) == true;
 
     /// <summary>
     /// Executes one reached cell in Terraria1458 Wiring.HitWireSingle order: actuator first, then device.
@@ -152,6 +158,7 @@ public sealed partial class WorldWiringDeviceExecutor1458
             return ToggleAnimatedDevice(x, y, in tile, skipWire) || changed;
         if (tile.Type == Statue) return FireStatue(x, y, in tile, skipWire) || changed;
         if (tile.Type is Trap or GeyserTileType) return fireTrap?.Invoke(x, y) == true || changed;
+        if (tile.Type == LandMineTileType) return TryExplodeMine(x, y) || changed;
 
         return tile.Type switch
         {

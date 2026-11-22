@@ -312,6 +312,7 @@ internal sealed partial class WorldTileAuthority
             if (deathDrop is not null) return TryStageDeathDrop(x, y, in before);
             if (server is null) return false;
             if (before.Type is 135 or 423 or 428) return TryStageWiringTriggerDrop(x, y, in before);
+            if (before.Type == 210) return server.TryStageSourceItem(new(937), 1, x, y);
             if (IsOrdinaryPlacementFurniture(before.Type) || IsExceptionalFurniture(before.Type) || AllowsContainerKill(before.Type) || before.Type is 20 or LarvaTile) return true;
             if (IsSourcePlant(before.Type)) return TryStagePlantDrops(x, y, in before);
             if (before.Type is 5 or 72 or 80 or 323 or >= 583 and <= 589 or 596 or 616 or 634)
@@ -366,7 +367,7 @@ internal sealed partial class WorldTileAuthority
             if (tile.Type is 21 or 467 or 88) return FrameContainer(step.X, step.Y, in tile);
             if (tile.Type == 26) return TryVerifyIntactAltar(step.X, step.Y, in tile);
             if (tile.Type is 49 or 136) return FrameSingleCell(step.X, step.Y, in tile);
-            if (tile.Type is 135 or 428) return FramePressurePlate(step.X, step.Y);
+            if (tile.Type is 135 or 210 or 428) return FramePressurePlate(step.X, step.Y);
             if (tile.Type == 423)
                 return tile.FrameX % 18 == 0 && tile.FrameY % 18 == 0 || Push(new(StepKind.Kill, step.X, step.Y));
             if (wiringActuationFrame && tile.Type == WiringTorchTile) return FrameWiringTorch(step.X, step.Y, in tile);

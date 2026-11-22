@@ -10,9 +10,11 @@ internal sealed partial class WorldTileAuthority
 {
     private WorldWiringCircuit1458? wiring;
     private WorldWiringDeviceExecutor1458? wiringDevices;
+    private Action<ushort, int, int>? wiringMovementContact;
     private void InitializeWiring(bool plantBossDowned)
     {
         if (tiles is null) return;
+        wiringMovementContact = ApplyNonTerminatingWiringContact;
         wiringDevices = new WorldWiringDeviceExecutor1458(tiles, playerDoorOpenings, PublishWiringSquare,
             () => worldItemSpawnRandom.NextInt32(0, 2) == 0 ? -1 : 1,
             () => plantBossDowned || progression.IsCompleted(VanillaWorldProgressionId.Plantera),
@@ -21,7 +23,8 @@ internal sealed partial class WorldTileAuthority
             publishDoorToggle: transition => replication?.TryPublishDoorToggle(new TerrariaDoorToggleState(
                 (byte)transition.Action, (short)transition.X, (short)transition.Y, (sbyte)transition.Direction)),
             applyActuatorTransaction: TryApplyWiringActuator, fireTrap: TryFireWiringTrap, fireStatue: TryFireStatue,
-            publishTemporaryAnimation: (animation, tile, x, y) => replication?.TryPublishTemporaryAnimation(animation, tile, x, y));
+            publishTemporaryAnimation: (animation, tile, x, y) => replication?.TryPublishTemporaryAnimation(animation, tile, x, y),
+            explodeMine: TryExplodeLandMine);
         var source = worldItemSpawnRandom as TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom;
         wiring = new WorldWiringCircuit1458(tiles, wiringDevices, PublishWiringSquare,
             source is null ? null : maximum => source.SourceRandom.Next(maximum),
@@ -61,14 +64,6 @@ internal sealed partial class WorldTileAuthority
         TickSkyblockCensus();
     }
 
-    private Action<int, int>? geyserContact;
-
-    private void ApplyGeyserContact(int x, int y)
-    {
-        if (x <= short.MaxValue && y <= short.MaxValue && wiring?.HitSwitch(x, y) == true)
-            replication?.TryPublishHitSwitch(default, new((short)x, (short)y));
-    }
-
     public void ApplyPlayerPressurePlate(PlayerStateSnapshot before, PlayerStateSnapshot after)
     {
         if (tiles is null || wiring is null || before.Player != after.Player || after.IsDead ||
@@ -76,8 +71,8 @@ internal sealed partial class WorldTileAuthority
         (float width, float height) = after.HasMount
             ? VanillaPlayerMountHitbox1458.Resolve(after.MountType) : (20, 42);
         if (!WorldPressurePlateContacts1458.TryFindContact(tiles, after.PositionX, after.PositionY,
-            (int)width, (int)height, before.PositionX, before.PositionY, WorldPressurePlateActor1458.Player, out var contact,
-            geyserContact ??= ApplyGeyserContact)) return;
+            (int)width, (int)height, before.PositionX, before.PositionY, WorldPressurePlateActor1458.Player,
+            out var contact, wiringMovementContact)) return;
         if (contact.DestroyAfterPulse)
         {
             ApplyServerDisposablePlate(contact.X, contact.Y);
@@ -91,7 +86,7 @@ internal sealed partial class WorldTileAuthority
     {
         if (tiles is null || wiring is null ||
             !WorldPressurePlateContacts1458.TryFindContact(tiles, x, y, width, height, oldX, oldY,
-                WorldPressurePlateActor1458.ProjectileOrBoulder, out var contact) ||
+                WorldPressurePlateActor1458.ProjectileOrBoulder, out var contact, wiringMovementContact) ||
             contact.X > short.MaxValue || contact.Y > short.MaxValue) return;
         PulseProjectilePressurePlate(in contact);
     }
@@ -125,7 +120,7 @@ internal sealed partial class WorldTileAuthority
         { width = hitbox.Width; height = hitbox.Height; }
         else return;
         if (!WorldPressurePlateContacts1458.TryFindContact(tiles, after.PositionX, after.PositionY, width, height,
-            before.PositionX, before.PositionY, WorldPressurePlateActor1458.Npc, out var contact) ||
+            before.PositionX, before.PositionY, WorldPressurePlateActor1458.Npc, out var contact, wiringMovementContact) ||
             contact.DestroyAfterPulse || !wiring.HitSwitch(contact.X, contact.Y)) return;
         replication?.TryPublishHitSwitch(default, new((short)contact.X, (short)contact.Y));
         // NPC.UpdateNPC puts represented pressure-sensitive critters into their flee state after a pulse.

@@ -20,13 +20,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             !store.TryGetLifecycle(projectile.Handle, out var life) || life.NpcProjectile || life.TimeLeft <= 0)
             return RuntimeProjectileNpcDamageResult.Rejected;
         return TryStrikePreparedEnvironmentProjectile(store, in projectile, in target, hitDirection,
-            damageValue, before, after, isCurrent, adoptAndPublish);
+            damageValue, before, after, isCurrent, adoptAndPublish,
+            deferOrdinaryUpdate: projectile.Type.Value == VanillaWiringTrap1458.GeyserProjectileType);
     }
 
     private RuntimeProjectileNpcDamageResult TryStrikePreparedEnvironmentProjectile(
         RuntimeProjectileStore store, in ProjectileSnapshot projectile, in NpcSnapshot target,
         int hitDirection, int damageValue, VanillaUnifiedRandom1458 before, VanillaUnifiedRandom1458 after,
-        Func<bool> isCurrent, Action<NpcSnapshot> adoptAndPublish)
+        Func<bool> isCurrent, Action<NpcSnapshot> adoptAndPublish, bool deferOrdinaryUpdate = false)
     {
         if (projectile.Spawner != byte.MaxValue || hitDirection is not (-1 or 1) || damageValue <= 0 ||
             target.TypeIdentity.Value is not (1 or 3 or 59) ||
@@ -49,8 +50,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         try
         {
             var result = CommitNonPlayerDamage(target, DamageSource.FromEnvironmentProjectile(projectile.Handle),
-                damageValue, projectile.KnockBack, hitDirection, prelude,
-                deferOrdinaryUpdate: projectile.Type.Value == VanillaWiringTrap1458.GeyserProjectileType);
+                damageValue, projectile.KnockBack, hitDirection, prelude, deferOrdinaryUpdate);
             return result switch
             {
                 RuntimeTownNpcMeleeDamageResult1458.Committed => RuntimeProjectileNpcDamageResult.Committed,

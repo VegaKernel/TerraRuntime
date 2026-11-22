@@ -1,0 +1,22 @@
+{
+  "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "observationsSha256": "64ea468823e406e567136e542bc606b8a395bf5fbd36dfa503433aefcda472f0",
+  "probeSha256": "b0623e6ad7cf78884dabde6be930834136893032bf803e3d1d39d9f17aa03baf",
+  "rows": 106,
+  "repeatedByteIdentically": true,
+  "firstChanceExceptions": 0,
+  "host": "Windows CoreCLR using the official Linux edition",
+  "entryPoints": {
+    "direct": 20,
+    "packet59": 20,
+    "wire": 20,
+    "contact": 40,
+    "contact-old-overlap": 2,
+    "client-contact": 2,
+    "ordinary-kill": 2
+  },
+  "sourceProjectileUpdates": "Four physical projectile censuses after each trigger, with Wiring.UpdateMech before each census.",
+  "scope": "Pinned dedicated source calls ExplodeMine, MessageBuffer.GetData case59 on mine and upstream switch, Collision.SwitchTiles actor roles 1–5, ordinary KillTile control, and a client-role contact producer. Dry initialized 80x100 board, red or all four wires, one or two mines, terminal ordinary plate, and an actuated case. The observer records original peer bytes. World item storage starts empty. Simple contact targets are default Blue Slime created through NPC.NewNPC and marked already synchronized, with 1000 HP and unenriched ordinary Player at 400 HP in and out of the death envelope. The source projectile phase runs without advancing NPC/player simulation, liquid, or full main ticks.",
+  "separateClientReceiptObservationsSha256": "d764ea1c4b73277a985aad69641eda30624f895a2c8f46ec7ea05a1631502195",
+  "runtimeComparedRows": 104
+}

@@ -12,11 +12,12 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         out int acceptedHits, out ProjectileSnapshot acceptedCurrent, out VanillaUnifiedRandom1458 acceptedRandom)
     {
         acceptedHits = 0; acceptedCurrent = source; acceptedRandom = sourceRandom.Clone();
-        if (!usesSourceRandom || status is null || source.Type.Value != 28 || source.Spawner != byte.MaxValue ||
-            source.Damage != 100 || !projectiles.IsCombatTrusted(source.Handle) ||
+        bool landMine = source.Type.Value == 164;
+        if (!usesSourceRandom || status is null || source.Type.Value is not (28 or 164) || source.Spawner != byte.MaxValue ||
+            source.Damage != (landMine ? VanillaLandMine1458.Damage : 100) || !projectiles.IsCombatTrusted(source.Handle) ||
             projectiles.TryGetCombatTrustedOwner(source.Handle, out _) || projectiles.TryGetServerNpcSource(source.Handle, out _) ||
             !projectiles.TryGet(source.Handle, out var retained) || retained != source ||
-            !projectiles.TryGetLifecycle(source.Handle, out var lifecycle) || !lifecycle.NpcProjectile ||
+            !projectiles.TryGetLifecycle(source.Handle, out var lifecycle) || lifecycle.NpcProjectile == landMine ||
             !lifecycle.WorldToolBombKillInProgress || lifecycle.TimeLeft != 0) return false;
         // NPC.immune[255] is the shared dedicated world source row, not a fake player generation.
         int ownerRow = byte.MaxValue * npcs.Capacity;
@@ -46,8 +47,21 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 int direction = target.PositionX + body.Width / 2 < centerX ? -1 : 1;
                 if (!directionPlan.TryStageSourceDirection(direction)) return false;
                 var before = sourceRandom.Clone(); var after = before.Clone();
-                if (!VanillaCombatFacts.TryResolveWorldToolBombPveHit(current.Type, current.Damage,
-                    after.Next(-15, 16), out var hit)) return false;
+                int variation = after.Next(-15, 16);
+                int damage;
+                if (landMine)
+                {
+                    damage = VanillaIncomingPlayerDamageFacts1458.ApplyDamageVariation(current.Damage, variation);
+                    // Type164 has neither source trap nor npcProj flags. Damage_PVE_Inner
+                    // chooses a hit point even for dedicated owner255, with no emitted visual.
+                    _ = after.NextDouble();
+                    _ = after.NextDouble();
+                }
+                else
+                {
+                    if (!VanillaCombatFacts.TryResolveWorldToolBombPveHit(current.Type, current.Damage, variation, out var hit)) return false;
+                    damage = hit.Damage;
+                }
                 int immunityIndex = ownerRow + target.Handle.Slot;
                 var immunityGeneration = lastOwnerNpcHitGeneration[immunityIndex];
                 long immunityTick = lastOwnerNpcHitTick[immunityIndex];
@@ -73,7 +87,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                     if (accepted.Simulation.Life == 0) Kills++;
                     status.PublishAddition(buffPlan);
                 }
-                if (combat.TryStrikePreparedWorldToolBomb(projectiles, in current, in target, direction, hit.Damage,
+                if (combat.TryStrikePreparedWorldToolBomb(projectiles, in current, in target, direction, damage,
                     before, after, Current, Adopt) == RuntimeProjectileNpcDamageResult.Rejected) return false;
                 if (!directionPlan.IsPublicationCurrent || !projectiles.TryGet(handle, out retained) || retained != current ||
                     !projectiles.TryGetLifecycle(handle, out var afterLife) || afterLife != lifecycle ||

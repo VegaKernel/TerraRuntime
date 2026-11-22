@@ -119,7 +119,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         // intermediate Life=0 state here would insert another packet 23 ahead of those effects.
         bool published = deferOrdinaryUpdate && !result.Lethal && !forceUpdate && !spawnTrueEye &&
             npcReplication is not null
-            ? npcReplication.TryRetainGeyserStrikeState(npcs, in committed)
+            ? npcReplication.TryRetainEnvironmentStrikeState(npcs, in committed)
             : damage.TryCompleteUnpublished(in committed, spawnTrueEye, publishUpdate: !result.Lethal, forceUpdate);
         if (!published)
         {

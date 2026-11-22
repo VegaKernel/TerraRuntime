@@ -20,6 +20,7 @@ internal sealed partial class ProjectileAuthority
         }
         if (initial.Type.Value == 188) return TrySimulateWiringFlame(in initial);
         if (initial.Type.Value == 187) return TrySimulateWiringEmitter(in initial);
+        if (initial.Type.Value == 164) return TrySimulateLandMine(in initial);
         if (initial.Type == VanillaProjectileIds.MoonBoulder)
             return TrySimulateMoonBoulderWiring(in initial);
         if (initial.Type.Value == TerraRuntime.Gameplay.Projectiles.VanillaWiringTrap1458.GeyserProjectileType)

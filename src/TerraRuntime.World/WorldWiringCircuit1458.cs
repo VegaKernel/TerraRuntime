@@ -56,6 +56,8 @@ public sealed partial class WorldWiringCircuit1458
         // HitSwitch1458 uses the retained type even for an inactive/deleted trigger.
         switch (tile.Type)
         {
+            case WorldWiringDeviceExecutor1458.LandMineTileType:
+                return tile.IsActive && _devices.TryExplodeMine(x, y);
             case 135: // Eligibility for actor contact belongs to the caller, not raw packet59.
             case 314:
             case 423:

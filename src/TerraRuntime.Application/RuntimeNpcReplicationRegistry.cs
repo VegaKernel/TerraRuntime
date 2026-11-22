@@ -48,7 +48,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     private long suppressedCadenceFrames;
     private long authoritativeTick;
     private NpcHandle suppressedClientDamageNpc;
-    private NpcSnapshot? deferredGeyserStrike;
+    private NpcSnapshot? deferredEnvironmentStrike;
 
     public long RelayedFrames => Interlocked.Read(ref relayedFrames);
 
@@ -99,13 +99,13 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
             suppressedClientDamageNpc = default;
     }
 
-    // The geyser strike broadcasts packet 28 immediately. Ordinary packet 23 belongs to the NPC update phase.
-    internal bool TryRetainGeyserStrikeState(RuntimeNpcStore store, in NpcSnapshot snapshot)
+    // The environment strike broadcasts packet 28 immediately. Ordinary packet 23 belongs to the NPC update phase.
+    internal bool TryRetainEnvironmentStrikeState(RuntimeNpcStore store, in NpcSnapshot snapshot)
     {
-        var prior = deferredGeyserStrike;
-        deferredGeyserStrike = snapshot;
+        var prior = deferredEnvironmentStrike;
+        deferredEnvironmentStrike = snapshot;
         try { return store.TryPublishUpdate(in snapshot); }
-        finally { deferredGeyserStrike = prior; }
+        finally { deferredEnvironmentStrike = prior; }
     }
 
     public bool TryAcknowledgeDamage(GameCommandSourceId source)
@@ -316,7 +316,7 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         bool suppressBroadcast = kind != NpcStateCommitKind.Spawn &&
             suppressedClientDamageNpc.IsAssigned && snapshot.Handle == suppressedClientDamageNpc;
         suppressBroadcast |= !vanillaAiPhase && kind == NpcStateCommitKind.Update &&
-            deferredGeyserStrike is { } deferred && deferred == snapshot;
+            deferredEnvironmentStrike is { } deferred && deferred == snapshot;
         if (kind == NpcStateCommitKind.Despawn)
         {
             if (!suppressBroadcast)

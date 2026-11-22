@@ -21,7 +21,6 @@ public static class WorldPressurePlateContacts1458
     // Collision.SwitchTiles 1.4.5.8: type135, each actor/style frame is eighteen pixels apart.
     private const ushort OrdinaryPlateTileType = 135;
     private const ushort ProjectilePlateTileType = 442;
-    private const ushort LandMineTileType = 210;
     private const int StyleFrameHeight = 18;
 
     internal static bool IsPlate(ushort type) => type is OrdinaryPlateTileType or ProjectilePlateTileType;
@@ -31,7 +30,7 @@ public static class WorldPressurePlateContacts1458
         var (left, right, top, bottom) = GetScanBounds(tiles, x, y, width, height);
         for (int tileX = left; tileX < right; tileX++)
             for (int tileY = top; tileY < bottom; tileY++)
-                if (tiles.Get(tileX, tileY) is { IsActive: true, Type: LandMineTileType }) return true;
+                if (tiles.Get(tileX, tileY) is { IsActive: true, Type: WorldWiringDeviceExecutor1458.LandMineTileType }) return true;
         return false;
     }
     public static bool IsEligible(short frameY, WorldPressurePlateActor1458 actor)
@@ -55,9 +54,10 @@ public static class WorldPressurePlateContacts1458
         out WorldPressurePlateContact1458 contact) =>
         TryFindContact(tiles, x, y, width, height, oldX, oldY, actor, out contact, null);
 
-    internal static bool TryFindContact(WorldTileStore tiles, float x, float y, int width, int height,
-        float oldX, float oldY, WorldPressurePlateActor1458 actor, out WorldPressurePlateContact1458 contact,
-        Action<int, int>? geyserContact)
+    internal static bool TryFindContact(
+        WorldTileStore tiles, float x, float y, int width, int height,
+        float oldX, float oldY, WorldPressurePlateActor1458 actor,
+        out WorldPressurePlateContact1458 contact, Action<ushort, int, int>? nonTerminatingContact)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         contact = default;
@@ -78,8 +78,10 @@ public static class WorldPressurePlateContacts1458
                     contact = new(tileX, tileY, false);
                     return true;
                 }
-                bool geyser = tile.Type == WorldWiringDeviceExecutor1458.GeyserTileType;
-                if (geyser ? geyserContact is null || actor is not (WorldPressurePlateActor1458.Other or WorldPressurePlateActor1458.Player)
+                bool nonTerminating = tile.Type == WorldWiringDeviceExecutor1458.LandMineTileType ||
+                    tile.Type == WorldWiringDeviceExecutor1458.GeyserTileType &&
+                    actor is WorldPressurePlateActor1458.Other or WorldPressurePlateActor1458.Player;
+                if (nonTerminating ? nonTerminatingContact is null
                     : tile.Type != OrdinaryPlateTileType || !IsEligible(tile.FrameY, actor)) continue;
                 float plateX = tileX * 16;
                 float plateY = tileY * 16 + 12;
@@ -89,9 +91,10 @@ public static class WorldPressurePlateContacts1458
                     !(oldX + width > plateX && oldX < plateX + 16f && oldY + height > plateY &&
                         (double)oldY < (double)plateY + 16.01))
                 {
-                    if (geyser)
+                    // Original Collision.SwitchTiles continues the X-major scan live after either hazard.
+                    if (nonTerminating)
                     {
-                        geyserContact!(tileX, tileY);
+                        nonTerminatingContact!(tile.Type, tileX, tileY);
                         continue;
                     }
                     contact = new(tileX, tileY, tile.FrameY / StyleFrameHeight == 7);
