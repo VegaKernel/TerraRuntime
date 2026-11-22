@@ -112,7 +112,7 @@ public sealed partial class RuntimeWiring1458Tests
         var shots = new RuntimeProjectileStore(1001, replication);
         using var scene = CreateLandMineScene(random, shots, replication);
         var solid = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
-        scene.Tiles.Set(30, 40, solid with { Type = 210 });
+        scene.Tiles.Set(31, 40, solid with { Type = 210 });
         scene.Tiles.Set(30, 41, solid);
         scene.Tiles.Set(31, 41, solid);
         scene.Tiles.Set(30, 42, solid with { Type = 443, FrameX = 72 });
@@ -128,18 +128,18 @@ public sealed partial class RuntimeWiring1458Tests
         Graph(scene).WorldTileAuthority.ApplyPlayerPressurePlate(before, before with { PositionX = 487 });
 
         // Two exact Collision.SwitchTiles captures with the pinned original Linux server.
-        // Mine clears and births first. Both geyser contacts send 59 with one shared birth.
+        // Left geyser contact, mine, then right geyser contact distinguish X-major from row-major.
         string[] original =
         [
-            "0D00141E002800010100000000",
-            "20001BFF0004000000D443000012440000000000000000A40030FA0000002041",
-            "07003B1E002800",
-            "20001BFF0104000080F0430040284400000000000000418E0230140000000040",
+            "20001BFF0004000080F0430040284400000000000000418E0230140000000040",
             "07003B1E002A00",
+            "0D00141F002800010100000000",
+            "20001BFF0104000000DC43000012440000000000000000A40030FA0000002041",
+            "07003B1F002800",
             "07003B1F002A00"
         ];
         Assert.Equal(original, GemBunnyWire1458Tests.Drain(scene.PeerOutbound).Select(Convert.ToHexString));
-        Assert.False(scene.Tiles.Get(30, 40).IsActive);
+        Assert.False(scene.Tiles.Get(31, 40).IsActive);
         Assert.Equal(2, shots.ActiveCount);
         Assert.True(random.HasSameState(new VanillaUnifiedRandom1458(1458)));
     }
