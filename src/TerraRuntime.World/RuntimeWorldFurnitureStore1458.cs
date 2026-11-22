@@ -238,10 +238,6 @@ public sealed partial class RuntimeWorldFurnitureStore1458
         // a funded placement participant may stage these initially empty kinds.
         internal bool TryStageEmptyPlacement(int x, int y, WorldTileEntityKind kind, out int id)
         {
-            id = -1;
-            if (sealedPreparation || !TryGetAt(x, y, out var existing) || existing is not null ||
-                x >= owner.Tiles.Dimensions.WidthTiles || y >= owner.Tiles.Dimensions.HeightTiles ||
-                nextId == int.MaxValue || changes.Count == maximumChanges) return Fail();
             WorldTileEntityPayload? payload = kind switch
             {
                 WorldTileEntityKind.DisplayDoll => new WorldDisplayDollPayload(0,
@@ -251,7 +247,19 @@ public sealed partial class RuntimeWorldFurnitureStore1458
                     new WorldTileEntityItem?[2], new WorldTileEntityItem?[2]),
                 _ => null
             };
-            if (payload is null) return Fail();
+            return TryStagePlacement(x, y, kind, payload, out id);
+        }
+
+        internal bool TryStageLogicSensorPlacement(int x, int y, WorldLogicSensorPayload payload, out int id) =>
+            TryStagePlacement(x, y, WorldTileEntityKind.LogicSensor,
+                payload.LogicCheck is >= 1 and <= 7 ? payload : null, out id);
+
+        private bool TryStagePlacement(int x, int y, WorldTileEntityKind kind, WorldTileEntityPayload? payload, out int id)
+        {
+            id = -1;
+            if (payload is null || sealedPreparation || !TryGetAt(x, y, out var existing) || existing is not null ||
+                x >= owner.Tiles.Dimensions.WidthTiles || y >= owner.Tiles.Dimensions.HeightTiles ||
+                nextId == int.MaxValue || changes.Count == maximumChanges) return Fail();
             EnsureWorkingImage();
             int live = workingSlots!.Count - workingFreeSlots!.Count;
             if (live == owner.maximumEntities) return Fail();

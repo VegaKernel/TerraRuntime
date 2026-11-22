@@ -170,7 +170,9 @@ public static class WorldSectionObjectMetadataEncoder
         using var memory = new MemoryStream();
         using var writer = new BinaryWriter(memory, Encoding.UTF8, leaveOpen: true);
         writer.Write((byte)entity.Kind); writer.Write(entity.X); writer.Write(entity.Y);
-        if (!TryWriteEntityPayload(writer, entity)) return false;
+        // TELogicSensor.WriteExtraData omits both saved state bytes on the network.
+        if (entity is not { Kind: WorldTileEntityKind.LogicSensor, Payload: WorldLogicSensorPayload } &&
+            !TryWriteEntityPayload(writer, entity)) return false;
         writer.Flush(); encoded = memory.ToArray(); return true;
     }
 

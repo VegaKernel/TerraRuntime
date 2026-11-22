@@ -50,7 +50,8 @@ internal sealed class LarvaRuntimeFixture1458 : IDisposable
         get { Assert.True(Players.TryGet(Connection.Player, out var member)); return member; }
     }
 
-    internal LarvaRuntimeFixture1458(bool windows, bool sourcePlayerZero = false, bool aliasPlayerRandom = false, int mode = 0, bool good = false, bool tenth = false)
+    internal LarvaRuntimeFixture1458(bool windows, bool sourcePlayerZero = false, bool aliasPlayerRandom = false, int mode = 0, bool good = false, bool tenth = false,
+        bool dayTime = true)
     {
         for (int x = 0; x < 400; x++) Tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
         Items = new(ItemReplication);
@@ -69,7 +70,7 @@ internal sealed class LarvaRuntimeFixture1458 : IDisposable
             projectileReplication: Replication, tileManipulationReplication: TileReplication,
             naturalSpawnRandom: new SystemVanillaNpcRandom(Random),
             worldItemSpawnRandom: new SystemWorldItemSpawnRandom(Random),
-            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0, freezeWind: true, freezeRain: true, getGoodWorld: good),
+            worldClock: new RuntimeWorldClock(1000, dayTime, default, 0, 0, freezeWind: true, freezeRain: true, getGoodWorld: good),
             townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80, GameMode = (byte)mode, GoodWorld = good, TenthAnniversaryWorld = tenth },
             playerUpdateRandomSeed: aliasPlayerRandom ? null : new PlayerUpdateRandomSeed1458(0), sourcePlayerWorld: world);
         Players = Composition.Players;

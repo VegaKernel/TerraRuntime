@@ -1,0 +1,20 @@
+{
+  "originalSha256": "4B87890AC53D40F61DB5F928693A379ACF4CCBD8ED3B47EB32FB096F145DF034",
+  "probeSha256": "fee1841c74701a02d039ddaf05997a2a4a1fd62333ee7dfd9b950047f9834bc4",
+  "observationsSha256": "a843463c1d31cca7bea6d765c967048a932e030cd2d3073cf5335b544952bd78",
+  "rows": 140,
+  "placed": 112,
+  "refusedLavaPlacement": 28,
+  "firstUpdatePulses": 20,
+  "repeatedByteIdentically": true,
+  "firstChanceExceptions": 0,
+  "clientSourceCalls": [
+    "TileObject.CanPlace",
+    "Player.PlaceThing_Tiles_PlaceIt (newObjectType)"
+  ],
+  "serverSourceCalls": [
+    "MessageBuffer.GetData on original emitted frames",
+    "TileEntity.PerformUpdates"
+  ],
+  "scope": "All seven styles; dry/water/lava/honey/shimmer preimages; four crossed client/server day and player-above contexts. Source placement calls run in client-role headless original executable with a recording socket and then in dedicated role against freshly reset world/entity/actor preimages. Includes native packet bytes, original entity fields and RNG. The held stack is initialized by source Item.SetDefaults and the outer ItemCheck stock-consumption tail is outside this probe."
+}

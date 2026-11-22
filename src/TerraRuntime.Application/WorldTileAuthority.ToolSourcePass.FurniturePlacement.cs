@@ -12,12 +12,16 @@ internal readonly record struct FurniturePlacementShape1458(ushort Tile, byte Wi
 {
     internal byte Alternate(int direction) => checked((byte)(Tile is 14 or 16 or 18 ? 0 : direction == 1 ? 1 : 0));
     internal short FrameBase(int direction) => checked((short)((Style + Alternate(direction)) * Width * 18));
-    internal bool HasObjectReport => Tile is not (470 or 475);
+    internal bool IsLogicSensor => Tile == 423;
+    internal bool HasObjectReport => Tile is not (423 or 470 or 475);
     internal bool HasEntity => Kind is not null;
     internal static bool TryGet(in LocalPlacementDefinition1458 definition, out FurniturePlacementShape1458 shape)
     {
         shape = definition.Item.Value switch
         {
+            3613 or 3614 or 3615 or 3726 or 3727 or 3728 or 3729
+                when definition.CreateTile == 423 && definition.PlaceStyle is >= 0 and <= 6 =>
+                    new(423, 1, 1, 0, 0, WorldTileEntityKind.LogicSensor, false, definition.PlaceStyle),
             32 when definition.CreateTile == 14 && definition.PlaceStyle == 0 => new(14, 3, 2, 1, 1, null, false, 0),
             34 when definition.CreateTile == 15 && definition.PlaceStyle == 0 => new(15, 1, 2, 0, 1, null, false, 0),
             35 when definition.CreateTile == 16 && definition.PlaceStyle == 0 => new(16, 2, 1, 0, 0, null, false, 0),
@@ -52,8 +56,8 @@ internal sealed partial class WorldTileAuthority
             var size = Overlay.Tiles.Dimensions;
             if (x < 5 || y < 5 || x + shape.Width >= size.WidthTiles - 5 ||
                 y + shape.Height >= size.HeightTiles - 5 || !sourceEmpty) return true;
-            // These three definitions have no random style or place override,
-            // and do not flatten their anchors. No visual RNG pad is permitted.
+            // The admitted definitions have no random style or place override,
+            // and do not flatten their anchors.
             for (int dx = 0; dx < shape.Width; dx++)
             for (int dy = 0; dy < shape.Height; dy++)
             {
@@ -63,7 +67,7 @@ internal sealed partial class WorldTileAuthority
                     tile.IsActive && ((!facts.IsCuttable || tile.Type is 484 or 654) && !facts.BreakableWhenPlacing) ||
                     shape.NeedsWall && tile.Wall == 0) return true;
             }
-            if (!shape.NeedsWall)
+            if (!shape.NeedsWall && !shape.IsLogicSensor)
                 for (int dx = 0; dx < shape.Width; dx++)
                 {
                     if (!Overlay.TryReadSourceSafely(x + dx, y + shape.Height, out var anchor) ||
@@ -89,8 +93,8 @@ internal sealed partial class WorldTileAuthority
                 if (!Overlay.TryReadSourceSafely(tx, ty, out var before)) return Reject();
                 if (before.IsActive) continue; // Original Place does not overwrite an unremoved cuttable.
                 var after = before; after.Flags |= WorldTileFlags.Active; after.Type = shape.Tile;
-                after.FrameX = checked((short)(shape.FrameBase(direction) + dx * 18));
-                after.FrameY = checked((short)(dy * 18));
+                after.FrameX = shape.IsLogicSensor ? (short)0 : checked((short)(shape.FrameBase(direction) + dx * 18));
+                after.FrameY = checked((short)((shape.IsLogicSensor ? shape.Style : dy) * 18));
                 if (!Stage(WorldTileMutationKind.PlaceTile, tx, ty, in before, in after)) return Reject();
             }
             if (!PushSquare(clickX, clickY) || !Drain()) return Reject();
@@ -142,11 +146,28 @@ internal sealed partial class WorldTileAuthority
         {
             row = null;
             if (!IsCurrentOwned || shape.Kind is not { } kind || !TryFurnitureImage(out var image) || image is null ||
-                !Overlay.TryReadSourceSafely(x, y, out var tile) || !tile.IsActive || tile.Type != shape.Tile ||
-                tile.FrameY != 0 || tile.FrameX < 0 || tile.FrameX % (shape.Width * 18) != 0 ||
+                !Overlay.TryReadSourceSafely(x, y, out var tile) || !tile.IsActive || tile.Type != shape.Tile) return Reject();
+            if (shape.IsLogicSensor)
+                return TryCreateLogicSensor(image, x, y, shape.Style, in tile, out row);
+            if (tile.FrameY != 0 || tile.FrameX < 0 || tile.FrameX % (shape.Width * 18) != 0 ||
                 !image.TryStageEmptyPlacement(x, y, kind, out int id) ||
                 !image.TryGetAt(x, y, out row) || row is null || row.PersistedId != id) return Reject();
             return IsCurrentOwned;
+        }
+
+        private bool TryCreateLogicSensor(RuntimeWorldFurnitureStore1458.Preparation image,
+            int x, int y, int style, in WorldTile tile, out WorldTileEntity? row)
+        {
+            row = null;
+            if (clientRole || style is < 0 or > 6 || tile.FrameY != style * 18 || tile.FrameX is not (0 or 18))
+                return Reject();
+            byte check = checked((byte)(style + 1));
+            var state = new WorldLogicSensorPayload(check, owner.IsLogicSensorOnAtPlacement(x, y, check));
+            if (!image.TryStageLogicSensorPlacement(x, y, state, out int id) ||
+                !image.TryGetAt(x, y, out row) || row is null || row.PersistedId != id) return Reject();
+            var after = tile;
+            after.FrameX = state.IsOn ? (short)18 : (short)0;
+            return Stage(WorldTileMutationKind.TransformTile, x, y, in tile, in after) && IsCurrentOwned;
         }
     }
 }

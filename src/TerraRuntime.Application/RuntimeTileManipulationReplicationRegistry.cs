@@ -157,14 +157,14 @@ internal sealed partial class RuntimeTileManipulationReplicationRegistry : IRunt
     }
 
     private bool TryPublishEncodedTileSquare(byte[] encoded, WorldTileStore tiles, int startX, int startY,
-        byte width, byte height, bool respectSectionRange)
+        byte width, byte height, bool respectSectionRange, GameCommandSourceId excludedSource = default)
     {
-        if (!respectSectionRange) return TryPublishFrameToAll(encoded);
+        if (!respectSectionRange) return TryPublishFrame(excludedSource, encoded);
         var frame = new OutboundFrame(encoded);
         int size = Math.Max(width, height);
-        foreach (Endpoint endpoint in endpoints.Values)
+        foreach ((GameCommandSourceId source, Endpoint endpoint) in endpoints)
         {
-            if (!endpoint.IsPlaying) continue;
+            if (source == excludedSource || !endpoint.IsPlaying) continue;
             var sections = endpoint.Sections;
             // RemoteClient.SectionRange tests the four corners at +size, not +size-1.
             // A missing table is the existing explicit system/bootstrap endpoint contract.

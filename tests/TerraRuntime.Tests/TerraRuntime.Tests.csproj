@@ -1260,6 +1260,7 @@
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringTeleportTriggersLinux1458.json.gz" LogicalName="WiringTeleportTriggersLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringPressureLoadLinux1458.json.gz" LogicalName="WiringPressureLoadLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringContactLinux1458.json.gz" LogicalName="WiringContactLinux1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/WiringSensorPlacementLinux1458.json.gz" LogicalName="WiringSensorPlacementLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringTriggerDestructionLinux1458.json.gz" LogicalName="WiringTriggerDestructionLinux1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/WiringProjectileContactsLinux1458.json.gz" LogicalName="WiringProjectileContactsLinux1458" /></ItemGroup>
 </Project>

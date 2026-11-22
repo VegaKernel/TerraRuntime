@@ -60,13 +60,26 @@ internal sealed partial class WorldTileAuthority
             if (!client.TryPlaceFurniture(in shape, clickX, clickY, direction, true,
                     out bool placed, out var objectReport, out var clientFootprint) || !placed) return false;
             WorldTileEntity? entity = null;
-            byte[] expectedSquare = [], entityFrame = [];
+            byte[] expectedSquare = [], squareFrame = [], entityFrame = [];
             if (shape.HasEntity)
             {
+                if (shape.IsLogicSensor)
+                {
+                    // The client hook can sample a different day/player state
+                    // than the dedicated receiver. Retain its valid display
+                    // frame in the 20 relay and recompute the entity below.
+                    if (input.FurnitureSquare!.LogicSensorFrameX is not short frameX || frameX is not (0 or 18) ||
+                        shape.Style >= 3 && frameX != 0) return false;
+                    clientFootprint[0].FrameX = frameX;
+                }
                 if (!TerrariaTileSquareCodec.TryEncodeFurnitureFrame(clientFootprint, report.TileX, report.TileY,
                         shape.Width, shape.Height, out expectedSquare) || !input.FurnitureSquare!.MatchesEncoded(expectedSquare) ||
-                    !server.TryApplyFurnitureFootprint(report.TileX, report.TileY, shape.Width, shape.Height, clientFootprint) ||
-                    !server.TryCreateFurnitureEntity(in shape, report.TileX, report.TileY, out entity) || entity is null ||
+                    !server.TryApplyFurnitureFootprint(report.TileX, report.TileY, shape.Width, shape.Height, clientFootprint)) return false;
+                if (shape.IsLogicSensor &&
+                    (!serverTiles.TryReadSourceSafely(report.TileX, report.TileY, out var preEntity) ||
+                     !TerrariaTileSquareCodec.TryEncodeFurnitureServerFrame([preEntity], report.TileX, report.TileY,
+                        shape.Width, shape.Height, out squareFrame))) return false;
+                if (!server.TryCreateFurnitureEntity(in shape, report.TileX, report.TileY, out entity) || entity is null ||
                     !TerrariaFurnitureEntityCodec1458.TryEncode(entity, out entityFrame)) return false;
             }
             else if (IsSourceObjectNetworkPosition(clickX, clickY, tiles.Dimensions) &&
@@ -80,8 +93,7 @@ internal sealed partial class WorldTileAuthority
             for (int dx = 0; dx < shape.Width; dx++)
             for (int dy = 0; dy < shape.Height; dy++)
                 if (!serverTiles.TryReadSourceSafely(report.TileX + dx, report.TileY + dy, out accepted[index++])) return false;
-            byte[] squareFrame = [];
-            if (shape.HasEntity && !TerrariaTileSquareCodec.TryEncodeFurnitureServerFrame(accepted, report.TileX, report.TileY,
+            if (shape.HasEntity && !shape.IsLogicSensor && !TerrariaTileSquareCodec.TryEncodeFurnitureServerFrame(accepted, report.TileX, report.TileY,
                     shape.Width, shape.Height, out squareFrame)) return false;
             var candidate = new FurniturePlacementPreparation1458(this, player, input, world, context, actors,
                 reads, building, tail, localRandom, report, shape, objectReport, entity, expectedSquare, accepted,
@@ -107,7 +119,9 @@ internal sealed partial class WorldTileAuthority
         private ToolWorldPublication1458? publication;
         private PlayerAuthority.PlacementInventoryPublication1458? inventoryPublication;
         internal bool IsCurrent => !disposed && !adopted && player.IsCurrent && input.IsCurrent &&
-            reads.IsCurrent && building.IsCurrent && context.IsCurrent && actors.IsCurrent && world.IsCurrentOwned;
+            reads.IsCurrent && building.IsCurrent && context.IsCurrent && actors.IsCurrent && world.IsCurrentOwned &&
+            (entity?.Payload is not WorldLogicSensorPayload sensor ||
+             sensor.IsOn == owner.IsLogicSensorOnAtPlacement(report.TileX, report.TileY, sensor.LogicCheck));
         internal ToolWireMatch1458 Match()
         {
             if (!IsCurrent || input.Count != 0 ||
@@ -151,15 +165,16 @@ internal sealed partial class WorldTileAuthority
             {
                 if (tiles.RuntimeTileEntities is not { } metadata || !metadata.TryCaptureById(entity.PersistedId, out var current) ||
                     current is null || current.X != entity.X || current.Y != entity.Y || current.Kind != entity.Kind) return false;
-                bool empty = current.Payload switch
+                bool stillInitial = current.Payload switch
                 {
                     WorldDisplayDollPayload doll => doll.Pose == 0 && doll.Misc is null &&
                         doll.Equipment.All(item => item is null) && doll.Dyes.All(item => item is null),
                     WorldHatRackPayload hats => hats.Items.All(item => item is null) && hats.Dyes.All(item => item is null),
                     WorldItemTileEntityPayload rack => rack.Item == default,
+                    WorldLogicSensorPayload sensor => sensor == entity.Payload,
                     _ => false
                 };
-                if (!empty) return false;
+                if (!stillInitial) return false;
             }
             int index = 0;
             for (int dx = 0; dx < shape.Width; dx++)
@@ -182,7 +197,14 @@ internal sealed partial class WorldTileAuthority
                         {
                             try { publication.TryPublishThrough(squareBoundary); }
                             catch (Exception error) { failure ??= error; }
-                            if (shape.HasEntity && IsAcceptedCurrent()) owner.replication?.TryPublishFurnitureFootprint(player.Capture.Connection.Source, squareFrame);
+                            if (shape.HasEntity && IsAcceptedCurrent())
+                            {
+                                var source = player.Capture.Connection.Source;
+                                if (shape.IsLogicSensor && owner.tiles is { } tiles)
+                                    owner.replication?.TryPublishLogicSensorPlacement(source, squareFrame, tiles, report.TileX, report.TileY);
+                                else
+                                    owner.replication?.TryPublishFurnitureFootprint(source, squareFrame);
+                            }
                         }
                         else if (step == 1)
                         {

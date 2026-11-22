@@ -8,13 +8,18 @@ namespace TerraRuntime.Protocol.Multiplicity;
 public sealed class TerrariaFurnitureSquareState1458
 {
     private readonly byte[] payload;
-    internal TerrariaFurnitureSquareState1458(short x, short y, byte width, byte height, ushort tileType, byte[] payload)
-    { TileX = x; TileY = y; Width = width; Height = height; TileType = tileType; this.payload = payload; }
+    internal TerrariaFurnitureSquareState1458(short x, short y, byte width, byte height, ushort tileType,
+        byte[] payload, short? logicSensorFrameX)
+    {
+        TileX = x; TileY = y; Width = width; Height = height; TileType = tileType;
+        this.payload = payload; LogicSensorFrameX = logicSensorFrameX;
+    }
     public short TileX { get; }
     public short TileY { get; }
     public byte Width { get; }
     public byte Height { get; }
     public ushort TileType { get; }
+    public short? LogicSensorFrameX { get; }
     public bool MatchesEncoded(ReadOnlySpan<byte> frame) => frame.Length >= 3 && frame[2] == 20 &&
         payload.AsSpan().SequenceEqual(frame[3..]);
     public bool HasSameWire(TerrariaFurnitureSquareState1458 other) => payload.AsSpan().SequenceEqual(other.payload);
@@ -34,10 +39,13 @@ public static partial class TerrariaTileSquareCodec
         var reader = new SequenceReader<byte>(frame.Payload);
         if (!reader.TryReadLittleEndian(out short x) || !reader.TryReadLittleEndian(out short y) ||
             !reader.TryRead(out byte width) || !reader.TryRead(out byte height)) return TerrariaFurnitureSquareDecodeResult1458.Malformed;
-        if ((width, height) is not ((2, 3) or (3, 3) or (3, 4))) return TerrariaFurnitureSquareDecodeResult1458.NotApplicable;
+        bool sensorSize = (width, height) == (1, 1);
+        if (sensorSize ? !StartsWithLogicSensor(reader) : (width, height) is not ((2, 3) or (3, 3) or (3, 4)))
+            return TerrariaFurnitureSquareDecodeResult1458.NotApplicable;
         if (x < 0 || y < 0 || frame.Payload.Length > FixedPayloadLength + width * height * MaximumEncodedBytesPerTile ||
             !reader.TryRead(out byte change) || change != 0) return TerrariaFurnitureSquareDecodeResult1458.Malformed;
         ushort common = 0;
+        short? logicSensorFrameX = null;
         for (int cell = 0; cell < width * height; cell++)
         {
             if (!reader.TryRead(out byte first) || !reader.TryRead(out byte second) || !reader.TryRead(out byte third) ||
@@ -45,18 +53,32 @@ public static partial class TerrariaTileSquareCodec
                 (second & 8) != 0 && (first & 4) == 0) return TerrariaFurnitureSquareDecodeResult1458.Malformed;
             if ((second & 4) != 0 && (!reader.TryRead(out byte colour) || colour > 31)) return TerrariaFurnitureSquareDecodeResult1458.Malformed;
             if ((second & 8) != 0 && (!reader.TryRead(out byte wallColour) || wallColour > 31)) return TerrariaFurnitureSquareDecodeResult1458.Malformed;
-            if (!reader.TryReadLittleEndian(out short type) || type is not (470 or 471 or 475)) return TerrariaFurnitureSquareDecodeResult1458.NotApplicable;
-            if (common != 0 && common != type || !reader.TryReadLittleEndian(out short _) || !reader.TryReadLittleEndian(out short _))
+            if (!reader.TryReadLittleEndian(out short type) || type is not (423 or 470 or 471 or 475))
+                return TerrariaFurnitureSquareDecodeResult1458.NotApplicable;
+            if (common != 0 && common != type || !reader.TryReadLittleEndian(out short frameX) ||
+                !reader.TryReadLittleEndian(out short _))
                 return TerrariaFurnitureSquareDecodeResult1458.Malformed;
             common = (ushort)type;
+            if (type == 423) logicSensorFrameX = frameX;
             if ((first & 4) != 0 && !reader.TryReadLittleEndian(out short _)) return TerrariaFurnitureSquareDecodeResult1458.Malformed;
         }
-        if (reader.Remaining != 0 || common == 470 && (width != 2 || height != 3) ||
-            common == 471 && (width != 3 || height != 3) || common == 475 && (width != 3 || height != 4))
+        if (reader.Remaining != 0 || !IsFurnitureShape(common, width, height))
             return TerrariaFurnitureSquareDecodeResult1458.Malformed;
-        state = new(x, y, width, height, common, frame.Payload.ToArray());
+        state = new(x, y, width, height, common, frame.Payload.ToArray(), logicSensorFrameX);
         return TerrariaFurnitureSquareDecodeResult1458.Decoded;
     }
+
+    // The 1x1 packet also carries ordinary single-cell tool edits. Inspect a
+    // copy of the reader so only sensor placement enters furniture admission.
+    private static bool StartsWithLogicSensor(SequenceReader<byte> reader) =>
+        reader.TryRead(out _) && reader.TryRead(out byte first) && (first & 1) != 0 &&
+        reader.TryRead(out byte second) && reader.TryRead(out _) &&
+        ((second & 4) == 0 || reader.TryRead(out _)) &&
+        ((second & 8) == 0 || reader.TryRead(out _)) &&
+        reader.TryReadLittleEndian(out short type) && type == 423;
+
+    private static bool IsFurnitureShape(ushort type, byte width, byte height) =>
+        (type, width, height) is (423, 1, 1) or (470, 2, 3) or (471, 3, 3) or (475, 3, 4);
 
     public static bool TryEncodeFurnitureFrame(ReadOnlySpan<WorldTile> cells, int x, int y,
         byte width, byte height, out byte[] frame) => TryEncodeFurnitureFrameCore(cells, x, y, width, height, true, out frame);
@@ -66,8 +88,8 @@ public static partial class TerrariaTileSquareCodec
         byte width, byte height, bool clientRole, out byte[] frame)
     {
         frame = [];
-        if ((uint)x > short.MaxValue || (uint)y > short.MaxValue ||
-            (width, height) is not ((2, 3) or (3, 3) or (3, 4)) || cells.Length != width * height) return false;
+        if ((uint)x > short.MaxValue || (uint)y > short.MaxValue || cells.IsEmpty ||
+            cells.Length != width * height || !IsFurnitureShape(cells[0].Type, width, height)) return false;
         var bytes = new byte[3 + FixedPayloadLength + cells.Length * MaximumEncodedBytesPerTile];
         BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(3), (short)x);
         BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(5), (short)y);
@@ -76,7 +98,7 @@ public static partial class TerrariaTileSquareCodec
         foreach (var cell in cells)
         {
             var tile = cell;
-            if (!tile.IsActive || tile.Type is not (470 or 471 or 475)) return false;
+            if (!tile.IsActive || tile.Type != cells[0].Type) return false;
             if (clientRole) tile.LiquidAmount = 0; // CLIENT omits liquid; SERVER relay includes its retained liquid.
             if (!TryEncodeTile(in tile, bytes, ref offset)) return false;
         }

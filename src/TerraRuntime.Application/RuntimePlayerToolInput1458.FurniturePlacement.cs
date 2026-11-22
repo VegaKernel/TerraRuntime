@@ -18,8 +18,9 @@ internal sealed partial class RuntimePlayerToolInput1458
     internal bool TryObserveFurniture(in TerrariaFurnitureEntityPlacementState1458 report)
     {
         if (!IsPlacement || !IsCurrent || FurnitureSquare is not { } square ||
-            report.TileX != square.TileX || report.TileY != square.TileY ||
-            report.Kind != (square.TileType == 470 ? 3 : square.TileType == 471 ? 4 : 5)) return false;
+            report.TileX != square.TileX || report.TileY != square.TileY) return false;
+        int expectedKind = square.TileType switch { 423 => 2, 470 => 3, 471 => 4, 475 => 5, _ => -1 };
+        if (report.Kind != expectedKind) return false;
         if (FurnitureEntityReport is { } existing) return existing == report;
         if (Revision == ulong.MaxValue) { Invalid = true; return false; }
         FurnitureEntityReport = report; Revision++; return true;

@@ -17,6 +17,10 @@ internal sealed partial class RuntimeTileManipulationReplicationRegistry
     }
     internal bool TryPublishFurnitureFootprint(TerraRuntime.Contracts.Runtime.GameCommandSourceId excluded, byte[] frame) =>
         TryPublishFrame(excluded, frame);
+
+    internal bool TryPublishLogicSensorPlacement(TerraRuntime.Contracts.Runtime.GameCommandSourceId excluded,
+        byte[] frame, WorldTileStore tiles, int x, int y) =>
+        TryPublishEncodedTileSquare(frame, tiles, x, y, 1, 1, respectSectionRange: true, excluded);
     internal bool TryPublishFurnitureEntity(byte[] frame) => TryPublishFrameToAll(frame);
 
     internal bool TryPublishDollPose(TerraRuntime.Contracts.Runtime.GameCommandSourceId excludedSource,

@@ -20,7 +20,7 @@ using Xunit;
 
 namespace TerraRuntime.Tests.PaidFurniture1458;
 
-public sealed class PaidFurniturePlacement1458Tests
+public sealed partial class PaidFurniturePlacement1458Tests
 {
     [Fact]
     public void Paid_object_placement_owns_source_footprint_entity_ids_payment_and_checkpoint()
@@ -231,9 +231,9 @@ public sealed class PaidFurniturePlacement1458Tests
     }
 
     private static LarvaRuntimeFixture1458 CreatePaidScene(short item, short funding, out FurniturePlacementShape1458 shape,
-        bool alias = false, Action<LarvaRuntimeFixture1458, FurniturePlacementShape1458>? beforePhase = null)
+        bool alias = false, Action<LarvaRuntimeFixture1458, FurniturePlacementShape1458>? beforePhase = null, bool dayTime = true)
     {
-    var f = new LarvaRuntimeFixture1458(OperatingSystem.IsWindows(), aliasPlayerRandom: alias);
+        var f = new LarvaRuntimeFixture1458(OperatingSystem.IsWindows(), aliasPlayerRandom: alias, dayTime: dayTime);
         Assert.True(f.Tiles.TryAttachTileEntities([], 100000));
         Assert.True(VanillaLocalPlacementCatalog1458.TryGet(new(item), out var definition));
         Assert.True(FurniturePlacementShape1458.TryGet(in definition, out shape));
