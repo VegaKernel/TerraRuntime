@@ -22,8 +22,18 @@ internal sealed partial class WorldTileAuthority
         float top = lowTiles ? y / 16f : (y + height * 0.5f) / 16f;
         float right = lowTiles ? (x + width) / 16f : left;
         float bottom = lowTiles ? (y + height) / 16f : top;
-        if (left < 0 || top < 0 || right >= tiles.Dimensions.WidthTiles || bottom >= tiles.Dimensions.HeightTiles ||
-            (long)((int)right - (int)left + 1) * ((int)bottom - (int)top + 1) > 64) return false;
+        var dimensions = tiles.Dimensions;
+        int firstX = (int)Math.Clamp(left, -1, dimensions.WidthTiles);
+        int firstY = (int)Math.Clamp(top, -1, dimensions.HeightTiles);
+        int lastX = (int)Math.Clamp(right, -1, dimensions.WidthTiles - 1);
+        int lastY = (int)Math.Clamp(bottom, -1, dimensions.HeightTiles - 1);
+        // NPC.HitEffect truncates toward zero and catches the first out-of-range
+        // tile access. A bottom overflow ends the first column and the whole scan.
+        if ((uint)firstX >= dimensions.WidthTiles || (uint)firstY >= dimensions.HeightTiles)
+            lastX = firstX - 1;
+        else if (bottom >= dimensions.HeightTiles)
+            lastX = firstX;
+        if ((long)(lastX - firstX + 1) * (lastY - firstY + 1) > 64) return false;
         var overlay = new ToolWorldTileOverlay1458(tiles);
         var water = liquidMutations.CreateSourceWaterPreparation(liquidSimulator);
         // Share source framing and KillTile over this death's tile/RNG/item journal.
@@ -31,8 +41,8 @@ internal sealed partial class WorldTileAuthority
         var frame = new ToolWorldSourcePass1458(this, overlay, random, true,
             hardModeBaseline || progression.IsCompleted(VanillaWorldProgressionId.Hardmode), default, [], null);
         frame.deathDrop = stageDrop;
-        for (int cellX = (int)left; cellX <= (int)right; cellX++)
-            for (int cellY = (int)top; cellY <= (int)bottom; cellY++)
+        for (int cellX = firstX; cellX <= lastX; cellX++)
+            for (int cellY = firstY; cellY <= lastY; cellY++)
             {
                 if (!overlay.TryRead(cellX, cellY, out var before)) return false;
                 // NPC.HitEffect uses WorldGen.SolidTile, including its distinction

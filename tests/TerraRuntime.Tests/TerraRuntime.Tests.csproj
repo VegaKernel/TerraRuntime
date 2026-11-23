@@ -32,6 +32,7 @@
     <EmbeddedResource Include="Fixtures/WiringRemainingTrapRoom1458.json.gz" LogicalName="WiringRemainingTrapRoom1458" />
     <EmbeddedResource Include="Fixtures/LavaSlimeTrapTerrain1458.json.gz" LogicalName="LavaSlimeTrapTerrain1458" />
     <EmbeddedResource Include="Fixtures/LavaSlimeHitEffectTerrain1458.json.gz" LogicalName="LavaSlimeHitEffectTerrain1458" />
+    <EmbeddedResource Include="Fixtures/LavaSlimeWorldEdge1458.json.gz" LogicalName="LavaSlimeWorldEdge1458" />
     <EmbeddedResource Include="Fixtures/SkyblockCensus1458.json.gz" LogicalName="SkyblockCensus1458" />
     <EmbeddedResource Include="Fixtures/WiringTrapBirth1458.json.gz" LogicalName="WiringTrapBirth1458" />
     <EmbeddedResource Include="Fixtures/WiringTrapCircuit1458.json.gz" LogicalName="WiringTrapCircuit1458" />
