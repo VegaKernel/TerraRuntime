@@ -17,7 +17,7 @@ public sealed class CoinValuePrototypeTests
   using(var unknown=new OwnedHumanPickupAuthority1458Tests.Fixture())
   {
    Assert.True(unknown.Items.TryAllocate(new WorldItemStateUpdate(1600,1606,0,0,1,0,WorldItemOwnershipMode.None,72,false,0,0,0,15,1,0),out var raw));
-   unknown.State.Tick();Assert.True(unknown.Items.TryGetActive(raw.Handle.Slot,out var current));Assert.True(unknown.Items.TryGetFundedCoinValue(current,out long value));Assert.Equal(0,value);
+   unknown.Pickup(raw);Assert.True(unknown.Items.TryGetActive(raw.Handle.Slot,out var current));Assert.True(unknown.Items.TryGetFundedCoinValue(current,out long value));Assert.Equal(0,value);
    Assert.All(unknown.ItemImage(), i=>Assert.True(i.IsEmpty));Assert.Equal(0,Inventory(unknown).CaptureFundedCoinValues(unknown.Connection).Sum());
    var clientAllocate=new TaskCompletionSource<WorldItemSnapshot?>();unknown.State.Apply(new WorldItemAllocateRuntimeCommand(unknown.Connection,new WorldItemDropStateUpdate(1600,1606,0,0,1,0,WorldItemOwnershipMode.None,72,false,0,0),clientAllocate));
    Assert.Null(await clientAllocate.Task);Assert.Equal(1,unknown.Items.ActiveCount);
@@ -34,7 +34,7 @@ public sealed class CoinValuePrototypeTests
    Assert.True(mixedWorld.TryGetFundedCoinValue(silver,out long beforeValue));Assert.Equal(99,beforeValue);
    Assert.True(mixedWorld.TryApplyOwner(silver.Handle.Slot,new(0,15,1,0,1600,1606),out silver));
    using var f=new OwnedHumanPickupAuthority1458Tests.Fixture(providedItems:mixedWorld);
-   f.State.Tick();Assert.False(mixedWorld.TryGetActive(silver.Handle.Slot,out _));Assert.Equal(72,f.ItemImage()[53].ItemType.Value);Assert.Equal(1,f.ItemImage()[53].Stack);Assert.Equal(99,Value(f,53));
+   f.Pickup(silver);Assert.False(mixedWorld.TryGetActive(silver.Handle.Slot,out _));Assert.Equal(72,f.ItemImage()[53].ItemType.Value);Assert.Equal(1,f.ItemImage()[53].Stack);Assert.Equal(99,Value(f,53));
   }
   using(var f=new OwnedHumanPickupAuthority1458Tests.Fixture())
   {

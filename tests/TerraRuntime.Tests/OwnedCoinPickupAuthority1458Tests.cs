@@ -11,7 +11,7 @@ namespace TerraRuntime.Tests;
 public sealed class OwnedCoinPickupAuthority1458Tests
 {
     [Fact]
-    public void Source_coin_storage_is_adopted_by_actual_owned_tick()
+    public void Source_coin_storage_is_adopted_by_authenticated_pickup()
     {
         using var input = typeof(OwnedCoinPickupAuthority1458Tests).Assembly.GetManifestResourceStream("OwnedCoinPickupSource1458");
         Assert.NotNull(input);
@@ -54,13 +54,11 @@ public sealed class OwnedCoinPickupAuthority1458Tests
                     Assert.Equal(residual > 0, active);
                     if (residual > 0) { Assert.Equal(residual, (int)current.Stack); Assert.Equal(ground.Handle, current.Handle); }
                 };
-                f.State.Tick();
+                f.Pickup(ground, residual == ground.Stack ? 0 : residual);
                 try { AssertImage(f, row.GetProperty("after")); }
                 catch (Exception error) { throw new InvalidOperationException($"{platform}/{I(row, "id")}/{row.GetProperty("profile").GetString()}/phase={f.Member.ItemPhase.HasValue}", error); }
                 Assert.Equal(residual > 0, f.Items.TryGetActive(ground.Handle.Slot, out var after));
                 if (residual > 0) Assert.Equal(residual, (int)after.Stack);
-                // State.Tick also owns physical motion, unlike the configured source PickupItem call.
-                // Only accepted pickup observers are compared here, not incidental motion notifications.
                 Assert.Equal(residual < ground.Stack, observed);
                 if (observed) { Assert.True(publication[0] is 21 or 151); Assert.All(publication.Skip(1), packet => Assert.Equal(5, packet)); }
                 else Assert.Empty(publication);
@@ -79,7 +77,7 @@ public sealed class OwnedCoinPickupAuthority1458Tests
             Assert.True(f.Items.TryAllocateSourceDrop(new WorldItemDropStateUpdate(1600, 1606, 0, 0, 1, 0, WorldItemOwnershipMode.None, 71, false, 0, 0), default, out var item, out _));
             Assert.True(f.Items.TryApplyDrop(item.Handle.Slot, new(1600, 1606, 0, 0, 2, 0, WorldItemOwnershipMode.None, 71, false, 0, 0), out item));
             Assert.True(f.Items.TryApplyOwner(item.Handle.Slot, new(0, 15, 1, 0, 1600, 1606), out item));
-            f.Events.Seen.Clear(); f.State.Tick();
+            f.Events.Seen.Clear(); f.Pickup(item);
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 50, out var untouched));
             // The value owner now admits the physical source journal while preserving only
             // the original one trusted copper unit; the raw second unit is not funded.
@@ -95,7 +93,7 @@ public sealed class OwnedCoinPickupAuthority1458Tests
             // Original selected neutral coins retain their real style1 remote phase.
             // Pickup uses the unchanged source-selected0 rather than a neutral-slot translation.
             f.Set(0, 71, 1); var item = f.Drop(71, 1);
-            f.State.Tick(); Assert.NotNull(f.Member.ItemPhase);
+            f.PickupAfterTick(item); Assert.NotNull(f.Member.ItemPhase);
             Assert.False(f.Items.TryGetActive(item.Handle.Slot, out _));
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var held)); Assert.Equal(2, (int)held.Stack);
         }
@@ -132,7 +130,7 @@ public sealed class OwnedCoinPickupAuthority1458Tests
                     f.Events.Seen.Clear();
                     throw new InvalidOperationException("accepted coin observer");
                 };
-                Assert.Throws<InvalidOperationException>(() => f.State.Tick()); Assert.True(invoked);
+                Assert.Throws<InvalidOperationException>(() => f.Pickup(item)); Assert.True(invoked);
                 Assert.True(f.Players.TryGetInventoryItem(f.Connection, 51, out var newer));
                 Assert.Equal(3, newer.ItemType.Value); Assert.Equal(77, (int)newer.Stack);
                 Assert.DoesNotContain((short)51, f.Events.Seen);
