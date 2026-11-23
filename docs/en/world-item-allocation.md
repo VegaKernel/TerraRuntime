@@ -55,6 +55,16 @@ Ordinary contact pickup, proven inventory throws and conserved cursor transfers 
 
 Pickup still requires the reserved player, physical contact, a living nonghost actor, expired grab delay, supported storage and proven world-item stock. Drops debit proven inventory or the remaining one-use character-import allowance before publication. A retired phase permits only idle drops and cursor transfers. Unknown item-time disables the left-click alternative; the existing conserved right-click transition can still match a completed pair. Favorite cursor return keeps its existing complete storage plan. Unknown ownership, stale generations and replayed requests grant no stock.
 
-Regression coverage includes three repeated pickup/cursor/drop cycles for Wood, Stone, Gel, mana potion and copper/silver coins, the full grab-delay clock, refused repeated drops and stale removal receipts. Controlled contact positions do not claim full item-flight parity. An unmodified client session remains a separate acceptance step.
+Regression coverage includes three repeated pickup/cursor/drop cycles for Wood, Stone, Gel, mana potion and copper/silver coins, the full grab-delay clock, refused repeated drops and stale removal receipts. The fixtures use controlled contact positions.
 
 [Managed checkpoint, 2026-11-16](../verification/net11-stable-item-flow-darts-managed-20261116.json).
+
+## Pickup requests from connected players
+
+Terraria 1.4.5.8 adds the item to the local character's inventory and sends packet `151` for complete pickup or packet `21` with the remaining ground stack for partial pickup. Its next inventory sync sends packet `5` for changed slots. The server may reserve the item and update its timers before pickup. An ordinary connected player initiates the storage transaction with the pickup packet. The server checks the connection, item generation, reservation, contact, exact quantity and funded stock, then adopts the inventory and world-item changes together.
+
+Running pickup on contact from the server tick previously allowed a complete removal to reach a classic client before its own inventory update. A classic client with an unlocked inventory handles its own slot changes locally. Request-driven pickup preserves that order even when the remote player phase has retired. Trusted server-owned bots retain their existing pickup owner.
+
+Unmodified Terraria 1.4.5.8 sessions confirmed throwing and recovering the entire imported Wire stack and splitting one Actuator to the cursor, throwing it, then restoring the original stack on pickup. The old build removed the Actuator immediately after the reservation and the client sent no pickup receipt. In the corrected session the client sent `151` and restored the inventory quantity before the server published removal. An additional session against the original dedicated server confirmed the split and pickup sequence. Exact throw pose validation can still refuse locally advanced movement or knockback. Live partial pickup with a residual ground stack and other cursor histories remain open.
+
+[Combined managed and client evidence, 2026-11-23](../verification/items-and-lava-slime-managed-20261123.json).

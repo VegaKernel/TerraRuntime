@@ -1875,7 +1875,7 @@ Ownership/invariants for this path:
 - `WorldTileAuthority` applies strict radius membership, `CanExplodeTile`, wall eligibility, transactional drops, liquid wake and packet replication. Unknown types and unsupported tile/object cases fail closed;
 - a short-lived, bounded `RuntimeProjectileTileExplosionEchoTracker` consumes only exact owner/tile/action convergence echoes after authoritative mutation. The network packet-17 ceiling remains an emergency containment boundary, not gameplay authority.
 
-## Server-owned world-item pickup path
+## Connected player world-item pickup path
 
 ```mermaid
 flowchart LR
@@ -1884,14 +1884,14 @@ flowchart LR
     Store[RuntimeWorldItemStore owner reservation]
     P22[packet 22 ItemOwner]
     Client[reserved client]
-    P151[inbound packet 151 full pickup]
-    Remove[owner-gated authoritative removal]
-    Peers[packet 151 replication]
+    Pickup[inbound packet 151 or residual packet 21]
+    Adopt[atomic inventory and ground item adoption]
+    Peers[world-item and inventory publications]
 
-    Tick --> Owner --> Store --> P22 --> Client --> P151 --> Remove --> Peers
+    Tick --> Owner --> Store --> P22 --> Client --> Pickup --> Adopt --> Peers
 ```
 
-The current `WorldItem.FindOwner` slice runs every five ticks and accepts an empty main slot or a matching partial stack with a verified maximum, including occupied ammo slots. Unknown favorite-item rules/maxima, cursor and ordinary-item coin-slot space do not qualify. Inbound22 never grants ownership. Packet151 (and source-supported empty21) removal requires the exact current item generation and reservation owner; no active item means no permission, including instanced leases. General GetItem, world-item stacking/overflow, special magnets and alternate-storage routing remain incomplete.
+The current `WorldItem.FindOwner` slice runs every five ticks and accepts an empty main slot or a matching partial stack with a verified maximum, including occupied ammo slots. Unknown favorite-item rules, unknown maxima, the cursor and ordinary-item coin-slot space do not qualify. Inbound packet `22` grants no ownership. Once the client reports pickup, `WorldItemAuthority` checks the exact current generation and reservation owner. Ordinary funded items also require contact and an owned storage plan before inventory and ground-item custody are adopted. Server ticks maintain reservation and delay; they leave the pickup initiation to the connected player. The independent server-owned bot path still uses its exact-generation take transaction. General GetItem, world-item stacking and overflow, special magnets and alternate storage remain incomplete.
 
 ## Operator bot ownership path
 

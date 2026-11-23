@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-23",
+  "issues": [
+    123,
+    124
+  ],
+  "status": "accepted-managed-scoped",
+  "baseline": "ee9172c23b773c1d2e90790f3e837c485714a5f2",
+  "testedCommit": "39f337b309ddf4445f0a9603e3ceda59848fdbdf",
+  "sdk": "11.0.100",
+  "liveTestedCommit": "9a6b9f70e351475e56a53c5818c6282f60a9dc26",
+  "managedRelease": {
+    "warnings": 0,
+    "errors": 0,
+    "applicationSha256": "67ac1a539c5aa8c10ffcfc23444b3a3b963ab359711806c655fec0afc197013e",
+    "testSha256": "f2188c76e48fedce1487a752e3957c437babe39f34eb37a1f257b45bca941729",
+    "nonTestDllsPinnedToLiveRun": 157,
+    "smokes": [
+      "loop",
+      "protocol",
+      "network",
+      "world",
+      "tui"
+    ],
+    "focused": {
+      "total": 86777,
+      "passed": 86777,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "not-run": 0
+    },
+    "fast": {
+      "mode": "fast",
+      "discoveredMethods": 6164,
+      "selectedMethods": 5997,
+      "total": 254661,
+      "passed": 254661,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "not-run": 0
+    },
+    "affected": {
+      "mode": "full",
+      "discoveredMethods": 6164,
+      "selectedMethods": 6164,
+      "total": 1799976,
+      "passed": 1799976,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "not-run": 0
+    },
+    "causalControls": {
+      "edge": {
+        "total": 51,
+        "passed": 22,
+        "failed": 29,
+        "errors": 0,
+        "skipped": 0,
+        "not-run": 0
+      },
+      "attachments": {
+        "total": 497,
+        "passed": 71,
+        "failed": 426,
+        "errors": 0,
+        "skipped": 0,
+        "not-run": 0
+      },
+      "pickup": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0,
+        "not-run": 0
+      }
+    },
+    "controlApplicationSha256": "465d0328eb849f81a9044cdef7ff710e80a5a5b942dbe51500870c1e62bd8025"
+  },
+  "lavaSlime": {
+    "originalLinuxServerSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+    "worldEdge": {
+      "callsPerRun": 48,
+      "identicalRuns": 2,
+      "rawSha256": "0cac9085428c38e605783c11e99ced661fd7657983d0e0f9852ea5aa2af65ec9",
+      "fixtureSha256": "789325c5b073f953eaa5a450159ccfd1e160393825e04f903ea4f6eb5c515be4"
+    },
+    "objects": {
+      "fixtureRows": 496,
+      "fixtureSha256": "a9054473c8931261a7dedd48b8d498dd5ca561dc5e833e97d1f917bf89809b11",
+      "sourceCaptures": [
+        {
+          "sha256": "5f96f4674a1938e55787dfad8ef2fc22079bfbc5c8226e52060ba9a13774a10d",
+          "callsPerRun": 448,
+          "identicalRuns": 2,
+          "firstChanceExceptions": 0
+        },
+        {
+          "sha256": "b64f6268a4592444a7475276e33d4737a1e7f589338e2985d6462a85e6060471",
+          "callsPerRun": 54,
+          "identicalRuns": 2,
+          "firstChanceExceptions": 0
+        }
+      ],
+      "scope": [
+        "Platform19 styles0..69",
+        "Torch4 styles0..23",
+        "WaterCandle49",
+        "Switch136",
+        "PressurePlate135 styles0..7",
+        "ProjectilePressurePad442",
+        "Rope213",
+        "Table14 styles0 and13",
+        "Chair15 styles0 and16",
+        "Anvil16 style0",
+        "WorkBench18 styles0 and14"
+      ]
+    },
+    "remaining": [
+      "Arbitrary furniture and metadata-backed objects",
+      "Falling blocks and natural vegetation",
+      "Whole-world liquid or continuous official-client synchronization"
+    ]
+  },
+  "itemPickup": {
+    "exactCombinedLive": {
+      "date": "2026-11-23",
+      "issue": 123,
+      "testedCommit": "9a6b9f70e351475e56a53c5818c6282f60a9dc26",
+      "clientVersion": "1.4.5.8",
+      "binarySha256": {
+        "client": "960a03bff6050cf7be16dfc1a7b19e10fc2c4f8f835a6a3b135a50dd9e6ba2f3",
+        "application": "67ac1a539c5aa8c10ffcfc23444b3a3b963ab359711806c655fec0afc197013e",
+        "server": "a86d39e066677ed64d5745ee2aadfff0a2df1f5d551aa7d1f219c73621f3a269"
+      },
+      "originalFixtureWorldSha256": "ef155fc3aa438d1bddaf9dab1de1842ec315da0b01f5198ee176e05de430c1c2",
+      "rawRelayTraceSha256": "88cc8d15593f9648c44b9d23ce7a766041de5d0f5f3d9e12eb24ac8a9fe74d53",
+      "runtimeEventsSha256": "8ce9d299e899d59907193c17886200adc896aa35407e6ba372321ca60de0c0b8",
+      "frameCount": 825,
+      "sectionCount": 15,
+      "cursorSplitThenFullPickup": {
+        "sourceDebit": {
+          "at": 1795398160823066100,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c00050006000e2700510300"
+        },
+        "cursorCredit": {
+          "at": 1795398160839190300,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c0005003a00010000510300"
+        },
+        "clientThrow": {
+          "at": 1795398171348603100,
+          "lane": "client",
+          "peer": 1,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00159001001003470018824500008040000000c00100000a510364"
+        },
+        "serverBirth": {
+          "at": 1795398171393425100,
+          "lane": "server",
+          "peer": 1,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00150000001003470018824500008040000000c001000008510364"
+        },
+        "serverReservation": {
+          "at": 1795398173059933300,
+          "lane": "server",
+          "peer": 1,
+          "id": 22,
+          "size": 17,
+          "hex": "1100160000000f00000010034700188245"
+        },
+        "clientRemoval": {
+          "at": 1795398178065996200,
+          "lane": "client",
+          "peer": 1,
+          "id": 151,
+          "size": 5,
+          "hex": "0500970000"
+        },
+        "clientInventoryCredit": {
+          "at": 1795398178072304200,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c00050006000f2700510300"
+        },
+        "serverRetirement": {
+          "at": 1795398178091105100,
+          "lane": "server",
+          "peer": 1,
+          "id": 151,
+          "size": 5,
+          "hex": "0500970000"
+        }
+      },
+      "matchesStandalonePacketsExactly": true,
+      "disposition": {
+        "playingPeerClosed": true,
+        "protocolFrameRejections": 0,
+        "canonicalCheckpointCommitted": true
+      },
+      "savedWorldSha256": "a6c0289fea59ce9c63746d5c4826f33841cd1ffdd574747dc6199e3bbf4b8a4b"
+    },
+    "standaloneLiveBinaries": {
+      "clientOfficial": "960a03bff6050cf7be16dfc1a7b19e10fc2c4f8f835a6a3b135a50dd9e6ba2f3",
+      "serverOfficialWindows": "328872c65a4a7a94f050ead1566f1567af15c3193d4d7008a460507d3686d7c2",
+      "baselineApplication": "465d0328eb849f81a9044cdef7ff710e80a5a5b942dbe51500870c1e62bd8025",
+      "candidateApplication": "ea8ee432a47410123e50b2d1dbc1e44e147f695789c499c1d44cf980abfb1c57",
+      "candidateServer": "07ef658d73a90a9e877cfcf6dfa69331284b5dd513daa5f5ee1146e5731c94ff",
+      "candidateTests": "d2c72db731265ba107f47f16eef4cdaf2e14d3ebdbc653c14434e148c1017e79"
+    },
+    "standaloneRawTraceSha256": {
+      "quiet-baseline": "61636331ee9c54d2884587544aca8b1bc8f6941998dd8742eb61fde2837ca3c7",
+      "quiet-candidate": "5e2555684a5e5fb534a180a4dc376541aa9803c77b6ce91f348a5b205427875e",
+      "quiet-official": "39e9f411795f6b853bfe6d2af90eedbb3b4c7774b7eaaa1a5146e5c9562ee201",
+      "first-terraruntime": "411f79732877b93ddc477b56bd61e32d7bc975f311075a32847bf6a30e8177dd"
+    },
+    "standaloneFullStack": {
+      "clientThrow": {
+        "at": 1795397625470376500,
+        "lane": "client",
+        "peer": 1,
+        "id": 21,
+        "size": 28,
+        "hex": "1c00159001001003470018824500008040000000c00f27000a120264"
+      },
+      "serverBirth": {
+        "at": 1795397625524166700,
+        "lane": "server",
+        "peer": 1,
+        "id": 21,
+        "size": 28,
+        "hex": "1c00150000001003470018824500008040000000c00f270008120264"
+      },
+      "serverReservation": {
+        "at": 1795397627187827500,
+        "lane": "server",
+        "peer": 1,
+        "id": 22,
+        "size": 17,
+        "hex": "1100160000000f00000010034700188245"
+      },
+      "clientThrowFacts": {
+        "index": 400,
+        "x": 33552.0,
+        "y": 4163.0,
+        "vx": 4.0,
+        "vy": -2.0,
+        "stack": 9999,
+        "prefix": 0,
+        "flags": 10,
+        "item": 530
+      },
+      "serverBirthFacts": {
+        "index": 0,
+        "x": 33552.0,
+        "y": 4163.0,
+        "vx": 4.0,
+        "vy": -2.0,
+        "stack": 9999,
+        "prefix": 0,
+        "flags": 8,
+        "item": 530
+      },
+      "clientRemoval": {
+        "at": 1795397627190663500,
+        "lane": "client",
+        "peer": 1,
+        "id": 151,
+        "size": 5,
+        "hex": "0500970000"
+      },
+      "clientInventoryCredit": {
+        "at": 1795397627206699100,
+        "lane": "client",
+        "peer": 1,
+        "id": 5,
+        "size": 12,
+        "hex": "0c00050036000f2700120200"
+      },
+      "serverRetirement": {
+        "at": 1795397627211264900,
+        "lane": "server",
+        "peer": 1,
+        "id": 151,
+        "size": 5,
+        "hex": "0500970000"
+      }
+    },
+    "baselineOriginalAndCorrectedSplitComparison": {
+      "prematureServerRetirementWithoutClientCreditOnBaseline": {
+        "clientThrow": {
+          "at": 1795396622610240800,
+          "lane": "client",
+          "peer": 1,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00159001001003470018824500008040000000c00100000a510364"
+        },
+        "serverBirth": {
+          "at": 1795396622655078400,
+          "lane": "server",
+          "peer": 1,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00150000001003470018824500008040000000c001000008510364"
+        },
+        "serverReservation": {
+          "at": 1795396626765442900,
+          "lane": "server",
+          "peer": 1,
+          "id": 22,
+          "size": 17,
+          "hex": "1100160000000f00000010034700188245"
+        },
+        "clientThrowFacts": {
+          "index": 400,
+          "x": 33552.0,
+          "y": 4163.0,
+          "vx": 4.0,
+          "vy": -2.0,
+          "stack": 1,
+          "prefix": 0,
+          "flags": 10,
+          "item": 849
+        },
+        "serverBirthFacts": {
+          "index": 0,
+          "x": 33552.0,
+          "y": 4163.0,
+          "vx": 4.0,
+          "vy": -2.0,
+          "stack": 1,
+          "prefix": 0,
+          "flags": 8,
+          "item": 849
+        },
+        "serverRetirement": {
+          "at": 1795396626777331000,
+          "lane": "server",
+          "peer": 1,
+          "id": 151,
+          "size": 5,
+          "hex": "0500970000"
+        },
+        "sourceDebit": {
+          "at": 1795396621675972000,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c00050006000e2700510300"
+        },
+        "cursorCredit": {
+          "at": 1795396621692741300,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c0005003a00010000510300"
+        }
+      },
+      "authenticatedPickupAndRestoredStockOnCandidate": {
+        "clientThrow": {
+          "at": 1795397870631153000,
+          "lane": "client",
+          "peer": 2,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00159001001003470018824500008040000000c00100000a510364"
+        },
+        "serverBirth": {
+          "at": 1795397870643954800,
+          "lane": "server",
+          "peer": 2,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00150000001003470018824500008040000000c001000008510364"
+        },
+        "serverReservation": {
+          "at": 1795397872312359900,
+          "lane": "server",
+          "peer": 2,
+          "id": 22,
+          "size": 17,
+          "hex": "1100160000000f00000010034700188245"
+        },
+        "clientThrowFacts": {
+          "index": 400,
+          "x": 33552.0,
+          "y": 4163.0,
+          "vx": 4.0,
+          "vy": -2.0,
+          "stack": 1,
+          "prefix": 0,
+          "flags": 10,
+          "item": 849
+        },
+        "serverBirthFacts": {
+          "index": 0,
+          "x": 33552.0,
+          "y": 4163.0,
+          "vx": 4.0,
+          "vy": -2.0,
+          "stack": 1,
+          "prefix": 0,
+          "flags": 8,
+          "item": 849
+        },
+        "clientRemoval": {
+          "at": 1795397873377311500,
+          "lane": "client",
+          "peer": 2,
+          "id": 151,
+          "size": 5,
+          "hex": "0500970000"
+        },
+        "clientInventoryCredit": {
+          "at": 1795397873384175600,
+          "lane": "client",
+          "peer": 2,
+          "id": 5,
+          "size": 12,
+          "hex": "0c00050006000f2700510300"
+        },
+        "serverRetirement": {
+          "at": 1795397873387734100,
+          "lane": "server",
+          "peer": 2,
+          "id": 151,
+          "size": 5,
+          "hex": "0500970000"
+        },
+        "sourceDebit": {
+          "at": 1795397849160507900,
+          "lane": "client",
+          "peer": 2,
+          "id": 5,
+          "size": 12,
+          "hex": "0c00050006000e2700510300"
+        },
+        "cursorCredit": {
+          "at": 1795397849176728100,
+          "lane": "client",
+          "peer": 2,
+          "id": 5,
+          "size": 12,
+          "hex": "0c0005003a00010000510300"
+        }
+      },
+      "originalServerClientComparison": {
+        "clientThrow": {
+          "at": 1795397033473583100,
+          "lane": "client",
+          "peer": 1,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00159001483003470018824500008040000000c00100000a510364"
+        },
+        "serverBirth": {
+          "at": 1795397033482309800,
+          "lane": "server",
+          "peer": 1,
+          "id": 21,
+          "size": 28,
+          "hex": "1c00150400483003470018824500008040000000c001000008510364"
+        },
+        "serverReservation": {
+          "at": 1795397035152722400,
+          "lane": "server",
+          "peer": 1,
+          "id": 22,
+          "size": 17,
+          "hex": "1100160400000f00004a7a034700808245"
+        },
+        "clientThrowFacts": {
+          "index": 400,
+          "x": 33584.28125,
+          "y": 4163.0,
+          "vx": 4.0,
+          "vy": -2.0,
+          "stack": 1,
+          "prefix": 0,
+          "flags": 10,
+          "item": 849
+        },
+        "serverBirthFacts": {
+          "index": 4,
+          "x": 33584.28125,
+          "y": 4163.0,
+          "vx": 4.0,
+          "vy": -2.0,
+          "stack": 1,
+          "prefix": 0,
+          "flags": 8,
+          "item": 849
+        },
+        "clientRemoval": {
+          "at": 1795397069789340300,
+          "lane": "client",
+          "peer": 1,
+          "id": 151,
+          "size": 5,
+          "hex": "0500970400"
+        },
+        "clientInventoryCredit": {
+          "at": 1795397069804469200,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c00050006000f2700510300"
+        },
+        "sourceDebit": {
+          "at": 1795397032876390600,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c00050006000e2700510300"
+        },
+        "cursorCredit": {
+          "at": 1795397032891109800,
+          "lane": "client",
+          "peer": 1,
+          "id": 5,
+          "size": 12,
+          "hex": "0c0005003a00010000510300"
+        }
+      }
+    },
+    "observedRefusals": {
+      "walkingCandidateClientThrow": {
+        "at": 1795397904624077800,
+        "lane": "client",
+        "peer": 2,
+        "id": 21,
+        "size": 28,
+        "hex": "1c001590017a3003470018824514aec740000000c00100000aef0464"
+      },
+      "walkingCandidateThrowFacts": {
+        "index": 400,
+        "x": 33584.4765625,
+        "y": 4163.0,
+        "vx": 6.239999771118164,
+        "vy": -2.0,
+        "stack": 1,
+        "prefix": 0,
+        "flags": 10,
+        "item": 1263
+      },
+      "walkingOriginalClientThrow": {
+        "at": 1795397094460853500,
+        "lane": "client",
+        "peer": 1,
+        "id": 21,
+        "size": 28,
+        "hex": "1c0015900100b6044700188245a470bdc0000000c00100000aef0464"
+      },
+      "walkingOriginalServerBirth": {
+        "at": 1795397094472902700,
+        "lane": "server",
+        "peer": 1,
+        "id": 21,
+        "size": 28,
+        "hex": "1c0015040000b6044700188245a470bdc0000000c001000008ef0464"
+      },
+      "cursorSplitAfterPriorWireLoopCandidateClientThrow": {
+        "at": 1795397654655467800,
+        "lane": "client",
+        "peer": 1,
+        "id": 21,
+        "size": 28,
+        "hex": "1c00159001001003470018824500008040000000c00100000a510364"
+      }
+    },
+    "twoSimultaneousClientsVerified": false,
+    "fullGroundResidualPartialPickupGuiVerified": false
+  },
+  "localNativeAot": "user-deferred",
+  "issuesClosed": []
+}
