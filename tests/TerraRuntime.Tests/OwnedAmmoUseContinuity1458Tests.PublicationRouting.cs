@@ -68,9 +68,7 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         f.Control(7,false);for(int tick=0;tick<40;tick++)f.State.Tick();
         if(matchingEmpty)
         {
-            var drop=new WorldItemDropStateUpdate(f.Member.PositionX+4,f.Member.PositionY+4,0,0,1,0,
-                WorldItemOwnershipMode.None,2,false,0,0);
-            Assert.True(f.SpawnSourceDrop(in drop,out _));f.DiscoverOwner();
+            ReceiveSourceDrop(f, 2);
         }
         else
         {
@@ -107,14 +105,28 @@ public sealed partial class OwnedAmmoUseContinuity1458Tests
         // slot. Falling through from an unmatched ammo report cannot bypass
         // its funded109 ceiling or grant resource custody.
         f.Control(0,false);for(int tick=0;tick<45;tick++)f.State.Tick();
-        var manaDrop=new WorldItemDropStateUpdate(f.Member.PositionX+4,f.Member.PositionY+4,0,0,1,0,
-            WorldItemOwnershipMode.None,109,false,0,0);
-        Assert.True(f.SpawnSourceDrop(in manaDrop,out _));f.DiscoverOwner();
+        ReceiveSourceDrop(f, 109);
         Assert.Equal(109,f.Item(0).ItemType.Value);Assert.Equal(1,f.Funded(0));
         rejected=f.State.RejectedPlayerEquipmentUpdates;var random=f.PlayerRandom.Clone();
         InventoryReport(f,0,109,5);f.OriginalAmmoFrame([3,0,138]);
         Assert.Equal(rejected+1,f.State.RejectedPlayerEquipmentUpdates);Assert.Equal(1,f.Item(0).Stack);
         Assert.Equal(1,f.Funded(0));Assert.True(f.PlayerRandom.HasSameState(random));
+    }
+
+    private static void ReceiveSourceDrop(LocalWeaponClockRuntimeChecks1458.Fixture f, short itemType)
+    {
+        var drop = new WorldItemDropStateUpdate(f.Member.PositionX + 4, f.Member.PositionY + 4, 0, 0, 1, 0,
+            WorldItemOwnershipMode.None, itemType, false, 0, 0);
+        Assert.True(f.SpawnSourceDrop(in drop, out var item));
+        f.DiscoverOwner();
+        Assert.True(f.Items.TryGetActive(item.Handle.Slot, out var reserved));
+        Assert.Equal(item.Handle, reserved.Handle);
+        Assert.Equal(f.Player.Slot.Value, reserved.OwnerPlayerId);
+
+        byte[] wire = [5, 0, 151, 0, 0];
+        BinaryPrimitives.WriteInt16LittleEndian(wire.AsSpan(3), item.Handle.Slot);
+        f.OriginalAmmoFrame(wire);
+        Assert.False(f.Items.TryGetActive(item.Handle.Slot, out _));
     }
 
     private static void InventoryReport(LocalWeaponClockRuntimeChecks1458.Fixture f,short slot,short type,short stack)

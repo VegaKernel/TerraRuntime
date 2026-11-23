@@ -821,6 +821,7 @@ internal sealed class LocalWeaponClockRuntimeChecks1458
                 5 or 13 or 138 => bootstrap.OnFrame(frame),
                 27 => tileSink.OnFrame(frame),
                 17 or 125 => ammoTileSink.OnFrame(frame),
+                151 => ItemSink.OnFrame(frame),
                 50 => new PlayerBuffFrameSink(Connection.Source,bootstrap,tileSink,
                     new RuntimePlayerBuffNetworkIngress(new ApplyingIngress(State))).OnFrame(frame),
                 _ => TerrariaFrameSinkResult.Continue
