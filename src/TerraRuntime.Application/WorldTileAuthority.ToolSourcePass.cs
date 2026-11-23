@@ -292,7 +292,7 @@ internal sealed partial class WorldTileAuthority
         {
             var before = step.SourceTile;
             if (before.Type == 423 && !TryRemoveLogicSensor(step.X, step.Y)) return false;
-            if ((!clientRole || deathDrop is not null) && !step.NoItem && !StageDrops(step.X, step.Y, in before)) return false;
+            if ((!clientRole || IsLavaDeathFraming) && !step.NoItem && !StageDrops(step.X, step.Y, in before)) return false;
             var after = before;
             after.Type = 0;
             after.FrameX = -1; after.FrameY = -1;
@@ -309,7 +309,7 @@ internal sealed partial class WorldTileAuthority
 
         private bool StageDrops(int x, int y, in WorldTile before)
         {
-            if (deathDrop is not null) return TryStageDeathDrop(x, y, in before);
+            if (IsLavaDeathFraming) return TryStageDeathDrop(x, y, in before);
             if (server is null) return false;
             if (before.Type is 135 or 423 or 428) return TryStageWiringTriggerDrop(x, y, in before);
             if (before.Type == 210) return server.TryStageSourceItem(new(937), 1, x, y);
@@ -370,7 +370,8 @@ internal sealed partial class WorldTileAuthority
             if (tile.Type is 135 or 210 or 428) return FramePressurePlate(step.X, step.Y);
             if (tile.Type == 423)
                 return tile.FrameX % 18 == 0 && tile.FrameY % 18 == 0 || Push(new(StepKind.Kill, step.X, step.Y));
-            if (wiringActuationFrame && tile.Type == WiringTorchTile) return FrameWiringTorch(step.X, step.Y, in tile);
+            if ((wiringActuationFrame || IsLavaDeathFraming) && tile.Type == WiringTorchTile)
+                return FrameTorch(step.X, step.Y, in tile);
             if (tile.Type is 137 or 424 or 442) return TryFrameToolFurniture(step.X, step.Y, in tile);
             if (tile.Type == LarvaTile) return FrameLarva(step.X, step.Y, in tile);
             if (IsOrdinaryPlacementFurniture(tile.Type)) return FrameOrdinaryPlacementFurniture(step.X, step.Y, in tile);

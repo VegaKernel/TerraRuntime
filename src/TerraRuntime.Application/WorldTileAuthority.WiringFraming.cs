@@ -95,7 +95,7 @@ internal sealed partial class WorldTileAuthority
             finally { wiringActuationFrame = false; }
         }
 
-        private bool FrameWiringTorch(int x, int y, in WorldTile tile)
+        private bool FrameTorch(int x, int y, in WorldTile tile)
         {
             Span<WorldTile> cells = stackalloc WorldTile[9];
             for (int dy = -1; dy <= 1; dy++)
@@ -125,7 +125,11 @@ internal sealed partial class WorldTileAuthority
                 IsWiringBeam(right.Type) || rightFacts.IsTreeTrunk &&
                 IsActiveWiringTree(in cells[2]) && IsActiveWiringTree(in cells[8]))) facing = 2;
             else if (tile.Wall > 0) facing = 0;
-            else return false; // Full frameY-dependent torch removal/drop is not admitted by this limited pass.
+            else
+            {
+                // Actuation still has its own narrower dry-attachment boundary.
+                return IsLavaDeathFraming && Push(new(StepKind.Kill, x, y));
+            }
             var after = tile;
             after.FrameX = (short)((tile.FrameX >= WiringTorchOffFrame ? WiringTorchOffFrame : 0) + facing * WiringTorchFacingFrame);
             return after.Equals(tile) || Stage(WorldTileMutationKind.TransformTile, x, y, in tile, in after);

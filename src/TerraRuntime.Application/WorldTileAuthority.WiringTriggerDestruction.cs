@@ -41,19 +41,24 @@ internal sealed partial class WorldTileAuthority
         private bool TryStageWiringTriggerDrop(int x, int y, in WorldTile before)
         {
             if (server is null) return false;
+            ushort item = GetWiringTriggerDropItem(before.Type, before.FrameY);
+            // The source routes a pressed plate's release through HitSwitch before
+            // allocating the item, including when the observed frame has no item.
+            if (before.Type == 428 && !server.TryStageWeightedPlateRemoval(x, y)) return false;
+            return item == 0 || server.TryStageSourceItem(new ItemTypeId(item), 1, x, y);
+        }
+
+        private static ushort GetWiringTriggerDropItem(ushort type, short frameY)
+        {
             // The dedicated KillTile_GetItemDrops maps the vertical frame to each item.
-            int style = before.FrameY / 18;
-            int item = before.Type switch
+            int style = frameY / 18;
+            return type switch
             {
                 135 => style switch { 0 => 529, 1 => 541, 2 => 542, 3 => 543, 4 => 852, 5 => 853, 6 => 1151, _ => 0 },
                 423 => style switch { 0 => 3613, 1 => 3614, 2 => 3615, 3 => 3726, 4 => 3727, 5 => 3728, 6 => 3729, _ => 0 },
                 428 => style switch { 0 => 3630, 1 => 3632, 2 => 3631, 3 => 3626, _ => 0 },
                 _ => 0
             };
-            // The source routes a pressed plate's release through HitSwitch before
-            // allocating the item, including when the observed frame has no item.
-            if (before.Type == 428 && !server.TryStageWeightedPlateRemoval(x, y)) return false;
-            return item == 0 || server.TryStageSourceItem(new ItemTypeId((ushort)item), 1, x, y);
         }
     }
 

@@ -185,10 +185,10 @@ internal sealed partial class WorldTileAuthority
             // two draws; only TEWeaponsRack.DropItem suppresses that whole call.
             float vx = random.Next(-30, 31) * .1f;
             float vy = (VanillaFurnitureItemFacts1458.IsNoGravity(item) ? random.Next(-30, 31) : random.Next(-40, -15)) * .1f;
-            if (clientRole) return true;
+            if (clientRole && deathDrop is null) return true;
             var drop = new WorldItemDropStateUpdate(x + width / 2 - 8, y + height / 2 - 8, vx, vy,
                 1, checked((byte)normalized.Prefix.Value), WorldItemOwnershipMode.None, checked((short)item.Value), false, 0, 0);
-            return server is not null && server.TryStageDrop(in drop);
+            return deathDrop is not null ? deathDrop(drop) : server is not null && server.TryStageDrop(in drop);
         }
 
         private static bool IsProperPlatform(short frameX)
