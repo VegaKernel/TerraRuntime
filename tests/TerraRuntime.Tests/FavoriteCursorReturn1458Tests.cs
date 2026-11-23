@@ -102,8 +102,7 @@ public sealed class FavoriteCursorReturn1458Tests
         using (var f = new Fixture())
         {
             f.Set(50, 71, 99);
-            f.Drop(71, 1);
-            f.State.Tick();
+            f.PickupAfterTick(f.Drop(71, 1));
             Assert.True(Store(f).TryGetFundedCoinValue(f.Connection, 50, out long value));
             Assert.Equal(1, value);
             OwnedHumanPickupAuthority1458Tests.SeedFundedCursorTuple(f, new(new(110), 20, new(0), 0), 58);
@@ -126,8 +125,7 @@ public sealed class FavoriteCursorReturn1458Tests
             // a fully funded silver unit or being erased by noncoin normalization.
             for (short slot = 50; slot < 54; slot++) f.Set(slot, 3, 9999);
             f.Set(0, 71, 99);
-            f.Drop(71, 1);
-            f.State.Tick();
+            f.PickupAfterTick(f.Drop(71, 1));
             Assert.Equal(72, f.ItemImage()[0].ItemType.Value);
             Assert.True(Store(f).TryGetFundedCoinValue(f.Connection, 0, out long value));
             Assert.Equal(1, value);
