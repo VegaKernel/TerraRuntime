@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-23",
+  "issue": 125,
+  "status": "accepted-managed-scoped",
+  "sdk": "11.0.100",
+  "originalLinuxExecutableSha256": "4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034",
+  "initial": {
+    "testedCommit": "92168a452e95ab11a39270b1a44d1de58e0ae4db",
+    "publishedMain": "92168a452e95ab11a39270b1a44d1de58e0ae4db",
+    "testSha256": "b67af4c02b1178a2ece41259fff2e8c79bb77f65c0da361785c4c05fc4c8a86f",
+    "applicationSha256": "0aa4d267a44fe48e8ebdf9f8a142616b8af68d09dde435f18d4e0fdf26f62fdf",
+    "focused": {
+      "total": 67216,
+      "passed": 67216,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "fast": 253590,
+    "unfiltered": 1798905,
+    "discoveredMethods": 6146,
+    "managedSmokes": [
+      "smoke-loop",
+      "smoke-protocol",
+      "smoke-network",
+      "smoke-world",
+      "smoke-tui"
+    ],
+    "automaticCi": {
+      "runId": 45085663664,
+      "nativeAotWindows": "success",
+      "nativeAotLinux": "success"
+    }
+  },
+  "expanded": {
+    "testedCommit": "25140e20ee5dcff9f2b80f1a7757e6aec5e8bdd3",
+    "testSha256": "4e9205a58a1942e684497a1a966bebaa95523be07e7283a6ad9274703825f926",
+    "applicationSha256": "465d0328eb849f81a9044cdef7ff710e80a5a5b942dbe51500870c1e62bd8025",
+    "focused": {
+      "total": 67751,
+      "passed": 67751,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "fast": 254113,
+    "unfiltered": 1799428,
+    "discoveredMethods": 6160,
+    "managedSmokes": [
+      "smoke-loop",
+      "smoke-protocol",
+      "smoke-network",
+      "smoke-world",
+      "smoke-tui"
+    ],
+    "localNativeAot": "user-deferred",
+    "separateLiveRuns": {
+      "actuationRod": {
+        "testedCode": "25140e20ee5dcff9f2b80f1a7757e6aec5e8bdd3",
+        "clientExecutableSha256": "960a03bff6050cf7be16dfc1a7b19e10fc2c4f8f835a6a3b135a50dd9e6ba2f3",
+        "serverAppSha256": "465d0328eb849f81a9044cdef7ff710e80a5a5b942dbe51500870c1e62bd8025",
+        "traceSha256": "72bd3a48928e0ca5b56898a3ee6d41b409e781df9950966ec2d1d4ac77f8be23",
+        "frames": 2533,
+        "sections": 15,
+        "actuation": {
+          "tile": [
+            2100,
+            259
+          ],
+          "request": {
+            "at": 1795392234372058100,
+            "lane": "client",
+            "id": 17,
+            "size": 11,
+            "hex": "0b00111334080301000000"
+          },
+          "authoritativeResponse": {
+            "at": 1795392234441944100,
+            "lane": "server",
+            "id": 20,
+            "size": 15,
+            "hex": "0f001434080301010100c100000100"
+          }
+        },
+        "checkpointReload": "Saved rod tile (2100,259): type=1 active=True actuator=True inactive=True"
+      },
+      "wiredHazards": {
+        "testedCode": "25140e20ee5dcff9f2b80f1a7757e6aec5e8bdd3",
+        "traceSha256": "af71a2c33437f4434ef301d31260ee6046384f2751e26a03f9b2e6a01e7430d7",
+        "clientExecutableSha256": "960a03bff6050cf7be16dfc1a7b19e10fc2c4f8f835a6a3b135a50dd9e6ba2f3",
+        "serverAppSha256": "465d0328eb849f81a9044cdef7ff710e80a5a5b942dbe51500870c1e62bd8025",
+        "frames": 1684,
+        "sections": 15,
+        "switch": {
+          "at": 1795392561073160200,
+          "lane": "client",
+          "id": 59,
+          "size": 7,
+          "hex": "07003b33080501"
+        },
+        "projectileBirths": [
+          {
+            "type": 654,
+            "at": 1795392561105853900,
+            "lane": "server",
+            "id": 27,
+            "size": 32,
+            "hex": "20001bff000400006103470008824500000000000000c18e0230140000000040"
+          },
+          {
+            "type": 164,
+            "at": 1795392561179091300,
+            "lane": "server",
+            "id": 27,
+            "size": 32,
+            "hex": "20001bff01040000b8024700c080450000000000000000a40030fa0000002041"
+          },
+          {
+            "type": 98,
+            "at": 1795392561183992400,
+            "lane": "server",
+            "id": 27,
+            "size": 32,
+            "hex": "20001bff02040000ad0347009882450000404100000000620030140000000040"
+          }
+        ],
+        "mineTile": {
+          "at": 1795392561177347800,
+          "lane": "server",
+          "id": 20,
+          "size": 13,
+          "hex": "0d00142f080501010100100000"
+        },
+        "mineRetirement": {
+          "at": 1795392561267332400,
+          "lane": "server",
+          "id": 29,
+          "size": 15,
+          "hex": "0f001dff01040000b8024700c08045"
+        },
+        "statueItem": {
+          "at": 1795392561224621000,
+          "lane": "server",
+          "id": 21,
+          "size": 27,
+          "hex": "1b0015000000d80347004082459a99993e000020c001000000b800"
+        },
+        "playerDamageClaimed": false,
+        "checkpointCommitted": true
+      }
+    },
+    "mixedContactSourceSha256": "f8c8c2c290442e1287ece2a638fd48f993381879e81a78a9356132a61d7f2718",
+    "mixedContactCausalControl": {
+      "total": 1,
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "initialFocusRegistrationError": {
+      "failed": 105,
+      "productionChanged": false
+    }
+  },
+  "scopeRemaining": [
+    "Segmented/wet projectile contacts and further boulder families.",
+    "Active release in circuits that affect actors or contain devices beyond ordinary torches.",
+    "Ancillary platform/plant/liquid and combat contexts beyond the scoped hazard captures.",
+    "Complete cold-section, spectator and section-entity ordering during teleport."
+  ]
+}
