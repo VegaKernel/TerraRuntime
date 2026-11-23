@@ -87,9 +87,9 @@ for (int platform=0;platform<2;platform++)
             Check(allocation.TryClaim()&&allocation.TryAdoptUnpublished(out var publication),name+" prepared incoming ground adoption");
         }
         var randomBefore=random.SourceRandom.Clone();
-        authority.TickOwnedHumanPickups();
-        Check(random.SourceRandom.HasSameState(randomBefore),name+" contact pickup consumes no spawn RNG");
         int expectedResidual=I(row.GetProperty("residual"),"stack");
+        ApplyPickupReceipt(authority, world, connection, expectedResidual);
+        Check(random.SourceRandom.HasSameState(randomBefore),name+" contact pickup consumes no spawn RNG");
         if(expectedResidual==0)Check(world.ActiveCount==0,name+" source whole oversized pickup ground retired");
         else Check(world.TryGetActive(0,out var residual)&&residual.Stack==expectedResidual,name+" exact source residual or unknown-budget retention");
         long retainedGround=0;
@@ -223,9 +223,9 @@ for (int platform=0;platform<2;platform++)
             Check(world.TryGetActive(0,out var timed)&&world.HasOwnedCoinPhysical(timed),name+" source timer preserves current physical capability");
         }
         var randomBefore=random.SourceRandom.Clone();
-        authority.TickOwnedHumanPickups();
-        Check(random.SourceRandom.HasSameState(randomBefore),name+" contact pickup consumes no spawn RNG");
         int expectedResidual=capabilityMode<3?I(incoming,"stack"):I(row.GetProperty("residual"),"stack");
+        ApplyPickupReceipt(authority, world, connection, expectedResidual);
+        Check(random.SourceRandom.HasSameState(randomBefore),name+" contact pickup consumes no spawn RNG");
         if(expectedResidual==0)Check(world.ActiveCount==0,name+" source whole oversized pickup ground retired");
         else Check(world.TryGetActive(0,out var residual)&&residual.Stack==expectedResidual,name+" exact source residual or unknown-budget retention");
         long retainedGround=0;
@@ -326,9 +326,9 @@ for (int platform=0;platform<2;platform++)
             Check(allocation.TryClaim()&&allocation.TryAdoptUnpublished(out var publication),name+" prepared incoming ground adoption");
         }
         var randomBefore=random.SourceRandom.Clone();
-        authority.TickOwnedHumanPickups();
-        Check(random.SourceRandom.HasSameState(randomBefore),name+" contact pickup consumes no spawn RNG");
         int expectedResidual=I(row.GetProperty("residual"),"stack");
+        ApplyPickupReceipt(authority, world, connection, expectedResidual);
+        Check(random.SourceRandom.HasSameState(randomBefore),name+" contact pickup consumes no spawn RNG");
         if(expectedResidual==0)Check(world.ActiveCount==0,name+" source whole oversized pickup ground retired");
         else Check(world.TryGetActive(0,out var residual)&&residual.Stack==expectedResidual,name+" exact source residual or unknown-budget retention");
         long retainedGround=0;
@@ -378,6 +378,22 @@ for (int platform=0;platform<2;platform++)
 
 Assert.True(failures.Count==0,JsonSerializer.Serialize(new {checks,rows,slices,maximumWork,failures}));
 }
+
+private static void ApplyPickupReceipt(WorldItemAuthority authority, RuntimeWorldItemStore world, ConnectionHandle connection, int expectedResidual)
+{
+    Assert.True(world.TryGetActive(0, out var item));
+    if (expectedResidual == 0 || expectedResidual == item.Stack)
+    {
+        authority.TryApply(new WorldItemRemoveRuntimeCommand(connection, item.Handle));
+        return;
+    }
+
+    var residual = new WorldItemDropStateUpdate(item.PositionX, item.PositionY, item.VelocityX, item.VelocityY,
+        checked((short)expectedResidual), item.Prefix, WorldItemOwnershipMode.None, item.ItemNetId,
+        item.Shimmered, item.ShimmerTime, item.EnemyGrabDelayTime);
+    authority.TryApply(new WorldItemDropRuntimeCommand(connection, item.Handle, residual));
+}
+
 [UnsafeAccessor(UnsafeAccessorKind.Field,Name="membership")]
 private static extern ref RuntimePlayerMembership Membership(PlayerAuthority owner);
 [UnsafeAccessor(UnsafeAccessorKind.Field,Name="inventory")]

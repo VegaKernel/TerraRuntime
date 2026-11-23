@@ -40,11 +40,18 @@ public sealed class OwnedHumanPickupAuthority1458Tests
                     (byte)I(config, "reserved"), F(config, "shimmerTime"), config.GetProperty("shimmered").GetBoolean(),
                     F(config, "velocityX"), I(config, "grabDelayTime"), (byte)I(config, "grabDelayPlayer"));
                 var before = f.ItemImage();
-                f.Runtime.WorldItems.TickOwnedHumanPickups();
-                // Original local GrabItems is the oracle except explicit authority policy:
-                // source direct dead caller can pickup, source remote my255 does not invoke pickup.
+                // In source the reserved client's local GrabItems starts the transfer;
+                // calling GrabItems for an original server-side remote player does not start it.
                 string profile = row.GetProperty("profile").GetString()!;
                 bool policyDead = profile == "dead_directcaller";
+                if (profile == "remote_my255")
+                {
+                    f.State.Tick();
+                    Assert.Equal(before, f.ItemImage());
+                    Assert.True(f.Items.TryGetActive(item.Handle.Slot, out _));
+                }
+                int residual = I(row.GetProperty("residual"), "stack");
+                f.Pickup(item, profile == "remote_my255" || residual == item.Stack ? 0 : residual);
                 var expected = profile == "remote_my255" ? source.RootElement.GetProperty(platform).GetProperty("rows").EnumerateArray().Single(r => I(r, "id") == I(row, "id") && r.GetProperty("profile").GetString() == "contact").GetProperty("after") : row.GetProperty("after");
                 int index = 0;
                 foreach (var wanted in expected.EnumerateArray())
@@ -73,10 +80,12 @@ public sealed class OwnedHumanPickupAuthority1458Tests
                 using var f = new Fixture(platform == "windowsClr4X86"); short slot = 0;
                 foreach (var before in row.GetProperty("before").EnumerateArray()) f.Set(slot++, (short)I(before, "type"), (short)I(before, "stack"), (byte)I(before, "prefix"), before.GetProperty("favorite").GetBoolean() ? (byte)1 : (byte)0);
                 var incoming = row.GetProperty("beforeIncoming"); var item = f.Drop((short)I(incoming, "type"), (short)I(incoming, "stack"));
-                f.State.Tick(); slot = 0;
+                int remaining = I(row.GetProperty("residual"), "stack");
+                f.Pickup(item, remaining == item.Stack ? 0 : remaining);
+                slot = 0;
                 foreach (var expected in row.GetProperty("after").EnumerateArray())
                 { Assert.True(f.Players.TryGetInventoryItem(f.Connection, slot++, out var actual)); Assert.Equal(I(expected, "type"), actual.ItemType.Value); Assert.Equal(I(expected, "stack"), (int)actual.Stack); Assert.Equal(I(expected, "prefix"), actual.Prefix.Value); Assert.Equal(expected.GetProperty("favorite").GetBoolean(), (actual.ItemFlags & 1) != 0); }
-                int remaining = I(row.GetProperty("residual"), "stack"); Assert.Equal(remaining > 0, f.Items.TryGetActive(item.Handle.Slot, out var after)); if (remaining > 0) Assert.Equal(remaining, (int)after.Stack);
+                Assert.Equal(remaining > 0, f.Items.TryGetActive(item.Handle.Slot, out var after)); if (remaining > 0) Assert.Equal(remaining, (int)after.Stack);
                 storageComparisons++;
             }
         Assert.Equal(50, storageComparisons); Assert.Equal(10, omittedFavoriteProfiles);
@@ -85,7 +94,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         foreach (bool windows in new[] { false, true })
         {
             using var f = new Fixture(windows); var item = f.Drop(109, 20, shimmered: true, vx: 0.12f, vy: 0.16f);
-            f.Runtime.WorldItems.TickOwnedHumanPickups();
+            f.Pickup(item);
             int remaining = diagonal.RootElement.GetProperty(windows ? "windows" : "linux").GetProperty("residualStack").GetInt32();
             Assert.Equal(remaining > 0, f.Items.TryGetActive(item.Handle.Slot, out var after)); if (remaining > 0) Assert.Equal(remaining, (int)after.Stack);
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var owned)); Assert.Equal(20 - remaining, (int)owned.Stack);
@@ -104,12 +113,14 @@ public sealed class OwnedHumanPickupAuthority1458Tests
                 int after = partial ? 9999 : 20; short destination = 0;
                 bool saw = false;
                 f.WorldEvents.Callback = () => { saw = true; Assert.True(f.Players.TryGetInventoryItem(f.Connection, destination, out var item)); Assert.Equal(after, (int)item.Stack); Assert.Equal(partial, f.Items.TryGetActive(drop.Handle.Slot, out var residual)); if (partial) Assert.Equal(11, (int)residual.Stack); };
-                if (commandFirst)
+                if (!commandFirst)
                 {
-                    if (partial) f.State.Apply(new WorldItemDropRuntimeCommand(f.Connection, drop.Handle, new(drop.PositionX, drop.PositionY, drop.VelocityX, drop.VelocityY, 11, drop.Prefix, drop.Ownership, drop.ItemNetId, drop.Shimmered, drop.ShimmerTime, drop.EnemyGrabDelayTime)));
-                    else f.State.Apply(new WorldItemRemoveRuntimeCommand(f.Connection, drop.Handle));
+                    f.State.Tick();
+                    Assert.False(saw);
+                    Assert.True(f.Items.TryGetActive(drop.Handle.Slot, out drop));
+                    Assert.Equal(partial ? 9990 : 0, f.ItemImage()[destination].Stack);
                 }
-                else f.State.Tick();
+                f.Pickup(drop, partial ? 11 : 0);
                 Assert.True(saw, $"command={commandFirst} partial={partial} phase={f.Member.ItemPhase} position={f.Member.PositionX},{f.Member.PositionY} ground={f.Items.TryGetActive(drop.Handle.Slot, out var diagnostic)}:{diagnostic}"); Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var received)); Assert.Equal(after, (int)received.Stack);
                 f.Set(0, 110, (short)after); // Exact source sync5 acknowledgement, no second grant.
                 Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out received)); Assert.Equal(after, (int)received.Stack);
@@ -147,7 +158,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
     [Fact]
     public async Task Observer_throw_reentry_and_wrong_contact_do_not_publish_stale_inventory()
     {
-        VerifyTickContactBeforeItemDelayAndOwnerDiscovery();
+        VerifyReservationAndGrabDelayBeforeAuthenticatedPickup();
         VerifyBindingAndRetiredConstructorBoundary();
         using (var f = new Fixture())
         {
@@ -204,10 +215,9 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         {
             var one = f.Drop(110, 1); var two = f.Drop(109, 1); int observed = 0; bool reentered = false;
             f.WorldEvents.Callback = () => { observed++; if (!reentered) { reentered = true; f.State.Tick(); } };
-            f.Runtime.WorldItems.TickOwnedHumanPickups(); Assert.Equal(1, observed);
+            f.Pickup(one); Assert.Equal(1, observed);
             Assert.False(f.Items.TryGetActive(one.Handle.Slot, out _)); Assert.True(f.Items.TryGetActive(two.Handle.Slot, out _));
-            // Reentrant Tick changed the second source reservation snapshot; defer it to a fresh scan.
-            f.Runtime.WorldItems.TickOwnedHumanPickups(); Assert.Equal(2, observed); Assert.False(f.Items.TryGetActive(two.Handle.Slot, out _));
+            f.Pickup(two); Assert.Equal(2, observed); Assert.False(f.Items.TryGetActive(two.Handle.Slot, out _));
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var first)); Assert.Equal(110, first.ItemType.Value);
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 1, out var second)); Assert.Equal(109, second.ItemType.Value);
         }
@@ -230,11 +240,11 @@ public sealed class OwnedHumanPickupAuthority1458Tests
             var item = f.Drop(110, 3);
             Assert.True(f.Items.TryApplyDrop(item.Handle.Slot, new(item.PositionX, item.PositionY, 0, 0, 30, 0, WorldItemOwnershipMode.None, 110, false, 0, 0), out var inflated));
             Assert.True(f.Items.TryGetFundedQuantity(in inflated, out var funded)); Assert.Equal(3, funded);
-            f.Runtime.WorldItems.TickOwnedHumanPickups();
+            f.Pickup(inflated, residual: 27);
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var granted)); Assert.Equal(3, (int)granted.Stack);
             Assert.True(f.Items.TryGetActive(item.Handle.Slot, out var residue)); Assert.Equal(27, (int)residue.Stack);
             Assert.True(f.Items.TryGetFundedQuantity(in residue, out funded)); Assert.Equal(0, funded);
-            f.Runtime.WorldItems.TickOwnedHumanPickups(); f.Set(0, 110, 4);
+            f.Pickup(residue); f.Set(0, 110, 4);
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out granted)); Assert.Equal(3, (int)granted.Stack);
         }
         using (var f = new Fixture())
@@ -264,9 +274,9 @@ public sealed class OwnedHumanPickupAuthority1458Tests
             Assert.True(store.TryApplyOwner(mixed.Handle.Slot, new(0, 15, 1, 0, 1600, 1606), out mixed));
             using (var receiver = new Fixture(providedItems: store))
             {
-                receiver.State.Tick(); Assert.True(receiver.Players.TryGetInventoryItem(receiver.Connection, 0, out var granted)); Assert.Equal(3, (int)granted.Stack);
+                receiver.Pickup(mixed, residual: 7); Assert.True(receiver.Players.TryGetInventoryItem(receiver.Connection, 0, out var granted)); Assert.Equal(3, (int)granted.Stack);
                 Assert.True(store.TryGetActive(mixed.Handle.Slot, out var residue)); Assert.Equal(7, (int)residue.Stack); Assert.True(store.TryGetFundedQuantity(in residue, out funded)); Assert.Equal(0, funded);
-                receiver.State.Tick(); receiver.Set(0, 110, 4); Assert.True(receiver.Players.TryGetInventoryItem(receiver.Connection, 0, out granted)); Assert.Equal(3, (int)granted.Stack);
+                receiver.Pickup(residue); receiver.Set(0, 110, 4); Assert.True(receiver.Players.TryGetInventoryItem(receiver.Connection, 0, out granted)); Assert.Equal(3, (int)granted.Stack);
             }
         }
         {
@@ -305,7 +315,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         {
             // Source Player.Update returns before GrabItems outside the known world.
             f.Member.PositionX = 7000; // Trusted configured retained outside body; ingress rejects this teleport.
-            Assert.Equal(7000f, f.Member.PositionX); var item = f.Drop(109, 1, 7000); f.Runtime.WorldItems.TickOwnedHumanPickups();
+            Assert.Equal(7000f, f.Member.PositionX); var item = f.Drop(109, 1, 7000); f.Pickup(item);
             Assert.True(f.Items.TryGetActive(item.Handle.Slot, out var retained)); Assert.Equal(item, retained);
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var empty)); Assert.True(empty.IsEmpty);
         }
@@ -337,25 +347,29 @@ public sealed class OwnedHumanPickupAuthority1458Tests
 
     private static int I(JsonElement e, string n) => e.GetProperty(n).GetInt32();
     private static float F(JsonElement e, string n) => e.GetProperty(n).GetSingle();
-    private static void VerifyTickContactBeforeItemDelayAndOwnerDiscovery()
+    private static void VerifyReservationAndGrabDelayBeforeAuthenticatedPickup()
     {
         foreach (byte grab in new byte[] { 0, 255 })
         {
             using var f = new Fixture();
             var item = f.Drop(110, 1, delay: 1, delayPlayer: grab);
-            f.State.Tick();
-            Assert.True(f.Items.TryGetActive(item.Handle.Slot, out var retained)); Assert.Equal(0, retained.GrabDelayTime);
+            f.Pickup(item);
+            Assert.True(f.Items.TryGetActive(item.Handle.Slot, out _));
             Assert.True(f.ItemImage()[0].IsEmpty);
             f.State.Tick();
+            Assert.True(f.Items.TryGetActive(item.Handle.Slot, out var retained)); Assert.Equal(0, retained.GrabDelayTime);
+            f.Pickup(retained);
             Assert.False(f.Items.TryGetActive(item.Handle.Slot, out _)); Assert.Equal(1, f.ItemImage()[0].Stack);
         }
         using (var f = new Fixture())
         {
             var item = f.Drop(110, 1, owner: 255);
             Assert.True(f.Items.TryApplyOwner(item.Handle.Slot, new(255, 0, 1, 0, 1600, 1606), out _));
+            f.Pickup(item);
+            Assert.True(f.Items.TryGetActive(item.Handle.Slot, out _));
             f.State.Tick();
             Assert.True(f.ItemImage()[0].IsEmpty); Assert.True(f.Items.TryGetActive(item.Handle.Slot, out var reserved)); Assert.Equal(0, reserved.OwnerPlayerId);
-            f.State.Tick();
+            f.Pickup(reserved);
             Assert.Equal(1, f.ItemImage()[0].Stack); Assert.False(f.Items.TryGetActive(item.Handle.Slot, out _));
         }
     }
@@ -394,7 +408,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         await VerifyOriginalSelectedFundedDrops();
         using var f = new Fixture();
         var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
-        f.Drop(110, 3); f.State.Tick();
+        f.PickupAfterTick(f.Drop(110, 3));
         Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out var funded)); Assert.Equal(3, funded);
         var beforeDropRandom = ((SystemWorldItemSpawnRandom)f.Runtime.WorldItems.SpawnRandom).SourceRandom.Clone();
         var proposed = new WorldItemDropStateUpdate(1602, 1619, 4, -2, 3, 0, WorldItemOwnershipMode.GrabDelayForLocalPlayer, 110, false, 0, 100);
@@ -426,7 +440,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         Assert.False(RuntimePlayerInventoryStore.AreValidFundedQuantities(coinFunding, coinImage)); // Physical coin count cannot represent funded value.
 
         using var mixed = new Fixture();
-        mixed.Set(0, 110, 7); mixed.Drop(110, 3); mixed.State.Tick();
+        mixed.Set(0, 110, 7); mixed.PickupAfterTick(mixed.Drop(110, 3));
         var mixedInventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(mixed.Players)!;
         Assert.True(mixedInventory.TryGetFundedQuantity(mixed.Connection, 0, out funded)); Assert.Equal(3, funded);
         Assert.True(mixed.Players.TryGetInventoryItem(mixed.Connection, 0, out var ten)); Assert.Equal(10, ten.Stack);
@@ -445,7 +459,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
     {
         using (var f = new Fixture())
         {
-            f.Drop(110, 3); f.State.Tick();
+            f.PickupAfterTick(f.Drop(110, 3));
             var detach = new TaskCompletionSource<RuntimePlayerTransferState?>();
             f.State.Apply(new PlayerTransferDetachRuntimeCommand(f.Connection, detach)); var transfer = await detach.Task; Assert.NotNull(transfer);
             Assert.Equal(3, transfer!.FundedInventoryQuantities[0]);
@@ -459,7 +473,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var f = new Fixture())
         {
-            f.Drop(110, 3); f.State.Tick(); f.Events.Seen.Clear();
+            f.PickupAfterTick(f.Drop(110, 3)); f.Events.Seen.Clear();
             f.WorldEvents.Callback = () => throw new InvalidOperationException("drop-observer");
             var body = new WorldItemDropStateUpdate(1602, 1619, 4, -2, 3, 0, WorldItemOwnershipMode.GrabDelayForLocalPlayer, 110, false, 0, 100);
             var failure = Record.Exception(() => f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, body)));
@@ -468,7 +482,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var f = new Fixture())
         {
-            f.Drop(110, 3); f.State.Tick();
+            f.PickupAfterTick(f.Drop(110, 3));
             var store = new RuntimeWorldItemStore();
             store.AttachOwnerFactsProvider(new LateCurrentnessProvider(() => f.Set(2, 9, 1)));
             var authority = new WorldItemAuthority(f.Players, store, new SystemWorldItemSpawnRandom(0), null);
@@ -493,7 +507,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
                 if (id is not (2 or 3 or 24 or 109 or 110 or 219) || profile is not ("selected0" or "last1" or "leftmoving")) continue;
                 using var f = new Fixture(); var ground = row.GetProperty("ground"); var item = ground.GetProperty("item");
                 short stack = item.GetProperty("stack").GetInt16(); byte prefix = item.GetProperty("prefix").GetByte();
-                f.Drop((short)id, stack, prefix: prefix); f.State.Tick();
+                f.PickupAfterTick(f.Drop((short)id, stack, prefix: prefix));
                 Assert.Equal(id, f.ItemImage()[0].ItemType.Value); Assert.Equal(stack, f.ItemImage()[0].Stack);
                 if (profile == "leftmoving") { f.Member.ControlFlags &= 191; f.Member.VelocityX = 1.25f; }
                 var position = ground.GetProperty("position"); var velocity = ground.GetProperty("velocity");
@@ -514,7 +528,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         VerifyOriginalCursorImages();
         using var f = new Fixture();
         var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
-        f.Drop(110, 3); f.State.Tick(); f.Events.Seen.Clear();
+        f.PickupAfterTick(f.Drop(110, 3)); f.Events.Seen.Clear();
         f.Set(0, 0, 0); // First ascending source5: slot debit, cursor credit has not arrived.
         Assert.True(f.ItemImage()[0].IsEmpty); Assert.True(f.ItemImage()[58].IsEmpty);
         int observed = 0;
@@ -547,7 +561,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         Assert.Contains(inventory.CaptureOwnedQuantities(f.Connection), c => c.Slot == 0 && c.ItemType.Value == 110 && c.Maximum == 3);
         using (var late = new Fixture())
         {
-            late.Drop(110, 3); late.State.Tick();
+            late.PickupAfterTick(late.Drop(110, 3));
             late.Events.Callback = () => late.State.Apply(new PlayerHealthRuntimeCommand(late.Connection, new(late.Connection.Player.Slot, 399, 400)));
             late.Set(0, 110, 2); // Eager component debit remains visible even if the eventual pair is refused.
             late.Events.Callback = null;
@@ -556,7 +570,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var throwing = new Fixture())
         {
-            throwing.Drop(110, 3); throwing.State.Tick(); throwing.Set(0, 0, 0); throwing.Set(58, 110, 3);
+            throwing.PickupAfterTick(throwing.Drop(110, 3)); throwing.Set(0, 0, 0); throwing.Set(58, 110, 3);
             throwing.Events.Seen.Clear(); throwing.Set(2, 110, 3); // Credit first is deferred.
             throwing.Events.Callback = () =>
             {
@@ -573,14 +587,14 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var splitTick = new Fixture())
         {
-            splitTick.Drop(110, 3); splitTick.State.Tick(); splitTick.Set(0, 0, 0);
+            splitTick.PickupAfterTick(splitTick.Drop(110, 3)); splitTick.Set(0, 0, 0);
             splitTick.State.Tick(); splitTick.State.Tick(); splitTick.State.Tick(); splitTick.Set(58, 110, 3);
             var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(splitTick.Players)!;
             Assert.True(store.TryGetFundedQuantity(splitTick.Connection, 58, out var quantity)); Assert.Equal(3, quantity);
         }
         using (var leftTime = new Fixture())
         {
-            leftTime.Drop(110, 3); leftTime.State.Tick(); leftTime.Set(0, 110, 3, flags: 1);
+            leftTime.PickupAfterTick(leftTime.Drop(110, 3)); leftTime.Set(0, 110, 3, flags: 1);
             leftTime.Member.ItemPhase = leftTime.Member.ItemPhase!.Value with
             { Selected = leftTime.Member.ItemPhase.Value.Selected with { ItemTime = 1 } };
             leftTime.Set(0, 0, 0); leftTime.Set(58, 110, 3, flags: 1);
@@ -591,8 +605,8 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         {
             using var mixedExchange = new Fixture();
             mixedExchange.Set(0, sourceType, 9996); mixedExchange.Set(2, 110, 3);
-            mixedExchange.Drop(sourceType, 3); mixedExchange.State.Tick();
-            mixedExchange.Drop(110, 7); mixedExchange.State.Tick();
+            mixedExchange.PickupAfterTick(mixedExchange.Drop(sourceType, 3));
+            mixedExchange.PickupAfterTick(mixedExchange.Drop(110, 7));
             mixedExchange.Set(2, 0, 0); mixedExchange.Set(58, 110, 10);
             mixedExchange.Set(0, sourceType, 9999, flags: 1);
             mixedExchange.Set(0, 110, 10, flags: sourceType == 110 ? (byte)1 : (byte)0);
@@ -606,8 +620,8 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         using (var unchangedFull = new Fixture())
         {
             unchangedFull.Set(0, 110, 9996); unchangedFull.Set(2, 110, 9992);
-            unchangedFull.Drop(110, 3); unchangedFull.State.Tick();
-            unchangedFull.Drop(110, 7); unchangedFull.State.Tick();
+            unchangedFull.PickupAfterTick(unchangedFull.Drop(110, 3));
+            unchangedFull.PickupAfterTick(unchangedFull.Drop(110, 7));
             unchangedFull.Set(2, 0, 0); unchangedFull.Set(58, 110, 9999);
             unchangedFull.Set(0, 110, 9999); unchangedFull.Set(58, 110, 9999);
             var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(unchangedFull.Players)!;
@@ -616,7 +630,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var otherPlayer = new Fixture())
         {
-            otherPlayer.Drop(110, 3); otherPlayer.State.Tick(); otherPlayer.Set(0, 0, 0);
+            otherPlayer.PickupAfterTick(otherPlayer.Drop(110, 3)); otherPlayer.Set(0, 0, 0);
             var other = new ConnectionHandle(GameCommandSourceId.FromConnection(98903), new(new PlayerSlotId(1), new(1)));
             otherPlayer.State.Apply(new PlayerEquipmentRuntimeCommand(other, new(other.Player.Slot, 0, 7, 0, 3, 0)));
             var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(otherPlayer.Players)!;
@@ -626,7 +640,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var directWriter = new Fixture())
         {
-            directWriter.Drop(110, 3); directWriter.State.Tick(); directWriter.Set(0, 0, 0);
+            directWriter.PickupAfterTick(directWriter.Drop(110, 3)); directWriter.Set(0, 0, 0);
             var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(directWriter.Players)!;
             Assert.True(store.TrySet(directWriter.Connection, new(directWriter.Connection.Player.Slot, 2, 7, 0, 3, 0)));
             Assert.True(store.TrySet(directWriter.Connection, new(directWriter.Connection.Player.Slot, 2, 0, 0, 0, 0)));
@@ -635,7 +649,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var retired = new Fixture())
         {
-            retired.Drop(110, 3); retired.State.Tick(); retired.Set(0, 0, 0);
+            retired.PickupAfterTick(retired.Drop(110, 3)); retired.Set(0, 0, 0);
             retired.Member.ItemPhase = null;
             retired.Member.ItemPhase = RuntimePlayerItemPhase1458.Constructor;
             retired.Set(58, 110, 3);
@@ -644,7 +658,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var reentry = new Fixture())
         {
-            reentry.Drop(110, 3); reentry.State.Tick();
+            reentry.PickupAfterTick(reentry.Drop(110, 3));
             bool entered = false;
             reentry.Events.Callback = () => { if (entered) return; entered = true; reentry.Set(58, 110, 3); };
             reentry.Set(0, 0, 0); reentry.Events.Callback = null;
@@ -655,7 +669,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
         using (var wrongPlayer = new Fixture())
         {
-            wrongPlayer.Drop(110, 3); wrongPlayer.State.Tick();
+            wrongPlayer.PickupAfterTick(wrongPlayer.Drop(110, 3));
             wrongPlayer.State.Apply(new PlayerEquipmentRuntimeCommand(wrongPlayer.Connection, new(new PlayerSlotId(2), 0, 0, 0, 0, 0)));
             Assert.Equal(3, wrongPlayer.ItemImage()[0].Stack); Assert.True(wrongPlayer.ItemImage()[58].IsEmpty);
         }
@@ -805,6 +819,26 @@ public sealed class OwnedHumanPickupAuthority1458Tests
             else Assert.True(Items.TryAllocateSourceDrop(new WorldItemDropStateUpdate(x, 1606, vx, vy, stack, prefix, WorldItemOwnershipMode.None, type, shimmered, shimmer, 0), default, out item, out _), $"trusted source allocation type={type} shimmer={shimmer} x={x} owner={owner}");
             Assert.True(Items.TryApplyOwner(item.Handle.Slot, new(owner, 15, delayPlayer, delay, x, 1606), out item)); return item;
         }
+        internal void PickupAfterTick(WorldItemSnapshot item)
+        {
+            State.Tick();
+            Pickup(item);
+        }
+
+        internal void Pickup(WorldItemSnapshot item, int residual = 0)
+        {
+            if (residual == 0)
+            {
+                State.Apply(new WorldItemRemoveRuntimeCommand(Connection, item.Handle));
+                return;
+            }
+
+            var state = new WorldItemDropStateUpdate(item.PositionX, item.PositionY, item.VelocityX, item.VelocityY,
+                checked((short)residual), item.Prefix, WorldItemOwnershipMode.None, item.ItemNetId,
+                item.Shimmered, item.ShimmerTime, item.EnemyGrabDelayTime);
+            State.Apply(new WorldItemDropRuntimeCommand(Connection, item.Handle, state));
+        }
+
         internal RuntimePlayerInventoryItem[] ItemImage() { var result = new RuntimePlayerInventoryItem[59]; for (short i = 0; i < 59; i++) { Assert.True(Players.TryGetInventoryItem(Connection, i, out result[i])); } return result; }
         public void Dispose() => session.Dispose();
     }

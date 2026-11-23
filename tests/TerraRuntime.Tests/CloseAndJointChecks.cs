@@ -18,7 +18,7 @@ public sealed class CloseAndJointChecks
   {
    using var f=new OwnedHumanPickupAuthority1458Tests.Fixture();
    for(short s=50;s<54;s++) f.Set(s,3,9999);
-   f.Set(0,71,99);f.Drop(71,1);f.State.Tick();Assert.Equal(72,f.ItemImage()[0].ItemType.Value);Assert.Equal(1,Value(f,0));
+   f.Set(0,71,99);f.PickupAfterTick(f.Drop(71,1));Assert.Equal(72,f.ItemImage()[0].ItemType.Value);Assert.Equal(1,Value(f,0));
    f.Set(0,0,0);
    if(complete){f.Set(58,72,1);Assert.Equal(1,Value(f,58));}
    var detach=new TaskCompletionSource<RuntimePlayerTransferState?>();f.State.Apply(new PlayerTransferDetachRuntimeCommand(f.Connection,detach));var dto=await detach.Task;Assert.NotNull(dto);

@@ -8,35 +8,14 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class WorldItemAuthority
 {
-    // Server-owned contact pickup is an authority policy. Original GrabItems calls PickupItem
-    // only for Main.myPlayer; reservation radius/attraction do not prove contact.
-    private bool ownedPickupTickRunning;
+    // Player.GrabItems invokes PickupItem only for Main.myPlayer in Terraria 1.4.5.8.
+    // For a connected human, wait for that client's full-removal or residual-stack frame.
+    // Retiring the item from Tick first can erase it before the local inventory receives it.
     private bool ownedPickupTransactionRunning;
-    internal void TickOwnedHumanPickups()
-    {
-        if (ownedPickupTickRunning || ownedPickupTransactionRunning || worldItems.ActiveCount == 0 ||
-            !players.HasRemotePlayerPhaseBinding || !players.HasItemStorageContext) return;
-        ownedPickupTickRunning = true;
-        try
-        {
-            var scan = new WorldItemSnapshot[RuntimeWorldItemStore.VanillaCapacity];
-            int count = worldItems.CopyActive(scan);
-            Exception? failure = null;
-            for (int index = 0; index < count; index++)
-            {
-                var item = scan[index];
-                if (!worldItems.TryGetActive(item.Handle.Slot, out var current) || current != item) continue;
-                try { _ = TryOwnedContactPickup(item, null, null); }
-                catch (Exception ex) { failure ??= ex; }
-            }
-            if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        }
-        finally { ownedPickupTickRunning = false; }
-    }
 
     // null means this item is outside represented storage/contact authority and keeps
     // the existing compatibility path; false is a represented proposal refusal.
-    private bool? TryOwnedContactPickup(WorldItemSnapshot item, ConnectionHandle? requestedBy,
+    private bool? TryOwnedContactPickup(WorldItemSnapshot item, ConnectionHandle requestedBy,
         WorldItemDropStateUpdate? proposedResidual)
     {
         if (ownedPickupTransactionRunning) return false;
@@ -45,7 +24,7 @@ internal sealed partial class WorldItemAuthority
         finally { ownedPickupTransactionRunning = false; }
     }
 
-    private bool? TryPlanAndAdoptOwnedContactPickup(WorldItemSnapshot item, ConnectionHandle? requestedBy,
+    private bool? TryPlanAndAdoptOwnedContactPickup(WorldItemSnapshot item, ConnectionHandle requestedBy,
         WorldItemDropStateUpdate? proposedResidual)
     {
         if (!item.TryGetItemType(out var type) ||
@@ -57,7 +36,7 @@ internal sealed partial class WorldItemAuthority
         if (item.OwnerPlayerId == byte.MaxValue || !players.TryGet(item.OwnerPlayerId, out var member)) return null;
         var phase = member.ItemPhase;
         var state = member.CaptureSnapshot();
-        if (requestedBy is { } sender && sender != member.Connection) return false;
+        if (requestedBy != member.Connection) return false;
         if (players.IsPickupOutOfRange(in state) || state.IsDead || (state.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0 || item.ShimmerTime != 0f ||
             (item.GrabDelayTime > 0 && (item.GrabDelayPlayer == byte.MaxValue || item.GrabDelayPlayer == state.Player.Slot.Value)) ||
             (item.Shimmered && (players.PickupWindowsArithmetic is not { } windows || !((double)(float)Math.Sqrt(windows
@@ -95,13 +74,10 @@ internal sealed partial class WorldItemAuthority
         // No ordinary-to-void fallback is invented for dedicated remote inventory.
         if (!VanillaWorldItemOwner1458.TryPlanStorage(in incoming, slots, false, players.PickupWorld, out var storage) || storage is null) return null;
         if (storage.Taken <= 0) return false;
-        if (requestedBy is not null)
-        {
-            if (proposedResidual is null && item.Stack != storage.Taken) return false;
-            if (proposedResidual is { } residual && (item.Stack == storage.Taken || residual != new WorldItemDropStateUpdate(
-                item.PositionX, item.PositionY, item.VelocityX, item.VelocityY, checked((short)(item.Stack - storage.Taken)),
-                item.Prefix, WorldItemOwnershipMode.None, item.ItemNetId, item.Shimmered, item.ShimmerTime, item.EnemyGrabDelayTime))) return false;
-        }
+        if (proposedResidual is null && item.Stack != storage.Taken) return false;
+        if (proposedResidual is { } residual && (item.Stack == storage.Taken || residual != new WorldItemDropStateUpdate(
+            item.PositionX, item.PositionY, item.VelocityX, item.VelocityY, checked((short)(item.Stack - storage.Taken)),
+            item.Prefix, WorldItemOwnershipMode.None, item.ItemNetId, item.Shimmered, item.ShimmerTime, item.EnemyGrabDelayTime))) return false;
         var tuple = new RuntimePlayerInventoryItem(type,
             type.Value is >= 71 and <= 74 ? checked((short)funded) : item.Stack, item.PrefixId, 0);
         long acceptedCoinValue = coin ? Math.Min(fundedCoinValue, checked(coinUnit * storage.Taken)) : 0;

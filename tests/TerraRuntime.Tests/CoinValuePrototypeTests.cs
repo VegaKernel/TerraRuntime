@@ -38,7 +38,7 @@ public sealed class CoinValuePrototypeTests
   }
   using(var f=new OwnedHumanPickupAuthority1458Tests.Fixture())
   {
-   f.Set(50,71,99);f.Drop(71,1);f.State.Tick();
+   f.Set(50,71,99);f.PickupAfterTick(f.Drop(71,1));
    Assert.Equal(72,f.ItemImage()[50].ItemType.Value);Assert.Equal(1,f.ItemImage()[50].Stack);Assert.Equal(1,Value(f,50));
    var detach=new TaskCompletionSource<RuntimePlayerTransferState?>();f.State.Apply(new PlayerTransferDetachRuntimeCommand(f.Connection,detach));var dto=await detach.Task;Assert.NotNull(dto);Assert.Equal(1,dto!.FundedInventoryCoinValues[50]);
    f.Connection=new(GameCommandSourceId.FromConnection(98902),new(f.Connection.Player.Slot,new(f.Connection.Player.Generation.Value+1)));
@@ -47,14 +47,14 @@ public sealed class CoinValuePrototypeTests
   }
   using(var f=new OwnedHumanPickupAuthority1458Tests.Fixture())
   {
-   f.Drop(71,99);f.State.Tick();Assert.Equal(99,Value(f,53));f.Drop(71,1);f.State.Tick();Assert.Equal(72,f.ItemImage()[53].ItemType.Value);Assert.Equal(100,Value(f,53));
+   f.PickupAfterTick(f.Drop(71,99));Assert.Equal(99,Value(f,53));f.PickupAfterTick(f.Drop(71,1));Assert.Equal(72,f.ItemImage()[53].ItemType.Value);Assert.Equal(100,Value(f,53));
   }
   foreach(short type in new short[]{71,72,73,74})
   {
    using var f=new OwnedHumanPickupAuthority1458Tests.Fixture();
    // Occupied coin slots direct the real storage journal to the selected ordinary slot.
    for(short slot=50;slot<54;slot++)f.Set(slot,3,9999);
-   f.Drop(type,3);f.State.Tick();Assert.Equal(type,f.ItemImage()[49].ItemType.Value);
+   f.PickupAfterTick(f.Drop(type,3));Assert.Equal(type,f.ItemImage()[49].ItemType.Value);
    f.Set(0,type,3); // This reported identity has no funding; it cannot supply an owned drop.
    Assert.Equal(0,Value(f,0));
    long total=3*(type==71?1L:type==72?100L:type==73?10000L:1000000L);
@@ -69,7 +69,7 @@ public sealed class CoinValuePrototypeTests
   using(var f=new OwnedHumanPickupAuthority1458Tests.Fixture())
   {
    for(short slot=50;slot<54;slot++)f.Set(slot,3,9999);
-   f.Set(0,71,99);f.Drop(71,1);f.State.Tick();Assert.Equal(72,f.ItemImage()[0].ItemType.Value);Assert.Equal(1,Value(f,0));
+   f.Set(0,71,99);f.PickupAfterTick(f.Drop(71,1));Assert.Equal(72,f.ItemImage()[0].ItemType.Value);Assert.Equal(1,Value(f,0));
    var state=f.Member.CaptureSnapshot();var body=new WorldItemDropStateUpdate(state.PositionX+2,state.PositionY+13,4,-2,1,0,WorldItemOwnershipMode.GrabDelayForLocalPlayer,72,false,0,100);
    var completion=new TaskCompletionSource<WorldItemSnapshot?>();f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection,body,completion));Assert.Null(await completion.Task);Assert.Equal(1,Value(f,0));Assert.Equal(1,f.ItemImage()[0].Stack);Assert.Equal(0,f.Items.ActiveCount);
   }
@@ -96,7 +96,7 @@ public sealed class CoinValuePrototypeTests
     for(short coinSlot=50;coinSlot<54;coinSlot++)f.Set(coinSlot,3,9999);
     short seedType=checked((short)(slot.Type!=0?slot.Type:mouse.Type));
     short seedAmount=checked((short)Math.Min(3,slot.Type!=0?slot.Stack:mouse.Stack));
-    f.Drop(seedType,seedAmount);f.State.Tick();f.Set(49,0,0);f.Set(58,seedType,seedAmount);
+    f.PickupAfterTick(f.Drop(seedType,seedAmount));f.Set(49,0,0);f.Set(58,seedType,seedAmount);
     if(slot.Type!=0){f.Set(2,seedType,seedAmount);f.Set(58,0,0);}
     f.Set(2,(short)slot.Type,(short)slot.Stack,0,slot.Favorite?(byte)1:(byte)0);
     f.Set(58,(short)mouse.Type,(short)mouse.Stack,0,mouse.Favorite?(byte)1:(byte)0);
@@ -115,10 +115,10 @@ public sealed class CoinValuePrototypeTests
     for(short coinSlot=50;coinSlot<54;coinSlot++)f.Set(coinSlot,3,9999);
     if(amount==100 && type!=74)
     {
-     f.Drop(type,1);f.State.Tick();f.Set(49,0,0);f.Set(58,type,1);
-     f.Drop(type,99);f.State.Tick();f.Set(49,type,100);f.Set(58,0,0);
+     f.PickupAfterTick(f.Drop(type,1));f.Set(49,0,0);f.Set(58,type,1);
+     f.PickupAfterTick(f.Drop(type,99));f.Set(49,type,100);f.Set(58,0,0);
     }
-    else { f.Drop(type,amount);f.State.Tick(); }
+    else { f.PickupAfterTick(f.Drop(type,amount)); }
     f.Set(49,0,0);f.Set(58,type,amount);
     if(!mouse){f.Set(0,type,amount);f.Set(58,0,0);}
     int selected=mouse?58:0;Assert.Equal(amount,f.ItemImage()[selected].Stack);
