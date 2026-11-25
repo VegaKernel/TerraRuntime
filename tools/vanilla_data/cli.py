@@ -208,7 +208,7 @@ def _behavior(args) -> dict:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
-    source = commands.add_parser('source', help='Offline Roslyn method dependency and state-access inventory')
+    source = commands.add_parser('source', help='Offline source inventory, adaptation and version comparison')
     source_actions = source.add_subparsers(dest='action', required=True)
     source_analyze = source_actions.add_parser('analyze')
     source_analyze.add_argument('--request', type=Path, required=True)
@@ -216,6 +216,14 @@ def main(argv=None) -> int:
     source_adapt = source_actions.add_parser('adapt-scalar', help='Cache-only bounded scalar state/return candidate and actual-original differential')
     source_adapt.add_argument('--request', type=Path, required=True)
     source_adapt.add_argument('--output-dir', type=Path, required=True)
+    source_delta = source_actions.add_parser('delta', help='Compare selected methods in pinned 1.4.5.8 and 1.4.6.1 decompiles')
+    source_delta.add_argument('--before-assembly', type=Path, required=True)
+    source_delta.add_argument('--before-root', type=Path, required=True)
+    source_delta.add_argument('--after-assembly', type=Path, required=True)
+    source_delta.add_argument('--after-root', type=Path, required=True)
+    source_delta.add_argument('--path', required=True, help='Relative C# path in both decompiles')
+    source_delta.add_argument('--method', action='append', required=True, help='Simple method name; repeat for more methods')
+    source_delta.add_argument('--report', type=Path, help='New JSON report with provenance and changed line spans')
     capture = commands.add_parser('capture', help='Build an isolated probe and invoke pinned official defaults')
     capture.add_argument('--assembly', type=Path, required=True)
     capture.add_argument('--output', type=Path, required=True)
@@ -277,6 +285,10 @@ def main(argv=None) -> int:
             if args.action == 'adapt-scalar':
                 from .scalar_candidate import adapt
                 report = adapt(args.request, args.output_dir)
+            elif args.action == 'delta':
+                from .source_delta import compare as compare_source
+                report = compare_source(args.before_assembly, args.before_root, args.after_assembly,
+                                        args.after_root, args.path, args.method)
             else:
                 from .source_analysis import analyze
                 report = analyze(args.request, args.output_dir)
@@ -316,6 +328,10 @@ def main(argv=None) -> int:
         # Full field diagnostics remain in --report. Keep routine terminal output bounded.
         summary = {key: value for key, value in report.items() if key not in (
             'results', 'check', 'mutation', 'dllsBefore', 'dllsAfter', 'xmlAudit', 'command', 'commands')}
+        if args.command == 'source' and args.action == 'delta' and args.report is not None:
+            summary['methods'] = [
+                {'method': row['method'], 'status': row['status'], 'changedSpans': len(row['changes'])}
+                for row in report['methods']]
         if 'results' in report:
             summary['datasets'] = [{'dataset': row['dataset'], 'accepted': row['accepted'],
                                     'differences': len(row.get('differences', [])),

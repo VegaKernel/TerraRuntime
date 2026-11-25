@@ -19,6 +19,34 @@ flowchart LR
     E --> F[Compare original and runtime observations]
 ```
 
+## Comparing Terraria releases
+
+Use `source delta` to identify which methods need review before rebuilding traces for a new vanilla version. The command checks the SHA-256 of both official Windows binaries, checks each decompile's `Properties/AssemblyInfo.cs`, and records the compared `.cs` file hashes. Supply source trees decompiled from those binaries; the version marker does not independently bind the trees to the binaries.
+
+```text
+python tools/vanilla.py source delta --before-assembly <1458-exe> --before-root <1458-decompile> --after-assembly <1461-exe> --after-root <1461-decompile> --path Terraria/Wiring.cs --method HitWire --method HitWireSingle --report .cache/wiring-delta.json
+```
+
+Repeat `--method` to compare up to 32 uniquely named block-bodied methods in one file. The report contains method line spans and changed ranges, not source bodies. `unchanged-text` ignores line-ending differences and movement within the file; `changed-text` can reflect formatting or decompiler output, not necessarily a gameplay change. An unchanged method may still call changed code. Use this report to prioritize review and executable traces, not to certify parity. The existing executable probes still use their separately pinned 1.4.5.8 reference.
+
+### Executable wiring follow-up
+
+`tools/reference/wiring1458/DeltaProbe.csproj` is a separate probe for these two versions. It invokes original methods, using each pinned **Linux-edition** `TerrariaServer.exe` plus its neighbor `FNA.dll` under **Windows CoreCLR**. The old 1.4.5.8 probes and fixtures are unchanged. Supply paths to the two original assemblies and use new output filenames:
+
+```powershell
+dotnet run --project tools/reference/wiring1458/DeltaProbe.csproj -c Release -- $original1458 .cache/wiring-delta/1458.json
+dotnet run --project tools/reference/wiring1458/DeltaProbe.csproj -c Release --no-build -- $original1461 .cache/wiring-delta/1461.json
+$before = (Get-Content .cache/wiring-delta/1458.json -Raw | ConvertFrom-Json).observations
+$after = (Get-Content .cache/wiring-delta/1461.json -Raw | ConvertFrom-Json).observations
+if (($before | ConvertTo-Json -Depth 12 -Compress) -cne ($after | ConvertTo-Json -Depth 12 -Compress)) {
+    throw 'Wiring observations differ'
+}
+```
+
+The comparison covers 240 switch-to-torch color-mask combinations and 720 trap distance/count scenes for frame styles `3` and `-7`. It records torch frames, cooldown, all spawned projectiles and the next RNG draw. As a boundary control, four qualifying projectiles at distance 49 versus 50 yield zero versus one birth for style `3`, and one zero-damage birth versus two damage-40 births for style `-7`. This is an offline `netMode=0` comparison of the two original binaries, not dedicated multiplayer, packet or TerraRuntime parity.
+
+`Packet59_torch_frames_match_both_originals_for_every_wire_mask` checks the 240 recorded torch frames against TerraRuntime's packet 59 decode, command queue and world update. The fixture strings encode frame X as `0` for 0 and `1` for 66, ordered by target mask 0–15. The runtime test does not require the original binaries and does not cover the trap census or vanilla multiplayer replication.
+
 ## Request and command
 
 Run from the repository root with Python and the repository's .NET SDK. Provide a JSON request with explicit sources and exact method identities. For example, save the following as a local cache request and replace the two input paths with your local original source tree and admitted Linux server assembly:
