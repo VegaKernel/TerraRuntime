@@ -6,7 +6,7 @@
 
 ## Область
 
-TerraRuntime ориентирован на Terraria `1.4.5.8`, protocol `326`; Multiplicity `3.0.0` изолирован внутри `TerraRuntime.Protocol.Multiplicity`.
+TerraRuntime ориентирован на Terraria `1.4.5.8`, протокол `326`; Multiplicity `4.0.0` изолирован внутри `TerraRuntime.Protocol.Multiplicity`. Кодек эмоций NPC сохраняет завершающее поле показа предмета в пакете `91`, которое Multiplicity убрал для протокола `329`.
 
 Для packet boundary действуют три правила:
 

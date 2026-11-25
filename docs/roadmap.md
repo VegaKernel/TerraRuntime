@@ -1455,7 +1455,7 @@ TShock / OTAPI                    = behavioral/history reference only
 Rules:
 
 - The locally decompiled official `TerrariaServer.exe` **1.4.5.8** is the primary source of truth for vanilla behavior, `.wld` layout, gameplay ordering, state transitions, packet handling semantics and runtime constants.
-- `VegaKernel/Multiplicity` **3.0.0** is the current protocol implementation baseline for protocol **326 / Terraria 1.4.5.8**. Keep golden bytes and real official-client captures as independent verification of its wire behavior.
+- `VegaKernel/Multiplicity` **3.0.0** is the reference implementation for protocol **326 / Terraria 1.4.5.8**. The project references **4.0.0** for shared layouts; the protocol boundary retains the legacy NPC item-display emote field. Keep golden bytes and real official-client captures as independent verification of its wire behavior.
 - `terrustia` is valuable as an independent implementation, testing reference and source of architectural/performance ideas, but it never overrides the current official 1.4.5.8 server when behavior or format details differ.
 - TShock/OTAPI are useful for historical behavior, compatibility knowledge and exploit lessons, but they never define TerraRuntime architecture or override current vanilla behavior.
 - Never infer a 1.4.5.8 file/packet/gameplay layout from an older-version reference when the 1.4.5.8 decompiled server can answer the question directly.

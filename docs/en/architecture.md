@@ -165,7 +165,7 @@ Terraria framing is `[u16 length][u8 message id][payload]`. A slow client must n
 
 ## 8. Protocol boundary
 
-`TerraRuntime.Protocol` defines runtime-facing protocol concepts. `TerraRuntime.Protocol.Multiplicity` adapts Multiplicity 3.0.x behind that boundary.
+`TerraRuntime.Protocol` defines runtime-facing protocol concepts. `TerraRuntime.Protocol.Multiplicity` adapts Multiplicity behind that boundary and preserves TerraRuntime's protocol `326` layouts where they differ from the package.
 
 Gameplay code should not depend on concrete Multiplicity packet classes where it can work with domain commands/state instead.
 

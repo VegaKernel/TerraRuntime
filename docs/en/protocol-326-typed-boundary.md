@@ -6,7 +6,7 @@ Tenth integrated local acceptance: 1474709/1474710 tests, zero failures/errors, 
 
 ## Scope
 
-TerraRuntime targets Terraria `1.4.5.8`, protocol `326`, with Multiplicity `3.0.0` isolated behind `TerraRuntime.Protocol.Multiplicity`.
+TerraRuntime targets Terraria `1.4.5.8`, protocol `326`, with Multiplicity `4.0.0` isolated behind `TerraRuntime.Protocol.Multiplicity`. The NPC emote codec preserves the trailing item-display field in packet `91` that Multiplicity removed for protocol `329`.
 
 The packet boundary follows three rules:
 

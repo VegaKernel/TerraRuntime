@@ -151,7 +151,7 @@ Terraria framing имеет форму `[u16 length][u8 message id][payload]`. S
 
 ## 8. Protocol boundary
 
-`TerraRuntime.Protocol` задаёт runtime-facing protocol concepts. `TerraRuntime.Protocol.Multiplicity` адаптирует Multiplicity 3.0.x к этой границе.
+`TerraRuntime.Protocol` задаёт протокольные понятия для рантайма. `TerraRuntime.Protocol.Multiplicity` адаптирует Multiplicity к этой границе и сохраняет форматы протокола `326`, если они отличаются от форматов пакета.
 
 Gameplay-код не должен зависеть от concrete Multiplicity packet classes там, где может работать с domain commands/state.
 
